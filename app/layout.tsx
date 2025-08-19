@@ -29,7 +29,7 @@ export default function RootLayout({
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}>
 				<header className="border-b border-black/10 dark:border-white/10 sticky top-0 z-40 bg-background/80 backdrop-blur">
 					<div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-						<Link href="/" className="font-semibold text-lg">Cortex Forum</Link>
+						<Link href="/" className="font-semibold text-lg">Sastram</Link>
 						<nav className="flex items-center gap-3 text-sm">
 							{SECTIONS.map(s => (
 								<Link key={s.key} href={`/section/${s.key}`} className="px-3 py-1.5 rounded hover:bg-black/5 dark:hover:bg-white/10">
@@ -45,7 +45,7 @@ export default function RootLayout({
 				</main>
 				<footer className="border-t border-black/10 dark:border-white/10 mt-8">
 					<div className="max-w-6xl mx-auto px-4 py-6 text-sm text-black/60 dark:text-white/60">
-						© {new Date().getFullYear()} Cortex Forum
+						© {new Date().getFullYear()} Sastram
 					</div>
 				</footer>
 			</body>
