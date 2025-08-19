@@ -12,6 +12,13 @@ Community-driven forum with AI-assisted daily digests across Technology, Gaming,
 
 ## Getting started
 
+Create your environment file by copying `env.example`:
+
+```bash
+cp env.example .env.local
+```
+
+
 ### Prerequisites
 - Node.js 22+
 - npm 10+
