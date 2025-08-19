@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "npm run lint && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.19.3",
