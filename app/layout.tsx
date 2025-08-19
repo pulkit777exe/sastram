@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "Cortex Forum",
+	title: "Sastram",
 	description: "Community-driven forum with AI-assisted digests",
 };
 

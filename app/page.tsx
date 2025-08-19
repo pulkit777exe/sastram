@@ -8,7 +8,7 @@ export default async function Home() {
 	return (
 		<div className="grid gap-8">
 			<section className="grid gap-2">
-				<h1 className="text-2xl font-semibold">Welcome to Cortex Forum</h1>
+				<h1 className="text-2xl font-semibold">Welcome to Sastram</h1>
 				<p className="text-black/70 dark:text-white/70 max-w-2xl">Community discussions across technology, gaming, general and sports. AI curates a daily digest for newsletter subscribers.</p>
 				<div className="flex gap-3 flex-wrap mt-2">
 					{SECTIONS.map(s => (
