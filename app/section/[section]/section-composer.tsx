@@ -2,6 +2,12 @@
 
 import { useState, useTransition } from "react";
 import type { ForumSection } from "@/lib/shared";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MessageSquare, Send, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function SectionComposer({ section }: { section: ForumSection }) {
 	const [title, setTitle] = useState("");
@@ -22,7 +28,7 @@ export default function SectionComposer({ section }: { section: ForumSection }) 
 			});
 			const data = await res.json();
 			if (!res.ok) throw new Error(data?.error || "Failed to create post");
-			setOk("Posted!");
+			setOk("Posted successfully!");
 			setTitle("");
 			setContent("");
 			setAuthor("");
@@ -37,18 +43,87 @@ export default function SectionComposer({ section }: { section: ForumSection }) 
 	}
 
 	const disabled = pending || !title || !content || !author;
+	
 	return (
-		<div className="rounded border border-black/10 dark:border-white/15 p-4 grid gap-3">
-			<div className="grid gap-2 sm:grid-cols-2">
-				<input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" className="px-3 py-2 rounded border border-black/10 dark:border-white/15 bg-transparent" />
-				<input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Your name" className="px-3 py-2 rounded border border-black/10 dark:border-white/15 bg-transparent" />
-			</div>
-			<textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Share your thoughts..." rows={4} className="px-3 py-2 rounded border border-black/10 dark:border-white/15 bg-transparent" />
-			<div className="flex items-center gap-3">
-				<button onClick={submit} disabled={disabled} className="px-4 py-2 rounded bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black">{pending ? "Posting..." : "Post"}</button>
-				{ok && <span className="text-green-600 text-sm">{ok}</span>}
-				{error && <span className="text-red-600 text-sm">{error}</span>}
-			</div>
-		</div>
+		<Card className="w-full">
+			<CardHeader>
+				<CardTitle className="flex items-center gap-2">
+					<MessageSquare className="h-5 w-5" />
+					Create New Post
+				</CardTitle>
+				<CardDescription>
+					Share your thoughts with the community in the <Badge variant="secondary">{section}</Badge> section
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<div className="grid gap-4 md:grid-cols-2">
+					<div className="space-y-2">
+						<label htmlFor="title" className="text-sm font-medium">Title</label>
+						<Input
+							id="title"
+							value={title}
+							onChange={e => setTitle(e.target.value)}
+							placeholder="Enter your post title..."
+							className="w-full"
+						/>
+					</div>
+					<div className="space-y-2">
+						<label htmlFor="author" className="text-sm font-medium">Your Name</label>
+						<Input
+							id="author"
+							value={author}
+							onChange={e => setAuthor(e.target.value)}
+							placeholder="Enter your name..."
+							className="w-full"
+						/>
+					</div>
+				</div>
+				
+				<div className="space-y-2">
+					<label htmlFor="content" className="text-sm font-medium">Content</label>
+					<Textarea
+						id="content"
+						value={content}
+						onChange={e => setContent(e.target.value)}
+						placeholder="Share your thoughts, questions, or insights..."
+						rows={4}
+						className="w-full resize-none"
+					/>
+				</div>
+				
+				<div className="flex items-center gap-3">
+					<Button 
+						onClick={submit} 
+						disabled={disabled} 
+						className="flex items-center gap-2"
+					>
+						{pending ? (
+							<>
+								<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+								Posting...
+							</>
+						) : (
+							<>
+								<Send className="h-4 w-4" />
+								Post
+							</>
+						)}
+					</Button>
+					
+					{ok && (
+						<div className="flex items-center gap-2 text-green-600 text-sm">
+							<CheckCircle className="h-4 w-4" />
+							{ok}
+						</div>
+					)}
+					{error && (
+						<div className="flex items-center gap-2 text-red-600 text-sm">
+							<AlertCircle className="h-4 w-4" />
+							{error}
+						</div>
+					)}
+				</div>
+			</CardContent>
+		</Card>
 	);
 } 
