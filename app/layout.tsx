@@ -45,7 +45,6 @@ export default function RootLayout({
 									<Link key={s.key} href={`/section/${s.key}`}>
 										<Button variant="ghost" size="sm" className="flex items-center space-x-2">
 											<span>{s.label}</span>
-											<Badge variant="secondary" className="text-xs">{s.key}</Badge>
 										</Button>
 									</Link>
 								))}
