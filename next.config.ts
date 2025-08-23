@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     // Fix for webpack module resolution issues
     config.resolve.fallback = {
       ...config.resolve.fallback,
-      fs: false,
+      fs: isServer ? false : 'empty',
     };
     
     return config;
