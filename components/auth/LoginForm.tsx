@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { Github } from "lucide-react";
+import Image from "next/image";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -66,10 +66,11 @@ export function LoginForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <Button variant="outline" onClick={() => handleSocialLogin("google")}>
+          <Image src="/google.png" alt="Google" width={16} height={16} className="mr-2" />
           Google
         </Button>
         <Button variant="outline" onClick={() => handleSocialLogin("github")}>
-          <Github className="mr-2 h-4 w-4" />
+          <Image src="/github.png" alt="GitHub" width={16} height={16} className="mr-2" />
           GitHub
         </Button>
       </div>

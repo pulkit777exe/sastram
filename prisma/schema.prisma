@@ -1,5 +1,12 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
 }
 
 datasource db {
@@ -8,7 +15,7 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
+  id            String         @id @default(uuid())
   email         String         @unique
   name          String?
   emailVerified DateTime?
@@ -22,7 +29,7 @@ model User {
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String  @id @default(uuid())
   userId            String
   type              String
   provider          String
@@ -40,7 +47,7 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
@@ -48,7 +55,7 @@ model Session {
 }
 
 model Conversation {
-  id        String               @id @default(cuid())
+  id        String               @id @default(uuid())
   name      String
   type      String               // "channel" or "dm"
   createdAt DateTime             @default(now())
@@ -58,7 +65,7 @@ model Conversation {
 }
 
 model ConversationMember {
-  id             String       @id @default(cuid())
+  id             String       @id @default(uuid())
   conversationId String
   userId         String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -69,7 +76,7 @@ model ConversationMember {
 }
 
 model Message {
-  id             String       @id @default(cuid())
+  id             String       @id @default(uuid())
   content        String
   conversationId String
   senderId       String

@@ -1,6 +1,7 @@
+import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import { Providers } from "@/components/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Sastram - A Modern AI Powered Forum",
-  description: "Sastram is the modern forum for people with power of ai.",
+  description: "Sastram is the modern forum for people with power of AI.",
 };
 
 export default function RootLayout({
@@ -24,10 +25,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body 
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
