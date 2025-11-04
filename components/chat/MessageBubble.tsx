@@ -37,7 +37,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             }
           `}
         >
-          <p className="text-sm leading-relaxed break-words">{message.content}</p>
+          <p className="text-sm leading-relaxed wrap-break-word">{message.content}</p>
         </div>
         <div className="flex items-center gap-2 mt-1">
           <span className="text-xs text-muted-foreground">{message.timestamp}</span>
