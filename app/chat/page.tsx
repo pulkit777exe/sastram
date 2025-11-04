@@ -4,70 +4,83 @@ import { useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
-import { ConversationItem } from "@/components/chat/ConversationItem";
-import { MessageBubble } from "@/components/chat/MessageBubble";
+import { ChatSidebar } from "@/components/chat/ChatSidebar";
+import { ChatMain } from "@/components/chat/ChatMain";
 import { MessageComposer } from "@/components/chat/MessageComposer";
+import { CreateSectionDialog } from "@/components/chat/CreateSectionDialog";
 import { redirect } from "next/navigation";
 
 export default function ChatPage() {
   const { data: session, isPending } = useSession();
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
   const { data: conversations, isLoading: conversationsLoading } = useConversations();
-  const { data: messages, isLoading: messagesLoading } = useMessages(selectedConversationId || "");
-  const sendMessage = useSendMessage(selectedConversationId || "");
+  const { data: messages, isLoading: messagesLoading } = useMessages(selectedSectionId || "");
+  const sendMessage = useSendMessage(selectedSectionId || "");
 
-  if (isPending) return <div>Loading...</div>;
-  if (!session) redirect("/login");
+  if (isPending) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
-  const handleSendMessage = (content: string) => {
-    sendMessage.mutate(content);
+  if (!session) {
+    redirect("/login");
+  }
+
+  const isAdmin = session.user?.role === "ADMIN";
+  const selectedSection = conversations?.find((c) => c.id === selectedSectionId);
+
+  const handleSendMessage = async (content: string, attachments: any[]) => {
+    sendMessage.mutate({ content, attachments });
   };
 
   return (
-    <div className="flex h-screen bg-dark-primary">
-      {/* Sidebar with conversations */}
-      <div className="w-72 bg-dark-secondary border-r border-border">
-        <div className="p-4">
-          <h2 className="text-lg font-semibold text-primary mb-3">We Write Code</h2>
-        </div>
-        <div className="space-y-1 p-2">
-          {conversationsLoading ? (
-            <div>Loading conversations...</div>
-          ) : (
-            conversations?.map((conv) => (
-              <ConversationItem
-                key={conv.id}
-                conversation={conv}
-                isSelected={selectedConversationId === conv.id}
-                onClick={() => setSelectedConversationId(conv.id)}
-              />
-            ))
-          )}
-        </div>
-      </div>
+    <div className="flex h-screen bg-background">
+      <ChatSidebar
+        conversations={conversations || []}
+        activeSectionId={selectedSectionId}
+        onSectionSelect={setSelectedSectionId}
+        onCreateSection={() => setIsCreateDialogOpen(true)}
+        isAdmin={isAdmin}
+      />
 
-      {/* Main chat area */}
-      <div className="flex-1 flex flex-col">
-        {selectedConversationId ? (
+      <div className="flex flex-1 flex-col">
+        {selectedSectionId && selectedSection ? (
           <>
-            <div className="flex-1 overflow-y-auto p-4">
-              {messagesLoading ? (
-                <div>Loading messages...</div>
-              ) : (
-                messages?.map((msg) => (
-                  <MessageBubble key={msg.id} message={msg} />
-                ))
-              )}
-            </div>
-            <MessageComposer onSend={handleSendMessage} disabled={sendMessage.isPending} />
+            <ChatMain
+              sectionName={selectedSection.name}
+              sectionDescription={selectedSection.lastMessage}
+              messages={messages || []}
+              isLoading={messagesLoading}
+            />
+            <MessageComposer
+              onSend={handleSendMessage}
+              disabled={sendMessage.isPending}
+              sectionName={selectedSection.name}
+            />
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Select a conversation to start chatting
+          <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-muted-foreground">
+                Welcome to the Forum
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Select a section from the sidebar to start chatting
+              </p>
+            </div>
           </div>
         )}
       </div>
+
+      <CreateSectionDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
     </div>
   );
 }

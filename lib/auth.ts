@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { oAuthProxy } from "better-auth/plugins";
+import { emailOTP } from "better-auth/plugins"
+// import { oAuthProxy } from "better-auth/plugins";
 import { prisma } from "./prisma";
 
 export const auth = betterAuth({
@@ -20,10 +21,30 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
     },
   },
-  plugins: [ 
-        oAuthProxy({ 
-            productionURL: "https://sastram.vercel.app",
-            currentURL: "http://localhost:3000",
-        }), 
-    ] 
+  // plugins: [ 
+  //       oAuthProxy({ 
+  //           productionURL: "https://sastram.vercel.app",
+  //           currentURL: "http://localhost:3000",
+  //       }), 
+  //   ] 
+  plugins: [
+        emailOTP({ 
+            async sendVerificationOTP({ email, otp, type }) { 
+                if (type === "sign-in") { 
+                  if (!email) {
+                    return ;
+                  }
+                    // Send the OTP for sign in
+                } else if (type === "email-verification") { 
+                  if (!email || !otp) {
+                    return ;
+                  }
+                    // Send the OTP for email verification
+                } else { 
+                    // Send the OTP for password reset
+                } 
+            }, 
+        }) 
+    ]
+
 });

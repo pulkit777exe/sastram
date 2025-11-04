@@ -1,96 +1,147 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Smile } from "lucide-react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ArrowRight, ImageIcon, Paperclip, X } from "lucide-react";
 
 interface MessageComposerProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, files: File[]) => void;
   disabled?: boolean;
+  sectionName: string;
 }
 
-export function MessageComposer({ onSend, disabled }: MessageComposerProps) {
+export function MessageComposer({
+  onSend,
+  disabled,
+  sectionName
+}: MessageComposerProps) {
   const [message, setMessage] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    textareaRef.current?.focus();
-  }, []);
-
-  const handleSend = () => {
-    if (message.trim() && !disabled) {
-      onSend(message);
+  const handleSend = async () => {
+    if ((message.trim() || files.length > 0) && !disabled) {
+      let attachments = [];
+      
+      // Upload files if any
+      if (files.length > 0) {
+        const formData = new FormData();
+        files.forEach((file) => formData.append("files", file));
+        
+        try {
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+          
+          if (!response.ok) throw new Error("Upload failed");
+          
+          const data = await response.json();
+          attachments = data.files;
+        } catch (error) {
+          console.error("Error uploading files:", error);
+          return;
+        }
+      }
+      
+      onSend(message, attachments);
       setMessage("");
-      textareaRef.current?.focus();
+      setFiles([]);
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   return (
-    <div className="border-t border-border bg-dark-secondary p-4">
-      <div className="max-w-5xl mx-auto">
-        <Card className="bg-dark-primary border-border shadow-lg">
-          <div className="p-3">
-            <Textarea
-              ref={textareaRef}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type a message... (Press Enter to send, Shift+Enter for newline)"
-              className="min-h-[60px] resize-none border-0 focus-visible:ring-0 bg-transparent text-foreground placeholder:text-muted-foreground"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              disabled={disabled}
-              aria-label="Message input"
-            />
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 hover:bg-accent shadow-inner focus-visible:ring-2 focus-visible:ring-primary"
-                  aria-label="Attach file"
-                >
-                  <Paperclip className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 hover:bg-accent shadow-inner focus-visible:ring-2 focus-visible:ring-primary"
-                  aria-label="Add emoji"
-                >
-                  <Smile className="h-5 w-5" />
-                </Button>
-              </div>
+    <div className="border-t p-4">
+      {files.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {files.map((file, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-2 rounded-lg border bg-muted px-3 py-2"
+            >
+              <span className="text-sm">{file.name}</span>
               <Button
-                className="bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-inner focus-visible:ring-2 focus-visible:ring-primary"
-                size="sm"
-                onClick={handleSend}
-                disabled={!message.trim() || disabled}
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4"
+                onClick={() => removeFile(index)}
               >
-                <Send className="h-4 w-4 mr-2" />
-                Send
+                <X className="h-3 w-3" />
               </Button>
             </div>
-          </div>
-        </Card>
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2 flex-wrap">
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 bg-accent rounded text-foreground">Tab</kbd> to navigate
-          </span>
-          <span>•</span>
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 bg-accent rounded text-foreground">Enter</kbd> to send
-          </span>
-          <span>•</span>
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 bg-accent rounded text-foreground">Shift+Enter</kbd> for newline
-          </span>
+          ))}
         </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*,.gif"
+          multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => imageInputRef.current?.click()}
+          disabled={disabled}
+        >
+          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled}
+        >
+          <Paperclip className="h-5 w-5 text-muted-foreground" />
+        </Button>
+
+        <Input
+          placeholder={`Message #${sectionName}`}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          disabled={disabled}
+          className="flex-1"
+        />
+
+        <Button
+          size="icon"
+          className="rounded-full"
+          onClick={handleSend}
+          disabled={(!message.trim() && files.length === 0) || disabled}
+        >
+          <ArrowRight className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );

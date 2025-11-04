@@ -18,6 +18,7 @@ export function useCreateConversation() {
   return useMutation({
     mutationFn: async (data: { 
       name: string; 
+      description?: string;
       type: "channel" | "dm"; 
       memberIds?: string[] 
     }) => {

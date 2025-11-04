@@ -19,10 +19,10 @@ export function useSendMessage(conversationId: string) {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (data: { content: string; attachments?: any[] }) => {
       const response = await axios.post<Message>(
         `/api/conversations/${conversationId}/messages`,
-        { content }
+        data
       );
       return response.data;
     },

@@ -14,73 +14,126 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified Boolean   @default(false)
   name          String?
-  emailVerified DateTime?
   image         String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  accounts      Account[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Better Auth fields
   sessions      Session[]
+  accounts      Account[]
+  
+  // Forum relationships
+  role          Role      @default(USER)
   messages      Message[]
-  conversations ConversationMember[]
+  sections      Section[] @relation("SectionCreator")
+  
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
 }
 
 model Account {
-  id                String  @id @default(uuid())
+  id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
   @@unique([provider, providerAccountId])
+  @@map("accounts")
 }
 
-model Session {
-  id           String   @id @default(uuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@unique([identifier, value])
+  @@map("verifications")
 }
 
-model Conversation {
-  id        String               @id @default(uuid())
-  name      String
-  type      String               // "channel" or "dm"
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  members   ConversationMember[]
-  messages  Message[]
+enum Role {
+  USER
+  ADMIN
 }
 
-model ConversationMember {
-  id             String       @id @default(uuid())
-  conversationId String
-  userId         String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  joinedAt       DateTime     @default(now())
-
-  @@unique([conversationId, userId])
+model Section {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?   // emoji or icon name
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String
+  
+  creator     User      @relation("SectionCreator", fields: [createdBy], references: [id])
+  messages    Message[]
+  
+  @@map("sections")
 }
 
 model Message {
-  id             String       @id @default(uuid())
-  content        String
-  conversationId String
-  senderId       String
-  status         String       @default("sent") // "sent", "delivered", "read"
-  createdAt      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  content     String    @db.Text
+  sectionId   String
+  senderId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Attachments (images, gifs, files)
+  attachments Attachment[]
+  
+  section     Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sender      User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  @@index([sectionId])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  messageId String
+  url       String
+  type      AttachmentType
+  name      String?
+  size      Int?     // in bytes
+  createdAt DateTime @default(now())
+  
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  @@map("attachments")
+}
+
+enum AttachmentType {
+  IMAGE
+  GIF
+  FILE
 }
