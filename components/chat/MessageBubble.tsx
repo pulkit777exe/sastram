@@ -12,7 +12,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   return (
     <div className={`flex gap-3 ${message.isOwn ? "flex-row-reverse" : ""}`}>
       {!message.isOwn && (
-        <Avatar className="w-10 h-10 border-2 border-border flex-shrink-0">
+        <Avatar className="w-10 h-10 border-2 border-border shrink-0">
           <AvatarImage src={message.avatar} />
           <AvatarFallback>{message.sender[0]}</AvatarFallback>
         </Avatar>
@@ -55,7 +55,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         </div>
       </div>
       {message.isOwn && (
-        <Avatar className="w-10 h-10 border-2 border-secondary flex-shrink-0">
+        <Avatar className="w-10 h-10 border-2 border-secondary shrink-0">
           <AvatarImage src={message.avatar} />
           <AvatarFallback>Y</AvatarFallback>
         </Avatar>

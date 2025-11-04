@@ -43,7 +43,7 @@ export function ConversationItem({ conversation, isSelected, onClick }: Conversa
             <h3 className="font-medium text-sm text-foreground truncate">
               {conversation.name}
             </h3>
-            <span className="text-xs text-muted-foreground flex-shrink-0">
+            <span className="text-xs text-muted-foreground shrink-0">
               {conversation.timestamp}
             </span>
           </div>
