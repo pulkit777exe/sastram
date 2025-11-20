@@ -7,7 +7,7 @@ export function useMessages(conversationId: string) {
     queryKey: ["messages", conversationId],
     queryFn: async () => {
       const response = await axios.get<Message[]>(
-        `/api/conversations/${conversationId}/messages`
+        `/api/chat/messages?conversationId=${conversationId}`
       );
       return response.data;
     },
@@ -17,12 +17,12 @@ export function useMessages(conversationId: string) {
 
 export function useSendMessage(conversationId: string) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (data: { content: string; attachments?: any[] }) => {
       const response = await axios.post<Message>(
-        `/api/conversations/${conversationId}/messages`,
-        data
+        `/api/chat/messages`,
+        { ...data, conversationId }
       );
       return response.data;
     },

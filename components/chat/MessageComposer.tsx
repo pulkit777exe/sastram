@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowRight, ImageIcon, Paperclip, X } from "lucide-react";
 
 interface MessageComposerProps {
-  onSend: (message: string, files: File[]) => void;
+  onSend: (message: string, files: any[]) => void;
   disabled?: boolean;
   sectionName: string;
 }
@@ -24,20 +24,20 @@ export function MessageComposer({
   const handleSend = async () => {
     if ((message.trim() || files.length > 0) && !disabled) {
       let attachments = [];
-      
+
       // Upload files if any
       if (files.length > 0) {
         const formData = new FormData();
         files.forEach((file) => formData.append("files", file));
-        
+
         try {
           const response = await fetch("/api/upload", {
             method: "POST",
             body: formData,
           });
-          
+
           if (!response.ok) throw new Error("Upload failed");
-          
+
           const data = await response.json();
           attachments = data.files;
         } catch (error) {
@@ -45,7 +45,7 @@ export function MessageComposer({
           return;
         }
       }
-      
+
       onSend(message, attachments);
       setMessage("");
       setFiles([]);

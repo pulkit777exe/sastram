@@ -1,112 +1,118 @@
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-export async function GET() {
-    const session = await auth.api.getSession({
-        headers: await headers(),
-    });
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth.api.getSession({ headers: req.headers });
 
-    if (!session?.user?.id) {
-        return NextResponse.json(
-            { error: "Unauthorized" },
-            { status: 401 }
-        );
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const conversations = await prisma.conversation.findMany({
-        where: {
-            members: {
-                some: {
-                    userId: session.user.id
-                }
-            }
-        },
-        include: {
-            members: {
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            image: true,
-                        }
-                    }
-                }
+    const sections = await prisma.section.findMany({
+      include: {
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          include: {
+            sender: {
+              select: {
+                name: true,
+                image: true,
+              },
             },
-            messages: {
-                take: 1,
-                orderBy: {
-                    createdAt: 'desc'
-                },
-                include: {
-                    sender: {
-                        select: {
-                            id: true,
-                            name: true,
-                        }
-                    }
-                }
-            }
+          },
         },
-        orderBy: {
-            updatedAt: 'desc'
-        }
+        _count: {
+          select: { messages: true },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    const conversations = sections.map((section) => {
+      const lastMessage = section.messages[0];
+      return {
+        id: section.id,
+        name: section.name,
+        avatar: section.icon || "",
+        lastMessage: lastMessage
+          ? `${lastMessage.sender.name}: ${lastMessage.content.substring(0, 50)}...`
+          : "No messages yet",
+        timestamp: lastMessage
+          ? new Date(lastMessage.createdAt).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "",
+        unread: 0, // Implement unread count logic if needed
+        online: false,
+        type: "channel" as const,
+      };
     });
 
     return NextResponse.json(conversations);
+  } catch (error) {
+    console.error("Error fetching conversations:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch conversations" },
+      { status: 500 }
+    );
+  }
 }
 
-export async function POST(request: NextRequest) {
-    const session = await auth.api.getSession({
-        headers: await headers(),
-    });
+export async function POST(req: NextRequest) {
+  try {
+    const session = await auth.api.getSession({ headers: req.headers });
 
-    if (!session?.user?.id) {
-        return NextResponse.json(
-            { error: "Unauthorized" },
-            { status: 401 }
-        );
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, type, memberIds } = await request.json();
-
-    if (!name || !type || !Array.isArray(memberIds)) {
-        return NextResponse.json(
-            { error: "Invalid input" },
-            { status: 400 }
-        );
-    }
-
-    const allMemberIds = Array.from(new Set([...memberIds, session.user.id]));
-
-    const newConversation = await prisma.conversation.create({
-        data: {
-            name,
-            type,
-            members: {
-                create: allMemberIds.map((userId) => ({
-                    userId,
-                })),
-            },
-        },
-        include: {
-            members: {
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            image: true,
-                        }
-                    }
-                }
-            }
-        }
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
     });
 
-    return NextResponse.json(newConversation);
+    if (user?.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only admins can create sections" },
+        { status: 403 }
+      );
+    }
+
+    const { name, type } = await req.json();
+
+    if (!name) {
+      return NextResponse.json(
+        { error: "Section name is required" },
+        { status: 400 }
+      );
+    }
+
+    const section = await prisma.section.create({
+      data: {
+        name,
+        createdBy: session.user.id,
+      },
+    });
+
+    return NextResponse.json({
+      id: section.id,
+      name: section.name,
+      avatar: section.icon || "",
+      lastMessage: "No messages yet",
+      timestamp: "",
+      unread: 0,
+      online: false,
+      type: "channel" as const,
+    });
+  } catch (error) {
+    console.error("Error creating section:", error);
+    return NextResponse.json(
+      { error: "Failed to create section" },
+      { status: 500 }
+    );
+  }
 }
