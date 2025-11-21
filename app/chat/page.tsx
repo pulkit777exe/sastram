@@ -31,7 +31,8 @@ export default function ChatPage() {
     redirect("/login");
   }
 
-  const isAdmin = session.user?.role === "ADMIN";
+  const user = session.user as typeof session.user & { role: string };
+  const isAdmin = user.role === "ADMIN";
   const selectedSection = conversations?.find((c) => c.id === selectedSectionId);
 
   const handleSendMessage = async (content: string, attachments: any[]) => {

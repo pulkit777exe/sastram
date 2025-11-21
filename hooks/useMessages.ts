@@ -1,15 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Message } from "@/types";
-import axios from "axios";
+import { getMessages, sendMessage } from "@/lib/actions/chat";
+import { toast } from "sonner";
 
 export function useMessages(conversationId: string) {
   return useQuery({
     queryKey: ["messages", conversationId],
     queryFn: async () => {
-      const response = await axios.get<Message[]>(
-        `/api/chat/messages?conversationId=${conversationId}`
-      );
-      return response.data;
+      const result = await getMessages(conversationId);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result.data as Message[];
     },
     enabled: !!conversationId,
   });
@@ -20,15 +22,18 @@ export function useSendMessage(conversationId: string) {
 
   return useMutation({
     mutationFn: async (data: { content: string; attachments?: any[] }) => {
-      const response = await axios.post<Message>(
-        `/api/chat/messages`,
-        { ...data, conversationId }
-      );
-      return response.data;
+      const result = await sendMessage({ ...data, conversationId });
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result.data as Message;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send message");
+    }
   });
 }
