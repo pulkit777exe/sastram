@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,8 +58,8 @@ function UserAuthForm({
   return (
     <div className={cn("grid gap-6", className)} {...props}>
       <form onSubmit={handleEmailLogin}>
-        <div className="grid gap-2">
-          <div className="grid gap-1">
+        <div className="grid gap-4">
+          <div className="grid gap-2">
             <Label className="sr-only" htmlFor="email">
               Email
             </Label>
@@ -73,9 +74,10 @@ function UserAuthForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
-          <div className="grid gap-1">
+          <div className="grid gap-2">
             <Label className="sr-only" htmlFor="password">
               Password
             </Label>
@@ -90,9 +92,10 @@ function UserAuthForm({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
-          <Button disabled={loadingState !== null} type="submit">
+          <Button disabled={loadingState !== null} type="submit" className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg shadow-blue-500/30 transition-all hover:shadow-blue-500/40">
             {loadingState === "email" && <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />}
             Sign In with Email
           </Button>
@@ -100,10 +103,10 @@ function UserAuthForm({
       </form>
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
+          <span className="w-full border-t border-slate-200" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background text-muted-foreground px-2">
+          <span className="bg-white px-2 text-slate-400">
             Or continue with
           </span>
         </div>
@@ -114,7 +117,7 @@ function UserAuthForm({
           type="button"
           disabled={loadingState !== null}
           onClick={() => handleSocialLogin("github")}
-          className="flex-1"
+          className="flex-1 h-11 rounded-xl border-slate-200 hover:bg-slate-50 hover:text-slate-900"
         >
           {loadingState === "github" ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -124,7 +127,7 @@ function UserAuthForm({
               alt="GitHub"
               width={16}
               height={16}
-              className="mr-2"
+              className="mr-2 opacity-70"
             />
           )}
           GitHub
@@ -134,7 +137,7 @@ function UserAuthForm({
           type="button"
           disabled={loadingState !== null}
           onClick={() => handleSocialLogin("google")}
-          className="flex-1"
+          className="flex-1 h-11 rounded-xl border-slate-200 hover:bg-slate-50 hover:text-slate-900"
         >
           {loadingState === "google" ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -144,7 +147,7 @@ function UserAuthForm({
               alt="Google"
               width={16}
               height={16}
-              className="mr-2"
+              className="mr-2 opacity-70"
             />
           )}
           Google
@@ -156,57 +159,65 @@ function UserAuthForm({
 
 export function LoginForm() {
   return (
-    <div className="relative container flex-1 shrink-0 items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
-      <div className="text-primary relative hidden h-full flex-col p-10 lg:flex dark:border-r">
+    <div className="relative container flex-1 shrink-0 items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0 min-h-screen bg-white">
+      <div className="relative hidden h-full flex-col bg-slate-900 p-10 text-white lg:flex dark:border-r">
         <div
-          className="bg-primary/5 absolute inset-0"
+          className="absolute inset-0 bg-cover bg-center opacity-50 mix-blend-overlay"
           style={{
-            backgroundImage: "url(https://images.unsplash.com/photo-1499428665502-503f6c608263?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1170)",
-            backgroundSize: "cover",
-            backgroundPosition: "center"
+            backgroundImage: "url(https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop)",
           }}
         />
-        <div className="relative z-20 flex items-center text-lg font-medium text-white/80">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="mr-2 h-6 w-6">
-            <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
-          </svg>
+        <div className="relative z-20 flex items-center text-lg font-bold tracking-tight">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 mr-2">
+             <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-5 w-5 text-white">
+              <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+            </svg>
+          </div>
           Sastram
         </div>
-        <div className="relative z-20 mt-auto max-w-3xl text-white/70">
-          <blockquote className="leading-normal text-balance">
-            &ldquo;Community is the source of growth.&rdquo; - Sofia Davis
+        <div className="relative z-20 mt-auto">
+          <blockquote className="space-y-2">
+            <p className="text-lg">
+              &ldquo;This library has saved me countless hours of work and helped me deliver stunning designs to my clients faster than ever before.&rdquo;
+            </p>
+            <footer className="text-sm text-slate-400">Sofia Davis</footer>
           </blockquote>
         </div>
       </div>
-      <div className="flex items-center justify-center lg:h-screen lg:p-8">
-        <div className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[350px]">
+      <div className="flex items-center justify-center lg:p-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[350px]"
+        >
           <div className="flex flex-col gap-2 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">Sign in to your account</h1>
-            <p className="text-muted-foreground text-sm">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h1>
+            <p className="text-slate-500 text-sm">
               Enter your email below to sign in to your account
             </p>
           </div>
           <UserAuthForm />
-          <p className="text-muted-foreground px-8 text-center text-sm">
+          <p className="px-8 text-center text-sm text-slate-400">
             By clicking continue, you agree to our{" "}
-            <Link href="/terms" className="hover:text-primary underline underline-offset-4">
+            <Link href="/terms" className="underline underline-offset-4 hover:text-slate-900">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="hover:text-primary underline underline-offset-4">
+            <Link href="/privacy" className="underline underline-offset-4 hover:text-slate-900">
               Privacy Policy
             </Link>
             .
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

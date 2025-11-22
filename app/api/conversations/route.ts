@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(conversations);
   } catch (error) {
-    console.error("Error fetching conversations:", error);
+    logger.error("Error fetching conversations:", error);
     return NextResponse.json(
       { error: "Failed to fetch conversations" },
       { status: 500 }
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, type } = await req.json();
+    const { name } = await req.json();
 
     if (!name) {
       return NextResponse.json(
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
       type: "channel" as const,
     });
   } catch (error) {
-    console.error("Error creating section:", error);
+    logger.error("Error creating section:", error);
     return NextResponse.json(
       { error: "Failed to create section" },
       { status: 500 }

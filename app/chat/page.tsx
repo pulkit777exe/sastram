@@ -9,13 +9,14 @@ import { ChatMain } from "@/components/chat/ChatMain";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import { CreateSectionDialog } from "@/components/chat/CreateSectionDialog";
 import { redirect } from "next/navigation";
+import type { AttachmentInput } from "@/lib/types";
 
 export default function ChatPage() {
   const { data: session, isPending } = useSession();
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const { data: conversations, isLoading: conversationsLoading } = useConversations();
+  const { data: conversations } = useConversations();
   const { data: messages, isLoading: messagesLoading } = useMessages(selectedSectionId || "");
   const sendMessage = useSendMessage(selectedSectionId || "");
 
@@ -35,7 +36,7 @@ export default function ChatPage() {
   const isAdmin = user.role === "ADMIN";
   const selectedSection = conversations?.find((c) => c.id === selectedSectionId);
 
-  const handleSendMessage = async (content: string, attachments: any[]) => {
+  const handleSendMessage = async (content: string, attachments: AttachmentInput[]) => {
     sendMessage.mutate({ content, attachments });
   };
 

@@ -5,6 +5,7 @@ import { oAuthProxy } from "better-auth/plugins";
 import { prisma } from "./prisma";
 
 export const auth = betterAuth({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL,
   database: prismaAdapter(prisma, {
     provider: "postgresql"
   }),
@@ -17,7 +18,7 @@ export const auth = betterAuth({
         type: "string",
         required: false,
         defaultValue: "USER",
-        input: false, // Don't allow user to set their own role
+        input: false, 
       },
     },
   },
@@ -34,18 +35,21 @@ export const auth = betterAuth({
   plugins: [
     oAuthProxy({
       currentURL: "http://localhost:3000",
-      productionURL: "https://sastram.vercel.app",
+      productionURL: String(process.env.NEXT_PUBLIC_APP_URL),
     }),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
         if (type === "sign-in") {
           if (!email) return;
           // Send the OTP for sign in
+          console.log("Sign in OTP:", otp);
         } else if (type === "email-verification") {
           if (!email || !otp) return;
           // Send the OTP for email verification
+          console.log("Email verification OTP:", otp);
         } else {
           // Send the OTP for password reset
+          console.log("Password reset OTP:", otp);
         }
       },
     })

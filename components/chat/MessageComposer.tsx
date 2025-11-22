@@ -4,9 +4,11 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, ImageIcon, Paperclip, X } from "lucide-react";
+import { logger } from "@/lib/logger";
+import type { AttachmentInput } from "@/lib/types";
 
 interface MessageComposerProps {
-  onSend: (message: string, files: any[]) => void;
+  onSend: (message: string, files: AttachmentInput[]) => void;
   disabled?: boolean;
   sectionName: string;
 }
@@ -41,7 +43,7 @@ export function MessageComposer({
           const data = await response.json();
           attachments = data.files;
         } catch (error) {
-          console.error("Error uploading files:", error);
+          logger.error("Error uploading files:", error);
           return;
         }
       }

@@ -4,14 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/logger";
+import type { ActionResponse, Conversation, ChatMessage, AttachmentInput } from "@/lib/types";
 
-export type ActionResponse<T = any> = {
-    success: boolean;
-    data?: T;
-    error?: string;
-};
-
-export async function getConversations(): Promise<ActionResponse> {
+export async function getConversations(): Promise<ActionResponse<Conversation[]>> {
     try {
         const session = await auth.api.getSession({
             headers: await headers(),
@@ -45,12 +41,12 @@ export async function getConversations(): Promise<ActionResponse> {
                 section.updatedAt.toISOString(),
             unread: 0, // TODO: Implement unread count
             online: true,
-            type: "channel",
+            type: "channel" as const,
         }));
 
         return { success: true, data: conversations };
     } catch (error) {
-        console.error("[GET_CONVERSATIONS]", error);
+        logger.error("[GET_CONVERSATIONS]", error);
         return { success: false, error: "Failed to fetch conversations" };
     }
 }
@@ -60,7 +56,7 @@ export async function createConversation(data: {
     description?: string;
     type: "channel" | "dm";
     memberIds?: string[];
-}): Promise<ActionResponse> {
+}): Promise<ActionResponse<Conversation>> {
     try {
         const session = await auth.api.getSession({
             headers: await headers(),
@@ -103,12 +99,12 @@ export async function createConversation(data: {
 
         return { success: false, error: "Invalid type" };
     } catch (error) {
-        console.error("[CREATE_CONVERSATION]", error);
+        logger.error("[CREATE_CONVERSATION]", error);
         return { success: false, error: "Failed to create conversation" };
     }
 }
 
-export async function getMessages(conversationId: string): Promise<ActionResponse> {
+export async function getMessages(conversationId: string): Promise<ActionResponse<ChatMessage[]>> {
     try {
         const session = await auth.api.getSession({
             headers: await headers(),
@@ -141,12 +137,12 @@ export async function getMessages(conversationId: string): Promise<ActionRespons
             timestamp: msg.createdAt.toISOString(),
             avatar: msg.sender.image,
             isOwn: msg.senderId === session.user.id,
-            status: "read",
+            status: "read" as const,
         }));
 
         return { success: true, data: formattedMessages };
     } catch (error) {
-        console.error("[GET_MESSAGES]", error);
+        logger.error("[GET_MESSAGES]", error);
         return { success: false, error: "Failed to fetch messages" };
     }
 }
@@ -154,8 +150,8 @@ export async function getMessages(conversationId: string): Promise<ActionRespons
 export async function sendMessage(data: {
     content: string;
     conversationId: string;
-    attachments?: any[];
-}): Promise<ActionResponse> {
+    attachments?: AttachmentInput[];
+}): Promise<ActionResponse<ChatMessage>> {
     try {
         const session = await auth.api.getSession({
             headers: await headers(),
@@ -178,9 +174,9 @@ export async function sendMessage(data: {
                 senderId: session.user.id,
                 attachments: {
                     create:
-                        attachments?.map((att: any) => ({
+                        attachments?.map((att) => ({
                             url: att.url,
-                            type: att.type,
+                            type: att.type as "FILE" | "IMAGE" | "GIF",
                             name: att.name,
                             size: att.size,
                         })) || [],
@@ -202,12 +198,12 @@ export async function sendMessage(data: {
                 timestamp: message.createdAt.toISOString(),
                 avatar: message.sender.image,
                 isOwn: true,
-                status: "sent",
+                status: "sent" as const,
                 attachments: message.attachments,
             },
         };
     } catch (error) {
-        console.error("[SEND_MESSAGE]", error);
+        logger.error("[SEND_MESSAGE]", error);
         return { success: false, error: "Failed to send message" };
     }
 }

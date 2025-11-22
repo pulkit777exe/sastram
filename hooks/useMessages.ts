@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Message } from "@/types";
 import { getMessages, sendMessage } from "@/lib/actions/chat";
 import { toast } from "sonner";
+import type { AttachmentInput } from "@/lib/types";
 
 export function useMessages(conversationId: string) {
   return useQuery({
@@ -21,7 +22,7 @@ export function useSendMessage(conversationId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { content: string; attachments?: any[] }) => {
+    mutationFn: async (data: { content: string; attachments?: AttachmentInput[] }) => {
       const result = await sendMessage({ ...data, conversationId });
       if (!result.success) {
         throw new Error(result.error);
