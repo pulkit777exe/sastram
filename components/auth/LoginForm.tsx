@@ -74,7 +74,7 @@ function UserAuthForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -92,10 +92,10 @@ function UserAuthForm({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all"
             />
           </div>
-          <Button disabled={loadingState !== null} type="submit" className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg shadow-blue-500/30 transition-all hover:shadow-blue-500/40">
+          <Button disabled={loadingState !== null} type="submit" className="h-11 rounded-xl bg-black hover:bg-black/80 text-white font-medium shadow-lg shadow-black/30 transition-all hover:shadow-black/40">
             {loadingState === "email" && <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />}
             Sign In with Email
           </Button>
@@ -162,13 +162,13 @@ export function LoginForm() {
     <div className="relative container flex-1 shrink-0 items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0 min-h-screen bg-white">
       <div className="relative hidden h-full flex-col bg-slate-900 p-10 text-white lg:flex dark:border-r">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-50 mix-blend-overlay"
+          className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: "url(https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop)",
+            backgroundImage: "url(https://images.unsplash.com/photo-1759818319027-dc631ed9732b?q=80&w=2036&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)",
           }}
         />
         <div className="relative z-20 flex items-center text-lg font-bold tracking-tight">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 mr-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black mr-2">
              <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
