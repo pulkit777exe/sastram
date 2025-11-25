@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageList } from "@/components/dashboard/message-list";
-import { PostMessageForm } from "@/components/dashboard/post-message-form";
-import { useWebSocket } from "@/hooks/use-websocket";
+import { MessageList } from "./message-list";
+import { PostMessageForm } from "./post-message-form";
+import { useThreadWebSocket } from "../hooks/use-websocket";
 import { logger } from "@/lib/logger";
 import type { Message } from "@/lib/types";
 
@@ -19,7 +19,7 @@ interface ChatAreaProps {
 
 export function ChatArea({ initialMessages, sectionId }: ChatAreaProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const { isConnected, lastMessage, sendMessage } = useWebSocket();
+  const { isConnected, lastMessage } = useThreadWebSocket(sectionId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Handle incoming WebSocket messages
@@ -61,14 +61,6 @@ export function ChatArea({ initialMessages, sectionId }: ChatAreaProps) {
     // OR add immediately and let dedup handle it. Adding immediately feels faster.)
     setMessages((prev) => [...prev, message]);
 
-    // Broadcast to WS
-    sendMessage(JSON.stringify({
-      type: "NEW_MESSAGE",
-      payload: {
-        ...message,
-        sectionId, // Ensure sectionId is included for filtering
-      }
-    }));
   };
 
   return (

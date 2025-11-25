@@ -7,7 +7,7 @@ export default async function Home() {
     headers: await headers(),
   });
   if (session) {
-    redirect("/chat");
+    redirect("/dashboard");
   }
 
   redirect("/login");

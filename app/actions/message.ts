@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { containsBadLanguage, filterBadLanguage } from "@/lib/content-safety";
+import { emitThreadMessage } from "@/modules/ws/publisher";
 
 export async function postMessage(formData: FormData) {
   const content = formData.get("content") as string;
@@ -46,6 +47,11 @@ export async function postMessage(formData: FormData) {
         senderId: session.user.id,
       },
       include: {
+        section: {
+          select: {
+            slug: true,
+          },
+        },
         sender: {
           select: {
             name: true,
@@ -70,7 +76,25 @@ export async function postMessage(formData: FormData) {
       });
     }
 
-    revalidatePath(`/dashboard/topics/${sectionId}`);
+    const payload = {
+      id: message.id,
+      content: message.content,
+      senderId: session.user.id,
+      senderName: message.sender?.name || session.user.email,
+      senderAvatar: message.sender?.image ?? session.user.image,
+      createdAt: message.createdAt,
+      sectionId,
+    };
+
+    emitThreadMessage(sectionId, {
+      type: "NEW_MESSAGE",
+      payload,
+    });
+
+    if (message.section?.slug) {
+      revalidatePath(`/thread/${message.section.slug}`);
+    }
+    revalidatePath("/dashboard");
     return { success: true, data: message };
   } catch (error) {
     console.error("Failed to post message:", error);

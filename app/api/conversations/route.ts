@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { buildThreadSlug } from "@/modules/threads/service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
       data: {
         name,
         createdBy: session.user.id,
+        slug: buildThreadSlug(name),
       },
     });
 

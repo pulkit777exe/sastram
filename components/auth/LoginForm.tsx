@@ -12,29 +12,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoaderIcon } from "lucide-react";
-import { signIn } from "@/lib/auth-client";
+import { signIn, signUp } from "@/lib/auth-client";
 
 function UserAuthForm({
   className,
+  mode,
+  setMode,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & {
+  mode: "signin" | "signup";
+  setMode: (mode: "signin" | "signup") => void;
+}) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loadingState, setLoadingState] = useState<"email" | "github" | "google" | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingState("email");
+    setError(null);
+    
     try {
-      await signIn.email({ 
-        email, 
-        password,
-        callbackURL: "/chat"
-      });
-      router.push("/chat");
-    } catch (error) {
-      console.error("Login failed:", error);
+      if (mode === "signup") {
+        // Sign up new user
+        await signUp.email({ 
+          email, 
+          password,
+          name: name || email.split('@')[0], // Use email prefix if no name provided
+          callbackURL: "/dashboard"
+        });
+        router.push("/dashboard");
+      } else {
+        // Sign in existing user
+        await signIn.email({ 
+          email, 
+          password,
+          callbackURL: "/dashboard"
+        });
+        router.push("/dashboard");
+      }
+    } catch (error: any) {
+      console.error(`${mode === "signup" ? "Signup" : "Login"} failed:`, error);
+      setError(error?.message || `${mode === "signup" ? "Signup" : "Login"} failed. Please try again.`);
     } finally {
       setLoadingState(null);
     }
@@ -42,14 +64,16 @@ function UserAuthForm({
 
   const handleSocialLogin = async (provider: "google" | "github") => {
     setLoadingState(provider);
+    setError(null);
     try {
       await signIn.social({ 
         provider,
-        callbackURL: "/chat"
+        callbackURL: "/dashboard"
       });
-      router.push("/chat");
-    } catch (error) {
+      router.push("/dashboard");
+    } catch (error: any) {
       console.error("Social login failed:", error);
+      setError("Social login failed. Please try again.");
     } finally {
       setLoadingState(null);
     }
@@ -57,8 +81,27 @@ function UserAuthForm({
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
-      <form onSubmit={handleEmailLogin}>
+      <form onSubmit={handleEmailAuth}>
         <div className="grid gap-4">
+          {mode === "signup" && (
+            <div className="grid gap-2">
+              <Label className="sr-only" htmlFor="name">
+                Name
+              </Label>
+              <Input
+                id="name"
+                placeholder="Your name"
+                type="text"
+                autoCapitalize="words"
+                autoComplete="name"
+                autoCorrect="off"
+                disabled={loadingState !== null}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all"
+              />
+            </div>
+          )}
           <div className="grid gap-2">
             <Label className="sr-only" htmlFor="email">
               Email
@@ -86,7 +129,7 @@ function UserAuthForm({
               placeholder="Password"
               type="password"
               autoCapitalize="none"
-              autoComplete="current-password"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               autoCorrect="off"
               disabled={loadingState !== null}
               value={password}
@@ -95,9 +138,12 @@ function UserAuthForm({
               className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all"
             />
           </div>
+          {error && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
           <Button disabled={loadingState !== null} type="submit" className="h-11 rounded-xl bg-black hover:bg-black/80 text-white font-medium shadow-lg shadow-black/30 transition-all hover:shadow-black/40">
             {loadingState === "email" && <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In with Email
+            {mode === "signup" ? "Create Account" : "Sign In with Email"}
           </Button>
         </div>
       </form>
@@ -153,11 +199,27 @@ function UserAuthForm({
           Google
         </Button>
       </div>
+      <div className="text-center text-sm">
+        <button
+          type="button"
+          onClick={() => {
+            setMode(mode === "signin" ? "signup" : "signin");
+            setError(null);
+          }}
+          className="text-slate-600 hover:text-slate-900 underline underline-offset-4"
+        >
+          {mode === "signin" 
+            ? "Don't have an account? Sign up" 
+            : "Already have an account? Sign in"}
+        </button>
+      </div>
     </div>
   );
 }
 
 export function LoginForm() {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  
   return (
     <div className="relative container flex-1 shrink-0 items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0 min-h-screen bg-white">
       <div className="relative hidden h-full flex-col bg-slate-900 p-10 text-white lg:flex dark:border-r">
@@ -200,12 +262,16 @@ export function LoginForm() {
           className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[350px]"
         >
           <div className="flex flex-col gap-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              {mode === "signin" ? "Welcome back" : "Create an account"}
+            </h1>
             <p className="text-slate-500 text-sm">
-              Enter your email below to sign in to your account
+              {mode === "signin" 
+                ? "Enter your email below to sign in to your account"
+                : "Enter your details below to create your account"}
             </p>
           </div>
-          <UserAuthForm />
+          <UserAuthForm mode={mode} setMode={setMode} />
           <p className="px-8 text-center text-sm text-slate-400">
             By clicking continue, you agree to our{" "}
             <Link href="/terms" className="underline underline-offset-4 hover:text-slate-900">

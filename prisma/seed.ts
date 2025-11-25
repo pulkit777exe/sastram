@@ -1,6 +1,48 @@
 import { PrismaClient } from "@prisma/client";
+import { randomUUID } from "crypto";
 
 const prisma = new PrismaClient();
+
+function slugify(title: string) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function createThread({
+  name,
+  description,
+  icon,
+  userId,
+  communityId,
+}: {
+  name: string;
+  description?: string;
+  icon?: string;
+  userId: string;
+  communityId?: string;
+}) {
+  return prisma.section.create({
+    data: {
+      name,
+      description,
+      icon,
+      slug: `${slugify(name)}-${randomUUID()}`,
+      createdBy: userId,
+      communityId,
+      messages: {
+        create: [
+          {
+            content: `Welcome to ${name}`,
+            senderId: userId,
+          },
+        ],
+      },
+    },
+  });
+}
 
 async function main() {
   const user = await prisma.user.upsert({
@@ -14,75 +56,59 @@ async function main() {
     },
   });
 
-  console.log({ user });
+  const researchCommunity = await prisma.community.create({
+    data: {
+      title: "Research Lab",
+      description: "Long-form exploration into AGI alignment and governance.",
+      slug: `${slugify("Research Lab")}-${randomUUID()}`,
+      createdBy: user.id,
+    },
+  });
 
-  const majorTopics = [
+  const builderCommunity = await prisma.community.create({
+    data: {
+      title: "Indie Builders",
+      description: "Shipping stories, growth experiments, indie accountability.",
+      slug: `${slugify("Indie Builders")}-${randomUUID()}`,
+      createdBy: user.id,
+    },
+  });
+
+  const threads = [
     {
       name: "Artificial Intelligence & Ethics",
-      description: "Discussing the ethical implications of AGI and LLMs in modern society.",
+      description: "Discuss ethical implications of AGI and LLM deployments.",
       icon: "Brain",
+      communityId: researchCommunity.id,
     },
     {
       name: "Sustainable Energy Solutions",
-      description: "Exploring new technologies in solar, wind, and fusion energy.",
+      description: "Solar, wind, fusion, and breakthroughs in energy storage.",
       icon: "Zap",
+      communityId: researchCommunity.id,
     },
     {
       name: "Space Exploration 2025",
-      description: "Updates on Artemis missions, SpaceX Starship, and Mars colonization plans.",
+      description: "Artemis, Starship, and human-rated mission planning.",
       icon: "Rocket",
+      communityId: researchCommunity.id,
     },
-  ];
-
-  for (const topic of majorTopics) {
-    await prisma.section.create({
-      data: {
-        ...topic,
-        createdBy: user.id,
-        messages: {
-          create: [
-            {
-              content: "Welcome to the discussion on " + topic.name,
-              senderId: user.id,
-            },
-            {
-              content: "What are your thoughts on the latest developments?",
-              senderId: user.id,
-            },
-          ],
-        },
-      },
-    });
-  }
-
-  const smallThreads = [
     {
       name: "Best Rust Web Frameworks?",
-      description: "Comparing Actix-web, Axum, and Rocket for production use.",
+      description: "Compare Actix, Axum, Rocket for production work.",
       icon: "Code",
+      communityId: builderCommunity.id,
     },
     {
       name: "Indie Hacking Tips",
-      description: "Sharing strategies for launching your first SaaS product.",
+      description: "Launch week retrospectives and weeklies.",
       icon: "Laptop",
+      communityId: builderCommunity.id,
     },
   ];
 
-  for (const thread of smallThreads) {
-    await prisma.section.create({
-      data: {
-        ...thread,
-        createdBy: user.id,
-        messages: {
-          create: [
-            {
-              content: "I personally prefer Axum for its ergonomics.",
-              senderId: user.id,
-            },
-          ],
-        },
-      },
-    });
+  for (const thread of threads) {
+    await createThread({ ...thread, userId: user.id });
   }
 
   console.log("Seeding completed.");

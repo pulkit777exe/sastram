@@ -12,6 +12,7 @@ interface Message {
   sectionId: string;
   section: {
     name: string;
+    slug: string;
   };
 }
 
@@ -55,7 +56,7 @@ export function MessageGrid({ messages }: MessageGridProps) {
     >
       {messages.map((message) => (
         <motion.div key={message.id} variants={item}>
-          <Link href={`/dashboard/topics/${message.sectionId}`}>
+          <Link href={`/thread/${message.section.slug}`}>
             <div className="group flex flex-col gap-2 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-900">

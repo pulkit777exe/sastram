@@ -5,6 +5,7 @@ import { topicSchema } from "@/lib/security";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { buildThreadSlug } from "@/modules/threads/service";
 
 export async function createTopic(formData: FormData) {
   const title = formData.get("title") as string;
@@ -34,6 +35,7 @@ export async function createTopic(formData: FormData) {
         description: description,
         icon: icon,
         createdBy: session.user.id,
+        slug: buildThreadSlug(title),
       },
     });
 

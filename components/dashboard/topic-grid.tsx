@@ -5,6 +5,7 @@ import { TopicCard } from "@/components/dashboard/topic-card";
 
 interface Topic {
   id: string;
+  slug: string;
   title: string;
   description: string;
   activeUsers: number;

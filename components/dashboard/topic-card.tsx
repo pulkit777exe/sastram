@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 
 interface TopicCardProps {
   id: string;
+  slug: string;
   title: string;
   description: string;
   activeUsers: number;
@@ -13,7 +14,7 @@ interface TopicCardProps {
 }
 
 export function TopicCard({
-  id,
+  slug,
   title,
   description,
   activeUsers,
@@ -22,7 +23,7 @@ export function TopicCard({
   tags,
 }: TopicCardProps) {
   return (
-    <Link href={`/dashboard/topics/${id}`}>
+    <Link href={`/thread/${slug}`}>
       <div className="group relative flex flex-col justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
         <div>
           <div className="flex items-start justify-between mb-4">

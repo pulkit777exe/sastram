@@ -6,6 +6,8 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import type { ActionResponse, Conversation, ChatMessage, AttachmentInput } from "@/lib/types";
+import { buildThreadSlug } from "@/modules/threads/service";
+import { emitThreadMessage } from "@/modules/ws/publisher";
 
 export async function getConversations(): Promise<ActionResponse<Conversation[]>> {
     try {
@@ -78,6 +80,7 @@ export async function createConversation(data: {
                     name,
                     description,
                     createdBy: session.user.id,
+                    slug: buildThreadSlug(name),
                 },
             });
 
@@ -185,6 +188,19 @@ export async function sendMessage(data: {
             include: {
                 sender: true,
                 attachments: true,
+            },
+        });
+
+        emitThreadMessage(conversationId, {
+            type: "NEW_MESSAGE",
+            payload: {
+                id: message.id,
+                content: message.content,
+                senderId: message.senderId,
+                senderName: message.sender.name || session.user.email,
+                senderAvatar: message.sender.image,
+                createdAt: message.createdAt,
+                sectionId: conversationId,
             },
         });
 

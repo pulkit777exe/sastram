@@ -28,6 +28,7 @@ export default async function MessagesPage() {
         select: {
           id: true,
           name: true,
+          slug: true,
         },
       },
       attachments: true,

@@ -39,6 +39,7 @@ export default async function TopicsPage({
     const uniqueSenders = new Set(section.messages.map((m) => m.senderId));
     return {
       id: section.id,
+      slug: section.slug,
       title: section.name,
       description: section.description || "",
       activeUsers: uniqueSenders.size,

@@ -1,7 +1,7 @@
 import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
-import { initWebSocketServer } from "./lib/websocket-server";
+import { initWebSocketServer } from "./lib/ws/server";
 import { logger } from "./lib/logger";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -23,7 +23,6 @@ app.prepare().then(() => {
     }
   });
 
-  // Initialize WebSocket server
   initWebSocketServer(server);
 
   server.listen(port, () => {
