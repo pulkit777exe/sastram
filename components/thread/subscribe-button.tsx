@@ -16,7 +16,7 @@ export function ThreadSubscribeButton({ subscribed }: ThreadSubscribeButtonProps
       type="submit"
       variant={subscribed ? "outline" : "default"}
       disabled={pending || subscribed}
-      className="w-full rounded-xl border border-slate-200 bg-white text-slate-900 shadow-sm hover:bg-slate-50"
+      className="w-1/2 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-sm hover:bg-slate-50"
     >
       {pending ? "Working..." : label}
     </Button>

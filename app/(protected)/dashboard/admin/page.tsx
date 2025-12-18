@@ -20,7 +20,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <header className="rounded-[32px] border border-slate-800 bg-[radial-gradient(circle_at_top,#101322,#050507)] p-8 text-white shadow-xl">
+      <header className="rounded-4xl border border-slate-800 bg-[radial-gradient(circle_at_top,#101322,#050507)] p-8 text-white shadow-xl">
         <p className="text-xs uppercase tracking-widest text-slate-400">Admin Workspace</p>
         <h1 className="mt-3 text-3xl font-semibold">Create and moderate</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-300">

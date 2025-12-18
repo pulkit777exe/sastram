@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useCreateConversation } from "@/hooks/useConversations";
 import {
   Dialog,
   DialogContent,
@@ -14,122 +12,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
 
 interface CreateSectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateSectionDialog({
-  open,
-  onOpenChange,
-}: CreateSectionDialogProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const createConversation = useCreateConversation();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!name.trim()) return;
-
-    createConversation.mutate(
-      {
-        name: name.trim(),
-        description: description.trim(),
-        type: "channel"
-      },
-      {
-        onSuccess: () => {
-          setName("");
-          setDescription("");
-          onOpenChange(false);
-        },
-      }
-    );
-  };
-
-  const handleClose = () => {
-    if (!createConversation.isPending) {
-      setName("");
-      setDescription("");
-      onOpenChange(false);
-    }
-  };
-
+export function CreateSectionDialog({ open, onOpenChange }: CreateSectionDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Create New Section</DialogTitle>
-            <DialogDescription>
-              Create a new discussion section for your forum. Give it a clear
-              name and optional description.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">
-                Section Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="name"
-                placeholder="e.g., General Discussion"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={createConversation.isPending}
-                maxLength={50}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                {name.length}/50 characters
-              </p>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description (Optional)</Label>
-              <Textarea
-                id="description"
-                placeholder="What is this section about?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={createConversation.isPending}
-                maxLength={200}
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground">
-                {description.length}/200 characters
-              </p>
-            </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[440px] rounded-[28px] border-zinc-200 p-8">
+        <DialogHeader className="space-y-3">
+          <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center mb-2">
+            <Plus className="text-zinc-900" size={24} />
           </div>
+          <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-900">
+            Create Section
+          </DialogTitle>
+          <DialogDescription className="text-zinc-500 font-medium">
+            Organize your community with a new dedicated channel.
+          </DialogDescription>
+        </DialogHeader>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={createConversation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={!name.trim() || createConversation.isPending}
-            >
-              {createConversation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Section"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+        <div className="space-y-6 py-6">
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-widest text-zinc-400 ml-1">Title</Label>
+            <Input 
+              className="h-12 rounded-xl bg-zinc-50 border-zinc-200 focus:bg-white transition-all font-medium" 
+              placeholder="e.g. Design Feedback"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-widest text-zinc-400 ml-1">Purpose</Label>
+            <Textarea 
+              className="rounded-xl bg-zinc-50 border-zinc-200 focus:bg-white transition-all min-h-[100px] resize-none font-medium" 
+              placeholder="What should people post here?"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="sm:justify-between gap-3">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl font-bold text-zinc-500">
+            Cancel
+          </Button>
+          <Button className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl px-8 h-11 font-bold shadow-lg shadow-zinc-200 transition-all active:scale-95">
+            Create Channel
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

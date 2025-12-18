@@ -29,7 +29,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-[32px] border border-slate-100 bg-white bg-linear-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm lg:p-10">
+      <section className="rounded-4xl border border-slate-100 bg-white bg-linear-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm lg:p-10">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-widest text-slate-400">Welcome back</p>

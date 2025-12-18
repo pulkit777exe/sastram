@@ -1,7 +1,6 @@
 "use client";
 
-import { Plus, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Plus, Search, ChevronsUpDown, Hash } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ConversationItem } from "@/components/chat/ConversationItem";
@@ -30,54 +29,61 @@ export function ChatSidebar({
   );
 
   return (
-    <div className="flex w-80 flex-col border-r bg-background">
-      {/* Header */}
-      <div className="border-b p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-foreground">Forum</h1>
-          {isAdmin && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onCreateSection}
-              aria-label="Create new section"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
-          )}
+    <div className="flex w-72 flex-col border-r border-zinc-200 bg-[#FBFBFB] h-screen sticky top-0">
+      {/* Header: Brand/Context Switcher style */}
+      <div className="px-6 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center text-white shadow-sm">
+              <Hash size={18} strokeWidth={2.5} />
+            </div>
+            <h1 className="text-lg font-bold text-zinc-900 tracking-tight">Forum</h1>
+          </div>
+          <ChevronsUpDown size={18} className="text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors" />
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        {/* Search: Modern high-contrast input */}
+        <div className="relative group">
+          <Search 
+            size={16} 
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-900 transition-colors" 
+          />
           <Input
-            placeholder="Search sections..."
+            placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-10 pr-8 h-10 bg-white border-zinc-200 rounded-xl text-sm placeholder:text-zinc-400 focus-visible:ring-zinc-100 focus-visible:border-zinc-300 transition-all shadow-sm"
           />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300 text-[10px] font-mono font-bold border border-zinc-100 px-1.5 py-0.5 rounded bg-zinc-50">
+            /
+          </span>
         </div>
       </div>
 
+      {/* Action Area: Label + Add Button */}
+      <div className="px-6 mb-2 flex items-center justify-between">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+          Discussion Sections
+        </span>
+        {isAdmin && (
+          <button
+            onClick={onCreateSection}
+            className="p-1 rounded-md hover:bg-zinc-200 text-zinc-400 hover:text-zinc-900 transition-all"
+            aria-label="Create new section"
+          >
+            <Plus size={14} strokeWidth={3} />
+          </button>
+        )}
+      </div>
+
       {/* Conversations List */}
-      <ScrollArea className="flex-1">
-        <div className="space-y-1 p-2">
+      <ScrollArea className="flex-1 px-3">
+        <div className="space-y-0.5 pb-4">
           {filteredConversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                {searchQuery ? "No sections found" : "No sections yet"}
+            <div className="px-3 py-12 text-center">
+              <p className="text-xs font-medium text-zinc-400">
+                {searchQuery ? "No matches found" : "No active threads"}
               </p>
-              {isAdmin && !searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onCreateSection}
-                  className="mt-2"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Section
-                </Button>
-              )}
             </div>
           ) : (
             filteredConversations.map((conversation) => (
@@ -91,6 +97,20 @@ export function ChatSidebar({
           )}
         </div>
       </ScrollArea>
+
+      {/* Bottom Profile/Status (Optional Gen Z addition) */}
+      <div className="p-4 mt-auto">
+        <div className="bg-white border border-zinc-200 rounded-2xl p-3 shadow-sm flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-zinc-900 truncate">System Status</p>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-tight">All systems go</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

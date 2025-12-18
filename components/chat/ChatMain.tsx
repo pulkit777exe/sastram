@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { Message } from "@/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, Hash, Info, Users } from "lucide-react";
 
 interface ChatMainProps {
   sectionName: string;
@@ -29,47 +29,68 @@ export function ChatMain({
   }, [messages]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-        <div className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
-            <span className="text-lg font-semibold text-primary">#</span>
+    <div className="flex flex-1 flex-col h-full bg-[#FBFBFB] overflow-hidden">
+      {/* Premium Sticky Header */}
+      <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-zinc-200 bg-white/80 px-8 backdrop-blur-md">
+        <div className="flex items-center gap-4">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-200">
+            <Hash size={22} strokeWidth={3} />
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold text-foreground truncate">
+          <div className="flex flex-col">
+            <h2 className="text-xl font-bold tracking-tight text-zinc-900 leading-none mb-1">
               {sectionName}
             </h2>
-            {sectionDescription && (
-              <p className="text-sm text-muted-foreground truncate">
-                {sectionDescription}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <p className="text-muted-foreground">No messages yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Be the first to send a message in #{sectionName}
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+              <p className="text-xs font-medium text-zinc-400 truncate max-w-[400px]">
+                {sectionDescription || "Discussion thread and community updates"}
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Action Icons */}
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-bold text-zinc-600 hover:bg-zinc-50 transition-all">
+            <Users size={14} />
+            Show Members
+          </button>
+          <button className="p-2 text-zinc-400 hover:text-zinc-900 transition-colors">
+            <Info size={20} />
+          </button>
+        </div>
+      </header>
+
+      {/* Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto px-8 py-6 custom-scrollbar">
+        {isLoading ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-zinc-900" />
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Syncing Threads...</p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="max-w-sm text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-zinc-50 border border-zinc-100">
+                <Hash size={32} className="text-zinc-200" />
+              </div>
+              <h3 className="text-lg font-bold text-zinc-900">Welcome to #{sectionName}</h3>
+              <p className="mt-2 text-sm font-medium text-zinc-500 leading-relaxed">
+                This is the very beginning of the <span className="text-zinc-900 font-bold">#{sectionName}</span> channel. Be the first to start the conversation.
+              </p>
+              <button className="mt-6 text-xs font-bold text-zinc-400 uppercase tracking-widest hover:text-zinc-900 transition-colors">
+                View Channel Guidelines
+              </button>
+            </div>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="max-w-5xl mx-auto space-y-2">
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-4" />
           </div>
         )}
       </div>
