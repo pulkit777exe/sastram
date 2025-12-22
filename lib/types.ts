@@ -35,11 +35,36 @@ export interface Topic {
 }
 
 export interface WebSocketMessage {
-  type: "NEW_MESSAGE" | "USER_JOINED" | "USER_LEFT";
+  type: WebSocketEventType;
   payload: {
     sectionId: string;
     [key: string]: unknown;
   };
+}
+
+export type WebSocketEventType =
+  | "NEW_MESSAGE"
+  | "MESSAGE_DELETED"
+  | "USER_TYPING"
+  | "USER_STOPPED_TYPING"
+  | "MESSAGE_QUEUED"
+  | "MENTION_NOTIFICATION";
+
+export interface TypingIndicator {
+  userId: string;
+  userName: string;
+  sectionId: string;
+  timestamp: number;
+}
+
+export interface MentionData {
+  messageId: string;
+  mentionedUserId: string;
+  mentionedBy: string;
+  mentionedByName: string;
+  sectionId: string;
+  content: string;
+  parentId?: string;
 }
 
 export interface Conversation {

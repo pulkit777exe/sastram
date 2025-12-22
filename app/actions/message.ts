@@ -1,36 +1,50 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { messageSchema } from "@/lib/security";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { containsBadLanguage, filterBadLanguage } from "@/lib/content-safety";
 import { emitThreadMessage } from "@/modules/ws/publisher";
+import { createMessageWithAttachmentsSchema } from "@/lib/schemas/database";
 
 export async function postMessage(formData: FormData) {
   const content = formData.get("content") as string;
   const sectionId = formData.get("sectionId") as string;
+  const parentId = formData.get("parentId") as string | null;
+  const mentionsRaw = formData.get("mentions") as string | null;
 
-  // Validate input
-  const validation = messageSchema.safeParse({ content, sectionId });
-  
-  if (!validation.success) {
-    return { error: validation.error.issues[0].message };
+  let mentions: string[] | undefined;
+  if (mentionsRaw) {
+    try {
+      mentions = JSON.parse(mentionsRaw);
+    } catch {
+      return { error: "Invalid mentions format" };
+    }
   }
 
-  // Content Safety Check
+  const validation = createMessageWithAttachmentsSchema.safeParse({
+    content,
+    sectionId,
+    parentId: parentId || undefined,
+    mentions,
+  });
+
+  if (!validation.success) {
+    return {
+      error: validation.error.issues[0]?.message || "Invalid message data",
+    };
+  }
+
   if (containsBadLanguage(content)) {
     // Option 1: Reject
     // return { error: "Message contains inappropriate language." };
-    
     // Option 2: Filter (User requested "Language filters ... before sending")
     // I will filter it but maybe warn the user? For now, just filter.
   }
-  
+
   const safeContent = filterBadLanguage(content);
 
-  // Get current user
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -62,7 +76,6 @@ export async function postMessage(formData: FormData) {
       },
     });
 
-    // Handle attachment if present (Mock)
     const fileName = formData.get("fileName") as string;
     if (fileName) {
       await prisma.attachment.create({

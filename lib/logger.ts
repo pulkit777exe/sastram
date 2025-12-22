@@ -9,7 +9,6 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 
 class Logger {
   private log(level: LogLevel, message: string, ...args: unknown[]) {
-    // Skip debug logs in production
     if (level === 'debug' && !isDevelopment) {
       return;
     }

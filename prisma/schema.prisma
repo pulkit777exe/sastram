@@ -10,43 +10,43 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  id            String   @id @default(cuid())
+  email         String   @unique
+  emailVerified Boolean  @default(false)
   name          String?
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
   // Better Auth fields
-  sessions      Session[]
-  accounts      Account[]
-  
+  sessions Session[]
+  accounts Account[]
+
   // Forum relationships
-  role          Role      @default(USER)
-  messages      Message[]
-  sections      Section[] @relation("SectionCreator")
-  communities   Community[] @relation("CommunityCreator")
+  role                    Role                     @default(USER)
+  messages                Message[]
+  sections                Section[]                @relation("SectionCreator")
+  communities             Community[]              @relation("CommunityCreator")
   newsletterSubscriptions NewsletterSubscription[]
-  
+  messageQueue            MessageQueue[]
+
   @@map("users")
 }
 
 model Community {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
-  slug        String    @unique
+  slug        String   @unique
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   createdBy   String
 
-  creator     User      @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  threads     Section[]
+  creator User      @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  threads Section[]
 
   @@map("communities")
 }
@@ -60,27 +60,27 @@ model Session {
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("sessions")
 }
 
 model Account {
-  id                String   @id @default(cuid())
-  accountId         String   @unique
-  providerId        String
-  userId            String
-  accessToken       String?  @db.Text
-  refreshToken      String?  @db.Text
-  idToken           String?  @db.Text
-  expiresAt         DateTime?
-  password          String?  @db.Text
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  id           String    @id @default(cuid())
+  accountId    String    @unique
+  providerId   String
+  userId       String
+  accessToken  String?   @db.Text
+  refreshToken String?   @db.Text
+  idToken      String?   @db.Text
+  expiresAt    DateTime?
+  password     String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@unique([providerId, accountId])
   @@map("accounts")
 }
@@ -92,7 +92,7 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  
+
   @@unique([identifier, value])
   @@map("verifications")
 }
@@ -103,56 +103,66 @@ enum Role {
 }
 
 model Section {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String   @unique
   description String?
-  summary     String?   @db.Text
-  icon        String?   // emoji or icon name
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  summary     String?  @db.Text
+  icon        String? // emoji or icon name
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   createdBy   String
   communityId String?
-  
-  creator     User      @relation("SectionCreator", fields: [createdBy], references: [id])
-  community   Community? @relation(fields: [communityId], references: [id], onDelete: SetNull)
-  messages    Message[]
+
+  creator                 User                     @relation("SectionCreator", fields: [createdBy], references: [id])
+  community               Community?               @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  messages                Message[]
   newsletterSubscriptions NewsletterSubscription[]
-  digests     ThreadDigest[]
-  
+  digests                 ThreadDigest[]
+  messageQueue            MessageQueue[]
+
   @@map("sections")
 }
 
 model Message {
-  id          String    @id @default(cuid())
-  content     String    @db.Text
-  sectionId   String
-  senderId    String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  // Attachments (images, gifs, files)
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  sectionId String
+  senderId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Threading support
+  parentId String? // For threaded replies
+  parent   Message?  @relation("MessageThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Message[] @relation("MessageThread")
+
+  // Mentions support
+  mentions String[] // Array of user IDs mentioned in this message
+
+  // Attachments (images, gifs, files, videos)
   attachments Attachment[]
-  
-  section     Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  sender      User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  
+
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sender  User    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
   @@index([sectionId])
   @@index([senderId])
+  @@index([parentId])
   @@map("messages")
 }
 
 model Attachment {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   messageId String
   url       String
   type      AttachmentType
   name      String?
-  size      Int?     // in bytes
-  createdAt DateTime @default(now())
-  
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  
+  size      Int? // in bytes
+  createdAt DateTime       @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
   @@map("attachments")
 }
 
@@ -160,6 +170,7 @@ enum AttachmentType {
   IMAGE
   GIF
   FILE
+  VIDEO
 }
 
 model NewsletterSubscription {
@@ -188,8 +199,8 @@ model ThreadDigest {
 
   thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
-  @@map("thread_digests")
   @@unique([threadId, scheduledFor], name: "threadId_scheduledFor")
+  @@map("thread_digests")
 }
 
 enum DigestStatus {
@@ -197,4 +208,20 @@ enum DigestStatus {
   PROCESSING
   SENT
   FAILED
+}
+
+model MessageQueue {
+  id        String   @id @default(cuid())
+  userId    String
+  sectionId String
+  messageId String
+  delivered Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, delivered])
+  @@index([sectionId])
+  @@map("message_queue")
 }

@@ -1,13 +1,16 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { emailOTP } from "better-auth/plugins"
+import { emailOTP } from "better-auth/plugins";
 import { oAuthProxy } from "better-auth/plugins";
 import { prisma } from "./prisma";
+import { getEnv } from "./schemas/env";
+
+const env = getEnv();
 
 export const auth = betterAuth({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL,
+  baseURL: env.NEXT_PUBLIC_APP_URL,
   database: prismaAdapter(prisma, {
-    provider: "postgresql"
+    provider: "postgresql",
   }),
   emailAndPassword: {
     enabled: true,
@@ -18,24 +21,24 @@ export const auth = betterAuth({
         type: "string",
         required: false,
         defaultValue: "USER",
-        input: false, 
+        input: false,
       },
     },
   },
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: env.GOOGLE_CLIENT_ID || "",
+      clientSecret: env.GOOGLE_CLIENT_SECRET || "",
     },
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientId: env.GITHUB_CLIENT_ID || "",
+      clientSecret: env.GITHUB_CLIENT_SECRET || "",
     },
   },
   plugins: [
     oAuthProxy({
       currentURL: "http://localhost:3000",
-      productionURL: String(process.env.NEXT_PUBLIC_APP_URL),
+      productionURL: env.NEXT_PUBLIC_APP_URL,
     }),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
@@ -52,7 +55,6 @@ export const auth = betterAuth({
           console.log("Password reset OTP:", otp);
         }
       },
-    })
-  ]
-
+    }),
+  ],
 });

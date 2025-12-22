@@ -3,9 +3,20 @@ import { parse } from "url";
 import next from "next";
 import { initWebSocketServer } from "./lib/ws/server";
 import { logger } from "./lib/logger";
+import { getEnv } from "./lib/schemas/env";
+
+// Validate environment variables on startup
+try {
+  const env = getEnv();
+  logger.info("Environment variables validated successfully");
+  logger.debug(`Running in ${env.NODE_ENV} mode on port ${env.PORT}`);
+} catch (error) {
+  logger.error("Environment validation failed:", error);
+  process.exit(1);
+}
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = "sastram.vercel.app";
 const port = parseInt(process.env.PORT || "3000", 10);
 
 const app = next({ dev, hostname, port });

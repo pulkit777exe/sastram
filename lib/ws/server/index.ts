@@ -1,12 +1,23 @@
-import { Server as HTTPServer } from "http";
+import { Server as HTTPServer, IncomingMessage } from "http";
 import { parse } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { logger } from "@/lib/logger";
+import { auth } from "@/lib/auth";
+import type { TypingIndicator } from "@/lib/types";
+import { validateWebSocketMessage } from "@/lib/schemas/websocket";
 
 type ThreadChannel = Set<WebSocket>;
 
+interface AuthenticatedWebSocket extends WebSocket {
+  threadId?: string;
+  userId?: string;
+  userName?: string;
+  isAlive?: boolean;
+}
+
 let wss: WebSocketServer | null = null;
 const threadChannels = new Map<string, ThreadChannel>();
+const typingIndicators = new Map<string, Map<string, TypingIndicator>>(); // Map<threadId, Map<userId, TypingIndicator>>
 
 function getThreadId(pathname?: string | null) {
   if (!pathname) return null;
@@ -21,7 +32,36 @@ function getThreadId(pathname?: string | null) {
   return threadId;
 }
 
-function registerSocket(threadId: string, socket: WebSocket) {
+async function authenticateConnection(
+  request: IncomingMessage
+): Promise<{ userId: string; userName: string } | null> {
+  try {
+    // Convert IncomingHttpHeaders to Headers object
+    const headers = new Headers();
+    Object.entries(request.headers).forEach(([key, value]) => {
+      if (value) {
+        headers.set(key, Array.isArray(value) ? value[0] : value);
+      }
+    });
+
+    const session = await auth.api.getSession({
+      headers,
+    });
+
+    if (session?.user) {
+      return {
+        userId: session.user.id,
+        userName: session.user.name || session.user.email,
+      };
+    }
+    return null;
+  } catch (error) {
+    logger.error("Authentication error:", error);
+    return null;
+  }
+}
+
+function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
   const channel = threadChannels.get(threadId) ?? new Set();
   channel.add(socket);
   threadChannels.set(threadId, channel);
@@ -31,19 +71,61 @@ function registerSocket(threadId: string, socket: WebSocket) {
     if (channel.size === 0) {
       threadChannels.delete(threadId);
     }
+
+    // Clean up typing indicator
+    if (socket.userId) {
+      const threadTyping = typingIndicators.get(threadId);
+      if (threadTyping) {
+        threadTyping.delete(socket.userId);
+        if (threadTyping.size === 0) {
+          typingIndicators.delete(threadId);
+        }
+      }
+    }
   });
 
   socket.on("error", (error) => {
     logger.error("WebSocket error:", error);
   });
+
+  // Heartbeat
+  socket.isAlive = true;
+  socket.on("pong", () => {
+    socket.isAlive = true;
+  });
 }
+
+function cleanupTypingIndicators() {
+  const now = Date.now();
+  const TYPING_TIMEOUT = 3000; // 3 seconds
+
+  typingIndicators.forEach((threadTyping, threadId) => {
+    threadTyping.forEach((indicator, userId) => {
+      if (now - indicator.timestamp > TYPING_TIMEOUT) {
+        threadTyping.delete(userId);
+        // Broadcast stopped typing
+        publishThreadEvent(threadId, {
+          type: "USER_STOPPED_TYPING",
+          payload: { userId, sectionId: threadId },
+        });
+      }
+    });
+
+    if (threadTyping.size === 0) {
+      typingIndicators.delete(threadId);
+    }
+  });
+}
+
+// Clean up typing indicators every second
+setInterval(cleanupTypingIndicators, 1000);
 
 export function initWebSocketServer(server: HTTPServer) {
   if (wss) return wss;
 
   wss = new WebSocketServer({ noServer: true });
 
-  server.on("upgrade", (request, socket, head) => {
+  server.on("upgrade", async (request, socket, head) => {
     const { pathname } = parse(request.url || "");
     const threadId = getThreadId(pathname);
 
@@ -52,24 +134,132 @@ export function initWebSocketServer(server: HTTPServer) {
       return;
     }
 
+    // Authenticate connection (optional for read-only access)
+    const authResult = await authenticateConnection(request);
+
     wss?.handleUpgrade(request, socket, head, (ws) => {
-      (ws as WebSocket & { threadId?: string }).threadId = threadId;
-      registerSocket(threadId, ws);
-      wss?.emit("connection", ws, request);
+      const authWs = ws as AuthenticatedWebSocket;
+      authWs.threadId = threadId;
+
+      if (authResult) {
+        authWs.userId = authResult.userId;
+        authWs.userName = authResult.userName;
+      }
+
+      registerSocket(threadId, authWs);
+      wss?.emit("connection", authWs, request);
     });
   });
 
-  wss.on("connection", (ws: WebSocket) => {
-    const threadId = (ws as WebSocket & { threadId?: string }).threadId;
+  wss.on("connection", (ws: AuthenticatedWebSocket) => {
+    const threadId = ws.threadId;
     if (!threadId) {
       ws.close();
       return;
     }
-    logger.debug(`Client connected to thread ${threadId}`);
+
+    logger.debug(
+      `Client connected to thread ${threadId}${
+        ws.userId ? ` (user: ${ws.userName})` : " (anonymous)"
+      }`
+    );
 
     ws.on("message", (data) => {
-      publishThreadEvent(threadId, data.toString());
+      try {
+        const rawMessage = JSON.parse(data.toString());
+
+        // Validate message structure
+        const validation = validateWebSocketMessage(rawMessage);
+        if (!validation.success) {
+          logger.warn("Invalid WebSocket message:", validation.error.issues);
+          ws.send(
+            JSON.stringify({
+              type: "ERROR",
+              payload: {
+                error: "Invalid message format",
+                details: validation.error.issues[0]?.message,
+              },
+            })
+          );
+          return;
+        }
+
+        const message = validation.data;
+
+        // Only authenticated users can send messages or typing indicators
+        if (
+          !ws.userId &&
+          (message.type === "USER_TYPING" ||
+            message.type === "USER_STOPPED_TYPING")
+        ) {
+          ws.send(
+            JSON.stringify({
+              type: "ERROR",
+              payload: { error: "Authentication required to send messages" },
+            })
+          );
+          return;
+        }
+
+        // Handle typing indicators
+        if (message.type === "USER_TYPING" && ws.userId && ws.userName) {
+          const threadTyping = typingIndicators.get(threadId) ?? new Map();
+          threadTyping.set(ws.userId, {
+            userId: ws.userId,
+            userName: ws.userName,
+            sectionId: threadId,
+            timestamp: Date.now(),
+          });
+          typingIndicators.set(threadId, threadTyping);
+
+          publishThreadEvent(threadId, {
+            type: "USER_TYPING",
+            payload: {
+              userId: ws.userId,
+              userName: ws.userName,
+              sectionId: threadId,
+            },
+          });
+        } else if (message.type === "USER_STOPPED_TYPING" && ws.userId) {
+          const threadTyping = typingIndicators.get(threadId);
+          if (threadTyping) {
+            threadTyping.delete(ws.userId);
+          }
+
+          publishThreadEvent(threadId, {
+            type: "USER_STOPPED_TYPING",
+            payload: { userId: ws.userId, sectionId: threadId },
+          });
+        } else {
+          // Broadcast other validated messages
+          publishThreadEvent(threadId, message);
+        }
+      } catch (error) {
+        logger.error("Error processing WebSocket message:", error);
+        ws.send(
+          JSON.stringify({
+            type: "ERROR",
+            payload: { error: "Failed to process message" },
+          })
+        );
+      }
     });
+  });
+
+  // Heartbeat interval
+  const heartbeatInterval = setInterval(() => {
+    wss?.clients.forEach((ws) => {
+      const authWs = ws as AuthenticatedWebSocket;
+      if (authWs.isAlive === false) {
+        return authWs.terminate();
+      }
+      authWs.isAlive = false;
+      authWs.ping();
+    });
+  }, 30000); // 30 seconds
+
+  wss.on("close", () => {
+    clearInterval(heartbeatInterval);
   });
 
   return wss;
@@ -79,11 +269,11 @@ export function publishThreadEvent(threadId: string, payload: unknown) {
   const channel = threadChannels.get(threadId);
   if (!channel) return;
 
-  const message = typeof payload === "string" ? payload : JSON.stringify(payload);
+  const message =
+    typeof payload === "string" ? payload : JSON.stringify(payload);
   channel.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
     }
   });
 }
-

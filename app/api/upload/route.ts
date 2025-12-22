@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { put } from "@vercel/blob";
+import { validateFileUpload, getFileCategory } from "@/lib/file-upload";
+import { uploadResponseSchema } from "@/lib/schemas/api";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,18 +20,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No files provided" }, { status: 400 });
     }
 
+    if (files.length > 10) {
+      return NextResponse.json(
+        { error: "Maximum 10 files allowed" },
+        { status: 400 }
+      );
+    }
+
+    // Validate each file
+    for (const file of files) {
+      const validation = validateFileUpload(file);
+      if (!validation.valid) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+    }
+
     const uploadedFiles = await Promise.all(
       files.map(async (file) => {
-        // Example using Vercel Blob Storage
+        // Upload to Vercel Blob Storage
         const blob = await put(file.name, file, {
           access: "public",
         });
 
-        // Determine file type
-        let type: "IMAGE" | "GIF" | "FILE" = "FILE";
-        if (file.type.startsWith("image/")) {
-          type = file.type === "image/gif" ? "GIF" : "IMAGE";
-        }
+        // Determine file type using helper function
+        const type = getFileCategory(file.type);
 
         return {
           url: blob.url,
@@ -39,7 +54,19 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    return NextResponse.json({ files: uploadedFiles });
+    // Validate response format
+    const response = { files: uploadedFiles };
+    const validatedResponse = uploadResponseSchema.safeParse(response);
+
+    if (!validatedResponse.success) {
+      logger.error("Invalid upload response:", validatedResponse.error.issues);
+      return NextResponse.json(
+        { error: "Failed to process upload response" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(validatedResponse.data);
   } catch (error) {
     console.error("Error uploading files:", error);
     return NextResponse.json(
