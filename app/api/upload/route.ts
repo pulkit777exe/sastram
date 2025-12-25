@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate each file
     for (const file of files) {
       const validation = validateFileUpload(file);
       if (!validation.valid) {
@@ -37,12 +36,10 @@ export async function POST(req: NextRequest) {
 
     const uploadedFiles = await Promise.all(
       files.map(async (file) => {
-        // Upload to Vercel Blob Storage
         const blob = await put(file.name, file, {
           access: "public",
         });
 
-        // Determine file type using helper function
         const type = getFileCategory(file.type);
 
         return {
@@ -54,7 +51,6 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    // Validate response format
     const response = { files: uploadedFiles };
     const validatedResponse = uploadResponseSchema.safeParse(response);
 

@@ -36,7 +36,6 @@ async function authenticateConnection(
   request: IncomingMessage
 ): Promise<{ userId: string; userName: string } | null> {
   try {
-    // Convert IncomingHttpHeaders to Headers object
     const headers = new Headers();
     Object.entries(request.headers).forEach(([key, value]) => {
       if (value) {
@@ -72,7 +71,6 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
       threadChannels.delete(threadId);
     }
 
-    // Clean up typing indicator
     if (socket.userId) {
       const threadTyping = typingIndicators.get(threadId);
       if (threadTyping) {
@@ -88,7 +86,6 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
     logger.error("WebSocket error:", error);
   });
 
-  // Heartbeat
   socket.isAlive = true;
   socket.on("pong", () => {
     socket.isAlive = true;
@@ -97,13 +94,12 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
 
 function cleanupTypingIndicators() {
   const now = Date.now();
-  const TYPING_TIMEOUT = 3000; // 3 seconds
+  const TYPING_TIMEOUT = 3000;
 
   typingIndicators.forEach((threadTyping, threadId) => {
     threadTyping.forEach((indicator, userId) => {
       if (now - indicator.timestamp > TYPING_TIMEOUT) {
         threadTyping.delete(userId);
-        // Broadcast stopped typing
         publishThreadEvent(threadId, {
           type: "USER_STOPPED_TYPING",
           payload: { userId, sectionId: threadId },
@@ -117,7 +113,6 @@ function cleanupTypingIndicators() {
   });
 }
 
-// Clean up typing indicators every second
 setInterval(cleanupTypingIndicators, 1000);
 
 export function initWebSocketServer(server: HTTPServer) {
@@ -134,7 +129,6 @@ export function initWebSocketServer(server: HTTPServer) {
       return;
     }
 
-    // Authenticate connection (optional for read-only access)
     const authResult = await authenticateConnection(request);
 
     wss?.handleUpgrade(request, socket, head, (ws) => {
@@ -168,7 +162,6 @@ export function initWebSocketServer(server: HTTPServer) {
       try {
         const rawMessage = JSON.parse(data.toString());
 
-        // Validate message structure
         const validation = validateWebSocketMessage(rawMessage);
         if (!validation.success) {
           logger.warn("Invalid WebSocket message:", validation.error.issues);
@@ -186,7 +179,6 @@ export function initWebSocketServer(server: HTTPServer) {
 
         const message = validation.data;
 
-        // Only authenticated users can send messages or typing indicators
         if (
           !ws.userId &&
           (message.type === "USER_TYPING" ||
@@ -201,7 +193,6 @@ export function initWebSocketServer(server: HTTPServer) {
           return;
         }
 
-        // Handle typing indicators
         if (message.type === "USER_TYPING" && ws.userId && ws.userName) {
           const threadTyping = typingIndicators.get(threadId) ?? new Map();
           threadTyping.set(ws.userId, {
@@ -231,7 +222,6 @@ export function initWebSocketServer(server: HTTPServer) {
             payload: { userId: ws.userId, sectionId: threadId },
           });
         } else {
-          // Broadcast other validated messages
           publishThreadEvent(threadId, message);
         }
       } catch (error) {
@@ -246,7 +236,6 @@ export function initWebSocketServer(server: HTTPServer) {
     });
   });
 
-  // Heartbeat interval
   const heartbeatInterval = setInterval(() => {
     wss?.clients.forEach((ws) => {
       const authWs = ws as AuthenticatedWebSocket;
@@ -256,7 +245,7 @@ export function initWebSocketServer(server: HTTPServer) {
       authWs.isAlive = false;
       authWs.ping();
     });
-  }, 30000); // 30 seconds
+  }, 30000); // 30 sec
 
   wss.on("close", () => {
     clearInterval(heartbeatInterval);

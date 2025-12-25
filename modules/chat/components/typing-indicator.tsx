@@ -7,36 +7,22 @@ interface TypingIndicatorProps {
 }
 
 export function TypingIndicatorComponent({ users }: TypingIndicatorProps) {
-  if (users.length === 0) return null;
-
-  const displayText = (() => {
-    if (users.length === 1) {
-      return `${users[0].userName} is typing`;
-    } else if (users.length === 2) {
-      return `${users[0].userName} and ${users[1].userName} are typing`;
-    } else if (users.length === 3) {
-      return `${users[0].userName}, ${users[1].userName}, and ${users[2].userName} are typing`;
-    } else {
-      return `${users[0].userName}, ${users[1].userName}, and ${
-        users.length - 2
-      } more are typing`;
-    }
-  })();
+  if (users.length === 0) return <div className="h-6" />; // Keep height stable
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+    <div className="flex items-center gap-2 px-5 text-[#b9bbbe] text-sm font-medium h-6">
       <div className="flex gap-1">
-        <span className="animate-pulse" style={{ animationDelay: "0ms" }}>
-          ●
-        </span>
-        <span className="animate-pulse" style={{ animationDelay: "150ms" }}>
-          ●
-        </span>
-        <span className="animate-pulse" style={{ animationDelay: "300ms" }}>
-          ●
-        </span>
+        {[0, 150, 300].map((delay) => (
+          <span 
+            key={delay}
+            className="w-2 h-2 bg-[#b9bbbe] rounded-full animate-pulse" 
+            style={{ animationDelay: `${delay}ms` }}
+          />
+        ))}
       </div>
-      <span className="text-xs">{displayText}...</span>
+      <span className="truncate max-w-full">
+        {users.length > 1 ? "Several people are typing..." : `${users[0].userName} is typing...`}
+      </span>
     </div>
   );
 }

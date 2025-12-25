@@ -6,6 +6,7 @@ import { PostMessageForm } from "./post-message-form";
 import { TypingIndicatorComponent } from "./typing-indicator";
 import { useThreadWebSocket } from "../hooks/use-websocket";
 import { logger } from "@/lib/logger";
+import { Hash, Bell, Pin, Users, Inbox, HelpCircle } from "lucide-react";
 import type { Message } from "@/lib/types";
 
 interface ChatAreaProps {
@@ -18,13 +19,11 @@ interface ChatAreaProps {
   };
 }
 
-export function ChatArea({ initialMessages, sectionId }: ChatAreaProps) {
+export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const { isConnected, lastMessage, typingUsers } =
-    useThreadWebSocket(sectionId);
+  const { isConnected, lastMessage, typingUsers } = useThreadWebSocket(sectionId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Handle incoming WebSocket messages
   useEffect(() => {
     if (!lastMessage) return;
 
@@ -42,7 +41,6 @@ export function ChatArea({ initialMessages, sectionId }: ChatAreaProps) {
           };
 
           setMessages((prev) => {
-            // Prevent duplicates
             if (prev.some((m) => m.id === newMessage.id)) return prev;
             return [...prev, newMessage];
           });
@@ -61,7 +59,6 @@ export function ChatArea({ initialMessages, sectionId }: ChatAreaProps) {
     handleMessage();
   }, [lastMessage, sectionId]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -69,39 +66,28 @@ export function ChatArea({ initialMessages, sectionId }: ChatAreaProps) {
   }, [messages]);
 
   const handleMessagePosted = (message: Message) => {
-    // Optimistically add to list (or wait for WS echo? Let's wait for WS echo to be safe/consistent,
-    // OR add immediately and let dedup handle it. Adding immediately feels faster.)
     setMessages((prev) => [...prev, message]);
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-end px-4 py-2">
-        <div
-          className={`flex items-center gap-2 text-xs ${
-            isConnected ? "text-green-500" : "text-red-500"
-          }`}
-        >
-          <div
-            className={`w-2 h-2 rounded-full ${
-              isConnected ? "bg-green-500" : "bg-red-500"
-            }`}
-          />
-          {isConnected ? "Live" : "Connecting..."}
+    <div className="flex flex-col h-full bg-[#161618] text-[#dcddde] font-sans">
+
+      {/* Chat Area: Clean Scrollable Space */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-[#202225] scrollbar-track-transparent" ref={scrollRef}>
+        {/* Pass currentUser to MessageList for "My Message" styling */}
+        <MessageList messages={messages} currentUser={currentUser} />
+      </div>
+
+      {/* Footer Area: Typing Indicator & Input */}
+      <div className="px-4 pb-6 bg-[#36393f] relative z-20">
+        <TypingIndicatorComponent users={typingUsers} />
+        <div className="mt-1">
+           <PostMessageForm
+             sectionId={sectionId}
+             onMessagePosted={handleMessagePosted}
+           />
         </div>
       </div>
-
-      <div className="flex-1 overflow-y-auto pr-4" ref={scrollRef}>
-        <MessageList messages={messages} />
-      </div>
-
-      {/* Typing Indicator */}
-      <TypingIndicatorComponent users={typingUsers} />
-
-      <PostMessageForm
-        sectionId={sectionId}
-        onMessagePosted={handleMessagePosted}
-      />
     </div>
   );
 }

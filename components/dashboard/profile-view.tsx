@@ -36,29 +36,24 @@ const item = {
 
 export function ProfileView({ user }: ProfileViewProps) {
   return (
-    <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-8"
-    >
-      <motion.div variants={item} className="flex flex-col items-center md:flex-row md:items-start gap-6 rounded-xl border border-slate-100 bg-white p-8 shadow-sm">
-        <Avatar className="h-32 w-32 border-4 border-white shadow-lg ring-1 ring-slate-100">
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+      <motion.div variants={item} className="flex flex-col items-center md:flex-row md:items-start gap-6 rounded-2xl border border-zinc-800/50 bg-[#1C1C1E] p-8 shadow-xl">
+        <Avatar className="h-32 w-32 border-4 border-zinc-800 shadow-2xl">
           <AvatarImage src={user.image || ""} />
-          <AvatarFallback className="text-4xl bg-blue-50 text-blue-600">{user.name?.[0] || "U"}</AvatarFallback>
+          <AvatarFallback className="text-4xl bg-zinc-800 text-zinc-400">{user.name?.[0] || "U"}</AvatarFallback>
         </Avatar>
         <div className="space-y-2 text-center md:text-left pt-2">
-          <h1 className="text-3xl font-bold text-slate-900">{user.name}</h1>
-          <div className="flex items-center justify-center md:justify-start gap-2 text-slate-500">
+          <h1 className="text-3xl font-bold text-white tracking-tight">{user.name}</h1>
+          <div className="flex items-center justify-center md:justify-start gap-2 text-zinc-400">
             <Mail className="h-4 w-4" />
-            <span>{user.email}</span>
+            <span className="text-sm">{user.email}</span>
           </div>
-          <div className="flex items-center justify-center md:justify-start gap-2 text-slate-500">
+          <div className="flex items-center justify-center md:justify-start gap-2 text-zinc-500">
             <Calendar className="h-4 w-4" />
-            <span>Joined {format(new Date(user.createdAt), "MMMM yyyy")}</span>
+            <span className="text-xs">Joined {format(new Date(user.createdAt), "MMMM yyyy")}</span>
           </div>
           <div className="pt-4">
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+            <span className="inline-flex items-center rounded-lg bg-indigo-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-indigo-400 border border-indigo-500/20">
               {user.role}
             </span>
           </div>
@@ -66,32 +61,21 @@ export function ProfileView({ user }: ProfileViewProps) {
       </motion.div>
 
       <motion.div variants={item} className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-          <div className="flex items-center justify-between pb-2">
-            <h3 className="text-sm font-medium text-slate-500">Total Messages</h3>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <MessageSquare className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-slate-900">{user._count.messages}</div>
-          <p className="text-xs text-slate-400 mt-1">
-            Contributions to discussions
-          </p>
-        </div>
-        
-        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-          <div className="flex items-center justify-between pb-2">
-            <h3 className="text-sm font-medium text-slate-500">Topics Created</h3>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
-              <Hash className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-slate-900">{user._count.sections}</div>
-          <p className="text-xs text-slate-400 mt-1">
-            Communities started
-          </p>
-        </div>
+        <DarkStat title="Total Messages" value={user._count.messages} icon={<MessageSquare size={18} />} />
+        <DarkStat title="Topics Created" value={user._count.sections} icon={<Hash size={18} />} />
       </motion.div>
     </motion.div>
+  );
+}
+
+function DarkStat({ title, value, icon }: { title: string; value: number; icon: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-zinc-800/50 bg-[#1C1C1E] p-6 hover:bg-[#202022] transition-colors">
+      <div className="flex items-center justify-between pb-2">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">{title}</h3>
+        <div className="text-zinc-400">{icon}</div>
+      </div>
+      <div className="text-3xl font-bold text-white">{value}</div>
+    </div>
   );
 }

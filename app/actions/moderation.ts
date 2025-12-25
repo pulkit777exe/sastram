@@ -25,16 +25,13 @@ export async function deleteMessageAction(
       return { error: "Message not found" };
     }
 
-    // Delete the message
     await prisma.message.delete({
       where: { id: messageId },
     });
 
-    // Emit WebSocket event
     emitMessageDeleted(message.sectionId, messageId);
 
-    // Revalidate the thread page
-    revalidatePath(`/thread/${sectionSlug}`);
+    revalidatePath(`/dashboard/threads/thread/${sectionSlug}`);
 
     return { success: true };
   } catch (error) {
@@ -56,7 +53,7 @@ export async function banUserFromThread(
   assertAdmin(session.user);
 
   // TODO: Implement ban logic with a BannedUser table
-  // For now, this is a placeholder
+  // TODO: Implement ban logic with a BannedUser table
   console.log(`Ban user ${userId} from thread ${threadId}. Reason: ${reason}`);
 
   return {

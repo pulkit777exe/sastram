@@ -1,11 +1,11 @@
 import { put } from "@vercel/blob";
 
 const MAX_FILE_SIZES = {
-  IMAGE: 10 * 1024 * 1024, // 10MB
-  GIF: 10 * 1024 * 1024, // 10MB
-  VIDEO: 50 * 1024 * 1024, // 50MB
-  PDF: 25 * 1024 * 1024, // 25MB
-  FILE: 25 * 1024 * 1024, // 25MB (default)
+  IMAGE: 4.5 * 1024 * 1024,
+  GIF: 4.5 * 1024 * 1024,
+  VIDEO: 4.5 * 1024 * 1024,
+  PDF: 4.5 * 1024 * 1024,
+  FILE: 4.5 * 1024 * 1024,
 };
 
 const ALLOWED_MIME_TYPES = {
@@ -17,9 +17,6 @@ const ALLOWED_MIME_TYPES = {
 
 export type FileCategory = "IMAGE" | "GIF" | "VIDEO" | "PDF" | "FILE";
 
-/**
- * Determine file category from MIME type
- */
 export function getFileCategory(mimeType: string): FileCategory {
   if (ALLOWED_MIME_TYPES.IMAGE.includes(mimeType)) {
     return mimeType === "image/gif" ? "GIF" : "IMAGE";
@@ -33,9 +30,6 @@ export function getFileCategory(mimeType: string): FileCategory {
   return "FILE";
 }
 
-/**
- * Validate file type and size
- */
 export function validateFileUpload(file: File): {
   valid: boolean;
   error?: string;
@@ -43,7 +37,6 @@ export function validateFileUpload(file: File): {
   const category = getFileCategory(file.type);
   const maxSize = MAX_FILE_SIZES[category];
 
-  // Check if file type is allowed
   const allAllowedTypes = [
     ...ALLOWED_MIME_TYPES.IMAGE,
     ...ALLOWED_MIME_TYPES.VIDEO,
@@ -57,7 +50,6 @@ export function validateFileUpload(file: File): {
     };
   }
 
-  // Check file size
   if (file.size > maxSize) {
     const maxSizeMB = Math.floor(maxSize / (1024 * 1024));
     return {
@@ -69,9 +61,6 @@ export function validateFileUpload(file: File): {
   return { valid: true };
 }
 
-/**
- * Upload file to Vercel Blob
- */
 export async function uploadFile(
   file: File
 ): Promise<{ url: string; pathname: string }> {
@@ -91,9 +80,6 @@ export async function uploadFile(
   };
 }
 
-/**
- * Get file icon based on category
- */
 export function getFileIcon(mimeType: string): string {
   const category = getFileCategory(mimeType);
 
@@ -111,9 +97,6 @@ export function getFileIcon(mimeType: string): string {
   }
 }
 
-/**
- * Format file size for display
- */
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes";
 

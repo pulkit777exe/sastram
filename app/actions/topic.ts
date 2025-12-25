@@ -12,14 +12,12 @@ export async function createTopic(formData: FormData) {
   const description = formData.get("description") as string;
   const icon = formData.get("icon") as string || "Hash";
 
-  // Validate input
   const validation = topicSchema.safeParse({ title, content: description }); // Reusing topicSchema which has title and content. Mapping description to content for validation.
   
   if (!validation.success) {
     return { error: validation.error.issues[0].message };
   }
 
-  // Get current user
   const session = await auth.api.getSession({
     headers: await headers(),
   });

@@ -56,11 +56,11 @@ export function MessageGrid({ messages }: MessageGridProps) {
     >
       {messages.map((message) => (
         <motion.div key={message.id} variants={item}>
-          <Link href={`/thread/${message.section.slug}`}>
-            <div className="group flex flex-col gap-2 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-100">
+          <Link href={`/dashboard/threads/thread/${message.section.slug}`}>
+            <div className="group flex flex-col gap-2 rounded-xl bg-[#1C1C1E] p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-100 hover:bg-[#202022]">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                <div className="flex items-center gap-2 text-sm font-medium text-white">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#202022] text-blue-600">
                     <MessageSquare className="h-4 w-4" />
                   </div>
                   <span>
@@ -72,11 +72,11 @@ export function MessageGrid({ messages }: MessageGridProps) {
                 </span>
               </div>
               
-              <p className="pl-10 text-sm text-slate-600 line-clamp-2 group-hover:text-slate-900 transition-colors">
+              <p className="pl-10 text-sm text-gray-300 line-clamp-2 group-hover:text-gray-400 transition-colors">
                 {message.content}
               </p>
               
-              <div className="pl-10 mt-2 flex items-center text-xs font-medium text-blue-600 opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0">
+              <div className="pl-10 mt-2 flex items-center text-xs font-medium text-blue-600 opacity-80 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0">
                 View Discussion <ArrowRight className="ml-1 h-3 w-3" />
               </div>
             </div>

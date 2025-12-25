@@ -1,4 +1,4 @@
-const BAD_WORDS = ["spam", "scam", "malware", "virus", "phishing"]; // i dont know if this is right or not
+const BAD_WORDS = ["spam", "scam", "malware", "virus", "phishing"];
 
 export function containsBadLanguage(content: string): boolean {
   const lowerContent = content.toLowerCase();
@@ -20,15 +20,23 @@ export interface FileValidationResult {
 }
 
 export function validateFile(file: File): FileValidationResult {
-  const MAX_SIZE = 4.5 * 1024 * 1024;  // vercel blob limit
-  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "application/pdf"];
+  const MAX_SIZE = 4.5 * 1024 * 1024; // vercel blob limit
+  const ALLOWED_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "application/pdf",
+  ];
 
   if (file.size > MAX_SIZE) {
     return { isValid: false, error: "File size exceeds 5MB limit." };
   }
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return { isValid: false, error: "Invalid file type. Only Images and PDFs are allowed." };
+    return {
+      isValid: false,
+      error: "Invalid file type. Only Images and PDFs are allowed.",
+    };
   }
 
   if (file.name.toLowerCase().includes("virus")) {

@@ -5,7 +5,6 @@ import { initWebSocketServer } from "./lib/ws/server";
 import { logger } from "./lib/logger";
 import { getEnv } from "./lib/schemas/env";
 
-// Validate environment variables on startup
 try {
   const env = getEnv();
   logger.info("Environment variables validated successfully");
@@ -16,8 +15,8 @@ try {
 }
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "sastram.vercel.app";
-const port = parseInt(process.env.PORT || "3000", 10);
+const hostname = "localhost";
+const port = parseInt(process.env.PORT || "3001", 10);
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();

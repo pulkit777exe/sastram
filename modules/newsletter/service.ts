@@ -32,7 +32,7 @@ export async function subscribeToThread({ threadId, slug }: { threadId: string; 
   });
 
   await scheduleThreadDigest(threadId);
-  revalidatePath(`/thread/${slug}`);
+  revalidatePath(`/dashboard/threads/thread/${slug}`);
 }
 
 export async function processPendingDigests() {

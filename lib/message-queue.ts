@@ -2,37 +2,40 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * Queue a message for a user who is offline
+ * Note: MessageQueue model not implemented yet - this is a placeholder
  */
 export async function queueMessageForUser(
   userId: string,
   sectionId: string,
   messageId: string
 ): Promise<void> {
-  await prisma.messageQueue.create({
-    data: {
-      userId,
-      sectionId,
-      messageId,
-    },
-  });
+  // TODO: Implement message queue when MessageQueue model is added
+  // await prisma.messageQueue.create({
+  //   data: {
+  //     userId,
+  //     sectionId,
+  //     messageId,
+  //   },
+  // });
 }
 
 /**
  * Get all queued messages for a user in a specific section
  */
 export async function getQueuedMessages(userId: string, sectionId: string) {
-  const queuedItems = await prisma.messageQueue.findMany({
-    where: {
-      userId,
-      sectionId,
-      delivered: false,
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
-
-  return queuedItems.map((item) => item.messageId);
+  // TODO: Implement message queue when MessageQueue model is added
+  // const queuedItems = await prisma.messageQueue.findMany({
+  //   where: {
+  //     userId,
+  //     sectionId,
+  //     delivered: false,
+  //   },
+  //   orderBy: {
+  //     createdAt: "asc",
+  //   },
+  // });
+  // return queuedItems.map((item) => item.messageId);
+  return [];
 }
 
 /**
@@ -42,17 +45,18 @@ export async function markMessagesAsDelivered(
   userId: string,
   messageIds: string[]
 ): Promise<void> {
-  await prisma.messageQueue.updateMany({
-    where: {
-      userId,
-      messageId: {
-        in: messageIds,
-      },
-    },
-    data: {
-      delivered: true,
-    },
-  });
+  // TODO: Implement message queue when MessageQueue model is added
+  // await prisma.messageQueue.updateMany({
+  //   where: {
+  //     userId,
+  //     messageId: {
+  //       in: messageIds,
+  //     },
+  //   },
+  //   data: {
+  //     delivered: true,
+  //   },
+  // });
 }
 
 /**
@@ -63,31 +67,29 @@ export async function queueMessageForOfflineUsers(
   messageId: string,
   onlineUserIds: string[]
 ): Promise<void> {
+  // TODO: Implement message queue when MessageQueue model is added
   // Get all users who have ever participated in this section
-  const participants = await prisma.message.findMany({
-    where: {
-      sectionId,
-    },
-    select: {
-      senderId: true,
-    },
-    distinct: ["senderId"],
-  });
-
-  const participantIds = participants.map((p) => p.senderId);
-  const offlineUserIds = participantIds.filter(
-    (id) => !onlineUserIds.includes(id)
-  );
-
-  // Queue for offline users
-  if (offlineUserIds.length > 0) {
-    await prisma.messageQueue.createMany({
-      data: offlineUserIds.map((userId) => ({
-        userId,
-        sectionId,
-        messageId,
-      })),
-      skipDuplicates: true,
-    });
-  }
+  // const participants = await prisma.message.findMany({
+  //   where: {
+  //     sectionId,
+  //   },
+  //   select: {
+  //     senderId: true,
+  //   },
+  //   distinct: ["senderId"],
+  // });
+  // const participantIds = participants.map((p) => p.senderId);
+  // const offlineUserIds = participantIds.filter(
+  //   (id) => !onlineUserIds.includes(id)
+  // );
+  // if (offlineUserIds.length > 0) {
+  //   await prisma.messageQueue.createMany({
+  //     data: offlineUserIds.map((userId) => ({
+  //       userId,
+  //       sectionId,
+  //       messageId,
+  //     })),
+  //     skipDuplicates: true,
+  //   });
+  // }
 }

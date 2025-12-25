@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useFormStatus } from "react-dom";
+import { cn } from "@/lib/utils";
 
 interface ThreadSubscribeButtonProps {
   subscribed: boolean;
@@ -16,7 +17,12 @@ export function ThreadSubscribeButton({ subscribed }: ThreadSubscribeButtonProps
       type="submit"
       variant={subscribed ? "outline" : "default"}
       disabled={pending || subscribed}
-      className="w-1/2 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-sm hover:bg-slate-50"
+      className={cn(
+        "w-full rounded-xl font-medium transition-all",
+        subscribed
+          ? "bg-[#1C1C1E] border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
+          : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40"
+      )}
     >
       {pending ? "Working..." : label}
     </Button>

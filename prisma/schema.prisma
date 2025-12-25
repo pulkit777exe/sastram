@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,40 +7,37 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  name          String?
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Better Auth fields
-  sessions Session[]
-  accounts Account[]
-
-  // Forum relationships
+  id                      String                   @id @default(cuid())
+  email                   String                   @unique
+  emailVerified           Boolean                  @default(false)
+  name                    String?
+  image                   String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
   role                    Role                     @default(USER)
-  messages                Message[]
-  sections                Section[]                @relation("SectionCreator")
+  accounts                Account[]
   communities             Community[]              @relation("CommunityCreator")
+  messages                Message[]
   newsletterSubscriptions NewsletterSubscription[]
-  messageQueue            MessageQueue[]
+  sections                Section[]                @relation("SectionCreator")
+  sessions                Session[]
+  reports                 Report[]                  @relation("ReportReporter")
+  reportedMessages        Report[]                 @relation("ReportedMessage")
+  sentInvitations         ThreadInvitation[]       @relation("InvitationSender")
 
   @@map("users")
 }
 
 model Community {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
-  slug        String   @unique
+  slug        String    @unique
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   createdBy   String
-
-  creator User      @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  threads Section[]
+  creator     User      @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  threads     Section[]
 
   @@map("communities")
 }
@@ -60,8 +51,7 @@ model Session {
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -71,15 +61,14 @@ model Account {
   accountId    String    @unique
   providerId   String
   userId       String
-  accessToken  String?   @db.Text
-  refreshToken String?   @db.Text
-  idToken      String?   @db.Text
+  accessToken  String?
+  refreshToken String?
+  idToken      String?
   expiresAt    DateTime?
-  password     String?   @db.Text
+  password     String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, accountId])
   @@map("accounts")
@@ -97,54 +86,41 @@ model Verification {
   @@map("verifications")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
 model Section {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  summary     String?  @db.Text
-  icon        String? // emoji or icon name
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String
-  communityId String?
-
-  creator                 User                     @relation("SectionCreator", fields: [createdBy], references: [id])
-  community               Community?               @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  id                      String                   @id @default(cuid())
+  name                    String
+  slug                    String                   @unique
+  description             String?
+  summary                 String?
+  icon                    String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  createdBy               String
+  communityId             String?
   messages                Message[]
   newsletterSubscriptions NewsletterSubscription[]
+  community               Community?               @relation(fields: [communityId], references: [id])
+  creator                 User                     @relation("SectionCreator", fields: [createdBy], references: [id])
   digests                 ThreadDigest[]
-  messageQueue            MessageQueue[]
+  invitations             ThreadInvitation[]
 
   @@map("sections")
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String   @db.Text
-  sectionId String
-  senderId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Threading support
-  parentId String? // For threaded replies
-  parent   Message?  @relation("MessageThread", fields: [parentId], references: [id], onDelete: Cascade)
-  replies  Message[] @relation("MessageThread")
-
-  // Mentions support
-  mentions String[] // Array of user IDs mentioned in this message
-
-  // Attachments (images, gifs, files, videos)
+  id          String       @id @default(cuid())
+  content     String
+  sectionId   String
+  senderId    String
+  parentId    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   attachments Attachment[]
-
-  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  sender  User    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  reports     Report[]
+  section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sender      User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  parent      Message?     @relation("MessageReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Message[]    @relation("MessageReplies")
 
   @@index([sectionId])
   @@index([senderId])
@@ -158,19 +134,11 @@ model Attachment {
   url       String
   type      AttachmentType
   name      String?
-  size      Int? // in bytes
+  size      Int?
   createdAt DateTime       @default(now())
-
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message   Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@map("attachments")
-}
-
-enum AttachmentType {
-  IMAGE
-  GIF
-  FILE
-  VIDEO
 }
 
 model NewsletterSubscription {
@@ -179,9 +147,8 @@ model NewsletterSubscription {
   userId    String?
   email     String
   createdAt DateTime @default(now())
-
-  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@unique([threadId, email])
   @@map("newsletter_subscriptions")
@@ -193,14 +160,24 @@ model ThreadDigest {
   scheduledFor DateTime
   processedAt  DateTime?
   status       DigestStatus @default(PENDING)
-  summary      String?      @db.Text
+  summary      String?
   emailCount   Int          @default(0)
   createdAt    DateTime     @default(now())
-
-  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread       Section      @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, scheduledFor], name: "threadId_scheduledFor")
   @@map("thread_digests")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AttachmentType {
+  IMAGE
+  GIF
+  FILE
 }
 
 enum DigestStatus {
@@ -210,18 +187,55 @@ enum DigestStatus {
   FAILED
 }
 
-model MessageQueue {
-  id        String   @id @default(cuid())
-  userId    String
-  sectionId String
-  messageId String
-  delivered Boolean  @default(false)
-  createdAt DateTime @default(now())
+model Report {
+  id          String      @id @default(cuid())
+  messageId  String
+  reporterId String
+  reason     String
+  status     ReportStatus @default(PENDING)
+  resolvedBy String?
+  resolvedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  message    Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporter   User         @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolver   User?        @relation("ReportedMessage", fields: [resolvedBy], references: [id])
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  @@index([messageId])
+  @@index([reporterId])
+  @@index([status])
+  @@map("reports")
+}
 
-  @@index([userId, delivered])
-  @@index([sectionId])
-  @@map("message_queue")
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+model ThreadInvitation {
+  id          String   @id @default(cuid())
+  threadId    String
+  senderId    String
+  email       String
+  message     String?
+  status      InvitationStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  thread      Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender      User     @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, email, senderId])
+  @@index([threadId])
+  @@index([senderId])
+  @@index([status])
+  @@map("thread_invitations")
+}
+
+enum InvitationStatus {
+  PENDING
+  SENT
+  ACCEPTED
+  DECLINED
 }

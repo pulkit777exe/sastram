@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { Users, MessageSquare, Star, ShieldCheck } from "lucide-react";
-import Link from "next/link";
+import { Users, MessageSquare, Star, ChevronDown, TrendingUp } from "lucide-react";
 import { requireSession, isAdmin } from "@/modules/auth/session";
 import { listThreads } from "@/modules/threads/repository";
 import { listCommunities } from "@/modules/communities/repository";
@@ -8,6 +7,8 @@ import { TopicGrid } from "@/components/dashboard/topic-grid";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThreadInsights } from "@/components/dashboard/thread-insights";
+import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
+import { cn } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const session = await requireSession();
@@ -28,87 +29,73 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-4xl border border-slate-100 bg-white bg-linear-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm lg:p-10">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-widest text-slate-400">Welcome back</p>
-            <h1 className="mt-3 text-3xl font-semibold text-slate-900">
-              {session.user.name || session.user.email}
-            </h1>
-            <p className="mt-2 text-slate-600">
-              Track conversations, curate communities, and amplify meaningful discussions.
-            </p>
-          </div>
-
-          <div className="flex w-full flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <Metric label="Active threads" value={activeThreads} icon={<MessageSquare />} />
-            <Metric label="Messages today" value={totalMessages} icon={<Users />} />
-            <Metric label="Communities" value={communities.length} icon={<Star />} />
-          </div>
+    <div className="space-y-10 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-white tracking-tight">Threads</h1>
+          <p className="text-zinc-500 mt-1">Manage and track your community discussions.</p>
         </div>
-
-        {isAdmin(session.user) && (
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link href="/dashboard/admin">
-              <Button className="rounded-full bg-slate-900 px-6 py-2 text-white hover:bg-slate-800">
-                Open admin workspace
-              </Button>
-            </Link>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <ShieldCheck className="h-4 w-4" />
-              Admin controls: create communities, threads & digests
-            </div>
+        
+        <div className="flex gap-3">
+          <div className="bg-[#1C1C1E] border border-zinc-800 rounded-lg px-4 py-2 flex items-center gap-2 cursor-pointer text-sm text-zinc-300 hover:border-zinc-700 transition-colors">
+            <span className="text-zinc-500 font-medium">View:</span>
+            <span>Timeline</span>
+            <ChevronDown size={14} className="text-zinc-500" />
           </div>
-        )}
-      </section>
+          {isAdmin(session.user) && (
+            <CreateTopicButton />
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <DarkMetric label="Active threads" value={activeThreads} icon={<MessageSquare size={18} />} color="blue" />
+        <DarkMetric label="Total Messages" value={totalMessages} icon={<Users size={18} />} color="indigo" />
+        <DarkMetric label="Communities" value={communities.length} icon={<Star size={18} />} color="amber" />
+      </div>
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Communities</h2>
-            <p className="text-sm text-slate-500">Where your people gather.</p>
-          </div>
-          {isAdmin(session.user) && (
-            <Link href="/dashboard/admin">
-              <Button variant="outline" className="rounded-full">
-                Manage
-              </Button>
-            </Link>
-          )}
+          <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-500">Communities</h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {communities.map((community) => (
-            <Card key={community.id} className="rounded-3xl border-slate-100 bg-white shadow-sm">
-              <CardContent className="p-6">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Community</p>
-                <h3 className="mt-2 text-lg font-semibold text-slate-900">{community.title}</h3>
-                <p className="mt-2 text-sm text-slate-500 line-clamp-2">
+            <Card key={community.id} className="bg-[#1C1C1E] border-zinc-800/50 hover:border-zinc-700 transition-all group cursor-pointer">
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start">
+                  <div className="h-10 w-10 rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-white transition-colors">
+                    <Users size={20} />
+                  </div>
+                  {community.threadCount > 5 && (
+                    <span className="bg-indigo-500/10 text-indigo-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+                <h3 className="mt-4 text-lg font-semibold text-white">{community.title}</h3>
+                <p className="mt-1 text-sm text-zinc-500 line-clamp-2">
                   {community.description || "No description yet."}
                 </p>
-                <p className="mt-4 text-xs text-slate-400">
-                  {community.threadCount} thread{community.threadCount === 1 ? "" : "s"}
-                </p>
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="text-xs font-medium text-zinc-400">{community.threadCount} threads</span>
+                  <div className="h-1 w-1 rounded-full bg-zinc-700" />
+                  <span className="text-xs font-medium text-zinc-400">Updated today</span>
+                </div>
               </CardContent>
             </Card>
           ))}
-          {communities.length === 0 && (
-            <div className="col-span-full rounded-3xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
-              No communities yet. {isAdmin(session.user) ? "Create one from the admin workspace." : ""}
-            </div>
-          )}
         </div>
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Trending threads</h2>
-            <p className="text-sm text-slate-500">Click a thread to jump into the conversation.</p>
-          </div>
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp size={18} className="text-indigo-500" />
+          <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-500">Trending Threads</h2>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <TopicGrid topics={threadTopics} />
+        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="bg-[#161618] rounded-2xl border border-zinc-800/50 overflow-hidden">
+             <TopicGrid topics={threadTopics} />
+          </div>
           <ThreadInsights initialThreads={threads} />
         </div>
       </section>
@@ -116,15 +103,21 @@ export default async function DashboardPage() {
   );
 }
 
-function Metric({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
+function DarkMetric({ label, value, icon, color }: { label: string; value: number | string; icon: ReactNode, color: string }) {
+  const colors: Record<string, string> = {
+    blue: "text-blue-400 bg-blue-400/10",
+    indigo: "text-indigo-400 bg-indigo-400/10",
+    amber: "text-amber-400 bg-amber-400/10",
+  };
+
   return (
-    <div className="flex flex-1 items-center gap-3 rounded-2xl bg-slate-50/70 p-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-500">
+    <div className="bg-[#1C1C1E] border border-zinc-800/50 p-5 rounded-2xl flex items-center gap-4 hover:bg-[#202022] transition-colors">
+      <div className={cn("p-3 rounded-xl", colors[color] || "bg-zinc-800 text-zinc-400")}>
         {icon}
       </div>
       <div>
-        <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
-        <p className="text-lg font-semibold text-slate-900">{value}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">{label}</p>
+        <p className="text-2xl font-bold text-white">{value}</p>
       </div>
     </div>
   );

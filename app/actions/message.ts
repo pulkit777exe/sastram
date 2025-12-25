@@ -59,6 +59,7 @@ export async function postMessage(formData: FormData) {
         content: safeContent,
         sectionId: sectionId,
         senderId: session.user.id,
+        parentId: parentId || null,
       },
       include: {
         section: {
@@ -105,7 +106,7 @@ export async function postMessage(formData: FormData) {
     });
 
     if (message.section?.slug) {
-      revalidatePath(`/thread/${message.section.slug}`);
+      revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
     }
     revalidatePath("/dashboard");
     return { success: true, data: message };

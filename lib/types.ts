@@ -15,6 +15,7 @@ export interface Attachment {
   name: string | null;
   url: string;
   type: string;
+  size?: number | null;
 }
 
 export interface Message {
@@ -24,6 +25,7 @@ export interface Message {
   senderId: string;
   sender: Sender;
   attachments: Attachment[];
+  parentId?: string | null;
 }
 
 export interface Topic {

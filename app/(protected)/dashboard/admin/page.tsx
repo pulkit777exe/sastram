@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Flag } from "lucide-react";
 
 export default async function AdminDashboardPage() {
   const session = await requireSession();
@@ -21,12 +23,22 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       <header className="rounded-4xl border border-slate-800 bg-[radial-gradient(circle_at_top,#101322,#050507)] p-8 text-white shadow-xl">
-        <p className="text-xs uppercase tracking-widest text-slate-400">Admin Workspace</p>
-        <h1 className="mt-3 text-3xl font-semibold">Create and moderate</h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-300">
-          Launch new communities, spin up curated threads, and keep conversations clean. All actions
-          sync instantly with TanStack Query powered widgets.
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-slate-400">Admin Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold">Create and moderate</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-300">
+              Launch new communities, spin up curated threads, and keep conversations clean. All actions
+              sync instantly with TanStack Query powered widgets.
+            </p>
+          </div>
+          <Link href="/dashboard/admin/reports">
+            <Button className="bg-red-600 hover:bg-red-500 text-white">
+              <Flag className="w-4 h-4 mr-2" />
+              View Reports
+            </Button>
+          </Link>
+        </div>
       </header>
 
       <section className="grid gap-6 lg:grid-cols-2">

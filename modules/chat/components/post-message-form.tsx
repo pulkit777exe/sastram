@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Paperclip, X } from "lucide-react";
+import { PlusCircle, Gift, Smile, Sticker, Send, Loader2, FileIcon, X } from "lucide-react";
 import { postMessage } from "@/app/actions/message";
 import { toast } from "sonner";
 import { validateFile } from "@/lib/content-safety";
@@ -25,9 +25,6 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
     formData.append("sectionId", sectionId);
     
     if (selectedFile) {
-      // In a real app, you would upload the file here (e.g., Vercel Blob)
-      // and send the URL to the server.
-      // For this MVP/Mock, we'll send the file name and type to simulate.
       formData.append("fileName", selectedFile.name);
       formData.append("fileType", selectedFile.type);
       formData.append("fileSize", selectedFile.size.toString());
@@ -39,7 +36,7 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success("Message posted!");
+      // toast.success("Message posted!");
       formRef.current?.reset();
       setSelectedFile(null);
       if (result.data && onMessagePosted) {
@@ -63,46 +60,68 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
   };
 
   return (
-    <form ref={formRef} action={handleSubmit} className="flex flex-col gap-2 p-4 border-t bg-background/95 backdrop-blur sticky bottom-0">
+    <form ref={formRef} action={handleSubmit} className="relative px-4 pb-0 pt-0 bg-[#161618]">
+      {/* File Preview Popup */}
       {selectedFile && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-2 rounded-md w-fit">
-          <Paperclip className="h-4 w-4" />
-          {selectedFile.name}
+        <div className="absolute -top-14 left-4 bg-[#2f3136] border border-[#202225] p-2 rounded-md text-sm flex items-center gap-2 text-[#dcddde] shadow-md">
+          <FileIcon className="h-4 w-4 text-[#8e9297]" />
+          <span className="truncate max-w-[200px]">{selectedFile.name}</span>
           <button
             type="button"
             onClick={() => {
               setSelectedFile(null);
               if (fileInputRef.current) fileInputRef.current.value = "";
             }}
-            className="ml-2 hover:text-destructive"
+            className="ml-2 text-[#b9bbbe] hover:text-[#dcddde] cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
-      <div className="flex gap-2 items-end">
+
+      <div className="flex items-center bg-[#40444b] rounded-lg p-0 pr-2 focus-within:ring-1 focus-within:ring-[#5865f2] transition-all">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-[60px] w-[60px]"
+          className="text-[#b9bbbe] hover:text-[#dcddde] hover:bg-transparent h-11 w-11 ml-1 shrink-0"
           onClick={() => fileInputRef.current?.click()}
         >
-          <Paperclip className="h-5 w-5" />
+          <PlusCircle className="h-6 w-6" />
         </Button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          onChange={handleFileSelect}
-        />
+        
+        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+        
         <Textarea
           name="content"
-          placeholder="Type your message..."
-          className="min-h-[60px] resize-none"
-          required
+          placeholder="Message #chat"
+          className="flex-1 min-h-[44px] max-h-[50vh] bg-transparent border-none text-[#dcddde] placeholder-[#72767d] focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-3 px-2 text-base"
+          onKeyDown={(e) => {
+             if (e.key === 'Enter' && !e.shiftKey) {
+               e.preventDefault();
+               formRef.current?.requestSubmit();
+             }
+          }}
         />
-        <Button type="submit" size="icon" disabled={loading} className="h-[60px] w-[60px]">
+
+        <div className="flex items-center gap-1 shrink-0 text-[#b9bbbe]">
+          <Button type="button" variant="ghost" size="icon" className="hover:text-[#dcddde] hover:bg-transparent h-10 w-10">
+            <Gift className="h-6 w-6" />
+          </Button>
+          <Button type="button" variant="ghost" size="icon" className="hover:text-[#dcddde] hover:bg-transparent h-10 w-10">
+            <Sticker className="h-6 w-6" />
+          </Button>
+          <Button type="button" variant="ghost" size="icon" className="hover:text-[#dcddde] hover:bg-transparent h-10 w-10">
+            <Smile className="h-6 w-6" />
+          </Button>
+        </div>
+      </div>
+      <div className="hidden">
+        <Button 
+          type="submit" 
+          disabled={loading} 
+          className="bg-[#5865f2] hover:bg-[#4752c4] text-white rounded-md px-4 h-10 shadow-sm"
+        >
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
         </Button>
       </div>

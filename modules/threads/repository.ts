@@ -3,7 +3,6 @@ import { Prisma } from "@prisma/client";
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from "./types";
 import { buildThreadDTO, buildThreadDetailDTO } from "./service";
 
-// Prisma return types for our queries
 type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
   include: {
     community: true;
@@ -15,7 +14,18 @@ type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
 type SectionWithFullDetails = Prisma.SectionGetPayload<{
   include: {
     community: true;
-    messages: { include: { sender: true } };
+    messages: { 
+      include: { 
+        sender: {
+          select: {
+            id: true;
+            name: true;
+            image: true;
+          };
+        };
+        attachments: true;
+      };
+    };
     newsletterSubscriptions: true;
     digests: true;
     _count: { select: { messages: true } };
@@ -63,7 +73,14 @@ export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null
       community: true,
       messages: {
         include: {
-          sender: true,
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          attachments: true,
         },
         orderBy: {
           createdAt: "asc",
@@ -90,15 +107,13 @@ export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null
 
   const typedRecord = record as SectionWithFullDetails;
   return buildThreadDetailDTO(
-    typedRecord as ThreadRecord,
+    typedRecord as unknown as ThreadRecord,
     typedRecord._count.messages,
     new Set(typedRecord.messages.map((m) => m.senderId)).size,
     typedRecord.digests[0]?.summary,
     typedRecord.newsletterSubscriptions?.length ?? 0,
   );
 }
-
-
 
 export async function createThread(payload: {
   name: string;
