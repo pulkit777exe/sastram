@@ -24,6 +24,10 @@ model User {
   status                  UserStatus               @default(ACTIVE)
   role                    Role                     @default(USER)
   lastSeenAt              DateTime?
+  profilePrivacy          ProfilePrivacy           @default(PUBLIC)
+  reputationPoints        Int                      @default(0)
+  followerCount           Int                      @default(0)
+  followingCount          Int                      @default(0)
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
   deletedAt               DateTime?
@@ -47,6 +51,13 @@ model User {
   issuedBans              UserBan[]                @relation("BanIssuer")
   auditLogs               AuditLog[]               @relation("AuditLogUser")
   performedActions        AuditLog[]               @relation("AuditLogPerformer")
+  followers               UserFollow[]             @relation("Follower")
+  following               UserFollow[]             @relation("Following")
+  bookmarks               UserBookmark[]
+  reputation              UserReputation?
+  earnedBadges            UserBadgeEarned[]
+  activities              UserActivity[]
+  pollVotes               PollVote[]
 
   @@index([email])
   @@index([status])
@@ -150,6 +161,9 @@ model Section {
   digests                 ThreadDigest[]
   invitations             ThreadInvitation[]
   bans                    UserBan[]                @relation("ThreadBans")
+  bookmarks               UserBookmark[]
+  tags                    ThreadTagRelation[]
+  poll                    Poll?
 
   @@index([slug])
   @@index([visibility])
@@ -558,4 +572,171 @@ enum AuditAction {
   MEMBER_ROLE_CHANGED
   REPORT_CREATED
   REPORT_RESOLVED
+}
+
+enum ProfilePrivacy {
+  PUBLIC
+  PRIVATE
+  FOLLOWERS_ONLY
+}
+
+// User Follow System
+model UserFollow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("user_follows")
+}
+
+// Bookmarks System
+model UserBookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  threadId  String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+  @@index([userId])
+  @@index([threadId])
+  @@map("user_bookmarks")
+}
+
+// Tags System
+model ThreadTag {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  color     String   @default("#3b82f6")
+  createdAt DateTime @default(now())
+  
+  threads   ThreadTagRelation[]
+
+  @@index([slug])
+  @@map("thread_tags")
+}
+
+model ThreadTagRelation {
+  id        String   @id @default(cuid())
+  threadId  String
+  tagId     String
+  createdAt DateTime @default(now())
+  
+  thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  tag       ThreadTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, tagId])
+  @@index([threadId])
+  @@index([tagId])
+  @@map("thread_tag_relations")
+}
+
+// Polls System
+model Poll {
+  id        String   @id @default(cuid())
+  threadId  String   @unique
+  question  String
+  options   Json     // Array of option strings
+  isActive  Boolean  @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  votes     PollVote[]
+
+  @@index([threadId])
+  @@index([isActive])
+  @@map("polls")
+}
+
+model PollVote {
+  id          String   @id @default(cuid())
+  pollId      String
+  userId      String
+  optionIndex Int
+  createdAt   DateTime @default(now())
+  
+  poll        Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@index([pollId])
+  @@index([userId])
+  @@map("poll_votes")
+}
+
+// Reputation System
+model UserReputation {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  points    Int      @default(0)
+  level     Int      @default(1)
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([points])
+  @@index([level])
+  @@map("user_reputation")
+}
+
+// Badges System
+model UserBadge {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String?
+  color       String   @default("#3b82f6")
+  criteria    Json     // Criteria for earning badge
+  createdAt   DateTime @default(now())
+  
+  earnedBy    UserBadgeEarned[]
+
+  @@index([name])
+  @@map("user_badges")
+}
+
+model UserBadgeEarned {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     UserBadge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@map("user_badges_earned")
+}
+
+// Activity Feed System
+model UserActivity {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String   // THREAD_CREATED, MESSAGE_POSTED, BOOKMARK_ADDED, etc.
+  entityType String   // Section, Message, User, etc.
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("user_activities")
 }

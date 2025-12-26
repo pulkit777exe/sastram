@@ -5,6 +5,7 @@ import { auth } from "@/lib/services/auth";
 import { headers } from "next/headers";
 import { aiService } from "@/lib/services/ai";
 import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from "@/lib/infrastructure/prisma";
 import {
   completeDigest,
   getDueDigests,
@@ -50,14 +51,39 @@ export async function processPendingDigests() {
     const summary = await aiService.generateSummary(content);
     const subscribers = await listThreadSubscribers(digest.threadId);
 
-    // TODO: Replace with transactional email provider.
-    subscribers.forEach((subscriber) => {
-      logger.info(
-        `Sending digest for thread ${digest.threadId} to ${subscriber.email}: ${summary}`,
-      );
+    // Get thread info for email
+    const thread = await prisma.section.findUnique({
+      where: { id: digest.threadId },
+      select: { name: true, slug: true },
     });
 
-    await completeDigest(digest.id, summary, subscribers.length);
+    if (!thread) {
+      logger.error(`Thread ${digest.threadId} not found for digest`);
+      await completeDigest(digest.id, summary, 0);
+      continue;
+    }
+
+    const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`;
+
+    // Send emails via Resend
+    const { sendNewsletterDigest } = await import("@/lib/services/email");
+    let emailCount = 0;
+
+    for (const subscriber of subscribers) {
+      try {
+        await sendNewsletterDigest(
+          subscriber.email,
+          thread.name,
+          summary,
+          threadUrl
+        );
+        emailCount++;
+      } catch (error) {
+        logger.error(`Failed to send digest email to ${subscriber.email}:`, error);
+      }
+    }
+
+    await completeDigest(digest.id, summary, emailCount);
   }
 }
 

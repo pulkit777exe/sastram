@@ -22,3 +22,7 @@ export const uploadBannerSchema = z.object({
   banner: z.instanceof(File, { message: "Banner file is required" }),
 });
 
+export const updateProfilePrivacySchema = z.object({
+  privacy: z.enum(["PUBLIC", "PRIVATE", "FOLLOWERS_ONLY"]),
+});
+

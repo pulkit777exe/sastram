@@ -1,9 +1,3 @@
-/**
- * Thread Components barrel export
- */
-
-export * from "./comment-tree";
-export * from "./invite-friend-button";
-export * from "./report-button";
-export * from "./subscribe-button";
-
+export { BookmarkButton } from "./bookmark-button";
+export { TagChip } from "./tag-chip";
+export { PollDisplay } from "./poll-display";

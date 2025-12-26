@@ -14,6 +14,9 @@ import { handleError } from "@/lib/utils/errors";
 import { validate } from "@/lib/utils/validation";
 import { editMessageSchema, pinMessageSchema, getMessageEditHistorySchema } from "./schemas";
 import { AuditAction } from "@prisma/client";
+import { parseMentions, resolveUserMentions } from "@/lib/utils/mention-parser";
+import { sendMentionNotification } from "@/lib/services/email";
+import { recordActivity } from "@/modules/activity/repository";
 
 function handleActionError(error: unknown) {
   return handleError(error);
@@ -25,13 +28,24 @@ export async function postMessage(formData: FormData) {
   const parentId = formData.get("parentId") as string | null;
   const mentionsRaw = formData.get("mentions") as string | null;
 
+  // Parse mentions from content and combine with explicit mentions
+  const parsedMentions = parseMentions(content);
   let mentions: string[] | undefined;
+  
   if (mentionsRaw) {
     try {
-      mentions = JSON.parse(mentionsRaw);
+      const explicitMentions = JSON.parse(mentionsRaw) as string[];
+      // Resolve usernames from parsed mentions to user IDs
+      const resolvedMentions = await resolveUserMentions(parsedMentions.usernames, prisma);
+      // Combine explicit mentions (already user IDs) with resolved mentions
+      mentions = Array.from(new Set([...explicitMentions, ...resolvedMentions]));
     } catch {
-      return { error: "Invalid mentions format" };
+      // If explicit mentions fail, try to resolve parsed mentions
+      mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
     }
+  } else {
+    // Only parse mentions from content
+    mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
   }
 
   const validation = createMessageWithAttachmentsSchema.safeParse({
@@ -113,7 +127,7 @@ export async function postMessage(formData: FormData) {
           })),
         });
 
-        // Create notifications for mentions
+        // Create notifications for mentions (emails sent outside transaction)
         for (const userId of mentions) {
           await tx.notification.create({
             data: {
@@ -142,17 +156,60 @@ export async function postMessage(formData: FormData) {
         },
       });
 
-      return message;
+      return { message, mentionedUserIds: mentions || [] };
+    });
+
+    // Send email notifications for mentions (outside transaction)
+    if (result.mentionedUserIds && result.mentionedUserIds.length > 0) {
+      const thread = await prisma.section.findUnique({
+        where: { id: sectionId },
+        select: { name: true, slug: true },
+      });
+
+      if (thread) {
+        const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`;
+        
+        for (const userId of result.mentionedUserIds) {
+          const mentionedUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { email: true, name: true },
+          });
+
+          if (mentionedUser) {
+            sendMentionNotification(
+              mentionedUser.email,
+              session.user.name || session.user.email,
+              thread.name,
+              safeContent.substring(0, 200),
+              threadUrl
+            ).catch((error) => {
+              console.error("Failed to send mention email:", error);
+            });
+          }
+        }
+      }
+    }
+
+    // Record activity for message posted
+    await recordActivity({
+      userId: session.user.id,
+      type: "MESSAGE_POSTED",
+      entityType: "Message",
+      entityId: result.message.id,
+      metadata: {
+        sectionId,
+        threadName: result.message.section.slug,
+      },
     });
 
     // Emit WebSocket event (outside transaction)
     const payload = {
-      id: result.id,
-      content: result.content,
+      id: result.message.id,
+      content: result.message.content,
       senderId: session.user.id,
-      senderName: result.sender?.name || session.user.email,
-      senderAvatar: result.sender?.image ?? session.user.image,
-      createdAt: result.createdAt,
+      senderName: result.message.sender?.name || session.user.email,
+      senderAvatar: result.message.sender?.image ?? session.user.image,
+      createdAt: result.message.createdAt,
       sectionId,
     };
 
@@ -161,12 +218,24 @@ export async function postMessage(formData: FormData) {
       payload,
     });
 
-    if (result.section?.slug) {
-      revalidatePath(`/dashboard/threads/thread/${result.section.slug}`);
+    if (result.message.section?.slug) {
+      revalidatePath(`/dashboard/threads/thread/${result.message.section.slug}`);
     }
     revalidatePath("/dashboard");
 
-    return { success: true, data: result };
+    // Record activity for message posted
+    await recordActivity({
+      userId: session.user.id,
+      type: "MESSAGE_POSTED",
+      entityType: "Message",
+      entityId: result.message.id,
+      metadata: {
+        sectionId,
+        threadName: result.message.section?.slug,
+      },
+    });
+
+    return { success: true, data: result.message };
   } catch (error) {
     return handleActionError(error);
   }

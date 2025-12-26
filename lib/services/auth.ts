@@ -15,16 +15,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false, // Set to true if you want email verification
-  },
-  user: {
-    additionalFields: {
-      role: {
-        type: "string",
-        required: false,
-        defaultValue: "USER",
-      },
-    },
+    requireEmailVerification: false,
   },
   socialProviders: {
     google: {

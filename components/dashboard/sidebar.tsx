@@ -16,6 +16,8 @@ import {
   Mail,
   Flag,
   Shield,
+  Bookmark,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { usePathname, useRouter } from "next/navigation";
@@ -65,6 +67,9 @@ export function Sidebar({
   const navItems = [
     { icon: Home, label: "Home", href: "/dashboard" },
     { icon: FileText, label: "Threads", href: "/dashboard/threads" },
+    { icon: Bookmark, label: "Bookmarks", href: "/dashboard/bookmarks" },
+    { icon: Search, label: "Search", href: "/dashboard/search" },
+    { icon: Activity, label: "Activity", href: "/dashboard/activity" },
     { icon: Bell, label: "Notifications", href: "/dashboard/messages" },
     { icon: Settings, label: "Settings", href: "/dashboard/settings" },
   ];
@@ -97,7 +102,7 @@ export function Sidebar({
             <div className="w-6 h-6 bg-white rounded-sm flex items-center justify-center">
               <div className="w-3 h-3 border-2 border-black rounded-full" />
             </div>
-            <span className="font-bold text-lg text-white">Sastram</span>
+            <span className="font-bold text-lg text-foreground">Sastram</span>
           </Link>
         )}
         {isCollapsed && (
@@ -110,7 +115,7 @@ export function Sidebar({
             <ThemeToggle />
             <button
               onClick={toggleCollapse}
-              className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
+              className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
             >
               <PanelLeftClose size={18} />
             </button>
@@ -139,13 +144,13 @@ export function Sidebar({
                 placeholder="Search threads..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1C1C1E] border border-zinc-800 rounded-md py-1.5 pl-9 pr-12 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-muted border border-border rounded-md py-1.5 pl-9 pr-12 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                <kbd className="text-[10px] bg-zinc-800 px-1 rounded border border-zinc-700 text-zinc-500">
+                <kbd className="text-[10px] bg-muted px-1 rounded border border-border text-muted-foreground">
                   ⌘
                 </kbd>
-                <kbd className="text-[10px] bg-zinc-800 px-1 rounded border border-zinc-700 text-zinc-500">
+                <kbd className="text-[10px] bg-muted px-1 rounded border border-border text-muted-foreground">
                   F
                 </kbd>
               </div>
@@ -168,7 +173,7 @@ export function Sidebar({
             ))}
 
             <div className="mt-6 mb-2 px-3">
-              <p className="text-[10px] font-bold text-zinc-500 uppercase">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">
                 Other
               </p>
             </div>
@@ -181,15 +186,15 @@ export function Sidebar({
             />
           </nav>
 
-          <div className="m-3 p-4 bg-linear-to-br from-[#1C1C1E] to-[#161618] border border-zinc-800 rounded-xl">
-            <div className="flex items-center gap-2 mb-1 text-white">
+          <div className="m-3 p-4 bg-gradient-to-br from-card to-muted border border-border rounded-xl">
+            <div className="flex items-center gap-2 mb-1 text-foreground">
               <Sparkles size={14} />
               <p className="text-sm font-semibold">Boost with AI</p>
             </div>
-            <p className="text-[11px] text-zinc-500 mb-4">
+            <p className="text-[11px] text-muted-foreground mb-4">
               AI-powered replies and tools that save hours.
             </p>
-            <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-indigo-500/20">
+            <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-primary/20">
               Upgrade to Pro
             </button>
           </div>
@@ -214,48 +219,48 @@ export function Sidebar({
         </nav>
       )}
 
-      <div className="p-3 border-t border-zinc-800/50 relative">
+      <div className="p-3 border-t border-border relative">
         <div
-          className="flex items-center justify-between p-2 hover:bg-[#1C1C1E] rounded-lg cursor-pointer"
+          className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer transition-colors"
           onClick={() => !isCollapsed && setShowProfileMenu(!showProfileMenu)}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-zinc-700 shrink-0"></div>
+            <div className="w-8 h-8 rounded-full bg-muted shrink-0"></div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-white">{name}</span>
-                <span className="text-[10px] text-zinc-500 truncate w-24">
+                <span className="text-xs font-semibold text-foreground">{name}</span>
+                <span className="text-[10px] text-muted-foreground truncate w-24">
                   {email}
                 </span>
               </div>
             )}
           </div>
           {!isCollapsed && (
-            <div className="flex flex-col gap-0.5 text-zinc-500">
+            <div className="flex flex-col gap-0.5 text-muted-foreground">
               <ChevronUp size={12} />
               <ChevronDown size={12} />
             </div>
           )}
         </div>
         {showProfileMenu && !isCollapsed && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 bg-[#1C1C1E] border border-zinc-800 rounded-lg shadow-lg overflow-hidden z-10">
+          <div className="absolute bottom-full left-3 right-3 mb-2 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-10">
             <Link
               href="/dashboard/settings/profile"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-[#252528] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
             >
               <User size={14} />
               <span>View Profile</span>
             </Link>
             <Link
               href="/dashboard/settings"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-[#252528] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
             >
               <Settings size={14} />
               <span>Settings</span>
             </Link>
             <Link
               href="/dashboard/settings?tab=newsletters"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-[#252528] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
             >
               <Mail size={14} />
               <span>Newsletters</span>
@@ -287,14 +292,14 @@ function NavItem({
       <div
         className={cn(
           "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
-          "text-zinc-400 hover:text-zinc-200 hover:bg-[#1C1C1E]",
+          "text-muted-foreground hover:text-foreground hover:bg-accent",
           collapsed && "justify-center"
         )}
         title={collapsed ? label : undefined}
       >
         <Icon
           size={18}
-          className="text-zinc-500 group-hover:text-zinc-300 transition-colors shrink-0"
+          className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
         />
         {!collapsed && <span className="text-sm font-medium">{label}</span>}
       </div>
@@ -307,8 +312,8 @@ function NavItem({
       className={cn(
         "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
         active
-          ? "bg-linear-to-r from-[#212123] to-[#1C1C1E] text-white shadow-[0_0_20px_rgba(99,102,241,0.05)] border-r-2 border-indigo-500"
-          : "text-zinc-400 hover:text-zinc-200 hover:bg-[#1C1C1E]",
+          ? "bg-gradient-to-r from-primary/10 to-primary/5 text-foreground shadow-sm border-r-2 border-primary"
+          : "text-muted-foreground hover:text-foreground hover:bg-accent",
         collapsed && "justify-center"
       )}
       title={collapsed ? label : undefined}
@@ -317,13 +322,13 @@ function NavItem({
         size={18}
         className={cn(
           "transition-colors shrink-0",
-          active ? "text-indigo-400" : "text-zinc-500 group-hover:text-zinc-300"
+          active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
         )}
       />
       {!collapsed && <span className="text-sm font-medium">{label}</span>}
 
       {active && !collapsed && (
-        <div className="ml-auto w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
+        <div className="ml-auto w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
       )}
     </Link>
   );

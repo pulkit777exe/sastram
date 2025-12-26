@@ -6,8 +6,10 @@ import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import { validate } from "@/lib/utils/validation";
 import { handleError } from "@/lib/utils/errors";
-import { updateUserProfileSchema } from "./schemas";
+import { updateUserProfileSchema, updateProfilePrivacySchema } from "./schemas";
 import { FILE_LIMITS } from "@/lib/config/constants";
+import { getPublicProfile, getUserThreads, updateProfilePrivacy } from "./repository";
+import { ProfilePrivacy } from "@prisma/client";
 
 export async function updateUserProfile(formData: FormData) {
   const session = await requireSession();
@@ -130,6 +132,49 @@ export async function uploadBanner(formData: FormData) {
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/profile");
     return { success: true, url: blob.url };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function getUserProfile(userId: string) {
+  const session = await requireSession();
+
+  try {
+    const profile = await getPublicProfile(userId, session.user.id);
+
+    if (!profile) {
+      return { error: "Profile not found or not accessible" };
+    }
+
+    return { success: true, data: profile };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function getUserThreadsAction(userId: string, limit?: number, offset?: number) {
+  try {
+    const result = await getUserThreads(userId, limit || 20, offset || 0);
+    return { success: true, data: result };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function updateProfilePrivacyAction(privacy: string) {
+  const session = await requireSession();
+
+  const validation = validate(updateProfilePrivacySchema, { privacy });
+  if (!validation.success) {
+    return { error: validation.error };
+  }
+
+  try {
+    await updateProfilePrivacy(session.user.id, validation.data.privacy as ProfilePrivacy);
+    revalidatePath("/dashboard/settings");
+    revalidatePath(`/user/${session.user.id}`);
+    return { success: true };
   } catch (error) {
     return handleError(error);
   }

@@ -40,6 +40,13 @@ const envSchema = z.object({
     .string()
     .url("NEXT_PUBLIC_APP_URL must be a valid URL"),
   NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
+  
+  // Email
+  RESEND_API_KEY: z.string().optional(),
+  
+  // AI Providers
+  GEMINI_API_KEY: z.string().optional(),
+  AI_PROVIDER: z.enum(["gemini", "openai"]).default("gemini"),
 
   // AWS S3 (optional, for alternative file storage)
   AWS_REGION: z.string().optional(),

@@ -1,8 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/infrastructure/prisma";
-import { auth } from "@/lib/services/auth";
-import { headers } from "next/headers";
+import { requireSession } from "@/modules/auth/session";
 import { revalidatePath } from "next/cache";
 import { validate } from "@/lib/utils/validation";
 import { handleError } from "@/lib/utils/errors";
@@ -18,13 +17,7 @@ export async function createReport(formData: FormData) {
     return { error: validation.error };
   }
 
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return { error: "Unauthorized" };
-  }
+  const session = await requireSession();
 
   try {
     // Check if user already reported this message
@@ -59,11 +52,9 @@ export async function updateReportStatusAction(
   reportId: string,
   status: "REVIEWING" | "RESOLVED" | "DISMISSED"
 ) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await requireSession();
 
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (session.user.role !== "ADMIN") {
     return { error: "Unauthorized" };
   }
 
@@ -94,11 +85,9 @@ export async function updateReportStatusAction(
 }
 
 export async function getReports() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await requireSession();
 
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (session.user.role !== "ADMIN") {
     return [];
   }
 
