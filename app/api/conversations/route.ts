@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { prisma } from "@/lib/infrastructure/prisma";
+import { auth } from "@/lib/services/auth";
+import { logger } from "@/lib/infrastructure/logger";
 import { buildThreadSlug } from "@/modules/threads/service";
 
 export async function GET(req: NextRequest) {

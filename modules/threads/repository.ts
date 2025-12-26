@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/infrastructure/prisma";
 import { Prisma } from "@prisma/client";
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from "./types";
 import { buildThreadDTO, buildThreadDetailDTO } from "./service";
@@ -14,8 +14,8 @@ type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
 type SectionWithFullDetails = Prisma.SectionGetPayload<{
   include: {
     community: true;
-    messages: { 
-      include: { 
+    messages: {
+      include: {
         sender: {
           select: {
             id: true;
@@ -42,16 +42,29 @@ type SectionWithCommunityAndMessages = Prisma.SectionGetPayload<{
 
 export async function listThreads(): Promise<ThreadSummary[]> {
   const threads = await prisma.section.findMany({
+    where: {
+      deletedAt: null,
+    },
     include: {
       community: true,
       messages: {
+        where: {
+          deletedAt: null,
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+          },
+        },
         select: {
           senderId: true,
         },
       },
       _count: {
         select: {
-          messages: true,
+          messages: {
+            where: {
+              deletedAt: null,
+            },
+          },
         },
       },
     },
@@ -61,17 +74,31 @@ export async function listThreads(): Promise<ThreadSummary[]> {
     take: 50,
   });
 
-  return threads.map((thread: SectionWithCommunityAndCount) =>
-    buildThreadDTO(thread as unknown as ThreadRecord, thread._count.messages, thread.messages.length),
-  );
+  return threads.map((thread: SectionWithCommunityAndCount) => {
+    // Count unique active users from last 7 days
+    const uniqueActiveUsers = new Set(thread.messages.map((m) => m.senderId));
+    return buildThreadDTO(
+      thread as unknown as ThreadRecord,
+      thread._count.messages,
+      uniqueActiveUsers.size
+    );
+  });
 }
 
-export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null> {
-  const record = await prisma.section.findUnique({
-    where: { slug },
+export async function getThreadBySlug(
+  slug: string
+): Promise<ThreadDetail | null> {
+  const record = await prisma.section.findFirst({
+    where: {
+      slug,
+      deletedAt: null,
+    },
     include: {
       community: true,
       messages: {
+        where: {
+          deletedAt: null,
+        },
         include: {
           sender: {
             select: {
@@ -95,7 +122,11 @@ export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null
       },
       _count: {
         select: {
-          messages: true,
+          messages: {
+            where: {
+              deletedAt: null,
+            },
+          },
         },
       },
     },
@@ -111,7 +142,7 @@ export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null
     typedRecord._count.messages,
     new Set(typedRecord.messages.map((m) => m.senderId)).size,
     typedRecord.digests[0]?.summary,
-    typedRecord.newsletterSubscriptions?.length ?? 0,
+    typedRecord.newsletterSubscriptions?.length ?? 0
   );
 }
 
@@ -144,7 +175,11 @@ export async function createThread(payload: {
   });
 
   const typedThread = thread as SectionWithCommunityAndMessages;
-  return buildThreadDTO(typedThread as ThreadRecord, typedThread._count.messages, 0);
+  return buildThreadDTO(
+    typedThread as ThreadRecord,
+    typedThread._count.messages,
+    0
+  );
 }
 
 export async function deleteThread(threadId: string): Promise<void> {

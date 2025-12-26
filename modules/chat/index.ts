@@ -1,4 +1,10 @@
-export { ChatArea } from "./components/chat-area";
-export { MessageList } from "./components/message-list";
-export { PostMessageForm } from "./components/post-message-form";
-export { useThreadWebSocket } from "./hooks/use-websocket";
+/**
+ * Chat module barrel export
+ */
+
+export * from "./actions";
+export * from "./components/chat-area";
+export * from "./components/message-list";
+export * from "./components/post-message-form";
+export * from "./components/typing-indicator";
+export * from "./hooks/use-websocket";

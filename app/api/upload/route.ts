@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/services/auth";
 import { put } from "@vercel/blob";
-import { validateFileUpload, getFileCategory } from "@/lib/file-upload";
+import { validateFileUpload, getFileCategory } from "@/lib/utils/file-upload";
 import { uploadResponseSchema } from "@/lib/schemas/api";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function POST(req: NextRequest) {
   try {

@@ -7,12 +7,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoaderIcon } from "lucide-react";
-import { signIn, signUp } from "@/lib/auth-client";
+import { LoaderIcon, Eye, EyeOff } from "lucide-react";
+import { signIn, signUp } from "@/lib/services/auth-client";
 
 function UserAuthForm({
   className,
@@ -26,6 +26,7 @@ function UserAuthForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loadingState, setLoadingState] = useState<
     "email" | "github" | "google" | null
   >(null);
@@ -38,29 +39,64 @@ function UserAuthForm({
     setError(null);
 
     try {
+      console.log(`Attempting ${mode === "signup" ? "signup" : "login"} for:`, email);
+      
       if (mode === "signup") {
-        await signUp.email({
+        const result = await signUp.email({
           email,
           password,
-          name: name || email.split("@")[0], // Use email prefix if no name provided
+          name: name || email.split("@")[0],
           callbackURL: "/dashboard",
         });
-        router.push("/dashboard");
+        
+        console.log("Signup result:", result);
+        
+        if (result.error) {
+          setError(result.error.message || "Signup failed. Please try again.");
+          setLoadingState(null);
+          return;
+        }
+        
+        // Better-auth handles redirect via callbackURL, but we can also manually redirect
+        if (result.data) {
+          router.push("/dashboard");
+          router.refresh();
+        } else {
+          // If no error but no data, still redirect (better-auth might handle it)
+          router.push("/dashboard");
+          router.refresh();
+        }
       } else {
-        await signIn.email({
+        const result = await signIn.email({
           email,
           password,
           callbackURL: "/dashboard",
         });
-        router.push("/dashboard");
+        
+        console.log("Login result:", result);
+        
+        if (result.error) {
+          setError(result.error.message || "Login failed. Please check your credentials.");
+          setLoadingState(null);
+          return;
+        }
+        
+        // Better-auth handles redirect via callbackURL, but we can also manually redirect
+        if (result.data) {
+          router.push("/dashboard");
+          router.refresh();
+        } else {
+          // If no error but no data, still redirect (better-auth might handle it)
+          router.push("/dashboard");
+          router.refresh();
+        }
       }
     } catch (error) {
       console.error(`${mode === "signup" ? "Signup" : "Login"} failed:`, error);
       setError(
-        (error instanceof Error ? error.message : null) ||
+        (error instanceof Error ? error.message : String(error)) ||
           `${mode === "signup" ? "Signup" : "Login"} failed. Please try again.`
       );
-    } finally {
       setLoadingState(null);
     }
   };
@@ -69,18 +105,25 @@ function UserAuthForm({
     setLoadingState(provider);
     setError(null);
     try {
-      await signIn.social({
+      const result = await signIn.social({
         provider,
         callbackURL: "/dashboard",
       });
-      router.push("/dashboard");
+      
+      if (result.error) {
+        setError(result.error.message || "Social login failed. Please try again.");
+        setLoadingState(null);
+        return;
+      }
+      
+      // Social login redirects via OAuth flow, so we don't need to manually redirect
+      // The callbackURL will handle the redirect after OAuth completes
     } catch (error) {
       console.error("Social login failed:", error);
       setError(
-        (error instanceof Error ? error.message : null) ||
+        (error instanceof Error ? error.message : String(error)) ||
           "Social login failed. Please try again."
       );
-    } finally {
       setLoadingState(null);
     }
   };
@@ -130,21 +173,36 @@ function UserAuthForm({
             <Label className="sr-only" htmlFor="password">
               Password
             </Label>
-            <Input
-              id="password"
-              placeholder="Password"
-              type="password"
-              autoCapitalize="none"
-              autoComplete={
-                mode === "signup" ? "new-password" : "current-password"
-              }
-              autoCorrect="off"
-              disabled={loadingState !== null}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all"
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                placeholder="Password"
+                type={showPassword ? "text" : "password"}
+                autoCapitalize="none"
+                autoComplete={
+                  mode === "signup" ? "new-password" : "current-password"
+                }
+                autoCorrect="off"
+                disabled={loadingState !== null}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={loadingState !== null}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none focus:text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
           <Button
@@ -179,7 +237,7 @@ function UserAuthForm({
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Image
-              src="/github.png"
+              src="/github.jpg"
               alt="GitHub"
               width={16}
               height={16}
@@ -199,7 +257,7 @@ function UserAuthForm({
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Image
-              src="/google.png"
+              src="/google.jpg"
               alt="Google"
               width={16}
               height={16}

@@ -1,9 +1,9 @@
 import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
-import { initWebSocketServer } from "./lib/ws/server";
-import { logger } from "./lib/logger";
-import { getEnv } from "./lib/schemas/env";
+import { initWebSocketServer } from "./lib/infrastructure/websocket/server";
+import { logger } from "./lib/infrastructure/logger";
+import { getEnv } from "./lib/config/env";
 
 try {
   const env = getEnv();

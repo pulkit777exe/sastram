@@ -4,10 +4,10 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Gift, Smile, Sticker, Send, Loader2, FileIcon, X } from "lucide-react";
-import { postMessage } from "@/app/actions/message";
+import { postMessage } from "@/modules/messages/actions";
 import { toast } from "sonner";
-import { validateFile } from "@/lib/content-safety";
-import type { Message } from "@/lib/types";
+import { validateFile } from "@/lib/services/content-safety";
+import type { Message } from "@/lib/types/index";
 
 interface PostMessageFormProps {
   sectionId: string;
@@ -23,27 +23,34 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     formData.append("sectionId", sectionId);
-    
+  
     if (selectedFile) {
       formData.append("fileName", selectedFile.name);
       formData.append("fileType", selectedFile.type);
       formData.append("fileSize", selectedFile.size.toString());
     }
-
+  
     const result = await postMessage(formData);
     setLoading(false);
-
-    if (result.error) {
+  
+    if (result && "error" in result && result.error) {
       toast.error(result.error);
-    } else {
-      // toast.success("Message posted!");
+    } else if (result && "success" in result && result.success) {
       formRef.current?.reset();
       setSelectedFile(null);
+      
       if (result.data && onMessagePosted) {
-        onMessagePosted(result.data);
+        const transformedMessage = {
+          ...result.data,
+          attachments: result.data.attachments.map(att => ({
+            ...att,
+            size: att.size !== null ? Number(att.size) : null,
+          })),
+        };
+        onMessagePosted(transformedMessage);
       }
     }
-  }
+  }  
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

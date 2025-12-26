@@ -15,39 +15,50 @@ import {
   User,
   Mail,
   Flag,
+  Shield,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { LucideIcon } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
-export function Sidebar({ name, email, role }: { name: string; email: string; role: string }) {
+export function Sidebar({
+  name,
+  email,
+  role,
+}: {
+  name: string;
+  email: string;
+  role: string;
+}) {
   const pathname = usePathname();
   const router = useRouter();
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Load collapsed state from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("sidebarCollapsed");
-    if (saved !== null) {
-      setIsCollapsed(saved === "true");
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebarCollapsed");
+      return saved === "true";
     }
-  }, []);
+    return false;
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  // Save collapsed state to localStorage
   const toggleCollapse = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
-    localStorage.setItem("sidebarCollapsed", String(newState));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("sidebarCollapsed", String(newState));
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/dashboard/threads?q=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(
+        `/dashboard/threads?q=${encodeURIComponent(searchQuery.trim())}`
+      );
     }
   };
 
@@ -59,13 +70,24 @@ export function Sidebar({ name, email, role }: { name: string; email: string; ro
   ];
 
   if (role === "ADMIN") {
-    navItems.push({ icon: Flag, label: "Reports", href: "/dashboard/admin/reports" });
+    navItems.push(
+      {
+        icon: Flag,
+        label: "Reports",
+        href: "/dashboard/admin/reports",
+      },
+      {
+        icon: Shield,
+        label: "Moderation",
+        href: "/dashboard/admin/moderation",
+      }
+    );
   }
 
   return (
     <aside
       className={cn(
-        "bg-[#161618] rounded-2xl border border-zinc-800/50 flex flex-col overflow-hidden transition-all duration-300",
+        "bg-card rounded-2xl border border-border flex flex-col h-full transition-all duration-300 overflow-hidden",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
@@ -83,16 +105,25 @@ export function Sidebar({ name, email, role }: { name: string; email: string; ro
             <div className="w-3 h-3 border-2 border-black rounded-full" />
           </div>
         )}
-        <button
-          onClick={toggleCollapse}
-          className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
-        >
-          {isCollapsed ? (
+        {!isCollapsed && (
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={toggleCollapse}
+              className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
+            >
+              <PanelLeftClose size={18} />
+            </button>
+          </div>
+        )}
+        {isCollapsed && (
+          <button
+            onClick={toggleCollapse}
+            className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
+          >
             <PanelLeftOpen size={18} />
-          ) : (
-            <PanelLeftClose size={18} />
-          )}
-        </button>
+          </button>
+        )}
       </div>
 
       {!isCollapsed && (
@@ -121,23 +152,33 @@ export function Sidebar({ name, email, role }: { name: string; email: string; ro
             </form>
           </div>
 
-          <nav className="flex-1 px-2 space-y-1">
+          <nav className="flex-1 px-2 space-y-1 overflow-y-auto">
             {navItems.map((item) => (
               <NavItem
                 key={item.href}
                 icon={item.icon}
                 label={item.label}
                 href={item.href}
-                active={pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))}
+                active={
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href))
+                }
                 collapsed={false}
               />
             ))}
 
             <div className="mt-6 mb-2 px-3">
-              <p className="text-[10px] font-bold text-zinc-500 uppercase">Other</p>
+              <p className="text-[10px] font-bold text-zinc-500 uppercase">
+                Other
+              </p>
             </div>
 
-            <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false} />
+            <NavItem
+              icon={UserPlus}
+              label="Refer a Friend"
+              href="#"
+              collapsed={false}
+            />
           </nav>
 
           <div className="m-3 p-4 bg-linear-to-br from-[#1C1C1E] to-[#161618] border border-zinc-800 rounded-xl">
@@ -163,7 +204,10 @@ export function Sidebar({ name, email, role }: { name: string; email: string; ro
               icon={item.icon}
               label={item.label}
               href={item.href}
-              active={pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))}
+              active={
+                pathname === item.href ||
+                (item.href !== "/dashboard" && pathname.startsWith(item.href))
+              }
               collapsed={true}
             />
           ))}
@@ -231,7 +275,13 @@ interface NavItemProps {
   collapsed: boolean;
 }
 
-function NavItem({ icon: Icon, label, href, active = false, collapsed }: NavItemProps) {
+function NavItem({
+  icon: Icon,
+  label,
+  href,
+  active = false,
+  collapsed,
+}: NavItemProps) {
   if (href === "#") {
     return (
       <div

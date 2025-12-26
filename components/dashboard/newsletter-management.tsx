@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Mail, X } from "lucide-react";
-import { unsubscribeFromThread } from "@/app/actions/newsletter";
+import { unsubscribeFromThread } from "@/modules/newsletter/actions";
 import { toast } from "sonner";
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -39,9 +39,9 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
         return next;
       });
 
-      if (result.error) {
+      if (result && "error" in result && result.error) {
         toast.error(result.error);
-      } else {
+      } else if (result && "success" in result && result.success) {
         toast.success("Unsubscribed successfully!");
       }
     });
@@ -56,7 +56,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
           </div>
           <h3 className="text-lg font-semibold text-white mb-2">No Newsletter Subscriptions</h3>
           <p className="text-sm text-zinc-400 max-w-sm">
-            You haven't subscribed to any thread newsletters yet. Subscribe to threads to receive daily digests.
+            You haven&pos;t subscribed to any thread newsletters yet. Subscribe to threads to receive daily digests.
           </p>
           <Link href="/dashboard/threads">
             <Button className="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white">

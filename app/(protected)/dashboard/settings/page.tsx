@@ -1,9 +1,10 @@
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/services/auth";
 import { headers } from "next/headers";
 import { SettingsForm } from "@/components/dashboard/settings-form";
 import { NewsletterManagement } from "@/components/dashboard/newsletter-management";
-import { getUserNewsletterSubscriptions } from "@/app/actions/newsletter";
+import { getUserNewsletterSubscriptions } from "@/modules/newsletter/actions";
 import { SettingsTabs } from "@/components/dashboard/settings-tabs";
+import { prisma } from "@/lib/infrastructure/prisma";
 
 export default async function SettingsPage({
   searchParams,
@@ -24,6 +25,25 @@ export default async function SettingsPage({
 
   const tab = (await searchParams).tab || "profile";
   const subscriptions = await getUserNewsletterSubscriptions();
+  
+  // Fetch full user data including bio, location, etc.
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      bio: true,
+      location: true,
+      website: true,
+      twitter: true,
+      github: true,
+      linkedin: true,
+      image: true,
+      avatarUrl: true,
+      bannerUrl: true,
+    },
+  });
 
   return (
     <div className="space-y-10 max-w-4xl">
@@ -36,7 +56,7 @@ export default async function SettingsPage({
 
       <SettingsTabs activeTab={tab} />
 
-      {tab === "profile" && <SettingsForm user={session.user} />}
+      {tab === "profile" && user && <SettingsForm user={user} />}
       {tab === "newsletters" && <NewsletterManagement subscriptions={subscriptions} />}
     </div>
   );

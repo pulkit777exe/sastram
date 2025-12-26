@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Message } from "@/types";
-import { getMessages, sendMessage } from "@/lib/actions/chat";
+import { getMessages, sendMessage } from "@/modules/chat/actions";
 import { toast } from "sonner";
-import type { AttachmentInput } from "@/lib/types";
+import type { AttachmentInput } from "@/lib/types/index";
 
 export function useMessages(conversationId: string) {
   return useQuery({

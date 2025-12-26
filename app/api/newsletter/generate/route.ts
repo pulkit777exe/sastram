@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { processPendingDigests } from "@/modules/newsletter/service";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function POST() {
   try {

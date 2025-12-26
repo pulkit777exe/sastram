@@ -14,7 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Flag } from "lucide-react";
-import { createReport } from "@/app/actions/report";
+import { createReport } from "@/modules/reports/actions";
 import { toast } from "sonner";
 
 interface ReportButtonProps {
@@ -41,9 +41,9 @@ export function ReportButton({ messageId }: ReportButtonProps) {
     const result = await createReport(formData);
     setIsSubmitting(false);
 
-    if (result.error) {
+    if (result && "error" in result && result.error) {
       toast.error(result.error);
-    } else {
+    } else if (result && "success" in result && result.success) {
       toast.success("Report submitted successfully. Thank you for helping keep our community safe.");
       setReason("");
       setOpen(false);

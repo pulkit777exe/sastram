@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Reply, ChevronDown, ChevronRight, FileIcon, Download, Image as ImageIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { Message, Attachment } from "@/lib/types";
-import { postMessage } from "@/app/actions/message";
+import type { Message, Attachment } from "@/lib/types/index";
+import { postMessage } from "@/modules/messages/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ReportButton } from "./report-button";
@@ -109,9 +109,9 @@ function CommentItem({ message, allMessages, sectionId, currentUser, depth, pare
     const result = await postMessage(formData);
     setIsSubmitting(false);
 
-    if (result.error) {
+    if (result && "error" in result && result.error) {
       toast.error(result.error);
-    } else {
+    } else if (result && "success" in result && result.success) {
       toast.success("Reply posted!");
       setReplyContent("");
       setIsReplying(false);

@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/infrastructure/prisma";
+import { auth } from "@/lib/services/auth";
 import { headers } from "next/headers";
 import { MessageGrid } from "@/components/dashboard/message-grid";
 import { Inbox } from "lucide-react";
@@ -19,7 +19,10 @@ export default async function MessagesPage() {
   }
 
   const userMessages = await prisma.message.findMany({
-    where: { senderId: session.user.id },
+    where: {
+      senderId: session.user.id,
+      deletedAt: null, // Only show non-deleted messages
+    },
     include: {
       sender: { select: { name: true, image: true } },
       section: { select: { id: true, name: true, slug: true } },
@@ -36,7 +39,9 @@ export default async function MessagesPage() {
           <Inbox size={14} />
           <span>Personal Feed</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">My Activity</h1>
+        <h1 className="text-4xl font-bold text-white tracking-tight">
+          My Activity
+        </h1>
         <p className="text-zinc-500 mt-2">
           A chronological overview of your contributions and discussions.
         </p>

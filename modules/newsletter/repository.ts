@@ -1,5 +1,5 @@
 import { addDays } from "date-fns";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/infrastructure/prisma";
 
 export async function subscribeToThreadNewsletter({
   threadId,

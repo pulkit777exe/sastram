@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/infrastructure/prisma";
 
 /**
  * Queue a message for a user who is offline

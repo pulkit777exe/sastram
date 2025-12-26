@@ -32,12 +32,20 @@ export default async function AdminDashboardPage() {
               sync instantly with TanStack Query powered widgets.
             </p>
           </div>
-          <Link href="/dashboard/admin/reports">
-            <Button className="bg-red-600 hover:bg-red-500 text-white">
-              <Flag className="w-4 h-4 mr-2" />
-              View Reports
-            </Button>
-          </Link>
+          <div className="flex gap-3">
+            <Link href="/dashboard/admin/reports">
+              <Button className="bg-red-600 hover:bg-red-500 text-white">
+                <Flag className="w-4 h-4 mr-2" />
+                View Reports
+              </Button>
+            </Link>
+            <Link href="/dashboard/admin/moderation">
+              <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+                <Flag className="w-4 h-4 mr-2" />
+                Moderation
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -137,7 +145,7 @@ export default async function AdminDashboardPage() {
                 const deleteAction = deleteThreadAction.bind(null, thread.id);
                 return (
                   <tr key={thread.id} className="text-slate-700">
-                    <td className="py-3 font-medium">{thread.title}</td>
+                    <td className="py-3 font-medium">{thread.name}</td>
                     <td className="py-3 text-slate-500">{thread.community?.title ?? "—"}</td>
                     <td className="py-3 text-slate-500">{thread.messageCount}</td>
                     <td className="py-3">

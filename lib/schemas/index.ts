@@ -3,8 +3,7 @@
  * Import schemas from this file for consistency
  */
 
-// Environment schemas
-export * from "./env";
+// Environment schemas moved to lib/config/env.ts
 
 // WebSocket schemas
 export * from "./websocket";

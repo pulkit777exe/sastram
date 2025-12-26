@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/infrastructure/prisma";
 import { Input } from "@/components/ui/input";
 import { Search, Hash } from "lucide-react";
 import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
@@ -13,6 +13,7 @@ export default async function TopicsPage({
 
   const sections = await prisma.section.findMany({
     where: {
+      deletedAt: null,
       OR: [
         { name: { contains: query, mode: "insensitive" } },
         { description: { contains: query, mode: "insensitive" } },
@@ -20,10 +21,19 @@ export default async function TopicsPage({
     },
     include: {
       messages: {
+        where: {
+          deletedAt: null,
+        },
         select: { senderId: true },
       },
       _count: {
-        select: { messages: true },
+        select: {
+          messages: {
+            where: {
+              deletedAt: null,
+            },
+          },
+        },
       },
     },
     orderBy: {

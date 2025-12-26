@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThreadInsights } from "@/components/dashboard/thread-insights";
 import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 export default async function DashboardPage() {
   const session = await requireSession();
@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   const threadTopics = threads.map((thread) => ({
     id: thread.id,
     slug: thread.slug,
-    title: thread.title,
+    title: thread.name,
     description: thread.description || "No description",
     activeUsers: thread.activeUsers,
     messagesCount: thread.messageCount,

@@ -12,19 +12,45 @@ model User {
   emailVerified           Boolean                  @default(false)
   name                    String?
   image                   String?
+  bio                     String?
+  location                String?
+  website                 String?
+  twitter                 String?
+  github                  String?
+  linkedin                String?
+  avatarUrl               String?
+  bannerUrl               String?
+  preferences             Json?                    @default("{}")
+  status                  UserStatus               @default(ACTIVE)
+  role                    Role                     @default(USER)
+  lastSeenAt              DateTime?
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
-  role                    Role                     @default(USER)
+  deletedAt               DateTime?
+  
+  // Relations
   accounts                Account[]
-  communities             Community[]              @relation("CommunityCreator")
-  messages                Message[]
-  newsletterSubscriptions NewsletterSubscription[]
-  sections                Section[]                @relation("SectionCreator")
   sessions                Session[]
-  reports                 Report[]                  @relation("ReportReporter")
+  communities             Community[]              @relation("CommunityCreator")
+  sections                Section[]                @relation("SectionCreator")
+  messages                Message[]
+  reactions               Reaction[]
+  sectionMemberships      SectionMember[]
+  readReceipts            ReadReceipt[]
+  notifications           Notification[]
+  notificationSettings    NotificationSettings[]
+  newsletterSubscriptions NewsletterSubscription[]
+  reports                 Report[]                 @relation("ReportReporter")
   reportedMessages        Report[]                 @relation("ReportedMessage")
   sentInvitations         ThreadInvitation[]       @relation("InvitationSender")
+  bans                    UserBan[]                @relation("BannedUser")
+  issuedBans              UserBan[]                @relation("BanIssuer")
+  auditLogs               AuditLog[]               @relation("AuditLogUser")
+  performedActions        AuditLog[]               @relation("AuditLogPerformer")
 
+  @@index([email])
+  @@index([status])
+  @@index([lastSeenAt])
   @@map("users")
 }
 
@@ -33,12 +59,18 @@ model Community {
   title       String
   slug        String    @unique
   description String?
+  visibility  CommunityVisibility @default(PUBLIC)
+  settings    Json?     @default("{}")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
   createdBy   String
+  
   creator     User      @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  threads     Section[]
+  sections    Section[]
 
+  @@index([slug])
+  @@index([visibility])
   @@map("communities")
 }
 
@@ -51,8 +83,11 @@ model Session {
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([token])
   @@map("sessions")
 }
 
@@ -68,9 +103,11 @@ model Account {
   password     String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, accountId])
+  @@index([userId])
   @@map("accounts")
 }
 
@@ -93,39 +130,109 @@ model Section {
   description             String?
   summary                 String?
   icon                    String?
+  visibility              SectionVisibility        @default(PUBLIC)
+  settings                Json?                    @default("{}")
+  messageCount            Int                      @default(0)
+  memberCount             Int                      @default(0)
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
+  deletedAt               DateTime?
   createdBy               String
   communityId             String?
-  messages                Message[]
-  newsletterSubscriptions NewsletterSubscription[]
-  community               Community?               @relation(fields: [communityId], references: [id])
+  
+  // Relations
   creator                 User                     @relation("SectionCreator", fields: [createdBy], references: [id])
+  community               Community?               @relation(fields: [communityId], references: [id])
+  messages                Message[]
+  members                 SectionMember[]
+  readReceipts            ReadReceipt[]
+  newsletterSubscriptions NewsletterSubscription[]
   digests                 ThreadDigest[]
   invitations             ThreadInvitation[]
+  bans                    UserBan[]                @relation("ThreadBans")
 
+  @@index([slug])
+  @@index([visibility])
+  @@index([communityId])
+  @@index([createdBy])
   @@map("sections")
+}
+
+model SectionMember {
+  id        String           @id @default(cuid())
+  sectionId String
+  userId    String
+  role      SectionRole      @default(MEMBER)
+  status    MemberStatus     @default(ACTIVE)
+  joinedAt  DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  section   Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, userId])
+  @@index([sectionId])
+  @@index([userId])
+  @@index([role])
+  @@map("section_members")
 }
 
 model Message {
   id          String       @id @default(cuid())
-  content     String
+  content     String       @db.Text
   sectionId   String
   senderId    String
   parentId    String?
+  depth       Int          @default(0)
+  isEdited    Boolean      @default(false)
+  isPinned    Boolean      @default(false)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  attachments Attachment[]
-  reports     Report[]
+  deletedAt   DateTime?
+  
+  // Relations
   section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   sender      User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
   parent      Message?     @relation("MessageReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies     Message[]    @relation("MessageReplies")
+  attachments Attachment[]
+  reactions   Reaction[]
+  readReceipts ReadReceipt[]
+  reports     Report[]
+  editHistory MessageEdit[]
+  mentions    MessageMention[]
 
   @@index([sectionId])
   @@index([senderId])
   @@index([parentId])
+  @@index([createdAt])
+  @@index([deletedAt])
   @@map("messages")
+}
+
+model MessageEdit {
+  id          String   @id @default(cuid())
+  messageId   String
+  content     String   @db.Text
+  editedAt    DateTime @default(now())
+  
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("message_edits")
+}
+
+model MessageMention {
+  id          String   @id @default(cuid())
+  messageId   String
+  userId      String
+  createdAt   DateTime @default(now())
+  
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@map("message_mentions")
 }
 
 model Attachment {
@@ -134,11 +241,85 @@ model Attachment {
   url       String
   type      AttachmentType
   name      String?
-  size      Int?
+  mimeType  String?
+  size      BigInt?
   createdAt DateTime       @default(now())
+  
   message   Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
+  @@index([messageId])
   @@map("attachments")
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
+  @@map("reactions")
+}
+
+model ReadReceipt {
+  id           String   @id @default(cuid())
+  sectionId    String
+  userId       String
+  lastReadMessageId String?
+  lastReadAt   DateTime @default(now())
+  
+  section      Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastMessage  Message? @relation(fields: [lastReadMessageId], references: [id], onDelete: SetNull)
+
+  @@unique([sectionId, userId])
+  @@index([userId])
+  @@index([lastReadAt])
+  @@map("read_receipts")
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String?
+  data        Json?
+  isRead      Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  readAt      DateTime?
+  
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationSettings {
+  id                String   @id @default(cuid())
+  userId            String
+  sectionId         String?
+  emailEnabled      Boolean  @default(true)
+  pushEnabled       Boolean  @default(true)
+  mentionsEnabled   Boolean  @default(true)
+  repliesEnabled    Boolean  @default(true)
+  digestEnabled     Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sectionId])
+  @@index([userId])
+  @@map("notification_settings")
 }
 
 model NewsletterSubscription {
@@ -146,11 +327,17 @@ model NewsletterSubscription {
   threadId  String
   userId    String?
   email     String
+  frequency DigestFrequency @default(WEEKLY)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
   thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
 
   @@unique([threadId, email])
+  @@index([threadId])
+  @@index([userId])
   @@map("newsletter_subscriptions")
 }
 
@@ -160,43 +347,31 @@ model ThreadDigest {
   scheduledFor DateTime
   processedAt  DateTime?
   status       DigestStatus @default(PENDING)
-  summary      String?
+  summary      String?      @db.Text
   emailCount   Int          @default(0)
   createdAt    DateTime     @default(now())
+  
   thread       Section      @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
-  @@unique([threadId, scheduledFor], name: "threadId_scheduledFor")
+  @@unique([threadId, scheduledFor])
+  @@index([status])
+  @@index([scheduledFor])
   @@map("thread_digests")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
-enum AttachmentType {
-  IMAGE
-  GIF
-  FILE
-}
-
-enum DigestStatus {
-  PENDING
-  PROCESSING
-  SENT
-  FAILED
-}
-
 model Report {
-  id          String      @id @default(cuid())
+  id         String       @id @default(cuid())
   messageId  String
   reporterId String
   reason     String
+  details    String?      @db.Text
   status     ReportStatus @default(PENDING)
   resolvedBy String?
   resolvedAt DateTime?
+  resolution String?      @db.Text
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+  
   message    Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
   reporter   User         @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
   resolver   User?        @relation("ReportedMessage", fields: [resolvedBy], references: [id])
@@ -207,6 +382,138 @@ model Report {
   @@map("reports")
 }
 
+model ThreadInvitation {
+  id        String           @id @default(cuid())
+  threadId  String
+  senderId  String
+  email     String
+  message   String?          @db.Text
+  status    InvitationStatus @default(PENDING)
+  token     String?          @unique
+  expiresAt DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  thread    Section          @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender    User             @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, email, senderId])
+  @@index([threadId])
+  @@index([senderId])
+  @@index([status])
+  @@index([token])
+  @@map("thread_invitations")
+}
+
+model UserBan {
+  id           String    @id @default(cuid())
+  userId       String
+  bannedBy     String
+  reason       String
+  customReason String?   @db.Text
+  threadId     String?
+  isActive     Boolean   @default(true)
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  user         User      @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
+  issuer       User      @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
+  thread       Section?  @relation("ThreadBans", fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bannedBy])
+  @@index([threadId])
+  @@index([expiresAt])
+  @@index([isActive])
+  @@map("user_bans")
+}
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  action       AuditAction
+  entityType   String
+  entityId     String
+  userId       String?
+  performedBy  String?
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime    @default(now())
+  
+  user         User?       @relation("AuditLogUser", fields: [userId], references: [id])
+  performer    User?       @relation("AuditLogPerformer", fields: [performedBy], references: [id])
+
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([userId])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Enums
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum CommunityVisibility {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+enum SectionVisibility {
+  PUBLIC
+  PRIVATE
+  RESTRICTED
+}
+
+enum SectionRole {
+  OWNER
+  MODERATOR
+  MEMBER
+  VIEWER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INVITED
+  LEFT
+  REMOVED
+}
+
+enum AttachmentType {
+  IMAGE
+  GIF
+  VIDEO
+  FILE
+  AUDIO
+}
+
+enum DigestStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+enum DigestFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 enum ReportStatus {
   PENDING
   REVIEWING
@@ -214,28 +521,41 @@ enum ReportStatus {
   DISMISSED
 }
 
-model ThreadInvitation {
-  id          String   @id @default(cuid())
-  threadId    String
-  senderId    String
-  email       String
-  message     String?
-  status      InvitationStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  thread      Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender      User     @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@unique([threadId, email, senderId])
-  @@index([threadId])
-  @@index([senderId])
-  @@index([status])
-  @@map("thread_invitations")
-}
-
 enum InvitationStatus {
   PENDING
   SENT
   ACCEPTED
   DECLINED
+  EXPIRED
+}
+
+enum NotificationType {
+  MESSAGE
+  REPLY
+  MENTION
+  REACTION
+  INVITATION
+  DIGEST
+  REPORT
+  BAN
+  SYSTEM
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_BANNED
+  USER_UNBANNED
+  MESSAGE_CREATED
+  MESSAGE_UPDATED
+  MESSAGE_DELETED
+  SECTION_CREATED
+  SECTION_UPDATED
+  SECTION_DELETED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+  MEMBER_ROLE_CHANGED
+  REPORT_CREATED
+  REPORT_RESOLVED
 }

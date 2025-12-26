@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useFormStatus } from "react-dom";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 interface ThreadSubscribeButtonProps {
   subscribed: boolean;

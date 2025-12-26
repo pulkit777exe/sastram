@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/infrastructure/prisma";
 import { Prisma } from "@prisma/client";
 import type { CommunitySummary } from "./types";
 
@@ -6,13 +6,18 @@ import type { CommunitySummary } from "./types";
 // Using @ts-expect-error where Prisma's TypeScript has limitations
 type CommunityWithCount = Prisma.CommunityGetPayload<{
   include: {
-    _count: { select: {threads: true } };
+    _count: { select: { sections: true } };
   };
 }>;
 
 export function buildCommunityDTO(
-  community: { id: string; slug: string; title: string; description: string | null },
-  threadCount: number,
+  community: {
+    id: string;
+    slug: string;
+    title: string;
+    description: string | null;
+  },
+  threadCount: number
 ): CommunitySummary {
   return {
     id: community.id,
@@ -25,10 +30,13 @@ export function buildCommunityDTO(
 
 export async function listCommunities(): Promise<CommunitySummary[]> {
   const communities = await prisma.community.findMany({
+    where: {
+      deletedAt: null,
+    },
     include: {
       _count: {
         select: {
-          threads: true,
+          sections: true,
         },
       },
     },
@@ -37,8 +45,8 @@ export async function listCommunities(): Promise<CommunitySummary[]> {
     },
   });
 
-  return communities.map((community: CommunityWithCount) => 
-    buildCommunityDTO(community, community._count.threads)
+  return communities.map((community: CommunityWithCount) =>
+    buildCommunityDTO(community, community._count.sections)
   );
 }
 

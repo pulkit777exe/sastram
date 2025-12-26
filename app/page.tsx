@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/services/auth";
 import { headers } from "next/headers";
 
 export default async function Home() {

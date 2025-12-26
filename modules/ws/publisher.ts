@@ -1,5 +1,5 @@
-import { publishThreadEvent } from "@/lib/ws/server";
-import type { MentionData } from "@/lib/types";
+import { publishThreadEvent } from "@/lib/infrastructure/websocket/server";
+import type { MentionData } from "@/lib/types/index";
 
 export function emitThreadMessage(threadId: string, payload: unknown) {
   publishThreadEvent(threadId, {

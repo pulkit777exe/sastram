@@ -1,5 +1,5 @@
 import { requireSession, assertAdmin } from "@/modules/auth/session";
-import { getReports } from "@/app/actions/report";
+import { getReports } from "@/modules/reports/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flag, CheckCircle, Eye } from "lucide-react";

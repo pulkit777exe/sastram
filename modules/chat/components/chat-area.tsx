@@ -5,9 +5,9 @@ import { MessageList } from "./message-list";
 import { PostMessageForm } from "./post-message-form";
 import { TypingIndicatorComponent } from "./typing-indicator";
 import { useThreadWebSocket } from "../hooks/use-websocket";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/infrastructure/logger";
 import { Hash, Bell, Pin, Users, Inbox, HelpCircle } from "lucide-react";
-import type { Message } from "@/lib/types";
+import type { Message } from "@/lib/types/index";
 
 interface ChatAreaProps {
   initialMessages: Message[];

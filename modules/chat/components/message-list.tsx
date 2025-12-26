@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FileIcon, Download } from "lucide-react";
-import type { Message, Attachment } from "@/lib/types";
+import type { Message, Attachment } from "@/lib/types/index";
 import Image from "next/image";
 
 interface MessageListProps {

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Eye, CheckCircle, XCircle } from "lucide-react";
-import { updateReportStatusAction } from "@/app/actions/report";
+import { updateReportStatusAction } from "@/modules/reports/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -11,9 +11,9 @@ export function ReportActions({ reportId }: { reportId: string }) {
 
   async function handleStatusUpdate(status: "REVIEWING" | "RESOLVED" | "DISMISSED") {
     const result = await updateReportStatusAction(reportId, status);
-    if (result.error) {
+    if (result && "error" in result && result.error) {
       toast.error(result.error);
-    } else {
+    } else if (result && "success" in result && result.success) {
       toast.success(`Report ${status.toLowerCase()}`);
       router.refresh();
     }

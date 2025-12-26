@@ -1,6 +1,6 @@
 "use client";
 
-import type { TypingIndicator } from "@/lib/types";
+import type { TypingIndicator } from "@/lib/types/index";
 
 interface TypingIndicatorProps {
   users: TypingIndicator[];

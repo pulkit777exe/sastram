@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
-import { createTopic } from "@/app/actions/topic";
+import { createTopic } from "@/modules/topics/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -29,9 +29,9 @@ export function CreateTopicButton() {
     const result = await createTopic(formData);
     setLoading(false);
 
-    if (result.error) {
+    if (result && "error" in result && result.error) {
       toast.error(result.error);
-    } else {
+    } else if (result && "success" in result && result.success) {
       toast.success("Topic created successfully!");
       setOpen(false);
       router.refresh();

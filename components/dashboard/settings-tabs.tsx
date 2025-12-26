@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { User, Mail } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 export function SettingsTabs({ activeTab }: { activeTab: string }) {
   const router = useRouter();

@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/services/auth";
 import { headers } from "next/headers";
-import { aiService } from "@/lib/ai";
-import { logger } from "@/lib/logger";
+import { aiService } from "@/lib/services/ai";
+import { logger } from "@/lib/infrastructure/logger";
 import {
   completeDigest,
   getDueDigests,

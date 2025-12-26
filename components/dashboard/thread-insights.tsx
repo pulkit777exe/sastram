@@ -6,7 +6,7 @@ import { fetchThreads } from "@/modules/threads/api-client";
 import type { ThreadSummary } from "@/modules/threads/types";
 import { useThreadViewStore, selectThread } from "@/stores/thread-view-store";
 import { Flame, ArrowUpRight, Activity } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 interface ThreadInsightsProps {
   initialThreads: ThreadSummary[];
@@ -81,7 +81,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
                       : "text-zinc-300 group-hover/item:text-white"
                   )}
                 >
-                  {thread.title}
+                  {thread.name}
                 </span>
                 <div className="flex items-center gap-2">
                   <Activity
