@@ -56,11 +56,12 @@ export default async function ThreadPage({
         name: att.name ?? null,
         url: att.url,
         type: att.type,
-        size: att.size ?? null
-          ? typeof att.size === "string"
-            ? parseInt(att.size, 10)
-            : Number(att.size)
-          : null,
+        size:
+          att.size ?? null
+            ? typeof att.size === "string"
+              ? parseInt(att.size, 10)
+              : Number(att.size)
+            : null,
       })),
     })
   );
@@ -144,7 +145,10 @@ export default async function ThreadPage({
           </div>
 
           <form action={subscribeAction} className="mt-8">
-            <ThreadSubscribeButton subscribed={subscribed} />
+            <ThreadSubscribeButton
+              subscribed={subscribed}
+              threadName={thread.name}
+            />
           </form>
 
           <div className="mt-4">

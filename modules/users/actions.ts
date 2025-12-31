@@ -8,12 +8,16 @@ import { validate } from "@/lib/utils/validation";
 import { handleError } from "@/lib/utils/errors";
 import { updateUserProfileSchema, updateProfilePrivacySchema } from "./schemas";
 import { FILE_LIMITS } from "@/lib/config/constants";
-import { getPublicProfile, getUserThreads, updateProfilePrivacy } from "./repository";
+import {
+  getPublicProfile,
+  getUserThreads,
+  updateProfilePrivacy,
+} from "./repository";
 import { ProfilePrivacy } from "@prisma/client";
 
 export async function updateUserProfile(formData: FormData) {
   const session = await requireSession();
-  
+
   const data = {
     name: formData.get("name") as string,
     bio: formData.get("bio") as string,
@@ -153,7 +157,11 @@ export async function getUserProfile(userId: string) {
   }
 }
 
-export async function getUserThreadsAction(userId: string, limit?: number, offset?: number) {
+export async function getUserThreadsAction(
+  userId: string,
+  limit?: number,
+  offset?: number
+) {
   try {
     const result = await getUserThreads(userId, limit || 20, offset || 0);
     return { success: true, data: result };
@@ -171,7 +179,10 @@ export async function updateProfilePrivacyAction(privacy: string) {
   }
 
   try {
-    await updateProfilePrivacy(session.user.id, validation.data.privacy as ProfilePrivacy);
+    await updateProfilePrivacy(
+      session.user.id,
+      validation.data.privacy as ProfilePrivacy
+    );
     revalidatePath("/dashboard/settings");
     revalidatePath(`/user/${session.user.id}`);
     return { success: true };
@@ -179,4 +190,3 @@ export async function updateProfilePrivacyAction(privacy: string) {
     return handleError(error);
   }
 }
-

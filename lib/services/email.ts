@@ -20,7 +20,7 @@ export async function sendEmail({
   subject,
   html,
   text,
-  from = "Sastram <noreply@sastram.com>",
+  from = "Sastram <noreply@resend.com>",
 }: EmailOptions) {
   try {
     const { data, error } = await resend.emails.send({
@@ -36,7 +36,9 @@ export async function sendEmail({
       throw new Error(`Email sending failed: ${error.message}`);
     }
 
-    logger.info(`Email sent successfully to ${Array.isArray(to) ? to.join(", ") : to}`);
+    logger.info(
+      `Email sent successfully to ${Array.isArray(to) ? to.join(", ") : to}`
+    );
     return data;
   } catch (error) {
     logger.error("Error sending email:", error);
@@ -44,22 +46,68 @@ export async function sendEmail({
   }
 }
 
+export async function sendOTPEmail(
+  to: string,
+  otp: string,
+  type: "sign-in" | "email-verification" | "forget-password"
+) {
+  const typeConfig = {
+    "sign-in": {
+      title: "Sign In to Sastram",
+      subtitle: "Your one-time password is ready",
+      action: "sign in",
+      subject: "Your Sastram Sign-In Code",
+    },
+    "email-verification": {
+      title: "Verify Your Email",
+      subtitle: "Confirm your email address",
+      action: "email verification",
+      subject: "Verify Your Sastram Email",
+    },
+    "forget-password": {
+      title: "Reset Your Password",
+      subtitle: "Password recovery request",
+      action: "password reset",
+      subject: "Reset Your Sastram Password",
+    },
+  };
+
+  const config = typeConfig[type];
+  const html = await loadTemplate("otp-email.html", {
+    title: config.title,
+    subtitle: config.subtitle,
+    action: config.action,
+    otp,
+    appUrl: env.NEXT_PUBLIC_APP_URL,
+  });
+
+  return sendEmail({
+    to,
+    subject: config.subject,
+    html,
+  });
+}
+
 export async function sendNewsletterDigest(
   to: string,
   threadName: string,
   summary: string,
-  threadUrl: string
+  threadUrl: string,
+  messageCount?: number,
+  participantCount?: number
 ) {
   const html = await loadTemplate("newsletter-digest.html", {
     threadName,
     summary,
     threadUrl,
+    messageCount: String(messageCount || 0),
+    participantCount: String(participantCount || 0),
     unsubscribeUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?tab=newsletters`,
   });
 
   return sendEmail({
     to,
-    subject: `Daily Digest: ${threadName}`,
+    subject: `Thread Digest: ${threadName}`,
     html,
   });
 }
@@ -148,9 +196,18 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   });
 }
 
-async function loadTemplate(templateName: string, variables: Record<string, string>): Promise<string> {
+async function loadTemplate(
+  templateName: string,
+  variables: Record<string, string>
+): Promise<string> {
   try {
-    const templatePath = path.join(process.cwd(), "lib", "templates", "email", templateName);
+    const templatePath = path.join(
+      process.cwd(),
+      "lib",
+      "templates",
+      "email",
+      templateName
+    );
     let html = await fs.readFile(templatePath, "utf-8");
 
     // Replace variables in template
@@ -210,4 +267,3 @@ function generateFallbackTemplate(
   const template = templates[templateName] || (() => "<p>Email content</p>");
   return `<!DOCTYPE html><html><body>${template(variables)}</body></html>`;
 }
-

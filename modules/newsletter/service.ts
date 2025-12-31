@@ -16,7 +16,13 @@ import {
   subscribeToThreadNewsletter,
 } from "./repository";
 
-export async function subscribeToThread({ threadId, slug }: { threadId: string; slug: string }) {
+export async function subscribeToThread({
+  threadId,
+  slug,
+}: {
+  threadId: string;
+  slug: string;
+}) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -41,20 +47,38 @@ export async function processPendingDigests() {
   for (const digest of digests) {
     await markDigestProcessing(digest.id);
     const transcript = await getThreadTranscript(digest.threadId);
+
+    // Get unique participants
+    const uniqueParticipants = new Set(
+      transcript.map((m) => m.sender?.id || m.sender?.email).filter(Boolean)
+    );
+
     const content = transcript
       .map(
         (message) =>
-          `${message.sender?.name || message.sender?.email || "Anonymous"}: ${message.content}`,
+          `${message.sender?.name || message.sender?.email || "Anonymous"}: ${
+            message.content
+          }`
       )
       .join("\n");
 
-    const summary = await aiService.generateSummary(content);
+    let summary: string;
+    try {
+      summary = await aiService.generateSummary(content);
+    } catch (error) {
+      logger.error(
+        `Failed to generate AI summary for thread ${digest.threadId}:`,
+        error
+      );
+      summary = `This thread had ${transcript.length} messages from ${uniqueParticipants.size} participants. Join the discussion to see what's happening!`;
+    }
+
     const subscribers = await listThreadSubscribers(digest.threadId);
 
     // Get thread info for email
     const thread = await prisma.section.findUnique({
       where: { id: digest.threadId },
-      select: { name: true, slug: true },
+      select: { name: true, slug: true, messageCount: true },
     });
 
     if (!thread) {
@@ -75,15 +99,25 @@ export async function processPendingDigests() {
           subscriber.email,
           thread.name,
           summary,
-          threadUrl
+          threadUrl,
+          thread.messageCount || transcript.length,
+          uniqueParticipants.size
         );
         emailCount++;
+        logger.info(
+          `Sent digest email to ${subscriber.email} for thread ${thread.name}`
+        );
       } catch (error) {
-        logger.error(`Failed to send digest email to ${subscriber.email}:`, error);
+        logger.error(
+          `Failed to send digest email to ${subscriber.email}:`,
+          error
+        );
       }
     }
 
     await completeDigest(digest.id, summary, emailCount);
+    logger.info(
+      `Completed digest for thread ${thread.name}: sent ${emailCount} emails`
+    );
   }
 }
-

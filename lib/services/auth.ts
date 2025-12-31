@@ -4,6 +4,8 @@ import { emailOTP } from "better-auth/plugins";
 import { oAuthProxy } from "better-auth/plugins";
 import { prisma } from "@/lib/infrastructure/prisma";
 import { getEnv } from "@/lib/config/env";
+import { sendOTPEmail } from "@/lib/services/email";
+import { logger } from "@/lib/infrastructure/logger";
 
 const env = getEnv();
 
@@ -34,20 +36,20 @@ export const auth = betterAuth({
     }),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
-        if (type === "sign-in") {
-          if (!email) return;
-          // Send the OTP for sign in
-          console.log("Sign in OTP:", otp);
-        } else if (type === "email-verification") {
-          if (!email || !otp) return;
-          // Send the OTP for email verification
-          console.log("Email verification OTP:", otp);
-        } else {
-          // Send the OTP for password reset
-          console.log("Password reset OTP:", otp);
+        if (!email) {
+          logger.warn("OTP send requested but no email provided");
+          return;
+        }
+
+        try {
+          logger.info(`Sending ${type} OTP to ${email}`);
+          await sendOTPEmail(email, otp, type);
+          logger.info(`Successfully sent ${type} OTP to ${email}`);
+        } catch (error) {
+          logger.error(`Failed to send ${type} OTP to ${email}:`, error);
+          console.log(`[DEV FALLBACK] ${type} OTP for ${email}: ${otp}`);
         }
       },
     }),
   ],
 });
-

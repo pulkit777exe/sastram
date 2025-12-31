@@ -312,7 +312,7 @@ function NavItem({
       className={cn(
         "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
         active
-          ? "bg-gradient-to-r from-primary/10 to-primary/5 text-foreground shadow-sm border-r-2 border-primary"
+          ? "bg-linear-to-r from-primary/10 to-primary/5 text-foreground shadow-sm border-r-2 border-primary"
           : "text-muted-foreground hover:text-foreground hover:bg-accent",
         collapsed && "justify-center"
       )}

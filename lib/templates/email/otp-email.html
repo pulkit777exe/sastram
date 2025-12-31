@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Verification Code</title>
+  </head>
+  <body
+    style="
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0;
+      background-color: #f5f5f5;
+    "
+  >
+    <div
+      style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 30px;
+        text-align: center;
+      "
+    >
+      <div
+        style="
+          display: inline-block;
+          background: rgba(255, 255, 255, 0.15);
+          padding: 12px 24px;
+          border-radius: 50px;
+          margin-bottom: 20px;
+        "
+      >
+        <span
+          style="
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+          "
+          >Sastram</span
+        >
+      </div>
+      <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600">
+        {{title}}
+      </h1>
+      <p
+        style="
+          color: rgba(255, 255, 255, 0.85);
+          margin: 10px 0 0 0;
+          font-size: 16px;
+        "
+      >
+        {{subtitle}}
+      </p>
+    </div>
+
+    <div
+      style="
+        background: white;
+        padding: 40px 30px;
+        border-radius: 0 0 16px 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      "
+    >
+      <p style="color: #555; font-size: 16px; margin: 0 0 30px 0">
+        Use the verification code below to complete your {{action}}. This code
+        will expire in <strong>10 minutes</strong>.
+      </p>
+
+      <div
+        style="
+          background: linear-gradient(135deg, #f8f9ff 0%, #f0f1ff 100%);
+          border: 2px dashed #667eea;
+          border-radius: 16px;
+          padding: 30px;
+          text-align: center;
+          margin: 30px 0;
+        "
+      >
+        <p
+          style="
+            color: #667eea;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin: 0 0 15px 0;
+          "
+        >
+          Your Verification Code
+        </p>
+        <div
+          style="
+            font-family: 'Courier New', monospace;
+            font-size: 42px;
+            font-weight: bold;
+            letter-spacing: 12px;
+            color: #1a1a2e;
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            display: inline-block;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+          "
+        >
+          {{otp}}
+        </div>
+      </div>
+
+      <div
+        style="
+          background: #fffbeb;
+          border-left: 4px solid #f59e0b;
+          padding: 16px 20px;
+          border-radius: 0 8px 8px 0;
+          margin: 30px 0;
+        "
+      >
+        <p style="color: #92400e; font-size: 14px; margin: 0">
+          <strong>🔒 Security Notice:</strong> Never share this code with
+          anyone. Sastram will never ask for your verification code via phone or
+          chat.
+        </p>
+      </div>
+
+      <p
+        style="
+          color: #888;
+          font-size: 14px;
+          margin: 30px 0 0 0;
+          text-align: center;
+        "
+      >
+        If you didn't request this code, you can safely ignore this email.
+      </p>
+    </div>
+
+    <div
+      style="text-align: center; padding: 30px; color: #999; font-size: 12px"
+    >
+      <p style="margin: 0 0 10px 0">© 2024 Sastram. All rights reserved.</p>
+      <p style="margin: 0">
+        <a href="{{appUrl}}" style="color: #667eea; text-decoration: none"
+          >Visit Sastram</a
+        >
+        <span style="color: #ddd; margin: 0 10px">|</span>
+        <a href="{{appUrl}}/help" style="color: #667eea; text-decoration: none"
+          >Help Center</a
+        >
+      </p>
+    </div>
+  </body>
+</html>

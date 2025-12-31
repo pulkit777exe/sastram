@@ -3,25 +3,73 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Digest</title>
+  <title>Thread Digest - {{threadName}}</title>
 </head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0;">Daily Digest</h1>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #e4e4e7; max-width: 600px; margin: 0 auto; padding: 0; background-color: #09090b;">
+  <!-- Header -->
+  <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding: 40px 30px; text-align: center;">
+    <div style="display: inline-block; background: rgba(255,255,255,0.15); padding: 8px 20px; border-radius: 50px; margin-bottom: 20px;">
+      <span style="color: white; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;">✨ AI-Powered Digest</span>
+    </div>
+    <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 700;">{{threadName}}</h1>
+    <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0; font-size: 14px;">Your personalized thread summary is ready</p>
   </div>
-  <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-    <h2 style="color: #667eea; margin-top: 0;">{{threadName}}</h2>
-    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-      <p style="white-space: pre-wrap;">{{summary}}</p>
+  
+  <!-- Main Content -->
+  <div style="background: #18181b; padding: 30px;">
+    <!-- AI Summary Section -->
+    <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #3730a3;">
+      <div style="display: flex; align-items: center; margin-bottom: 16px;">
+        <span style="font-size: 18px; margin-right: 8px;">🤖</span>
+        <span style="color: #a5b4fc; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">AI Summary</span>
+      </div>
+      <p style="color: #e4e4e7; font-size: 15px; line-height: 1.7; margin: 0; white-space: pre-wrap;">{{summary}}</p>
     </div>
+
+    <!-- Key Highlights -->
+    <div style="background: #27272a; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #3f3f46;">
+      <div style="display: flex; align-items: center; margin-bottom: 12px;">
+        <span style="font-size: 16px; margin-right: 8px;">💡</span>
+        <span style="color: #fbbf24; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Key Highlights</span>
+      </div>
+      <ul style="margin: 0; padding-left: 20px; color: #a1a1aa;">
+        <li style="margin-bottom: 8px;">New discussions and insights shared</li>
+        <li style="margin-bottom: 8px;">Community engagement continues to grow</li>
+        <li style="margin-bottom: 0;">Join the conversation to stay updated</li>
+      </ul>
+    </div>
+
+    <!-- CTA Button -->
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{threadUrl}}" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">View Thread</a>
+      <a href="{{threadUrl}}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);">
+        View Full Thread →
+      </a>
     </div>
-    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-    <p style="text-align: center; color: #666; font-size: 12px;">
-      <a href="{{unsubscribeUrl}}" style="color: #667eea;">Unsubscribe from this newsletter</a>
+
+    <!-- Stats Bar -->
+    <div style="display: flex; justify-content: center; gap: 30px; margin-top: 30px; padding-top: 24px; border-top: 1px solid #3f3f46;">
+      <div style="text-align: center;">
+        <div style="color: #6366f1; font-size: 24px; font-weight: 700;">{{messageCount}}</div>
+        <div style="color: #71717a; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Messages</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="color: #8b5cf6; font-size: 24px; font-weight: 700;">{{participantCount}}</div>
+        <div style="color: #71717a; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Participants</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Footer -->
+  <div style="background: #09090b; padding: 30px; text-align: center; border-top: 1px solid #27272a;">
+    <p style="color: #71717a; font-size: 12px; margin: 0 0 15px 0;">
+      You're receiving this because you subscribed to {{threadName}}
+    </p>
+    <a href="{{unsubscribeUrl}}" style="color: #6366f1; text-decoration: none; font-size: 12px;">Manage preferences</a>
+    <span style="color: #3f3f46; margin: 0 10px;">|</span>
+    <a href="{{unsubscribeUrl}}" style="color: #6366f1; text-decoration: none; font-size: 12px;">Unsubscribe</a>
+    <p style="color: #52525b; font-size: 11px; margin: 20px 0 0 0;">
+      © 2024 Sastram. All rights reserved.
     </p>
   </div>
 </body>
 </html>
-
