@@ -7,6 +7,7 @@ import { followUser, unfollowUser } from "@/modules/follows/actions";
 import { toast } from "sonner";
 import { UserPlus, UserMinus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
 
 interface FollowButtonProps {
   userId: string;
@@ -78,12 +79,12 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
           <Loader2 className="h-4 w-4 animate-spin mr-2" />
         ) : isFollowing ? (
           <>
-            <UserMinus className="h-4 w-4 mr-2" />
+            <AnimatedIcon icon={UserMinus} className="h-4 w-4 mr-2" animateOnHover />
             Unfollow
           </>
         ) : (
           <>
-            <UserPlus className="h-4 w-4 mr-2" />
+            <AnimatedIcon icon={UserPlus} className="h-4 w-4 mr-2" animateOnHover />
             Follow
           </>
         )}

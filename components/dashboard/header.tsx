@@ -3,6 +3,7 @@
 import { Search, Command } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { usePathname } from "next/navigation";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
 
 export function DashboardHeader() {
   const pathname = usePathname();
@@ -24,14 +25,14 @@ export function DashboardHeader() {
 
       <div className="flex items-center gap-4">
         <div className="relative hidden md:block">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <AnimatedIcon icon={Search} className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search..."
             className="h-9 w-64 rounded-full bg-muted pl-9 text-sm border-border focus-visible:ring-ring"
           />
           <div className="absolute right-2.5 top-2.5 flex items-center gap-1 text-xs text-muted-foreground">
-            <Command className="h-3 w-3" />
+            <AnimatedIcon icon={Command} className="h-3 w-3" />
             <span>K</span>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/utils/cn";
 import { Bell, Check, Loader2 } from "lucide-react";
 import { SubscriptionSuccessModal } from "./SubscriptionSuccessModal";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
 
 interface ThreadSubscribeButtonProps {
   subscribed: boolean;
@@ -44,10 +45,12 @@ export function ThreadSubscribeButton({
           "w-full rounded-xl font-medium transition-all group",
           subscribed
             ? "bg-[#1C1C1E] border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
-            : "bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40"
+            : "shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40"
         )}
       >
-        <Icon
+        <AnimatedIcon
+          icon={Icon}
+          animateOnHover={!pending}
           className={cn(
             "w-4 h-4 mr-2 transition-transform",
             pending && "animate-spin",

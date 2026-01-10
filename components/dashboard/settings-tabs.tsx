@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { User, Mail } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
 
 export function SettingsTabs({ activeTab }: { activeTab: string }) {
   const router = useRouter();
@@ -36,7 +37,7 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
                   : "text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
               )}
             >
-              <Icon size={16} />
+              <AnimatedIcon icon={Icon} size={16} animateOnHover />
               <span>{tab.label}</span>
             </button>
           );

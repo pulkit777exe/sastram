@@ -25,6 +25,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
 
 export function Sidebar({
   name,
@@ -99,9 +100,6 @@ export function Sidebar({
       <div className="p-4 flex items-center justify-between">
         {!isCollapsed && (
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-white rounded-sm flex items-center justify-center">
-              <div className="w-3 h-3 border-2 border-black rounded-full" />
-            </div>
             <span className="font-bold text-lg text-foreground">Sastram</span>
           </Link>
         )}
@@ -117,7 +115,7 @@ export function Sidebar({
               onClick={toggleCollapse}
               className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
             >
-              <PanelLeftClose size={18} />
+              <AnimatedIcon icon={PanelLeftClose} size={18} animateOnHover />
             </button>
           </div>
         )}
@@ -126,7 +124,7 @@ export function Sidebar({
             onClick={toggleCollapse}
             className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
           >
-            <PanelLeftOpen size={18} />
+            <AnimatedIcon icon={PanelLeftOpen} size={18} animateOnHover />
           </button>
         )}
       </div>
@@ -135,7 +133,8 @@ export function Sidebar({
         <>
           <div className="px-4 mb-4">
             <form onSubmit={handleSearch} className="relative group">
-              <Search
+              <AnimatedIcon
+                icon={Search}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
                 size={14}
               />
@@ -186,9 +185,9 @@ export function Sidebar({
             />
           </nav>
 
-          <div className="m-3 p-4 bg-gradient-to-br from-card to-muted border border-border rounded-xl">
+          <div className="m-3 p-4 bg-linear-to-br from-card to-muted border border-border rounded-xl">
             <div className="flex items-center gap-2 mb-1 text-foreground">
-              <Sparkles size={14} />
+              <AnimatedIcon icon={Sparkles} size={14} />
               <p className="text-sm font-semibold">Boost with AI</p>
             </div>
             <p className="text-[11px] text-muted-foreground mb-4">
@@ -237,8 +236,8 @@ export function Sidebar({
           </div>
           {!isCollapsed && (
             <div className="flex flex-col gap-0.5 text-muted-foreground">
-              <ChevronUp size={12} />
-              <ChevronDown size={12} />
+              <AnimatedIcon icon={ChevronUp} size={12} />
+              <AnimatedIcon icon={ChevronDown} size={12} />
             </div>
           )}
         </div>
@@ -248,21 +247,21 @@ export function Sidebar({
               href="/dashboard/settings/profile"
               className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
             >
-              <User size={14} />
+              <AnimatedIcon icon={User} size={14} />
               <span>View Profile</span>
             </Link>
             <Link
               href="/dashboard/settings"
               className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
             >
-              <Settings size={14} />
+              <AnimatedIcon icon={Settings} size={14} />
               <span>Settings</span>
             </Link>
             <Link
               href="/dashboard/settings?tab=newsletters"
               className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
             >
-              <Mail size={14} />
+              <AnimatedIcon icon={Mail} size={14} />
               <span>Newsletters</span>
             </Link>
           </div>
@@ -297,9 +296,11 @@ function NavItem({
         )}
         title={collapsed ? label : undefined}
       >
-        <Icon
+        <AnimatedIcon
+          icon={Icon}
           size={18}
           className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
+          animateOnHover
         />
         {!collapsed && <span className="text-sm font-medium">{label}</span>}
       </div>
@@ -318,12 +319,14 @@ function NavItem({
       )}
       title={collapsed ? label : undefined}
     >
-      <Icon
+      <AnimatedIcon
+        icon={Icon}
         size={18}
         className={cn(
           "transition-colors shrink-0",
           active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
         )}
+        animateOnHover
       />
       {!collapsed && <span className="text-sm font-medium">{label}</span>}
 

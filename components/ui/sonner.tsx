@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { AnimatedIcon } from "./animated-icon"
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
@@ -18,10 +19,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
+        success: <AnimatedIcon icon={CircleCheckIcon} className="size-4" animateOnView />,
+        info: <AnimatedIcon icon={InfoIcon} className="size-4" animateOnView />,
+        warning: <AnimatedIcon icon={TriangleAlertIcon} className="size-4" animateOnView />,
+        error: <AnimatedIcon icon={OctagonXIcon} className="size-4" animateOnView />,
         loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
       style={

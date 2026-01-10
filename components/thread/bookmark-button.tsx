@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toggleBookmark, checkBookmarkStatus } from "@/modules/bookmarks/actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
 
 interface BookmarkButtonProps {
   threadId: string;
@@ -56,12 +57,12 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
       >
         {isBookmarked ? (
           <>
-            <BookmarkCheck className="h-4 w-4 fill-current" />
+            <AnimatedIcon icon={BookmarkCheck} className="h-4 w-4 fill-current" animateOnHover />
             <span className="hidden sm:inline">Bookmarked</span>
           </>
         ) : (
           <>
-            <Bookmark className="h-4 w-4" />
+            <AnimatedIcon icon={Bookmark} className="h-4 w-4" animateOnHover />
             <span className="hidden sm:inline">Bookmark</span>
           </>
         )}

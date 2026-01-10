@@ -20,7 +20,8 @@ export function SubscriptionSuccessModal({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -153,10 +154,7 @@ export function SubscriptionSuccessModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.35 }}
                 >
-                  <Button
-                    onClick={onClose}
-                    className="w-full bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium rounded-xl"
-                  >
+                  <Button onClick={onClose} className="font-medium rounded-xl">
                     Got it!
                   </Button>
                 </motion.div>

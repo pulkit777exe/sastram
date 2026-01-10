@@ -19,11 +19,17 @@ import {
   ArrowLeft,
   CheckCircle2,
   Sparkles,
+  Command,
 } from "lucide-react";
 import { signIn, signUp, authClient } from "@/lib/services/auth-client";
 import axios from "axios";
 
 type AuthMode = "signin" | "signup" | "magic-link" | "otp-verify";
+
+const inputStyles = "h-12 rounded-xl bg-[#18181b] border-[#27272a] text-white placeholder:text-zinc-500 focus:bg-[#18181b] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all";
+const labelStyles = "text-zinc-400 text-sm font-medium";
+const primaryButtonStyles = "h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-lg shadow-indigo-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]";
+const outlineButtonStyles = "h-12 rounded-xl border-[#27272a] bg-[#18181b] text-zinc-300 hover:bg-[#27272a] hover:text-white transition-all";
 
 function UserAuthForm({
   className,
@@ -48,7 +54,6 @@ function UserAuthForm({
   const router = useRouter();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Countdown timer for resend
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -265,7 +270,6 @@ function UserAuthForm({
     }
   };
 
-  // Magic Link / OTP Form
   if (mode === "magic-link") {
     return (
       <div className={cn("grid gap-6", className)} {...props}>
@@ -275,18 +279,18 @@ function UserAuthForm({
           transition={{ duration: 0.3 }}
         >
           <form onSubmit={handleSendOTP} className="space-y-4">
-            <div className="text-center mb-4">
-              <p className="text-sm text-slate-500">
+            <div className="text-center mb-6">
+              <p className="text-sm text-zinc-400">
                 We&apos;ll send a 6-digit code to your email
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="magic-email" className="text-slate-700">
+              <Label htmlFor="magic-email" className={labelStyles}>
                 Email address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
                 <Input
                   id="magic-email"
                   type="email"
@@ -295,19 +299,19 @@ function UserAuthForm({
                   onChange={(e) => setMagicLinkEmail(e.target.value)}
                   required
                   disabled={loadingState !== null}
-                  className="pl-10 h-11 text-black rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  className={cn(inputStyles, "pl-12")}
                 />
               </div>
             </div>
 
             {error && (
-              <p className="text-sm text-red-500 text-center">{error}</p>
+              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">{error}</p>
             )}
 
             <Button
               type="submit"
               disabled={loadingState !== null || !magicLinkEmail}
-              className="w-full h-11 rounded-xl bg-black hover:bg-black/80 text-white font-medium shadow-lg shadow-black/30 transition-all"
+              className={primaryButtonStyles + " w-full"}
             >
               {loadingState === "otp" ? (
                 <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -324,7 +328,7 @@ function UserAuthForm({
                 setMode("signin");
                 setError(null);
               }}
-              className="w-full text-slate-500 hover:text-slate-900"
+              className="w-full text-zinc-400 hover:text-white hover:bg-[#27272a]"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to password login
@@ -344,24 +348,24 @@ function UserAuthForm({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <form onSubmit={handleVerifyOTP} className="space-y-5">
+          <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div className="text-center mb-4">
-              <div className="mx-auto w-12 h-12 rounded-xl bg-linear-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center mb-3">
-                <CheckCircle2 className="w-6 h-6 text-green-500" />
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-4 border border-indigo-500/20">
+                <CheckCircle2 className="w-7 h-7 text-indigo-400" />
               </div>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-zinc-400">
                 Code sent to{" "}
-                <span className="font-medium text-slate-700">
+                <span className="font-medium text-white">
                   {magicLinkEmail}
                 </span>
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-slate-700 text-center block text-sm">
+            <div className="space-y-3">
+              <Label className="text-zinc-400 text-center block text-sm">
                 Enter 6-digit code
               </Label>
-              <div className="flex justify-center gap-2">
+              <div className="flex justify-center gap-2 sm:gap-3">
                 {otp.map((digit, index) => (
                   <Input
                     key={index}
@@ -381,20 +385,20 @@ function UserAuthForm({
                     }
                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
                     disabled={loadingState !== null}
-                    className="w-11 h-12 text-center text-lg font-bold rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-[#27272a] bg-[#18181b] text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all caret-indigo-500"
                   />
                 ))}
               </div>
             </div>
 
             {error && (
-              <p className="text-sm text-red-500 text-center">{error}</p>
+              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">{error}</p>
             )}
 
             <Button
               type="submit"
               disabled={loadingState !== null || otp.join("").length !== 6}
-              className="w-full h-11 rounded-xl bg-black hover:bg-black/80 text-white font-medium shadow-lg shadow-black/30 transition-all"
+              className={primaryButtonStyles + " w-full"}
             >
               {loadingState === "otp" ? (
                 <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -402,15 +406,15 @@ function UserAuthForm({
               Verify & Sign In
             </Button>
 
-            <div className="text-center text-sm space-y-2">
+            <div className="text-center text-sm space-y-3">
               <button
                 type="button"
                 onClick={handleResendOTP}
                 disabled={countdown > 0 || loadingState !== null}
                 className={cn(
-                  "text-black font-medium transition-colors",
+                  "text-indigo-400 font-medium transition-colors hover:text-indigo-300",
                   countdown > 0 &&
-                    "text-slate-400 cursor-not-allowed hover:text-slate-400"
+                    "text-zinc-600 cursor-not-allowed hover:text-zinc-600"
                 )}
               >
                 {countdown > 0 ? `Resend code in ${countdown}s` : "Resend code"}
@@ -423,7 +427,7 @@ function UserAuthForm({
                     setOtp(["", "", "", "", "", ""]);
                     setError(null);
                   }}
-                  className="text-slate-500 hover:text-slate-900"
+                  className="text-zinc-500 hover:text-zinc-300 transition-colors text-xs"
                 >
                   <ArrowLeft className="inline mr-1 h-3 w-3" />
                   Use different email
@@ -443,12 +447,12 @@ function UserAuthForm({
         <div className="grid gap-4">
           {mode === "signup" && (
             <div className="grid gap-2">
-              <Label className="sr-only" htmlFor="name">
+              <Label className={labelStyles} htmlFor="name">
                 Name
               </Label>
               <Input
                 id="name"
-                placeholder="Your name"
+                placeholder="John Doe"
                 type="text"
                 autoCapitalize="words"
                 autoComplete="name"
@@ -456,12 +460,12 @@ function UserAuthForm({
                 disabled={loadingState !== null}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all"
+                className={inputStyles}
               />
             </div>
           )}
           <div className="grid gap-2">
-            <Label className="sr-only" htmlFor="email">
+            <Label className={labelStyles} htmlFor="email">
               Email
             </Label>
             <Input
@@ -475,17 +479,17 @@ function UserAuthForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all"
+              className={inputStyles}
             />
           </div>
           <div className="grid gap-2">
-            <Label className="sr-only" htmlFor="password">
+            <Label className={labelStyles} htmlFor="password">
               Password
             </Label>
             <div className="relative">
               <Input
                 id="password"
-                placeholder="Password"
+                placeholder="Enter your password"
                 type={showPassword ? "text" : "password"}
                 autoCapitalize="none"
                 autoComplete={
@@ -496,33 +500,34 @@ function UserAuthForm({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-grey-500 transition-all pr-10"
+                className={cn(inputStyles, "pr-10")}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loadingState !== null}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none focus:text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none disabled:opacity-50 transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-5 w-5" />
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-5 w-5" />
                 )}
               </button>
             </div>
           </div>
-          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          {error && <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">{error}</p>}
+          
           <Button
             disabled={loadingState !== null}
             type="submit"
-            className="h-11 rounded-xl bg-black hover:bg-black/80 text-white font-medium shadow-lg shadow-black/30 transition-all hover:shadow-black/40"
+            className={primaryButtonStyles}
           >
             {loadingState === "email" && (
               <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {mode === "signup" ? "Create Account" : "Sign In with Email"}
+            {mode === "signup" ? "Create Account" : "Sign In"}
           </Button>
         </div>
       </form>
@@ -534,28 +539,29 @@ function UserAuthForm({
             setMode("magic-link");
             setError(null);
           }}
-          className="text-center text-sm text-black hover:text-black/80 font-medium transition-colors"
+          className="text-center text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors group flex items-center justify-center"
         >
-          <Sparkles className="inline mr-1 h-3 w-3" />
+          <Sparkles className="inline mr-1.5 h-3.5 w-3.5 group-hover:animate-pulse" />
           Sign in with Magic Link instead
         </button>
       )}
 
-      <div className="relative">
+      <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-slate-200" />
+          <span className="w-full border-t border-[#27272a]" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-2 text-slate-400">Or continue with</span>
+          <span className="bg-[#09090b] px-4 text-zinc-500 font-medium">Or continue with</span>
         </div>
       </div>
+      
       <div className="flex gap-4">
         <Button
           variant="outline"
           type="button"
           disabled={loadingState !== null}
           onClick={() => handleSocialLogin("github")}
-          className="flex-1 h-11 rounded-xl border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+          className={cn(outlineButtonStyles, "flex-1")}
         >
           {loadingState === "github" ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -563,9 +569,9 @@ function UserAuthForm({
             <Image
               src="/github.jpg"
               alt="GitHub"
-              width={16}
-              height={16}
-              className="mr-2 opacity-70"
+              width={20}
+              height={20}
+              className="mr-2 opacity-90 invert dark:invert-0"
             />
           )}
           GitHub
@@ -575,7 +581,7 @@ function UserAuthForm({
           type="button"
           disabled={loadingState !== null}
           onClick={() => handleSocialLogin("google")}
-          className="flex-1 h-11 rounded-xl border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+          className={cn(outlineButtonStyles, "flex-1")}
         >
           {loadingState === "google" ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -583,26 +589,29 @@ function UserAuthForm({
             <Image
               src="/google.jpg"
               alt="Google"
-              width={16}
-              height={16}
-              className="mr-2 opacity-70"
+              width={20}
+              height={20}
+              className="mr-2"
             />
           )}
           Google
         </Button>
       </div>
-      <div className="text-center text-sm">
+      
+      <div className="text-center text-sm mt-4">
         <button
           type="button"
           onClick={() => {
             setMode(mode === "signin" ? "signup" : "signin");
             setError(null);
           }}
-          className="text-slate-600 hover:text-slate-900 underline underline-offset-4"
+          className="text-zinc-400 hover:text-white transition-colors"
         >
-          {mode === "signin"
-            ? "Don't have an account? Sign up"
-            : "Already have an account? Sign in"}
+          {mode === "signin" ? (
+            <>Don&apos;t have an account? <span className="text-indigo-400 hover:underline underline-offset-4">Sign up</span></>
+          ) : (
+            <>Already have an account? <span className="text-indigo-400 hover:underline underline-offset-4">Sign in</span></>
+          )}
         </button>
       </div>
     </div>
@@ -615,11 +624,11 @@ export function LoginForm() {
   const getTitle = () => {
     switch (mode) {
       case "signup":
-        return "Create an account";
+        return "Create your account";
       case "magic-link":
-        return "Magic Link Sign In";
+        return "Magic Link";
       case "otp-verify":
-        return "Verify Your Email";
+        return "Verify your email";
       default:
         return "Welcome back";
     }
@@ -628,89 +637,65 @@ export function LoginForm() {
   const getSubtitle = () => {
     switch (mode) {
       case "signup":
-        return "Enter your details below to create your account";
+        return "Join the community today.";
       case "magic-link":
-        return "No password needed, we'll email you a code";
+        return "We'll send a code to your inbox.";
       case "otp-verify":
-        return "Enter the code we sent to your email";
+        return "Check your inbox for the code.";
       default:
-        return "Enter your email below to sign in to your account";
+        return "Enter your details to access your dashboard.";
     }
   };
 
   return (
-    <div className="relative container flex-1 shrink-0 items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0 min-h-screen bg-white">
-      <div className="relative hidden h-full flex-col bg-slate-900 p-10 text-white lg:flex dark:border-r">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url(https://images.unsplash.com/photo-1759818319027-dc631ed9732b?q=80&w=2036&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)",
-          }}
-        />
-        <div className="relative z-20 flex items-center text-lg font-bold tracking-tight">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black mr-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5 text-white"
-            >
-              <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
-            </svg>
-          </div>
-          Sastram
-        </div>
-        <div className="relative z-20 mt-auto">
-          <blockquote className="space-y-2">
-            <p className="text-lg">
-              &ldquo;This library has saved me countless hours of work and
-              helped me deliver stunning designs to my clients faster than ever
-              before.&rdquo;
-            </p>
-            <footer className="text-sm text-slate-400">Sofia Davis</footer>
-          </blockquote>
-        </div>
-      </div>
-      <div className="flex items-center justify-center lg:p-8">
+    <div className="flex items-center justify-center relative container min-h-screen md:grid lg:max-w-none lg:grid-cols-2 lg:px-0 bg-[#09090b] text-white">
+      <div className="flex items-center justify-center min-w-screen p-4 lg:p-8 min-h-screen bg-[#09090b]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[350px]"
+          className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[400px]"
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={mode}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col gap-2 text-center"
-            >
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                {getTitle()}
-              </h1>
-              <p className="text-slate-500 text-sm">{getSubtitle()}</p>
-            </motion.div>
-          </AnimatePresence>
-          <UserAuthForm mode={mode} setMode={setMode} />
-          <p className="px-8 text-center text-sm text-slate-400">
+          <div className="flex flex-col gap-2 text-center mb-4">
+             <div className="lg:hidden flex justify-center mb-6">
+                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-500/20">
+                    <Command className="h-7 w-7 text-white" />
+                </div>
+             </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={mode}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+                  {getTitle()}
+                </h1>
+                <p className="text-zinc-400 text-sm">{getSubtitle()}</p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Card Container */}
+          <div className="bg-[#101012] border border-[#27272a] p-6 sm:p-8 rounded-2xl shadow-2xl shadow-black/50">
+             <UserAuthForm mode={mode} setMode={setMode} />
+          </div>
+
+          <p className="px-8 text-center text-xs text-zinc-500">
             By clicking continue, you agree to our{" "}
             <Link
               href="/terms"
-              className="underline underline-offset-4 hover:text-slate-900"
+              className="underline underline-offset-4 hover:text-indigo-400 transition-colors"
             >
               Terms of Service
             </Link>{" "}
             and{" "}
             <Link
               href="/privacy"
-              className="underline underline-offset-4 hover:text-slate-900"
+              className="underline underline-offset-4 hover:text-indigo-400 transition-colors"
             >
               Privacy Policy
             </Link>

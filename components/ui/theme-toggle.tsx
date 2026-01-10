@@ -5,6 +5,7 @@ import { Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
+import { AnimatedIcon } from "./animated-icon";
 
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -24,7 +25,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         disabled
         aria-label="Loading theme"
       >
-        <Sun className="h-4 w-4 text-muted-foreground" />
+        <AnimatedIcon icon={Sun} className="h-4 w-4 text-muted-foreground" />
       </button>
     );
   }
@@ -65,11 +66,11 @@ export function ThemeToggle({ className }: { className?: string }) {
           className="absolute"
         >
           {currentTheme === "system" ? (
-            <Monitor className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors duration-300" />
+            <AnimatedIcon icon={Monitor} animateOnHover className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors duration-300" />
           ) : isDark ? (
-            <Sun className="h-4 w-4 text-muted-foreground group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-colors duration-300" />
+            <AnimatedIcon icon={Sun} animateOnHover className="h-4 w-4 text-muted-foreground group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-colors duration-300" />
           ) : (
-            <Moon className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors duration-300" />
+            <AnimatedIcon icon={Moon} animateOnHover className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors duration-300" />
           )}
         </motion.div>
       </AnimatePresence>
