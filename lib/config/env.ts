@@ -16,6 +16,9 @@ const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().url("DATABASE_URL must be a valid URL"),
 
+  // Redis (rate limiting, queues, caching)
+  REDIS_URL: z.string().url("REDIS_URL must be a valid URL").optional(),
+
   // Better Auth
   BETTER_AUTH_SECRET: z
     .string()
@@ -53,6 +56,51 @@ const envSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_S3_BUCKET: z.string().optional(),
+
+  // Realtime / WebSocket
+  WEBSOCKET_URL: z.string().url("WEBSOCKET_URL must be a valid URL").optional(),
+
+  // Security / sessions
+  JWT_SECRET: z
+    .string()
+    .min(32, "JWT_SECRET must be at least 32 characters"),
+  SESSION_SECRET: z
+    .string()
+    .min(32, "SESSION_SECRET must be at least 32 characters"),
+
+  // Feature flags
+  RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
+  CONTENT_MODERATION_ENABLED: z.coerce.boolean().default(false),
+
+  // Logging
+  LOG_LEVEL: z
+    .enum(["debug", "info", "warn", "error"])
+    .default("info"),
+
+  // Limits
+  MAX_FILE_UPLOAD_MB: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10),
+
+  // Moderation-specific
+  MODERATION_CONFIDENCE_THRESHOLD: z.coerce
+    .number()
+    .min(0)
+    .max(1)
+    .default(0.7),
+  MAX_MESSAGES_PER_MINUTE: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(20),
+  MAX_MESSAGES_PER_HOUR: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(200),
+  MODERATION_WEBHOOK_URL: z.string().url().optional(),
 });
 
 /**
@@ -89,6 +137,9 @@ export function getEnv(): Env {
   cachedEnv = result.data;
   return cachedEnv;
 }
+
+// Eagerly-validated, typed env object for convenient imports
+export const env: Env = getEnv();
 
 /**
  * Validate environment variables without throwing

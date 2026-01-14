@@ -8,6 +8,7 @@ import { filterBadLanguage } from "@/lib/services/content-safety";
 import { emitThreadMessage } from "@/modules/ws/publisher";
 import { createMessageWithAttachmentsSchema } from "@/lib/schemas/database";
 import { messageLimiter } from "@/lib/services/rate-limit";
+import { MessageService } from "@/lib/services/moderation";
 import { getMemberRole } from "@/modules/members/repository";
 import { logAction } from "@/modules/audit/repository";
 import { handleError } from "@/lib/utils/errors";
@@ -80,87 +81,110 @@ export async function postMessage(formData: FormData) {
   const safeContent = filterBadLanguage(content);
 
   try {
-    // Use transaction for all database operations
-    const result = await prisma.$transaction(async (tx) => {
-      // Calculate depth for nested replies
-      let depth = 0;
-      if (parentId) {
-        const parent = await tx.message.findUnique({
-          where: { id: parentId },
-          select: { depth: true },
-        });
-        depth = (parent?.depth || 0) + 1;
-      }
+    const messageService = new MessageService();
 
-      // Create message
-      const message = await tx.message.create({
-        data: {
-          content: safeContent,
-          sectionId: sectionId,
-          senderId: session.user.id,
-          parentId: parentId || null,
-          depth,
-        },
-        include: {
-          section: {
-            select: {
-              slug: true,
-            },
-          },
-          sender: {
-            select: {
-              name: true,
-              image: true,
-            },
-          },
-          attachments: true, 
-        },
-      });
-      
-
-      // Create mentions
-      if (mentions && mentions.length > 0) {
-        await tx.messageMention.createMany({
-          data: mentions.map((userId) => ({
-            messageId: message.id,
-            userId,
-          })),
-        });
-
-        // Create notifications for mentions (emails sent outside transaction)
-        for (const userId of mentions) {
-          await tx.notification.create({
-            data: {
-              userId,
-              type: "MENTION",
-              title: "You were mentioned",
-              message: `${
-                session.user.name || session.user.email
-              } mentioned you in a message`,
-              data: {
-                messageId: message.id,
-                sectionId: sectionId,
-              },
-            },
-          });
-        }
-      }
-
-      // Update message count
-      await tx.section.update({
-        where: { id: sectionId },
-        data: {
-          messageCount: {
-            increment: 1,
-          },
-        },
-      });
-
-      return { message, mentionedUserIds: mentions || [] };
+    const recentMessages = await prisma.message.findMany({
+      where: { sectionId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        content: true,
+        senderId: true,
+        createdAt: true,
+      },
     });
 
+    const section = await prisma.section.findUnique({
+      where: { id: sectionId },
+      select: {
+        id: true,
+        name: true,
+        visibility: true,
+        createdBy: true,
+      },
+    });
+
+    const context = {
+      sectionId,
+      participantIds: [session.user.id],
+      recentHistory: recentMessages,
+      sectionMetadata: {
+        visibility: section?.visibility,
+        name: section?.name,
+        createdBy: section?.createdBy,
+      },
+      relationships: new Map(),
+    };
+
+    const result = await messageService.processMessage(
+      {
+        id: "",
+        content: safeContent,
+        authorId: session.user.id,
+        sectionId,
+        parentId,
+        timestamp: new Date(),
+        metadata: { edited: false },
+      },
+      context
+    );
+
+    if (!result.success) {
+      return {
+        error: result.reason || "Message blocked by content filter",
+        pendingModeration: result.pendingModeration,
+      };
+    }
+
+    const message = await prisma.message.findUniqueOrThrow({
+      where: { id: result.messageId! },
+      include: {
+        section: {
+          select: {
+            slug: true,
+          },
+        },
+        sender: {
+          select: {
+            name: true,
+            image: true,
+          },
+        },
+        attachments: true,
+      },
+    });
+
+    // Create mentions
+    if (mentions && mentions.length > 0) {
+      await prisma.messageMention.createMany({
+        data: mentions.map((userId) => ({
+          messageId: message.id,
+          userId,
+        })),
+      });
+
+      // Create notifications for mentions (emails sent outside transaction)
+      for (const userId of mentions) {
+        await prisma.notification.create({
+          data: {
+            userId,
+            type: "MENTION",
+            title: "You were mentioned",
+            message: `${
+              session.user.name || session.user.email
+            } mentioned you in a message`,
+            data: {
+              messageId: message.id,
+              sectionId,
+            },
+          },
+        });
+      }
+    }
+
     // Send email notifications for mentions (outside transaction)
-    if (result.mentionedUserIds && result.mentionedUserIds.length > 0) {
+    if (mentions && mentions.length > 0) {
       const thread = await prisma.section.findUnique({
         where: { id: sectionId },
         select: { name: true, slug: true },
@@ -169,7 +193,7 @@ export async function postMessage(formData: FormData) {
       if (thread) {
         const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`;
         
-        for (const userId of result.mentionedUserIds) {
+        for (const userId of mentions) {
           const mentionedUser = await prisma.user.findUnique({
             where: { id: userId },
             select: { email: true, name: true },
@@ -190,26 +214,14 @@ export async function postMessage(formData: FormData) {
       }
     }
 
-    // Record activity for message posted
-    await recordActivity({
-      userId: session.user.id,
-      type: "MESSAGE_POSTED",
-      entityType: "Message",
-      entityId: result.message.id,
-      metadata: {
-        sectionId,
-        threadName: result.message.section.slug,
-      },
-    });
-
     // Emit WebSocket event (outside transaction)
     const payload = {
-      id: result.message.id,
-      content: result.message.content,
+      id: message.id,
+      content: message.content,
       senderId: session.user.id,
-      senderName: result.message.sender?.name || session.user.email,
-      senderAvatar: result.message.sender?.image ?? session.user.image,
-      createdAt: result.message.createdAt,
+      senderName: message.sender?.name || session.user.email,
+      senderAvatar: message.sender?.image ?? session.user.image,
+      createdAt: message.createdAt,
       sectionId,
     };
 
@@ -218,8 +230,8 @@ export async function postMessage(formData: FormData) {
       payload,
     });
 
-    if (result.message.section?.slug) {
-      revalidatePath(`/dashboard/threads/thread/${result.message.section.slug}`);
+    if (message.section?.slug) {
+      revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
     }
     revalidatePath("/dashboard");
 
@@ -228,14 +240,14 @@ export async function postMessage(formData: FormData) {
       userId: session.user.id,
       type: "MESSAGE_POSTED",
       entityType: "Message",
-      entityId: result.message.id,
+      entityId: message.id,
       metadata: {
         sectionId,
-        threadName: result.message.section?.slug,
+        threadName: message.section?.slug,
       },
     });
 
-    return { success: true, data: result.message };
+    return { success: true, data: message, pendingModeration: result.pendingModeration };
   } catch (error) {
     return handleActionError(error);
   }

@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Hash } from "lucide-react";
 import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
 import { TopicGrid } from "@/components/dashboard/topic-grid";
+import { cache } from "react";
 
 export default async function TopicsPage({
   searchParams,
@@ -12,34 +13,34 @@ export default async function TopicsPage({
   const query = (await searchParams).q || "";
 
   const sections = await prisma.section.findMany({
-    where: {
-      deletedAt: null,
-      OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { description: { contains: query, mode: "insensitive" } },
-      ],
-    },
-    include: {
-      messages: {
-        where: {
-          deletedAt: null,
-        },
-        select: { senderId: true },
+      where: {
+        deletedAt: null,
+        OR: [
+          { name: { contains: query, mode: "insensitive" } },
+          { description: { contains: query, mode: "insensitive" } },
+        ],
       },
-      _count: {
-        select: {
-          messages: {
-            where: {
-              deletedAt: null,
+      include: {
+        messages: {
+          where: {
+            deletedAt: null,
+          },
+          select: { senderId: true },
+        },
+        _count: {
+          select: {
+            messages: {
+              where: {
+                deletedAt: null,
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      messages: { _count: "desc" },
-    },
-  });
+      orderBy: {
+        messages: { _count: "desc" },
+      },
+    });
 
   const formattedSections = sections.map((section) => {
     const uniqueSenders = new Set(section.messages.map((m) => m.senderId));

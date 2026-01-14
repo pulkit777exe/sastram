@@ -58,6 +58,14 @@ model User {
   earnedBadges            UserBadgeEarned[]
   activities              UserActivity[]
   pollVotes               PollVote[]
+  contentSafetyRules      ContentSafetyRule[]      @relation("ContentSafetyRuleCreator")
+  moderationFlags         ModerationQueue[]        @relation("ModerationFlagger")
+  moderationReviews       ModerationQueue[]        @relation("ModerationReviewer")
+  appealsSubmitted        Appeal[]                 @relation("AppealSubmitter")
+  appealsModerated        Appeal[]                 @relation("AppealModerator")
+  moderationFeedback      ModerationFeedback[]
+  moderationActions       ModerationActionLog[]    @relation("ModerationActor")
+  moderationTargets       ModerationActionLog[]    @relation("ModerationTargetUser")
 
   @@index([email])
   @@index([status])
@@ -169,6 +177,7 @@ model Section {
   @@index([visibility])
   @@index([communityId])
   @@index([createdBy])
+  @@index([createdBy, createdAt])
   @@map("sections")
 }
 
@@ -215,8 +224,12 @@ model Message {
   reports     Report[]
   editHistory MessageEdit[]
   mentions    MessageMention[]
+  moderationQueue ModerationQueue[] @relation("MessageModerationQueue")
+  appeals     Appeal[]             @relation("MessageAppeal")
+  moderationLogs ModerationActionLog[] @relation("ModerationLogMessage")
 
   @@index([sectionId])
+  @@index([sectionId, createdAt])
   @@index([senderId])
   @@index([parentId])
   @@index([createdAt])
@@ -739,4 +752,177 @@ model UserActivity {
   @@index([createdAt])
   @@index([entityType, entityId])
   @@map("user_activities")
+}
+
+// Moderation System
+model ContentSafetyRule {
+  id         String    @id @default(cuid())
+  pattern    String
+  category   String
+  severity   ModerationSeverity @default(MEDIUM)
+  action     ModerationAction
+  createdBy  String
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  creator    User      @relation("ContentSafetyRuleCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([severity])
+  @@index([createdBy])
+  @@map("content_safety_rules")
+}
+
+model ModerationQueue {
+  id             String             @id @default(cuid())
+  messageId      String
+  status         ModerationStatus   @default(QUEUED)
+  reason         String?
+  confidence     Float?
+  context        Json?
+  flaggedBy      String?
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  message        Message            @relation("MessageModerationQueue", fields: [messageId], references: [id], onDelete: Cascade)
+  flagger        User?              @relation("ModerationFlagger", fields: [flaggedBy], references: [id], onDelete: SetNull)
+  reviewer       User?              @relation("ModerationReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  feedback       ModerationFeedback[]
+  appeals        Appeal[]           @relation("QueueAppeals")
+
+  @@index([messageId])
+  @@index([status])
+  @@index([reviewedBy])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@map("moderation_queue")
+}
+
+model Appeal {
+  id             String           @id @default(cuid())
+  messageId      String
+  userId         String
+  moderatorId    String?
+  queueId        String?
+  status         AppealStatus     @default(PENDING)
+  reason         String
+  response       String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  resolvedAt     DateTime?
+
+  message        Message          @relation("MessageAppeal", fields: [messageId], references: [id], onDelete: Cascade)
+  user           User             @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  moderator      User?            @relation("AppealModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+  queue          ModerationQueue? @relation("QueueAppeals", fields: [queueId], references: [id], onDelete: SetNull)
+
+  @@index([messageId])
+  @@index([userId])
+  @@index([moderatorId])
+  @@index([queueId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("appeals")
+}
+
+model ModerationFeedback {
+  id             String             @id @default(cuid())
+  queueId        String
+  moderatorId    String
+  decision       ModerationDecision
+  notes          String?
+  createdAt      DateTime           @default(now())
+
+  queue          ModerationQueue    @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  moderator      User               @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@index([queueId])
+  @@index([moderatorId])
+  @@index([decision])
+  @@map("moderation_feedback")
+}
+
+model ModerationStats {
+  id                 String   @id @default(cuid())
+  windowStart        DateTime
+  windowEnd          DateTime?
+  blockedCount       Int      @default(0)
+  flaggedCount       Int      @default(0)
+  allowedCount       Int      @default(0)
+  falsePositiveCount Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  @@index([windowStart])
+  @@index([createdAt])
+  @@map("moderation_stats")
+}
+
+model ModerationActionLog {
+  id             String              @id @default(cuid())
+  action         ModerationLogAction
+  messageId      String?
+  actorId        String?
+  targetUserId   String?
+  details        Json?
+  createdAt      DateTime            @default(now())
+
+  message        Message?            @relation("ModerationLogMessage", fields: [messageId], references: [id], onDelete: SetNull)
+  actor          User?               @relation("ModerationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  targetUser     User?               @relation("ModerationTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([messageId])
+  @@index([actorId])
+  @@index([targetUserId])
+  @@index([createdAt])
+  @@map("moderation_action_log")
+}
+
+// Enums for moderation
+enum ModerationStatus {
+  QUEUED
+  FLAGGED
+  BLOCKED
+  APPROVED
+  REJECTED
+}
+
+enum ModerationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ModerationAction {
+  ALLOW
+  FLAG
+  BLOCK
+  REVIEW
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum ModerationDecision {
+  APPROVE
+  REJECT
+  ESCALATE
+}
+
+enum ModerationLogAction {
+  MESSAGE_ALLOWED
+  MESSAGE_FLAGGED
+  MESSAGE_BLOCKED
+  APPEAL_SUBMITTED
+  APPEAL_APPROVED
+  APPEAL_DENIED
+  USER_BANNED
+  USER_UNBANNED
 }

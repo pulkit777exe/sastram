@@ -4,7 +4,6 @@ import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { cn } from "@/lib/utils/cn";
@@ -23,13 +22,18 @@ import {
 } from "lucide-react";
 import { signIn, signUp, authClient } from "@/lib/services/auth-client";
 import axios from "axios";
+import { GithubIcon } from "@/public/icons/github";
+import { ChromeIcon } from "@/public/icons/google";
 
 type AuthMode = "signin" | "signup" | "magic-link" | "otp-verify";
 
-const inputStyles = "h-12 rounded-xl bg-[#18181b] border-[#27272a] text-white placeholder:text-zinc-500 focus:bg-[#18181b] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all";
-const labelStyles = "text-zinc-400 text-sm font-medium";
-const primaryButtonStyles = "h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-lg shadow-indigo-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]";
-const outlineButtonStyles = "h-12 rounded-xl border-[#27272a] bg-[#18181b] text-zinc-300 hover:bg-[#27272a] hover:text-white transition-all";
+const inputStyles =
+  "h-12 rounded-xl bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all";
+const labelStyles = "text-muted-foreground text-sm font-medium";
+const primaryButtonStyles =
+  "h-12 rounded-xl bg-brand hover:bg-brand/90 text-white font-medium shadow-lg shadow-brand/20 transition-all hover:scale-[1.02] active:scale-[0.98]";
+const outlineButtonStyles =
+  "h-12 rounded-xl border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground transition-all";
 
 function UserAuthForm({
   className,
@@ -280,7 +284,7 @@ function UserAuthForm({
         >
           <form onSubmit={handleSendOTP} className="space-y-4">
             <div className="text-center mb-6">
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-muted-foreground">
                 We&apos;ll send a 6-digit code to your email
               </p>
             </div>
@@ -290,7 +294,7 @@ function UserAuthForm({
                 Email address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="magic-email"
                   type="email"
@@ -305,7 +309,9 @@ function UserAuthForm({
             </div>
 
             {error && (
-              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">{error}</p>
+              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+                {error}
+              </p>
             )}
 
             <Button
@@ -328,7 +334,7 @@ function UserAuthForm({
                 setMode("signin");
                 setError(null);
               }}
-              className="w-full text-zinc-400 hover:text-white hover:bg-[#27272a]"
+              className="w-full text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to password login
@@ -350,19 +356,17 @@ function UserAuthForm({
         >
           <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div className="text-center mb-4">
-              <div className="mx-auto w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-4 border border-indigo-500/20">
-                <CheckCircle2 className="w-7 h-7 text-indigo-400" />
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-4 border border-brand/20">
+                <CheckCircle2 className="w-7 h-7 text-brand" />
               </div>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-muted-foreground">
                 Code sent to{" "}
-                <span className="font-medium text-white">
-                  {magicLinkEmail}
-                </span>
+                <span className="font-medium text-white">{magicLinkEmail}</span>
               </p>
             </div>
 
             <div className="space-y-3">
-              <Label className="text-zinc-400 text-center block text-sm">
+              <Label className="text-muted-foreground text-center block text-sm">
                 Enter 6-digit code
               </Label>
               <div className="flex justify-center gap-2 sm:gap-3">
@@ -385,14 +389,16 @@ function UserAuthForm({
                     }
                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
                     disabled={loadingState !== null}
-                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-[#27272a] bg-[#18181b] text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all caret-indigo-500"
+                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
                   />
                 ))}
               </div>
             </div>
 
             {error && (
-              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">{error}</p>
+              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+                {error}
+              </p>
             )}
 
             <Button
@@ -412,9 +418,9 @@ function UserAuthForm({
                 onClick={handleResendOTP}
                 disabled={countdown > 0 || loadingState !== null}
                 className={cn(
-                  "text-indigo-400 font-medium transition-colors hover:text-indigo-300",
+                  "text-brand font-medium transition-colors hover:text-brand/80",
                   countdown > 0 &&
-                    "text-zinc-600 cursor-not-allowed hover:text-zinc-600"
+                    "text-muted-foreground cursor-not-allowed hover:text-muted-foreground"
                 )}
               >
                 {countdown > 0 ? `Resend code in ${countdown}s` : "Resend code"}
@@ -427,7 +433,7 @@ function UserAuthForm({
                     setOtp(["", "", "", "", "", ""]);
                     setError(null);
                   }}
-                  className="text-zinc-500 hover:text-zinc-300 transition-colors text-xs"
+                  className="text-muted-foreground hover:text-foreground transition-colors text-xs"
                 >
                   <ArrowLeft className="inline mr-1 h-3 w-3" />
                   Use different email
@@ -440,7 +446,6 @@ function UserAuthForm({
     );
   }
 
-  // Standard Email/Password Form
   return (
     <div className={cn("grid gap-6", className)} {...props}>
       <form onSubmit={handleEmailAuth}>
@@ -506,7 +511,7 @@ function UserAuthForm({
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loadingState !== null}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none disabled:opacity-50 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none disabled:opacity-50 transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
@@ -517,8 +522,12 @@ function UserAuthForm({
               </button>
             </div>
           </div>
-          {error && <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">{error}</p>}
-          
+          {error && (
+            <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+              {error}
+            </p>
+          )}
+
           <Button
             disabled={loadingState !== null}
             type="submit"
@@ -539,7 +548,7 @@ function UserAuthForm({
             setMode("magic-link");
             setError(null);
           }}
-          className="text-center text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors group flex items-center justify-center"
+          className="text-center text-sm text-brand hover:text-brand/80 font-medium transition-colors group flex items-center justify-center"
         >
           <Sparkles className="inline mr-1.5 h-3.5 w-3.5 group-hover:animate-pulse" />
           Sign in with Magic Link instead
@@ -548,13 +557,15 @@ function UserAuthForm({
 
       <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-[#27272a]" />
+          <span className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-[#09090b] px-4 text-zinc-500 font-medium">Or continue with</span>
+          <span className="bg-background px-4 text-muted-foreground font-medium">
+            Or continue with
+          </span>
         </div>
       </div>
-      
+
       <div className="flex gap-4">
         <Button
           variant="outline"
@@ -566,13 +577,9 @@ function UserAuthForm({
           {loadingState === "github" ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Image
-              src="/github.jpg"
-              alt="GitHub"
-              width={20}
-              height={20}
-              className="mr-2 opacity-90 invert dark:invert-0"
-            />
+            <div className="mr-2 opacity-90 invert dark:invert-0">
+              <GithubIcon />
+            </div>
           )}
           GitHub
         </Button>
@@ -586,18 +593,14 @@ function UserAuthForm({
           {loadingState === "google" ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Image
-              src="/google.jpg"
-              alt="Google"
-              width={20}
-              height={20}
-              className="mr-2"
-            />
+            <div className="mr-2">
+              <ChromeIcon />
+            </div>
           )}
           Google
         </Button>
       </div>
-      
+
       <div className="text-center text-sm mt-4">
         <button
           type="button"
@@ -608,9 +611,19 @@ function UserAuthForm({
           className="text-zinc-400 hover:text-white transition-colors"
         >
           {mode === "signin" ? (
-            <>Don&apos;t have an account? <span className="text-indigo-400 hover:underline underline-offset-4">Sign up</span></>
+            <>
+              Don&apos;t have an account?{" "}
+              <span className="text-indigo-400 hover:underline underline-offset-4">
+                Sign up
+              </span>
+            </>
           ) : (
-            <>Already have an account? <span className="text-indigo-400 hover:underline underline-offset-4">Sign in</span></>
+            <>
+              Already have an account?{" "}
+              <span className="text-indigo-400 hover:underline underline-offset-4">
+                Sign in
+              </span>
+            </>
           )}
         </button>
       </div>
@@ -648,20 +661,39 @@ export function LoginForm() {
   };
 
   return (
-    <div className="flex items-center justify-center relative container min-h-screen md:grid lg:max-w-none lg:grid-cols-2 lg:px-0 bg-[#09090b] text-white">
-      <div className="flex items-center justify-center min-w-screen p-4 lg:p-8 min-h-screen bg-[#09090b]">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[400px]"
+    <div className="grid lg:grid-cols-2 h-screen w-full overflow-hidden bg-background">
+      {/* Video Section */}
+      <div className="hidden lg:block relative h-full w-full bg-muted overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover dark:hidden"
         >
+          <source src="/Sastram-Light.mp4" type="video/mp4" />
+        </video>
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover hidden dark:block"
+        >
+          <source src="/Sastram-Dark.mp4" type="video/mp4" />
+        </video>
+        {/* Overlay if needed for text readability, though not requested */}
+      </div>
+
+      {/* Form Section */}
+      <div className="flex items-center justify-center p-8 bg-background text-foreground relative">
+        <div className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[400px]">
           <div className="flex flex-col gap-2 text-center mb-4">
-             <div className="lg:hidden flex justify-center mb-6">
-                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-500/20">
-                    <Command className="h-7 w-7 text-white" />
-                </div>
-             </div>
+            <div className="lg:hidden flex justify-center mb-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <Command className="h-7 w-7" />
+              </div>
+            </div>
 
             <AnimatePresence mode="wait">
               <motion.div
@@ -671,37 +703,37 @@ export function LoginForm() {
                 exit={{ opacity: 0, y: -5 }}
                 transition={{ duration: 0.2 }}
               >
-                <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+                <h1 className="text-3xl font-bold tracking-tight mb-2">
                   {getTitle()}
                 </h1>
-                <p className="text-zinc-400 text-sm">{getSubtitle()}</p>
+                <p className="text-muted-foreground text-sm">{getSubtitle()}</p>
               </motion.div>
             </AnimatePresence>
           </div>
 
-          {/* Card Container */}
-          <div className="bg-[#101012] border border-[#27272a] p-6 sm:p-8 rounded-2xl shadow-2xl shadow-black/50">
-             <UserAuthForm mode={mode} setMode={setMode} />
+          {/* Form Container */}
+          <div className="p-1">
+            <UserAuthForm mode={mode} setMode={setMode} />
           </div>
 
-          <p className="px-8 text-center text-xs text-zinc-500">
+          <p className="px-8 text-center text-xs text-muted-foreground">
             By clicking continue, you agree to our{" "}
             <Link
               href="/terms"
-              className="underline underline-offset-4 hover:text-indigo-400 transition-colors"
+              className="underline underline-offset-4 hover:text-primary transition-colors"
             >
               Terms of Service
             </Link>{" "}
             and{" "}
             <Link
               href="/privacy"
-              className="underline underline-offset-4 hover:text-indigo-400 transition-colors"
+              className="underline underline-offset-4 hover:text-primary transition-colors"
             >
               Privacy Policy
             </Link>
             .
           </p>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

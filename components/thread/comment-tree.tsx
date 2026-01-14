@@ -11,6 +11,7 @@ import { postMessage } from "@/modules/messages/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ReportButton } from "./report-button";
+import { AppealMessageModal } from "./appeal-message-modal";
 import Image from "next/image";
 
 interface CommentTreeProps {
@@ -40,7 +41,6 @@ const MAX_DEPTH = 6;
 const INITIAL_REPLIES_TO_SHOW = 3; // Show first 3 replies by default
 
 export function CommentTree({ messages, sectionId, currentUser }: CommentTreeProps) {
-  // Build tree structure - group messages by parentId
   const messageMap = new Map<string, Message[]>();
   
   messages.forEach((msg) => {
@@ -81,6 +81,7 @@ function CommentItem({ message, allMessages, sectionId, currentUser, depth, pare
   const [showAllReplies, setShowAllReplies] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [appealOpen, setAppealOpen] = useState(false);
   const router = useRouter();
 
   // Find direct replies to this message
@@ -225,6 +226,14 @@ function CommentItem({ message, allMessages, sectionId, currentUser, depth, pare
                   </Button>
                 )}
                 <ReportButton messageId={message.id} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAppealOpen(true)}
+                  className="h-7 px-2 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                >
+                  Appeal
+                </Button>
               </div>
             </div>
           </div>
@@ -277,6 +286,12 @@ function CommentItem({ message, allMessages, sectionId, currentUser, depth, pare
             </div>
           </div>
         )}
+
+        <AppealMessageModal
+          messageId={message.id}
+          isOpen={appealOpen}
+          onClose={() => setAppealOpen(false)}
+        />
 
         {/* Nested replies */}
         {hasReplies && isExpanded && (

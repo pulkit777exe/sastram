@@ -5,6 +5,7 @@ import { logger } from "@/lib/infrastructure/logger";
 import { auth } from "@/lib/services/auth";
 import type { TypingIndicator } from "@/lib/types/index";
 import { validateWebSocketMessage } from "@/lib/schemas/websocket";
+import { rateLimit } from "@/lib/services/rate-limit";
 
 type ThreadChannel = Set<WebSocket>;
 
@@ -17,6 +18,7 @@ interface AuthenticatedWebSocket extends WebSocket {
 
 let wss: WebSocketServer | null = null;
 const threadChannels = new Map<string, ThreadChannel>();
+const connectionsByUserId = new Map<string, Set<AuthenticatedWebSocket>>();
 const typingIndicators = new Map<string, Map<string, TypingIndicator>>(); // Map<threadId, Map<userId, TypingIndicator>>
 
 function getThreadId(pathname?: string | null) {
@@ -65,10 +67,26 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
   channel.add(socket);
   threadChannels.set(threadId, channel);
 
+  if (socket.userId) {
+    const userConns = connectionsByUserId.get(socket.userId) ?? new Set();
+    userConns.add(socket);
+    connectionsByUserId.set(socket.userId, userConns);
+  }
+
   socket.on("close", () => {
     channel.delete(socket);
     if (channel.size === 0) {
       threadChannels.delete(threadId);
+    }
+
+    if (socket.userId) {
+      const userConns = connectionsByUserId.get(socket.userId);
+      if (userConns) {
+        userConns.delete(socket);
+        if (userConns.size === 0) {
+          connectionsByUserId.delete(socket.userId);
+        }
+      }
     }
 
     if (socket.userId) {
@@ -158,7 +176,7 @@ export function initWebSocketServer(server: HTTPServer) {
       }`
     );
 
-    ws.on("message", (data) => {
+    ws.on("message", async (data) => {
       try {
         const rawMessage = JSON.parse(data.toString());
 
@@ -178,6 +196,24 @@ export function initWebSocketServer(server: HTTPServer) {
         }
 
         const message = validation.data;
+
+        // Basic websocket rate limiting per user / IP
+        const identifier =
+          ws.userId ??
+          //@ts-expect-error underlying socket has remoteAddress
+          (ws._socket?.remoteAddress as string | undefined) ??
+          "anonymous";
+        const limitKey = `ws:${threadId}:${identifier}`;
+        const result = await rateLimit({ key: limitKey, type: "websocket" });
+        if (!result.success) {
+          ws.send(
+            JSON.stringify({
+              type: "ERROR",
+              payload: { error: "Rate limit exceeded" },
+            })
+          );
+          return;
+        }
 
         if (
           !ws.userId &&

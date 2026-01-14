@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession, assertAdmin } from "@/modules/auth/session";
 import { emitMessageDeleted } from "@/modules/ws/publisher";
 import { logAction } from "@/modules/audit/repository";
-import { moderationLimiter } from "@/lib/services/rate-limit";
+import { rateLimit } from "@/lib/services/rate-limit";
 import { createNotification } from "@/modules/notifications/repository";
 import { z } from "zod";
 import { handleError } from "@/lib/utils/errors";
@@ -22,7 +22,7 @@ import {
 
 async function applyModerationRateLimit(userId: string) {
   try {
-    const result = await moderationLimiter.check(userId);
+    const result = await rateLimit.check(userId);
     if (!result.success) {
       throw new Error("Rate limit exceeded. Please slow down.");
     }

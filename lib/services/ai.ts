@@ -4,16 +4,14 @@ export interface AIService {
 
 export class GeminiService implements AIService {
   private apiKey: string;
-  private model: any;
+  // private model: string;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    // Will be initialized when @google/generative-ai is installed
   }
 
   async generateSummary(content: string): Promise<string> {
     try {
-      // Dynamic import to handle case where package isn't installed yet
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(this.apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-pro" });
@@ -97,7 +95,6 @@ class AIServiceFactory {
   }
 }
 
-// Get AI provider from environment
 const aiProvider = (process.env.AI_PROVIDER as "gemini" | "openai") || "gemini";
 const geminiKey = process.env.GEMINI_API_KEY || "";
 const openaiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || "";

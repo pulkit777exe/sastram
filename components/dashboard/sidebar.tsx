@@ -104,8 +104,8 @@ export function Sidebar({
           </Link>
         )}
         {isCollapsed && (
-          <div className="w-6 h-6 bg-white rounded-sm flex items-center justify-center mx-auto">
-            <div className="w-3 h-3 border-2 border-black rounded-full" />
+          <div className="w-6 h-6 bg-foreground rounded-sm flex items-center justify-center mx-auto">
+            <div className="w-3 h-3 border-2 border-background rounded-full" />
           </div>
         )}
         {!isCollapsed && (
@@ -122,7 +122,7 @@ export function Sidebar({
         {isCollapsed && (
           <button
             onClick={toggleCollapse}
-            className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
+            className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
           >
             <AnimatedIcon icon={PanelLeftOpen} size={18} animateOnHover />
           </button>
@@ -135,7 +135,7 @@ export function Sidebar({
             <form onSubmit={handleSearch} className="relative group">
               <AnimatedIcon
                 icon={Search}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 size={14}
               />
               <input
@@ -143,13 +143,13 @@ export function Sidebar({
                 placeholder="Search threads..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-muted border border-border rounded-md py-1.5 pl-9 pr-12 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full bg-muted border border-border rounded-md py-1.5 pl-9 pr-12 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                <kbd className="text-[10px] bg-muted px-1 rounded border border-border text-muted-foreground">
+                <kbd className="text-[10px] bg-background px-1 rounded border border-border text-muted-foreground">
                   ⌘
                 </kbd>
-                <kbd className="text-[10px] bg-muted px-1 rounded border border-border text-muted-foreground">
+                <kbd className="text-[10px] bg-background px-1 rounded border border-border text-muted-foreground">
                   F
                 </kbd>
               </div>
@@ -185,15 +185,15 @@ export function Sidebar({
             />
           </nav>
 
-          <div className="m-3 p-4 bg-linear-to-br from-card to-muted border border-border rounded-xl">
+          <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
             <div className="flex items-center gap-2 mb-1 text-foreground">
-              <AnimatedIcon icon={Sparkles} size={14} />
+              <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
               <p className="text-sm font-semibold">Boost with AI</p>
             </div>
             <p className="text-[11px] text-muted-foreground mb-4">
               AI-powered replies and tools that save hours.
             </p>
-            <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-primary/20">
+            <button className="w-full bg-brand hover:bg-brand/90 text-white text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-brand/20">
               Upgrade to Pro
             </button>
           </div>
@@ -224,10 +224,14 @@ export function Sidebar({
           onClick={() => !isCollapsed && setShowProfileMenu(!showProfileMenu)}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-muted shrink-0"></div>
+            <div className="w-8 h-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-medium">
+              {name.charAt(0).toUpperCase()}
+            </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-foreground">{name}</span>
+                <span className="text-xs font-semibold text-foreground">
+                  {name}
+                </span>
                 <span className="text-[10px] text-muted-foreground truncate w-24">
                   {email}
                 </span>
@@ -313,7 +317,7 @@ function NavItem({
       className={cn(
         "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
         active
-          ? "bg-linear-to-r from-primary/10 to-primary/5 text-foreground shadow-sm border-r-2 border-primary"
+          ? "bg-brand/5 text-brand shadow-sm border-r-2 border-brand"
           : "text-muted-foreground hover:text-foreground hover:bg-accent",
         collapsed && "justify-center"
       )}
@@ -324,14 +328,16 @@ function NavItem({
         size={18}
         className={cn(
           "transition-colors shrink-0",
-          active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+          active
+            ? "text-brand"
+            : "text-muted-foreground group-hover:text-foreground"
         )}
         animateOnHover
       />
       {!collapsed && <span className="text-sm font-medium">{label}</span>}
 
       {active && !collapsed && (
-        <div className="ml-auto w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
+        <div className="ml-auto w-2 h-2 rounded-full bg-brand shadow-[0_0_8px_rgba(55,54,252,0.5)]" />
       )}
     </Link>
   );
