@@ -457,7 +457,7 @@ function UserAuthForm({
               </Label>
               <Input
                 id="name"
-                placeholder="John Doe"
+                placeholder="Sherlock Holmes"
                 type="text"
                 autoCapitalize="words"
                 autoComplete="name"
@@ -475,7 +475,7 @@ function UserAuthForm({
             </Label>
             <Input
               id="email"
-              placeholder="name@example.com"
+              placeholder="name@company.com"
               type="email"
               autoCapitalize="none"
               autoComplete="email"
@@ -661,31 +661,8 @@ export function LoginForm() {
   };
 
   return (
-    <div className="grid lg:grid-cols-2 h-screen w-full overflow-hidden bg-background">
-      {/* Video Section */}
-      <div className="hidden lg:block relative h-full w-full bg-muted overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover dark:hidden"
-        >
-          <source src="/Sastram-Light.mp4" type="video/mp4" />
-        </video>
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover hidden dark:block"
-        >
-          <source src="/Sastram-Dark.mp4" type="video/mp4" />
-        </video>
-        {/* Overlay if needed for text readability, though not requested */}
-      </div>
+    <div className="flex justify-center items-center h-screen w-full overflow-hidden bg-background">
 
-      {/* Form Section */}
       <div className="flex items-center justify-center p-8 bg-background text-foreground relative">
         <div className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[400px]">
           <div className="flex flex-col gap-2 text-center mb-4">

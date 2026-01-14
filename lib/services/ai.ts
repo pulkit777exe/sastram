@@ -14,7 +14,7 @@ export class GeminiService implements AIService {
     try {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(this.apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       const prompt = `Summarize the following discussion thread conversation. Focus on key points, decisions made, and important information. Keep it concise but comprehensive (200-300 words):
 
