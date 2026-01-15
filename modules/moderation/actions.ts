@@ -22,7 +22,7 @@ import {
 
 async function applyModerationRateLimit(userId: string) {
   try {
-    const result = await rateLimit.check(userId);
+    const result = await rateLimit({ key: userId, type: "api" });
     if (!result.success) {
       throw new Error("Rate limit exceeded. Please slow down.");
     }
@@ -45,12 +45,12 @@ async function validateModerationTarget(
 
   const targetUser = await prisma.user.findUnique({
     where: { id: targetUserId },
-    select: { 
-      id: true, 
-      role: true, 
+    select: {
+      id: true,
+      role: true,
       status: true,
       name: true,
-      email: true
+      email: true,
     },
   });
 
@@ -70,46 +70,46 @@ async function validateEntityForDeletion(
   entityId: string
 ) {
   let entity;
-  
+
   switch (entityType) {
     case "message":
       entity = await prisma.message.findUnique({
         where: { id: entityId },
-        select: { 
-          id: true, 
+        select: {
+          id: true,
           deletedAt: true,
           sectionId: true,
           senderId: true,
           section: {
             select: {
               name: true,
-              slug: true
-            }
-          }
+              slug: true,
+            },
+          },
         },
       });
       break;
     case "section":
       entity = await prisma.section.findUnique({
         where: { id: entityId },
-        select: { 
-          id: true, 
+        select: {
+          id: true,
           deletedAt: true,
           name: true,
           slug: true,
           messageCount: true,
-          memberCount: true
+          memberCount: true,
         },
       });
       break;
     case "community":
       entity = await prisma.community.findUnique({
         where: { id: entityId },
-        select: { 
-          id: true, 
+        select: {
+          id: true,
           deletedAt: true,
           title: true,
-          slug: true
+          slug: true,
         },
       });
       break;
@@ -152,7 +152,7 @@ export async function deleteMessageAction(
 
   try {
     const message = await validateEntityForDeletion("message", messageId);
-    
+
     // Type guard: ensure it's a message entity
     if (!("sectionId" in message)) {
       return { error: "Invalid entity type" };
@@ -178,7 +178,7 @@ export async function deleteMessageAction(
           userId: message.senderId,
           type: "SYSTEM",
           title: "Message Deleted",
-          message: reason 
+          message: reason
             ? `Your message was deleted by a moderator. Reason: ${reason}`
             : "Your message was deleted by a moderator.",
           data: {
@@ -254,7 +254,7 @@ export async function bulkDeleteMessages(
 
       await tx.message.updateMany({
         where: {
-          id: { in: messages.map(m => m.id) },
+          id: { in: messages.map((m) => m.id) },
         },
         data: {
           deletedAt: new Date(),
@@ -277,11 +277,13 @@ export async function bulkDeleteMessages(
         });
       }
 
-      const uniqueSenders = [...new Set(messages.map(m => m.senderId))];
-      
+      const uniqueSenders = [...new Set(messages.map((m) => m.senderId))];
+
       for (const senderId of uniqueSenders) {
-        const userMessageCount = messages.filter(m => m.senderId === senderId).length;
-        
+        const userMessageCount = messages.filter(
+          (m) => m.senderId === senderId
+        ).length;
+
         await tx.notification.create({
           data: {
             userId: senderId,
@@ -312,9 +314,9 @@ export async function bulkDeleteMessages(
 
     revalidatePath("/dashboard/admin/moderation");
 
-    return { 
-      success: true, 
-      deletedCount: result.deletedCount 
+    return {
+      success: true,
+      deletedCount: result.deletedCount,
     };
   } catch (error) {
     return handleError(error);
@@ -361,18 +363,15 @@ export async function banUser(
         userId,
         isActive: true,
         threadId: threadId || null,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
-        ],
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
     });
 
     if (existingBan) {
-      return { 
-        error: threadId 
+      return {
+        error: threadId
           ? "User is already banned from this thread"
-          : "User is already globally banned"
+          : "User is already globally banned",
       };
     }
 
@@ -420,7 +419,9 @@ export async function banUser(
       }
 
       const banMessage = threadId
-        ? `You have been banned from "${newBan.thread?.name || 'a thread'}". Reason: ${reason}`
+        ? `You have been banned from "${
+            newBan.thread?.name || "a thread"
+          }". Reason: ${reason}`
         : `Your account has been banned. Reason: ${reason}`;
 
       await tx.notification.create({
@@ -462,8 +463,8 @@ export async function banUser(
     revalidatePath("/dashboard/admin/moderation");
     revalidatePath("/dashboard");
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       banId: ban.id,
       expiresAt: ban.expiresAt,
     };
@@ -490,8 +491,8 @@ export async function unbanUser(banId: string) {
     const result = await prisma.$transaction(async (tx) => {
       const ban = await tx.userBan.findUnique({
         where: { id: banId },
-        select: { 
-          userId: true, 
+        select: {
+          userId: true,
           threadId: true,
           isActive: true,
           user: {
@@ -567,7 +568,7 @@ export async function unbanUser(banId: string) {
     });
 
     revalidatePath("/dashboard/admin/moderation");
-    
+
     return { success: true };
   } catch (error) {
     return handleError(error);
@@ -583,9 +584,13 @@ export async function getBannedUsers(filters?: {
   const session = await requireSession();
   await assertAdmin(session.user);
 
-  const validation = filters ? validate(getBannedUsersSchema, filters) : { success: true as const, data: {} };
+  const validation = filters
+    ? validate(getBannedUsersSchema, filters)
+    : { success: true as const, data: {} };
   if (!validation.success) {
-    return { error: "error" in validation ? validation.error : "Validation failed" };
+    return {
+      error: "error" in validation ? validation.error : "Validation failed",
+    };
   }
 
   const limit = Math.min(filters?.limit || 50, 100);
@@ -658,8 +663,11 @@ export async function deleteCommunity(communityId: string, reason?: string) {
   const session = await requireSession();
   await assertAdmin(session.user);
 
-  const validation = validate(deleteEntitySchema, { entityId: communityId, reason });
-  
+  const validation = validate(deleteEntitySchema, {
+    entityId: communityId,
+    reason,
+  });
+
   if (!validation.success) {
     return { error: validation.error };
   }
@@ -672,7 +680,7 @@ export async function deleteCommunity(communityId: string, reason?: string) {
 
   try {
     const community = await validateEntityForDeletion("community", communityId);
-    
+
     // Type guard: ensure it's a community entity
     if (!("title" in community)) {
       return { error: "Invalid entity type" };
@@ -689,7 +697,7 @@ export async function deleteCommunity(communityId: string, reason?: string) {
       });
 
       await tx.section.updateMany({
-        where: { 
+        where: {
           communityId,
           deletedAt: null,
         },
@@ -712,8 +720,8 @@ export async function deleteCommunity(communityId: string, reason?: string) {
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/admin/moderation");
-    
-    return { 
+
+    return {
       success: true,
       affectedSections: sectionCount,
     };
@@ -726,8 +734,11 @@ export async function deleteThread(threadId: string, reason?: string) {
   const session = await requireSession();
   await assertAdmin(session.user);
 
-  const validation = validate(deleteEntitySchema, { entityId: threadId, reason });
-  
+  const validation = validate(deleteEntitySchema, {
+    entityId: threadId,
+    reason,
+  });
+
   if (!validation.success) {
     return { error: validation.error };
   }
@@ -740,7 +751,7 @@ export async function deleteThread(threadId: string, reason?: string) {
 
   try {
     const thread = await validateEntityForDeletion("section", threadId);
-    
+
     // Type guard: ensure it's a section entity
     if (!("name" in thread && "slug" in thread)) {
       return { error: "Invalid entity type" };
@@ -762,7 +773,7 @@ export async function deleteThread(threadId: string, reason?: string) {
 
       if (members.length > 0) {
         await tx.notification.createMany({
-          data: members.map(member => ({
+          data: members.map((member) => ({
             userId: member.userId,
             type: "SYSTEM" as const,
             title: "Thread Deleted",
@@ -797,8 +808,8 @@ export async function deleteThread(threadId: string, reason?: string) {
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/threads");
     revalidatePath("/dashboard/admin/moderation");
-    
-    return { 
+
+    return {
       success: true,
       notifiedMembers: members.length,
     };
@@ -893,7 +904,7 @@ export async function getMessageDetails(messageId: string) {
       where: {
         senderId: message.senderId,
         createdAt: {
-          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), 
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
         },
         deletedAt: null,
       },
@@ -934,9 +945,13 @@ export async function getModerationQueue(filters?: {
   const session = await requireSession();
   await assertAdmin(session.user);
 
-  const validation = filters ? validate(getModerationQueueSchema, filters) : { success: true as const, data: {} };
+  const validation = filters
+    ? validate(getModerationQueueSchema, filters)
+    : { success: true as const, data: {} };
   if (!validation.success) {
-    return { error: "error" in validation ? validation.error : "Validation failed" };
+    return {
+      error: "error" in validation ? validation.error : "Validation failed",
+    };
   }
 
   const limit = Math.min(filters?.limit || 20, 100);
@@ -1005,4 +1020,3 @@ export async function getModerationQueue(filters?: {
     return handleError(error);
   }
 }
-

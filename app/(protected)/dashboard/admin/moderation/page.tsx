@@ -1,46 +1,59 @@
 import { requireSession, assertAdmin } from "@/modules/auth/session";
+import { getReports, getReportStats } from "@/modules/reports/actions";
 import { getBannedUsers } from "@/modules/moderation/actions";
-import { listThreads } from "@/modules/threads/repository";
-import { listCommunities } from "@/modules/communities/repository";
+import { getAuditLogs } from "@/modules/audit/repository";
+import { ModerationDashboard } from "@/components/admin/moderation-dashboard";
 import { BannedUsersList } from "@/components/admin/banned-users-list";
-import { AdminModerationPanel } from "@/components/admin/admin-moderation-panel";
 
 export default async function ModerationPage() {
   const session = await requireSession();
   assertAdmin(session.user);
 
-  const [bannedUsersResult, threads, communities] = await Promise.all([
+  const [reports, stats, bannedUsersResult, auditLogs] = await Promise.all([
+    getReports({ status: "PENDING", limit: 20 }),
+    getReportStats(),
     getBannedUsers({ isActive: true, limit: 50 }),
-    listThreads(),
-    listCommunities(),
+    getAuditLogs({ limit: 10 }),
   ]);
+
+  const auditLogEntries = auditLogs.map((log) => ({
+    id: log.id,
+    timestamp: log.createdAt,
+    action: log.action,
+    target: log.entityId.slice(-8),
+    category: log.entityType,
+    performedBy: log.performer?.name || log.performer?.email || "System",
+  }));
 
   return (
     <div className="space-y-8">
-      <header className="rounded-2xl border border-zinc-800 bg-[#1C1C1E] p-8">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-zinc-500">Admin Workspace</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Moderation Center</h1>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-            Manage users, threads, and communities. Ban users, delete content, and maintain platform safety.
-          </p>
-        </div>
-      </header>
-
-      <AdminModerationPanel threads={threads} communities={communities} />
-
+      <ModerationDashboard
+        stats={stats}
+        reports={reports}
+        auditLog={auditLogEntries}
+        moderator={{
+          name: session.user.name || "Moderator",
+          email: session.user.email,
+          image: session.user.image || undefined,
+        }}
+      />
+      
       <section className="space-y-4">
         <div>
-          <h2 className="text-xl font-semibold text-white">Banned & Suspicious Users</h2>
-          <p className="text-sm text-zinc-400 mt-1">
-            View and manage users who have been banned from threads or the platform.
+          <h2 className="text-xl font-semibold text-foreground">
+            Banned & Suspended Users
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            View and manage users who have been banned from threads or the
+            platform.
           </p>
         </div>
-        {bannedUsersResult && "success" in bannedUsersResult && bannedUsersResult.success && (
-          <BannedUsersList bans={bannedUsersResult.bans} />
-        )}
+        {bannedUsersResult &&
+          "success" in bannedUsersResult &&
+          bannedUsersResult.success && (
+            <BannedUsersList bans={bannedUsersResult.bans} />
+          )}
       </section>
     </div>
   );
 }
-

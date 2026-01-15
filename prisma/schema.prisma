@@ -7,31 +7,31 @@ datasource db {
 }
 
 model User {
-  id                      String                   @id @default(cuid())
-  email                   String                   @unique
-  emailVerified           Boolean                  @default(false)
-  name                    String?
-  image                   String?
-  bio                     String?
-  location                String?
-  website                 String?
-  twitter                 String?
-  github                  String?
-  linkedin                String?
-  avatarUrl               String?
-  bannerUrl               String?
-  preferences             Json?                    @default("{}")
-  status                  UserStatus               @default(ACTIVE)
-  role                    Role                     @default(USER)
-  lastSeenAt              DateTime?
-  profilePrivacy          ProfilePrivacy           @default(PUBLIC)
-  reputationPoints        Int                      @default(0)
-  followerCount           Int                      @default(0)
-  followingCount          Int                      @default(0)
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  deletedAt               DateTime?
-  
+  id               String         @id @default(cuid())
+  email            String         @unique
+  emailVerified    Boolean        @default(false)
+  name             String?
+  image            String?
+  bio              String?
+  location         String?
+  website          String?
+  twitter          String?
+  github           String?
+  linkedin         String?
+  avatarUrl        String?
+  bannerUrl        String?
+  preferences      Json?          @default("{}")
+  status           UserStatus     @default(ACTIVE)
+  role             Role           @default(USER)
+  lastSeenAt       DateTime?
+  profilePrivacy   ProfilePrivacy @default(PUBLIC)
+  reputationPoints Int            @default(0)
+  followerCount    Int            @default(0)
+  followingCount   Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+
   // Relations
   accounts                Account[]
   sessions                Session[]
@@ -74,19 +74,19 @@ model User {
 }
 
 model Community {
-  id          String    @id @default(cuid())
+  id          String              @id @default(cuid())
   title       String
-  slug        String    @unique
+  slug        String              @unique
   description String?
   visibility  CommunityVisibility @default(PUBLIC)
-  settings    Json?     @default("{}")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  settings    Json?               @default("{}")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   deletedAt   DateTime?
   createdBy   String
-  
-  creator     User      @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  sections    Section[]
+
+  creator  User      @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  sections Section[]
 
   @@index([slug])
   @@index([visibility])
@@ -102,8 +102,8 @@ model Session {
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
@@ -122,8 +122,8 @@ model Account {
   password     String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, accountId])
   @@index([userId])
@@ -143,22 +143,22 @@ model Verification {
 }
 
 model Section {
-  id                      String                   @id @default(cuid())
-  name                    String
-  slug                    String                   @unique
-  description             String?
-  summary                 String?
-  icon                    String?
-  visibility              SectionVisibility        @default(PUBLIC)
-  settings                Json?                    @default("{}")
-  messageCount            Int                      @default(0)
-  memberCount             Int                      @default(0)
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  deletedAt               DateTime?
-  createdBy               String
-  communityId             String?
-  
+  id           String            @id @default(cuid())
+  name         String
+  slug         String            @unique
+  description  String?
+  summary      String?
+  icon         String?
+  visibility   SectionVisibility @default(PUBLIC)
+  settings     Json?             @default("{}")
+  messageCount Int               @default(0)
+  memberCount  Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
+  createdBy    String
+  communityId  String?
+
   // Relations
   creator                 User                     @relation("SectionCreator", fields: [createdBy], references: [id])
   community               Community?               @relation(fields: [communityId], references: [id])
@@ -182,16 +182,16 @@ model Section {
 }
 
 model SectionMember {
-  id        String           @id @default(cuid())
+  id        String       @id @default(cuid())
   sectionId String
   userId    String
-  role      SectionRole      @default(MEMBER)
-  status    MemberStatus     @default(ACTIVE)
-  joinedAt  DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  
-  section   Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      SectionRole  @default(MEMBER)
+  status    MemberStatus @default(ACTIVE)
+  joinedAt  DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([sectionId, userId])
   @@index([sectionId])
@@ -201,32 +201,32 @@ model SectionMember {
 }
 
 model Message {
-  id          String       @id @default(cuid())
-  content     String       @db.Text
-  sectionId   String
-  senderId    String
-  parentId    String?
-  depth       Int          @default(0)
-  isEdited    Boolean      @default(false)
-  isPinned    Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  deletedAt   DateTime?
-  
+  id        String    @id @default(cuid())
+  content   String    @db.Text
+  sectionId String
+  senderId  String
+  parentId  String?
+  depth     Int       @default(0)
+  isEdited  Boolean   @default(false)
+  isPinned  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
   // Relations
-  section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  sender      User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  parent      Message?     @relation("MessageReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies     Message[]    @relation("MessageReplies")
-  attachments Attachment[]
-  reactions   Reaction[]
-  readReceipts ReadReceipt[]
-  reports     Report[]
-  editHistory MessageEdit[]
-  mentions    MessageMention[]
-  moderationQueue ModerationQueue[] @relation("MessageModerationQueue")
-  appeals     Appeal[]             @relation("MessageAppeal")
-  moderationLogs ModerationActionLog[] @relation("ModerationLogMessage")
+  section         Section               @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sender          User                  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  parent          Message?              @relation("MessageReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         Message[]             @relation("MessageReplies")
+  attachments     Attachment[]
+  reactions       Reaction[]
+  readReceipts    ReadReceipt[]
+  reports         Report[]
+  editHistory     MessageEdit[]
+  mentions        MessageMention[]
+  moderationQueue ModerationQueue[]     @relation("MessageModerationQueue")
+  appeals         Appeal[]              @relation("MessageAppeal")
+  moderationLogs  ModerationActionLog[] @relation("ModerationLogMessage")
 
   @@index([sectionId])
   @@index([sectionId, createdAt])
@@ -238,24 +238,24 @@ model Message {
 }
 
 model MessageEdit {
-  id          String   @id @default(cuid())
-  messageId   String
-  content     String   @db.Text
-  editedAt    DateTime @default(now())
-  
-  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  messageId String
+  content   String   @db.Text
+  editedAt  DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@index([messageId])
   @@map("message_edits")
 }
 
 model MessageMention {
-  id          String   @id @default(cuid())
-  messageId   String
-  userId      String
-  createdAt   DateTime @default(now())
-  
-  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId])
   @@index([userId])
@@ -271,8 +271,8 @@ model Attachment {
   mimeType  String?
   size      BigInt?
   createdAt DateTime       @default(now())
-  
-  message   Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@index([messageId])
   @@map("attachments")
@@ -284,9 +284,9 @@ model Reaction {
   userId    String
   emoji     String
   createdAt DateTime @default(now())
-  
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
@@ -295,15 +295,15 @@ model Reaction {
 }
 
 model ReadReceipt {
-  id           String   @id @default(cuid())
-  sectionId    String
-  userId       String
+  id                String   @id @default(cuid())
+  sectionId         String
+  userId            String
   lastReadMessageId String?
-  lastReadAt   DateTime @default(now())
-  
-  section      Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lastMessage  Message? @relation(fields: [lastReadMessageId], references: [id], onDelete: SetNull)
+  lastReadAt        DateTime @default(now())
+
+  section     Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastMessage Message? @relation(fields: [lastReadMessageId], references: [id], onDelete: SetNull)
 
   @@unique([sectionId, userId])
   @@index([userId])
@@ -312,17 +312,17 @@ model ReadReceipt {
 }
 
 model Notification {
-  id          String            @id @default(cuid())
-  userId      String
-  type        NotificationType
-  title       String
-  message     String?
-  data        Json?
-  isRead      Boolean           @default(false)
-  createdAt   DateTime          @default(now())
-  readAt      DateTime?
-  
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String?
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
@@ -331,18 +331,18 @@ model Notification {
 }
 
 model NotificationSettings {
-  id                String   @id @default(cuid())
-  userId            String
-  sectionId         String?
-  emailEnabled      Boolean  @default(true)
-  pushEnabled       Boolean  @default(true)
-  mentionsEnabled   Boolean  @default(true)
-  repliesEnabled    Boolean  @default(true)
-  digestEnabled     Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  userId          String
+  sectionId       String?
+  emailEnabled    Boolean  @default(true)
+  pushEnabled     Boolean  @default(true)
+  mentionsEnabled Boolean  @default(true)
+  repliesEnabled  Boolean  @default(true)
+  digestEnabled   Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, sectionId])
   @@index([userId])
@@ -350,17 +350,17 @@ model NotificationSettings {
 }
 
 model NewsletterSubscription {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   threadId  String
   userId    String?
   email     String
   frequency DigestFrequency @default(WEEKLY)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id])
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id])
 
   @@unique([threadId, email])
   @@index([threadId])
@@ -377,8 +377,8 @@ model ThreadDigest {
   summary      String?      @db.Text
   emailCount   Int          @default(0)
   createdAt    DateTime     @default(now())
-  
-  thread       Section      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, scheduledFor])
   @@index([status])
@@ -387,25 +387,29 @@ model ThreadDigest {
 }
 
 model Report {
-  id         String       @id @default(cuid())
+  id         String         @id @default(cuid())
   messageId  String
   reporterId String
-  reason     String
-  details    String?      @db.Text
-  status     ReportStatus @default(PENDING)
+  category   ReportCategory
+  details    String?        @db.Text
+  status     ReportStatus   @default(PENDING)
+  priority   ReportPriority @default(MEDIUM)
   resolvedBy String?
   resolvedAt DateTime?
-  resolution String?      @db.Text
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  
-  message    Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  reporter   User         @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  resolver   User?        @relation("ReportedMessage", fields: [resolvedBy], references: [id])
+  resolution String?        @db.Text
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporter User    @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolver User?   @relation("ReportedMessage", fields: [resolvedBy], references: [id])
 
   @@index([messageId])
   @@index([reporterId])
   @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([status, priority])
   @@map("reports")
 }
 
@@ -420,9 +424,9 @@ model ThreadInvitation {
   expiresAt DateTime?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
-  
-  thread    Section          @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender    User             @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User    @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, email, senderId])
   @@index([threadId])
@@ -443,10 +447,10 @@ model UserBan {
   expiresAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  
-  user         User      @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
-  issuer       User      @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
-  thread       Section?  @relation("ThreadBans", fields: [threadId], references: [id], onDelete: Cascade)
+
+  user   User     @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
+  issuer User     @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
+  thread Section? @relation("ThreadBans", fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([bannedBy])
@@ -457,19 +461,19 @@ model UserBan {
 }
 
 model AuditLog {
-  id           String      @id @default(cuid())
-  action       AuditAction
-  entityType   String
-  entityId     String
-  userId       String?
-  performedBy  String?
-  details      Json?
-  ipAddress    String?
-  userAgent    String?
-  createdAt    DateTime    @default(now())
-  
-  user         User?       @relation("AuditLogUser", fields: [userId], references: [id])
-  performer    User?       @relation("AuditLogPerformer", fields: [performedBy], references: [id])
+  id          String      @id @default(cuid())
+  action      AuditAction
+  entityType  String
+  entityId    String
+  userId      String?
+  performedBy String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  user      User? @relation("AuditLogUser", fields: [userId], references: [id])
+  performer User? @relation("AuditLogPerformer", fields: [performedBy], references: [id])
 
   @@index([action])
   @@index([entityType])
@@ -548,6 +552,28 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum ReportCategory {
+  HATE_SPEECH
+  HARASSMENT
+  VIOLENCE_THREATS
+  SELF_HARM
+  ADULT_CONTENT
+  SPAM
+  SCAM_FRAUD
+  MISINFORMATION
+  IMPERSONATION
+  PRIVATE_INFO
+  COPYRIGHT
+  OTHER
+}
+
+enum ReportPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
 enum InvitationStatus {
   PENDING
   SENT
@@ -599,9 +625,9 @@ model UserFollow {
   followerId  String
   followingId String
   createdAt   DateTime @default(now())
-  
-  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
   @@index([followerId])
@@ -615,9 +641,9 @@ model UserBookmark {
   userId    String
   threadId  String
   createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@unique([userId, threadId])
   @@index([userId])
@@ -632,8 +658,8 @@ model ThreadTag {
   slug      String   @unique
   color     String   @default("#3b82f6")
   createdAt DateTime @default(now())
-  
-  threads   ThreadTagRelation[]
+
+  threads ThreadTagRelation[]
 
   @@index([slug])
   @@map("thread_tags")
@@ -644,9 +670,9 @@ model ThreadTagRelation {
   threadId  String
   tagId     String
   createdAt DateTime @default(now())
-  
-  thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  tag       ThreadTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  thread Section   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  tag    ThreadTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, tagId])
   @@index([threadId])
@@ -656,17 +682,17 @@ model ThreadTagRelation {
 
 // Polls System
 model Poll {
-  id        String   @id @default(cuid())
-  threadId  String   @unique
+  id        String    @id @default(cuid())
+  threadId  String    @unique
   question  String
-  options   Json     // Array of option strings
-  isActive  Boolean  @default(true)
+  options   Json // Array of option strings
+  isActive  Boolean   @default(true)
   expiresAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  thread    Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  votes     PollVote[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  thread Section    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  votes  PollVote[]
 
   @@index([threadId])
   @@index([isActive])
@@ -679,9 +705,9 @@ model PollVote {
   userId      String
   optionIndex Int
   createdAt   DateTime @default(now())
-  
-  poll        Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([pollId, userId])
   @@index([pollId])
@@ -696,8 +722,8 @@ model UserReputation {
   points    Int      @default(0)
   level     Int      @default(1)
   updatedAt DateTime @updatedAt
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([points])
   @@index([level])
@@ -711,23 +737,23 @@ model UserBadge {
   description String
   icon        String?
   color       String   @default("#3b82f6")
-  criteria    Json     // Criteria for earning badge
+  criteria    Json // Criteria for earning badge
   createdAt   DateTime @default(now())
-  
-  earnedBy    UserBadgeEarned[]
+
+  earnedBy UserBadgeEarned[]
 
   @@index([name])
   @@map("user_badges")
 }
 
 model UserBadgeEarned {
-  id        String   @id @default(cuid())
-  userId    String
-  badgeId   String
-  earnedAt  DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge     UserBadge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge UserBadge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, badgeId])
   @@index([userId])
@@ -739,13 +765,13 @@ model UserBadgeEarned {
 model UserActivity {
   id         String   @id @default(cuid())
   userId     String
-  type       String   // THREAD_CREATED, MESSAGE_POSTED, BOOKMARK_ADDED, etc.
-  entityType String   // Section, Message, User, etc.
+  type       String // THREAD_CREATED, MESSAGE_POSTED, BOOKMARK_ADDED, etc.
+  entityType String // Section, Message, User, etc.
   entityId   String
   metadata   Json?
   createdAt  DateTime @default(now())
-  
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -756,17 +782,17 @@ model UserActivity {
 
 // Moderation System
 model ContentSafetyRule {
-  id         String    @id @default(cuid())
-  pattern    String
-  category   String
-  severity   ModerationSeverity @default(MEDIUM)
-  action     ModerationAction
-  createdBy  String
-  metadata   Json?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id        String             @id @default(cuid())
+  pattern   String
+  category  String
+  severity  ModerationSeverity @default(MEDIUM)
+  action    ModerationAction
+  createdBy String
+  metadata  Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
-  creator    User      @relation("ContentSafetyRuleCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  creator User @relation("ContentSafetyRuleCreator", fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([category])
   @@index([severity])
@@ -775,23 +801,23 @@ model ContentSafetyRule {
 }
 
 model ModerationQueue {
-  id             String             @id @default(cuid())
-  messageId      String
-  status         ModerationStatus   @default(QUEUED)
-  reason         String?
-  confidence     Float?
-  context        Json?
-  flaggedBy      String?
-  reviewedBy     String?
-  reviewedAt     DateTime?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  id         String           @id @default(cuid())
+  messageId  String
+  status     ModerationStatus @default(QUEUED)
+  reason     String?
+  confidence Float?
+  context    Json?
+  flaggedBy  String?
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
 
-  message        Message            @relation("MessageModerationQueue", fields: [messageId], references: [id], onDelete: Cascade)
-  flagger        User?              @relation("ModerationFlagger", fields: [flaggedBy], references: [id], onDelete: SetNull)
-  reviewer       User?              @relation("ModerationReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
-  feedback       ModerationFeedback[]
-  appeals        Appeal[]           @relation("QueueAppeals")
+  message  Message              @relation("MessageModerationQueue", fields: [messageId], references: [id], onDelete: Cascade)
+  flagger  User?                @relation("ModerationFlagger", fields: [flaggedBy], references: [id], onDelete: SetNull)
+  reviewer User?                @relation("ModerationReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  feedback ModerationFeedback[]
+  appeals  Appeal[]             @relation("QueueAppeals")
 
   @@index([messageId])
   @@index([status])
@@ -802,22 +828,22 @@ model ModerationQueue {
 }
 
 model Appeal {
-  id             String           @id @default(cuid())
-  messageId      String
-  userId         String
-  moderatorId    String?
-  queueId        String?
-  status         AppealStatus     @default(PENDING)
-  reason         String
-  response       String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  resolvedAt     DateTime?
+  id          String       @id @default(cuid())
+  messageId   String
+  userId      String
+  moderatorId String?
+  queueId     String?
+  status      AppealStatus @default(PENDING)
+  reason      String
+  response    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  resolvedAt  DateTime?
 
-  message        Message          @relation("MessageAppeal", fields: [messageId], references: [id], onDelete: Cascade)
-  user           User             @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: Cascade)
-  moderator      User?            @relation("AppealModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
-  queue          ModerationQueue? @relation("QueueAppeals", fields: [queueId], references: [id], onDelete: SetNull)
+  message   Message          @relation("MessageAppeal", fields: [messageId], references: [id], onDelete: Cascade)
+  user      User             @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  moderator User?            @relation("AppealModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+  queue     ModerationQueue? @relation("QueueAppeals", fields: [queueId], references: [id], onDelete: SetNull)
 
   @@index([messageId])
   @@index([userId])
@@ -829,15 +855,15 @@ model Appeal {
 }
 
 model ModerationFeedback {
-  id             String             @id @default(cuid())
-  queueId        String
-  moderatorId    String
-  decision       ModerationDecision
-  notes          String?
-  createdAt      DateTime           @default(now())
+  id          String             @id @default(cuid())
+  queueId     String
+  moderatorId String
+  decision    ModerationDecision
+  notes       String?
+  createdAt   DateTime           @default(now())
 
-  queue          ModerationQueue    @relation(fields: [queueId], references: [id], onDelete: Cascade)
-  moderator      User               @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+  queue     ModerationQueue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  moderator User            @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
 
   @@index([queueId])
   @@index([moderatorId])
@@ -846,14 +872,14 @@ model ModerationFeedback {
 }
 
 model ModerationStats {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   windowStart        DateTime
   windowEnd          DateTime?
-  blockedCount       Int      @default(0)
-  flaggedCount       Int      @default(0)
-  allowedCount       Int      @default(0)
-  falsePositiveCount Int      @default(0)
-  createdAt          DateTime @default(now())
+  blockedCount       Int       @default(0)
+  flaggedCount       Int       @default(0)
+  allowedCount       Int       @default(0)
+  falsePositiveCount Int       @default(0)
+  createdAt          DateTime  @default(now())
 
   @@index([windowStart])
   @@index([createdAt])
@@ -861,17 +887,17 @@ model ModerationStats {
 }
 
 model ModerationActionLog {
-  id             String              @id @default(cuid())
-  action         ModerationLogAction
-  messageId      String?
-  actorId        String?
-  targetUserId   String?
-  details        Json?
-  createdAt      DateTime            @default(now())
+  id           String              @id @default(cuid())
+  action       ModerationLogAction
+  messageId    String?
+  actorId      String?
+  targetUserId String?
+  details      Json?
+  createdAt    DateTime            @default(now())
 
-  message        Message?            @relation("ModerationLogMessage", fields: [messageId], references: [id], onDelete: SetNull)
-  actor          User?               @relation("ModerationActor", fields: [actorId], references: [id], onDelete: SetNull)
-  targetUser     User?               @relation("ModerationTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  message    Message? @relation("ModerationLogMessage", fields: [messageId], references: [id], onDelete: SetNull)
+  actor      User?    @relation("ModerationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  targetUser User?    @relation("ModerationTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
 
   @@index([action])
   @@index([messageId])

@@ -60,7 +60,6 @@ export async function getAuditLogs(filters?: AuditLogFilters) {
     if (filters.userId) where.userId = filters.userId;
     if (filters.performedBy) where.performedBy = filters.performedBy;
 
-    // Date range filtering
     if (filters.startDate || filters.endDate) {
       where.createdAt = {};
       if (filters.startDate) where.createdAt.gte = filters.startDate;

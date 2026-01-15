@@ -1,109 +1,199 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ModerationQueue } from "./moderation-queue";
+import { ReportReviewPanel } from "./report-review-panel";
+import { AuditLogTable } from "./audit-log-table";
+import { getReportWithContext } from "@/modules/reports/actions";
+import type {
+  ReportStats,
+  ReportQueueItem,
+  ReportWithContext,
+  Report,
+} from "@/modules/reports/types";
+import { toast } from "sonner";
 
-type QueueItem = {
-  id: string;
-  status: string;
-  reason: string | null;
-  createdAt: string;
-  message: {
-    id: string;
-    content: string;
-    section: { name: string; slug: string };
-    sender: { name: string | null; email: string };
+interface ModerationDashboardProps {
+  stats: ReportStats | null;
+  reports: Report[];
+  auditLog: any[];
+  moderator: {
+    name: string;
+    email: string;
+    image?: string;
   };
-};
+}
 
-export function ModerationQueueView() {
-  const [items, setItems] = useState<QueueItem[]>([]);
+export function ModerationDashboard({
+  stats,
+  reports: initialReports,
+  auditLog,
+  moderator,
+}: ModerationDashboardProps) {
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [selectedReport, setSelectedReport] =
+    useState<ReportWithContext | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
 
-  useEffect(() => {
-    void fetch("/api/v1/moderation/queue")
-      .then((res) => res.json())
-      .then((res) => {
-        if (res?.data?.items) {
-          setItems(res.data.items);
-        }
-      })
-      .catch(() => {});
+  const queueItems: ReportQueueItem[] = initialReports.map((r) => ({
+    id: r.id,
+    category: r.category,
+    priority: r.priority,
+    status: r.status,
+    createdAt: r.createdAt,
+    reportCount: 1,
+    message: {
+      id: r.message.id,
+      content: r.message.content,
+      sender: {
+        id: r.message.sender.id,
+        name: r.message.sender.name,
+      },
+      section: {
+        name: r.message.section.name,
+        slug: r.message.section.slug,
+      },
+    },
+    aiConfidence: null,
+  }));
+
+  const handleSelectReport = useCallback(async (reportId: string) => {
+    setSelectedReportId(reportId);
+    setIsLoadingReport(true);
+
+    const result = await getReportWithContext(reportId);
+
+    if (result && "success" in result && result.data) {
+      setSelectedReport(result.data as unknown as ReportWithContext);
+    } else if (result && "error" in result) {
+      toast.error(result.error);
+    }
+
+    setIsLoadingReport(false);
   }, []);
 
+  const handleAction = useCallback(
+    async (action: string) => {
+      if (!selectedReportId) return;
+
+      toast.info(
+        `Action "${action}" selected. Confirmation modal coming soon.`
+      );
+    },
+    [selectedReportId]
+  );
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!selectedReport) return;
+
+      const key = e.key;
+      const actions: Record<string, string> = {
+        "1": "DISMISS",
+        "2": "REMOVE_MESSAGE",
+        "3": "WARN_USER",
+        "4": "SUSPEND_USER",
+        "5": "BAN_USER",
+      };
+
+      if (actions[key]) {
+        e.preventDefault();
+        handleAction(actions[key]);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedReport, handleAction]);
+
   return (
-    <ScrollArea className="h-[480px] rounded-md border border-zinc-800 bg-zinc-950/40 p-4">
-      <div className="space-y-3">
-        {items.map((item) => (
-          <Card
-            key={item.id}
-            className="border-zinc-800 bg-zinc-900/60 p-4 flex flex-col gap-2"
-          >
-            <div className="flex items-center justify-between text-xs text-zinc-400">
-              <span>
-                {item.message.sender.name || item.message.sender.email} in{" "}
-                {item.message.section.name}
-              </span>
-              <span>{new Date(item.createdAt).toLocaleString()}</span>
+    <div className="space-y-6">
+      {/* Header */}
+      <header className="rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar className="w-12 h-12">
+              <AvatarImage src={moderator.image} />
+              <AvatarFallback>
+                {moderator.name?.charAt(0) || "M"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-xs text-muted-foreground">Moderator</p>
+              <h1 className="text-xl font-semibold text-foreground">
+                {moderator.name}
+              </h1>
+              <p className="text-xs text-muted-foreground">{moderator.email}</p>
             </div>
-            <p className="text-sm text-zinc-100 whitespace-pre-wrap">
-              {item.message.content}
-            </p>
-            {item.reason && (
-              <p className="text-xs text-amber-400">Reason: {item.reason}</p>
-            )}
-            <div className="flex gap-2 mt-2">
-              <Button size="sm" variant="outline">
-                Allow
-              </Button>
-              <Button size="sm" variant="destructive">
-                Remove
-              </Button>
-            </div>
-          </Card>
-        ))}
-        {items.length === 0 && (
-          <p className="text-sm text-zinc-500">No items in the moderation queue.</p>
-        )}
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">
+              Moderation Queue
+            </h2>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Queue (Left Side) */}
+        <div className="xl:col-span-1">
+          <ModerationQueue
+            stats={stats}
+            reports={queueItems}
+            onSelectReport={handleSelectReport}
+            selectedReportId={selectedReportId || undefined}
+          />
+        </div>
+
+        {/* Review Panel (Right Side) */}
+        <div className="xl:col-span-2">
+          {selectedReport ? (
+            <>
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Report Review: #{selectedReport.id.slice(-6).toUpperCase()} -{" "}
+                  <span
+                    className={
+                      selectedReport.priority === "CRITICAL"
+                        ? "text-red-400"
+                        : selectedReport.priority === "HIGH"
+                        ? "text-orange-400"
+                        : "text-foreground"
+                    }
+                  >
+                    {selectedReport.priority} PRIORITY
+                  </span>
+                </h2>
+              </div>
+              <ReportReviewPanel
+                report={selectedReport}
+                onAction={handleAction}
+                isLoading={isLoadingReport}
+              />
+            </>
+          ) : (
+            <Card className="bg-card border-border h-full min-h-[400px] flex items-center justify-center">
+              <CardContent className="text-center">
+                <p className="text-muted-foreground">
+                  Select a report from the queue to review
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
-    </ScrollArea>
+
+      {/* Audit Log */}
+      <section>
+        <h2 className="text-lg font-semibold text-foreground mb-4">
+          Recent Audit Log
+        </h2>
+        <AuditLogTable entries={auditLog} />
+      </section>
+    </div>
   );
 }
-
-export function AppealsReviewView() {
-  return (
-    <Card className="border-zinc-800 bg-zinc-900/60 p-6">
-      <p className="text-sm text-zinc-400">
-        Appeals review UI not fully implemented yet, but API endpoints are in place.
-      </p>
-    </Card>
-  );
-}
-
-export function ModerationStatsView() {
-  const [queueSize, setQueueSize] = useState<number | null>(null);
-
-  useEffect(() => {
-    void fetch("/api/v1/moderation/stats")
-      .then((res) => res.json())
-      .then((res) => {
-        if (res?.data?.queueSize !== undefined) {
-          setQueueSize(res.data.queueSize);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  return (
-    <Card className="border-zinc-800 bg-zinc-900/60 p-6">
-      <p className="text-sm text-zinc-300">
-        Current queue size:{" "}
-        <span className="font-semibold">
-          {queueSize !== null ? queueSize : "—"}
-        </span>
-      </p>
-    </Card>
-  );
-}
-
