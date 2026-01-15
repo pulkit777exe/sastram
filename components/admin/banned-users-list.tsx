@@ -1,26 +1,31 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Ban, Unlock, Calendar, AlertTriangle } from "lucide-react";
-import { unbanUser } from "@/modules/moderation/actions";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils/cn";
 
-interface BannedUser {
+export interface BannedUser {
   id: string;
-  userId: string;
-  bannedBy: string;
-  reason: string;
-  customReason: string | null;
-  threadId: string | null;
-  isActive: boolean;
-  expiresAt: Date | null;
-  createdAt: Date;
   user: {
     id: string;
     name: string | null;
@@ -28,16 +33,14 @@ interface BannedUser {
     image: string | null;
     status: string;
   };
-  issuer: {
-    id: string;
+  bannedBy: {
     name: string | null;
-    email: string;
   };
-  thread: {
-    id: string;
-    name: string;
-    slug: string;
-  } | null;
+  reason: string;
+  status: "BANNED" | "SUSPENDED";
+  createdAt: Date;
+  expiresAt: Date | null;
+  isActive: boolean;
 }
 
 interface BannedUsersListProps {
@@ -45,119 +48,154 @@ interface BannedUsersListProps {
 }
 
 export function BannedUsersList({ bans }: BannedUsersListProps) {
-  const router = useRouter();
-  const [unbanningId, setUnbanningId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("all");
 
-  async function handleUnban(banId: string) {
-    setUnbanningId(banId);
-    const result = await unbanUser(banId);
-    
-    if (result && "error" in result && result.error) {
-      toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
-      toast.success("User unbanned successfully");
-      router.refresh();
-    }
-    setUnbanningId(null);
-  }
-
-  if (bans.length === 0) {
-    return (
-      <Card className="border-zinc-800 bg-[#1C1C1E]">
-        <CardContent className="p-8 text-center">
-          <AlertTriangle className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-          <p className="text-zinc-400">No banned users found</p>
-        </CardContent>
-      </Card>
+  // Helper for safe client-side date calculation
+  const getDaysRemaining = (expiresAt: Date) => {
+    return Math.ceil(
+      (new Date(expiresAt).getTime() - new Date().getTime()) /
+        (1000 * 60 * 60 * 24)
     );
-  }
+  };
+
+  const filteredBans = bans.filter((ban) => {
+    const matchesSearch =
+      (ban.user.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      ban.reason.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesFilter =
+      filter === "all"
+        ? true
+        : filter === "permanent"
+        ? !ban.expiresAt
+        : filter === "temporary"
+        ? !!ban.expiresAt
+        : true;
+
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <div className="space-y-4">
-      {bans.map((ban) => (
-        <Card key={ban.id} className="border-zinc-800 bg-[#1C1C1E]">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-4 flex-1">
-                <Avatar className="h-12 w-12 border-2 border-red-500/20">
-                  <AvatarImage src={ban.user.image || ""} />
-                  <AvatarFallback className="bg-red-500/10 text-red-400">
-                    {ban.user.name?.[0] || ban.user.email[0]?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-white">
-                      {ban.user.name || ban.user.email}
-                    </h3>
-                    <Badge variant="destructive" className="text-xs">
-                      BANNED
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <div className="relative w-full sm:w-[300px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search user or reason"
+            className="pl-9 bg-muted border-border"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            Filter:
+          </span>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-[130px] h-9 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Bans</SelectItem>
+              <SelectItem value="permanent">Permanent</SelectItem>
+              <SelectItem value="temporary">Temporary</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border overflow-hidden bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50 border-border hover:bg-muted/50">
+              <TableHead>User</TableHead>
+              <TableHead>Ban Date</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead>Banned By</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredBans.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No banned users found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredBans.map((ban) => (
+                <TableRow key={ban.id} className="border-border">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={ban.user.image || undefined} />
+                        <AvatarFallback>
+                          {ban.user.name?.charAt(0) || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {ban.user.name || "Unknown"}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {ban.user.email}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {format(new Date(ban.createdAt), "dd MMM yyyy")}
+                  </TableCell>
+                  <TableCell className="text-sm">{ban.reason}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {ban.bannedBy.name || "System"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs font-normal",
+                        !ban.expiresAt
+                          ? "bg-red-500/10 text-red-500 border-red-500/20"
+                          : "bg-orange-500/10 text-orange-500 border-orange-500/20"
+                      )}
+                    >
+                      {!ban.expiresAt
+                        ? "Permanent"
+                        : `Temporary (${getDaysRemaining(
+                            ban.expiresAt!
+                          )} days)`}
                     </Badge>
-                    {ban.threadId && (
-                      <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
-                        Thread Only
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-zinc-400">{ban.user.email}</p>
-                  
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Ban className="h-3 w-3 text-red-400" />
-                      <span className="text-zinc-300">
-                        <span className="font-medium">Reason:</span>{" "}
-                        <span className="text-red-400">{ban.reason}</span>
-                      </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
+                      >
+                        [View Appeal]
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      >
+                        [Unban]
+                      </Button>
                     </div>
-                    {ban.customReason && (
-                      <p className="text-sm text-zinc-500 ml-5">{ban.customReason}</p>
-                    )}
-                    {ban.thread && (
-                      <div className="flex items-center gap-2 text-sm text-zinc-400 ml-5">
-                        <span>Thread: {ban.thread.name}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-4 text-xs text-zinc-500 ml-5">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Banned {format(new Date(ban.createdAt), "MMM d, yyyy")}</span>
-                      </div>
-                      {ban.expiresAt && (
-                        <div className="flex items-center gap-1">
-                          <span>Expires: {format(new Date(ban.expiresAt), "MMM d, yyyy")}</span>
-                        </div>
-                      )}
-                      {!ban.expiresAt && (
-                        <span className="text-red-400">Permanent</span>
-                      )}
-                    </div>
-                    <div className="text-xs text-zinc-600 ml-5">
-                      Banned by: {ban.issuer.name || ban.issuer.email}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleUnban(ban.id)}
-                disabled={unbanningId === ban.id}
-                className="border-green-500/50 text-green-400 hover:bg-green-500/10"
-              >
-                {unbanningId === ban.id ? (
-                  "Unbanning..."
-                ) : (
-                  <>
-                    <Unlock className="h-4 w-4 mr-2" />
-                    Unban
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
-

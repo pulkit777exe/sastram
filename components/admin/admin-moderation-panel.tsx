@@ -23,7 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash2, Ban, AlertTriangle, Users, MessageSquare } from "lucide-react";
-import { deleteThread, deleteCommunity, banUser } from "@/modules/moderation/actions";
+import {
+  deleteThread,
+  deleteCommunity,
+  banUser,
+} from "@/modules/moderation/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import type { ThreadSummary } from "@/modules/threads/types";
@@ -34,11 +38,15 @@ interface AdminModerationPanelProps {
   communities: CommunitySummary[];
 }
 
-export function AdminModerationPanel({ threads, communities }: AdminModerationPanelProps) {
+export function AdminModerationPanel({
+  threads,
+  communities,
+}: AdminModerationPanelProps) {
   const router = useRouter();
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [deleteThreadDialogOpen, setDeleteThreadDialogOpen] = useState(false);
-  const [deleteCommunityDialogOpen, setDeleteCommunityDialogOpen] = useState(false);
+  const [deleteCommunityDialogOpen, setDeleteCommunityDialogOpen] =
+    useState(false);
   const [selectedThread, setSelectedThread] = useState<string>("");
   const [selectedCommunity, setSelectedCommunity] = useState<string>("");
   const [banReason, setBanReason] = useState<string>("");
@@ -83,7 +91,10 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
     }
 
     setLoading(true);
-    const result = await deleteThread(selectedThread, deleteReason || undefined);
+    const result = await deleteThread(
+      selectedThread,
+      deleteReason || undefined
+    );
 
     if (result && "error" in result && result.error) {
       toast.error(result.error);
@@ -104,7 +115,10 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
     }
 
     setLoading(true);
-    const result = await deleteCommunity(selectedCommunity, deleteReason || undefined);
+    const result = await deleteCommunity(
+      selectedCommunity,
+      deleteReason || undefined
+    );
 
     if (result && "error" in result && result.error) {
       toast.error(result.error);
@@ -120,15 +134,15 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <Card className="border-zinc-800 bg-[#1C1C1E]">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Ban className="h-5 w-5 text-red-400" />
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Ban className="h-5 w-5 text-red-500" />
             Ban User
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-zinc-400 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Ban a user from a specific thread or the entire platform.
           </p>
           <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
@@ -138,11 +152,12 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                 Ban User
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-[#1C1C1E] border-zinc-800 text-white">
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Ban User</DialogTitle>
-                <DialogDescription className="text-zinc-400">
-                  Enter user ID and select ban reason. You can ban from a specific thread or globally.
+                <DialogDescription>
+                  Enter user ID and select ban reason. You can ban from a
+                  specific thread or globally.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -153,16 +168,18 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                     value={banUserId}
                     onChange={(e) => setBanUserId(e.target.value)}
                     placeholder="Enter user ID"
-                    className="bg-[#161618] border-zinc-700 text-white"
+                    className="bg-background"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="ban-thread">Thread (Optional - leave empty for global ban)</Label>
+                  <Label htmlFor="ban-thread">
+                    Thread (Optional - leave empty for global ban)
+                  </Label>
                   <Select value={banThreadId} onValueChange={setBanThreadId}>
-                    <SelectTrigger className="bg-[#161618] border-zinc-700 text-white">
+                    <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select thread (optional)" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1C1C1E] border-zinc-800">
+                    <SelectContent>
                       <SelectItem value="">Global Ban</SelectItem>
                       {threads.map((thread) => (
                         <SelectItem key={thread.id} value={thread.id}>
@@ -175,15 +192,19 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                 <div className="grid gap-2">
                   <Label htmlFor="ban-reason">Ban Reason</Label>
                   <Select value={banReason} onValueChange={setBanReason}>
-                    <SelectTrigger className="bg-[#161618] border-zinc-700 text-white">
+                    <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select reason" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1C1C1E] border-zinc-800">
+                    <SelectContent>
                       <SelectItem value="SPAM">Spam</SelectItem>
                       <SelectItem value="HARASSMENT">Harassment</SelectItem>
                       <SelectItem value="HATE_SPEECH">Hate Speech</SelectItem>
-                      <SelectItem value="ILLEGAL_CONTENT">Illegal Content</SelectItem>
-                      <SelectItem value="IMPERSONATION">Impersonation</SelectItem>
+                      <SelectItem value="ILLEGAL_CONTENT">
+                        Illegal Content
+                      </SelectItem>
+                      <SelectItem value="IMPERSONATION">
+                        Impersonation
+                      </SelectItem>
                       <SelectItem value="THREATS">Threats</SelectItem>
                       <SelectItem value="DOXXING">Doxxing</SelectItem>
                       <SelectItem value="OTHER">Other</SelectItem>
@@ -191,14 +212,16 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="ban-custom-reason">Custom Reason (Optional)</Label>
+                  <Label htmlFor="ban-custom-reason">
+                    Custom Reason (Optional)
+                  </Label>
                   <Textarea
                     id="ban-custom-reason"
                     value={banCustomReason}
                     onChange={(e) => setBanCustomReason(e.target.value)}
                     placeholder="Additional details..."
                     rows={3}
-                    className="bg-[#161618] border-zinc-700 text-white resize-none"
+                    className="resize-none bg-background"
                   />
                 </div>
               </div>
@@ -206,7 +229,6 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                 <Button
                   variant="outline"
                   onClick={() => setBanDialogOpen(false)}
-                  className="border-zinc-700 text-zinc-300"
                 >
                   Cancel
                 </Button>
@@ -223,39 +245,46 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
         </CardContent>
       </Card>
 
-      <Card className="border-zinc-800 bg-[#1C1C1E]">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-orange-400" />
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-orange-500" />
             Delete Thread
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-zinc-400 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Permanently delete a thread and all its messages.
           </p>
-          <Dialog open={deleteThreadDialogOpen} onOpenChange={setDeleteThreadDialogOpen}>
+          <Dialog
+            open={deleteThreadDialogOpen}
+            onOpenChange={setDeleteThreadDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button variant="destructive" className="w-full">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Thread
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-[#1C1C1E] border-zinc-800 text-white">
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Delete Thread</DialogTitle>
-                <DialogDescription className="text-zinc-400">
-                  This action cannot be undone. All messages in this thread will be deleted.
+                <DialogDescription>
+                  This action cannot be undone. All messages in this thread will
+                  be deleted.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="delete-thread">Select Thread</Label>
-                  <Select value={selectedThread} onValueChange={setSelectedThread}>
-                    <SelectTrigger className="bg-[#161618] border-zinc-700 text-white">
+                  <Select
+                    value={selectedThread}
+                    onValueChange={setSelectedThread}
+                  >
+                    <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select thread to delete" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1C1C1E] border-zinc-800">
+                    <SelectContent>
                       {threads.map((thread) => (
                         <SelectItem key={thread.id} value={thread.id}>
                           {thread.name}
@@ -265,14 +294,16 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="delete-thread-reason">Reason (Optional)</Label>
+                  <Label htmlFor="delete-thread-reason">
+                    Reason (Optional)
+                  </Label>
                   <Textarea
                     id="delete-thread-reason"
                     value={deleteReason}
                     onChange={(e) => setDeleteReason(e.target.value)}
                     placeholder="Reason for deletion..."
                     rows={3}
-                    className="bg-[#161618] border-zinc-700 text-white resize-none"
+                    className="resize-none bg-background"
                   />
                 </div>
               </div>
@@ -280,7 +311,6 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                 <Button
                   variant="outline"
                   onClick={() => setDeleteThreadDialogOpen(false)}
-                  className="border-zinc-700 text-zinc-300"
                 >
                   Cancel
                 </Button>
@@ -297,39 +327,46 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
         </CardContent>
       </Card>
 
-      <Card className="border-zinc-800 bg-[#1C1C1E]">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Users className="h-5 w-5 text-purple-400" />
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Users className="h-5 w-5 text-purple-500" />
             Delete Community
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-zinc-400 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Permanently delete a community and all its threads.
           </p>
-          <Dialog open={deleteCommunityDialogOpen} onOpenChange={setDeleteCommunityDialogOpen}>
+          <Dialog
+            open={deleteCommunityDialogOpen}
+            onOpenChange={setDeleteCommunityDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button variant="destructive" className="w-full">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Community
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-[#1C1C1E] border-zinc-800 text-white">
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Delete Community</DialogTitle>
-                <DialogDescription className="text-zinc-400">
-                  This action cannot be undone. All threads in this community will be deleted.
+                <DialogDescription>
+                  This action cannot be undone. All threads in this community
+                  will be deleted.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="delete-community">Select Community</Label>
-                  <Select value={selectedCommunity} onValueChange={setSelectedCommunity}>
-                    <SelectTrigger className="bg-[#161618] border-zinc-700 text-white">
+                  <Select
+                    value={selectedCommunity}
+                    onValueChange={setSelectedCommunity}
+                  >
+                    <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select community to delete" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1C1C1E] border-zinc-800">
+                    <SelectContent>
                       {communities.map((community) => (
                         <SelectItem key={community.id} value={community.id}>
                           {community.title}
@@ -339,14 +376,16 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="delete-community-reason">Reason (Optional)</Label>
+                  <Label htmlFor="delete-community-reason">
+                    Reason (Optional)
+                  </Label>
                   <Textarea
                     id="delete-community-reason"
                     value={deleteReason}
                     onChange={(e) => setDeleteReason(e.target.value)}
                     placeholder="Reason for deletion..."
                     rows={3}
-                    className="bg-[#161618] border-zinc-700 text-white resize-none"
+                    className="resize-none bg-background"
                   />
                 </div>
               </div>
@@ -354,7 +393,6 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                 <Button
                   variant="outline"
                   onClick={() => setDeleteCommunityDialogOpen(false)}
-                  className="border-zinc-700 text-zinc-300"
                 >
                   Cancel
                 </Button>
@@ -373,4 +411,3 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
     </div>
   );
 }
-

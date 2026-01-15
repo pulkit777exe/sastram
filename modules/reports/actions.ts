@@ -313,59 +313,65 @@ export async function getReportWithContext(reportId: string) {
       return { error: "Report not found" };
     }
 
-    const surroundingMessages = await prisma.message.findMany({
-      where: {
-        sectionId: report.message.section.id,
-        createdAt: {
-          gte: new Date(report.message.createdAt.getTime() - 5 * 60 * 1000), // 5 min before
-          lte: new Date(report.message.createdAt.getTime() + 5 * 60 * 1000), // 5 min after
+    const [
+      surroundingMessages,
+      violationHistory,
+      similarReports,
+      userBanCount,
+      userReportCount,
+    ] = await Promise.all([
+      prisma.message.findMany({
+        where: {
+          sectionId: report.message.section.id,
+          createdAt: {
+            gte: new Date(report.message.createdAt.getTime() - 5 * 60 * 1000), // 5 min before
+            lte: new Date(report.message.createdAt.getTime() + 5 * 60 * 1000), // 5 min after
+          },
+          deletedAt: null,
         },
-        deletedAt: null,
-      },
-      include: {
-        sender: {
-          select: { id: true, name: true },
+        include: {
+          sender: {
+            select: { id: true, name: true },
+          },
         },
-      },
-      orderBy: { createdAt: "asc" },
-      take: 10,
-    });
+        orderBy: { createdAt: "asc" },
+        take: 10,
+      }),
+      prisma.userBan.findMany({
+        where: { userId: report.message.senderId },
+        select: {
+          id: true,
+          reason: true,
+          createdAt: true,
+          isActive: true,
+          expiresAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+      prisma.report.findMany({
+        where: {
+          messageId: report.messageId,
+          id: { not: reportId },
+        },
+        select: {
+          id: true,
+          category: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+      prisma.userBan.count({
+        where: { userId: report.message.senderId },
+      }),
+      prisma.report.count({
+        where: {
+          message: { senderId: report.message.senderId },
+          status: "RESOLVED",
+        },
+      }),
+    ]);
 
-    const violationHistory = await prisma.userBan.findMany({
-      where: { userId: report.message.senderId },
-      select: {
-        id: true,
-        reason: true,
-        createdAt: true,
-        isActive: true,
-        expiresAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
-
-    const similarReports = await prisma.report.findMany({
-      where: {
-        messageId: report.messageId,
-        id: { not: reportId },
-      },
-      select: {
-        id: true,
-        category: true,
-        status: true,
-        createdAt: true,
-      },
-    });
-
-    const userBanCount = await prisma.userBan.count({
-      where: { userId: report.message.senderId },
-    });
-    const userReportCount = await prisma.report.count({
-      where: {
-        message: { senderId: report.message.senderId },
-        status: "RESOLVED",
-      },
-    });
     const accountAgeDays = Math.floor(
       (Date.now() - new Date(report.message.sender.createdAt).getTime()) /
         (1000 * 60 * 60 * 24)

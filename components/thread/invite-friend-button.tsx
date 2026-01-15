@@ -24,7 +24,10 @@ interface InviteFriendButtonProps {
   threadName: string;
 }
 
-export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonProps) {
+export function InviteFriendButton({
+  threadId,
+  threadName,
+}: InviteFriendButtonProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -33,7 +36,7 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!email.trim()) {
       toast.error("Please enter an email address");
       return;
@@ -67,48 +70,44 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
         <Button
           variant="outline"
           size="sm"
-          className="bg-[#1C1C1E] border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+          className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <UserPlus className="w-4 h-4 mr-2" />
           Invite Friend
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-[#1C1C1E] border-zinc-800 text-white">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-white">Invite a Friend</DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogTitle>Invite a Friend</DialogTitle>
+          <DialogDescription>
             Share this discussion thread with a friend via email
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleInvite}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-zinc-300">
-                Email Address
-              </Label>
+              <Label htmlFor="email">Email Address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="friend@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-zinc-900/50 border-zinc-700 text-white placeholder:text-zinc-500"
+                  className="pl-10"
                   required
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="message" className="text-zinc-300">
-                Personal Message (Optional)
-              </Label>
+              <Label htmlFor="message">Personal Message (Optional)</Label>
               <Textarea
                 id="message"
                 placeholder={`Check out this discussion: ${threadName}`}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="bg-zinc-900/50 border-zinc-700 text-white placeholder:text-zinc-500 resize-none min-h-[100px]"
+                className="resize-none min-h-[100px]"
                 rows={4}
               />
             </div>
@@ -118,7 +117,6 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
               type="button"
               variant="ghost"
               onClick={() => setOpen(false)}
-              className="text-zinc-400 hover:text-zinc-200"
             >
               Cancel
             </Button>
@@ -135,4 +133,3 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
     </Dialog>
   );
 }
-

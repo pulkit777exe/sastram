@@ -15,10 +15,19 @@ import type {
 } from "@/modules/reports/types";
 import { toast } from "sonner";
 
+interface AuditLogEntry {
+  id: string;
+  timestamp: Date;
+  action: string;
+  target: string;
+  category: string;
+  performedBy: string;
+}
+
 interface ModerationDashboardProps {
   stats: ReportStats | null;
   reports: Report[];
-  auditLog: any[];
+  auditLog: AuditLogEntry[];
   moderator: {
     name: string;
     email: string;

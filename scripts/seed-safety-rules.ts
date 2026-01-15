@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { ModerationSeverity, ModerationAction } from "@prisma/client";
 
 export async function seedSafetyRules() {
   const admin = await prisma.user.findFirst({
@@ -13,14 +14,14 @@ export async function seedSafetyRules() {
     {
       pattern: "\\b(spam|junk)\\b",
       category: "spam",
-      severity: "HIGH",
-      action: "BLOCK",
+      severity: ModerationSeverity.HIGH,
+      action: ModerationAction.BLOCK,
     },
     {
       pattern: "\\b(hate|discrimination)\\b",
       category: "harassment",
-      severity: "HIGH",
-      action: "BLOCK",
+      severity: ModerationSeverity.HIGH,
+      action: ModerationAction.BLOCK,
     },
   ];
 
@@ -30,14 +31,14 @@ export async function seedSafetyRules() {
         pattern_category: {
           pattern: rule.pattern,
           category: rule.category,
-        } as any,
+        },
       },
       update: {},
       create: {
         pattern: rule.pattern,
         category: rule.category,
-        severity: rule.severity as any,
-        action: rule.action as any,
+        severity: rule.severity,
+        action: rule.action,
         createdBy: admin.id,
       },
     });
@@ -55,4 +56,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-

@@ -103,11 +103,7 @@ export function Sidebar({
             <span className="font-bold text-lg text-foreground">Sastram</span>
           </Link>
         )}
-        {isCollapsed && (
-          <div className="w-6 h-6 bg-foreground rounded-sm flex items-center justify-center mx-auto">
-            <div className="w-3 h-3 border-2 border-background rounded-full" />
-          </div>
-        )}
+        {isCollapsed && <div />}
         {!isCollapsed && (
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -120,12 +116,14 @@ export function Sidebar({
           </div>
         )}
         {isCollapsed && (
-          <button
-            onClick={toggleCollapse}
-            className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-          >
-            <AnimatedIcon icon={PanelLeftOpen} size={18} animateOnHover />
-          </button>
+          <div className="flex justify-center w-full">
+            <button
+              onClick={toggleCollapse}
+              className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+            >
+              <AnimatedIcon icon={PanelLeftOpen} size={18} animateOnHover />
+            </button>
+          </div>
         )}
       </div>
 

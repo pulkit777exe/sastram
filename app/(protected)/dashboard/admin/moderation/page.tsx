@@ -37,7 +37,7 @@ export default async function ModerationPage() {
           image: session.user.image || undefined,
         }}
       />
-      
+
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold text-foreground">
@@ -51,7 +51,13 @@ export default async function ModerationPage() {
         {bannedUsersResult &&
           "success" in bannedUsersResult &&
           bannedUsersResult.success && (
-            <BannedUsersList bans={bannedUsersResult.bans} />
+            <BannedUsersList
+              bans={bannedUsersResult.bans.map((ban) => ({
+                ...ban,
+                status: ban.user.status === "BANNED" ? "BANNED" : "SUSPENDED",
+                bannedBy: { name: ban.issuer.name },
+              }))}
+            />
           )}
       </section>
     </div>

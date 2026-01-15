@@ -6,7 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { User, Bell, Moon, Upload, Image as ImageIcon, X } from "lucide-react";
-import { updateUserProfile, uploadAvatar, uploadBanner } from "@/modules/users/actions";
+import {
+  updateUserProfile,
+  uploadAvatar,
+  uploadBanner,
+} from "@/modules/users/actions";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -66,7 +70,9 @@ export function SettingsForm({ user }: SettingsFormProps) {
   const [twitter, setTwitter] = useState(user.twitter || "");
   const [github, setGithub] = useState(user.github || "");
   const [linkedin, setLinkedin] = useState(user.linkedin || "");
-  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || user.image || "");
+  const [avatarUrl, setAvatarUrl] = useState(
+    user.avatarUrl || user.image || ""
+  );
   const [bannerUrl, setBannerUrl] = useState(user.bannerUrl || "");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -89,7 +95,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
     setUploadingAvatar(true);
     const formData = new FormData();
     formData.append("avatar", file);
-    
+
     const result = await uploadAvatar(formData);
     if (result && "error" in result && result.error) {
       toast.error(result.error);
@@ -110,7 +116,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
     setUploadingBanner(true);
     const formData = new FormData();
     formData.append("banner", file);
-    
+
     const result = await uploadBanner(formData);
     if (result && "error" in result && result.error) {
       toast.error(result.error);
@@ -133,17 +139,17 @@ export function SettingsForm({ user }: SettingsFormProps) {
     >
       <motion.div
         variants={item}
-        className="rounded-xl border border-zinc-800 bg-[#1C1C1E] p-6 shadow-sm"
+        className="rounded-xl border border-border bg-card p-6 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
             <User className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">
+            <h2 className="text-lg font-bold text-foreground">
               Profile Information
             </h2>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Update your public profile details.
             </p>
           </div>
@@ -152,11 +158,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
         <form action={handleSubmit} className="space-y-4">
           {/* Avatar Upload */}
           <div className="grid gap-2">
-            <Label className="text-zinc-300">Profile Picture</Label>
+            <Label className="text-foreground">Profile Picture</Label>
             <div className="flex items-center gap-4">
-              <Avatar className="h-20 w-20 border-2 border-zinc-700">
-                <AvatarImage src={avatarUrl} />
-                <AvatarFallback className="text-2xl bg-zinc-800 text-zinc-400">
+              <Avatar className="h-20 w-20 border-2 border-border">
+                <AvatarImage src={avatarUrl || undefined} />
+                <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
                   {user.name?.[0] || user.email[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -176,7 +182,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   size="sm"
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={uploadingAvatar}
-                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                  className="border-border text-foreground hover:bg-muted"
                 >
                   {uploadingAvatar ? (
                     "Uploading..."
@@ -187,18 +193,26 @@ export function SettingsForm({ user }: SettingsFormProps) {
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-zinc-500">JPG, PNG, GIF or WebP. Max 4.5MB</p>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG, GIF or WebP. Max 4.5MB
+                </p>
               </div>
             </div>
           </div>
 
           {/* Banner Upload */}
           <div className="grid gap-2">
-            <Label className="text-zinc-300">Banner Image</Label>
+            <Label className="text-foreground">Banner Image</Label>
             <div className="relative">
               {bannerUrl ? (
-                <div className="relative h-32 w-full rounded-xl overflow-hidden border border-zinc-700">
-                  <Image src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+                <div className="relative h-32 w-full rounded-xl overflow-hidden border border-border">
+                  <Image
+                    src={bannerUrl}
+                    alt="Banner"
+                    className="w-full h-full object-cover"
+                    width={800}
+                    height={200}
+                  />
                   <button
                     type="button"
                     onClick={() => setBannerUrl("")}
@@ -208,10 +222,12 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   </button>
                 </div>
               ) : (
-                <div className="h-32 w-full rounded-xl border-2 border-dashed border-zinc-700 flex items-center justify-center bg-[#161618]">
+                <div className="h-32 w-full rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
                   <div className="text-center">
-                    <ImageIcon className="h-8 w-8 text-zinc-500 mx-auto mb-2" />
-                    <p className="text-sm text-zinc-500">No banner image</p>
+                    <ImageIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      No banner image
+                    </p>
                   </div>
                 </div>
               )}
@@ -230,7 +246,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                 size="sm"
                 onClick={() => bannerInputRef.current?.click()}
                 disabled={uploadingBanner}
-                className="mt-2 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                className="mt-2 border-border text-foreground hover:bg-muted"
               >
                 {uploadingBanner ? (
                   "Uploading..."
@@ -245,7 +261,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="name" className="text-zinc-300">
+            <Label htmlFor="name" className="text-foreground">
               Display Name
             </Label>
             <Input
@@ -253,11 +269,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               name="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-11 rounded-xl border-zinc-700 bg-[#161618] text-white focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="bio" className="text-zinc-300">
+            <Label htmlFor="bio" className="text-foreground">
               Bio
             </Label>
             <textarea
@@ -267,11 +283,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us about yourself..."
-              className="w-full rounded-xl border border-zinc-700 bg-[#161618] text-white px-3 py-2 focus:ring-2 focus:ring-indigo-500/50 transition-all resize-none"
+              className="w-full rounded-xl border border-border bg-background text-foreground px-3 py-2 focus:ring-2 focus:ring-indigo-500/50 transition-all resize-none outline-none"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="location" className="text-zinc-300">
+            <Label htmlFor="location" className="text-foreground">
               Location
             </Label>
             <Input
@@ -280,11 +296,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="City, Country"
-              className="h-11 rounded-xl border-zinc-700 bg-[#161618] text-white focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="website" className="text-zinc-300">
+            <Label htmlFor="website" className="text-foreground">
               Website
             </Label>
             <Input
@@ -294,11 +310,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://example.com"
-              className="h-11 rounded-xl border-zinc-700 bg-[#161618] text-white focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="twitter" className="text-zinc-300">
+            <Label htmlFor="twitter" className="text-foreground">
               Twitter
             </Label>
             <Input
@@ -307,11 +323,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={twitter}
               onChange={(e) => setTwitter(e.target.value)}
               placeholder="@username"
-              className="h-11 rounded-xl border-zinc-700 bg-[#161618] text-white focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="github" className="text-zinc-300">
+            <Label htmlFor="github" className="text-foreground">
               GitHub
             </Label>
             <Input
@@ -320,11 +336,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={github}
               onChange={(e) => setGithub(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-xl border-zinc-700 bg-[#161618] text-white focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="linkedin" className="text-zinc-300">
+            <Label htmlFor="linkedin" className="text-foreground">
               LinkedIn
             </Label>
             <Input
@@ -333,18 +349,18 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={linkedin}
               onChange={(e) => setLinkedin(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-xl border-zinc-700 bg-[#161618] text-white focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="email" className="text-zinc-300">
+            <Label htmlFor="email" className="text-foreground">
               Email
             </Label>
             <Input
               id="email"
               defaultValue={user.email}
               disabled
-              className="h-11 rounded-xl border-zinc-700 bg-[#161618] text-zinc-500 opacity-70"
+              className="h-11 rounded-xl border-border bg-muted/50 text-muted-foreground opacity-70"
             />
           </div>
           <div className="pt-2">
@@ -355,15 +371,15 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
       <motion.div
         variants={item}
-        className="rounded-xl border border-zinc-800 bg-[#1C1C1E] p-6 shadow-sm"
+        className="rounded-xl border border-border bg-card p-6 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-400">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
             <Bell className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Notifications</h2>
-            <p className="text-sm text-zinc-400">
+            <h2 className="text-lg font-bold text-foreground">Notifications</h2>
+            <p className="text-sm text-muted-foreground">
               Configure how you receive alerts.
             </p>
           </div>
@@ -374,11 +390,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
             <div className="space-y-0.5">
               <Label
                 htmlFor="email-notifs"
-                className="text-base font-medium text-white"
+                className="text-base font-medium text-foreground"
               >
                 Email Notifications
               </Label>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-muted-foreground">
                 Receive daily summaries of your subscribed topics.
               </p>
             </div>
@@ -388,11 +404,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
             <div className="space-y-0.5">
               <Label
                 htmlFor="push-notifs"
-                className="text-base font-medium text-white"
+                className="text-base font-medium text-foreground"
               >
                 Push Notifications
               </Label>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-muted-foreground">
                 Receive real-time alerts for mentions.
               </p>
             </div>
@@ -403,15 +419,15 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
       <motion.div
         variants={item}
-        className="rounded-xl border border-zinc-800 bg-[#1C1C1E] p-6 shadow-sm"
+        className="rounded-xl border border-border bg-card p-6 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-800 text-zinc-400">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
             <Moon className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Appearance</h2>
-            <p className="text-sm text-zinc-400">
+            <h2 className="text-lg font-bold text-foreground">Appearance</h2>
+            <p className="text-sm text-muted-foreground">
               Customize the look and feel of the application.
             </p>
           </div>
@@ -421,11 +437,13 @@ export function SettingsForm({ user }: SettingsFormProps) {
           <div className="space-y-0.5">
             <Label
               htmlFor="dark-mode"
-              className="text-base font-medium text-white"
+              className="text-base font-medium text-foreground"
             >
               Dark Mode
             </Label>
-            <p className="text-sm text-zinc-400">Toggle dark mode theme.</p>
+            <p className="text-sm text-muted-foreground">
+              Toggle dark mode theme.
+            </p>
           </div>
           <Switch id="dark-mode" defaultChecked />
         </div>

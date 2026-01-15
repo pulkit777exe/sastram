@@ -29,15 +29,15 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
   }, [data]);
 
   return (
-    <div className="rounded-[24px] border border-zinc-800/50 bg-[#1C1C1E] p-5 shadow-2xl relative overflow-hidden group">
+    <div className="rounded-[24px] border border-border bg-card p-5 shadow-2xl relative overflow-hidden group">
       <div className="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/10 blur-2xl rounded-full pointer-events-none" />
 
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/10 text-orange-500 border border-orange-500/20">
             <Flame size={14} />
           </div>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
             Live Thread Heat
           </p>
         </div>
@@ -50,7 +50,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
                 : "shadow-[0_0_8px_rgba(16,185,129,0.4)]"
             )}
           />
-          <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             {isFetching ? "Syncing" : "Realtime"}
           </span>
         </div>
@@ -69,7 +69,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
                 "group/item flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-200 cursor-pointer border",
                 isActive
                   ? "bg-indigo-600 border-indigo-500 shadow-[0_8px_20px_rgba(79,70,229,0.2)]"
-                  : "bg-[#161618] border-zinc-800/50 hover:border-zinc-700 hover:bg-[#202022]"
+                  : "bg-muted/30 border-border hover:border-border/80 hover:bg-muted/80"
               )}
             >
               <div className="flex flex-col gap-0.5">
@@ -78,7 +78,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
                     "text-sm font-bold tracking-tight transition-colors",
                     isActive
                       ? "text-white"
-                      : "text-zinc-300 group-hover/item:text-white"
+                      : "text-foreground group-hover/item:text-foreground"
                   )}
                 >
                   {thread.name}
@@ -86,12 +86,14 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
                 <div className="flex items-center gap-2">
                   <Activity
                     size={10}
-                    className={isActive ? "text-indigo-200" : "text-zinc-600"}
+                    className={
+                      isActive ? "text-indigo-200" : "text-muted-foreground"
+                    }
                   />
                   <span
                     className={cn(
                       "text-[10px] font-bold uppercase tracking-tight",
-                      isActive ? "text-indigo-100/70" : "text-zinc-500"
+                      isActive ? "text-indigo-100/70" : "text-muted-foreground"
                     )}
                   >
                     {thread.messageCount} messages
@@ -109,8 +111,8 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
         })}
 
         {busiest.length === 0 && (
-          <div className="rounded-xl border border-dashed border-zinc-800 py-8 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">
+          <div className="rounded-xl border border-dashed border-border py-8 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Cooling Down...
             </p>
           </div>
@@ -120,7 +122,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
       {selectedSlug && (
         <a
           href={`/dashboard/threads/thread/${selectedSlug}`}
-          className="mt-4 flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 text-[10px] font-bold text-zinc-400 hover:text-white uppercase tracking-widest transition-all"
+          className="mt-4 flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-muted hover:bg-muted/80 text-[10px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-widest transition-all"
         >
           View Full Context
         </a>

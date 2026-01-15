@@ -113,55 +113,55 @@ export function NewsletterDigestAdmin({
     <div className="space-y-6">
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-black border-indigo-500/20">
+        <Card className="bg-card border-indigo-500/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-indigo-400 font-medium">
+                <p className="text-sm text-indigo-500 font-medium">
                   Total Subscribers
                 </p>
-                <p className="text-3xl font-bold text-white mt-1">
+                <p className="text-3xl font-bold text-foreground mt-1">
                   {totalSubscribers}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                <Users className="h-6 w-6 text-indigo-400" />
+              <div className="h-12 w-12 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                <Users className="h-6 w-6 text-indigo-500" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-linear-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
+        <Card className="bg-linear-to-br from-amber-500/5 to-orange-500/5 border-amber-500/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-amber-400 font-medium">
+                <p className="text-sm text-amber-500 font-medium">
                   Pending Digests
                 </p>
-                <p className="text-3xl font-bold text-white mt-1">
+                <p className="text-3xl font-bold text-foreground mt-1">
                   {pendingDigests.length}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-amber-400" />
+              <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-amber-500" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-linear-to-br from-green-500/10 to-emerald-500/10 border-green-500/20">
+        <Card className="bg-linear-to-br from-green-500/5 to-emerald-500/5 border-green-500/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-green-400 font-medium">
+                <p className="text-sm text-green-500 font-medium">
                   Sent This Week
                 </p>
-                <p className="text-3xl font-bold text-white mt-1">
+                <p className="text-3xl font-bold text-foreground mt-1">
                   {sentDigests.length}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <Send className="h-6 w-6 text-green-400" />
+              <div className="h-12 w-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <Send className="h-6 w-6 text-green-500" />
               </div>
             </div>
           </CardContent>
@@ -169,18 +169,18 @@ export function NewsletterDigestAdmin({
       </div>
 
       {/* Generate Button */}
-      <Card className="border-zinc-800 bg-[#1C1C1E]">
+      <Card className="border-border bg-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-linear-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-indigo-400" />
+                <Sparkles className="h-5 w-5 text-indigo-500" />
               </div>
               <div>
-                <CardTitle className="text-white">
+                <CardTitle className="text-foreground">
                   Generate Newsletter Digests
                 </CardTitle>
-                <p className="text-sm text-zinc-400 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Trigger AI-powered digest generation for all pending threads
                 </p>
               </div>
@@ -207,21 +207,21 @@ export function NewsletterDigestAdmin({
       </Card>
 
       {/* Digest List */}
-      <Card className="border-zinc-800 bg-[#1C1C1E]">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Mail className="h-5 w-5 text-zinc-400" />
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Mail className="h-5 w-5 text-muted-foreground" />
             Recent Digests
           </CardTitle>
         </CardHeader>
         <CardContent>
           {digests.length === 0 ? (
             <div className="text-center py-12">
-              <div className="h-16 w-16 mx-auto rounded-full bg-zinc-800 flex items-center justify-center mb-4">
-                <Calendar className="h-8 w-8 text-zinc-500" />
+              <div className="h-16 w-16 mx-auto rounded-full bg-muted flex items-center justify-center mb-4">
+                <Calendar className="h-8 w-8 text-muted-foreground" />
               </div>
-              <p className="text-zinc-400">No digests scheduled yet</p>
-              <p className="text-sm text-zinc-500 mt-1">
+              <p className="text-muted-foreground">No digests scheduled yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
                 Digests will appear here when users subscribe to threads
               </p>
             </div>
@@ -236,18 +236,18 @@ export function NewsletterDigestAdmin({
                       ? "border-green-500/20 bg-green-500/5"
                       : digest.status === "PENDING"
                       ? "border-amber-500/20 bg-amber-500/5"
-                      : "border-zinc-800 bg-zinc-900/50"
+                      : "border-border bg-muted/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-white">
+                        <h3 className="font-semibold text-foreground">
                           {digest.thread.name}
                         </h3>
                         {getStatusBadge(digest.status)}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-zinc-400">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>
                           Scheduled:{" "}
                           {new Date(digest.scheduledFor).toLocaleDateString()}
@@ -259,13 +259,13 @@ export function NewsletterDigestAdmin({
                           </span>
                         )}
                         {digest.emailCount > 0 && (
-                          <span className="text-green-400">
+                          <span className="text-green-500">
                             {digest.emailCount} emails sent
                           </span>
                         )}
                       </div>
                       {digest.summary && (
-                        <p className="text-sm text-zinc-500 mt-2 line-clamp-2">
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                           {digest.summary}
                         </p>
                       )}

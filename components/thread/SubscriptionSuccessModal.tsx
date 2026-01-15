@@ -77,11 +77,11 @@ export function SubscriptionSuccessModal({
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
           >
-            <div className="bg-[#1C1C1E] rounded-2xl border border-zinc-800 shadow-2xl overflow-hidden">
+            <div className="bg-card rounded-2xl border border-border shadow-2xl overflow-hidden text-foreground">
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -107,7 +107,7 @@ export function SubscriptionSuccessModal({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="text-2xl font-bold text-white mb-2"
+                  className="text-2xl font-bold text-foreground mb-2"
                 >
                   You&apos;re Subscribed!
                 </motion.h2>
@@ -116,10 +116,12 @@ export function SubscriptionSuccessModal({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25 }}
-                  className="text-zinc-400 mb-6"
+                  className="text-muted-foreground mb-6"
                 >
                   You&apos;ll now receive AI-powered summaries for{" "}
-                  <span className="text-white font-medium">{threadName}</span>
+                  <span className="text-foreground font-medium">
+                    {threadName}
+                  </span>
                 </motion.p>
 
                 {/* What to expect */}
@@ -127,23 +129,23 @@ export function SubscriptionSuccessModal({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="bg-zinc-900 rounded-xl p-4 mb-6 text-left"
+                  className="bg-muted rounded-xl p-4 mb-6 text-left"
                 >
-                  <h3 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-400" />
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-500" />
                     What to expect
                   </h3>
-                  <ul className="space-y-2 text-sm text-zinc-400">
+                  <ul className="space-y-2 text-sm text-muted-foreground">
                     <li className="flex items-start gap-2">
-                      <Mail className="w-4 h-4 text-zinc-500 mt-0.5" />
+                      <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
                       <span>Daily AI-generated summary of key discussions</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Bell className="w-4 h-4 text-zinc-500 mt-0.5" />
+                      <Bell className="w-4 h-4 text-muted-foreground mt-0.5" />
                       <span>Important updates and highlights</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-zinc-500 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5" />
                       <span>Unsubscribe anytime from settings</span>
                     </li>
                   </ul>

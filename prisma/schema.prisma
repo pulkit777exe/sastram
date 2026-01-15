@@ -794,6 +794,7 @@ model ContentSafetyRule {
 
   creator User @relation("ContentSafetyRuleCreator", fields: [createdBy], references: [id], onDelete: Cascade)
 
+  @@unique([pattern, category])
   @@index([category])
   @@index([severity])
   @@index([createdBy])

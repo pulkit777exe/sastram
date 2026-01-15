@@ -41,11 +41,9 @@ export function CreateTopicButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-white text-black hover:bg-zinc-200 rounded-lg font-semibold">
-          New Thread
-        </Button>
+        <Button>New Thread</Button>
       </DialogTrigger>
-      <DialogContent className="bg-[#161618] border-zinc-800 text-white sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold tracking-tight">
             Create New Topic
@@ -59,12 +57,7 @@ export function CreateTopicButton() {
             <Label htmlFor="title" className="text-zinc-400">
               Title
             </Label>
-            <Input
-              id="title"
-              name="title"
-              className="bg-[#1C1C1E] border-zinc-800 text-white focus:ring-indigo-500 focus:border-indigo-500"
-              required
-            />
+            <Input id="title" name="title" required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description" className="text-zinc-400">
@@ -73,7 +66,7 @@ export function CreateTopicButton() {
             <Textarea
               id="description"
               name="description"
-              className="bg-[#1C1C1E] border-zinc-800 text-white focus:ring-indigo-500 min-h-[100px]"
+              className="min-h-[100px]"
               required
             />
           </div>
