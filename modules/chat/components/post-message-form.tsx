@@ -67,11 +67,11 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
   };
 
   return (
-    <form ref={formRef} action={handleSubmit} className="relative px-4 pb-0 pt-0 bg-[#161618]">
+    <form ref={formRef} action={handleSubmit} className="relative px-4 pb-0 pt-0">
       {/* File Preview Popup */}
       {selectedFile && (
-        <div className="absolute -top-14 left-4 bg-[#2f3136] border border-[#202225] p-2 rounded-md text-sm flex items-center gap-2 text-[#dcddde] shadow-md">
-          <FileIcon className="h-4 w-4 text-[#8e9297]" />
+        <div className="absolute -top-14 left-4 border p-2 rounded-md text-sm flex items-center gap-2 shadow-md">
+          <FileIcon className="h-4 w-4" />
           <span className="truncate max-w-[200px]">{selectedFile.name}</span>
           <button
             type="button"
@@ -79,19 +79,19 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
               setSelectedFile(null);
               if (fileInputRef.current) fileInputRef.current.value = "";
             }}
-            className="ml-2 text-[#b9bbbe] hover:text-[#dcddde] cursor-pointer"
+            className="ml-2 cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      <div className="flex items-center bg-[#40444b] rounded-lg p-0 pr-2 focus-within:ring-1 focus-within:ring-[#5865f2] transition-all">
+      <div className="flex items-center rounded-lg p-0 pr-2 focus-within:ring-1 focus-within:ring-[#5865f2] transition-all">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="text-[#b9bbbe] hover:text-[#dcddde] hover:bg-transparent h-11 w-11 ml-1 shrink-0"
+          className="hover:bg-transparent h-11 w-11 ml-1 shrink-0"
           onClick={() => fileInputRef.current?.click()}
         >
           <PlusCircle className="h-6 w-6" />
@@ -102,7 +102,7 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
         <Textarea
           name="content"
           placeholder="Message #chat"
-          className="flex-1 min-h-[44px] max-h-[50vh] bg-transparent border-none text-[#dcddde] placeholder-[#72767d] focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-3 px-2 text-base"
+          className="flex-1 min-h-11 max-h-[50vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-3 px-2 text-base"
           onKeyDown={(e) => {
              if (e.key === 'Enter' && !e.shiftKey) {
                e.preventDefault();
@@ -111,14 +111,14 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
           }}
         />
 
-        <div className="flex items-center gap-1 shrink-0 text-[#b9bbbe]">
-          <Button type="button" variant="ghost" size="icon" className="hover:text-[#dcddde] hover:bg-transparent h-10 w-10">
+        <div className="flex items-center gap-1 shrink-0">
+          <Button type="button" variant="ghost" size="icon" className="hover:bg-transparent h-10 w-10">
             <Gift className="h-6 w-6" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="hover:text-[#dcddde] hover:bg-transparent h-10 w-10">
+          <Button type="button" variant="ghost" size="icon" className="hover:bg-transparent h-10 w-10">
             <Sticker className="h-6 w-6" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="hover:text-[#dcddde] hover:bg-transparent h-10 w-10">
+          <Button type="button" variant="ghost" size="icon" className="hover:bg-transparent h-10 w-10">
             <Smile className="h-6 w-6" />
           </Button>
         </div>
@@ -127,7 +127,7 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
         <Button 
           type="submit" 
           disabled={loading} 
-          className="bg-[#5865f2] hover:bg-[#4752c4] text-white rounded-md px-4 h-10 shadow-sm"
+          className="rounded-md px-4 h-10 shadow-sm"
         >
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
         </Button>

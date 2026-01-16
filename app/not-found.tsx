@@ -12,7 +12,7 @@ export default function NotFound() {
       <div className="max-w-md w-full text-center space-y-6">
         {/* 404 Number */}
         <div className="space-y-2">
-          <h1 className="text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-600">
+          <h1 className="text-8xl font-bold text-transparent bg-clip-text bg-indigo-500">
             404
           </h1>
           <div className="h-1 w-24 mx-auto bg-gradient-to-r from-indigo-500/50 to-indigo-600/50 rounded-full" />

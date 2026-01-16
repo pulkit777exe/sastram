@@ -42,9 +42,9 @@ export function ThreadSubscribeButton({
         variant={subscribed ? "outline" : "default"}
         disabled={pending || subscribed}
         className={cn(
-          "w-full rounded-xl font-medium transition-all group",
+          "w-full rounded-xl font-medium transition-all group bg-gradient-to-r from-indigo-500 to-indigo-600 hover:bg-indigo-400",
           subscribed
-            ? "bg-[#1C1C1E] border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
+            ? "bg-secondary"
             : "shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40"
         )}
       >

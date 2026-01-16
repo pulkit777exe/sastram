@@ -15,7 +15,7 @@ export function TypingIndicatorComponent({ users }: TypingIndicatorProps) {
         {[0, 150, 300].map((delay) => (
           <span 
             key={delay}
-            className="w-2 h-2 bg-[#b9bbbe] rounded-full animate-pulse" 
+            className="w-2 h-2 rounded-full animate-pulse" 
             style={{ animationDelay: `${delay}ms` }}
           />
         ))}

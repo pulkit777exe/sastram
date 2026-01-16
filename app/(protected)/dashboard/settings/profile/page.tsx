@@ -13,20 +13,20 @@ export default async function ProfilePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-4 mb-4">
         <Link href="/dashboard/settings">
-          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
+          <Button variant="ghost" size="sm" className="text-zinc-500">
             <ArrowLeft size={16} className="mr-2" />
             Back to Settings
           </Button>
         </Link>
       </div>
 
-      <Card className="rounded-2xl border border-zinc-800 bg-[#1C1C1E] p-8 shadow-sm">
+      <Card className="rounded-2xl border p-8 shadow-sm">
         <CardContent className="flex flex-col gap-6 p-0 md:flex-row md:items-center">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-zinc-800">
+          <div className="flex h-20 w-20 items-center justify-center bg-secondary overflow-hidden rounded-full">
             {user.image ? (
               <Image src={user.image} alt={user.name ?? "Avatar"} width={80} height={80} />
             ) : (
-              <span className="text-2xl font-semibold text-zinc-400">
+              <span className="text-2xl font-semibold">
                 {(user.name || user.email)[0]?.toUpperCase()}
               </span>
             )}
@@ -43,13 +43,13 @@ export default async function ProfilePage() {
           </div>
           <div className="flex flex-col gap-2">
             <Link href="/dashboard/settings">
-              <Button variant="outline" className="rounded-lg border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+              <Button variant="outline" className="rounded-lg">
                 <Settings size={14} className="mr-2" />
                 Edit Settings
               </Button>
             </Link>
             {isAdmin(user) && (
-              <Button asChild variant="outline" className="rounded-lg border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+              <Button asChild variant="outline" className="rounded-lg">
                 <a href="/dashboard/admin">Admin Tools</a>
               </Button>
             )}
@@ -59,11 +59,11 @@ export default async function ProfilePage() {
 
       <Card className="rounded-2xl border p-6 shadow-sm">
         <CardContent className="space-y-4 p-0">
-          <h2 className="text-lg font-semibold text-white">Account Information</h2>
-          <p className="text-sm text-zinc-400">
+          <h2 className="text-lg font-semibold">Account Information</h2>
+          <p className="text-sm text-zinc-500">
             Manage your profile settings, newsletter subscriptions, and preferences from the Settings page.
           </p>
-          <div className="rounded-xl border border-dashed border-zinc-700 p-6 text-center text-sm text-zinc-500">
+          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-zinc-600">
             <Link href="/dashboard/settings" className="text-indigo-400 hover:text-indigo-300 underline">
               Go to Settings
             </Link>

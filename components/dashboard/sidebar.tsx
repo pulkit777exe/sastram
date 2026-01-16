@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -45,6 +45,31 @@ export function Sidebar({
     }
     return false;
   });
+
+  const hideTimeout = useRef<number | null>(null);
+
+  const clearHideTimeout = () => {
+    if (hideTimeout.current) {
+      window.clearTimeout(hideTimeout.current);
+      hideTimeout.current = null;
+    }
+  };
+
+  const handleMouseEnter = () => {
+    clearHideTimeout();
+    if (!isCollapsed) {
+      setShowProfileMenu(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    clearHideTimeout();
+    hideTimeout.current = window.setTimeout(() => {
+      setShowProfileMenu(false);
+      hideTimeout.current = null;
+    }, 500);
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -216,12 +241,12 @@ export function Sidebar({
         </nav>
       )}
 
-      <div className="p-3 border-t border-border relative duration-300 transition-shadow"
-        onMouseEnter={() => !isCollapsed && setShowProfileMenu(!showProfileMenu)}
-        onMouseLeave={() => setShowProfileMenu(!showProfileMenu)}
+      <div
+        className="p-3 border-t border-border relative duration-300 transition-shadow"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
-        <div
-          className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer transition-colors">
+        <div className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-medium">
               {name.charAt(0).toUpperCase()}

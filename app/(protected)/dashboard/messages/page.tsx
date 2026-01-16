@@ -39,11 +39,11 @@ export default async function MessagesPage() {
           <Inbox size={14} />
           <span>Personal Feed</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
-          My Activity
+        <h1 className="text-4xl font-bold tracking-tight">
+          Notifications
         </h1>
         <p className="text-zinc-500 mt-2">
-          A chronological overview of your contributions and discussions.
+          View of your account related notifications.
         </p>
       </div>
 

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { AppealForm } from "@/components/appeals/appeal-form";
 
 export default async function BannedPage() {
-  const session = await requireSession(false); // Don't redirect if banned
+  const session = await requireSession(false);
 
   // Use a type guard or direct check. If status is missing from type, we assume runtime object has it.
   // Casting to any to silence TS error temporarily if type update failed.
