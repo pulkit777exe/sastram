@@ -21,13 +21,11 @@ export function ThreadSubscribeButton({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [wasJustSubscribed, setWasJustSubscribed] = useState(false);
 
-  // Check if we just completed subscription
   if (!pending && wasJustSubscribed && !showSuccessModal) {
     setShowSuccessModal(true);
     setWasJustSubscribed(false);
   }
 
-  // Track when pending starts
   if (pending && !wasJustSubscribed) {
     setWasJustSubscribed(true);
   }
@@ -42,7 +40,7 @@ export function ThreadSubscribeButton({
         variant={subscribed ? "outline" : "default"}
         disabled={pending || subscribed}
         className={cn(
-          "w-full rounded-xl font-medium transition-all group bg-gradient-to-r from-indigo-500 to-indigo-600 hover:bg-indigo-400",
+          "w-full rounded-xl font-medium transition-all group bg-linear-to-r from-indigo-500 to-indigo-600 hover:bg-indigo-400 text-white",
           subscribed
             ? "bg-secondary"
             : "shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40"

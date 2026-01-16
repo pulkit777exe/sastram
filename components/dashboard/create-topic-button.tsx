@@ -41,7 +41,7 @@ export function CreateTopicButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>New Thread</Button>
+        <Button className="bg-indigo-500 hover:bg-indigo-400 cursor-pointer">New Thread</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -54,13 +54,13 @@ export function CreateTopicButton() {
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-zinc-400">
+            <Label htmlFor="title" className="text-zinc-500">
               Title
             </Label>
             <Input id="title" name="title" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-zinc-400">
+            <Label htmlFor="description" className="text-zinc-500">
               Description
             </Label>
             <Textarea

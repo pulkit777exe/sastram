@@ -121,7 +121,7 @@ function ReportCard({ report }: { report: Report }) {
     RESOLVED:
       "bg-green-500/10 text-green-600 border-green-200 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/20",
     DISMISSED:
-      "bg-zinc-500/10 text-zinc-600 border-zinc-200 dark:bg-zinc-500/20 dark:text-zinc-400 dark:border-zinc-500/20",
+      "bg-zinc-500/10 text-zinc-600 border-zinc-200 dark:bg-zinc-500/20 dark:text-zinc-500 dark:border-zinc-500/20",
   };
 
   return (

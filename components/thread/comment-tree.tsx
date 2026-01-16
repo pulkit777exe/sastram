@@ -10,7 +10,8 @@ import {
   ChevronRight,
   FileIcon,
   Download,
-  Image as ImageIcon,
+  Heart,
+  ThumbsUp,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Message, Attachment } from "@/lib/types/index";
@@ -20,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { ReportButton } from "./report-button";
 import { AppealMessageModal } from "./appeal-message-modal";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface CommentTreeProps {
   messages: Message[];
@@ -41,7 +43,7 @@ interface CommentItemProps {
     image: string | null;
   };
   depth: number;
-  parentMessage?: Message | null;
+  isLast?: boolean; 
 }
 
 const MAX_DEPTH = 6;
@@ -62,7 +64,6 @@ export function CommentTree({
     messageMap.get(parentId)!.push(msg);
   });
 
-  // Sort all messages by creation time
   messageMap.forEach((msgs) => {
     msgs.sort(
       (a, b) =>
@@ -73,7 +74,7 @@ export function CommentTree({
   const rootMessages = messageMap.get("root") || [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {rootMessages.map((message) => (
         <CommentItem
           key={message.id}
@@ -82,7 +83,6 @@ export function CommentTree({
           sectionId={sectionId}
           currentUser={currentUser}
           depth={0}
-          parentMessage={null}
         />
       ))}
     </div>
@@ -95,7 +95,7 @@ function CommentItem({
   sectionId,
   currentUser,
   depth,
-  parentMessage,
+  isLast,
 }: CommentItemProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -105,13 +105,11 @@ function CommentItem({
   const [appealOpen, setAppealOpen] = useState(false);
   const router = useRouter();
 
-  // Find direct replies to this message
   const replies = allMessages.filter((m) => m.parentId === message.id);
   const hasReplies = replies.length > 0;
   const isOwnMessage = message.senderId === currentUser.id;
   const canReply = depth < MAX_DEPTH;
 
-  // For "Show more" functionality
   const shouldShowMoreButton = replies.length > INITIAL_REPLIES_TO_SHOW;
   const displayedReplies = showAllReplies
     ? replies
@@ -143,231 +141,174 @@ function CommentItem({
     }
   }
 
-  // Truncate long content for preview
-  const MAX_PREVIEW_LENGTH = 150;
-  const shouldTruncate =
-    parentMessage && parentMessage.content.length > MAX_PREVIEW_LENGTH;
-  const previewContent = shouldTruncate
-    ? parentMessage.content.substring(0, MAX_PREVIEW_LENGTH) + "..."
-    : parentMessage?.content || "";
-
   return (
-    <div className="flex gap-3">
-      {/* Reddit-style vertical line for nested comments */}
+    <div className="relative">
       {depth > 0 && (
-        <div className="flex flex-col items-center pt-1 min-w-[24px]">
-          {/* Top connector line */}
-          <div className="w-px h-3 bg-border" />
-          {/* Horizontal branch line */}
-          <div className="w-4 h-px bg-border" />
-          {/* Vertical line that extends down */}
-          <div className="w-px flex-1 bg-border min-h-[20px]" />
+        <div className="absolute -left-[34px] top-0 bottom-0 w-[34px] pointer-events-none">
+          <div className="absolute top-[-10px] left-0 h-[42px] w-px bg-zinc-200" />
+          
+          <div className="absolute top-[32px] left-0 w-[34px] h-[1px] bg-zinc-200" />
+          
+          <div className="absolute top-[10px] left-0 w-4 h-6 border-l border-b border-zinc-200 rounded-bl-xl" />
         </div>
       )}
 
-      <div className="flex-1 min-w-0">
-        {/* Parent message preview (Reddit-style) */}
-        {parentMessage && (
-          <div className="mb-2 ml-1 pl-3 border-l-2 border-indigo-500/40 bg-muted/30 rounded-r-md py-2 pr-2 hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold text-indigo-500">
-                {parentMessage.sender.name || "Anonymous"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                {formatDistanceToNow(new Date(parentMessage.createdAt), {
-                  addSuffix: true,
-                })}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {previewContent}
-            </p>
-          </div>
-        )}
+      <div className="bg-white border border-zinc-100 shadow-sm rounded-2xl p-5 relative group transition-all hover:border-zinc-200 hover:shadow-md">
+        <div className="flex items-start gap-4">
+          <Avatar className="w-10 h-10 shrink-0 border border-zinc-100">
+            <AvatarImage src={message.sender.image || ""} />
+            <AvatarFallback className="bg-indigo-50 text-indigo-600 text-sm font-bold">
+              {message.sender.name?.substring(0, 2).toUpperCase() || "U"}
+            </AvatarFallback>
+          </Avatar>
 
-        {/* Comment */}
-        <div className="group hover:bg-muted/30 rounded-lg p-3 transition-colors">
-          <div className="flex items-start gap-3">
-            <Avatar className="w-8 h-8 shrink-0">
-              <AvatarImage src={message.sender.image || ""} />
-              <AvatarFallback className="bg-indigo-500/10 text-indigo-500 text-xs">
-                {message.sender.name?.substring(0, 2).toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold text-sm text-foreground">
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-zinc-900 text-sm">
                   {message.sender.name || "Anonymous"}
                 </span>
                 {isOwnMessage && (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500">
-                    you
+                  <span className="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-medium">
+                    You
                   </span>
                 )}
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(message.createdAt), {
-                    addSuffix: true,
-                  })}
-                </span>
               </div>
+              <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wide">
+                {formatDistanceToNow(new Date(message.createdAt), {
+                  addSuffix: false,
+                })} ago
+              </span>
+            </div>
 
-              <div className="text-sm text-foreground whitespace-pre-wrap break-words">
-                {message.content}
+            <div className="text-zinc-600 text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+              {message.content}
+            </div>
+
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3 mb-2">
+                {message.attachments.map((file) => (
+                  <AttachmentItem key={file.id} file={file} />
+                ))}
               </div>
+            )}
 
-              {/* Attachments */}
-              {message.attachments && message.attachments.length > 0 && (
-                <div
-                  className={`flex flex-wrap gap-2 mt-2 ${
-                    message.content ? "" : ""
-                  }`}
+            <div className="flex items-center gap-4 pt-2 mt-1">
+              <button className="flex items-center gap-1.5 text-zinc-400 hover:text-amber-500 transition-colors group/like">
+                 <div className="p-1.5 rounded-full group-hover/like:bg-amber-50">
+                    <ThumbsUp size={14} />
+                 </div>
+                 <span className="text-xs font-medium">Like</span>
+              </button>
+              
+              {canReply && (
+                <button 
+                  onClick={() => setIsReplying(!isReplying)}
+                  className="flex items-center gap-1.5 text-zinc-400 hover:text-indigo-600 transition-colors group/reply"
                 >
-                  {message.attachments.map((file) => (
-                    <AttachmentItem key={file.id} file={file} />
-                  ))}
-                </div>
+                   <div className="p-1.5 rounded-full group-hover/reply:bg-indigo-50">
+                      <Reply size={14} />
+                   </div>
+                   <span className="text-xs font-medium">Reply</span>
+                </button>
               )}
 
-              {/* Actions */}
-              <div className="flex items-center gap-4 mt-2">
-                {canReply && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsReplying(!isReplying)}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-                  >
-                    <Reply className="w-3 h-3 mr-1" />
-                    Reply
-                  </Button>
-                )}
-                {hasReplies && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="w-3 h-3 mr-1" />
-                    ) : (
-                      <ChevronRight className="w-3 h-3 mr-1" />
-                    )}
-                    {replies.length}{" "}
-                    {replies.length === 1 ? "reply" : "replies"}
-                  </Button>
-                )}
-                <ReportButton messageId={message.id} />
+              <ReportButton messageId={message.id} />
+              
+              <button 
+                onClick={() => setAppealOpen(true)}
+                className="text-[11px] text-zinc-300 hover:text-zinc-500 hover:underline"
+              >
+                Appeal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isReplying && (
+        <div className="mt-4 ml-8 relative pl-6 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute left-0 top-[-20px] bottom-1/2 w-6 border-l border-b border-zinc-200 rounded-bl-xl" />
+          
+          <div className="bg-zinc-50/50 border border-zinc-200/60 rounded-xl p-3 flex gap-3">
+            <Avatar className="w-8 h-8 shrink-0">
+              <AvatarImage src={currentUser.image || ""} />
+              <AvatarFallback className="text-xs">ME</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <Textarea
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                placeholder="Write your reply..."
+                className="min-h-[80px] bg-white border-zinc-200 text-sm focus-visible:ring-indigo-500/20 resize-none shadow-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    handleReply();
+                  }
+                }}
+              />
+              <div className="flex items-center justify-end gap-2 mt-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setAppealOpen(true)}
-                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => setIsReplying(false)}
+                  className="h-8 text-zinc-500 hover:text-zinc-900"
                 >
-                  Appeal
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleReply}
+                  disabled={isSubmitting || !replyContent.trim()}
+                  className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white"
+                >
+                  {isSubmitting ? "Sending..." : "Post Reply"}
                 </Button>
               </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Reply form */}
-        {isReplying && (
-          <div className="ml-11 mt-3">
-            <div className="flex gap-2">
-              <Avatar className="w-6 h-6 shrink-0">
-                <AvatarImage src={currentUser.image || ""} />
-                <AvatarFallback className="bg-indigo-500/10 text-indigo-500 text-[10px]">
-                  {currentUser.name?.substring(0, 2).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <Textarea
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                  placeholder="Write a reply..."
-                  className="min-h-[80px] bg-background border-border text-foreground placeholder:text-muted-foreground resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                      handleReply();
-                    }
-                  }}
-                />
-                <div className="flex items-center justify-end gap-2 mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setIsReplying(false);
-                      setReplyContent("");
-                    }}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleReply}
-                    disabled={isSubmitting || !replyContent.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white"
-                  >
-                    {isSubmitting ? "Posting..." : "Reply"}
-                  </Button>
-                </div>
-              </div>
+      <AppealMessageModal
+        messageId={message.id}
+        isOpen={appealOpen}
+        onClose={() => setAppealOpen(false)}
+      />
+
+      {hasReplies && isExpanded && (
+        <div className="mt-4 ml-10 space-y-4 relative">
+          <div className="absolute -left-[6px] top-[-20px] bottom-6 w-px bg-zinc-200" />
+          
+          {displayedReplies.map((reply, index) => (
+            <CommentItem
+              key={reply.id}
+              message={reply}
+              allMessages={allMessages}
+              sectionId={sectionId}
+              currentUser={currentUser}
+              depth={depth + 1}
+              isLast={index === displayedReplies.length - 1}
+            />
+          ))}
+
+          {shouldShowMoreButton && (
+            <div className="relative pl-6 pt-2">
+               <div className="absolute left-[-6px] top-[-10px] h-[26px] w-4 border-l border-b border-zinc-200 rounded-bl-xl" />
+              <button
+                onClick={() => setShowAllReplies(!showAllReplies)}
+                className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 bg-indigo-50/50 px-3 py-1.5 rounded-full transition-colors"
+              >
+                {showAllReplies ? (
+                   <>Show less <ChevronDown size={12} /></>
+                ) : (
+                  <>Show {hiddenRepliesCount} more replies <ChevronRight size={12} /></>
+                )}
+              </button>
             </div>
-          </div>
-        )}
-
-        <AppealMessageModal
-          messageId={message.id}
-          isOpen={appealOpen}
-          onClose={() => setAppealOpen(false)}
-        />
-
-        {/* Nested replies */}
-        {hasReplies && isExpanded && (
-          <div className="mt-3 space-y-4">
-            {displayedReplies.map((reply) => {
-              // Find parent message for this reply
-              const replyParent = allMessages.find(
-                (m) => m.id === reply.parentId
-              );
-              return (
-                <CommentItem
-                  key={reply.id}
-                  message={reply}
-                  allMessages={allMessages}
-                  sectionId={sectionId}
-                  currentUser={currentUser}
-                  depth={depth + 1}
-                  parentMessage={replyParent || null}
-                />
-              );
-            })}
-
-            {/* Show more / Show less button */}
-            {shouldShowMoreButton && (
-              <div className="ml-4">
-                <span
-                  onClick={() => setShowAllReplies(!showAllReplies)}
-                  className="cursor-pointer text-xs font-medium text-indigo-500 hover:text-indigo-600 transition-colors px-2 py-1 rounded hover:bg-indigo-500/10 inline-block"
-                >
-                  {showAllReplies ? (
-                    <span>Show less</span>
-                  ) : (
-                    <span>
-                      Show {hiddenRepliesCount} more{" "}
-                      {hiddenRepliesCount === 1 ? "reply" : "replies"}
-                    </span>
-                  )}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -379,49 +320,38 @@ function AttachmentItem({ file }: { file: Attachment }) {
 
   if (isImage) {
     return (
-      <div className="relative group overflow-hidden rounded-lg mt-1 max-w-full">
+      <div className="relative group overflow-hidden rounded-lg border border-zinc-100">
         <Image
           src={file.url}
           alt={file.name || "attachment"}
-          width={400}
-          height={300}
-          className="max-w-full md:max-w-sm lg:max-w-md max-h-[300px] object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+          width={200}
+          height={150}
+          className="max-w-[200px] max-h-[150px] object-cover hover:scale-105 transition-transform duration-300"
         />
       </div>
     );
   }
 
-  const formatBytes = (bytes: number | null | undefined, decimals = 2) => {
-    if (!bytes || bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-  };
-
-  const fileType = file.type?.split("/").pop()?.toUpperCase() || "FILE";
-
   return (
-    <div className="flex items-center gap-3 p-2.5 rounded-md max-w-full bg-muted border border-border hover:bg-muted/80 transition-colors">
-      <div className="p-2 bg-background rounded-md border border-border">
-        <FileIcon className="w-5 h-5 text-muted-foreground" />
+    <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-50 border border-zinc-100 hover:bg-zinc-100 transition-colors group">
+      <div className="p-1.5 bg-white rounded-md border shadow-sm text-zinc-500">
+        <FileIcon size={14} />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate max-w-[200px] hover:text-foreground/80 cursor-pointer">
+      <div className="max-w-[120px]">
+        <p className="text-xs font-medium text-zinc-700 truncate">
           {file.name || "File"}
         </p>
-        <p className="text-xs text-muted-foreground">
-          {fileType} {file.size ? `· ${formatBytes(file.size)}` : ""}
+        <p className="text-[10px] text-zinc-400">
+          {file.type?.split("/").pop()?.toUpperCase()}
         </p>
       </div>
       <a
         href={file.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="p-1.5 text-muted-foreground hover:text-foreground rounded-full transition-colors hover:bg-muted-foreground/10"
+        className="ml-1 p-1.5 text-zinc-400 hover:text-zinc-900 rounded-full hover:bg-white transition-all opacity-0 group-hover:opacity-100"
       >
-        <Download className="w-4 h-4" />
+        <Download size={12} />
       </a>
     </div>
   );

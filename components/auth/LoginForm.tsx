@@ -608,7 +608,7 @@ function UserAuthForm({
             setMode(mode === "signin" ? "signup" : "signin");
             setError(null);
           }}
-          className="text-zinc-400 hover:text-white transition-colors"
+          className="text-zinc-500 hover:text-white transition-colors"
         >
           {mode === "signin" ? (
             <>

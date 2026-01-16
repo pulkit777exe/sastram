@@ -36,7 +36,7 @@ export default async function ProfilePage() {
             <h1 className="mt-2 text-2xl font-semibold">
               {user.name || "Unnamed"}
             </h1>
-            <p className="text-zinc-400">{user.email}</p>
+            <p className="text-zinc-500">{user.email}</p>
             <p className="mt-2 inline-flex rounded-full bg-indigo-500/10 text-indigo-400 px-3 py-1 text-xs uppercase tracking-wide border border-indigo-500/20">
               {user.role}
             </p>

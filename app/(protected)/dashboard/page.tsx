@@ -32,7 +32,7 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className={`text-4xl font-bold tracking-tight`}>Threads</h1>
-          <p className="text-foreground mt-1">Manage and track your community discussions.</p>
+          <p className="text-zinc-500 mt-1">Manage and track your community discussions.</p>
         </div>
         
         <div className="flex gap-3">

@@ -64,7 +64,7 @@ export default async function TopicsPage({
             <Hash size={14} />
             <span>Community Feed</span>
           </div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">
+          <h1 className="text-4xl font-bold tracking-tight">
             Topics
           </h1>
           <p className="text-zinc-500 max-w-md">
