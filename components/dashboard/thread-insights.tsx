@@ -29,7 +29,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
   }, [data]);
 
   return (
-    <div className="rounded-[24px] border border-border bg-card p-5 shadow-2xl relative overflow-hidden group">
+    <div className="rounded-3xl border border-border bg-card p-5 shadow-2xl relative overflow-hidden group">
       <div className="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/10 blur-2xl rounded-full pointer-events-none" />
 
       <div className="flex items-center justify-between mb-5">

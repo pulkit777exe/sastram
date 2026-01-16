@@ -191,7 +191,7 @@ export function Sidebar({
             <p className="text-[11px] text-muted-foreground mb-4">
               AI-powered replies and tools that save hours.
             </p>
-            <button className="w-full bg-brand hover:bg-brand/90 text-white text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-brand/20">
+            <button className="w-full text-white bg-brand hover:bg-brand/90 text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-brand/20">
               Upgrade to Pro
             </button>
           </div>
@@ -216,11 +216,12 @@ export function Sidebar({
         </nav>
       )}
 
-      <div className="p-3 border-t border-border relative">
+      <div className="p-3 border-t border-border relative duration-300 transition-shadow"
+        onMouseEnter={() => !isCollapsed && setShowProfileMenu(!showProfileMenu)}
+        onMouseLeave={() => setShowProfileMenu(!showProfileMenu)}
+      >
         <div
-          className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer transition-colors"
-          onClick={() => !isCollapsed && setShowProfileMenu(!showProfileMenu)}
-        >
+          className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-medium">
               {name.charAt(0).toUpperCase()}
@@ -230,7 +231,7 @@ export function Sidebar({
                 <span className="text-xs font-semibold text-foreground">
                   {name}
                 </span>
-                <span className="text-[10px] text-muted-foreground truncate w-24">
+                <span className="text-xs text-muted-foreground truncate w-24">
                   {email}
                 </span>
               </div>

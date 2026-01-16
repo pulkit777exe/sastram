@@ -22,7 +22,7 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-8">
-      <header className="rounded-3xl border border-border bg-gradient-to-br from-indigo-950/50 to-background p-8 text-foreground shadow-xl">
+      <header className="rounded-3xl border border-border bg-muted-foreground/10 p-8 text-foreground shadow-xl">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">
           Admin Workspace
         </p>

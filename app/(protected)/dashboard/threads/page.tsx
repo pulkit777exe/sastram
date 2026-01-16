@@ -77,24 +77,24 @@ export default async function TopicsPage({
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1 md:max-w-md group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 group-focus-within:text-indigo-400 transition-colors" />
           <form>
             <Input
               name="q"
               type="search"
               placeholder="Filter by name or keywords..."
-              className="w-full pl-10 h-12 rounded-xl border-zinc-800 bg-[#1C1C1E] text-white placeholder:text-zinc-600 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all shadow-inner"
+              className="w-full pl-10 h-12 rounded-xl transition-all shadow-inner"
               defaultValue={query}
             />
           </form>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex gap-1 pointer-events-none">
-            <kbd className="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-500 font-sans uppercase">
+            <kbd className="text-[10px] px-1.5 py-0.5 rounded border font-sans uppercase">
               Enter
             </kbd>
           </div>
         </div>
 
-        <div className="hidden sm:flex bg-[#1C1C1E] border border-zinc-800 rounded-xl px-4 h-12 items-center gap-2 cursor-pointer text-sm text-zinc-300 hover:bg-[#252528] transition-colors">
+        <div className="hidden sm:flex border rounded-xl px-4 h-12 items-center gap-2 cursor-pointer text-sm transition-colors">
           <span className="text-zinc-500 font-medium">Sort:</span>
           <span>Hottest</span>
         </div>

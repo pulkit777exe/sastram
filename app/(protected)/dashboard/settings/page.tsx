@@ -17,7 +17,7 @@ export default async function SettingsPage({
 
   if (!session?.user) {
     return (
-      <div className="flex h-[50vh] items-center justify-center text-zinc-500">
+      <div className="flex h-1/2 items-center justify-center">
         Please log in to view settings.
       </div>
     );
@@ -26,7 +26,6 @@ export default async function SettingsPage({
   const tab = (await searchParams).tab || "profile";
   const subscriptions = await getUserNewsletterSubscriptions();
   
-  // Fetch full user data including bio, location, etc.
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -48,8 +47,8 @@ export default async function SettingsPage({
   return (
     <div className="space-y-10 max-w-4xl">
       <div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">Settings</h1>
-        <p className="text-zinc-500 mt-2">
+        <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
+        <p className="mt-2">
           Manage your account settings, notifications, and appearance preferences.
         </p>
       </div>

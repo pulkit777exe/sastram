@@ -32,8 +32,8 @@ export default async function ProfilePage() {
             )}
           </div>
           <div className="flex-1">
-            <p className="text-sm uppercase tracking-widest text-zinc-500">Profile</p>
-            <h1 className="mt-2 text-2xl font-semibold text-white">
+            <p className="text-sm uppercase tracking-widest">Profile</p>
+            <h1 className="mt-2 text-2xl font-semibold">
               {user.name || "Unnamed"}
             </h1>
             <p className="text-zinc-400">{user.email}</p>
@@ -57,7 +57,7 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border border-zinc-800 bg-[#1C1C1E] p-6 shadow-sm">
+      <Card className="rounded-2xl border p-6 shadow-sm">
         <CardContent className="space-y-4 p-0">
           <h2 className="text-lg font-semibold text-white">Account Information</h2>
           <p className="text-sm text-zinc-400">

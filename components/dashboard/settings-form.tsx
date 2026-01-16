@@ -216,7 +216,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   <button
                     type="button"
                     onClick={() => setBannerUrl("")}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-colors"
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors"
                   >
                     <X size={14} />
                   </button>
@@ -414,38 +414,6 @@ export function SettingsForm({ user }: SettingsFormProps) {
             </div>
             <Switch id="push-notifs" />
           </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        variants={item}
-        className="rounded-xl border border-border bg-card p-6 shadow-sm"
-      >
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-            <Moon className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Appearance</h2>
-            <p className="text-sm text-muted-foreground">
-              Customize the look and feel of the application.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label
-              htmlFor="dark-mode"
-              className="text-base font-medium text-foreground"
-            >
-              Dark Mode
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Toggle dark mode theme.
-            </p>
-          </div>
-          <Switch id="dark-mode" defaultChecked />
         </div>
       </motion.div>
     </motion.div>

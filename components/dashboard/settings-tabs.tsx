@@ -21,7 +21,7 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
   }
 
   return (
-    <div className="border-b border-zinc-800">
+    <div className="border-b">
       <nav className="flex gap-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -33,8 +33,8 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
               className={cn(
                 "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2",
                 isActive
-                  ? "text-white border-indigo-500"
-                  : "text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
+                  ? "border-indigo-500 bg-muted-foreground/10 rounded"
+                  : "border-transparent"
               )}
             >
               <AnimatedIcon icon={Icon} size={16} animateOnHover />

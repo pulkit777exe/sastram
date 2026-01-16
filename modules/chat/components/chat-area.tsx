@@ -70,16 +70,16 @@ export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaPr
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#161618] text-[#dcddde] font-sans">
+    <div className="flex flex-col h-full font-sans">
 
       {/* Chat Area: Clean Scrollable Space */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-[#202225] scrollbar-track-transparent" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-track-transparent" ref={scrollRef}>
         {/* Pass currentUser to MessageList for "My Message" styling */}
         <MessageList messages={messages} currentUser={currentUser} />
       </div>
 
       {/* Footer Area: Typing Indicator & Input */}
-      <div className="px-4 pb-6 bg-[#36393f] relative z-20">
+      <div className="px-4 pb-6 relative z-20">
         <TypingIndicatorComponent users={typingUsers} />
         <div className="mt-1">
            <PostMessageForm
