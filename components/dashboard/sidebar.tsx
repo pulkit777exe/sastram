@@ -205,7 +205,7 @@ export function Sidebar({
               label="Refer a Friend"
               href="#"
               collapsed={false}
-            />
+            ></NavItem>
           </nav>
 
           <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">

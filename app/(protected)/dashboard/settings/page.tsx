@@ -25,7 +25,7 @@ export default async function SettingsPage({
 
   const tab = (await searchParams).tab || "profile";
   const subscriptions = await getUserNewsletterSubscriptions();
-  
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -49,14 +49,16 @@ export default async function SettingsPage({
       <div>
         <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
         <p className="mt-2">
-          Manage your account settings, notifications, and appearance preferences.
+          Manage your account settings, notifications, and appearance
+          preferences.
         </p>
       </div>
 
       <SettingsTabs activeTab={tab} />
-
       {tab === "profile" && user && <SettingsForm user={user} />}
-      {tab === "newsletters" && <NewsletterManagement subscriptions={subscriptions} />}
+      {tab === "newsletters" && (
+        <NewsletterManagement subscriptions={subscriptions} />
+      )}
     </div>
   );
 }

@@ -31,7 +31,7 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2",
+                "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 cursor-pointer hover:bg-secondary",
                 isActive
                   ? "border-indigo-500 bg-muted-foreground/10 rounded"
                   : "border-transparent"

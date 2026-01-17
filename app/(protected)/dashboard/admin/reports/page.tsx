@@ -87,7 +87,7 @@ export default async function ReportsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 grid grid-cols-3">
               {pendingReports.map((report) => (
                 <ReportCard key={report.id} report={report} />
               ))}
@@ -100,7 +100,7 @@ export default async function ReportsPage() {
             <h2 className="text-xl font-semibold text-foreground mb-4">
               Resolved Reports
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-4 grid grid-cols-3">
               {resolvedReports.map((report) => (
                 <ReportCard key={report.id} report={report} />
               ))}

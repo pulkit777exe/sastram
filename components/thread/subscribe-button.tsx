@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/utils/cn";
@@ -19,16 +19,21 @@ export function ThreadSubscribeButton({
 }: ThreadSubscribeButtonProps) {
   const { pending } = useFormStatus();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [wasJustSubscribed, setWasJustSubscribed] = useState(false);
+  const prevPendingRef = useRef(false);
 
-  if (!pending && wasJustSubscribed && !showSuccessModal) {
-    setShowSuccessModal(true);
-    setWasJustSubscribed(false);
-  }
+  // Use effect to detect transition from pending to not pending
+  useEffect(() => {
+    const wasPending = prevPendingRef.current;
+    
+    // Update ref for next time
+    prevPendingRef.current = pending;
 
-  if (pending && !wasJustSubscribed) {
-    setWasJustSubscribed(true);
-  }
+    // Trigger modal on next tick to avoid synchronous setState
+    if (wasPending && !pending && !subscribed) {
+      const timer = setTimeout(() => setShowSuccessModal(true), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [pending, subscribed]);
 
   const label = subscribed ? "Subscribed" : "Subscribe to newsletter";
   const Icon = subscribed ? Check : pending ? Loader2 : Bell;

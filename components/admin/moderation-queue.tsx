@@ -66,7 +66,6 @@ export function ModerationQueue({
 }: ModerationQueueProps) {
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatsCard
@@ -95,7 +94,6 @@ export function ModerationQueue({
         </div>
       )}
 
-      {/* Queue Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Report Queue</h2>
         <div className="flex items-center gap-2">
@@ -114,7 +112,6 @@ export function ModerationQueue({
         </div>
       </div>
 
-      {/* Queue List */}
       <div className="space-y-2">
         {reports.length === 0 ? (
           <Card className="bg-card border-border">

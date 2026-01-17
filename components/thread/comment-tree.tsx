@@ -21,7 +21,6 @@ import { useRouter } from "next/navigation";
 import { ReportButton } from "./report-button";
 import { AppealMessageModal } from "./appeal-message-modal";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
 
 interface CommentTreeProps {
   messages: Message[];
@@ -145,15 +144,15 @@ function CommentItem({
     <div className="relative">
       {depth > 0 && (
         <div className="absolute -left-[34px] top-0 bottom-0 w-[34px] pointer-events-none">
-          <div className="absolute top-[-10px] left-0 h-[42px] w-px bg-zinc-200" />
+          <div className="absolute -top-2.5 left-0 h-[42px] w-px" />
           
-          <div className="absolute top-[32px] left-0 w-[34px] h-[1px] bg-zinc-200" />
+          <div className="absolute top-8 left-0 w-[34px] h-px" />
           
-          <div className="absolute top-[10px] left-0 w-4 h-6 border-l border-b border-zinc-200 rounded-bl-xl" />
+          <div className="absolute top-2.5 left-0 w-4 h-6 border-l border-b rounded-bl-xl" />
         </div>
       )}
 
-      <div className="bg-white border border-zinc-100 shadow-sm rounded-2xl p-5 relative group transition-all hover:border-zinc-200 hover:shadow-md">
+      <div className="border shadow-sm rounded-2xl p-5 relative group transition-all hover:shadow-md">
         <div className="flex items-start gap-4">
           <Avatar className="w-10 h-10 shrink-0 border border-zinc-100">
             <AvatarImage src={message.sender.image || ""} />
@@ -174,14 +173,14 @@ function CommentItem({
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wide">
+              <span className="text-[11px] font-medium uppercase tracking-wide">
                 {formatDistanceToNow(new Date(message.createdAt), {
                   addSuffix: false,
                 })} ago
               </span>
             </div>
 
-            <div className="text-zinc-600 text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+            <div className="text-zinc-600 text-[15px] leading-relaxed whitespace-pre-wrap warp-break-word">
               {message.content}
             </div>
 
@@ -194,7 +193,7 @@ function CommentItem({
             )}
 
             <div className="flex items-center gap-4 pt-2 mt-1">
-              <button className="flex items-center gap-1.5 text-zinc-400 hover:text-amber-500 transition-colors group/like">
+              <button className="flex items-center gap-1.5 hover:text-amber-500 transition-colors group/like">
                  <div className="p-1.5 rounded-full group-hover/like:bg-amber-50">
                     <ThumbsUp size={14} />
                  </div>
@@ -204,7 +203,7 @@ function CommentItem({
               {canReply && (
                 <button 
                   onClick={() => setIsReplying(!isReplying)}
-                  className="flex items-center gap-1.5 text-zinc-400 hover:text-indigo-600 transition-colors group/reply"
+                  className="flex items-center gap-1.5 hover:text-indigo-600 transition-colors group/reply"
                 >
                    <div className="p-1.5 rounded-full group-hover/reply:bg-indigo-50">
                       <Reply size={14} />
@@ -217,7 +216,7 @@ function CommentItem({
               
               <button 
                 onClick={() => setAppealOpen(true)}
-                className="text-[11px] text-zinc-300 hover:text-zinc-500 hover:underline"
+                className="text-[11px] hover:underline"
               >
                 Appeal
               </button>
@@ -228,9 +227,9 @@ function CommentItem({
 
       {isReplying && (
         <div className="mt-4 ml-8 relative pl-6 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="absolute left-0 top-[-20px] bottom-1/2 w-6 border-l border-b border-zinc-200 rounded-bl-xl" />
+          <div className="absolute left-0 -top-5 bottom-1/2 w-6 border-l border-b rounded-bl-xl" />
           
-          <div className="bg-zinc-50/50 border border-zinc-200/60 rounded-xl p-3 flex gap-3">
+          <div className="border rounded-xl p-3 flex gap-3">
             <Avatar className="w-8 h-8 shrink-0">
               <AvatarImage src={currentUser.image || ""} />
               <AvatarFallback className="text-xs">ME</AvatarFallback>
@@ -240,7 +239,7 @@ function CommentItem({
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
                 placeholder="Write your reply..."
-                className="min-h-[80px] bg-white border-zinc-200 text-sm focus-visible:ring-indigo-500/20 resize-none shadow-none"
+                className="min-h-20 text-sm focus-visible:ring-indigo-500/20 resize-none shadow-none"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     handleReply();
@@ -260,7 +259,7 @@ function CommentItem({
                   size="sm"
                   onClick={handleReply}
                   disabled={isSubmitting || !replyContent.trim()}
-                  className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white"
+                  className="h-8"
                 >
                   {isSubmitting ? "Sending..." : "Post Reply"}
                 </Button>
@@ -278,7 +277,7 @@ function CommentItem({
 
       {hasReplies && isExpanded && (
         <div className="mt-4 ml-10 space-y-4 relative">
-          <div className="absolute -left-[6px] top-[-20px] bottom-6 w-px bg-zinc-200" />
+          <div className="absolute -left-1.5 top-5 bottom-6 w-px" />
           
           {displayedReplies.map((reply, index) => (
             <CommentItem
@@ -294,10 +293,10 @@ function CommentItem({
 
           {shouldShowMoreButton && (
             <div className="relative pl-6 pt-2">
-               <div className="absolute left-[-6px] top-[-10px] h-[26px] w-4 border-l border-b border-zinc-200 rounded-bl-xl" />
+               <div className="absolute -left-1.5 -top-2.5 h-[26px] w-4 border-l border-b rounded-bl-xl" />
               <button
                 onClick={() => setShowAllReplies(!showAllReplies)}
-                className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 bg-indigo-50/50 px-3 py-1.5 rounded-full transition-colors"
+                className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors"
               >
                 {showAllReplies ? (
                    <>Show less <ChevronDown size={12} /></>
@@ -320,7 +319,7 @@ function AttachmentItem({ file }: { file: Attachment }) {
 
   if (isImage) {
     return (
-      <div className="relative group overflow-hidden rounded-lg border border-zinc-100">
+      <div className="relative group overflow-hidden rounded-lg border">
         <Image
           src={file.url}
           alt={file.name || "attachment"}
@@ -333,8 +332,8 @@ function AttachmentItem({ file }: { file: Attachment }) {
   }
 
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-50 border border-zinc-100 hover:bg-zinc-100 transition-colors group">
-      <div className="p-1.5 bg-white rounded-md border shadow-sm text-zinc-500">
+    <div className="flex items-center gap-2 p-2 rounded-lg border transition-colors group">
+      <div className="p-1.5 rounded-md border shadow-sm text-zinc-500">
         <FileIcon size={14} />
       </div>
       <div className="max-w-[120px]">
@@ -349,7 +348,7 @@ function AttachmentItem({ file }: { file: Attachment }) {
         href={file.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="ml-1 p-1.5 text-zinc-400 hover:text-zinc-900 rounded-full hover:bg-white transition-all opacity-0 group-hover:opacity-100"
+        className="ml-1 p-1.5 rounded-full transition-all opacity-0 group-hover:opacity-100"
       >
         <Download size={12} />
       </a>

@@ -72,7 +72,7 @@ export default async function ThreadPage({
       <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
         <header className="flex h-[72px] items-center justify-between px-6 border-b border-border/60 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 z-10">
           <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center shadow-sm">
               <Hash size={20} strokeWidth={2.5} />
             </div>
             <div className="flex flex-col gap-0.5">
@@ -92,18 +92,18 @@ export default async function ThreadPage({
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex border border-indigo-100 bg-indigo-50/50 rounded-full px-3 py-1 items-center gap-1.5 cursor-help transition-colors hover:bg-indigo-50 text-indigo-600">
+            <div className="hidden sm:flex border rounded-full px-3 py-1 items-center gap-1.5 cursor-help transition-colors hover:bg-indigo-50 text-indigo-600">
               <TrendingUp size={13} />
               <span className="text-xs font-semibold">Trending Topic</span>
             </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto bg-zinc-50/50">
+        <div className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto p-6 md:p-8">
             {allMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mb-4 text-zinc-400">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4">
                   <MessageSquare size={24} />
                 </div>
                 <h3 className="text-zinc-900 font-medium mb-1">
@@ -133,7 +133,7 @@ export default async function ThreadPage({
       <aside className="w-[320px] hidden xl:flex flex-col overflow-y-auto bg-background/50">
         <div className="p-6 border-b border-border/60">
           <div className="flex items-center gap-2 mb-6">
-            <Activity size={14} className="text-zinc-400" />
+            <Activity size={14} className="" />
             <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
               Thread Details
             </p>
@@ -172,7 +172,7 @@ export default async function ThreadPage({
         </div>
 
         <div className="p-6">
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-5 relative overflow-hidden group">
+          <div className="rounded-xl border p-5 relative overflow-hidden group">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles size={14} className="text-indigo-500" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">
@@ -187,9 +187,9 @@ export default async function ThreadPage({
                 </p>
               ) : (
                 <div className="flex flex-col gap-2 opacity-50">
-                  <div className="h-1.5 w-full rounded-full bg-indigo-200" />
-                  <div className="h-1.5 w-3/4 rounded-full bg-indigo-200" />
-                  <p className="text-[10px] text-indigo-400 mt-2">
+                  <div className="h-1.5 w-full rounded-full animate-pulse bg-indigo-200 delay-300" />
+                  <div className="h-1.5 w-3/4 rounded-full animate-pulse bg-indigo-200 delay-500" />
+                  <p className="text-[10px] font-bold mt-2">
                     Generating insights...
                   </p>
                 </div>
@@ -208,7 +208,7 @@ export default async function ThreadPage({
         </div>
 
         {isAdmin(session.user) && (
-          <div className="p-6 mt-auto border-t border-border/60 bg-zinc-50/50">
+          <div className="p-6 mt-auto border-t border-border/60">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={14} className="text-zinc-500" />
@@ -219,7 +219,7 @@ export default async function ThreadPage({
             </div>
             <Link
               href="/dashboard/admin"
-              className="flex items-center justify-center w-full py-2.5 text-xs font-medium text-zinc-600 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 hover:text-zinc-900 transition-all shadow-sm"
+              className="flex items-center justify-center w-full py-2.5 text-xs font-medium text-zinc-60 border rounded-lg hover:text-zinc-900 transition-all shadow-sm"
             >
               Manage Thread
             </Link>

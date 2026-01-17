@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { voteOnPollAction, getUserVoteAction, getPollResultsAction } from "@/modules/polls/actions";
 import { toast } from "sonner";
@@ -75,7 +75,6 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     setIsVoting(true);
     try {
       const result = await voteOnPollAction(poll.id, optionIndex);
-      // Check for error in result
       if (result && typeof result === "object") {
         if ("error" in result && result.error) {
           toast.error(result.error);
@@ -120,7 +119,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
 
       <div className="space-y-2">
         {poll.options.map((option, index) => {
-          const result = results?.results?.find((r: any) => r.index === index);
+          const result = results?.results.find((r) => r.index === index);
           const percentage = result?.percentage || 0;
           const isSelected = selectedOption === index;
 

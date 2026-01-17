@@ -120,7 +120,6 @@ export function ModerationDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <header className="rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -146,9 +145,7 @@ export function ModerationDashboard({
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Queue (Left Side) */}
         <div className="xl:col-span-1">
           <ModerationQueue
             stats={stats}
@@ -158,7 +155,6 @@ export function ModerationDashboard({
           />
         </div>
 
-        {/* Review Panel (Right Side) */}
         <div className="xl:col-span-2">
           {selectedReport ? (
             <>
@@ -196,7 +192,6 @@ export function ModerationDashboard({
         </div>
       </div>
 
-      {/* Audit Log */}
       <section>
         <h2 className="text-lg font-semibold text-foreground mb-4">
           Recent Audit Log

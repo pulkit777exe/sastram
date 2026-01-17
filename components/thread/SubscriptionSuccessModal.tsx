@@ -26,7 +26,6 @@ export function SubscriptionSuccessModal({
 
   useEffect(() => {
     if (isOpen && mounted) {
-      // Trigger confetti
       const duration = 2000;
       const end = Date.now() + duration;
 
@@ -60,7 +59,6 @@ export function SubscriptionSuccessModal({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -69,7 +67,6 @@ export function SubscriptionSuccessModal({
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
 
-          {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -78,7 +75,6 @@ export function SubscriptionSuccessModal({
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
           >
             <div className="bg-card rounded-2xl border border-border shadow-2xl overflow-hidden text-foreground">
-              {/* Close button */}
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
