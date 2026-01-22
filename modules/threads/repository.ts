@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/infrastructure/prisma";
 import { Prisma } from "@prisma/client";
-import type { ThreadDetail, ThreadRecord, ThreadSummary } from "./types";
+import type {
+  ThreadDetail,
+  ThreadRecord,
+  ThreadSummary,
+  ThreadMember,
+} from "./types";
+import { SectionRole } from "@prisma/client";
 import { buildThreadDTO, buildThreadDetailDTO } from "./service";
 
 type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
@@ -80,13 +86,13 @@ export async function listThreads(): Promise<ThreadSummary[]> {
     return buildThreadDTO(
       thread as unknown as ThreadRecord,
       thread._count.messages,
-      uniqueActiveUsers.size
+      uniqueActiveUsers.size,
     );
   });
 }
 
 export async function getThreadBySlug(
-  slug: string
+  slug: string,
 ): Promise<ThreadDetail | null> {
   const record = await prisma.section.findFirst({
     where: {
@@ -142,7 +148,7 @@ export async function getThreadBySlug(
     typedRecord._count.messages,
     new Set(typedRecord.messages.map((m) => m.senderId)).size,
     typedRecord.digests[0]?.summary,
-    typedRecord.newsletterSubscriptions?.length ?? 0
+    typedRecord.newsletterSubscriptions?.length ?? 0,
   );
 }
 
@@ -178,12 +184,107 @@ export async function createThread(payload: {
   return buildThreadDTO(
     typedThread as ThreadRecord,
     typedThread._count.messages,
-    0
+    0,
   );
 }
 
 export async function deleteThread(threadId: string): Promise<void> {
   await prisma.section.delete({
     where: { id: threadId },
+  });
+}
+export async function getThreadMembers(
+  threadId: string,
+): Promise<ThreadMember[]> {
+  const members = await prisma.sectionMember.findMany({
+    where: {
+      sectionId: threadId,
+      status: "ACTIVE",
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          status: true,
+          lastSeenAt: true,
+        },
+      },
+    },
+    orderBy: {
+      joinedAt: "asc",
+    },
+  });
+
+  return members.map((member) => ({
+    id: member.id,
+    userId: member.userId,
+    role: member.role,
+    joinedAt: member.joinedAt,
+    user: {
+      id: member.user.id,
+      name: member.user.name,
+      avatarUrl: member.user.image,
+      status: member.user.status,
+      lastSeenAt: member.user.lastSeenAt,
+    },
+  }));
+}
+
+export async function addThreadMember(
+  threadId: string,
+  userId: string,
+  role: SectionRole = "MEMBER",
+): Promise<void> {
+  await prisma.sectionMember.upsert({
+    where: {
+      sectionId_userId: {
+        sectionId: threadId,
+        userId,
+      },
+    },
+    update: {
+      role,
+      status: "ACTIVE",
+    },
+    create: {
+      sectionId: threadId,
+      userId,
+      role,
+      status: "ACTIVE",
+    },
+  });
+}
+
+export async function updateThreadMemberRole(
+  threadId: string,
+  userId: string,
+  role: SectionRole,
+): Promise<void> {
+  await prisma.sectionMember.update({
+    where: {
+      sectionId_userId: {
+        sectionId: threadId,
+        userId,
+      },
+    },
+    data: {
+      role,
+    },
+  });
+}
+
+export async function removeThreadMember(
+  threadId: string,
+  userId: string,
+): Promise<void> {
+  await prisma.sectionMember.delete({
+    where: {
+      sectionId_userId: {
+        sectionId: threadId,
+        userId,
+      },
+    },
   });
 }

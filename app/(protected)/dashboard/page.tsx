@@ -62,7 +62,7 @@ export default async function DashboardPage() {
             <Card key={community.id} className="transition-all group cursor-pointer">
               <CardContent className="p-5">
                 <div className="flex justify-between items-start">
-                  <div className="h-10 w-10 rounded-xl flex items-center justify-center transition-colors">
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center bg-secondary transition-colors">
                     <Users size={20} />
                   </div>
                   {community.threadCount > 5 && (
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
                     </span>
                   )}
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-white">{community.title}</h3>
+                <h3 className="mt-4 text-lg font-bold">{community.title}</h3>
                 <p className="mt-1 text-sm line-clamp-2">
                   {community.description || "No description yet."}
                 </p>

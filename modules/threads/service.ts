@@ -24,7 +24,7 @@ export function buildThreadSlug(title: string, existingId?: string) {
 export function buildThreadDTO(
   thread: ThreadRecord,
   messageCount: number,
-  activeUsers: number
+  activeUsers: number,
 ): ThreadSummary {
   return {
     id: thread.id,
@@ -46,6 +46,7 @@ export function buildThreadDTO(
     latestMessage: null,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
+    createdBy: thread.createdBy,
   };
 }
 
@@ -54,7 +55,7 @@ export function buildThreadDetailDTO(
   messageCount: number,
   activeUsers: number,
   summary?: string | null,
-  subscriptionCount?: number
+  subscriptionCount?: number,
 ): ThreadDetail {
   return {
     ...buildThreadDTO(thread, messageCount, activeUsers),
@@ -73,24 +74,26 @@ export function buildThreadDetailDTO(
         isEdited: message.isEdited ?? false,
         isPinned: message.isPinned ?? false,
         updatedAt: message.updatedAt,
-        sender: message.sender ? {
-          id: message.sender.id,
-          name: message.sender.name,
-          avatarUrl: message.sender.image,
-          status: (message.sender.status as UserStatus) || "ACTIVE",
-        } : {
-          id: message.senderId,
-          name: null,
-          avatarUrl: null,
-          status: "ACTIVE" as UserStatus,
-        },
+        sender: message.sender
+          ? {
+              id: message.sender.id,
+              name: message.sender.name,
+              avatarUrl: message.sender.image,
+              status: (message.sender.status as UserStatus) || "ACTIVE",
+            }
+          : {
+              id: message.senderId,
+              name: null,
+              avatarUrl: null,
+              status: "ACTIVE" as UserStatus,
+            },
       })) ?? [],
   };
 }
 
 export function buildCommunityDTO(
   community: Community,
-  threadCount: number
+  threadCount: number,
 ): CommunitySummary {
   return {
     id: community.id,

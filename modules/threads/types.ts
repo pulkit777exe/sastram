@@ -1,14 +1,14 @@
-import type { 
-  Section, 
-  Community, 
-  Message, 
+import type {
+  Section,
+  Community,
+  Message,
   User,
   SectionMember,
   Reaction,
   Attachment,
   SectionVisibility,
   SectionRole,
-  UserStatus
+  UserStatus,
 } from "@prisma/client";
 
 // Base thread record with all relations
@@ -16,7 +16,7 @@ export type ThreadRecord = Section & {
   community?: Community | null;
   creator?: User | null;
   members?: SectionMember[];
-  messages?: (Message & { 
+  messages?: (Message & {
     sender?: User | null;
     reactions?: Reaction[];
     attachments?: Attachment[];
@@ -53,6 +53,7 @@ export interface ThreadSummary {
   } | null;
   createdAt: Date;
   updatedAt: Date;
+  createdBy: string;
 }
 
 // Detailed thread view with messages
@@ -195,7 +196,7 @@ export interface ThreadFilters {
   communityId?: string;
   visibility?: SectionVisibility;
   search?: string;
-  sortBy?: 'recent' | 'popular' | 'active' | 'oldest';
+  sortBy?: "recent" | "popular" | "active" | "oldest";
   page?: number;
   pageSize?: number;
 }

@@ -15,7 +15,7 @@ import {
   createThreadRequestSchema,
   createCommunityRequestSchema,
 } from "../lib/schemas/api.js";
-import { validateEnv } from "../lib/schemas/env.js";
+import { validateEnv } from "@/lib/config/env.js";
 
 describe("Zod Schema Validation", () => {
   describe("WebSocket Message Schemas", () => {

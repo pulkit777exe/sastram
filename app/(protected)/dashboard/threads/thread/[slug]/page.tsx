@@ -23,6 +23,7 @@ import type {
 } from "@/modules/threads/types";
 import Link from "next/link";
 import { format } from "date-fns";
+import { ThreadManagementControls } from "@/components/thread/thread-management-controls";
 
 export default async function ThreadPage({
   params,
@@ -58,13 +59,13 @@ export default async function ThreadPage({
         url: att.url,
         type: att.type,
         size:
-          att.size ?? null
+          (att.size ?? null)
             ? typeof att.size === "string"
               ? parseInt(att.size, 10)
               : Number(att.size)
             : null,
       })),
-    })
+    }),
   );
 
   return (
@@ -96,6 +97,12 @@ export default async function ThreadPage({
               <TrendingUp size={13} />
               <span className="text-xs font-semibold">Trending Topic</span>
             </div>
+            <ThreadManagementControls
+              threadId={thread.id}
+              creatorId={thread.createdBy}
+              currentUserId={session.user.id}
+              threadName={thread.name}
+            />
           </div>
         </header>
 
@@ -195,16 +202,18 @@ export default async function ThreadPage({
                 </div>
               )}
             </div>
-            
+
             <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-indigo-500/10 blur-2xl rounded-full pointer-events-none" />
           </div>
 
-           <div className="mt-8">
-              <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">Created</p>
-              <p className="text-xs text-zinc-600 font-medium">
-                 {format(new Date(thread.createdAt), "MMMM d, yyyy")}
-              </p>
-           </div>
+          <div className="mt-8">
+            <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
+              Created
+            </p>
+            <p className="text-xs text-zinc-600 font-medium">
+              {format(new Date(thread.createdAt), "MMMM d, yyyy")}
+            </p>
+          </div>
         </div>
 
         {isAdmin(session.user) && (
