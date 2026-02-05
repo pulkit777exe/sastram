@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Gift, Smile, Sticker, Send, Loader2, FileIcon, X } from "lucide-react";
+import { PlusCircle, Gift, Smile, Sticker, Send, Loader2, FileIcon, X, MessageSquare } from "lucide-react";
 import { postMessage } from "@/modules/messages/actions";
 import { toast } from "sonner";
 import { validateFile } from "@/lib/services/content-safety";
@@ -12,13 +12,24 @@ import type { Message } from "@/lib/types/index";
 interface PostMessageFormProps {
   sectionId: string;
   onMessagePosted?: (message: Message) => void;
+  replyTo?: {
+    messageId: string;
+    userName: string;
+  } | null;
+  onCancelReply?: () => void;
 }
 
-export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormProps) {
+export function PostMessageForm({ 
+  sectionId, 
+  onMessagePosted,
+  replyTo,
+  onCancelReply
+}: PostMessageFormProps) {
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -29,6 +40,10 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
       formData.append("fileType", selectedFile.type);
       formData.append("fileSize", selectedFile.size.toString());
     }
+
+    if (replyTo) {
+      formData.append("parentId", replyTo.messageId);
+    }
   
     const result = await postMessage(formData);
     setLoading(false);
@@ -38,6 +53,7 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
     } else if (result && "success" in result && result.success) {
       formRef.current?.reset();
       setSelectedFile(null);
+      onCancelReply?.();
       
       if (result.data && onMessagePosted) {
         const transformedMessage = {
@@ -66,27 +82,49 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
     setSelectedFile(file);
   };
 
+  const placeholder = replyTo 
+    ? `Reply to ${replyTo.userName}...`
+    : "Message #chat";
+
   return (
     <form ref={formRef} action={handleSubmit} className="relative px-4 pb-0 pt-0">
-      {/* File Preview Popup */}
-      {selectedFile && (
-        <div className="absolute -top-14 left-4 border p-2 rounded-md text-sm flex items-center gap-2 shadow-md">
-          <FileIcon className="h-4 w-4" />
-          <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+      {replyTo && (
+        <div className="absolute -top-12 left-4 right-4 bg-[#2f3136] border border-[#202225] p-2 rounded-t-md text-sm flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[#b9bbbe]">
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span>Replying to</span>
+            <span className="text-[#5865f2] font-medium">{replyTo.userName}</span>
+          </div>
           <button
             type="button"
-            onClick={() => {
-              setSelectedFile(null);
-              if (fileInputRef.current) fileInputRef.current.value = "";
-            }}
-            className="ml-2 cursor-pointer"
+            onClick={onCancelReply}
+            className="text-[#72767d] hover:text-[#dcddde] transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      <div className="flex items-center rounded-lg p-0 pr-2 focus-within:ring-1 focus-within:ring-[#5865f2] transition-all">
+      {selectedFile && (
+        <div className={`absolute ${replyTo ? '-top-24' : '-top-14'} left-4 bg-[#2f3136] border border-[#202225] p-2 rounded-md text-sm flex items-center gap-2 shadow-md`}>
+          <FileIcon className="h-4 w-4 text-[#b9bbbe]" />
+          <span className="truncate max-w-[200px] text-[#dcddde]">{selectedFile.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedFile(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+            className="ml-2 cursor-pointer text-[#72767d] hover:text-[#dcddde]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <div className={`flex items-center rounded-lg p-0 pr-2 focus-within:ring-1 focus-within:ring-[#5865f2] transition-all ${
+        replyTo ? 'border-t border-[#202225] rounded-t-none' : ''
+      }`}>
         <Button
           type="button"
           variant="ghost"
@@ -100,13 +138,17 @@ export function PostMessageForm({ sectionId, onMessagePosted }: PostMessageFormP
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
         
         <Textarea
+          ref={textareaRef}
           name="content"
-          placeholder="Message #chat"
+          placeholder={placeholder}
           className="flex-1 min-h-11 max-h-[50vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-3 px-2 text-base"
           onKeyDown={(e) => {
              if (e.key === 'Enter' && !e.shiftKey) {
                e.preventDefault();
                formRef.current?.requestSubmit();
+             }
+             if (e.key === 'Escape' && replyTo) {
+               onCancelReply?.();
              }
           }}
         />

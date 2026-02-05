@@ -6,7 +6,6 @@ import { PostMessageForm } from "./post-message-form";
 import { TypingIndicatorComponent } from "./typing-indicator";
 import { useThreadWebSocket } from "../hooks/use-websocket";
 import { logger } from "@/lib/infrastructure/logger";
-import { Hash, Bell, Pin, Users, Inbox, HelpCircle } from "lucide-react";
 import type { Message } from "@/lib/types/index";
 
 interface ChatAreaProps {
@@ -15,12 +14,17 @@ interface ChatAreaProps {
   currentUser: {
     id: string;
     name: string | null;
-    image: string | null;
+  image: string | null;
   };
 }
 
 export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [replyingTo, setReplyingTo] = useState<{
+    messageId: string;
+    userName: string;
+  } | null>(null);
+  
   const { isConnected, lastMessage, typingUsers } = useThreadWebSocket(sectionId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +54,18 @@ export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaPr
         ) {
           const { messageId } = data.payload;
           setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        } else if (
+          data.type === "MESSAGE_EDITED" &&
+          data.payload.sectionId === sectionId
+        ) {
+          const { messageId, content } = data.payload;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === messageId
+                ? { ...m, content, isEdited: true, updatedAt: new Date() }
+                : m
+            )
+          );
         }
       } catch (e) {
         logger.error("Failed to parse WS message", e);
@@ -69,22 +85,44 @@ export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaPr
     setMessages((prev) => [...prev, message]);
   };
 
+  const handleReply = (parentMessageId: string) => {
+    const parentMessage = messages.find(m => m.id === parentMessageId);
+    if (parentMessage) {
+      setReplyingTo({
+        messageId: parentMessageId,
+        userName: parentMessage.sender.name || "Unknown",
+      });
+      
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 100);
+    }
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
   return (
     <div className="flex flex-col h-full font-sans">
-
-      {/* Chat Area: Clean Scrollable Space */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-track-transparent" ref={scrollRef}>
-        {/* Pass currentUser to MessageList for "My Message" styling */}
-        <MessageList messages={messages} currentUser={currentUser} />
+        <MessageList 
+          messages={messages} 
+          currentUser={currentUser}
+          onReply={handleReply}
+        />
       </div>
 
-      {/* Footer Area: Typing Indicator & Input */}
       <div className="px-4 pb-6 relative z-20">
         <TypingIndicatorComponent users={typingUsers} />
         <div className="mt-1">
            <PostMessageForm
              sectionId={sectionId}
              onMessagePosted={handleMessagePosted}
+             replyTo={replyingTo}
+             onCancelReply={handleCancelReply}
            />
         </div>
       </div>

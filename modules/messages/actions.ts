@@ -142,11 +142,14 @@ export async function postMessage(formData: FormData) {
       include: {
         section: {
           select: {
+            id: true,
+            name: true,
             slug: true,
           },
         },
         sender: {
           select: {
+            id: true,
             name: true,
             image: true,
           },
