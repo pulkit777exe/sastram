@@ -50,6 +50,7 @@ export default async function ThreadPage({
       senderId: m.senderId,
       parentId: m.parentId || null,
       sender: {
+        id: m.senderId,
         name: m.sender?.name || "Anonymous",
         image: m.sender?.avatarUrl || null,
       },
@@ -65,6 +66,18 @@ export default async function ThreadPage({
               : Number(att.size)
             : null,
       })),
+      // Added missing required properties
+      sectionId: thread.id,
+      depth: 0,
+      isEdited: false,
+      isPinned: false,
+      updatedAt: m.createdAt,
+      deletedAt: null,
+      section: {
+        id: thread.id,
+        name: thread.name,
+        slug: thread.slug,
+      },
     }),
   );
 

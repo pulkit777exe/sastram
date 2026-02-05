@@ -119,7 +119,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
 
       <div className="space-y-2">
         {poll.options.map((option, index) => {
-          const result = results?.results.find((r) => r.index === index);
+           const result = results?.results.find((r: { index: number }) => r.index === index);
           const percentage = result?.percentage || 0;
           const isSelected = selectedOption === index;
 

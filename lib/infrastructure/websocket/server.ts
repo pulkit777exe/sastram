@@ -116,7 +116,7 @@ function cleanupTypingIndicators() {
 
   typingIndicators.forEach((threadTyping, threadId) => {
     threadTyping.forEach((indicator, userId) => {
-      if (now - indicator.timestamp > TYPING_TIMEOUT) {
+      if (indicator.timestamp && now - indicator.timestamp > TYPING_TIMEOUT) {
         threadTyping.delete(userId);
         publishThreadEvent(threadId, {
           type: "USER_STOPPED_TYPING",

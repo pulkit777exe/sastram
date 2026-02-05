@@ -112,6 +112,7 @@ export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaPr
           messages={messages} 
           currentUser={currentUser}
           onReply={handleReply}
+          activeReplyId={replyingTo?.messageId}
         />
       </div>
 

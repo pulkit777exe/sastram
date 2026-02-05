@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { FileIcon, Download, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  FileIcon,
+  Download,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Message, Attachment } from "@/lib/types/index";
+import { ReplyItem } from "./reply-item";
 import Image from "next/image";
 
 interface MessageListProps {
@@ -13,15 +20,29 @@ interface MessageListProps {
     id: string;
   };
   onReply?: (parentMessageId: string) => void;
+  activeReplyId?: string;
 }
 
-export function MessageList({ messages, currentUser, onReply }: MessageListProps) {
-  // Organize messages into threads
+export function MessageList({
+  messages,
+  currentUser,
+  onReply,
+  activeReplyId,
+}: MessageListProps) {
+  const messageMap = new Map<string, Message>();
+  messages.forEach((msg) => messageMap.set(msg.id, msg));
+
   const { topLevelMessages, repliesMap } = organizeThreads(messages);
+
+  const isSequence = (message: Message, previousMessage?: Message): boolean => {
+    if (!previousMessage) return false;
+    const timeDiff = new Date(message.createdAt).getTime() - new Date(previousMessage.createdAt).getTime();
+    return message.sender.id === previousMessage.sender.id && timeDiff < 60000; // 1 minute
+  };
 
   return (
     <div className="flex flex-col py-2 px-2 space-y-4">
-      {topLevelMessages.map((message) => (
+      {topLevelMessages.map((message, index) => (
         <ThreadMessage
           key={message.id}
           message={message}
@@ -29,6 +50,10 @@ export function MessageList({ messages, currentUser, onReply }: MessageListProps
           currentUser={currentUser}
           onReply={onReply}
           allReplies={repliesMap}
+          messageMap={messageMap}
+          isSequence={index > 0 ? isSequence(message, topLevelMessages[index - 1]) : false}
+          isActiveReplyTarget={activeReplyId === message.id}
+          activeReplyId={activeReplyId}
         />
       ))}
     </div>
@@ -42,27 +67,34 @@ interface ThreadMessageProps {
   onReply?: (parentMessageId: string) => void;
   allReplies: Map<string, Message[]>;
   isNested?: boolean;
+  messageMap: Map<string, Message>;
+  isSequence: boolean;
+  isActiveReplyTarget: boolean;
+  activeReplyId?: string;
 }
 
-function ThreadMessage({ 
-  message, 
-  replies, 
-  currentUser, 
-  onReply, 
+function ThreadMessage({
+  message,
+  replies,
+  currentUser,
+  onReply,
   allReplies,
-  isNested = false 
+  isNested = false,
+  messageMap,
+  isSequence,
+  isActiveReplyTarget,
+  activeReplyId,
 }: ThreadMessageProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const hasReplies = replies.length > 0;
   const replyCount = countAllReplies(message.id, allReplies);
 
-  // Skip deleted messages (soft delete)
   if (message.deletedAt) {
     return (
       <div className="flex gap-4 w-full pl-0 py-1">
         {isNested && (
-          <div className="absolute left-[20px] top-0 bottom-0 w-[2px] bg-[#3f4147] rounded-full" />
+          <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-[#3f4147] rounded-full" />
         )}
         <Avatar className="w-10 h-10 mt-0.5 shrink-0 relative z-10 opacity-50">
           <AvatarFallback className="bg-[#2f3136] text-[#72767d] text-sm font-medium">
@@ -70,7 +102,9 @@ function ThreadMessage({
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col w-full min-w-0">
-          <span className="text-sm text-[#72767d] italic">[Message deleted]</span>
+          <span className="text-sm text-[#72767d] italic">
+            [Message deleted]
+          </span>
         </div>
       </div>
     );
@@ -78,15 +112,13 @@ function ThreadMessage({
 
   return (
     <div className="relative">
-      {/* Main Message */}
       <div
         className={`flex gap-4 w-full group hover:bg-[#32353b] pr-4 py-1 rounded-md transition-colors duration-75 ${
-          isNested ? 'pl-4' : '-ml-4 pl-4'
+          isNested ? "pl-4" : "-ml-4 pl-4"
         }`}
       >
-        {/* Thread Line for nested messages */}
         {isNested && (
-          <div className="absolute left-[20px] top-0 bottom-0 w-[2px] bg-[#3f4147] rounded-full" />
+          <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-[#3f4147] rounded-full" />
         )}
 
         {/* Avatar */}
@@ -110,7 +142,9 @@ function ThreadMessage({
               <span className="text-xs text-[#72767d]">(edited)</span>
             )}
             {message.isPinned && (
-              <span className="text-xs text-[#f0b232] font-medium">📌 Pinned</span>
+              <span className="text-xs text-[#f0b232] font-medium">
+                📌 Pinned
+              </span>
             )}
             {isNested && message.parentId && (
               <span className="text-xs text-[#72767d]">· reply</span>
@@ -118,12 +152,14 @@ function ThreadMessage({
           </div>
 
           {/* Message Content */}
-          <div className="text-[#dcddde] text-base leading-5 whitespace-pre-wrap break-words font-normal">
+          <div className="text-[#dcddde] text-base leading-5 whitespace-pre-wrap wrap-break-word font-normal">
             {message.content && <p>{message.content}</p>}
 
             {/* Attachments */}
             {message.attachments && message.attachments.length > 0 && (
-              <div className={`flex flex-wrap gap-2 ${message.content ? "mt-2" : ""}`}>
+              <div
+                className={`flex flex-wrap gap-2 ${message.content ? "mt-2" : ""}`}
+              >
                 {message.attachments.map((file) => (
                   <AttachmentItem key={file.id} file={file} />
                 ))}
@@ -144,7 +180,7 @@ function ThreadMessage({
             </Button>
             {hasReplies && (
               <span className="text-xs text-[#72767d]">
-                {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                {replyCount} {replyCount === 1 ? "reply" : "replies"}
               </span>
             )}
           </div>
@@ -153,7 +189,7 @@ function ThreadMessage({
 
       {/* Replies Section */}
       {hasReplies && (
-        <div className="ml-[56px] mt-2 relative">
+        <div className="ml-14 mt-2 relative">
           {/* Collapse/Expand Button */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -162,44 +198,46 @@ function ThreadMessage({
             {isExpanded ? (
               <>
                 <ChevronUp className="h-3 w-3" />
-                Hide {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                Hide {replyCount} {replyCount === 1 ? "reply" : "replies"}
               </>
             ) : (
               <>
                 <ChevronDown className="h-3 w-3" />
-                Show {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                Show {replyCount} {replyCount === 1 ? "reply" : "replies"}
               </>
             )}
           </button>
 
           {/* Nested Replies */}
-          {isExpanded && (
-            <div className="space-y-2">
-              {replies.map((reply) => (
-                <ThreadMessage
-                  key={reply.id}
-                  message={reply}
-                  replies={allReplies.get(reply.id) || []}
-                  currentUser={currentUser}
-                  onReply={onReply}
-                  allReplies={allReplies}
-                  isNested={true}
-                />
-              ))}
-            </div>
-          )}
+           {isExpanded && (
+             <div className="space-y-2">
+               {replies.map((reply, index) => (
+                 <ReplyItem
+                   key={reply.id}
+                   message={reply}
+                   replyToMessage={
+                     reply.parentId
+                       ? messageMap.get(reply.parentId)
+                       : undefined
+                   }
+                   currentUser={currentUser}
+                   onReply={onReply}
+                   isSequence={index > 0 ? reply.sender.id === replies[index - 1].sender.id : false}
+                    isActiveReplyTarget={activeReplyId === reply.id}
+                 />
+               ))}
+             </div>
+           )}
         </div>
       )}
     </div>
   );
 }
 
-// Helper function to organize messages into threads
 function organizeThreads(messages: Message[]) {
   const topLevelMessages: Message[] = [];
   const repliesMap = new Map<string, Message[]>();
 
-  // First pass: separate top-level and replies
   messages.forEach((message) => {
     if (!message.parentId) {
       topLevelMessages.push(message);
@@ -209,15 +247,14 @@ function organizeThreads(messages: Message[]) {
     }
   });
 
-  // Sort top-level messages by creation time
-  topLevelMessages.sort((a, b) => 
-    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  topLevelMessages.sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 
-  // Sort replies by creation time
   repliesMap.forEach((replies) => {
-    replies.sort((a, b) => 
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    replies.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
   });
 
@@ -225,7 +262,10 @@ function organizeThreads(messages: Message[]) {
 }
 
 // Helper to count all nested replies
-function countAllReplies(messageId: string, repliesMap: Map<string, Message[]>): number {
+function countAllReplies(
+  messageId: string,
+  repliesMap: Map<string, Message[]>,
+): number {
   const directReplies = repliesMap.get(messageId) || [];
   let count = directReplies.length;
 
@@ -237,14 +277,15 @@ function countAllReplies(messageId: string, repliesMap: Map<string, Message[]>):
 }
 
 function AttachmentItem({ file }: { file: Attachment }) {
-  const isImage = file.type === "IMAGE" || (file.type && file.type.startsWith("image/"));
+  const isImage =
+    file.type === "IMAGE" || (file.type && file.type.startsWith("image/"));
 
   if (isImage) {
     return (
       <div className="relative group overflow-hidden rounded-lg mt-1 max-w-full">
-        <Image 
-          src={file.url} 
-          alt={file.name || "attachment"} 
+        <Image
+          src={file.url}
+          alt={file.name || "attachment"}
           width={400}
           height={300}
           className="max-w-full md:max-w-sm lg:max-w-md max-h-[300px] object-cover rounded-lg cursor-pointer"
@@ -263,13 +304,14 @@ function AttachmentItem({ file }: { file: Attachment }) {
           {file.name || "File"}
         </p>
         <p className="text-xs text-[#72767d] uppercase">
-          {file.type.split('/').pop()} {file.size ? `· ${formatBytes(file.size)}` : ''}
+          {file.type.split("/").pop()}{" "}
+          {file.size ? `· ${formatBytes(file.size)}` : ""}
         </p>
       </div>
-      <a 
-        href={file.url} 
-        target="_blank" 
-        rel="noopener noreferrer" 
+      <a
+        href={file.url}
+        target="_blank"
+        rel="noopener noreferrer"
         className="p-1.5 text-[#b9bbbe] hover:text-[#dcddde] rounded-full transition-colors"
       >
         <Download className="w-5 h-5" />
@@ -278,27 +320,34 @@ function AttachmentItem({ file }: { file: Attachment }) {
   );
 }
 
-function formatTime(date: Date | string) {
+export function formatTime(date: Date | string) {
   const d = new Date(date);
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
   if (d.toDateString() === today.toDateString()) {
-    return `Today at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `Today at ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   } else if (d.toDateString() === yesterday.toDateString()) {
-    return `Yesterday at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `Yesterday at ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   } else {
-    return d.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' }) + 
-      ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return (
+      d.toLocaleDateString([], {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }) +
+      " " +
+      d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
   }
 }
 
 function formatBytes(bytes: number, decimals = 2) {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }

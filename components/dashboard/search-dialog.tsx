@@ -13,7 +13,7 @@ import {
 import { searchUsersAction } from "@/modules/search/actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
-import { useDebounce } from "@/hooks/use-debounce";
+
 
 export function SearchDialog({
   open,
