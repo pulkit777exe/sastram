@@ -32,14 +32,11 @@ export async function getPublicProfile(userId: string, viewerId?: string) {
     return null;
   }
 
-  // Check privacy settings
   if (user.profilePrivacy === ProfilePrivacy.PRIVATE) {
-    // Only show to the user themselves
     if (viewerId !== userId) {
       return null;
     }
   } else if (user.profilePrivacy === ProfilePrivacy.FOLLOWERS_ONLY) {
-    // Only show to followers
     if (viewerId !== userId) {
       const isFollowing = await prisma.userFollow.findUnique({
         where: {
@@ -56,7 +53,6 @@ export async function getPublicProfile(userId: string, viewerId?: string) {
     }
   }
 
-  // Don't expose email if not the viewer
   if (viewerId !== userId) {
     return {
       ...user,
@@ -67,7 +63,11 @@ export async function getPublicProfile(userId: string, viewerId?: string) {
   return user;
 }
 
-export async function getUserThreads(userId: string, limit: number = 20, offset: number = 0) {
+export async function getUserThreads(
+  userId: string,
+  limit: number = 20,
+  offset: number = 0,
+) {
   const [threads, total] = await Promise.all([
     prisma.section.findMany({
       where: {
@@ -110,10 +110,67 @@ export async function getUserThreads(userId: string, limit: number = 20, offset:
   };
 }
 
-export async function updateProfilePrivacy(userId: string, privacy: ProfilePrivacy) {
+export async function updateProfilePrivacy(
+  userId: string,
+  privacy: ProfilePrivacy,
+) {
   return prisma.user.update({
     where: { id: userId },
     data: { profilePrivacy: privacy },
   });
 }
 
+export async function getUserMessages(
+  userId: string,
+  limit: number = 20,
+  offset: number = 0,
+) {
+  const [messages, total] = await Promise.all([
+    prisma.message.findMany({
+      where: {
+        senderId: userId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        parentId: true,
+        section: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        parent: {
+          select: {
+            id: true,
+            content: true,
+            sender: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.message.count({
+      where: {
+        senderId: userId,
+        deletedAt: null,
+      },
+    }),
+  ]);
+
+  return {
+    messages,
+    total,
+    hasMore: offset + limit < total,
+  };
+}

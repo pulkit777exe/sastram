@@ -31,6 +31,7 @@ model User {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   deletedAt        DateTime?
+  isPro            Boolean        @default(false)
 
   // Relations
   accounts                Account[]
@@ -737,7 +738,7 @@ model UserBadge {
   description String
   icon        String?
   color       String   @default("#3b82f6")
-  criteria    Json // Criteria for earning badge
+  criteria    Json
   createdAt   DateTime @default(now())
 
   earnedBy UserBadgeEarned[]
@@ -761,12 +762,11 @@ model UserBadgeEarned {
   @@map("user_badges_earned")
 }
 
-// Activity Feed System
 model UserActivity {
   id         String   @id @default(cuid())
   userId     String
-  type       String // THREAD_CREATED, MESSAGE_POSTED, BOOKMARK_ADDED, etc.
-  entityType String // Section, Message, User, etc.
+  type       String
+  entityType String
   entityId   String
   metadata   Json?
   createdAt  DateTime @default(now())
