@@ -31,10 +31,12 @@ export function Sidebar({
   name,
   email,
   role,
+  isPro = false,
 }: {
   name: string;
   email: string;
   role: string;
+  isPro?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -85,7 +87,7 @@ export function Sidebar({
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(
-        `/dashboard/threads?q=${encodeURIComponent(searchQuery.trim())}`
+        `/dashboard/threads?q=${encodeURIComponent(searchQuery.trim())}`,
       );
     }
   };
@@ -111,7 +113,7 @@ export function Sidebar({
         icon: Shield,
         label: "Moderation",
         href: "/dashboard/admin/moderation",
-      }
+      },
     );
   }
 
@@ -119,7 +121,7 @@ export function Sidebar({
     <aside
       className={cn(
         "bg-card rounded-2xl border border-border flex flex-col h-full transition-all duration-300 overflow-hidden",
-        isCollapsed ? "w-16" : "w-64"
+        isCollapsed ? "w-16" : "w-64",
       )}
     >
       <div className="p-4 flex items-center justify-between">
@@ -208,18 +210,41 @@ export function Sidebar({
             ></NavItem>
           </nav>
 
-          <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
-            <div className="flex items-center gap-2 mb-1 text-foreground">
-              <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
-              <p className="text-sm font-semibold">Boost with AI</p>
+          {isPro ? (
+            <div className="m-3 p-4 bg-linear-to-br from-brand/10 to-purple-500/10 border border-brand/20 rounded-xl">
+              <div className="flex items-center gap-2 text-foreground">
+                <AnimatedIcon
+                  icon={Sparkles}
+                  size={14}
+                  className="text-brand"
+                />
+                <p className="text-sm font-semibold">Pro Member</p>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                You have access to all premium features.
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground mb-4">
-              AI-powered replies and tools that save hours.
-            </p>
-            <button className="w-full text-white bg-brand hover:bg-brand/90 text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-brand/20">
-              Upgrade to Pro
-            </button>
-          </div>
+          ) : (
+            <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
+              <div className="flex items-center gap-2 mb-1 text-foreground">
+                <AnimatedIcon
+                  icon={Sparkles}
+                  size={14}
+                  className="text-brand"
+                />
+                <p className="text-sm font-semibold">Boost with AI</p>
+              </div>
+              <p className="text-[11px] text-muted-foreground mb-4">
+                AI-powered replies and tools that save hours.
+              </p>
+              <Link
+                href="/pricing"
+                className="block w-full text-center text-white bg-brand hover:bg-brand/90 text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-brand/20"
+              >
+                Upgrade to Pro
+              </Link>
+            </div>
+          )}
         </>
       )}
 
@@ -320,7 +345,7 @@ function NavItem({
         className={cn(
           "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
           "text-muted-foreground hover:text-foreground hover:bg-accent",
-          collapsed && "justify-center"
+          collapsed && "justify-center",
         )}
         title={collapsed ? label : undefined}
       >
@@ -343,7 +368,7 @@ function NavItem({
         active
           ? "bg-brand/5 text-brand shadow-sm border-r-2 border-brand"
           : "text-muted-foreground hover:text-foreground hover:bg-accent",
-        collapsed && "justify-center"
+        collapsed && "justify-center",
       )}
       title={collapsed ? label : undefined}
     >
@@ -354,7 +379,7 @@ function NavItem({
           "transition-colors shrink-0",
           active
             ? "text-brand"
-            : "text-muted-foreground group-hover:text-foreground"
+            : "text-muted-foreground group-hover:text-foreground",
         )}
         animateOnHover
       />
