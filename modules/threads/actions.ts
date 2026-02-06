@@ -55,8 +55,12 @@ export async function deleteThreadAction(threadId: string) {
   revalidatePath("/dashboard");
 }
 
-export async function getDashboardThreads() {
-  return listThreads();
+export async function getDashboardThreads(params?: {
+  page?: number;
+  pageSize?: number;
+  sortBy?: "recent" | "popular" | "trending" | "oldest";
+}) {
+  return listThreads(params);
 }
 
 export async function getThreadMembersAction(threadId: string) {

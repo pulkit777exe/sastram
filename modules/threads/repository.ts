@@ -46,7 +46,34 @@ type SectionWithCommunityAndMessages = Prisma.SectionGetPayload<{
   };
 }>;
 
-export async function listThreads(): Promise<ThreadSummary[]> {
+export interface ListThreadsParams {
+  page?: number;
+  pageSize?: number;
+  sortBy?: "recent" | "popular" | "trending" | "oldest";
+}
+
+export interface PaginatedThreads {
+  threads: ThreadSummary[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
+export async function listThreads(
+  params: ListThreadsParams = {},
+): Promise<PaginatedThreads> {
+  const { page = 1, pageSize = 10, sortBy = "recent" } = params;
+  const skip = (page - 1) * pageSize;
+
+  const totalItems = await prisma.section.count({
+    where: { deletedAt: null },
+  });
+
   const threads = await prisma.section.findMany({
     where: {
       deletedAt: null,
@@ -57,11 +84,12 @@ export async function listThreads(): Promise<ThreadSummary[]> {
         where: {
           deletedAt: null,
           createdAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           },
         },
         select: {
           senderId: true,
+          createdAt: true,
         },
       },
       _count: {
@@ -74,14 +102,17 @@ export async function listThreads(): Promise<ThreadSummary[]> {
         },
       },
     },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    take: 50,
+    orderBy:
+      sortBy === "oldest"
+        ? { createdAt: "asc" }
+        : sortBy === "popular"
+          ? { messageCount: "desc" }
+          : { updatedAt: "desc" },
+    skip,
+    take: pageSize,
   });
 
-  return threads.map((thread: SectionWithCommunityAndCount) => {
-    // Count unique active users from last 7 days
+  let mappedThreads = threads.map((thread: SectionWithCommunityAndCount) => {
     const uniqueActiveUsers = new Set(thread.messages.map((m) => m.senderId));
     return buildThreadDTO(
       thread as unknown as ThreadRecord,
@@ -89,6 +120,28 @@ export async function listThreads(): Promise<ThreadSummary[]> {
       uniqueActiveUsers.size,
     );
   });
+
+  if (sortBy === "trending") {
+    mappedThreads = mappedThreads.sort((a, b) => {
+      const scoreA = a.activeUsers * 2 + a.messageCount;
+      const scoreB = b.activeUsers * 2 + b.messageCount;
+      return scoreB - scoreA;
+    });
+  }
+
+  const totalPages = Math.ceil(totalItems / pageSize);
+
+  return {
+    threads: mappedThreads,
+    pagination: {
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1
+    },
+  };
 }
 
 export async function getThreadBySlug(
