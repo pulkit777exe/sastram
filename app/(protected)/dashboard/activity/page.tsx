@@ -35,7 +35,6 @@ export default async function ActivityPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
-        {/* Threads Section */}
         <section>
           <div className="flex items-center gap-2 mb-4">
             <FileText className="h-5 w-5 text-muted-foreground" />
@@ -103,7 +102,6 @@ export default async function ActivityPage() {
           )}
         </section>
 
-        {/* Comments Section */}
         <section>
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className="h-5 w-5 text-muted-foreground" />
@@ -129,7 +127,6 @@ export default async function ActivityPage() {
                   href={`/dashboard/threads/thread/${message.section.slug}`}
                 >
                   <Card className="p-4 hover:bg-accent transition-colors">
-                    {/* Reply context */}
                     {message.parent && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 pb-2 border-b border-border">
                         <Reply className="h-3 w-3" />

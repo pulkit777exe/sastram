@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { Users, MessageSquare, Star, ChevronDown, TrendingUp } from "lucide-react";
+import {
+  Users,
+  MessageSquare,
+  Star,
+  ChevronDown,
+  TrendingUp,
+} from "lucide-react";
 import { requireSession, isAdmin } from "@/modules/auth/session";
 import { listThreads } from "@/modules/threads/repository";
 import { listCommunities } from "@/modules/communities/repository";
@@ -11,9 +17,15 @@ import { cn } from "@/lib/utils/cn";
 
 export default async function DashboardPage() {
   const session = await requireSession();
-  const [threads, communities] = await Promise.all([listThreads(), listCommunities()]);
+  const [{ threads }, communities] = await Promise.all([
+    listThreads(),
+    listCommunities(),
+  ]);
 
-  const totalMessages = threads.reduce((acc, thread) => acc + thread.messageCount, 0);
+  const totalMessages = threads.reduce(
+    (acc, thread) => acc + thread.messageCount,
+    0,
+  );
   const activeThreads = threads.length;
 
   const threadTopics = threads.map((thread) => ({
@@ -32,34 +44,54 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className={`text-4xl font-bold tracking-tight`}>Threads</h1>
-          <p className="text-zinc-500 mt-1">Manage and track your community discussions.</p>
+          <p className="text-zinc-500 mt-1">
+            Manage and track your community discussions.
+          </p>
         </div>
-        
+
         <div className="flex gap-3">
           <div className="border rounded-lg px-4 py-2 flex items-center gap-2 cursor-pointer text-sm transition-colors">
             <span className="font-medium">View:</span>
             <span>Timeline</span>
             <ChevronDown size={14} />
           </div>
-          {isAdmin(session.user) && (
-            <CreateTopicButton />
-          )}
+          {isAdmin(session.user) && <CreateTopicButton />}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DarkMetric label="Active threads" value={activeThreads} icon={<MessageSquare size={18} />} color="blue" />
-        <DarkMetric label="Total Messages" value={totalMessages} icon={<Users size={18} />} color="indigo" />
-        <DarkMetric label="Communities" value={communities.length} icon={<Star size={18} />} color="amber" />
+        <DarkMetric
+          label="Active threads"
+          value={activeThreads}
+          icon={<MessageSquare size={18} />}
+          color="blue"
+        />
+        <DarkMetric
+          label="Total Messages"
+          value={totalMessages}
+          icon={<Users size={18} />}
+          color="indigo"
+        />
+        <DarkMetric
+          label="Communities"
+          value={communities.length}
+          icon={<Star size={18} />}
+          color="amber"
+        />
       </div>
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-widest">Communities</h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest">
+            Communities
+          </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {communities.map((community) => (
-            <Card key={community.id} className="transition-all group cursor-pointer">
+            <Card
+              key={community.id}
+              className="transition-all group cursor-pointer"
+            >
               <CardContent className="p-5">
                 <div className="flex justify-between items-start">
                   <div className="h-10 w-10 rounded-xl flex items-center justify-center bg-secondary transition-colors">
@@ -76,7 +108,9 @@ export default async function DashboardPage() {
                   {community.description || "No description yet."}
                 </p>
                 <div className="mt-4 flex items-center gap-2">
-                  <span className="text-xs font-medium">{community.threadCount} threads</span>
+                  <span className="text-xs font-medium">
+                    {community.threadCount} threads
+                  </span>
                   <div className="h-1 w-1 rounded-full bg-zinc-700" />
                   <span className="text-xs font-medium">Updated today</span>
                 </div>
@@ -89,11 +123,13 @@ export default async function DashboardPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 mb-6">
           <TrendingUp size={18} className="text-indigo-500" />
-          <h2 className="text-sm font-bold uppercase tracking-widest">Trending Threads</h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest">
+            Trending Threads
+          </h2>
         </div>
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="rounded-2xl overflow-hidden">
-             <TopicGrid topics={threadTopics} />
+            <TopicGrid topics={threadTopics} />
           </div>
           <ThreadInsights initialThreads={threads} />
         </div>
@@ -102,7 +138,17 @@ export default async function DashboardPage() {
   );
 }
 
-function DarkMetric({ label, value, icon, color }: { label: string; value: number | string; icon: ReactNode, color: string }) {
+function DarkMetric({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number | string;
+  icon: ReactNode;
+  color: string;
+}) {
   const colors: Record<string, string> = {
     blue: "text-blue-400 bg-blue-400/10",
     indigo: "text-indigo-400 bg-indigo-400/10",
@@ -111,11 +157,11 @@ function DarkMetric({ label, value, icon, color }: { label: string; value: numbe
 
   return (
     <div className="border p-5 rounded-2xl flex items-center gap-4 transition-colors">
-      <div className={cn("p-3 rounded-xl", colors[color])}>
-        {icon}
-      </div>
+      <div className={cn("p-3 rounded-xl", colors[color])}>{icon}</div>
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+          {label}
+        </p>
         <p className="text-2xl font-bold">{value}</p>
       </div>
     </div>

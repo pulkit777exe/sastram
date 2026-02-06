@@ -20,7 +20,6 @@ const features = [
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="font-bold text-xl text-foreground">
@@ -38,7 +37,6 @@ export default function PricingPage() {
         </div>
       </header>
 
-      {/* Hero */}
       <main className="pt-32 pb-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand/10 text-brand text-sm font-medium mb-6">
@@ -58,21 +56,16 @@ export default function PricingPage() {
             tools designed to supercharge your discussions.
           </p>
 
-          {/* Pricing Card */}
           <div className="max-w-md mx-auto">
             <div className="relative bg-card border border-border rounded-3xl p-8 shadow-2xl shadow-brand/5 overflow-hidden">
-              {/* Gradient Glow */}
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-brand/20 rounded-full blur-3xl" />
               <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl" />
 
               <div className="relative">
-                {/* Badge */}
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-linear-to-r from-brand to-purple-500 text-white text-xs font-semibold mb-6">
                   <Crown size={12} />
                   Most Popular
                 </div>
-
-                {/* Plan Name */}
                 <h2 className="text-2xl font-bold text-foreground mb-2">
                   Pro Plan
                 </h2>
@@ -80,13 +73,10 @@ export default function PricingPage() {
                   Everything you need for power users
                 </p>
 
-                {/* Price */}
                 <div className="flex items-baseline gap-2 mb-8">
                   <span className="text-5xl font-bold text-foreground">$9</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
-
-                {/* Features */}
                 <ul className="space-y-4 mb-8 text-left">
                   {features.map((feature, index) => (
                     <li key={index} className="flex items-center gap-3">
@@ -100,7 +90,6 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                {/* CTA Button */}
                 <button className="w-full py-4 px-6 bg-linear-to-r from-brand to-purple-500 hover:from-brand/90 hover:to-purple-500/90 text-white font-semibold rounded-xl transition-all shadow-lg shadow-brand/25 hover:shadow-xl hover:shadow-brand/30 hover:-translate-y-0.5">
                   Get Started with Pro
                 </button>
@@ -112,7 +101,6 @@ export default function PricingPage() {
             </div>
           </div>
 
-          {/* Free Tier Comparison */}
           <div className="mt-16 max-w-md mx-auto">
             <div className="bg-muted/50 border border-border rounded-2xl p-6">
               <h3 className="font-semibold text-foreground mb-4">Free Plan</h3>
@@ -141,7 +129,6 @@ export default function PricingPage() {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-border py-8 px-6">
         <div className="max-w-6xl mx-auto text-center text-sm text-muted-foreground">
           <p>&copy; 2026 Sastram. All rights reserved.</p>

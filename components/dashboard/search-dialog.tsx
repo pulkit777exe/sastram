@@ -38,11 +38,9 @@ export function SearchDialog({
       try {
         const res = await searchUsersAction(query, 5);
         
-        // Type guard: check if response has success property and is true
         if (res && 'success' in res && res.success && res.data) {
           setData(res.data.users);
         } else {
-          // Handle error cases
           setData([]);
           if (res && 'error' in res) {
             console.error(res.error);

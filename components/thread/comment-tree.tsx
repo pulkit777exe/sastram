@@ -10,12 +10,12 @@ import {
   ChevronRight,
   FileIcon,
   Download,
-  Heart,
   ThumbsUp,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Message, Attachment } from "@/lib/types/index";
 import { postMessage } from "@/modules/messages/actions";
+import { toggleReaction } from "@/modules/reactions/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ReportButton } from "./report-button";
@@ -42,7 +42,7 @@ interface CommentItemProps {
     image: string | null;
   };
   depth: number;
-  isLast?: boolean; 
+  isLast?: boolean;
 }
 
 const MAX_DEPTH = 6;
@@ -66,7 +66,7 @@ export function CommentTree({
   messageMap.forEach((msgs) => {
     msgs.sort(
       (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
   });
 
@@ -102,12 +102,20 @@ function CommentItem({
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appealOpen, setAppealOpen] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [isLiking, setIsLiking] = useState(false);
   const router = useRouter();
 
   const replies = allMessages.filter((m) => m.parentId === message.id);
   const hasReplies = replies.length > 0;
   const isOwnMessage = message.senderId === currentUser.id;
   const canReply = depth < MAX_DEPTH;
+
+  const parentMessage = message.parentId
+    ? allMessages.find((m) => m.id === message.parentId)
+    : null;
+  const isReplyToCurrentUser = parentMessage?.senderId === currentUser.id;
 
   const shouldShowMoreButton = replies.length > INITIAL_REPLIES_TO_SHOW;
   const displayedReplies = showAllReplies
@@ -145,14 +153,40 @@ function CommentItem({
       {depth > 0 && (
         <div className="absolute -left-[34px] top-0 bottom-0 w-[34px] pointer-events-none">
           <div className="absolute -top-2.5 left-0 h-[42px] w-px" />
-          
+
           <div className="absolute top-8 left-0 w-[34px] h-px" />
-          
+
           <div className="absolute top-2.5 left-0 w-4 h-6 border-l border-b rounded-bl-xl" />
         </div>
       )}
 
-      <div className="border shadow-sm rounded-2xl p-5 relative group transition-all hover:shadow-md">
+      <div
+        className={`border shadow-sm rounded-2xl p-5 relative group transition-all hover:shadow-md ${isReplyToCurrentUser ? "bg-yellow-50/60 dark:bg-yellow-900/10 border-yellow-200/50 dark:border-yellow-700/30" : ""}`}
+      >
+        {/* Discord-style reply reference */}
+        {parentMessage && (
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
+            <Reply size={12} className="text-muted-foreground shrink-0" />
+            <Avatar className="w-4 h-4 shrink-0">
+              <AvatarImage src={parentMessage.sender.image || ""} />
+              <AvatarFallback className="text-[8px]">
+                {parentMessage.sender.name?.substring(0, 1).toUpperCase() ||
+                  "U"}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs text-muted-foreground truncate">
+              <span className="font-medium text-foreground/80">
+                {parentMessage.sender.name || "Anonymous"}
+              </span>
+              <span className="mx-1">·</span>
+              <span className="truncate max-w-[200px] inline-block align-bottom">
+                {parentMessage.content.slice(0, 50)}
+                {parentMessage.content.length > 50 ? "..." : ""}
+              </span>
+            </span>
+          </div>
+        )}
+
         <div className="flex items-start gap-4">
           <Avatar className="w-10 h-10 shrink-0 border border-zinc-100">
             <AvatarImage src={message.sender.image || ""} />
@@ -176,7 +210,8 @@ function CommentItem({
               <span className="text-[11px] font-medium uppercase tracking-wide">
                 {formatDistanceToNow(new Date(message.createdAt), {
                   addSuffix: false,
-                })} ago
+                })}{" "}
+                ago
               </span>
             </div>
 
@@ -193,28 +228,58 @@ function CommentItem({
             )}
 
             <div className="flex items-center gap-4 pt-2 mt-1">
-              <button className="flex items-center gap-1.5 hover:text-amber-500 transition-colors group/like">
-                 <div className="p-1.5 rounded-full group-hover/like:bg-amber-50">
-                    <ThumbsUp size={14} />
-                 </div>
-                 <span className="text-xs font-medium">Like</span>
+              <button
+                onClick={async () => {
+                  if (isLiking) return;
+                  setIsLiking(true);
+                  const wasLiked = isLiked;
+                  setIsLiked(!wasLiked);
+                  setLikeCount((prev) =>
+                    wasLiked ? Math.max(0, prev - 1) : prev + 1,
+                  );
+
+                  const result = await toggleReaction(message.id, "👍");
+
+                  if (result && "error" in result) {
+                    setIsLiked(wasLiked);
+                    setLikeCount((prev) =>
+                      wasLiked ? prev + 1 : Math.max(0, prev - 1),
+                    );
+                    toast.error("Failed to update like");
+                  }
+                  setIsLiking(false);
+                }}
+                disabled={isLiking}
+                className={`flex items-center gap-1.5 transition-colors group/like ${isLiked ? "text-amber-500" : "hover:text-amber-500"}`}
+              >
+                <div
+                  className={`p-1.5 rounded-full ${isLiked ? "bg-amber-100" : "group-hover/like:bg-amber-50"}`}
+                >
+                  <ThumbsUp
+                    size={14}
+                    className={isLiked ? "fill-current" : ""}
+                  />
+                </div>
+                <span className="text-xs font-medium">
+                  {likeCount > 0 ? likeCount : "Like"}
+                </span>
               </button>
-              
+
               {canReply && (
-                <button 
+                <button
                   onClick={() => setIsReplying(!isReplying)}
                   className="flex items-center gap-1.5 hover:text-indigo-600 transition-colors group/reply"
                 >
-                   <div className="p-1.5 rounded-full group-hover/reply:bg-indigo-50">
-                      <Reply size={14} />
-                   </div>
-                   <span className="text-xs font-medium">Reply</span>
+                  <div className="p-1.5 rounded-full group-hover/reply:bg-indigo-50">
+                    <Reply size={14} />
+                  </div>
+                  <span className="text-xs font-medium">Reply</span>
                 </button>
               )}
 
               <ReportButton messageId={message.id} />
-              
-              <button 
+
+              <button
                 onClick={() => setAppealOpen(true)}
                 className="text-[11px] hover:underline"
               >
@@ -228,7 +293,7 @@ function CommentItem({
       {isReplying && (
         <div className="mt-4 ml-8 relative pl-6 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="absolute left-0 -top-5 bottom-1/2 w-6 border-l border-b rounded-bl-xl" />
-          
+
           <div className="border rounded-xl p-3 flex gap-3">
             <Avatar className="w-8 h-8 shrink-0">
               <AvatarImage src={currentUser.image || ""} />
@@ -278,7 +343,7 @@ function CommentItem({
       {hasReplies && isExpanded && (
         <div className="mt-4 ml-10 space-y-4 relative">
           <div className="absolute -left-1.5 top-5 bottom-6 w-px" />
-          
+
           {displayedReplies.map((reply, index) => (
             <CommentItem
               key={reply.id}
@@ -293,15 +358,20 @@ function CommentItem({
 
           {shouldShowMoreButton && (
             <div className="relative pl-6 pt-2">
-               <div className="absolute -left-1.5 -top-2.5 h-[26px] w-4 border-l border-b rounded-bl-xl" />
+              <div className="absolute -left-1.5 -top-2.5 h-[26px] w-4 border-l border-b rounded-bl-xl" />
               <button
                 onClick={() => setShowAllReplies(!showAllReplies)}
                 className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors"
               >
                 {showAllReplies ? (
-                   <>Show less <ChevronDown size={12} /></>
+                  <>
+                    Show less <ChevronDown size={12} />
+                  </>
                 ) : (
-                  <>Show {hiddenRepliesCount} more replies <ChevronRight size={12} /></>
+                  <>
+                    Show {hiddenRepliesCount} more replies{" "}
+                    <ChevronRight size={12} />
+                  </>
                 )}
               </button>
             </div>
