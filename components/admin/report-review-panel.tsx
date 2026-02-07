@@ -84,7 +84,6 @@ export function ReportReviewPanel({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Left Panel: Thread Context */}
       <Card className="bg-card border-border lg:col-span-1">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -137,7 +136,6 @@ export function ReportReviewPanel({
         </CardContent>
       </Card>
 
-      {/* Center Panel: Report Details */}
       <Card className="bg-card border-border lg:col-span-1">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -146,7 +144,6 @@ export function ReportReviewPanel({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Report Reasons */}
           <div>
             <h4 className="text-xs font-medium text-muted-foreground mb-2">
               Report Reasons
@@ -242,7 +239,6 @@ export function ReportReviewPanel({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* User Stats */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-muted rounded-lg p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">

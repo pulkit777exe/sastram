@@ -19,7 +19,6 @@ export function AppealForm() {
       toast.error(result.message);
     } else {
       toast.success("Appeal submitted successfully");
-      // Refresh to show "Under Review" state
       router.refresh();
     }
   }

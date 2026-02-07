@@ -5,7 +5,6 @@ import { ThreadSubscribeButton } from "@/components/thread/subscribe-button";
 import { InviteFriendButton } from "@/components/thread/invite-friend-button";
 import {
   Hash,
-  Sparkles,
   Users,
   MessageSquare,
   ShieldCheck,
@@ -24,6 +23,7 @@ import type {
 import Link from "next/link";
 import { format } from "date-fns";
 import { ThreadManagementControls } from "@/components/thread/thread-management-controls";
+import { ThreadSummaryCard } from "@/components/thread/thread-summary-card";
 
 export default async function ThreadPage({
   params,
@@ -192,32 +192,11 @@ export default async function ThreadPage({
         </div>
 
         <div className="p-6">
-          <div className="rounded-xl border p-5 relative overflow-hidden group">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles size={14} className="text-indigo-500" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">
-                AI Summary
-              </span>
-            </div>
-
-            <div className="relative z-10">
-              {thread.summary ? (
-                <p className="text-xs text-indigo-900/70 leading-relaxed italic">
-                  &quot;{thread.summary}&quot;
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2 opacity-50">
-                  <div className="h-1.5 w-full rounded-full animate-pulse bg-indigo-200 delay-300" />
-                  <div className="h-1.5 w-3/4 rounded-full animate-pulse bg-indigo-200 delay-500" />
-                  <p className="text-[10px] font-bold mt-2">
-                    Generating insights...
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-indigo-500/10 blur-2xl rounded-full pointer-events-none" />
-          </div>
+          <ThreadSummaryCard
+            threadId={thread.id}
+            initialSummary={thread.summary}
+            className="mb-8"
+          />
 
           <div className="mt-8">
             <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
