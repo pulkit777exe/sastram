@@ -1,11 +1,20 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/infrastructure/logger";
 import fs from "fs/promises";
 import path from "path";
 
 const env = getEnv();
-const resend = new Resend(process.env.RESEND_API_KEY);
+
+const transporter = nodemailer.createTransport({
+  host: env.SMTP_HOST,
+  port: env.SMTP_PORT,
+  secure: env.SMTP_SECURE,
+  auth:
+    env.SMTP_USER && env.SMTP_PASS
+      ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
+      : undefined,
+});
 
 interface EmailOptions {
   to: string | string[];
@@ -20,26 +29,21 @@ export async function sendEmail({
   subject,
   html,
   text,
-  from = "Sastram <noreply@resend.com>",
+  from = env.SMTP_FROM,
 }: EmailOptions) {
   try {
-    const { data, error } = await resend.emails.send({
+    const info = await transporter.sendMail({
       from,
-      to: Array.isArray(to) ? to : [to],
+      to: Array.isArray(to) ? to.join(", ") : to,
       subject,
       html,
       text: text || html.replace(/<[^>]*>/g, ""),
     });
 
-    if (error) {
-      logger.error("Failed to send email:", error);
-      throw new Error(`Email sending failed: ${error.message}`);
-    }
-
     logger.info(
-      `Email sent successfully to ${Array.isArray(to) ? to.join(", ") : to}`
+      `Email sent successfully to ${Array.isArray(to) ? to.join(", ") : to} (messageId: ${info.messageId})`,
     );
-    return data;
+    return { id: info.messageId };
   } catch (error) {
     logger.error("Error sending email:", error);
     throw error;
@@ -49,7 +53,7 @@ export async function sendEmail({
 export async function sendOTPEmail(
   to: string,
   otp: string,
-  type: "sign-in" | "email-verification" | "forget-password"
+  type: "sign-in" | "email-verification" | "forget-password",
 ) {
   const typeConfig = {
     "sign-in": {
@@ -94,7 +98,7 @@ export async function sendNewsletterDigest(
   summary: string,
   threadUrl: string,
   messageCount?: number,
-  participantCount?: number
+  participantCount?: number,
 ) {
   const html = await loadTemplate("newsletter-digest.html", {
     threadName,
@@ -130,7 +134,7 @@ export async function sendMentionNotification(
   mentionerName: string,
   threadName: string,
   messagePreview: string,
-  threadUrl: string
+  threadUrl: string,
 ) {
   const html = await loadTemplate("mention-notification.html", {
     mentionerName,
@@ -149,7 +153,7 @@ export async function sendMentionNotification(
 export async function sendFollowNotification(
   to: string,
   followerName: string,
-  followerUrl: string
+  followerUrl: string,
 ) {
   const html = await loadTemplate("follow-notification.html", {
     followerName,
@@ -168,7 +172,7 @@ export async function sendThreadInvitation(
   inviterName: string,
   threadName: string,
   message: string | null,
-  threadUrl: string
+  threadUrl: string,
 ) {
   const html = await loadTemplate("thread-invitation.html", {
     inviterName,
@@ -198,7 +202,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
 
 async function loadTemplate(
   templateName: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
 ): Promise<string> {
   try {
     const templatePath = path.join(
@@ -206,7 +210,7 @@ async function loadTemplate(
       "lib",
       "templates",
       "email",
-      templateName
+      templateName,
     );
     let html = await fs.readFile(templatePath, "utf-8");
 
@@ -225,7 +229,7 @@ async function loadTemplate(
 
 function generateFallbackTemplate(
   templateName: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
 ): string {
   // Simple fallback HTML templates
   const templates: Record<string, (vars: Record<string, string>) => string> = {

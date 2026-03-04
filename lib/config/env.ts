@@ -43,10 +43,15 @@ const envSchema = z.object({
     .string()
     .url("NEXT_PUBLIC_APP_URL must be a valid URL"),
   NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
-  
-  // Email
-  RESEND_API_KEY: z.string().optional(),
-  
+
+  // Email (SMTP / Nodemailer)
+  SMTP_HOST: z.string().default("smtp.gmail.com"),
+  SMTP_PORT: z.coerce.number().int().default(587),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default("Sastram <noreply@sastram.com>"),
+
   // AI Providers
   GEMINI_API_KEY: z.string().optional(),
   AI_PROVIDER: z.enum(["gemini", "openai"]).default("gemini"),
@@ -61,9 +66,7 @@ const envSchema = z.object({
   WEBSOCKET_URL: z.string().url("WEBSOCKET_URL must be a valid URL").optional(),
 
   // Security / sessions
-  JWT_SECRET: z
-    .string()
-    .min(32, "JWT_SECRET must be at least 32 characters"),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   SESSION_SECRET: z
     .string()
     .min(32, "SESSION_SECRET must be at least 32 characters"),
@@ -73,33 +76,15 @@ const envSchema = z.object({
   CONTENT_MODERATION_ENABLED: z.coerce.boolean().default(false),
 
   // Logging
-  LOG_LEVEL: z
-    .enum(["debug", "info", "warn", "error"])
-    .default("info"),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 
   // Limits
-  MAX_FILE_UPLOAD_MB: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(10),
+  MAX_FILE_UPLOAD_MB: z.coerce.number().int().positive().default(10),
 
   // Moderation-specific
-  MODERATION_CONFIDENCE_THRESHOLD: z.coerce
-    .number()
-    .min(0)
-    .max(1)
-    .default(0.7),
-  MAX_MESSAGES_PER_MINUTE: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(20),
-  MAX_MESSAGES_PER_HOUR: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(200),
+  MODERATION_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+  MAX_MESSAGES_PER_MINUTE: z.coerce.number().int().positive().default(20),
+  MAX_MESSAGES_PER_HOUR: z.coerce.number().int().positive().default(200),
   MODERATION_WEBHOOK_URL: z.string().url().optional(),
 });
 
@@ -129,8 +114,8 @@ export function getEnv(): Env {
 
     throw new Error(
       `Environment validation failed:\n${errors.join(
-        "\n"
-      )}\n\nPlease check your .env file and ensure all required variables are set.`
+        "\n",
+      )}\n\nPlease check your .env file and ensure all required variables are set.`,
     );
   }
 
@@ -148,4 +133,3 @@ export const env: Env = getEnv();
 export function validateEnv() {
   return envSchema.safeParse(process.env);
 }
-
