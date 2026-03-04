@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Message, Attachment } from "@/lib/types/index";
-import { ReplyItem } from "./reply-item";
 import Image from "next/image";
+
+const MAX_NESTING_DEPTH = 4;
 
 interface MessageListProps {
   messages: Message[];
@@ -36,7 +37,9 @@ export function MessageList({
 
   const isSequence = (message: Message, previousMessage?: Message): boolean => {
     if (!previousMessage) return false;
-    const timeDiff = new Date(message.createdAt).getTime() - new Date(previousMessage.createdAt).getTime();
+    const timeDiff =
+      new Date(message.createdAt).getTime() -
+      new Date(previousMessage.createdAt).getTime();
     return message.sender.id === previousMessage.sender.id && timeDiff < 60000; // 1 minute
   };
 
@@ -51,7 +54,9 @@ export function MessageList({
           onReply={onReply}
           allReplies={repliesMap}
           messageMap={messageMap}
-          isSequence={index > 0 ? isSequence(message, topLevelMessages[index - 1]) : false}
+          isSequence={
+            index > 0 ? isSequence(message, topLevelMessages[index - 1]) : false
+          }
           isActiveReplyTarget={activeReplyId === message.id}
           activeReplyId={activeReplyId}
         />
@@ -71,6 +76,7 @@ interface ThreadMessageProps {
   isSequence: boolean;
   isActiveReplyTarget: boolean;
   activeReplyId?: string;
+  depth?: number;
 }
 
 function ThreadMessage({
@@ -84,6 +90,7 @@ function ThreadMessage({
   isSequence,
   isActiveReplyTarget,
   activeReplyId,
+  depth = 0,
 }: ThreadMessageProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -115,6 +122,8 @@ function ThreadMessage({
       <div
         className={`flex gap-4 w-full group hover:bg-[#32353b] pr-4 py-1 rounded-md transition-colors duration-75 ${
           isNested ? "pl-4" : "-ml-4 pl-4"
+        } ${isActiveReplyTarget ? "bg-[#faa61a]/10 border-l-2 border-[#faa61a]" : ""} ${
+          isSequence && !isActiveReplyTarget ? "mt-0" : ""
         }`}
       >
         {isNested && (
@@ -189,11 +198,16 @@ function ThreadMessage({
 
       {/* Replies Section */}
       {hasReplies && (
-        <div className="ml-14 mt-2 relative">
+        <div
+          className={`mt-2 relative ${depth < MAX_NESTING_DEPTH ? "ml-12" : "ml-4"}`}
+        >
+          {/* Vertical connector line */}
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#3f4147]/60 rounded-full" />
+
           {/* Collapse/Expand Button */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-2 text-xs text-[#5865f2] hover:text-[#7289da] font-medium mb-2 cursor-pointer transition-colors"
+            className="flex items-center gap-2 text-xs text-[#5865f2] hover:text-[#7289da] font-medium mb-2 ml-4 cursor-pointer transition-colors"
           >
             {isExpanded ? (
               <>
@@ -208,26 +222,31 @@ function ThreadMessage({
             )}
           </button>
 
-          {/* Nested Replies */}
-           {isExpanded && (
-             <div className="space-y-2">
-               {replies.map((reply, index) => (
-                 <ReplyItem
-                   key={reply.id}
-                   message={reply}
-                   replyToMessage={
-                     reply.parentId
-                       ? messageMap.get(reply.parentId)
-                       : undefined
-                   }
-                   currentUser={currentUser}
-                   onReply={onReply}
-                   isSequence={index > 0 ? reply.sender.id === replies[index - 1].sender.id : false}
-                    isActiveReplyTarget={activeReplyId === reply.id}
-                 />
-               ))}
-             </div>
-           )}
+          {/* Recursively Nested Replies */}
+          {isExpanded && (
+            <div className="space-y-1 pl-4">
+              {replies.map((reply, index) => (
+                <ThreadMessage
+                  key={reply.id}
+                  message={reply}
+                  replies={allReplies.get(reply.id) || []}
+                  currentUser={currentUser}
+                  onReply={onReply}
+                  allReplies={allReplies}
+                  isNested={true}
+                  messageMap={messageMap}
+                  isSequence={
+                    index > 0
+                      ? reply.sender.id === replies[index - 1].sender.id
+                      : false
+                  }
+                  isActiveReplyTarget={activeReplyId === reply.id}
+                  activeReplyId={activeReplyId}
+                  depth={depth + 1}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

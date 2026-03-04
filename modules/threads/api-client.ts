@@ -14,6 +14,5 @@ export async function fetchThreads(): Promise<ThreadSummary[]> {
   }
 
   const data = await response.json();
-  return data.threads as ThreadSummary[];
+  return (data.data?.threads ?? data.threads ?? []) as ThreadSummary[];
 }
-
