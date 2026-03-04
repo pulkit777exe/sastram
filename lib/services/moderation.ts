@@ -57,47 +57,46 @@ export class RateLimitFilter {
 
 export class RegexFilter {
   async check(message: MessageLike): Promise<ModerationResult> {
+    const lowered = message.content.toLowerCase();
+    let rules: Awaited<ReturnType<typeof prisma.contentSafetyRule.findMany>> = [];
+
+    // DB-driven rules are optional; failures should not disable baseline safety checks.
     try {
-      const lowered = message.content.toLowerCase();
-      const rules = await prisma.contentSafetyRule.findMany();
+      rules = await prisma.contentSafetyRule.findMany();
+    } catch {
+      rules = [];
+    }
 
-      for (const rule of rules) {
-        try {
-          const regex = new RegExp(rule.pattern, "i");
-          if (regex.test(lowered)) {
-            return {
-              success: rule.action === "ALLOW",
-              action: rule.action,
-              severity: rule.severity as ModerationSeverity,
-              reason: `Matched content safety rule (${rule.category})`,
-            };
-          }
-        } catch (error) {
-          console.error(`Invalid regex pattern: ${rule.pattern}`, error);
-          continue;
+    for (const rule of rules) {
+      try {
+        const regex = new RegExp(rule.pattern, "i");
+        if (regex.test(lowered)) {
+          return {
+            success: rule.action === "ALLOW",
+            action: rule.action,
+            severity: rule.severity as ModerationSeverity,
+            reason: `Matched content safety rule (${rule.category})`,
+          };
         }
+      } catch (error) {
+        console.error(`Invalid regex pattern: ${rule.pattern}`, error);
+        continue;
       }
+    }
 
-      if (containsBadLanguage(message.content)) {
-        return {
-          success: false,
-          action: "BLOCK",
-          severity: "MEDIUM",
-          reason: "Matched default bad language filter",
-        };
-      }
-
+    if (containsBadLanguage(message.content)) {
       return {
-        success: true,
-        action: "ALLOW",
-      };
-    } catch (error) {
-      console.error("Regex filter error:", error);
-      return {
-        success: true,
-        action: "ALLOW",
+        success: false,
+        action: "BLOCK",
+        severity: "MEDIUM",
+        reason: "Matched default bad language filter",
       };
     }
+
+    return {
+      success: true,
+      action: "ALLOW",
+    };
   }
 }
 
@@ -162,7 +161,7 @@ export class MLClassifier {
         categories.push("potential-violation");
       } else if (confidence >= 0.5) {
         action = "FLAG";
-        severity: "LOW";
+        severity = "LOW";
         categories.push("review-suggested");
       }
 

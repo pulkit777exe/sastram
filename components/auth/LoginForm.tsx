@@ -17,7 +17,6 @@ import {
   Mail,
   ArrowLeft,
   CheckCircle2,
-  Sparkles,
   Command,
 } from "lucide-react";
 import { signIn, signUp, authClient } from "@/lib/services/auth-client";
@@ -25,7 +24,7 @@ import axios from "axios";
 import { GithubIcon } from "@/public/icons/github";
 import { ChromeIcon } from "@/public/icons/google";
 
-type AuthMode = "signin" | "signup" | "magic-link" | "otp-verify";
+type AuthMode = "signin" | "signup" | "email-otp" | "otp-verify";
 
 const inputStyles =
   "h-12 rounded-xl bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all";
@@ -54,7 +53,7 @@ function UserAuthForm({
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
-  const [magicLinkEmail, setMagicLinkEmail] = useState("");
+  const [otpEmail, setOtpEmail] = useState("");
   const router = useRouter();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -161,7 +160,7 @@ function UserAuthForm({
       const { data } = await axios.post(
         "/api/email-otp/send-verification-otp",
         {
-          email: magicLinkEmail,
+          email: otpEmail,
           type: "sign-in",
         }
       );
@@ -226,7 +225,7 @@ function UserAuthForm({
 
     try {
       const result = await authClient.signIn.emailOtp({
-        email: magicLinkEmail,
+        email: otpEmail,
         otp: otpCode,
       });
 
@@ -255,7 +254,7 @@ function UserAuthForm({
       const { data } = await axios.post(
         "/api/email-otp/send-verification-otp",
         {
-          email: magicLinkEmail,
+          email: otpEmail,
           type: "sign-in",
         }
       );
@@ -274,7 +273,7 @@ function UserAuthForm({
     }
   };
 
-  if (mode === "magic-link") {
+  if (mode === "email-otp") {
     return (
       <div className={cn("grid gap-6", className)} {...props}>
         <motion.div
@@ -285,22 +284,22 @@ function UserAuthForm({
           <form onSubmit={handleSendOTP} className="space-y-4">
             <div className="text-center mb-6">
               <p className="text-sm text-muted-foreground">
-                We&apos;ll send a 6-digit code to your email
+                We&apos;ll send a 6-digit verification code to your email
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="magic-email" className={labelStyles}>
+              <Label htmlFor="otp-email" className={labelStyles}>
                 Email address
               </Label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  id="magic-email"
+                  id="otp-email"
                   type="email"
                   placeholder="name@example.com"
-                  value={magicLinkEmail}
-                  onChange={(e) => setMagicLinkEmail(e.target.value)}
+                  value={otpEmail}
+                  onChange={(e) => setOtpEmail(e.target.value)}
                   required
                   disabled={loadingState !== null}
                   className={cn(inputStyles, "pl-12")}
@@ -316,7 +315,7 @@ function UserAuthForm({
 
             <Button
               type="submit"
-              disabled={loadingState !== null || !magicLinkEmail}
+              disabled={loadingState !== null || !otpEmail}
               className={primaryButtonStyles + " w-full"}
             >
               {loadingState === "otp" ? (
@@ -324,7 +323,7 @@ function UserAuthForm({
               ) : (
                 <Mail className="mr-2 h-4 w-4" />
               )}
-              Send Magic Code
+              Send Verification Code
             </Button>
 
             <Button
@@ -337,7 +336,7 @@ function UserAuthForm({
               className="w-full text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to password login
+              Back to sign in
             </Button>
           </form>
         </motion.div>
@@ -361,7 +360,7 @@ function UserAuthForm({
               </div>
               <p className="text-sm text-muted-foreground">
                 Code sent to{" "}
-                <span className="font-medium text-white">{magicLinkEmail}</span>
+                <span className="font-medium text-foreground">{otpEmail}</span>
               </p>
             </div>
 
@@ -429,7 +428,7 @@ function UserAuthForm({
                 <button
                   type="button"
                   onClick={() => {
-                    setMode("magic-link");
+                    setMode("email-otp");
                     setOtp(["", "", "", "", "", ""]);
                     setError(null);
                   }}
@@ -545,13 +544,14 @@ function UserAuthForm({
         <button
           type="button"
           onClick={() => {
-            setMode("magic-link");
+            setMode("email-otp");
+            setOtpEmail(email);
             setError(null);
           }}
           className="text-center text-sm text-brand hover:text-brand/80 font-medium transition-colors group flex items-center justify-center"
         >
-          <Sparkles className="inline mr-1.5 h-3.5 w-3.5 group-hover:animate-pulse" />
-          Sign in with Magic Link instead
+          <Mail className="inline mr-1.5 h-3.5 w-3.5" />
+          Sign in with Email OTP instead
         </button>
       )}
 
@@ -638,8 +638,8 @@ export function LoginForm() {
     switch (mode) {
       case "signup":
         return "Create your account";
-      case "magic-link":
-        return "Magic Link";
+      case "email-otp":
+        return "Sign in with OTP";
       case "otp-verify":
         return "Verify your email";
       default:
@@ -651,8 +651,8 @@ export function LoginForm() {
     switch (mode) {
       case "signup":
         return "Join the community today.";
-      case "magic-link":
-        return "We'll send a code to your inbox.";
+      case "email-otp":
+        return "Use a one-time verification code sent to your inbox.";
       case "otp-verify":
         return "Check your inbox for the code.";
       default:
