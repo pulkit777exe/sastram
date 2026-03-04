@@ -235,7 +235,6 @@ try {
       };
     }
   } catch (fallbackError) {
-    // Stub service as last resort
     aiServiceInstance = {
       generateSummary: async (content: string) => {
         console.warn(
