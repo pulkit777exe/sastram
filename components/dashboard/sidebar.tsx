@@ -97,6 +97,7 @@ export function Sidebar({
     { icon: FileText, label: "Threads", href: "/dashboard/threads" },
     { icon: Bookmark, label: "Bookmarks", href: "/dashboard/bookmarks" },
     { icon: Search, label: "Search", href: "/dashboard/search" },
+    { icon: Sparkles, label: "Sastram AI", href: "/dashboard/ai-search" },
     { icon: Activity, label: "Activity", href: "/dashboard/activity" },
     { icon: Bell, label: "Notifications", href: "/dashboard/messages" },
     { icon: Settings, label: "Settings", href: "/dashboard/settings" },

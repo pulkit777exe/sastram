@@ -953,3 +953,33 @@ enum ModerationLogAction {
   USER_BANNED
   USER_UNBANNED
 }
+
+// ── AI Search ───────────────────────────────────────────────
+model AiSearchCache {
+  id            String   @id @default(cuid())
+  queryHash     String   @unique
+  queryOriginal String   @db.Text
+  resultJson    Json
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  hitCount      Int      @default(0)
+
+  @@index([queryHash])
+  @@index([expiresAt])
+  @@map("ai_search_cache")
+}
+
+model AiSearchAnalytics {
+  id              String   @id @default(cuid())
+  queryHash       String
+  queryType       String?
+  sourceCount     Int?
+  confidenceScore Int?
+  processingMs    Int?
+  usedCache       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([queryHash])
+  @@index([createdAt])
+  @@map("ai_search_analytics")
+}
