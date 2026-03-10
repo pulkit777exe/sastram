@@ -2,13 +2,7 @@ import { prisma } from "@/lib/infrastructure/prisma";
 import { env } from "@/lib/config/env";
 import { containsBadLanguage } from "@/lib/services/content-safety";
 import { aiService } from "@/lib/services/ai";
-import type {
-  AppealStatus,
-  ModerationAction,
-  ModerationDecision,
-  ModerationSeverity,
-  ModerationStatus,
-} from "@prisma/client";
+import type { ReportCategory } from "@prisma/client";
 
 export type MessageLike = {
   id?: string;
@@ -35,8 +29,8 @@ export type ConversationContext = {
 
 export type ModerationResult = {
   success: boolean;
-  action: ModerationAction;
-  severity?: ModerationSeverity;
+  action: "ALLOW" | "BLOCK" | "REVIEW" | "FLAG";
+  severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   reason?: string;
   confidence?: number;
   messageId?: string;
@@ -46,7 +40,7 @@ export type ModerationResult = {
 export class RateLimitFilter {
   async check(
     _message: MessageLike,
-    _context: ConversationContext
+    _context: ConversationContext,
   ): Promise<ModerationResult> {
     return {
       success: true,
@@ -58,31 +52,6 @@ export class RateLimitFilter {
 export class RegexFilter {
   async check(message: MessageLike): Promise<ModerationResult> {
     const lowered = message.content.toLowerCase();
-    let rules: Awaited<ReturnType<typeof prisma.contentSafetyRule.findMany>> = [];
-
-    // DB-driven rules are optional; failures should not disable baseline safety checks.
-    try {
-      rules = await prisma.contentSafetyRule.findMany();
-    } catch {
-      rules = [];
-    }
-
-    for (const rule of rules) {
-      try {
-        const regex = new RegExp(rule.pattern, "i");
-        if (regex.test(lowered)) {
-          return {
-            success: rule.action === "ALLOW",
-            action: rule.action,
-            severity: rule.severity as ModerationSeverity,
-            reason: `Matched content safety rule (${rule.category})`,
-          };
-        }
-      } catch (error) {
-        console.error(`Invalid regex pattern: ${rule.pattern}`, error);
-        continue;
-      }
-    }
 
     if (containsBadLanguage(message.content)) {
       return {
@@ -103,10 +72,10 @@ export class RegexFilter {
 export class MLClassifier {
   async analyze(
     message: MessageLike,
-    context: ConversationContext
+    context: ConversationContext,
   ): Promise<{
-    action: ModerationAction;
-    severity: ModerationSeverity;
+    action: "ALLOW" | "BLOCK" | "REVIEW" | "FLAG";
+    severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
     confidence: number;
     categories: string[];
   }> {
@@ -127,14 +96,17 @@ export class MLClassifier {
           .join("\n") + `\nNew message: ${message.content}`;
 
       let toxicity = 0;
-      
-      if ('analyzeContent' in aiService && typeof aiService.analyzeContent === 'function') {
-        const analysis = await (aiService).analyzeContent(threadText);
+
+      if (
+        "analyzeContent" in aiService &&
+        typeof aiService.analyzeContent === "function"
+      ) {
+        const analysis = await aiService.analyzeContent(threadText);
         toxicity = analysis.toxicity || 0;
       } else {
         try {
           const summary = await aiService.generateSummary(
-            `Analyze this conversation for toxic content. Rate toxicity 0-1:\n${threadText}`
+            `Analyze this conversation for toxic content. Rate toxicity 0-1:\n${threadText}`,
           );
           const match = summary.match(/toxicity[:\s]+([0-9.]+)/i);
           toxicity = match ? parseFloat(match[1]) : 0;
@@ -147,8 +119,8 @@ export class MLClassifier {
       const confidence = Math.min(1, Math.max(0, toxicity));
       const threshold = env.MODERATION_CONFIDENCE_THRESHOLD || 0.7;
 
-      let action: ModerationAction = "ALLOW";
-      let severity: ModerationSeverity = "LOW";
+      let action: "ALLOW" | "BLOCK" | "REVIEW" | "FLAG" = "ALLOW";
+      let severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" = "LOW";
       const categories: string[] = [];
 
       if (confidence >= 0.9) {
@@ -186,13 +158,14 @@ export class MLClassifier {
 export class ContextualAnalyzer {
   async analyze(
     message: MessageLike,
-    context: ConversationContext
+    context: ConversationContext,
   ): Promise<{ shouldEscalate: boolean; reason?: string }> {
     try {
       const recentMessages = context.recentHistory.slice(-5);
 
-      const hasExcessiveCaps = (message.content.match(/[A-Z]/g) || []).length >
-        message.content.length * 0.6 && message.content.length > 10;
+      const hasExcessiveCaps =
+        (message.content.match(/[A-Z]/g) || []).length >
+          message.content.length * 0.6 && message.content.length > 10;
 
       let escalatingTone = false;
       if (recentMessages.length > 2) {
@@ -229,7 +202,7 @@ export class MessageModerationPipeline {
 
   async process(
     message: MessageLike,
-    context: ConversationContext
+    context: ConversationContext,
   ): Promise<ModerationResult> {
     const rateResult = await this.rateLimitFilter.check(message, context);
     if (!rateResult.success && rateResult.action === "BLOCK") {
@@ -243,13 +216,10 @@ export class MessageModerationPipeline {
 
     const mlResult = await this.mlClassifier.analyze(message, context);
 
-    const ctxResult = await this.contextualAnalyzer.analyze(
-      message,
-      context
-    );
+    const ctxResult = await this.contextualAnalyzer.analyze(message, context);
 
-    let finalAction: ModerationAction = regexResult.action;
-    let severity: ModerationSeverity = regexResult.severity || "LOW";
+    let finalAction: "ALLOW" | "BLOCK" | "REVIEW" | "FLAG" = regexResult.action;
+    let severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" = regexResult.severity || "LOW";
     const confidence: number = mlResult.confidence;
     let reason = regexResult.reason;
 
@@ -284,13 +254,25 @@ export class MessageService {
 
   async processMessage(
     message: MessageLike,
-    context: ConversationContext
+    context: ConversationContext,
   ): Promise<ModerationResult> {
     const result = await this.pipeline.process(message, context);
 
     let dbMessageId: string | undefined;
 
     try {
+      // Calculate depth from parent
+      let depth = 0;
+      if (message.parentId) {
+        const parent = await prisma.message.findUnique({
+          where: { id: message.parentId },
+          select: { depth: true },
+        });
+        if (parent) {
+          depth = Math.min(parent.depth + 1, 4);
+        }
+      }
+
       // Create the message first
       const created = await prisma.message.create({
         data: {
@@ -298,36 +280,35 @@ export class MessageService {
           sectionId: message.sectionId,
           senderId: message.authorId,
           parentId: message.parentId ?? null,
+          depth,
         },
       });
+
+      // Atomically increment parent's replyCount
+      if (message.parentId) {
+        await prisma.message.update({
+          where: { id: message.parentId },
+          data: { replyCount: { increment: 1 } },
+        });
+      }
       dbMessageId = created.id;
 
-      // If moderation action is needed, add to queue
+      // If moderation action is needed, create a report
       if (result.action !== "ALLOW") {
-        // Determine status based on action
-        let status: ModerationStatus = "QUEUED";
-        if (result.action === "BLOCK") {
-          status = "BLOCKED";
-        } else if (result.action === "FLAG") {
-          status = "FLAGGED";
-        } else if (result.action === "REVIEW") {
-          status = "QUEUED";
-        }
-
-        await prisma.moderationQueue.create({
+        await prisma.report.create({
           data: {
             messageId: created.id,
-            status,
-            reason: result.reason || undefined,
-            confidence: result.confidence || undefined,
-            context: result.reason ? { categories: [result.reason] } : undefined,
+            reporterId: "system",
+            category: "OTHER" as ReportCategory,
+            details: result.reason || undefined,
+            status: "PENDING",
           },
         });
       }
     } catch (error) {
       console.error("Message processing error:", error);
       throw new Error(
-        `Failed to process message: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to process message: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
 
@@ -339,11 +320,13 @@ export class MessageService {
 }
 
 export class ModerationDashboard {
-  async getQueue(params?: { status?: ModerationStatus }) {
-    return prisma.moderationQueue.findMany({
-      where: {
-        status: params?.status,
-      },
+  async getQueue(params?: { status?: string }) {
+    const whereClause: Record<string, unknown> = {
+      status: params?.status || "PENDING",
+    };
+
+    return prisma.report.findMany({
+      where: whereClause,
       include: {
         message: {
           include: {
@@ -363,236 +346,42 @@ export class ModerationDashboard {
           },
         },
       },
-      // Fix: Remove 'priority' field - schema doesn't have it
-      // Order by status (BLOCKED/FLAGGED first) then creation date
       orderBy: [
-        { status: "desc" }, // BLOCKED/FLAGGED will be prioritized
-        { createdAt: "desc" }
+        { createdAt: "desc" },
       ],
       take: 50,
     });
   }
 
-  async resolveCase(
-    queueId: string,
-    action: ModerationAction,
-    reason: string
-  ) {
-    const queueItem = await prisma.moderationQueue.findUnique({
-      where: { id: queueId },
+  async resolveCase(reportId: string, action: "BLOCK" | "ALLOW" | "FLAG", reason: string) {
+    const report = await prisma.report.findUnique({
+      where: { id: reportId },
       include: { message: true },
     });
 
-    if (!queueItem) {
-      throw new Error("Queue item not found");
+    if (!report) {
+      throw new Error("Report not found");
     }
 
-    // Map action to status
-    const status: ModerationStatus =
-      action === "BLOCK"
-        ? "BLOCKED"
-        : action === "ALLOW"
-          ? "APPROVED"
-          : "FLAGGED";
-
-    await prisma.moderationQueue.update({
-      where: { id: queueId },
+    await prisma.report.update({
+      where: { id: reportId },
       data: {
-        status,
-        reviewedAt: new Date(),
+        status: action === "ALLOW" ? "DISMISSED" : "RESOLVED",
+        resolvedBy: action === "ALLOW" ? null : report.reporterId,
+        resolution: reason,
       },
     });
 
-    // Log the moderation action
-    await prisma.moderationActionLog.create({
-      data: {
-        action: action === "BLOCK" ? "MESSAGE_BLOCKED" : action === "ALLOW" ? "MESSAGE_ALLOWED" : "MESSAGE_FLAGGED",
-        messageId: queueItem.messageId,
-        details: { reason },
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        action: "REPORT_RESOLVED",
-        entityType: "Message",
-        entityId: queueItem.messageId,
-        details: { moderationAction: action, reason },
-      },
-    });
-  }
-}
-
-export class AppealsSystem {
-  async submitAppeal(input: {
-    messageId: string;
-    userId: string;
-    reason: string;
-  }) {
-    const existing = await prisma.appeal.findFirst({
-      where: {
-        messageId: input.messageId,
-        userId: input.userId,
-      },
-    });
-
-    if (existing) {
-      throw new Error("You have already appealed this message");
-    }
-
-    // Find the queue item for this message
-    const queueItem = await prisma.moderationQueue.findFirst({
-      where: { messageId: input.messageId },
-    });
-
-    return prisma.appeal.create({
-      data: {
-        messageId: input.messageId,
-        userId: input.userId,
-        queueId: queueItem?.id || null,
-        reason: input.reason,
-        status: "PENDING" as AppealStatus,
-      },
-    });
-  }
-
-  async reviewAppeal(params: {
-    appealId: string;
-    moderatorId: string;
-    decision: "APPROVE" | "DENY";
-    response?: string;
-  }) {
-    const appeal = await prisma.appeal.findUnique({
-      where: { id: params.appealId },
-      include: { message: true, queue: true },
-    });
-
-    if (!appeal) {
-      throw new Error("Appeal not found");
-    }
-
-    const status: AppealStatus =
-      params.decision === "APPROVE" ? "APPROVED" : "DENIED";
-
-    const updated = await prisma.appeal.update({
-      where: { id: params.appealId },
-      data: {
-        moderatorId: params.moderatorId,
-        status,
-        response: params.response,
-        resolvedAt: new Date(),
-      },
-    });
-
-    // If approved, update the moderation queue status
-    if (params.decision === "APPROVE" && appeal.queueId) {
-      await prisma.moderationQueue.update({
-        where: { id: appeal.queueId },
-        data: { status: "APPROVED" },
-      });
-      
-      // Log the action
-      await prisma.moderationActionLog.create({
+    // If action is BLOCK, create a ban
+    if (action === "BLOCK") {
+      await prisma.userBan.create({
         data: {
-          action: "APPEAL_APPROVED",
-          messageId: appeal.messageId,
-          actorId: params.moderatorId,
-          details: { appealId: params.appealId, response: params.response },
-        },
-      });
-    } else if (params.decision === "DENY") {
-      await prisma.moderationActionLog.create({
-        data: {
-          action: "APPEAL_DENIED",
-          messageId: appeal.messageId,
-          actorId: params.moderatorId,
-          details: { appealId: params.appealId, response: params.response },
+          userId: report.message.senderId,
+          bannedBy: "system",
+          reason,
+          threadId: report.message.sectionId,
         },
       });
     }
-
-    return updated;
-  }
-}
-
-export class ModerationMetrics {
-  async recordDecision(decision: ModerationDecision) {
-    const now = new Date();
-    const windowStart = new Date(now);
-    windowStart.setHours(0, 0, 0, 0);
-    
-    const windowEnd = new Date(windowStart);
-    windowEnd.setHours(23, 59, 59, 999);
-
-    try {
-      // Find existing stats for today
-      const existing = await prisma.moderationStats.findFirst({
-        where: {
-          windowStart: {
-            gte: windowStart,
-            lte: windowEnd,
-          },
-        },
-      });
-
-      if (existing) {
-        // Update existing record
-        await prisma.moderationStats.update({
-          where: { id: existing.id },
-          data: {
-            blockedCount: {
-              increment: decision === "REJECT" ? 1 : 0,
-            },
-            allowedCount: {
-              increment: decision === "APPROVE" ? 1 : 0,
-            },
-            flaggedCount: {
-              increment: decision === "ESCALATE" ? 1 : 0,
-            },
-          },
-        });
-      } else {
-        // Create new record
-        await prisma.moderationStats.create({
-          data: {
-            windowStart,
-            windowEnd,
-            blockedCount: decision === "REJECT" ? 1 : 0,
-            allowedCount: decision === "APPROVE" ? 1 : 0,
-            flaggedCount: decision === "ESCALATE" ? 1 : 0,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Failed to record moderation decision:", error);
-    }
-  }
-
-  async getDailyStats() {
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
-    
-    const dayEnd = new Date(dayStart);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    return prisma.moderationStats.findFirst({
-      where: {
-        windowStart: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
-      },
-    });
-  }
-}
-
-export class PrivacyPreservingModeration {
-  anonymizeText(text: string): string {
-    return text
-      .replace(/@[a-zA-Z0-9_]+/g, "@user")
-      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, "[email]")
-      .replace(/\b\d{3}-\d{3}-\d{4}\b/g, "[phone]")
-      .replace(/\b\d{4}[\s-]\d{4}[\s-]\d{4}[\s-]\d{4}\b/g, "[card]");
   }
 }

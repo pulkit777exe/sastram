@@ -1,25 +1,20 @@
 import { prisma } from "@/lib/infrastructure/prisma";
-import { AuditAction, Prisma } from "@prisma/client";
 
-export type AuditLogDetails = Record<string, unknown> | null;
+export type UserActivityDetails = Record<string, unknown> | null;
 
 interface LogActionParams {
-  action: AuditAction;
+  action: string;
   entityType: string;
   entityId: string;
   userId?: string;
-  performedBy?: string;
-  details?: AuditLogDetails;
-  ipAddress?: string;
-  userAgent?: string;
+  details?: UserActivityDetails;
 }
 
-interface AuditLogFilters {
-  action?: AuditAction;
+interface UserActivityFilters {
+  action?: string;
   entityType?: string;
   entityId?: string;
   userId?: string;
-  performedBy?: string;
   startDate?: Date;
   endDate?: Date;
   limit?: number;
@@ -31,34 +26,27 @@ export async function logAction({
   entityType,
   entityId,
   userId,
-  performedBy,
   details,
-  ipAddress,
-  userAgent,
 }: LogActionParams) {
-  return prisma.auditLog.create({
+  return prisma.userActivity.create({
     data: {
-      action,
+      userId: userId!,
+      type: action,
       entityType,
       entityId,
-      userId,
-      performedBy,
-      details: details as Prisma.InputJsonValue,
-      ipAddress,
-      userAgent,
+      metadata: details as any,
     },
   });
 }
 
-export async function getAuditLogs(filters?: AuditLogFilters) {
-  const where: Prisma.AuditLogWhereInput = {};
+export async function getUserActivities(filters?: UserActivityFilters) {
+  const where: any = {};
 
   if (filters) {
-    if (filters.action) where.action = filters.action;
+    if (filters.action) where.type = filters.action;
     if (filters.entityType) where.entityType = filters.entityType;
     if (filters.entityId) where.entityId = filters.entityId;
     if (filters.userId) where.userId = filters.userId;
-    if (filters.performedBy) where.performedBy = filters.performedBy;
 
     if (filters.startDate || filters.endDate) {
       where.createdAt = {};
@@ -67,18 +55,10 @@ export async function getAuditLogs(filters?: AuditLogFilters) {
     }
   }
 
-  return prisma.auditLog.findMany({
+  return prisma.userActivity.findMany({
     where,
     include: {
       user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatarUrl: true,
-        },
-      },
-      performer: {
         select: {
           id: true,
           name: true,
@@ -96,25 +76,18 @@ export async function getAuditLogs(filters?: AuditLogFilters) {
 }
 
 export async function getEntityHistory(entityType: string, entityId: string) {
-  return prisma.auditLog.findMany({
+  return prisma.userActivity.findMany({
     where: {
       entityType,
       entityId,
     },
     include: {
-      performer: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatarUrl: true,
-        },
-      },
       user: {
         select: {
           id: true,
           name: true,
           email: true,
+          avatarUrl: true,
         },
       },
     },
@@ -129,12 +102,12 @@ export async function getUserActivity(
   limit: number = 50,
   offset: number = 0
 ) {
-  return prisma.auditLog.findMany({
+  return prisma.userActivity.findMany({
     where: {
-      OR: [{ userId }, { performedBy: userId }],
+      userId,
     },
     include: {
-      performer: {
+      user: {
         select: {
           id: true,
           name: true,
@@ -150,12 +123,12 @@ export async function getUserActivity(
   });
 }
 
-export async function getAuditLogStats(filters?: {
+export async function getUserActivityStats(filters?: {
   startDate?: Date;
   endDate?: Date;
   entityType?: string;
 }) {
-  const where: Prisma.AuditLogWhereInput = {};
+  const where: any = {};
 
   if (filters?.startDate || filters?.endDate) {
     where.createdAt = {};
@@ -168,15 +141,15 @@ export async function getAuditLogStats(filters?: {
   }
 
   const [totalCount, actionBreakdown, entityTypeBreakdown] = await Promise.all([
-    prisma.auditLog.count({ where }),
-    prisma.auditLog.groupBy({
-      by: ["action"],
+    prisma.userActivity.count({ where }),
+    prisma.userActivity.groupBy({
+      by: ["type"],
       where,
       _count: {
-        action: true,
+        type: true,
       },
     }),
-    prisma.auditLog.groupBy({
+    prisma.userActivity.groupBy({
       by: ["entityType"],
       where,
       _count: {
@@ -188,8 +161,8 @@ export async function getAuditLogStats(filters?: {
   return {
     totalActions: totalCount,
     byAction: actionBreakdown.map((item) => ({
-      action: item.action,
-      count: item._count.action,
+      action: item.type,
+      count: item._count.type,
     })),
     byEntityType: entityTypeBreakdown.map((item) => ({
       entityType: item.entityType,
@@ -203,7 +176,7 @@ export async function getMostActiveUsers(
   startDate?: Date,
   endDate?: Date
 ) {
-  const where: Prisma.AuditLogWhereInput = {};
+  const where: any = {};
 
   if (startDate || endDate) {
     where.createdAt = {};
@@ -211,18 +184,18 @@ export async function getMostActiveUsers(
     if (endDate) where.createdAt.lte = endDate;
   }
 
-  const userActivity = await prisma.auditLog.groupBy({
-    by: ["performedBy"],
+  const userActivity = await prisma.userActivity.groupBy({
+    by: ["userId"],
     where: {
       ...where,
-      performedBy: { not: null },
+      userId: { not: null },
     },
     _count: {
-      performedBy: true,
+      userId: true,
     },
     orderBy: {
       _count: {
-        performedBy: "desc",
+        userId: "desc",
       },
     },
     take: limit,
@@ -230,7 +203,7 @@ export async function getMostActiveUsers(
 
   // Fetch user details
   const userIds = userActivity
-    .map((item) => item.performedBy)
+    .map((item) => item.userId)
     .filter((id): id is string => id !== null);
 
   const users = await prisma.user.findMany({
@@ -248,31 +221,29 @@ export async function getMostActiveUsers(
   const userMap = new Map(users.map((user) => [user.id, user]));
 
   return userActivity
-    .filter((item) => item.performedBy !== null)
+    .filter((item) => item.userId !== null)
     .map((item) => ({
-      user: userMap.get(item.performedBy!),
-      actionCount: item._count.performedBy,
+      user: userMap.get(item.userId!),
+      actionCount: item._count.userId,
     }));
 }
 
-export async function searchAuditLogs(
+export async function searchUserActivities(
   searchTerm: string,
-  filters?: Omit<AuditLogFilters, "limit" | "offset">,
+  filters?: Omit<UserActivityFilters, "limit" | "offset">,
   limit: number = 50
 ) {
-  const where: Prisma.AuditLogWhereInput = {
+  const where: any = {
     OR: [
       { entityId: { contains: searchTerm, mode: "insensitive" } },
       { entityType: { contains: searchTerm, mode: "insensitive" } },
-      { ipAddress: { contains: searchTerm, mode: "insensitive" } },
     ],
   };
 
   // Add additional filters
-  if (filters?.action) where.action = filters.action;
+  if (filters?.action) where.type = filters.action;
   if (filters?.entityType) where.entityType = filters.entityType;
   if (filters?.userId) where.userId = filters.userId;
-  if (filters?.performedBy) where.performedBy = filters.performedBy;
 
   if (filters?.startDate || filters?.endDate) {
     where.createdAt = {};
@@ -280,17 +251,10 @@ export async function searchAuditLogs(
     if (filters.endDate) where.createdAt.lte = filters.endDate;
   }
 
-  return prisma.auditLog.findMany({
+  return prisma.userActivity.findMany({
     where,
     include: {
       user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      performer: {
         select: {
           id: true,
           name: true,
@@ -305,11 +269,11 @@ export async function searchAuditLogs(
   });
 }
 
-export async function cleanupOldAuditLogs(daysToKeep: number = 90) {
+export async function cleanupOldUserActivities(daysToKeep: number = 90) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-  const deleted = await prisma.auditLog.deleteMany({
+  const deleted = await prisma.userActivity.deleteMany({
     where: {
       createdAt: {
         lt: cutoffDate,

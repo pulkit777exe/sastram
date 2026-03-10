@@ -83,7 +83,6 @@ function UserAuthForm({
           setLoadingState(null);
           return;
         }
-
         if (result.data) {
           router.push("/dashboard");
           router.refresh();

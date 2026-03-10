@@ -31,7 +31,6 @@ export function buildThreadDTO(
     slug: thread.slug,
     name: thread.name,
     description: thread.description,
-    icon: thread.icon,
     visibility: thread.visibility,
     community: thread.community
       ? {
@@ -59,21 +58,33 @@ export function buildThreadDetailDTO(
 ): ThreadDetail {
   return {
     ...buildThreadDTO(thread, messageCount, activeUsers),
-    summary: summary ?? thread.summary,
+    summary:
+      summary ??
+      ((thread as Record<string, unknown>).aiSummary as string) ??
+      null,
     subscriptionCount,
     messages:
       thread.messages?.map((message) => ({
         id: message.id,
         content: message.content,
         senderId: message.senderId,
+        parentId: message.parentId ?? null,
         senderName:
           message.sender?.name || message.sender?.email || "Anonymous",
         senderAvatar: message.sender?.image,
         createdAt: message.createdAt,
+        updatedAt: message.updatedAt,
+        deletedAt: message.deletedAt ?? null,
         depth: message.depth ?? 0,
         isEdited: message.isEdited ?? false,
         isPinned: message.isPinned ?? false,
-        updatedAt: message.updatedAt,
+        likeCount:
+          ((message as Record<string, unknown>).likeCount as number) ?? 0,
+        replyCount:
+          ((message as Record<string, unknown>).replyCount as number) ?? 0,
+        isAiResponse:
+          ((message as Record<string, unknown>).isAiResponse as boolean) ??
+          false,
         sender: message.sender
           ? {
               id: message.sender.id,
@@ -87,6 +98,14 @@ export function buildThreadDetailDTO(
               avatarUrl: null,
               status: "ACTIVE" as UserStatus,
             },
+        attachments:
+          ((message as Record<string, unknown>).attachments as Array<{
+            id: string;
+            url: string;
+            type: string;
+            name?: string | null;
+            size?: string | null;
+          }>) ?? [],
       })) ?? [],
   };
 }

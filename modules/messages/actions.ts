@@ -13,7 +13,11 @@ import { getMemberRole } from "@/modules/members/repository";
 import { logAction } from "@/modules/audit/repository";
 import { handleError } from "@/lib/utils/errors";
 import { validate } from "@/lib/utils/validation";
-import { editMessageSchema, pinMessageSchema, getMessageEditHistorySchema } from "./schemas";
+import {
+  editMessageSchema,
+  pinMessageSchema,
+  getMessageEditHistorySchema,
+} from "./schemas";
 import { AuditAction } from "@prisma/client";
 import { parseMentions, resolveUserMentions } from "@/lib/utils/mention-parser";
 import { sendMentionNotification } from "@/lib/services/email";
@@ -32,14 +36,19 @@ export async function postMessage(formData: FormData) {
   // Parse mentions from content and combine with explicit mentions
   const parsedMentions = parseMentions(content);
   let mentions: string[] | undefined;
-  
+
   if (mentionsRaw) {
     try {
       const explicitMentions = JSON.parse(mentionsRaw) as string[];
       // Resolve usernames from parsed mentions to user IDs
-      const resolvedMentions = await resolveUserMentions(parsedMentions.usernames, prisma);
+      const resolvedMentions = await resolveUserMentions(
+        parsedMentions.usernames,
+        prisma,
+      );
       // Combine explicit mentions (already user IDs) with resolved mentions
-      mentions = Array.from(new Set([...explicitMentions, ...resolvedMentions]));
+      mentions = Array.from(
+        new Set([...explicitMentions, ...resolvedMentions]),
+      );
     } catch {
       // If explicit mentions fail, try to resolve parsed mentions
       mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
@@ -127,7 +136,7 @@ export async function postMessage(formData: FormData) {
         timestamp: new Date(),
         metadata: { edited: false },
       },
-      context
+      context,
     );
 
     if (!result.success) {
@@ -195,7 +204,7 @@ export async function postMessage(formData: FormData) {
 
       if (thread) {
         const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`;
-        
+
         for (const userId of mentions) {
           const mentionedUser = await prisma.user.findUnique({
             where: { id: userId },
@@ -208,7 +217,7 @@ export async function postMessage(formData: FormData) {
               session.user.name || session.user.email,
               thread.name,
               safeContent.substring(0, 200),
-              threadUrl
+              threadUrl,
             ).catch((error) => {
               console.error("Failed to send mention email:", error);
             });
@@ -226,6 +235,11 @@ export async function postMessage(formData: FormData) {
       senderAvatar: message.sender?.image ?? session.user.image,
       createdAt: message.createdAt,
       sectionId,
+      parentId: message.parentId ?? null,
+      depth: message.depth ?? 0,
+      likeCount: 0,
+      replyCount: 0,
+      isAiResponse: false,
     };
 
     emitThreadMessage(sectionId, {
@@ -250,7 +264,11 @@ export async function postMessage(formData: FormData) {
       },
     });
 
-    return { success: true, data: message, pendingModeration: result.pendingModeration };
+    return {
+      success: true,
+      data: message,
+      pendingModeration: result.pendingModeration,
+    };
   } catch (error) {
     return handleActionError(error);
   }
@@ -356,7 +374,9 @@ export async function pinMessage(messageId: string) {
     });
 
     await logAction({
-      action: message.isPinned ? AuditAction.MESSAGE_UPDATED : AuditAction.MESSAGE_UPDATED,
+      action: message.isPinned
+        ? AuditAction.MESSAGE_UPDATED
+        : AuditAction.MESSAGE_UPDATED,
       entityType: "Message",
       entityId: messageId,
       performedBy: session.user.id,
@@ -388,4 +408,3 @@ export async function getMessageEditHistory(messageId: string) {
     return handleActionError(error);
   }
 }
-

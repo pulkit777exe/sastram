@@ -30,9 +30,6 @@ export function buildCommunityDTO(
 
 export async function listCommunities(): Promise<CommunitySummary[]> {
   const communities = await prisma.community.findMany({
-    where: {
-      deletedAt: null,
-    },
     include: {
       _count: {
         select: {

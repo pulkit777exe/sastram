@@ -29,10 +29,13 @@ export interface Message {
   depth: number;
   isEdited: boolean;
   isPinned: boolean;
+  likeCount: number;
+  replyCount: number;
+  isAiResponse: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
-  
+
   sender: Sender;
   section: {
     id: string;

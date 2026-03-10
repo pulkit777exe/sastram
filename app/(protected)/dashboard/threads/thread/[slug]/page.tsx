@@ -49,6 +49,15 @@ export default async function ThreadPage({
       createdAt: m.createdAt,
       senderId: m.senderId,
       parentId: m.parentId || null,
+      sectionId: thread.id,
+      depth: m.depth ?? 0,
+      isEdited: m.isEdited ?? false,
+      isPinned: m.isPinned ?? false,
+      likeCount: m.likeCount ?? 0,
+      replyCount: m.replyCount ?? 0,
+      isAiResponse: m.isAiResponse ?? false,
+      updatedAt: m.updatedAt ?? m.createdAt,
+      deletedAt: m.deletedAt ?? null,
       sender: {
         id: m.senderId,
         name: m.sender?.name || "Anonymous",
@@ -66,13 +75,6 @@ export default async function ThreadPage({
               : Number(att.size)
             : null,
       })),
-      // Added missing required properties
-      sectionId: thread.id,
-      depth: 0,
-      isEdited: false,
-      isPinned: false,
-      updatedAt: m.createdAt,
-      deletedAt: null,
       section: {
         id: thread.id,
         name: thread.name,

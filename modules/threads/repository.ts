@@ -32,8 +32,7 @@ type SectionWithFullDetails = Prisma.SectionGetPayload<{
         attachments: true;
       };
     };
-    newsletterSubscriptions: true;
-    digests: true;
+    subscriptions: true;
     _count: { select: { messages: true } };
   };
 }>;
@@ -70,14 +69,10 @@ export async function listThreads(
   const { page = 1, pageSize = 10, sortBy = "recent" } = params;
   const skip = (page - 1) * pageSize;
 
-  const totalItems = await prisma.section.count({
-    where: { deletedAt: null },
-  });
+  const totalItems = await prisma.section.count();
 
   const threads = await prisma.section.findMany({
-    where: {
-      deletedAt: null,
-    },
+    where: {},
     include: {
       community: true,
       messages: {
@@ -139,7 +134,7 @@ export async function listThreads(
       totalItems,
       totalPages,
       hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1
+      hasPreviousPage: page > 1,
     },
   };
 }
@@ -150,14 +145,12 @@ export async function getThreadBySlug(
   const record = await prisma.section.findFirst({
     where: {
       slug,
-      deletedAt: null,
     },
     include: {
       community: true,
       messages: {
-        where: {
-          deletedAt: null,
-        },
+        // Fetch ALL messages including soft-deleted — deleted messages
+        // must stay in tree to preserve child reply structure
         include: {
           sender: {
             select: {
@@ -172,13 +165,7 @@ export async function getThreadBySlug(
           createdAt: "asc",
         },
       },
-      newsletterSubscriptions: true,
-      digests: {
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 1,
-      },
+      subscriptions: true,
       _count: {
         select: {
           messages: {
@@ -200,15 +187,14 @@ export async function getThreadBySlug(
     typedRecord as unknown as ThreadRecord,
     typedRecord._count.messages,
     new Set(typedRecord.messages.map((m) => m.senderId)).size,
-    typedRecord.digests[0]?.summary,
-    typedRecord.newsletterSubscriptions?.length ?? 0,
+    typedRecord.aiSummary ?? undefined,
+    typedRecord.subscriptions?.length ?? 0,
   );
 }
 
 export async function createThread(payload: {
   name: string;
   description?: string | null;
-  icon?: string | null;
   communityId?: string | null;
   slug: string;
   createdBy: string;
@@ -217,7 +203,6 @@ export async function createThread(payload: {
     data: {
       name: payload.name,
       description: payload.description,
-      icon: payload.icon,
       communityId: payload.communityId,
       slug: payload.slug,
       createdBy: payload.createdBy,

@@ -17,32 +17,7 @@ import {
 } from "./schemas";
 import { createNotification } from "@/modules/notifications/repository";
 import { logAction } from "@/modules/audit/repository";
-import type { ReportCategory, ReportPriority } from "@prisma/client";
-
-function calculatePriority(
-  category: ReportCategory,
-  existingReportsCount: number
-): ReportPriority {
-  if (category === "VIOLENCE_THREATS" || category === "SELF_HARM") {
-    return "CRITICAL";
-  }
-
-  if (
-    category === "HATE_SPEECH" ||
-    category === "HARASSMENT" ||
-    existingReportsCount >= 2
-  ) {
-    return "HIGH";
-  }
-
-  if (
-    ["SPAM", "SCAM_FRAUD", "IMPERSONATION", "PRIVATE_INFO"].includes(category)
-  ) {
-    return "MEDIUM";
-  }
-
-  return "LOW";
-}
+import type { ReportCategory } from "@prisma/client";
 
 export async function createReport(data: {
   messageId: string;
@@ -88,10 +63,7 @@ export async function createReport(data: {
       where: { messageId: validation.data.messageId },
     });
 
-    const priority = calculatePriority(
-      validation.data.category as ReportCategory,
-      existingReportsCount
-    );
+
 
     const report = await prisma.report.create({
       data: {
@@ -100,7 +72,6 @@ export async function createReport(data: {
         category: validation.data.category as ReportCategory,
         details: validation.data.details,
         status: REPORT_STATUS.PENDING,
-        priority,
       },
     });
 
@@ -193,15 +164,8 @@ export async function getReports(filters?: {
             email: true,
           },
         },
-        resolver: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
         },
-      },
-      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+      orderBy: [{ createdAt: "desc" }],
       take: limit,
       skip: offset,
     });
@@ -224,17 +188,13 @@ export async function getReportStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [total, pending, critical, high, resolvedToday] = await Promise.all([
+    const [total, pending, resolvedToday] = await Promise.all([
       prisma.report.count(),
       prisma.report.count({ where: { status: "PENDING" } }),
       prisma.report.count({
-        where: { priority: "CRITICAL", status: "PENDING" },
-      }),
-      prisma.report.count({ where: { priority: "HIGH", status: "PENDING" } }),
-      prisma.report.count({
         where: {
           status: { in: ["RESOLVED", "DISMISSED"] },
-          resolvedAt: { gte: today },
+          updatedAt: { gte: today },
         },
       }),
     ]);
@@ -242,14 +202,6 @@ export async function getReportStats() {
     return {
       total,
       pending,
-      critical,
-      high,
-      medium: await prisma.report.count({
-        where: { priority: "MEDIUM", status: "PENDING" },
-      }),
-      low: await prisma.report.count({
-        where: { priority: "LOW", status: "PENDING" },
-      }),
       resolvedToday,
       autoModActions: 0,
     };
@@ -299,13 +251,7 @@ export async function getReportWithContext(reportId: string) {
             reputationPoints: true,
           },
         },
-        resolver: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+
       },
     });
 
@@ -432,7 +378,7 @@ export async function getReportWithContext(reportId: string) {
 
 export async function updateReportStatusAction(
   reportId: string,
-  status: "REVIEWING" | "RESOLVED" | "DISMISSED"
+  status: "RESOLVED" | "DISMISSED"
 ) {
   const session = await requireSession();
 

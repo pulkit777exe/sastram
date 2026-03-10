@@ -49,6 +49,18 @@
   --sidebar-accent-foreground: oklch(0 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0 0 0);
+
+  /* Sastram thread page design system */
+  --blue: #3736fc;
+  --blue-light: #eeeeff;
+  --blue-dim: rgba(55, 54, 252, 0.08);
+  --bg: #f4f4f5;
+  --surface: #ffffff;
+  --text: #18181b;
+  --muted: #71717a;
+  --green: #16a34a;
+  --amber: #f59e0b;
+  --red: #ef4444;
 }
 
 @theme inline {
@@ -159,3 +171,38 @@
     }
   }
 }
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.skeleton {
+  background: #e4e4e7;
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease infinite;
+}
+
+.bg-thread-cover {
+  background-image: radial-gradient(circle at 1px 1px, rgba(24, 24, 27, 0.08) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.4);
+  }
+}
+
+
