@@ -8,54 +8,75 @@ import {
   removeReaction,
   getMessageReactions,
 } from "@/modules/reactions/repository";
-import { validate } from "@/lib/utils/validation";
-import { handleError } from "@/lib/utils/errors";
+import { emitReactionUpdate } from "@/modules/ws/publisher";
 import { toggleReactionSchema, getReactionSummarySchema } from "./schemas";
 
 export async function toggleReaction(messageId: string, emoji: string) {
-  const session = await requireSession();
-
-  const validation = validate(toggleReactionSchema, { messageId, emoji });
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = toggleReactionSchema.safeParse({ messageId, emoji });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
+
     // Check if user already reacted with this emoji
     const existing = await prisma.reaction.findFirst({
       where: {
-        messageId,
+        messageId: parsed.data.messageId,
         userId: session.user.id,
-        emoji,
+        emoji: parsed.data.emoji,
       },
     });
 
     if (existing) {
       // Remove reaction
-      await removeReaction(messageId, session.user.id, emoji);
+      await removeReaction(parsed.data.messageId, session.user.id, parsed.data.emoji);
     } else {
       // Add reaction
-      await addReaction(messageId, session.user.id, emoji);
+      await addReaction(parsed.data.messageId, session.user.id, parsed.data.emoji);
+    }
+
+    const [message, reactionCounts] = await Promise.all([
+      prisma.message.findUnique({
+        where: { id: parsed.data.messageId },
+        select: { sectionId: true },
+      }),
+      prisma.reaction.groupBy({
+        by: ["emoji"],
+        where: { messageId: parsed.data.messageId },
+        _count: { _all: true },
+      }),
+    ]);
+
+    if (message?.sectionId) {
+      const match = reactionCounts.find((r) => r.emoji === parsed.data.emoji);
+      emitReactionUpdate(message.sectionId, {
+        messageId: parsed.data.messageId,
+        reactionType: parsed.data.emoji,
+        count: match?._count._all ?? 0,
+      });
     }
 
     revalidatePath("/dashboard/threads");
-    return { success: true };
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[toggleReaction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getReactionSummary(messageId: string) {
-  const validation = validate(getReactionSummarySchema, { messageId });
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = getReactionSummarySchema.safeParse({ messageId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
-    const reactions = await getMessageReactions(messageId);
-    return { success: true, data: reactions };
+    const reactions = await getMessageReactions(parsed.data.messageId);
+    return { data: reactions, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getReactionSummary]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
-

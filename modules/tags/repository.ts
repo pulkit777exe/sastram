@@ -49,7 +49,10 @@ export async function removeTagFromThread(threadId: string, tagId: string) {
 
   return prisma.threadTagRelation.delete({
     where: {
-      id: relation.id,
+      threadId_tagId: {
+        threadId: relation.threadId,
+        tagId: relation.tagId,
+      },
     },
   });
 }

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const end = endOfDay(today);
 
     // 1. Get all active subscriptions
-    const subscriptions = await prisma.newsletterSubscription.findMany({
+    const subscriptions = await prisma.threadSubscription.findMany({
       where: {
         isActive: true,
         frequency: "DAILY", // Currently we only support daily

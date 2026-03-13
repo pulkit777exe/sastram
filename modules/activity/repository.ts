@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { dedupe } from "@/lib/dedupe";
 
 export async function recordActivity(data: {
   userId: string;
@@ -23,17 +24,21 @@ export async function getUserActivity(
   limit: number = 20,
   offset: number = 0
 ) {
-  const [activities, total] = await Promise.all([
-    prisma.userActivity.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.userActivity.count({
-      where: { userId },
-    }),
-  ]);
+  const [activities, total] = await dedupe(
+    `activity:user:${userId}:${limit}:${offset}`,
+    () =>
+      Promise.all([
+        prisma.userActivity.findMany({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+          take: limit,
+          skip: offset,
+        }),
+        prisma.userActivity.count({
+          where: { userId },
+        }),
+      ]),
+  );
 
   return {
     activities,
@@ -48,10 +53,12 @@ export async function getFollowedUsersActivity(
   offset: number = 0
 ) {
   // Get users that the current user follows
-  const following = await prisma.userFollow.findMany({
-    where: { followerId: userId },
-    select: { followingId: true },
-  });
+  const following = await dedupe(`activity:following:${userId}`, () =>
+    prisma.userFollow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    }),
+  );
 
   const followingIds = following.map((f) => f.followingId);
 
@@ -63,32 +70,36 @@ export async function getFollowedUsersActivity(
     };
   }
 
-  const [activities, total] = await Promise.all([
-    prisma.userActivity.findMany({
-      where: {
-        userId: { in: followingIds },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            avatarUrl: true,
+  const [activities, total] = await dedupe(
+    `activity:followed:${userId}:${limit}:${offset}`,
+    () =>
+      Promise.all([
+        prisma.userActivity.findMany({
+          where: {
+            userId: { in: followingIds },
           },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.userActivity.count({
-      where: {
-        userId: { in: followingIds },
-      },
-    }),
-  ]);
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                avatarUrl: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          take: limit,
+          skip: offset,
+        }),
+        prisma.userActivity.count({
+          where: {
+            userId: { in: followingIds },
+          },
+        }),
+      ]),
+  );
 
   return {
     activities,
@@ -96,4 +107,3 @@ export async function getFollowedUsersActivity(
     hasMore: offset + limit < total,
   };
 }
-

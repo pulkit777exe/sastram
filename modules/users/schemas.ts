@@ -11,7 +11,6 @@ export const updateUserProfileSchema = z.object({
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
   twitter: z.string().max(50, "Twitter handle must be less than 50 characters").optional(),
   github: z.string().max(50, "GitHub username must be less than 50 characters").optional(),
-  linkedin: z.string().max(50, "LinkedIn username must be less than 50 characters").optional(),
 });
 
 export const uploadAvatarSchema = z.object({

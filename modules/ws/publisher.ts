@@ -42,3 +42,16 @@ export function emitMentionNotification(
     payload: mention,
   });
 }
+
+export function emitReactionUpdate(
+  threadId: string,
+  payload: { messageId: string; reactionType: string; count: number }
+) {
+  publishThreadEvent(threadId, {
+    type: "REACTION_UPDATE",
+    payload: {
+      ...payload,
+      sectionId: threadId,
+    },
+  });
+}

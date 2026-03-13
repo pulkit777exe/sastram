@@ -9,8 +9,11 @@ export function useMessages(conversationId: string) {
     queryKey: ["messages", conversationId],
     queryFn: async () => {
       const result = await getMessages(conversationId);
-      if (!result.success) {
+      if (result.error) {
         throw new Error(result.error);
+      }
+      if (!result.data) {
+        throw new Error("No messages found");
       }
       return result.data as Message[];
     },
@@ -24,8 +27,11 @@ export function useSendMessage(conversationId: string) {
   return useMutation({
     mutationFn: async (data: { content: string; attachments?: AttachmentInput[] }) => {
       const result = await sendMessage({ ...data, conversationId });
-      if (!result.success) {
+      if (result.error) {
         throw new Error(result.error);
+      }
+      if (!result.data) {
+        throw new Error("Message could not be sent");
       }
       return result.data as Message;
     },

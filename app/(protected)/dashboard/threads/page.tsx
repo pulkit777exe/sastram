@@ -3,7 +3,6 @@ import { Input } from "@/components/ui/input";
 import { Search, Hash } from "lucide-react";
 import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
 import { TopicGrid } from "@/components/dashboard/topic-grid";
-import { cache } from "react";
 
 export default async function TopicsPage({
   searchParams,
@@ -14,7 +13,6 @@ export default async function TopicsPage({
 
   const sections = await prisma.section.findMany({
       where: {
-        deletedAt: null,
         OR: [
           { name: { contains: query, mode: "insensitive" } },
           { description: { contains: query, mode: "insensitive" } },
@@ -22,18 +20,11 @@ export default async function TopicsPage({
       },
       include: {
         messages: {
-          where: {
-            deletedAt: null,
-          },
           select: { senderId: true },
         },
         _count: {
           select: {
-            messages: {
-              where: {
-                deletedAt: null,
-              },
-            },
+            messages: true,
           },
         },
       },
@@ -52,7 +43,7 @@ export default async function TopicsPage({
       activeUsers: uniqueSenders.size,
       messagesCount: section._count.messages,
       trending: section._count.messages > 5,
-      tags: [section.icon || "General"],
+      tags: ["General"],
     };
   });
 

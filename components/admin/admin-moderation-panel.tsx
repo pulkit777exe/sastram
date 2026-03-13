@@ -70,9 +70,9 @@ export function AdminModerationPanel({
       banThreadId || undefined
     );
 
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else {
       toast.success("User banned successfully");
       setBanDialogOpen(false);
       setBanUserId("");
@@ -96,9 +96,9 @@ export function AdminModerationPanel({
       deleteReason || undefined
     );
 
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else {
       toast.success("Thread deleted successfully");
       setDeleteThreadDialogOpen(false);
       setSelectedThread("");
@@ -120,9 +120,9 @@ export function AdminModerationPanel({
       deleteReason || undefined
     );
 
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else {
       toast.success("Community deleted successfully");
       setDeleteCommunityDialogOpen(false);
       setSelectedCommunity("");

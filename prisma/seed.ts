@@ -25,10 +25,9 @@ async function createThread({
   communityId?: string;
 }) {
   return prisma.section.create({
-    data: {
+     data: {
       name,
       description,
-      icon,
       slug: `${slugify(name)}-${randomUUID()}`,
       createdBy: userId,
       communityId,

@@ -10,11 +10,10 @@ import {
   Download,
   ThumbsUp,
   ArrowRight,
-  Plus,
   X,
   Loader2,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import type { Message, Attachment } from "@/lib/types/index";
 import type { MessageNode } from "@/modules/messages/types";
 import {
@@ -26,7 +25,7 @@ import {
 import { postMessage } from "@/modules/messages/actions";
 import { toggleReaction } from "@/modules/reactions/actions";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ReportButton } from "./report-button";
 import { AppealMessageModal } from "./appeal-message-modal";
 import Image from "next/image";
@@ -34,11 +33,24 @@ import Image from "next/image";
 const MAX_VISUAL_DEPTH = 4;
 const INDENT_PX = 20;
 
+function findNodeById(nodes: MessageNode[], id: string): MessageNode | null {
+  const stack = [...nodes];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) continue;
+    if (node.id === id) return node;
+    if (node.children.length > 0) {
+      stack.push(...node.children);
+    }
+  }
+  return null;
+}
+
 // ─── Main Component ────────────────────────────────────────
 
 interface CommentTreeProps {
   messages: Message[];
-  sectionId: string;
+  threadId: string;
   currentUser: {
     id: string;
     name: string | null;
@@ -48,22 +60,28 @@ interface CommentTreeProps {
 
 export function CommentTree({
   messages,
-  sectionId,
+  threadId,
   currentUser,
 }: CommentTreeProps) {
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [localMessages, setLocalMessages] = useState<Message[]>(messages);
+  const [animateMessageId, setAnimateMessageId] = useState<string | null>(null);
+  const animateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const focusedId = searchParams.get("focus");
 
   // Load collapse states from localStorage on mount
   useEffect(() => {
-    const states = loadCollapseStates(sectionId);
+    const states = loadCollapseStates(threadId);
     const collapsed = new Set<string>();
     states.forEach((isCollapsed, messageId) => {
       if (isCollapsed) collapsed.add(messageId);
     });
     setCollapsedIds(collapsed);
-  }, [sectionId]);
+  }, [threadId]);
 
   // Sync messages prop
   useEffect(() => {
@@ -72,6 +90,10 @@ export function CommentTree({
 
   // Build tree from flat messages — memoized
   const tree = useMemo(() => buildMessageTree(localMessages), [localMessages]);
+  const focusedNode = useMemo(
+    () => (focusedId ? findNodeById(tree, focusedId) : null),
+    [tree, focusedId],
+  );
 
   const toggleCollapse = useCallback(
     (messageId: string) => {
@@ -83,11 +105,11 @@ export function CommentTree({
         } else {
           next.add(messageId);
         }
-        saveCollapseState(sectionId, messageId, !isCollapsed);
+        saveCollapseState(threadId, messageId, !isCollapsed);
         return next;
       });
     },
-    [sectionId],
+    [threadId],
   );
 
   const handleReply = useCallback((messageId: string) => {
@@ -102,7 +124,39 @@ export function CommentTree({
   const handleMessagePosted = useCallback((newMessage: Message) => {
     setLocalMessages((prev) => [...prev, newMessage]);
     setActiveReplyId(null);
+    setAnimateMessageId(newMessage.id);
+    if (animateTimerRef.current) {
+      clearTimeout(animateTimerRef.current);
+    }
+    animateTimerRef.current = setTimeout(() => {
+      setAnimateMessageId(null);
+    }, 700);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (animateTimerRef.current) {
+        clearTimeout(animateTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleFocusBranch = useCallback(
+    (messageId: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("focus", messageId);
+      const query = params.toString();
+      router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams],
+  );
+
+  const clearFocus = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("focus");
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [router, pathname, searchParams]);
 
   if (tree.length === 0) {
     return null;
@@ -110,22 +164,56 @@ export function CommentTree({
 
   return (
     <div className="space-y-4">
-      {tree.map((node) => (
-        <CommentNode
-          key={node.id}
-          node={node}
-          depth={0}
-          sectionId={sectionId}
-          currentUser={currentUser}
-          activeReplyId={activeReplyId}
-          collapsedIds={collapsedIds}
-          onReply={handleReply}
-          onCancelReply={handleCancelReply}
-          onToggleCollapse={toggleCollapse}
-          onMessagePosted={handleMessagePosted}
-          allMessages={localMessages}
-        />
-      ))}
+      {focusedNode ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 bg-background/80">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+              Focused Thread
+            </div>
+            <button
+              onClick={clearFocus}
+              className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              Back to full thread
+            </button>
+          </div>
+          <CommentNode
+            key={focusedNode.id}
+            node={focusedNode}
+            depth={0}
+            threadId={threadId}
+            currentUser={currentUser}
+            activeReplyId={activeReplyId}
+            collapsedIds={collapsedIds}
+            onReply={handleReply}
+            onCancelReply={handleCancelReply}
+            onToggleCollapse={toggleCollapse}
+            onMessagePosted={handleMessagePosted}
+            onFocusBranch={handleFocusBranch}
+            allMessages={localMessages}
+            animateMessageId={animateMessageId}
+          />
+        </div>
+      ) : (
+        tree.map((node) => (
+          <CommentNode
+            key={node.id}
+            node={node}
+            depth={0}
+            threadId={threadId}
+            currentUser={currentUser}
+            activeReplyId={activeReplyId}
+            collapsedIds={collapsedIds}
+            onReply={handleReply}
+            onCancelReply={handleCancelReply}
+            onToggleCollapse={toggleCollapse}
+            onMessagePosted={handleMessagePosted}
+            onFocusBranch={handleFocusBranch}
+            allMessages={localMessages}
+            animateMessageId={animateMessageId}
+          />
+        ))
+      )}
     </div>
   );
 }
@@ -135,7 +223,7 @@ export function CommentTree({
 interface CommentNodeProps {
   node: MessageNode;
   depth: number;
-  sectionId: string;
+  threadId: string;
   currentUser: {
     id: string;
     name: string | null;
@@ -147,13 +235,15 @@ interface CommentNodeProps {
   onCancelReply: () => void;
   onToggleCollapse: (messageId: string) => void;
   onMessagePosted: (message: Message) => void;
+  onFocusBranch: (messageId: string) => void;
   allMessages: Message[];
+  animateMessageId: string | null;
 }
 
 function CommentNode({
   node,
   depth,
-  sectionId,
+  threadId,
   currentUser,
   activeReplyId,
   collapsedIds,
@@ -161,7 +251,9 @@ function CommentNode({
   onCancelReply,
   onToggleCollapse,
   onMessagePosted,
+  onFocusBranch,
   allMessages,
+  animateMessageId,
 }: CommentNodeProps) {
   const [appealOpen, setAppealOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -175,6 +267,7 @@ function CommentNode({
   const isDeleted = !!node.deletedAt;
   const beyondDepthLimit = depth >= MAX_VISUAL_DEPTH;
   const descendantCount = countDescendants(node);
+  const shouldAnimate = animateMessageId === node.id;
 
   // Parent reference for "Replying to" context
   const parentMessage = node.parentId
@@ -183,7 +276,9 @@ function CommentNode({
 
   return (
     <div
-      className="relative group/branch"
+      className={`relative group/branch ${
+        shouldAnimate ? "animate-in slide-in-from-top-1 fade-in duration-200" : ""
+      }`}
       style={{ marginLeft: depth > 0 ? `${INDENT_PX}px` : 0 }}
     >
       {/* Left border line — clickable to collapse */}
@@ -254,10 +349,7 @@ function CommentNode({
                   <span className="text-amber-500 text-[10px]">📌</span>
                 )}
                 <span className="text-[11px] text-muted-foreground/60 font-medium">
-                  {formatDistanceToNow(new Date(node.createdAt), {
-                    addSuffix: false,
-                  })}{" "}
-                  ago
+                  <TimeAgo date={node.createdAt} />
                 </span>
                 {node.isEdited && (
                   <span className="text-[10px] text-muted-foreground/50">
@@ -292,7 +384,7 @@ function CommentNode({
                     );
 
                     const result = await toggleReaction(node.id, "👍");
-                    if (result && "error" in result) {
+                    if (result?.error) {
                       setIsLiked(wasLiked);
                       setLikeCount((prev) =>
                         wasLiked ? prev + 1 : Math.max(0, prev - 1),
@@ -329,10 +421,7 @@ function CommentNode({
 
                 {beyondDepthLimit && hasChildren && (
                   <button
-                    onClick={() => {
-                      // TODO: Open focused thread view
-                      toast.info("Continue thread view coming soon");
-                    }}
+                    onClick={() => onFocusBranch(node.id)}
                     className="flex items-center gap-1 text-indigo-500 hover:text-indigo-600 transition-colors"
                   >
                     <span className="text-[11px] font-medium">
@@ -367,9 +456,9 @@ function CommentNode({
       {isShowingReplyBox && !beyondDepthLimit && (
         <InlineReplyBox
           parentMessage={node}
-          sectionId={sectionId}
+          threadId={threadId}
           currentUser={currentUser}
-          depth={depth + 1}
+          visualDepth={depth + 1}
           onCancel={onCancelReply}
           onMessagePosted={onMessagePosted}
         />
@@ -384,9 +473,9 @@ function CommentNode({
                      text-[11px] font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-950/50
                      transition-colors cursor-pointer select-none"
         >
-          <Plus size={11} />
           <span>
-            {descendantCount} {descendantCount === 1 ? "reply" : "replies"}
+            [+] {descendantCount}{" "}
+            {descendantCount === 1 ? "reply" : "replies"}
           </span>
         </button>
       )}
@@ -404,7 +493,7 @@ function CommentNode({
               key={child.id}
               node={child}
               depth={depth + 1}
-              sectionId={sectionId}
+              threadId={threadId}
               currentUser={currentUser}
               activeReplyId={activeReplyId}
               collapsedIds={collapsedIds}
@@ -412,7 +501,9 @@ function CommentNode({
               onCancelReply={onCancelReply}
               onToggleCollapse={onToggleCollapse}
               onMessagePosted={onMessagePosted}
+              onFocusBranch={onFocusBranch}
               allMessages={allMessages}
+              animateMessageId={animateMessageId}
             />
           ))}
         </div>
@@ -422,7 +513,7 @@ function CommentNode({
       {beyondDepthLimit && hasChildren && (
         <div className="mt-1 ml-4">
           <button
-            onClick={() => toast.info("Continue thread view coming soon")}
+            onClick={() => onFocusBranch(node.id)}
             className="flex items-center gap-1.5 text-[12px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors"
           >
             <span>Continue this thread →</span>
@@ -450,7 +541,7 @@ function DeletedMessagePlaceholder() {
         </AvatarFallback>
       </Avatar>
       <span className="text-sm text-muted-foreground italic">
-        [This message was removed]
+        This message was removed
       </span>
     </div>
   );
@@ -460,22 +551,22 @@ function DeletedMessagePlaceholder() {
 
 interface InlineReplyBoxProps {
   parentMessage: MessageNode;
-  sectionId: string;
+  threadId: string;
   currentUser: {
     id: string;
     name: string | null;
     image: string | null;
   };
-  depth: number;
+  visualDepth: number;
   onCancel: () => void;
   onMessagePosted: (message: Message) => void;
 }
 
 function InlineReplyBox({
   parentMessage,
-  sectionId,
+  threadId,
   currentUser,
-  depth,
+  visualDepth,
   onCancel,
   onMessagePosted,
 }: InlineReplyBoxProps) {
@@ -484,6 +575,7 @@ function InlineReplyBox({
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
+  const replyDepth = Math.min(parentMessage.depth + 1, MAX_VISUAL_DEPTH);
 
   // Auto-focus textarea when reply box opens
   useEffect(() => {
@@ -500,23 +592,24 @@ function InlineReplyBox({
 
     const formData = new FormData();
     formData.append("content", content);
-    formData.append("sectionId", sectionId);
+    formData.append("sectionId", threadId);
     formData.append("parentId", parentMessage.id);
+    formData.append("depth", String(replyDepth));
 
     const result = await postMessage(formData);
     setIsSubmitting(false);
 
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       setError(result.error);
-    } else if (result && "success" in result && result.success) {
-      const data = result.data;
+    } else if (result?.data?.message) {
+      const data = result.data.message;
       const newMsg: Message = {
         id: data?.id ?? crypto.randomUUID(),
         content: data?.content ?? content,
-        sectionId: data?.sectionId ?? sectionId,
+        sectionId: data?.sectionId ?? threadId,
         senderId: data?.senderId ?? currentUser.id,
         parentId: parentMessage.id,
-        depth: Math.min(depth, MAX_VISUAL_DEPTH),
+        depth: data?.depth ?? replyDepth,
         isEdited: false,
         isPinned: false,
         likeCount: 0,
@@ -542,7 +635,7 @@ function InlineReplyBox({
               name: data.section.name,
               slug: data.section.slug,
             }
-          : { id: sectionId, name: "", slug: "" },
+          : { id: threadId, name: "", slug: "" },
         attachments:
           data?.attachments?.map(
             (att: {
@@ -570,7 +663,7 @@ function InlineReplyBox({
   return (
     <div
       className="mt-2 animate-in slide-in-from-top-1 fade-in duration-200"
-      style={{ marginLeft: `${INDENT_PX}px` }}
+      style={{ marginLeft: visualDepth > 0 ? `${INDENT_PX}px` : 0 }}
     >
       <div className="border border-indigo-200/50 dark:border-indigo-800/30 rounded-xl p-3 bg-indigo-50/30 dark:bg-indigo-950/10">
         {/* "Replying to @username" header */}

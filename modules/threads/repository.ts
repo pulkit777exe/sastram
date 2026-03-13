@@ -8,6 +8,7 @@ import type {
 } from "./types";
 import { SectionRole } from "@prisma/client";
 import { buildThreadDTO, buildThreadDetailDTO } from "./service";
+import { dedupe } from "@/lib/dedupe";
 
 type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
   include: {
@@ -69,43 +70,48 @@ export async function listThreads(
   const { page = 1, pageSize = 10, sortBy = "recent" } = params;
   const skip = (page - 1) * pageSize;
 
-  const totalItems = await prisma.section.count();
-
-  const threads = await prisma.section.findMany({
-    where: {},
-    include: {
-      community: true,
-      messages: {
-        where: {
-          deletedAt: null,
-          createdAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          },
-        },
-        select: {
-          senderId: true,
-          createdAt: true,
-        },
-      },
-      _count: {
-        select: {
-          messages: {
-            where: {
-              deletedAt: null,
+  const [totalItems, threads] = await dedupe(
+    `threads:list:${page}:${pageSize}:${sortBy}`,
+    () =>
+      Promise.all([
+        prisma.section.count(),
+        prisma.section.findMany({
+          where: {},
+          include: {
+            community: true,
+            messages: {
+              where: {
+                deletedAt: null,
+                createdAt: {
+                  gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+                },
+              },
+              select: {
+                senderId: true,
+                createdAt: true,
+              },
+            },
+            _count: {
+              select: {
+                messages: {
+                  where: {
+                    deletedAt: null,
+                  },
+                },
+              },
             },
           },
-        },
-      },
-    },
-    orderBy:
-      sortBy === "oldest"
-        ? { createdAt: "asc" }
-        : sortBy === "popular"
-          ? { messageCount: "desc" }
-          : { updatedAt: "desc" },
-    skip,
-    take: pageSize,
-  });
+          orderBy:
+            sortBy === "oldest"
+              ? { createdAt: "asc" }
+              : sortBy === "popular"
+                ? { messageCount: "desc" }
+                : { updatedAt: "desc" },
+          skip,
+          take: pageSize,
+        }),
+      ]),
+  );
 
   let mappedThreads = threads.map((thread: SectionWithCommunityAndCount) => {
     const uniqueActiveUsers = new Set(thread.messages.map((m) => m.senderId));
@@ -142,41 +148,43 @@ export async function listThreads(
 export async function getThreadBySlug(
   slug: string,
 ): Promise<ThreadDetail | null> {
-  const record = await prisma.section.findFirst({
-    where: {
-      slug,
-    },
-    include: {
-      community: true,
-      messages: {
-        // Fetch ALL messages including soft-deleted — deleted messages
-        // must stay in tree to preserve child reply structure
-        include: {
-          sender: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
-          },
-          attachments: true,
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
+  const record = await dedupe(`threads:bySlug:${slug}`, () =>
+    prisma.section.findFirst({
+      where: {
+        slug,
       },
-      subscriptions: true,
-      _count: {
-        select: {
-          messages: {
-            where: {
-              deletedAt: null,
+      include: {
+        community: true,
+        messages: {
+          // Fetch ALL messages including soft-deleted — deleted messages
+          // must stay in tree to preserve child reply structure
+          include: {
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
             },
+            attachments: true,
+          },
+          orderBy: {
+            createdAt: "asc",
           },
         },
+        subscriptions: true,
+        _count: {
+          select: {
+            messages: {
+              where: {
+                deletedAt: null,
+              },
+            },
+          },
+        },
       },
-    },
-  });
+    }),
+  );
 
   if (!record) {
     return null;

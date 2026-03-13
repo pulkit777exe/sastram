@@ -1,6 +1,5 @@
 "use server";
 
-import { handleError } from "@/lib/utils/errors";
 import {
   searchThreads as searchThreadsRepo,
   searchMessages as searchMessagesRepo,
@@ -14,21 +13,26 @@ const searchSchema = z.object({
   offset: z.number().int().nonnegative().optional().default(0),
 });
 
-export async function searchThreadsAction(query: string, limit?: number, offset?: number) {
-  const validation = searchSchema.safeParse({ query, limit, offset });
-  if (!validation.success) {
-    return { error: "Invalid search parameters" };
+export async function searchThreadsAction(
+  query: string,
+  limit?: number,
+  offset?: number,
+) {
+  const parsed = searchSchema.safeParse({ query, limit, offset });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
     const result = await searchThreadsRepo(
-      validation.data.query,
-      validation.data.limit,
-      validation.data.offset
+      parsed.data.query,
+      parsed.data.limit,
+      parsed.data.offset,
     );
-    return { success: true, data: result };
+    return { data: result, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[searchThreadsAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
@@ -36,41 +40,46 @@ export async function searchMessagesAction(
   query: string,
   threadId?: string,
   limit?: number,
-  offset?: number
+  offset?: number,
 ) {
-  const validation = searchSchema.safeParse({ query, limit, offset });
-  if (!validation.success) {
-    return { error: "Invalid search parameters" };
+  const parsed = searchSchema.safeParse({ query, limit, offset });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
     const result = await searchMessagesRepo(
-      validation.data.query,
+      parsed.data.query,
       threadId,
-      validation.data.limit,
-      validation.data.offset
+      parsed.data.limit,
+      parsed.data.offset,
     );
-    return { success: true, data: result };
+    return { data: result, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[searchMessagesAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
-export async function searchUsersAction(query: string, limit?: number, offset?: number) {
-  const validation = searchSchema.safeParse({ query, limit, offset });
-  if (!validation.success) {
-    return { error: "Invalid search parameters" };
+export async function searchUsersAction(
+  query: string,
+  limit?: number,
+  offset?: number,
+) {
+  const parsed = searchSchema.safeParse({ query, limit, offset });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
     const result = await searchUsersRepo(
-      validation.data.query,
-      validation.data.limit,
-      validation.data.offset
+      parsed.data.query,
+      parsed.data.limit,
+      parsed.data.offset,
     );
-    return { success: true, data: result };
+    return { data: result, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[searchUsersAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
-

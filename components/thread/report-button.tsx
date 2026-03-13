@@ -63,12 +63,12 @@ export function ReportButton({
     });
     setIsSubmitting(false);
 
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else if (result?.data) {
       setSubmitted(true);
-      setReportId(result.reportId);
-      toast.success(result.message || "Report submitted successfully");
+      setReportId(result.data.reportId);
+      toast.success(result.data.message || "Report submitted successfully");
     }
   }
 

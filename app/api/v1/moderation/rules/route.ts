@@ -1,23 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/infrastructure/prisma";
 import { requireModerator, requireAdmin } from "@/lib/middleware/moderation";
 import { ok, fail } from "@/lib/http/api-response";
+
+// In-memory storage for moderation rules (will be replaced with database implementation later)
+let rules = [
+  {
+    id: "1",
+    pattern: "\\b(spam|junk)\\b",
+    category: "spam",
+    action: "BLOCK",
+    severity: "HIGH",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "2",
+    pattern: "\\b(hate|discrimination)\\b",
+    category: "harassment",
+    action: "BLOCK",
+    severity: "HIGH",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
 
 export async function GET() {
   try {
     await requireModerator();
+    return NextResponse.json(ok({ rules }));
   } catch {
     return NextResponse.json(
       fail("AUTH_REQUIRED", "Moderator access required"),
       { status: 403 }
     );
   }
-
-  const rules = await prisma.contentSafetyRule.findMany({
-    orderBy: { createdAt: "desc" },
-  });
-
-  return NextResponse.json(ok({ rules }));
 }
 
 export async function POST(request: NextRequest) {
@@ -32,18 +48,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rule = await prisma.contentSafetyRule.create({
-      data: {
-        pattern: body.pattern,
-        category: body.category,
-        action: body.action,
-        severity: body.severity ?? "MEDIUM",
-        createdBy: session.user.id,
-        metadata: body.metadata,
-      },
-    });
+    const newRule = {
+      id: Date.now().toString(),
+      ...body,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
-    return NextResponse.json(ok({ rule }));
+    rules.push(newRule);
+    return NextResponse.json(ok({ rule: newRule }));
   } catch (error) {
     return NextResponse.json(
       fail("INTERNAL_ERROR", "Failed to create rule", error),
@@ -64,18 +77,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const rule = await prisma.contentSafetyRule.update({
-      where: { id: body.id },
-      data: {
-        pattern: body.pattern,
-        category: body.category,
-        action: body.action,
-        severity: body.severity,
-        metadata: body.metadata,
-      },
-    });
+    const ruleIndex = rules.findIndex((r) => r.id === body.id);
+    if (ruleIndex === -1) {
+      return NextResponse.json(
+        fail("NOT_FOUND", "Rule not found"),
+        { status: 404 }
+      );
+    }
 
-    return NextResponse.json(ok({ rule }));
+    rules[ruleIndex] = {
+      ...rules[ruleIndex],
+      ...body,
+      updatedAt: new Date(),
+    };
+
+    return NextResponse.json(ok({ rule: rules[ruleIndex] }));
   } catch (error) {
     return NextResponse.json(
       fail("INTERNAL_ERROR", "Failed to update rule", error),
@@ -96,10 +112,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.contentSafetyRule.delete({
-      where: { id: body.id },
-    });
+    const ruleIndex = rules.findIndex((r) => r.id === body.id);
+    if (ruleIndex === -1) {
+      return NextResponse.json(
+        fail("NOT_FOUND", "Rule not found"),
+        { status: 404 }
+      );
+    }
 
+    rules.splice(ruleIndex, 1);
     return NextResponse.json(ok({ success: true }));
   } catch (error) {
     return NextResponse.json(
@@ -108,4 +129,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-

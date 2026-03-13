@@ -1,19 +1,22 @@
-import { requireSession, assertAdmin } from "@/modules/auth/session";
+import { assertAdmin } from "@/modules/auth/session";
+import { useSession } from "@/lib/session-context";
 import { getReports } from "@/modules/reports/actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flag, CheckCircle, Eye } from "lucide-react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import { ReportActions } from "@/components/admin/report-actions";
 import { Report } from "@/modules/reports";
 import { cn } from "@/lib/utils/cn";
 
 export default async function ReportsPage() {
-  const session = await requireSession();
+  const session = useSession();
+  if (!session) return null;
   assertAdmin(session.user);
 
-  const reports = await getReports();
+  const reportsResult = await getReports();
+  const reports = reportsResult.data ?? [];
 
   const pendingReports = reports.filter((r) => r.status === "PENDING");
   const resolvedReports = reports.filter(
@@ -139,9 +142,7 @@ function ReportCard({ report }: { report: Report }) {
                 {report.status}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(report.createdAt), {
-                  addSuffix: true,
-                })}
+                <TimeAgo date={report.createdAt} />
               </span>
             </div>
             <p className="text-sm text-foreground/80 mb-4">{report.status}</p>
@@ -180,11 +181,11 @@ function ReportCard({ report }: { report: Report }) {
 
         {report.status === "PENDING" && <ReportActions reportId={report.id} />}
 
-        {report.resolver && (
+        {report.resolvedBy && (
           <div className="mt-4 pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground">
-              Resolved by {report.resolver.name || report.resolver.email} on{" "}
-              {new Date(report.resolvedAt!).toLocaleDateString()}
+              Resolved by {report.resolvedBy} on{" "}
+              <TimeAgo date={report.updatedAt} />
             </p>
           </div>
         )}

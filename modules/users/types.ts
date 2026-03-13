@@ -11,7 +11,6 @@ export interface UserProfile {
   website: string | null;
   twitter: string | null;
   github: string | null;
-  linkedin: string | null;
   image: string | null;
   avatarUrl: string | null;
   bannerUrl: string | null;

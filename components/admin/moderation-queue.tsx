@@ -19,7 +19,7 @@ import {
   Filter,
   Zap,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils/cn";
 import { REPORT_CATEGORY_LABELS } from "@/lib/config/constants";
 import type { ReportStats, ReportQueueItem } from "@/modules/reports/types";
@@ -125,8 +125,6 @@ export function ModerationQueue({
           </Card>
         ) : (
           reports.map((report) => {
-            const config = priorityConfig[report.priority];
-            const PriorityIcon = config.icon;
 
             return (
               <Card
@@ -139,23 +137,10 @@ export function ModerationQueue({
                 onClick={() => onSelectReport(report.id)}
               >
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div
-                        className={cn(
-                          "p-2 rounded-lg",
-                          config.color.split(" ")[0]
-                        )}
-                      >
-                        <PriorityIcon
-                          className={cn("w-4 h-4", config.iconColor)}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge className={cn("text-xs", config.color)}>
-                            {config.label}
-                          </Badge>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
                           <Badge
                             variant="outline"
                             className="text-xs border-border"
@@ -184,9 +169,7 @@ export function ModerationQueue({
                           <span>{report.message.section.name}</span>
                           <span>•</span>
                           <span>
-                            {formatDistanceToNow(new Date(report.createdAt), {
-                              addSuffix: true,
-                            })}
+                            <TimeAgo date={report.createdAt} />
                           </span>
                         </div>
                       </div>

@@ -13,30 +13,58 @@ const MAX_DEPTH = 4;
 export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
   const nodeMap = new Map<string, MessageNode>();
   const roots: MessageNode[] = [];
+  const pendingChildren = new Map<string, MessageNode[]>();
 
-  // First pass: create all nodes
+  // Single pass: create nodes and attach to parents (or queue until parent arrives)
   for (const msg of flatMessages) {
-    const node: MessageNode = {
-      ...msg,
-      children: [],
-      isCollapsed: false,
-      likeCount: (msg as MessageNode).likeCount ?? 0,
-      replyCount: (msg as MessageNode).replyCount ?? 0,
-      isAiResponse: (msg as MessageNode).isAiResponse ?? false,
-    };
-    nodeMap.set(msg.id, node);
-  }
-
-  // Second pass: link children to parents
-  for (const msg of flatMessages) {
-    const node = nodeMap.get(msg.id)!;
-    if (msg.parentId && nodeMap.has(msg.parentId)) {
-      const parent = nodeMap.get(msg.parentId)!;
-      parent.children.push(node);
+    let node = nodeMap.get(msg.id);
+    if (node) {
+      Object.assign(node, msg, {
+        isCollapsed: node.isCollapsed ?? false,
+        likeCount: (msg as MessageNode).likeCount ?? node.likeCount ?? 0,
+        replyCount: (msg as MessageNode).replyCount ?? node.replyCount ?? 0,
+        isAiResponse:
+          (msg as MessageNode).isAiResponse ?? node.isAiResponse ?? false,
+        children: node.children ?? [],
+      });
     } else {
-      // Root message (no parent, or parent not in this set)
+      node = {
+        ...msg,
+        children: [],
+        isCollapsed: false,
+        likeCount: (msg as MessageNode).likeCount ?? 0,
+        replyCount: (msg as MessageNode).replyCount ?? 0,
+        isAiResponse: (msg as MessageNode).isAiResponse ?? false,
+      };
+      nodeMap.set(msg.id, node);
+    }
+
+    const queued = pendingChildren.get(msg.id);
+    if (queued && queued.length > 0) {
+      node.children.push(...queued);
+      pendingChildren.delete(msg.id);
+    }
+
+    if (msg.parentId) {
+      const parent = nodeMap.get(msg.parentId);
+      if (parent) {
+        parent.children.push(node);
+      } else {
+        const list = pendingChildren.get(msg.parentId);
+        if (list) {
+          list.push(node);
+        } else {
+          pendingChildren.set(msg.parentId, [node]);
+        }
+      }
+    } else {
       roots.push(node);
     }
+  }
+
+  // Attach any children whose parents were missing from this list.
+  for (const orphaned of pendingChildren.values()) {
+    roots.push(...orphaned);
   }
 
   // Sort children by createdAt within each parent
@@ -76,18 +104,18 @@ export function isBeyondDepthLimit(depth: number): boolean {
 /**
  * Get the collapse state key for localStorage persistence.
  */
-export function getCollapseKey(sectionId: string, messageId: string): string {
-  return `thread-collapse:${sectionId}:${messageId}`;
+export function getCollapseKey(threadId: string, messageId: string): string {
+  return `thread-collapse:${threadId}:${messageId}`;
 }
 
 /**
  * Load collapse states from localStorage for a given thread.
  */
-export function loadCollapseStates(sectionId: string): Map<string, boolean> {
+export function loadCollapseStates(threadId: string): Map<string, boolean> {
   const states = new Map<string, boolean>();
   if (typeof window === "undefined") return states;
 
-  const prefix = `thread-collapse:${sectionId}:`;
+  const prefix = `thread-collapse:${threadId}:`;
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key && key.startsWith(prefix)) {
@@ -102,12 +130,12 @@ export function loadCollapseStates(sectionId: string): Map<string, boolean> {
  * Save a collapse state to localStorage.
  */
 export function saveCollapseState(
-  sectionId: string,
+  threadId: string,
   messageId: string,
   collapsed: boolean,
 ): void {
   if (typeof window === "undefined") return;
-  const key = getCollapseKey(sectionId, messageId);
+  const key = getCollapseKey(threadId, messageId);
   if (collapsed) {
     localStorage.setItem(key, "true");
   } else {

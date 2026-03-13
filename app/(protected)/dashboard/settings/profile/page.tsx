@@ -1,12 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { requireSession, isAdmin } from "@/modules/auth/session";
+import { isAdmin } from "@/modules/auth/session";
+import { useSession } from "@/lib/session-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Settings } from "lucide-react";
 
 export default async function ProfilePage() {
-  const session = await requireSession();
+  const session = useSession();
+  if (!session) return null;
   const user = session.user;
 
   return (
@@ -74,4 +76,3 @@ export default async function ProfilePage() {
     </div>
   );
 }
-

@@ -5,26 +5,25 @@ import { auth } from "@/lib/services/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { filterBadLanguage } from "@/lib/services/content-safety";
-import { emitThreadMessage } from "@/modules/ws/publisher";
+import { emitThreadMessage, emitMentionNotification } from "@/modules/ws/publisher";
 import { createMessageWithAttachmentsSchema } from "@/lib/schemas/database";
 import { messageLimiter } from "@/lib/services/rate-limit";
 import { MessageService } from "@/lib/services/moderation";
 import { getMemberRole } from "@/modules/members/repository";
 import { logAction } from "@/modules/audit/repository";
-import { handleError } from "@/lib/utils/errors";
-import { validate } from "@/lib/utils/validation";
 import {
   editMessageSchema,
   pinMessageSchema,
   getMessageEditHistorySchema,
 } from "./schemas";
-import { AuditAction } from "@prisma/client";
+
 import { parseMentions, resolveUserMentions } from "@/lib/utils/mention-parser";
 import { sendMentionNotification } from "@/lib/services/email";
 import { recordActivity } from "@/modules/activity/repository";
 
-function handleActionError(error: unknown) {
-  return handleError(error);
+function handleActionError(actionName: string, error: unknown) {
+  console.error(`[${actionName}]`, error);
+  return { data: null, error: "Something went wrong" };
 }
 
 export async function postMessage(formData: FormData) {
@@ -67,7 +66,8 @@ export async function postMessage(formData: FormData) {
 
   if (!validation.success) {
     return {
-      error: validation.error.issues[0]?.message || "Invalid message data",
+      data: null,
+      error: "Invalid input",
     };
   }
 
@@ -76,14 +76,14 @@ export async function postMessage(formData: FormData) {
   });
 
   if (!session?.user) {
-    return { error: "Unauthorized" };
+    return { data: null, error: "Something went wrong" };
   }
 
   // Rate limiting
   try {
     await messageLimiter.check(session.user.id);
   } catch {
-    return { error: "Rate limit exceeded. Please slow down." };
+    return { data: null, error: "Rate limit exceeded. Please slow down." };
   }
 
   // Content filtering
@@ -141,8 +141,8 @@ export async function postMessage(formData: FormData) {
 
     if (!result.success) {
       return {
+        data: { pendingModeration: result.pendingModeration ?? null },
         error: result.reason || "Message blocked by content filter",
-        pendingModeration: result.pendingModeration,
       };
     }
 
@@ -192,6 +192,16 @@ export async function postMessage(formData: FormData) {
             },
           },
         });
+
+        emitMentionNotification(sectionId, {
+          messageId: message.id,
+          mentionedUserId: userId,
+          mentionedBy: session.user.id,
+          mentionedByName: session.user.name || session.user.email,
+          sectionId,
+          content: message.content,
+          parentId: message.parentId ?? undefined,
+        });
       }
     }
 
@@ -240,12 +250,17 @@ export async function postMessage(formData: FormData) {
       likeCount: 0,
       replyCount: 0,
       isAiResponse: false,
+      reactions: [],
+      attachments: message.attachments.map((att) => ({
+        id: att.id,
+        url: att.url,
+        type: att.type,
+        name: att.name,
+        size: att.size !== null ? Number(att.size) : null,
+      })),
     };
 
-    emitThreadMessage(sectionId, {
-      type: "NEW_MESSAGE",
-      payload,
-    });
+    emitThreadMessage(sectionId, payload);
 
     if (message.section?.slug) {
       revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
@@ -265,12 +280,14 @@ export async function postMessage(formData: FormData) {
     });
 
     return {
-      success: true,
-      data: message,
-      pendingModeration: result.pendingModeration,
+      data: {
+        message,
+        pendingModeration: result.pendingModeration,
+      },
+      error: null,
     };
   } catch (error) {
-    return handleActionError(error);
+    return handleActionError("postMessage", error);
   }
 }
 
@@ -280,12 +297,12 @@ export async function editMessage(messageId: string, content: string) {
   });
 
   if (!session?.user) {
-    return { error: "Unauthorized" };
+    return { data: null, error: "Something went wrong" };
   }
 
-  const validation = validate(editMessageSchema, { messageId, content });
+  const validation = editMessageSchema.safeParse({ messageId, content });
   if (!validation.success) {
-    return { error: validation.error };
+    return { data: null, error: "Invalid input" };
   }
 
   try {
@@ -296,11 +313,11 @@ export async function editMessage(messageId: string, content: string) {
     });
 
     if (!message) {
-      return { error: "Message not found" };
+      return { data: null, error: "Message not found" };
     }
 
     if (message.senderId !== session.user.id) {
-      return { error: "You can only edit your own messages" };
+      return { data: null, error: "You can only edit your own messages" };
     }
 
     // Save edit history
@@ -322,9 +339,9 @@ export async function editMessage(messageId: string, content: string) {
     });
 
     revalidatePath("/dashboard/threads");
-    return { success: true };
+    return { data: null, error: null };
   } catch (error) {
-    return handleActionError(error);
+    return handleActionError("editMessage", error);
   }
 }
 
@@ -334,12 +351,12 @@ export async function pinMessage(messageId: string) {
   });
 
   if (!session?.user) {
-    return { error: "Unauthorized" };
+    return { data: null, error: "Something went wrong" };
   }
 
-  const validation = validate(pinMessageSchema, { messageId });
+  const validation = pinMessageSchema.safeParse({ messageId });
   if (!validation.success) {
-    return { error: validation.error };
+    return { data: null, error: "Invalid input" };
   }
 
   try {
@@ -355,7 +372,7 @@ export async function pinMessage(messageId: string) {
     });
 
     if (!message) {
-      return { error: "Message not found" };
+      return { data: null, error: "Message not found" };
     }
 
     // Check if user has permission (moderator or owner)
@@ -363,6 +380,7 @@ export async function pinMessage(messageId: string) {
 
     if (!memberRole || !["OWNER", "MODERATOR"].includes(memberRole.role)) {
       return {
+        data: null,
         error:
           "Insufficient permissions. Only moderators and owners can pin messages.",
       };
@@ -375,36 +393,36 @@ export async function pinMessage(messageId: string) {
 
     await logAction({
       action: message.isPinned
-        ? AuditAction.MESSAGE_UPDATED
-        : AuditAction.MESSAGE_UPDATED,
+        ? "MESSAGE_UPDATED"
+        : "MESSAGE_UPDATED",
       entityType: "Message",
       entityId: messageId,
-      performedBy: session.user.id,
+      userId: session.user.id,
     });
 
     revalidatePath(`/dashboard/threads/thread/${message.section?.slug}`);
-    return { success: true };
+    return { data: null, error: null };
   } catch (error) {
-    return handleActionError(error);
+    return handleActionError("pinMessage", error);
   }
 }
 
 export async function getMessageEditHistory(messageId: string) {
-  const validation = validate(getMessageEditHistorySchema, { messageId });
+  const validation = getMessageEditHistorySchema.safeParse({ messageId });
   if (!validation.success) {
-    return { error: validation.error };
+    return { data: null, error: "Invalid input" };
   }
 
   try {
     const edits = await prisma.messageEdit.findMany({
-      where: { messageId },
+      where: { messageId: validation.data.messageId },
       orderBy: {
         editedAt: "desc",
       },
     });
 
-    return { success: true, data: edits };
+    return { data: edits, error: null };
   } catch (error) {
-    return handleActionError(error);
+    return handleActionError("getMessageEditHistory", error);
   }
 }

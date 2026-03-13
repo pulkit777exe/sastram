@@ -1,25 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 
 interface TimeAgoProps {
   date: Date | string;
 }
 
-export default function TimeAgo({ date }: TimeAgoProps) {
-  const value = useMemo(
-    () =>
-      formatDistanceToNow(typeof date === "string" ? new Date(date) : date, {
-        addSuffix: true,
-      }),
-    [date],
-  );
-
+export default function ThreadTimeAgo({ date }: TimeAgoProps) {
   return (
-    <span className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.08em] text-muted">
-      {value}
-    </span>
+    <TimeAgo
+      date={date}
+      className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.08em] text-muted"
+    />
   );
 }
-

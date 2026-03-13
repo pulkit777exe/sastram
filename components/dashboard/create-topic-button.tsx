@@ -29,9 +29,9 @@ export function CreateTopicButton() {
     const result = await createTopic(formData);
     setLoading(false);
 
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else {
       toast.success("Topic created successfully!");
       setOpen(false);
       router.refresh();

@@ -49,7 +49,6 @@ export function ModerationDashboard({
   const queueItems: ReportQueueItem[] = initialReports.map((r) => ({
     id: r.id,
     category: r.category,
-    priority: r.priority,
     status: r.status,
     createdAt: r.createdAt,
     reportCount: 1,
@@ -74,9 +73,9 @@ export function ModerationDashboard({
 
     const result = await getReportWithContext(reportId);
 
-    if (result && "success" in result && result.data) {
+    if (result?.data) {
       setSelectedReport(result.data as unknown as ReportWithContext);
-    } else if (result && "error" in result) {
+    } else if (result?.error) {
       toast.error(result.error);
     }
 
@@ -160,18 +159,7 @@ export function ModerationDashboard({
             <>
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-foreground">
-                  Report Review: #{selectedReport.id.slice(-6).toUpperCase()} -{" "}
-                  <span
-                    className={
-                      selectedReport.priority === "CRITICAL"
-                        ? "text-red-400"
-                        : selectedReport.priority === "HIGH"
-                        ? "text-orange-400"
-                        : "text-foreground"
-                    }
-                  >
-                    {selectedReport.priority} PRIORITY
-                  </span>
+                  Report Review: #{selectedReport.id.slice(-6).toUpperCase()}
                 </h2>
               </div>
               <ReportReviewPanel

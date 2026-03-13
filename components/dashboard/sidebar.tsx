@@ -51,6 +51,7 @@ export function Sidebar({
   const hideTimeout = useRef<number | null>(null);
 
   const clearHideTimeout = () => {
+    if (typeof window === "undefined") return;
     if (hideTimeout.current) {
       window.clearTimeout(hideTimeout.current);
       hideTimeout.current = null;
@@ -66,6 +67,7 @@ export function Sidebar({
 
   const handleMouseLeave = () => {
     clearHideTimeout();
+    if (typeof window === "undefined") return;
     hideTimeout.current = window.setTimeout(() => {
       setShowProfileMenu(false);
       hideTimeout.current = null;

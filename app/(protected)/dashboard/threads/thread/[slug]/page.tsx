@@ -12,16 +12,12 @@ import {
   Activity,
 } from "lucide-react";
 import type { Message } from "@/lib/types/index";
-import { requireSession, isAdmin } from "@/modules/auth/session";
-import { getThreadBySlug } from "@/modules/threads/repository";
+import { isAdmin } from "@/modules/auth/session";
+import { useSession } from "@/lib/session-context";
+import { getThreadWithFullContext } from "@/modules/threads";
 import { subscribeToThreadAction } from "@/modules/newsletter/actions";
-import { isUserSubscribedToThread } from "@/modules/newsletter/repository";
-import type {
-  MessageWithDetails,
-  AttachmentInfo,
-} from "@/modules/threads/types";
 import Link from "next/link";
-import { format } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import { ThreadManagementControls } from "@/components/thread/thread-management-controls";
 import { ThreadSummaryCard } from "@/components/thread/thread-summary-card";
 
@@ -31,57 +27,53 @@ export default async function ThreadPage({
   params: { slug: string };
 }) {
   const { slug } = await params;
-  const session = await requireSession();
-  const thread = await getThreadBySlug(slug);
+  const session = useSession();
+  if (!session) return null;
+  const thread = await getThreadWithFullContext(slug, session.user.id);
 
   if (!thread) notFound();
 
-  const subscribed = await isUserSubscribedToThread(thread.id, session.user.id);
-  const subscribeAction = subscribeToThreadAction.bind(null, {
-    threadId: thread.id,
-    slug: thread.slug,
-  });
+  const subscribeAction = async () => {
+    "use server";
+    await subscribeToThreadAction({
+      threadId: thread.id,
+      slug: thread.slug,
+    });
+  };
 
-  const allMessages: Message[] = thread.messages.map(
-    (m: MessageWithDetails) => ({
-      id: m.id,
-      content: m.content,
-      createdAt: m.createdAt,
-      senderId: m.senderId,
-      parentId: m.parentId || null,
-      sectionId: thread.id,
-      depth: m.depth ?? 0,
-      isEdited: m.isEdited ?? false,
-      isPinned: m.isPinned ?? false,
-      likeCount: m.likeCount ?? 0,
-      replyCount: m.replyCount ?? 0,
-      isAiResponse: m.isAiResponse ?? false,
-      updatedAt: m.updatedAt ?? m.createdAt,
-      deletedAt: m.deletedAt ?? null,
-      sender: {
-        id: m.senderId,
-        name: m.sender?.name || "Anonymous",
-        image: m.sender?.avatarUrl || null,
-      },
-      attachments: (m.attachments || []).map((att: AttachmentInfo) => ({
-        id: att.id,
-        name: att.name ?? null,
-        url: att.url,
-        type: att.type,
-        size:
-          (att.size ?? null)
-            ? typeof att.size === "string"
-              ? parseInt(att.size, 10)
-              : Number(att.size)
-            : null,
-      })),
-      section: {
-        id: thread.id,
-        name: thread.name,
-        slug: thread.slug,
-      },
-    }),
-  );
+  const allMessages: Message[] = thread.messages.map((m) => ({
+    id: m.id,
+    content: m.body,
+    createdAt: m.createdAt,
+    senderId: m.senderId,
+    parentId: m.parentId || null,
+    sectionId: thread.id,
+    depth: m.depth ?? 0,
+    isEdited: m.isEdited ?? false,
+    isPinned: m.isPinned ?? false,
+    likeCount: m.likeCount ?? 0,
+    replyCount: m.replyCount ?? 0,
+    isAiResponse: m.isAI ?? false,
+    updatedAt: m.createdAt,
+    deletedAt: m.deletedAt ?? null,
+    sender: {
+      id: m.senderId,
+      name: m.author?.name || "Anonymous",
+      image: m.author?.image || null,
+    },
+    attachments: (m.attachments || []).map((att) => ({
+      id: att.id,
+      name: att.name ?? null,
+      url: att.url,
+      type: att.type,
+      size: att.size ?? null,
+    })),
+    section: {
+      id: thread.id,
+      name: thread.title,
+      slug: thread.slug,
+    },
+  }));
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
@@ -93,7 +85,7 @@ export default async function ThreadPage({
             </div>
             <div className="flex flex-col gap-0.5">
               <h1 className="text-lg font-bold tracking-tight text-foreground">
-                {thread.name}
+                {thread.title}
               </h1>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
@@ -116,7 +108,7 @@ export default async function ThreadPage({
               threadId={thread.id}
               creatorId={thread.createdBy}
               currentUserId={session.user.id}
-              threadName={thread.name}
+              threadName={thread.title}
             />
           </div>
         </header>
@@ -138,7 +130,7 @@ export default async function ThreadPage({
             ) : (
               <CommentTree
                 messages={allMessages}
-                sectionId={thread.id}
+                threadId={thread.id}
                 currentUser={session.user}
               />
             )}
@@ -162,7 +154,7 @@ export default async function ThreadPage({
           </div>
 
           <h2 className="text-xl font-bold mb-3 text-foreground">
-            {thread.name}
+            {thread.title}
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed mb-8">
             {thread.description}
@@ -172,31 +164,31 @@ export default async function ThreadPage({
             <StatCard
               icon={<Users size={16} />}
               label="Members"
-              value={thread.activeUsers}
+              value={thread._count.members}
             />
             <StatCard
               icon={<MessageSquare size={16} />}
               label="Messages"
-              value={thread.messageCount}
+              value={thread._count.messages}
             />
           </div>
 
           <form action={subscribeAction}>
             <ThreadSubscribeButton
-              subscribed={subscribed}
-              threadName={thread.name}
+              subscribed={thread.isSubscribed}
+              threadName={thread.title}
             />
           </form>
 
           <div className="mt-3">
-            <InviteFriendButton threadId={thread.id} threadName={thread.name} />
+            <InviteFriendButton threadId={thread.id} threadName={thread.title} />
           </div>
         </div>
 
         <div className="p-6">
           <ThreadSummaryCard
             threadId={thread.id}
-            initialSummary={thread.summary}
+            initialSummary={thread.aiSummary}
             className="mb-8"
           />
 
@@ -205,7 +197,7 @@ export default async function ThreadPage({
               Created
             </p>
             <p className="text-xs text-zinc-600 font-medium">
-              {format(new Date(thread.createdAt), "MMMM d, yyyy")}
+              <TimeAgo date={thread.createdAt} />
             </p>
           </div>
         </div>

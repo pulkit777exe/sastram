@@ -78,21 +78,33 @@ export async function cacheResult(
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   try {
-    await prisma.aiSearchResult.upsert({
-      where: { queryHash: hash },
-      update: {
-        synthesis: JSON.stringify(result),
-        expiresAt,
-        hitCount: 0,
-      },
-      create: {
-        queryHash: hash,
-        synthesis: JSON.stringify(result),
-        expiresAt,
-        sourceCount: result.sources?.length || 0,
-        conflictFound: false,
-      },
+    // Get or create a single anonymous session for all cache entries
+    let anonymousSession = await prisma.aiSearchSession.findFirst({
+      where: { userId: "anonymous" },
     });
+
+    if (!anonymousSession) {
+      anonymousSession = await prisma.aiSearchSession.create({
+        data: {
+          userId: "anonymous",
+          query: "", // placeholder query
+          queryHash: hashQuery(""), // hash of empty string
+        },
+      });
+    }
+
+     await prisma.aiSearchResult.create({
+       data: {
+         sessionId: anonymousSession.id,
+         queryHash: hash,
+         synthesis: JSON.stringify(result),
+         expiresAt,
+         sourceCount: result.sources?.length || 0,
+         conflictFound: false,
+         confidence: Math.round(result.synthesis.confidence ?? 0),
+         sources: (result.sources ?? []) as unknown as Prisma.InputJsonValue,
+       },
+     });
   } catch {
     // Caching is non-critical, don't crash the request
   }

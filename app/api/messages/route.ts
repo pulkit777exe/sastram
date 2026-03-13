@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(
     {
-      message: result.data,
+      message: 'success' in result ? result.data : null,
     },
     { status: 200 },
   );

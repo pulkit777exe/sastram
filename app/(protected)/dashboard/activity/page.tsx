@@ -11,7 +11,7 @@ import {
   Reply,
 } from "lucide-react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 
 export default async function ActivityPage() {
   const session = await getSession();
@@ -82,9 +82,7 @@ export default async function ActivityPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {formatDistanceToNow(thread.createdAt, {
-                          addSuffix: true,
-                        })}
+                        <TimeAgo date={thread.createdAt} />
                       </span>
                     </div>
                   </Card>
@@ -148,9 +146,7 @@ export default async function ActivityPage() {
                         {message.section.name}
                       </span>
                       <span>
-                        {formatDistanceToNow(message.createdAt, {
-                          addSuffix: true,
-                        })}
+                        <TimeAgo date={message.createdAt} />
                       </span>
                     </div>
                   </Card>

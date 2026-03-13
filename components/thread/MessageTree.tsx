@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { ThreadMessage } from "@/modules/threads/queries";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ThreadMessage,
+  ThreadMessageReactionAggregate,
+} from "@/modules/threads/queries";
 import MessageItem from "./MessageItem";
+import { useBootstrap } from "@/components/bootstrap-provider";
 
 export interface MessageNode extends ThreadMessage {
   children: MessageNode[];
@@ -33,6 +37,22 @@ function buildTree(messages: ThreadMessage[]): MessageNode[] {
   return roots;
 }
 
+function updateReactionCounts(
+  reactions: ThreadMessageReactionAggregate[],
+  reactionType: string,
+  count: number,
+) {
+  const next = reactions.map((reaction) =>
+    reaction.type === reactionType ? { ...reaction, _count: count } : reaction,
+  );
+
+  if (!next.some((reaction) => reaction.type === reactionType) && count > 0) {
+    next.push({ type: reactionType, _count: count });
+  }
+
+  return next.filter((reaction) => reaction._count > 0);
+}
+
 interface MessageTreeProps {
   threadId: string;
   initialMessages: ThreadMessage[];
@@ -45,6 +65,14 @@ export default function MessageTree({
   currentUserId,
 }: MessageTreeProps) {
   const [messages, setMessages] = useState<ThreadMessage[]>(initialMessages);
+  const { incrementNotificationCount } = useBootstrap();
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -60,37 +88,89 @@ export default function MessageTree({
     );
 
     ws.onmessage = (event) => {
-      const payload = JSON.parse(event.data) as
-        | { type: "NEW_MESSAGE"; message: ThreadMessage }
-        | { type: "REACTION_UPDATE"; messageId: string; type: string; count: number }
-        | { type: "AI_RESPONSE_READY"; message: ThreadMessage }
-        | { type: "RESOLUTION_UPDATE"; score: number; breakdown: unknown }
-        | { type: string; [key: string]: unknown };
+      if (!mounted.current) return;
+      const message = JSON.parse(event.data) as {
+        type: string;
+        payload?: Record<string, unknown>;
+      };
 
-      switch (payload.type) {
-        case "NEW_MESSAGE":
+      switch (message.type) {
+        case "NEW_MESSAGE": {
+          const payload = message.payload as {
+            id: string;
+            content: string;
+            senderId: string;
+            senderName?: string | null;
+            senderAvatar?: string | null;
+            createdAt: string | Date;
+            sectionId: string;
+            parentId?: string | null;
+            depth?: number;
+            likeCount?: number;
+            replyCount?: number;
+            isAiResponse?: boolean;
+            reactions?: ThreadMessageReactionAggregate[];
+            attachments?: Array<{
+              id: string;
+              url: string;
+              type: string;
+              name: string | null;
+              size: number | null;
+            }>;
+          };
+          const newMessage: ThreadMessage = {
+            id: payload.id,
+            body: payload.content,
+            sectionId: payload.sectionId,
+            senderId: payload.senderId,
+            parentId: payload.parentId ?? null,
+            depth: payload.depth ?? 0,
+            createdAt: new Date(payload.createdAt),
+            isEdited: false,
+            isPinned: false,
+            isAI: payload.isAiResponse ?? false,
+            deletedAt: null,
+            likeCount: payload.likeCount ?? 0,
+            replyCount: payload.replyCount ?? 0,
+            author: {
+              id: payload.senderId,
+              name: payload.senderName ?? null,
+              image: payload.senderAvatar ?? null,
+            },
+            reactions: payload.reactions ?? [],
+            _count: { replies: payload.replyCount ?? 0 },
+            attachments: payload.attachments ?? [],
+          };
           setMessages((prev) => {
-            if (prev.some((m) => m.id === payload.message.id)) return prev;
-            return [...prev, payload.message];
+            if (prev.some((m) => m.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
           });
           break;
-        case "REACTION_UPDATE":
+        }
+        case "REACTION_UPDATE": {
+          const payload = message.payload as {
+            messageId: string;
+            reactionType: string;
+            count: number;
+          };
           setMessages((prev) =>
             prev.map((m) =>
               m.id === payload.messageId
                 ? {
                     ...m,
-                    reactions: (m.reactions || []).map((r) =>
-                      r.type === payload.type
-                        ? { ...r, _count: payload.count }
-                        : r,
+                    reactions: updateReactionCounts(
+                      m.reactions || [],
+                      payload.reactionType,
+                      payload.count,
                     ),
                   }
                 : m,
             ),
           );
           break;
-        case "AI_RESPONSE_READY":
+        }
+        case "AI_RESPONSE_READY": {
+          const payload = message.payload as { message: ThreadMessage };
           setMessages((prev) => {
             const next = prev.filter(
               (m) => m.body !== payload.message.body || m.isAI,
@@ -99,6 +179,16 @@ export default function MessageTree({
             return [...next, payload.message];
           });
           break;
+        }
+        case "MENTION_NOTIFICATION": {
+          const payload = message.payload as {
+            mentionedUserId?: string;
+          };
+          if (payload?.mentionedUserId === currentUserId) {
+            incrementNotificationCount(1);
+          }
+          break;
+        }
         case "RESOLUTION_UPDATE":
         default:
           break;
@@ -108,7 +198,7 @@ export default function MessageTree({
     return () => {
       ws.close();
     };
-  }, [threadId]);
+  }, [threadId, currentUserId, incrementNotificationCount]);
 
   const tree = useMemo(() => buildTree(messages), [messages]);
 
@@ -182,4 +272,3 @@ function MessageBranch({
     </div>
   );
 }
-

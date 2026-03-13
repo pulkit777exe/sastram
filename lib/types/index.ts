@@ -71,7 +71,8 @@ export type WebSocketEventType =
   | "USER_TYPING"
   | "USER_STOPPED_TYPING"
   | "MESSAGE_QUEUED"
-  | "MENTION_NOTIFICATION";
+  | "MENTION_NOTIFICATION"
+  | "REACTION_UPDATE";
 
 export interface TypingIndicator {
   userId: string;
@@ -135,7 +136,6 @@ export interface ReadReceipt {
 }
 
 export type ActionResponse<T = unknown> = {
-  success: boolean;
-  data?: T;
-  error?: string;
+  data: T | null;
+  error: string | null;
 };

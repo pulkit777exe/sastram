@@ -48,17 +48,17 @@ export function PostMessageForm({
     const result = await postMessage(formData);
     setLoading(false);
   
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else if (result?.data?.message) {
       formRef.current?.reset();
       setSelectedFile(null);
       onCancelReply?.();
       
-      if (result.data && onMessagePosted) {
+      if (onMessagePosted) {
         const transformedMessage = {
-          ...result.data,
-          attachments: result.data.attachments.map(att => ({
+          ...result.data.message,
+          attachments: result.data.message.attachments.map(att => ({
             ...att,
             size: att.size !== null ? Number(att.size) : null,
           })),

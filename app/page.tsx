@@ -1,11 +1,8 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/services/auth";
-import { headers } from "next/headers";
+import { useSession } from "@/lib/session-context";
 
 export default async function Home() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = useSession();
   if (session) {
     redirect("/dashboard");
   }

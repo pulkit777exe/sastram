@@ -1,12 +1,13 @@
 import { Sidebar } from "@/components/dashboard/sidebar";
-import { requireSession } from "@/modules/auth/session";
+import { useSession } from "@/lib/session-context";
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireSession();
+  const session = useSession();
+  if (!session) return null;
 
   return (
     <div className="flex h-screen bg-background p-4 gap-4 overflow-hidden">

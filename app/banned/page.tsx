@@ -1,16 +1,12 @@
-import { requireSession, SessionUser } from "@/modules/auth/session";
+import { useSession } from "@/lib/session-context";
 import { prisma } from "@/lib/infrastructure/prisma";
-import { format } from "date-fns";
 import { redirect } from "next/navigation";
-import { AppealForm } from "@/components/appeals/appeal-form";
+import TimeAgo from "@/components/ui/TimeAgo";
 
 export default async function BannedPage() {
-  const session = await requireSession(false);
-
-  // Use a type guard or direct check. If status is missing from type, we assume runtime object has it.
-  // Casting to any to silence TS error temporarily if type update failed.
-  // Ideally type update should have worked but we are defensive here.
-  const status = (session.user as SessionUser).status;
+  const session = useSession();
+  if (!session) return null;
+  const status = session.user.status;
 
   if (status !== "BANNED" && status !== "SUSPENDED") {
     redirect("/dashboard");
@@ -20,11 +16,6 @@ export default async function BannedPage() {
     where: { userId: session.user.id, isActive: true },
     orderBy: { createdAt: "desc" },
     include: { issuer: { select: { name: true } } },
-  });
-
-  const existingAppeal = await prisma.appeal.findFirst({
-    where: { userId: session.user.id, status: "PENDING" },
-    orderBy: { createdAt: "desc" },
   });
 
   return (
@@ -53,12 +44,12 @@ export default async function BannedPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Date:</span>
-              <span>{format(ban.createdAt, "PPP")}</span>
+              <TimeAgo date={ban.createdAt} />
             </div>
             {ban.expiresAt && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Expires:</span>
-                <span>{format(ban.expiresAt, "PPP")}</span>
+                <TimeAgo date={ban.expiresAt} />
               </div>
             )}
             <div className="flex justify-between">
@@ -66,20 +57,6 @@ export default async function BannedPage() {
               <span>{ban.issuer.name || "System"}</span>
             </div>
           </div>
-        )}
-
-        {existingAppeal ? (
-          <div className="bg-blue-500/10 border border-blue-500/20 text-blue-500 p-4 rounded-lg text-sm">
-            <p className="font-medium flex items-center justify-center gap-2">
-              <span className="animate-pulse">●</span> Appeal Under Review
-            </p>
-            <p className="mt-1 opacity-80">
-              Our team is reviewing your appeal. You will be notified via email
-              once a decision is made.
-            </p>
-          </div>
-        ) : (
-          <AppealForm />
         )}
 
         <div className="text-xs text-muted-foreground pt-4 border-t border-border">

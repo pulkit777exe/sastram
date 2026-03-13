@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { v4 as uuidv4 } from "uuid";
+import { withRetry } from "@/lib/utils/retry";
 import type {
   SearchConfig,
   QueryClassification,
@@ -127,7 +128,9 @@ Respond ONLY with valid JSON. No markdown, no code blocks, no explanation.
 Schema: { "type": string, "primaryDomain": string, "suggestedSources": string[], "searchTerms": string[], "isControversial": boolean }`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await withRetry((signal) =>
+      model.generateContent(prompt, { signal, timeout: 15_000 }),
+    );
     const text = result.response.text().trim();
     // Parse JSON, stripping any markdown code fences
     const cleaned = text.replace(/```json\n?|```\n?/g, "").trim();
@@ -151,9 +154,6 @@ async function searchWithExa(
   exaKey: string,
   config: SearchConfig,
 ): Promise<Source[]> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-
   try {
     const includeDomains = getIncludeDomains(config.sourceFilter);
     const searchTerms = classification.searchTerms;
@@ -171,22 +171,23 @@ async function searchWithExa(
       body.includeDomains = includeDomains;
     }
 
-    const response = await fetch("https://api.exa.ai/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": exaKey,
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
+    const data = await withRetry(async (signal) => {
+      const response = await fetch("https://api.exa.ai/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": exaKey,
+        },
+        body: JSON.stringify(body),
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Exa API error: ${response.status}`);
+      }
+
+      return response.json();
     });
-
-    if (!response.ok) {
-      console.error(`Exa API error: ${response.status}`);
-      return [];
-    }
-
-    const data = await response.json();
     const results = data.results || [];
 
     return results.map(
@@ -217,8 +218,6 @@ async function searchWithExa(
   } catch (error) {
     console.error("Exa search failed:", error);
     return [];
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -228,9 +227,6 @@ async function searchWithTavily(
   tavilyKey: string,
   config: SearchConfig,
 ): Promise<{ sources: Source[]; answer?: string }> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-
   try {
     const includeDomains = getIncludeDomains(config.sourceFilter);
     const searchQuery =
@@ -249,22 +245,23 @@ async function searchWithTavily(
       body.include_domains = includeDomains;
     }
 
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${tavilyKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
+    const data = await withRetry(async (signal) => {
+      const response = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tavilyKey}`,
+        },
+        body: JSON.stringify(body),
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Tavily API error: ${response.status}`);
+      }
+
+      return response.json();
     });
-
-    if (!response.ok) {
-      console.error(`Tavily API error: ${response.status}`);
-      return { sources: [] };
-    }
-
-    const data = await response.json();
     const results = data.results || [];
 
     const sources: Source[] = results.map(
@@ -297,8 +294,6 @@ async function searchWithTavily(
   } catch (error) {
     console.error("Tavily search failed:", error);
     return { sources: [] };
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -380,7 +375,9 @@ Return JSON: { "detected": boolean, "description": string, "sideA": string, "sid
 Only flag real factual conflicts, not opinion differences.
 No markdown, valid JSON only.`;
 
-      const result = await model.generateContent(conflictPrompt);
+      const result = await withRetry((signal) =>
+        model.generateContent(conflictPrompt, { signal, timeout: 15_000 }),
+      );
       const text = result.response.text().trim();
       const cleaned = text.replace(/```json\n?|```\n?/g, "").trim();
       conflictData = JSON.parse(cleaned) as ConflictInfo;
@@ -441,7 +438,9 @@ IMPORTANT:
 Return plain text with light markdown (bold, bullets only). No headers with #.`;
 
   try {
-    const result = await model.generateContent(synthesisPrompt);
+    const result = await withRetry((signal) =>
+      model.generateContent(synthesisPrompt, { signal, timeout: 15_000 }),
+    );
     const content = result.response.text().trim();
 
     // Calculate confidence score

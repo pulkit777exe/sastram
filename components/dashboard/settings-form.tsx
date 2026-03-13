@@ -81,9 +81,9 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
   async function handleSubmit(formData: FormData) {
     const result = await updateUserProfile(formData);
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else {
       toast.success("Profile updated successfully!");
     }
   }
@@ -97,10 +97,10 @@ export function SettingsForm({ user }: SettingsFormProps) {
     formData.append("avatar", file);
 
     const result = await uploadAvatar(formData);
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "url" in result && result.url) {
-      setAvatarUrl(result.url);
+    } else if (result?.data?.url) {
+      setAvatarUrl(result.data.url);
       toast.success("Avatar uploaded successfully!");
     }
     setUploadingAvatar(false);
@@ -118,10 +118,10 @@ export function SettingsForm({ user }: SettingsFormProps) {
     formData.append("banner", file);
 
     const result = await uploadBanner(formData);
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "url" in result && result.url) {
-      setBannerUrl(result.url);
+    } else if (result?.data?.url) {
+      setBannerUrl(result.data.url);
       toast.success("Banner uploaded successfully!");
     }
     setUploadingBanner(false);

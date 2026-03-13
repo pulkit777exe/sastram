@@ -45,11 +45,10 @@ export async function checkAndAwardBadges(userId: string) {
     let shouldAward = false;
 
     // Check criteria based on badge type
-    if (criteria.type === "first_thread") {
+     if (criteria.type === "first_thread") {
       const threadCount = await prisma.section.count({
         where: {
           createdBy: userId,
-          deletedAt: null,
         },
       });
       shouldAward = threadCount >= 1;
@@ -57,7 +56,6 @@ export async function checkAndAwardBadges(userId: string) {
       const threadCount = await prisma.section.count({
         where: {
           createdBy: userId,
-          deletedAt: null,
         },
       });
       shouldAward = threadCount >= (criteria.count || 10);

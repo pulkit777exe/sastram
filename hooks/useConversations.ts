@@ -8,8 +8,11 @@ export function useConversations() {
     queryKey: ["conversations"],
     queryFn: async () => {
       const result = await getConversations();
-      if (!result.success) {
+      if (result.error) {
         throw new Error(result.error);
+      }
+      if (!result.data) {
+        throw new Error("No conversations found");
       }
       return result.data as Conversation[];
     },
@@ -27,8 +30,11 @@ export function useCreateConversation() {
       memberIds?: string[]
     }) => {
       const result = await createConversation(data);
-      if (!result.success) {
+      if (result.error) {
         throw new Error(result.error);
+      }
+      if (!result.data) {
+        throw new Error("Conversation could not be created");
       }
       return result.data as Conversation;
     },

@@ -1,3 +1,5 @@
+import { withRetry } from "@/lib/utils/retry";
+
 export interface AIService {
   generateSummary(content: string): Promise<string>;
   generateThreadSummary(messages: any[]): Promise<string>;
@@ -24,12 +26,14 @@ ${content}
 
 Summary:`;
 
-      const result = await model.generateContent(prompt);
+      const result = await withRetry((signal) =>
+        model.generateContent(prompt, { signal, timeout: 15_000 }),
+      );
       const response = await result.response;
       return response.text();
     } catch (error) {
       console.error("Gemini API error:", error);
-      throw new Error("Failed to generate summary with Gemini");
+      return "Summary unavailable.";
     }
   }
 
@@ -63,7 +67,9 @@ Summary:`;
       ${content}
       `;
 
-      const result = await model.generateContent(prompt);
+      const result = await withRetry((signal) =>
+        model.generateContent(prompt, { signal, timeout: 15_000 }),
+      );
       const response = await result.response;
       return response
         .text()
@@ -71,7 +77,7 @@ Summary:`;
         .replace(/```/g, "");
     } catch (error) {
       console.error("Gemini API error:", error);
-      throw new Error("Failed to generate daily digest with Gemini");
+      return "<p>Digest unavailable.</p>";
     }
   }
 }
@@ -85,42 +91,45 @@ export class OpenAIService implements AIService {
 
   async generateSummary(content: string): Promise<string> {
     try {
-      const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.apiKey}`,
+      const data = await withRetry(async (signal) => {
+        const response = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-3.5-turbo",
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are a helpful assistant that summarizes discussion threads. Focus on key points, decisions made, and important information. Keep summaries concise but comprehensive (200-300 words).",
+                },
+                {
+                  role: "user",
+                  content: `Summarize the following discussion thread:\n\n${content}`,
+                },
+              ],
+              max_tokens: 500,
+              temperature: 0.7,
+            }),
+            signal,
           },
-          body: JSON.stringify({
-            model: "gpt-3.5-turbo",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are a helpful assistant that summarizes discussion threads. Focus on key points, decisions made, and important information. Keep summaries concise but comprehensive (200-300 words).",
-              },
-              {
-                role: "user",
-                content: `Summarize the following discussion thread:\n\n${content}`,
-              },
-            ],
-            max_tokens: 500,
-            temperature: 0.7,
-          }),
-        },
-      );
+        );
 
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.statusText}`);
-      }
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
 
-      const data = await response.json();
+        return response.json();
+      });
       return data.choices[0]?.message?.content || "Summary generation failed";
     } catch (error) {
       console.error("OpenAI API error:", error);
-      throw new Error("Failed to generate summary with OpenAI");
+      return "Summary unavailable.";
     }
   }
 
@@ -138,38 +147,41 @@ export class OpenAIService implements AIService {
 
     // Fallback simple HTML generation for OpenAI if needed, or implement similar prompt
     try {
-      const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.apiKey}`,
+      const data = await withRetry(async (signal) => {
+        const response = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-3.5-turbo",
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are a helpful assistant that summarizes discussion threads for a daily email digest. Format the output as HTML (no html/body tags). Sections: Technical, Artistic, General Tone.",
+                },
+                {
+                  role: "user",
+                  content: `Analyze these messages:\n\n${content}`,
+                },
+              ],
+              max_tokens: 800,
+              temperature: 0.7,
+            }),
+            signal,
           },
-          body: JSON.stringify({
-            model: "gpt-3.5-turbo",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are a helpful assistant that summarizes discussion threads for a daily email digest. Format the output as HTML (no html/body tags). Sections: Technical, Artistic, General Tone.",
-              },
-              {
-                role: "user",
-                content: `Analyze these messages:\n\n${content}`,
-              },
-            ],
-            max_tokens: 800,
-            temperature: 0.7,
-          }),
-        },
-      );
+        );
 
-      const data = await response.json();
+        return response.json();
+      });
       return data.choices[0]?.message?.content || "Digest generation failed";
     } catch (error) {
       console.error("OpenAI API error:", error);
-      throw new Error("Failed to generate daily digest with OpenAI");
+      return "<p>Digest unavailable.</p>";
     }
   }
 }

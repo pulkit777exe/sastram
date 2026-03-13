@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireSession } from "@/modules/auth/session";
+import { useSession } from "@/lib/session-context";
 import { getThreadWithFullContext } from "@/modules/threads";
 import ThreadHeader from "@/components/thread/ThreadHeader";
 import MessageTree from "@/components/thread/MessageTree";
@@ -16,7 +16,8 @@ interface ThreadPageParams {
 
 export default async function ThreadPage({ params }: ThreadPageParams) {
   const { thread: slug } = params;
-  const session = await requireSession();
+  const session = useSession();
+  if (!session) return null;
 
   const thread = await getThreadWithFullContext(slug, session.user.id);
 
@@ -24,12 +25,8 @@ export default async function ThreadPage({ params }: ThreadPageParams) {
     notFound();
   }
 
-  const isBookmarked = thread.bookmarks.some(
-    (b) => b.userId === session.user.id,
-  );
-  const isSubscribed = thread.subscriptions.some(
-    (s) => s.userId === session.user.id,
-  );
+  const isBookmarked = thread.isBookmarked;
+  const isSubscribed = thread.isSubscribed;
 
   return (
     <div className="h-full w-full bg-(--bg) text-(--text)">
@@ -62,4 +59,3 @@ export default async function ThreadPage({ params }: ThreadPageParams) {
     </div>
   );
 }
-

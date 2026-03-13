@@ -11,6 +11,7 @@ import { SynthesisCard } from "./SynthesisCard";
 import { SourceCard } from "./SourceCard";
 import { TableView } from "./TableView";
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from "./ApiKeysModal";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import type {
   SearchConfig,
   AISearchResponse,
@@ -71,7 +72,12 @@ export function SearchPage() {
       ].slice(0, 10);
       setPastSearches(updated);
       try {
-        localStorage.setItem("sastram_past_searches", JSON.stringify(updated));
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "sastram_past_searches",
+            JSON.stringify(updated),
+          );
+        }
       } catch {}
     },
     [pastSearches],
@@ -348,7 +354,7 @@ export function SearchPage() {
                 {result.synthesis.cachedAt && (
                   <p className="text-center text-[11px] text-muted-foreground/60 pt-2">
                     Cached result from{" "}
-                    {new Date(result.synthesis.cachedAt).toLocaleString()}
+                    <TimeAgo date={result.synthesis.cachedAt} />
                   </p>
                 )}
               </motion.div>
