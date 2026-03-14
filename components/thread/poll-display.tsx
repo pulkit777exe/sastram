@@ -7,6 +7,7 @@ import { voteOnPollAction, getUserVoteAction, getPollResultsAction } from "@/mod
 import { toast } from "sonner";
 import { CheckCircle2, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 
 interface PollDisplayProps {
   poll: {
@@ -39,27 +40,13 @@ export function PollDisplay({ poll }: PollDisplayProps) {
       ]);
 
       // Type guard for vote result
-      if (
-        voteResult &&
-        typeof voteResult === "object" &&
-        "success" in voteResult &&
-        voteResult.success === true &&
-        "data" in voteResult &&
-        voteResult.data
-      ) {
+      if (voteResult?.data) {
         setSelectedOption(voteResult.data.optionIndex);
         setHasVoted(true);
       }
 
       // Type guard for results
-      if (
-        resultsResult &&
-        typeof resultsResult === "object" &&
-        "success" in resultsResult &&
-        resultsResult.success === true &&
-        "data" in resultsResult &&
-        resultsResult.data
-      ) {
+      if (resultsResult?.data) {
         setResults(resultsResult.data);
       }
     } catch (error) {
@@ -75,21 +62,13 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     setIsVoting(true);
     try {
       const result = await voteOnPollAction(poll.id, optionIndex);
-      if (result && typeof result === "object") {
-        if ("error" in result && result.error) {
-          toast.error(result.error);
-        } else if ("message" in result && result.message) {
-          toast.error(result.message);
-        } else if ("success" in result && result.success) {
-          setSelectedOption(optionIndex);
-          setHasVoted(true);
-          toast.success("Vote recorded!");
-          await loadPollData();
-        } else {
-          toast.error("Failed to vote");
-        }
+      if (result?.error) {
+        toast.error(result.error);
       } else {
-        toast.error("Failed to vote");
+        setSelectedOption(optionIndex);
+        setHasVoted(true);
+        toast.success("Vote recorded!");
+        await loadPollData();
       }
     } catch (error) {
       toast.error("Something went wrong");
@@ -172,10 +151,9 @@ export function PollDisplay({ poll }: PollDisplayProps) {
 
       {poll.expiresAt && (
         <p className="text-xs text-muted-foreground">
-          Poll expires {new Date(poll.expiresAt).toLocaleDateString()}
+          Poll expires <TimeAgo date={poll.expiresAt} />
         </p>
       )}
     </motion.div>
   );
 }
-

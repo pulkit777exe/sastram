@@ -12,7 +12,6 @@ import {
   searchUsersAction,
 } from "@/modules/search/actions";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
 
 type SearchType = "all" | "threads" | "messages" | "users";
 
@@ -180,4 +179,3 @@ export default function SearchPage() {
     </div>
   );
 }
-

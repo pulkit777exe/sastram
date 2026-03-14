@@ -20,8 +20,8 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
 
   useEffect(() => {
     checkBookmarkStatus(threadId).then((result) => {
-      if (result && typeof result === "object" && "success" in result && result.success && "isBookmarked" in result) {
-        setIsBookmarked(result.isBookmarked || false);
+      if (result?.data?.isBookmarked !== undefined) {
+        setIsBookmarked(result.data.isBookmarked || false);
       }
       setIsLoading(false);
     });
@@ -31,12 +31,12 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
     setIsLoading(true);
     try {
       const result = await toggleBookmark(threadId);
-      if (result && typeof result === "object" && "error" in result) {
+      if (result?.error) {
         toast.error(result.error);
-      } else if (result && typeof result === "object" && "success" in result && result.success && "isBookmarked" in result) {
-        setIsBookmarked(result.isBookmarked || false);
+      } else if (result?.data?.isBookmarked !== undefined) {
+        setIsBookmarked(result.data.isBookmarked || false);
         toast.success(
-          result.isBookmarked ? "Bookmarked" : "Removed from bookmarks"
+          result.data.isBookmarked ? "Bookmarked" : "Removed from bookmarks"
         );
       }
     } catch {
@@ -70,4 +70,3 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
     </motion.div>
   );
 }
-

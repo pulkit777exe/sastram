@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageSquare, Hash, Calendar, Mail } from "lucide-react";
-import { format } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 
 interface ProfileViewProps {
   user: {
@@ -63,7 +63,7 @@ export function ProfileView({ user }: ProfileViewProps) {
           <div className="flex items-center justify-center md:justify-start gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
             <span className="text-xs">
-              Joined {format(new Date(user.createdAt), "MMMM yyyy")}
+              Joined <TimeAgo date={user.createdAt} />
             </span>
           </div>
           <div className="pt-4">

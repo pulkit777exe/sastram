@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { PastSearch } from "@/modules/ai-search/types";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 
 interface SidebarProps {
   searches: PastSearch[];
@@ -21,17 +22,6 @@ interface SidebarProps {
   onToggle: () => void;
   onOpenApiKeys: () => void;
   hasApiKeys: boolean;
-}
-
-function timeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 export function Sidebar({
@@ -137,7 +127,7 @@ export function Sidebar({
                           : s.query}
                       </span>
                       <span className="text-[10px] text-muted-foreground/50 block">
-                        {timeAgo(s.timestamp)}
+                        <TimeAgo date={s.timestamp} />
                       </span>
                     </button>
                     {hoveredId === s.id && (

@@ -2,8 +2,6 @@
 
 import { requireSession } from "@/modules/auth/session";
 import { revalidatePath } from "next/cache";
-import { validate } from "@/lib/utils/validation";
-import { handleError } from "@/lib/utils/errors";
 import {
   bookmarkThread as bookmarkThreadRepo,
   unbookmarkThread as unbookmarkThreadRepo,
@@ -16,50 +14,75 @@ const bookmarkSchema = z.object({
   threadId: z.string().cuid("Invalid thread ID"),
 });
 
-export async function toggleBookmark(threadId: string) {
-  const session = await requireSession();
+const paginationSchema = z.object({
+  limit: z.number().int().positive().max(100).optional(),
+  offset: z.number().int().nonnegative().optional(),
+});
 
-  const validation = validate(bookmarkSchema, { threadId });
-  if (!validation.success) {
-    return { error: validation.error };
+export async function toggleBookmark(threadId: string) {
+  const parsed = bookmarkSchema.safeParse({ threadId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
-    const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
+    const session = await requireSession();
+    const isBookmarked = await isBookmarkedRepo(
+      session.user.id,
+      parsed.data.threadId,
+    );
 
     if (isBookmarked) {
-      await unbookmarkThreadRepo(session.user.id, threadId);
+      await unbookmarkThreadRepo(session.user.id, parsed.data.threadId);
     } else {
-      await bookmarkThreadRepo(session.user.id, threadId);
+      await bookmarkThreadRepo(session.user.id, parsed.data.threadId);
     }
 
     revalidatePath("/dashboard/bookmarks");
-    revalidatePath(`/dashboard/threads/thread/${threadId}`);
+    revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
 
-    return { success: true, isBookmarked: !isBookmarked };
+    return { data: { isBookmarked: !isBookmarked }, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[toggleBookmark]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getBookmarkedThreads(limit?: number, offset?: number) {
+  const parsed = paginationSchema.safeParse({ limit, offset });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
+
   try {
     const session = await requireSession();
-    const result = await getUserBookmarksRepo(session.user.id, limit || 20, offset || 0);
-    return { success: true, data: result };
+    const result = await getUserBookmarksRepo(
+      session.user.id,
+      parsed.data.limit || 20,
+      parsed.data.offset || 0,
+    );
+    return { data: result, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getBookmarkedThreads]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function checkBookmarkStatus(threadId: string) {
-  const session = await requireSession();
+  const parsed = bookmarkSchema.safeParse({ threadId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
 
   try {
-    const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
-    return { success: true, isBookmarked };
+    const session = await requireSession();
+    const isBookmarked = await isBookmarkedRepo(
+      session.user.id,
+      parsed.data.threadId,
+    );
+    return { data: { isBookmarked }, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[checkBookmarkStatus]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
-

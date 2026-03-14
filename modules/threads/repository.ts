@@ -8,12 +8,13 @@ import type {
 } from "./types";
 import { SectionRole } from "@prisma/client";
 import { buildThreadDTO, buildThreadDetailDTO } from "./service";
+import { dedupe } from "@/lib/dedupe";
 
 type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
   include: {
     community: true;
     messages: { select: { senderId: true } };
-    _count: { select: { messages: true } };
+    _count: { select: { messages: true; members: true } };
   };
 }>;
 
@@ -32,8 +33,7 @@ type SectionWithFullDetails = Prisma.SectionGetPayload<{
         attachments: true;
       };
     };
-    newsletterSubscriptions: true;
-    digests: true;
+    subscriptions: true;
     _count: { select: { messages: true } };
   };
 }>;
@@ -42,7 +42,7 @@ type SectionWithCommunityAndMessages = Prisma.SectionGetPayload<{
   include: {
     community: true;
     messages: true;
-    _count: { select: { messages: true } };
+    _count: { select: { messages: true; members: true } };
   };
 }>;
 
@@ -70,47 +70,58 @@ export async function listThreads(
   const { page = 1, pageSize = 10, sortBy = "recent" } = params;
   const skip = (page - 1) * pageSize;
 
-  const totalItems = await prisma.section.count({
-    where: { deletedAt: null },
-  });
-
-  const threads = await prisma.section.findMany({
-    where: {
-      deletedAt: null,
-    },
-    include: {
-      community: true,
-      messages: {
-        where: {
-          deletedAt: null,
-          createdAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          },
-        },
-        select: {
-          senderId: true,
-          createdAt: true,
-        },
-      },
-      _count: {
-        select: {
-          messages: {
-            where: {
-              deletedAt: null,
+  const [totalItems, threads] = await dedupe(
+    `threads:list:${page}:${pageSize}:${sortBy}`,
+    () =>
+      Promise.all([
+        prisma.section.count(),
+        prisma.section.findMany({
+          where: {},
+          include: {
+            community: true,
+            messages: {
+              where: {
+                deletedAt: null,
+                createdAt: {
+                  gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+                },
+              },
+              select: {
+                senderId: true,
+                createdAt: true,
+              },
+            },
+            members: {
+              where: {
+                status: "ACTIVE",
+              },
+            },
+            _count: {
+              select: {
+                messages: {
+                  where: {
+                    deletedAt: null,
+                  },
+                },
+                members: {
+                  where: {
+                    status: "ACTIVE",
+                  },
+                },
+              },
             },
           },
-        },
-      },
-    },
-    orderBy:
-      sortBy === "oldest"
-        ? { createdAt: "asc" }
-        : sortBy === "popular"
-          ? { messageCount: "desc" }
-          : { updatedAt: "desc" },
-    skip,
-    take: pageSize,
-  });
+          orderBy:
+            sortBy === "oldest"
+              ? { createdAt: "asc" }
+              : sortBy === "popular"
+                ? { messageCount: "desc" }
+                : { updatedAt: "desc" },
+          skip,
+          take: pageSize,
+        }),
+      ]),
+  );
 
   let mappedThreads = threads.map((thread: SectionWithCommunityAndCount) => {
     const uniqueActiveUsers = new Set(thread.messages.map((m) => m.senderId));
@@ -118,6 +129,7 @@ export async function listThreads(
       thread as unknown as ThreadRecord,
       thread._count.messages,
       uniqueActiveUsers.size,
+      thread._count.members,
     );
   });
 
@@ -139,7 +151,7 @@ export async function listThreads(
       totalItems,
       totalPages,
       hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1
+      hasPreviousPage: page > 1,
     },
   };
 }
@@ -147,68 +159,70 @@ export async function listThreads(
 export async function getThreadBySlug(
   slug: string,
 ): Promise<ThreadDetail | null> {
-  const record = await prisma.section.findFirst({
-    where: {
-      slug,
-      deletedAt: null,
-    },
-    include: {
-      community: true,
-      messages: {
-        where: {
-          deletedAt: null,
-        },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
+  const record = await dedupe(`threads:bySlug:${slug}`, () =>
+    prisma.section.findFirst({
+      where: {
+        slug,
+      },
+      include: {
+        community: true,
+        messages: {
+          // Fetch ALL messages including soft-deleted — deleted messages
+          // must stay in tree to preserve child reply structure
+          include: {
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
             },
+            attachments: true,
           },
-          attachments: true,
+          orderBy: {
+            createdAt: "asc",
+          },
         },
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-      newsletterSubscriptions: true,
-      digests: {
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 1,
-      },
-      _count: {
-        select: {
-          messages: {
-            where: {
-              deletedAt: null,
+        subscriptions: true,
+        _count: {
+          select: {
+            messages: {
+              where: {
+                deletedAt: null,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+  );
 
   if (!record) {
     return null;
   }
 
   const typedRecord = record as SectionWithFullDetails;
+  // Count active members for the thread
+  const memberCount = await prisma.sectionMember.count({
+    where: {
+      sectionId: typedRecord.id,
+      status: "ACTIVE",
+    },
+  });
+
   return buildThreadDetailDTO(
     typedRecord as unknown as ThreadRecord,
     typedRecord._count.messages,
     new Set(typedRecord.messages.map((m) => m.senderId)).size,
-    typedRecord.digests[0]?.summary,
-    typedRecord.newsletterSubscriptions?.length ?? 0,
+    memberCount,
+    typedRecord.aiSummary ?? undefined,
+    typedRecord.subscriptions?.length ?? 0,
   );
 }
 
 export async function createThread(payload: {
   name: string;
   description?: string | null;
-  icon?: string | null;
   communityId?: string | null;
   slug: string;
   createdBy: string;
@@ -217,10 +231,16 @@ export async function createThread(payload: {
     data: {
       name: payload.name,
       description: payload.description,
-      icon: payload.icon,
       communityId: payload.communityId,
       slug: payload.slug,
       createdBy: payload.createdBy,
+      members: {
+        create: {
+          userId: payload.createdBy,
+          role: "OWNER",
+          status: "ACTIVE",
+        },
+      },
     },
     include: {
       community: true,
@@ -228,6 +248,7 @@ export async function createThread(payload: {
       _count: {
         select: {
           messages: true,
+          members: true,
         },
       },
     },
@@ -238,6 +259,7 @@ export async function createThread(payload: {
     typedThread as ThreadRecord,
     typedThread._count.messages,
     0,
+    typedThread._count.members,
   );
 }
 

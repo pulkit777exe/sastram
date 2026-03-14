@@ -4,12 +4,8 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Bookmark, MessageSquare, Users, Calendar } from "lucide-react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import type { BookmarkedThreadsResponse } from "@/modules/bookmarks/types";
-
-type BookmarksResult = 
-  | { success: true; data: BookmarkedThreadsResponse }
-  | { success?: false; error?: string; message?: string; code?: string; statusCode?: number };
 
 export default async function BookmarksPage() {
   const session = await getSession();
@@ -17,34 +13,20 @@ export default async function BookmarksPage() {
     redirect("/login");
   }
 
-  const result = await getBookmarkedThreads(50, 0) as BookmarksResult;
+  const result = await getBookmarkedThreads(50, 0);
 
-  // Type guard: check if result has success and data with bookmarks
-  const isSuccess = (r: BookmarksResult): r is { success: true; data: BookmarkedThreadsResponse } => {
-    return (
-      r &&
-      typeof r === "object" &&
-      "success" in r &&
-      r.success === true &&
-      "data" in r &&
-      r.data !== null &&
-      r.data !== undefined &&
-      Array.isArray(r.data.bookmarks)
-    );
-  };
-
-  if (!isSuccess(result)) {
+  if (result.error || !result.data) {
     return (
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-2xl font-bold mb-6">Bookmarks</h1>
         <Card className="p-6 text-center text-muted-foreground">
-          {("error" in result && result.error) || ("message" in result && result.message) || "Failed to load bookmarks"}
+          {result.error || "Failed to load bookmarks"}
         </Card>
       </div>
     );
   }
 
-  const { bookmarks } = result.data;
+  const { bookmarks } = result.data as BookmarkedThreadsResponse;
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -89,7 +71,7 @@ export default async function BookmarksPage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {formatDistanceToNow(thread.createdAt, { addSuffix: true })}
+                    <TimeAgo date={thread.createdAt} />
                   </span>
                 </div>
               </Card>

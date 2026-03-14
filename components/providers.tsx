@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
+import { BootstrapProvider } from "@/components/bootstrap-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -29,11 +30,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange={false}
         storageKey="sastram-theme"
       >
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          {children}
-        </TooltipProvider>
+        <BootstrapProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            {children}
+          </TooltipProvider>
+        </BootstrapProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

@@ -11,7 +11,6 @@ import { executeAISearch } from "@/modules/ai-search/service";
 import {
   getCachedResult,
   cacheResult,
-  recordSearchAnalytics,
 } from "@/modules/ai-search/cache";
 
 export const maxDuration = 30;
@@ -136,13 +135,6 @@ export async function POST(request: NextRequest) {
     try {
       const cached = await getCachedResult(query);
       if (cached) {
-        recordSearchAnalytics({
-          queryType: cached.synthesis.queryType,
-          sourceCount: cached.sources.length,
-          confidenceScore: cached.synthesis.confidence,
-          processingMs: 0,
-          usedCache: true,
-        }).catch(() => {});
 
         return NextResponse.json(cached, {
           headers: {
@@ -173,14 +165,7 @@ export async function POST(request: NextRequest) {
     // 8. Cache the result (async, non-blocking)
     cacheResult(query, result, result.synthesis.queryType).catch(() => {});
 
-    // 9. Record analytics (async, non-blocking)
-    recordSearchAnalytics({
-      queryType: result.synthesis.queryType,
-      sourceCount: result.sources.length,
-      confidenceScore: result.synthesis.confidence,
-      processingMs: result.synthesis.processingTimeMs,
-      usedCache: false,
-    }).catch(() => {});
+
 
     return NextResponse.json(result, {
       headers: {

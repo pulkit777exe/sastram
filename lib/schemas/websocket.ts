@@ -18,6 +18,18 @@ const newMessagePayloadSchema = basePayloadSchema.extend({
   senderAvatar: z.string().url().nullable().optional(),
   createdAt: z.coerce.date(),
   parentId: z.string().cuid().optional(),
+  depth: z.number().int().min(0).optional(),
+  likeCount: z.number().int().min(0).optional(),
+  replyCount: z.number().int().min(0).optional(),
+  isAiResponse: z.boolean().optional(),
+  reactions: z
+    .array(
+      z.object({
+        type: z.string(),
+        _count: z.number().int().min(0),
+      }),
+    )
+    .optional(),
   mentions: z.array(z.string().cuid()).optional(),
   attachments: z
     .array(
@@ -76,6 +88,15 @@ const mentionNotificationPayloadSchema = basePayloadSchema.extend({
 });
 
 /**
+ * REACTION_UPDATE event payload
+ */
+const reactionUpdatePayloadSchema = basePayloadSchema.extend({
+  messageId: z.string().cuid(),
+  reactionType: z.string().min(1),
+  count: z.number().int().min(0),
+});
+
+/**
  * ERROR event payload (sent by server)
  */
 const errorPayloadSchema = z.object({
@@ -110,6 +131,10 @@ export const websocketMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("MENTION_NOTIFICATION"),
     payload: mentionNotificationPayloadSchema,
+  }),
+  z.object({
+    type: z.literal("REACTION_UPDATE"),
+    payload: reactionUpdatePayloadSchema,
   }),
   z.object({
     type: z.literal("ERROR"),
@@ -149,6 +174,10 @@ export const websocketSchemas = {
   mentionNotification: z.object({
     type: z.literal("MENTION_NOTIFICATION"),
     payload: mentionNotificationPayloadSchema,
+  }),
+  reactionUpdate: z.object({
+    type: z.literal("REACTION_UPDATE"),
+    payload: reactionUpdatePayloadSchema,
   }),
   error: z.object({ type: z.literal("ERROR"), payload: errorPayloadSchema }),
 } as const;

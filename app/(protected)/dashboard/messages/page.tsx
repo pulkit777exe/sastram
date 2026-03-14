@@ -1,13 +1,10 @@
 import { prisma } from "@/lib/infrastructure/prisma";
-import { auth } from "@/lib/services/auth";
-import { headers } from "next/headers";
+import { getSession } from "@/modules/auth/session";
 import { MessageGrid } from "@/components/dashboard/message-grid";
 import { Inbox } from "lucide-react";
 
 export default async function MessagesPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session?.user) {
     return (

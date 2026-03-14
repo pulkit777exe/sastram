@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import {
   Table,
   TableBody,
@@ -26,13 +26,13 @@ import { Check, X } from "lucide-react";
 
 interface Appeal {
   id: string;
-  user: {
+  reporter: {
     id: string;
     name: string | null;
     email: string;
     image: string | null;
   };
-  reason: string;
+  details: string | null;
   status: string;
   createdAt: Date;
   banReason: string;
@@ -57,8 +57,8 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
 
     const result = await resolveAppeal(selectedAppeal.id, approved);
 
-    if (result && "message" in result && result.message) {
-      toast.error(result.message);
+    if (result?.error) {
+      toast.error(result.error);
     } else {
       toast.success(
         `Appeal ${approved ? "approved" : "rejected"} successfully`
@@ -96,21 +96,21 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={appeal.user.image || undefined} />
+                      <AvatarImage src={appeal.reporter.image || undefined} />
                       <AvatarFallback>
-                        {appeal.user.name?.charAt(0) || "U"}
+                        {appeal.reporter.name?.charAt(0) || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-sm">{appeal.user.name}</p>
+                      <p className="font-medium text-sm">{appeal.reporter.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {appeal.user.email}
+                        {appeal.reporter.email}
                       </p>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {format(new Date(appeal.banDate), "MMM d, yyyy")}
+                  <TimeAgo date={appeal.banDate} />
                 </TableCell>
                 <TableCell
                   className="max-w-[200px] truncate text-sm"
@@ -120,9 +120,9 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 </TableCell>
                 <TableCell
                   className="max-w-[300px] truncate text-sm italic text-muted-foreground"
-                  title={appeal.reason}
+                  title={appeal.details || ""}
                 >
-                  &quot;{appeal.reason}&quot;
+                  &quot;{appeal.details || "No appeal reason provided"}&quot;
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
@@ -178,14 +178,14 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
                 <span className="text-muted-foreground">User:</span>
-                <span className="font-medium">{selectedAppeal.user.name}</span>
+                <span className="font-medium">{selectedAppeal.reporter.name}</span>
 
                 <span className="text-muted-foreground">Ban Reason:</span>
                 <span>{selectedAppeal.banReason}</span>
 
                 <span className="text-muted-foreground">Appeal:</span>
                 <div className="p-3 bg-muted rounded-md text-xs italic">
-                  &quot;{selectedAppeal.reason}&quot;
+                  &quot;{selectedAppeal.details || "No appeal reason provided"}&quot;
                 </div>
               </div>
             </div>

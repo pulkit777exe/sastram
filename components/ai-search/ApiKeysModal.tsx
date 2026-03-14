@@ -63,7 +63,7 @@ export function ApiKeysModal({
 
     // Persist to localStorage
     const config = KEY_CONFIGS.find((c) => c.id === id);
-    if (config) {
+    if (config && typeof window !== "undefined") {
       if (value) {
         localStorage.setItem(config.storageKey, value);
       } else {

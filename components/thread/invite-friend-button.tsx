@@ -53,9 +53,9 @@ export function InviteFriendButton({
     const result = await inviteFriendToThread(formData);
     setIsSubmitting(false);
 
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else {
       toast.success("Invitation sent successfully!");
       setEmail("");
       setMessage("");

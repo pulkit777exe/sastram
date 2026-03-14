@@ -1,12 +1,15 @@
-import { requireSession, assertAdmin } from "@/modules/auth/session";
-import { getAppeals, resolveAppeal } from "@/modules/appeals/actions";
+import { assertAdmin } from "@/modules/auth/session";
+import { getSession } from "@/modules/auth/session";
+import { getAppeals } from "@/modules/appeals/actions";
 import { AppealsList } from "@/components/admin/appeals-list";
 
 export default async function AppealsPage() {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return null;
   assertAdmin(session.user);
 
-  const appeals = await getAppeals();
+  const appealsResult = await getAppeals();
+  const appeals = appealsResult.data ?? [];
 
   return (
     <div className="space-y-6">

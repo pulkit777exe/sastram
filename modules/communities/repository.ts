@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/infrastructure/prisma";
 import { Prisma } from "@prisma/client";
 import type { CommunitySummary } from "./types";
+import { dedupe } from "@/lib/dedupe";
 
 // Prisma return type for query with _count
 // Using @ts-expect-error where Prisma's TypeScript has limitations
@@ -29,24 +30,43 @@ export function buildCommunityDTO(
 }
 
 export async function listCommunities(): Promise<CommunitySummary[]> {
-  const communities = await prisma.community.findMany({
-    where: {
-      deletedAt: null,
-    },
-    include: {
-      _count: {
-        select: {
-          sections: true,
+  const communities = await dedupe("communities:list", () =>
+    prisma.community.findMany({
+      include: {
+        _count: {
+          select: {
+            sections: true,
+          },
         },
       },
-    },
-    orderBy: {
-      title: "asc",
-    },
-  });
+      orderBy: {
+        title: "asc",
+      },
+    }),
+  );
 
   return communities.map((community: CommunityWithCount) =>
     buildCommunityDTO(community, community._count.sections)
+  );
+}
+
+export async function getJoinedCommunities(userId: string) {
+  return dedupe(`communities:joined:${userId}`, () =>
+    prisma.community.findMany({
+      where: {
+        sections: {
+          some: {
+            members: {
+              some: {
+                userId,
+                status: "ACTIVE",
+              },
+            },
+          },
+        },
+      },
+      orderBy: { title: "asc" },
+    }),
   );
 }
 

@@ -19,35 +19,24 @@ export function ReportActions({ reportId }: { reportId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<
-    "REVIEWING" | "RESOLVED" | "DISMISSED" | null
+    "RESOLVED" | "DISMISSED" | null
   >(null);
   const [loading, setLoading] = useState(false);
 
-  const confirmAction = (status: "REVIEWING" | "RESOLVED" | "DISMISSED") => {
-    if (status === "REVIEWING") {
-      // Reviewing might not need confirmation?
-      // Let's just do it directly for better UX, or confirm if consistent.
-      // Usually "Start Review" is safe.
-      handleStatusUpdate(status);
-    } else {
-      setAction(status);
-      setOpen(true);
-    }
+  const confirmAction = (status: "RESOLVED" | "DISMISSED") => {
+    setAction(status);
+    setOpen(true);
   };
 
   async function handleStatusUpdate(
-    status: "REVIEWING" | "RESOLVED" | "DISMISSED"
+    status: "RESOLVED" | "DISMISSED"
   ) {
     setLoading(true);
     const result = await updateReportStatusAction(reportId, status);
 
-    // We can close the dialog immediately to make it feel faster,
-    // or wait for result. User asked for "performed immediately".
-    // I'll wait for result to be safe, but use optimistic UI if needed later.
-
-    if (result && "error" in result && result.error) {
+    if (result?.error) {
       toast.error(result.error);
-    } else if (result && "success" in result && result.success) {
+    } else {
       toast.success(`Report ${status.toLowerCase()}`);
       router.refresh();
     }
@@ -73,8 +62,8 @@ export function ReportActions({ reportId }: { reportId: string }) {
           description:
             "Are you sure you want to dismiss this report? This implies no violation was found.",
           buttonText: "Dismiss",
-          buttonVariant: "destructive" as const, // Or outline/secondary, but destructive fits 'dismiss/ignore' sometimes. Let's use destructive for "Dismiss" effectively acting as "Ignore".
-          confirmColor: "bg-zinc-600 hover:bg-zinc-500", // Or keep variant styles
+          buttonVariant: "destructive" as const,
+          confirmColor: "bg-zinc-600 hover:bg-zinc-500",
         };
       default:
         return {
@@ -92,15 +81,6 @@ export function ReportActions({ reportId }: { reportId: string }) {
   return (
     <>
       <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => confirmAction("REVIEWING")}
-          className="border-blue-500/20 text-blue-500 hover:bg-blue-500/10 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
-        >
-          <Eye className="w-4 h-4 mr-1" />
-          Review
-        </Button>
         <Button
           size="sm"
           onClick={() => confirmAction("RESOLVED")}

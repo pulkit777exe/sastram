@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/infrastructure/prisma";
 import { ProfilePrivacy } from "@prisma/client";
+import { dedupe } from "@/lib/dedupe";
 
 export async function getPublicProfile(userId: string, viewerId?: string) {
   const user = await prisma.user.findUnique({
@@ -13,7 +14,6 @@ export async function getPublicProfile(userId: string, viewerId?: string) {
       website: true,
       twitter: true,
       github: true,
-      linkedin: true,
       image: true,
       avatarUrl: true,
       bannerUrl: true,
@@ -63,6 +63,22 @@ export async function getPublicProfile(userId: string, viewerId?: string) {
   return user;
 }
 
+export async function getUserBootstrapProfile(userId: string) {
+  return dedupe(`users:bootstrap:${userId}`, () =>
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        avatarUrl: true,
+        role: true,
+        reputationPoints: true,
+        isPro: true,
+      },
+    }),
+  );
+}
+
 export async function getUserThreads(
   userId: string,
   limit: number = 20,
@@ -72,7 +88,6 @@ export async function getUserThreads(
     prisma.section.findMany({
       where: {
         createdBy: userId,
-        deletedAt: null,
       },
       select: {
         id: true,
@@ -98,7 +113,6 @@ export async function getUserThreads(
     prisma.section.count({
       where: {
         createdBy: userId,
-        deletedAt: null,
       },
     }),
   ]);

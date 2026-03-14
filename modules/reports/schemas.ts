@@ -39,18 +39,43 @@ export const getReportDetailsSchema = z.object({
   reportId: z.string().cuid("Invalid report ID"),
 });
 
-export const resolveReportSchema = z.object({
-  reportId: z.string().cuid("Invalid report ID"),
-  action: z.enum([
-    "DISMISS",
-    "REMOVE_MESSAGE",
-    "WARN_USER",
-    "SUSPEND_USER",
-    "BAN_USER",
-  ]),
-  resolution: z.string().min(10, "Please provide a resolution note").max(1000),
-  notifyReporter: z.boolean().default(true),
-});
+const suspensionDurationValues = [
+  "1h",
+  "6h",
+  "24h",
+  "3d",
+  "7d",
+  "30d",
+] as const;
+
+export const resolveReportSchema = z
+  .object({
+    reportId: z.string().cuid("Invalid report ID"),
+    action: z.enum([
+      "DISMISS",
+      "REMOVE_MESSAGE",
+      "WARN_USER",
+      "SUSPEND_USER",
+      "BAN_USER",
+    ]),
+    note: z
+      .string()
+      .trim()
+      .max(500, "Please keep the note under 500 characters")
+      .optional()
+      .default(""),
+    notifyReporter: z.boolean().default(true),
+    duration: z.enum(suspensionDurationValues).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.action !== "DISMISS" && value.note.trim().length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["note"],
+        message: "Please provide a resolution note",
+      });
+    }
+  });
 
 export type CreateReportInput = z.infer<typeof createReportSchema>;
 export type UpdateReportStatusInput = z.infer<typeof updateReportStatusSchema>;

@@ -12,25 +12,29 @@ import { listThreads } from "@/modules/threads/repository";
 import { deleteCommunity, deleteThread } from "@/modules/moderation/actions";
 
 export async function getAdminDashboardData() {
-  const session = await requireSession();
-  assertAdmin(session.user);
+  try {
+    const session = await requireSession();
+    assertAdmin(session.user);
 
-  const [communities, threads] = await Promise.all([
-    listCommunities(),
-    listThreads(),
-  ]);
+    const [communities, threads] = await Promise.all([
+      listCommunities(),
+      listThreads(),
+    ]);
 
-  return {
-    success: true,
-    data: {
-      communities,
-      threads,
-    },
-  };
+    return {
+      data: {
+        communities,
+        threads,
+      },
+      error: null,
+    };
+  } catch (error) {
+    console.error("[getAdminDashboardData]", error);
+    return { data: null, error: "Something went wrong" };
+  }
 }
 
 // Re-export moderation actions for admin use
 export { deleteCommunity, deleteThread } from "@/modules/moderation/actions";
 // Note: createCommunityAction and createThreadAction should be implemented in their respective modules
 // For now, these are handled by moderation actions
-

@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     // Update thread with new summary
     await prisma.section.update({
       where: { id: threadId },
-      data: { summary },
+      data: { aiSummary: summary },
     });
 
     return NextResponse.json({ summary });

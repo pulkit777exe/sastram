@@ -22,7 +22,7 @@ export type ThreadRecord = Section & {
     attachments?: Attachment[];
     replies?: Message[];
   })[];
-  newsletterSubscriptions?: { id: string; email: string }[];
+  subscriptions?: { id: string; email: string }[];
 };
 
 // Thread summary for list views
@@ -75,8 +75,12 @@ export interface MessageWithDetails {
   depth: number;
   isEdited: boolean;
   isPinned: boolean;
+  likeCount: number;
+  replyCount: number;
+  isAiResponse: boolean;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date | null;
   sender: {
     id: string;
     name: string | null;
@@ -85,7 +89,7 @@ export interface MessageWithDetails {
   };
   reactions?: ReactionSummary[];
   attachments?: AttachmentInfo[];
-  replyCount?: number;
+  replyCountDisplay?: number;
   replies?: MessageWithDetails[];
 }
 

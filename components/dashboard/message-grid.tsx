@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import { MessageSquare, ArrowRight } from "lucide-react";
 
 interface Message {
@@ -71,9 +71,7 @@ export function MessageGrid({ messages }: MessageGridProps) {
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(message.createdAt), {
-                    addSuffix: true,
-                  })}
+                  <TimeAgo date={message.createdAt} />
                 </span>
               </div>
 

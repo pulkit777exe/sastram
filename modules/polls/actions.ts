@@ -2,8 +2,6 @@
 
 import { requireSession } from "@/modules/auth/session";
 import { revalidatePath } from "next/cache";
-import { validate } from "@/lib/utils/validation";
-import { handleError } from "@/lib/utils/errors";
 import {
   createPoll as createPollRepo,
   voteOnPoll as voteOnPollRepo,
@@ -12,92 +10,121 @@ import {
   getPollByThreadId as getPollByThreadIdRepo,
 } from "./repository";
 import { createPollSchema, voteOnPollSchema } from "./schemas";
+import { z } from "zod";
+
+const pollIdSchema = z.object({
+  pollId: z.string().cuid(),
+});
+
+const threadIdSchema = z.object({
+  threadId: z.string().cuid(),
+});
 
 export async function createPollAction(
   threadId: string,
   question: string,
   options: string[],
-  expiresAt?: Date
+  expiresAt?: Date,
 ) {
-  const session = await requireSession();
-
-  const validation = validate(createPollSchema, {
+  const parsed = createPollSchema.safeParse({
     threadId,
     question,
     options,
     expiresAt,
   });
-  if (!validation.success) {
-    return { error: validation.error };
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
     const poll = await createPollRepo(
-      validation.data.threadId,
-      validation.data.question,
-      validation.data.options,
-      validation.data.expiresAt
+      parsed.data.threadId,
+      parsed.data.question,
+      parsed.data.options,
+      parsed.data.expiresAt,
     );
 
-    revalidatePath(`/dashboard/threads/thread/${threadId}`);
-    return { success: true, data: poll };
+    revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
+    return { data: poll, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[createPollAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function voteOnPollAction(pollId: string, optionIndex: number) {
-  const session = await requireSession();
-
-  const validation = validate(voteOnPollSchema, { pollId, optionIndex });
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = voteOnPollSchema.safeParse({ pollId, optionIndex });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
-    await voteOnPollRepo(validation.data.pollId, session.user.id, validation.data.optionIndex);
+    const session = await requireSession();
+    await voteOnPollRepo(
+      parsed.data.pollId,
+      session.user.id,
+      parsed.data.optionIndex,
+    );
 
     // Get thread ID from poll to revalidate
-    const poll = await getPollByThreadIdRepo(pollId);
+    const poll = await getPollByThreadIdRepo(parsed.data.pollId);
     if (poll) {
       revalidatePath(`/dashboard/threads/thread/${poll.threadId}`);
     }
 
-    return { success: true };
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[voteOnPollAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getPollResultsAction(pollId: string) {
+  const parsed = pollIdSchema.safeParse({ pollId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
+
   try {
-    const results = await getPollResultsRepo(pollId);
+    const results = await getPollResultsRepo(parsed.data.pollId);
     if (!results) {
-      return { error: "Poll not found" };
+      return { data: null, error: "Something went wrong" };
     }
-    return { success: true, data: results };
+    return { data: results, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getPollResultsAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getUserVoteAction(pollId: string) {
-  const session = await requireSession();
+  const parsed = pollIdSchema.safeParse({ pollId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
 
   try {
-    const vote = await getUserVoteRepo(pollId, session.user.id);
-    return { success: true, data: vote };
+    const session = await requireSession();
+    const vote = await getUserVoteRepo(parsed.data.pollId, session.user.id);
+    return { data: vote, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getUserVoteAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getPollByThreadAction(threadId: string) {
+  const parsed = threadIdSchema.safeParse({ threadId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
+
   try {
-    const poll = await getPollByThreadIdRepo(threadId);
-    return { success: true, data: poll };
+    const poll = await getPollByThreadIdRepo(parsed.data.threadId);
+    return { data: poll, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getPollByThreadAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
-

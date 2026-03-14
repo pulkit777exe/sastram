@@ -6,11 +6,10 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
   const [threads, total] = await Promise.all([
     prisma.section.findMany({
       where: {
-        deletedAt: null,
         OR: [
           { name: { contains: query, mode: "insensitive" } },
           { description: { contains: query, mode: "insensitive" } },
-          { summary: { contains: query, mode: "insensitive" } },
+          { aiSummary: { contains: query, mode: "insensitive" } },
         ],
       },
       include: {
@@ -39,11 +38,10 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
     }),
     prisma.section.count({
       where: {
-        deletedAt: null,
         OR: [
           { name: { contains: query, mode: "insensitive" } },
           { description: { contains: query, mode: "insensitive" } },
-          { summary: { contains: query, mode: "insensitive" } },
+          { aiSummary: { contains: query, mode: "insensitive" } },
         ],
       },
     }),
@@ -110,7 +108,6 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where: {
-        deletedAt: null,
         status: "ACTIVE",
         OR: [
           { name: { contains: query, mode: "insensitive" } },
@@ -137,7 +134,6 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     }),
     prisma.user.count({
       where: {
-        deletedAt: null,
         status: "ACTIVE",
         OR: [
           { name: { contains: query, mode: "insensitive" } },

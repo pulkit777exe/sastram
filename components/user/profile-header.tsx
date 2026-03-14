@@ -19,7 +19,6 @@ interface ProfileHeaderProps {
     website: string | null;
     twitter: string | null;
     github: string | null;
-    linkedin: string | null;
     image: string | null;
     avatarUrl: string | null;
     bannerUrl: string | null;
@@ -50,7 +49,7 @@ export function ProfileHeader({ user, isOwnProfile, isFollowing }: ProfileHeader
       className="relative overflow-hidden rounded-xl border bg-card"
     >
       {/* Banner */}
-      <div className="relative h-48 w-full bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 dark:from-primary/30 dark:via-primary/20 dark:to-primary/30">
+      <div className="relative h-48 w-full bg-linear-to-r from-primary/20 via-primary/10 to-primary/20 dark:from-primary/30 dark:via-primary/20 dark:to-primary/30">
         {user.bannerUrl && (
           <Image
             src={user.bannerUrl}
@@ -60,7 +59,7 @@ export function ProfileHeader({ user, isOwnProfile, isFollowing }: ProfileHeader
             priority
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-background/80 to-transparent" />
       </div>
 
       {/* Profile Content */}
@@ -142,16 +141,6 @@ export function ProfileHeader({ user, isOwnProfile, isFollowing }: ProfileHeader
                   className="hover:text-foreground transition-colors"
                 >
                   💻 GitHub
-                </a>
-              )}
-              {user.linkedin && (
-                <a
-                  href={`https://linkedin.com/in/${user.linkedin}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  💼 LinkedIn
                 </a>
               )}
             </motion.div>
