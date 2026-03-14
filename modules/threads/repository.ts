@@ -14,7 +14,7 @@ type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
   include: {
     community: true;
     messages: { select: { senderId: true } };
-    _count: { select: { messages: true } };
+    _count: { select: { messages: true; members: true } };
   };
 }>;
 
@@ -42,7 +42,7 @@ type SectionWithCommunityAndMessages = Prisma.SectionGetPayload<{
   include: {
     community: true;
     messages: true;
-    _count: { select: { messages: true } };
+    _count: { select: { messages: true; members: true } };
   };
 }>;
 
