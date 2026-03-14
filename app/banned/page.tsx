@@ -1,10 +1,10 @@
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 import { prisma } from "@/lib/infrastructure/prisma";
 import { redirect } from "next/navigation";
 import TimeAgo from "@/components/ui/TimeAgo";
 
 export default async function BannedPage() {
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
   const status = session.user.status;
 

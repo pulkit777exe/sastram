@@ -1,13 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { isAdmin } from "@/modules/auth/session";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Settings } from "lucide-react";
 
 export default async function ProfilePage() {
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
   const user = session.user;
 
@@ -52,7 +52,7 @@ export default async function ProfilePage() {
             </Link>
             {isAdmin(user) && (
               <Button asChild variant="outline" className="rounded-lg">
-                <a href="/dashboard/admin">Admin Tools</a>
+                <Link href="/dashboard/admin">Admin Tools</Link>
               </Button>
             )}
           </div>

@@ -337,10 +337,25 @@ export class MessageService {
 
       // If moderation action is needed, create a report
       if (result.action !== "ALLOW") {
+        // Check if system user exists, create if necessary
+        let systemUser = await prisma.user.findFirst({
+          where: { email: "system@example.com" },
+        });
+
+        if (!systemUser) {
+          systemUser = await prisma.user.create({
+            data: {
+              email: "system@example.com",
+              name: "System",
+              role: "ADMIN",
+            },
+          });
+        }
+
         await prisma.report.create({
           data: {
             messageId: created.id,
-            reporterId: "system",
+            reporterId: systemUser.id,
             category: "OTHER" as ReportCategory,
             details: result.reason || undefined,
             status: "PENDING",

@@ -1,16 +1,16 @@
-import { useSession } from "@/lib/session-context";
 import { SettingsForm } from "@/components/dashboard/settings-form";
 import { NewsletterManagement } from "@/components/dashboard/newsletter-management";
 import { getUserNewsletterSubscriptions } from "@/modules/newsletter/actions";
 import { SettingsTabs } from "@/components/dashboard/settings-tabs";
 import { prisma } from "@/lib/infrastructure/prisma";
+import { getSession } from "@/modules/auth";
 
 export default async function SettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const session = useSession();
+  const session = await getSession();
 
   if (!session?.user) {
     return (

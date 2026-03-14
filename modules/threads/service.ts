@@ -25,6 +25,7 @@ export function buildThreadDTO(
   thread: ThreadRecord,
   messageCount: number,
   activeUsers: number,
+  memberCount: number,
 ): ThreadSummary {
   return {
     id: thread.id,
@@ -40,7 +41,7 @@ export function buildThreadDTO(
         }
       : null,
     messageCount,
-    memberCount: thread.memberCount || 0,
+    memberCount,
     activeUsers,
     latestMessage: null,
     createdAt: thread.createdAt,
@@ -53,11 +54,12 @@ export function buildThreadDetailDTO(
   thread: ThreadRecord,
   messageCount: number,
   activeUsers: number,
+  memberCount: number,
   summary?: string | null,
   subscriptionCount?: number,
 ): ThreadDetail {
   return {
-    ...buildThreadDTO(thread, messageCount, activeUsers),
+    ...buildThreadDTO(thread, messageCount, activeUsers, memberCount),
     summary:
       summary ??
       ((thread as Record<string, unknown>).aiSummary as string) ??

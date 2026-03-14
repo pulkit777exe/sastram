@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/infrastructure/prisma";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 import { MessageGrid } from "@/components/dashboard/message-grid";
 import { Inbox } from "lucide-react";
 
 export default async function MessagesPage() {
-  const session = useSession();
+  const session = await getSession();
 
   if (!session?.user) {
     return (

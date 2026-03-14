@@ -1,5 +1,5 @@
 import { assertAdmin } from "@/modules/auth/session";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 import { listCommunities } from "@/modules/communities/repository";
 import { listThreads } from "@/modules/threads/repository";
 import { createCommunityAction } from "@/modules/communities/actions";
@@ -16,7 +16,7 @@ import Link from "next/link";
 import { Flag } from "lucide-react";
 
 export default async function AdminDashboardPage() {
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
   assertAdmin(session.user);
 

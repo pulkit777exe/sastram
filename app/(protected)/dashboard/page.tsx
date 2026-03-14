@@ -7,7 +7,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { isAdmin } from "@/modules/auth/session";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 import { listThreads } from "@/modules/threads/repository";
 import { listCommunities } from "@/modules/communities/repository";
 import { TopicGrid } from "@/components/dashboard/topic-grid";
@@ -17,7 +17,7 @@ import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
 import { cn } from "@/lib/utils/cn";
 
 export default async function DashboardPage() {
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
   const [{ threads }, communities] = await Promise.all([
     listThreads(),

@@ -1,5 +1,5 @@
 import { assertAdmin } from "@/modules/auth/session";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 import { getReports } from "@/modules/reports/actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Report } from "@/modules/reports";
 import { cn } from "@/lib/utils/cn";
 
 export default async function ReportsPage() {
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
   assertAdmin(session.user);
 

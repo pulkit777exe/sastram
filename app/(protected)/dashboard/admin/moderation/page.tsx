@@ -1,5 +1,5 @@
 import { assertAdmin } from "@/modules/auth/session";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 import { getReports, getReportStats } from "@/modules/reports/actions";
 import { getBannedUsers } from "@/modules/moderation/actions";
 import { getUserActivities } from "@/modules/audit/repository";
@@ -7,7 +7,7 @@ import { ModerationDashboard } from "@/components/admin/moderation-dashboard";
 import { BannedUsersList } from "@/components/admin/banned-users-list";
 
 export default async function ModerationPage() {
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
   assertAdmin(session.user);
 

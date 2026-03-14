@@ -1,10 +1,10 @@
 import { assertAdmin } from "@/modules/auth/session";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 import { getAppeals } from "@/modules/appeals/actions";
 import { AppealsList } from "@/components/admin/appeals-list";
 
 export default async function AppealsPage() {
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
   assertAdmin(session.user);
 

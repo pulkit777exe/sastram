@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/infrastructure/prisma";
 import { ProfileHeader } from "@/components/user/profile-header";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 
 export default async function PublicProfilePage({
   params,
@@ -9,7 +9,7 @@ export default async function PublicProfilePage({
   params: { userId: string };
 }) {
   const { userId } = await params;
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
 
   const user = await prisma.user.findUnique({

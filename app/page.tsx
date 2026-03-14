@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth";
 
 export default async function Home() {
-  const session = useSession();
+  const session = await getSession();
   if (session) {
     redirect("/dashboard");
   }

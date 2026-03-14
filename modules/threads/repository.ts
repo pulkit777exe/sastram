@@ -91,11 +91,21 @@ export async function listThreads(
                 createdAt: true,
               },
             },
+            members: {
+              where: {
+                status: "ACTIVE",
+              },
+            },
             _count: {
               select: {
                 messages: {
                   where: {
                     deletedAt: null,
+                  },
+                },
+                members: {
+                  where: {
+                    status: "ACTIVE",
                   },
                 },
               },
@@ -119,6 +129,7 @@ export async function listThreads(
       thread as unknown as ThreadRecord,
       thread._count.messages,
       uniqueActiveUsers.size,
+      thread._count.members,
     );
   });
 
@@ -191,10 +202,19 @@ export async function getThreadBySlug(
   }
 
   const typedRecord = record as SectionWithFullDetails;
+  // Count active members for the thread
+  const memberCount = await prisma.sectionMember.count({
+    where: {
+      sectionId: typedRecord.id,
+      status: "ACTIVE",
+    },
+  });
+
   return buildThreadDetailDTO(
     typedRecord as unknown as ThreadRecord,
     typedRecord._count.messages,
     new Set(typedRecord.messages.map((m) => m.senderId)).size,
+    memberCount,
     typedRecord.aiSummary ?? undefined,
     typedRecord.subscriptions?.length ?? 0,
   );
@@ -214,6 +234,13 @@ export async function createThread(payload: {
       communityId: payload.communityId,
       slug: payload.slug,
       createdBy: payload.createdBy,
+      members: {
+        create: {
+          userId: payload.createdBy,
+          role: "OWNER",
+          status: "ACTIVE",
+        },
+      },
     },
     include: {
       community: true,
@@ -221,6 +248,7 @@ export async function createThread(payload: {
       _count: {
         select: {
           messages: true,
+          members: true,
         },
       },
     },
@@ -231,6 +259,7 @@ export async function createThread(payload: {
     typedThread as ThreadRecord,
     typedThread._count.messages,
     0,
+    typedThread._count.members,
   );
 }
 

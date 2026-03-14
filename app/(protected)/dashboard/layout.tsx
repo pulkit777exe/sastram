@@ -1,12 +1,12 @@
 import { Sidebar } from "@/components/dashboard/sidebar";
-import { useSession } from "@/lib/session-context";
+import { getSession } from "@/modules/auth/session";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = useSession();
+  const session = await getSession();
   if (!session) return null;
 
   return (

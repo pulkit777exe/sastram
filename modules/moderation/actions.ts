@@ -374,7 +374,7 @@ export async function banUser(
       };
     }
 
-     let thread;
+     let thread: { id: string; name: string } | null;
     if (validation.data.threadId) {
       thread = await prisma.section.findUnique({
         where: { id: validation.data.threadId },
