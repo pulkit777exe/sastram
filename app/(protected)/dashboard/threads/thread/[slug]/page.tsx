@@ -12,14 +12,14 @@ import {
   Activity,
 } from "lucide-react";
 import type { Message } from "@/lib/types/index";
-import { isAdmin } from "@/modules/auth/session";
-import { useSession } from "@/lib/session-context";
+import { isAdmin, requireSession } from "@/modules/auth/session";
 import { getThreadWithFullContext } from "@/modules/threads";
 import { subscribeToThreadAction } from "@/modules/newsletter/actions";
 import Link from "next/link";
 import TimeAgo from "@/components/ui/TimeAgo";
 import { ThreadManagementControls } from "@/components/thread/thread-management-controls";
 import { ThreadSummaryCard } from "@/components/thread/thread-summary-card";
+import ResolutionScoreCard from "@/components/panels/ResolutionScoreCard";
 
 export default async function ThreadPage({
   params,
@@ -27,8 +27,7 @@ export default async function ThreadPage({
   params: { slug: string };
 }) {
   const { slug } = await params;
-  const session = useSession();
-  if (!session) return null;
+  const session = await requireSession();
   const thread = await getThreadWithFullContext(slug, session.user.id);
 
   if (!thread) notFound();
@@ -185,22 +184,57 @@ export default async function ThreadPage({
           </div>
         </div>
 
-        <div className="p-6">
-          <ThreadSummaryCard
-            threadId={thread.id}
-            initialSummary={thread.aiSummary}
-            className="mb-8"
-          />
+         <div className="p-6">
+           <ThreadSummaryCard
+             threadId={thread.id}
+             initialSummary={thread.aiSummary}
+             className="mb-8"
+           />
 
-          <div className="mt-8">
-            <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
-              Created
-            </p>
-            <p className="text-xs text-zinc-600 font-medium">
-              <TimeAgo date={thread.createdAt} />
-            </p>
-          </div>
-        </div>
+           {thread.resolutionScore !== null && (
+             <div className="mb-8">
+               <ResolutionScoreCard
+                 score={thread.resolutionScore}
+                 breakdown={{
+                   quality: Math.floor(thread.resolutionScore * 0.6),
+                   sources: Math.floor(thread.resolutionScore * 0.25),
+                   votes: Math.floor(thread.resolutionScore * 0.15),
+                 }}
+               />
+             </div>
+           )}
+
+           {thread.threadDna && (
+             <div className="mb-8 p-4 bg-muted/50 rounded-xl">
+               <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
+                 Thread DNA
+               </p>
+               <pre className="text-xs text-zinc-600 overflow-x-auto">
+                 {JSON.stringify(thread.threadDna, null, 2)}
+               </pre>
+             </div>
+           )}
+
+           {thread.isOutdated && (
+             <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+               <p className="text-[10px] text-amber-600 font-medium mb-2 uppercase tracking-wider">
+                 Stale Content Warning
+               </p>
+               <p className="text-xs text-amber-800">
+                 This thread may contain outdated information that contradicts newer content.
+               </p>
+             </div>
+           )}
+
+           <div className="mt-8">
+             <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
+               Created
+             </p>
+             <p className="text-xs text-zinc-600 font-medium">
+               <TimeAgo date={thread.createdAt} />
+             </p>
+           </div>
+         </div>
 
         {isAdmin(session.user) && (
           <div className="p-6 mt-auto border-t border-border/60">

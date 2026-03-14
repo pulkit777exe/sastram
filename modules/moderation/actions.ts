@@ -374,8 +374,9 @@ export async function banUser(
       };
     }
 
+     let thread;
     if (validation.data.threadId) {
-      const thread = await prisma.section.findUnique({
+      thread = await prisma.section.findUnique({
         where: { id: validation.data.threadId },
         select: { id: true, name: true },
       });
@@ -415,9 +416,7 @@ export async function banUser(
       }
 
       const banMessage = validation.data.threadId
-        ? `You have been banned from "${
-            "a thread"
-          }". Reason: ${validation.data.reason}`
+        ? `You have been banned from "${thread?.name}". Reason: ${validation.data.reason}`
         : `Your account has been banned. Reason: ${validation.data.reason}`;
 
       await tx.notification.create({

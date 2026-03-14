@@ -50,9 +50,10 @@ export class RateLimitFilter {
 }
 
 export class RegexFilter {
-  async check(message: MessageLike): Promise<ModerationResult> {
-    const lowered = message.content.toLowerCase();
+  private rulesCache: { rules: any[]; timestamp: number } | null = null;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+  async check(message: MessageLike): Promise<ModerationResult> {
     if (containsBadLanguage(message.content)) {
       return {
         success: false,
@@ -62,9 +63,50 @@ export class RegexFilter {
       };
     }
 
+    // Check against custom moderation rules (with caching)
+    let rules = this.getRulesFromCache();
+    if (!rules) {
+      rules = await prisma.moderationRule.findMany();
+      this.cacheRules(rules);
+    }
+
+    for (const rule of rules) {
+      try {
+        const regex = new RegExp(rule.pattern, "i");
+        if (regex.test(message.content)) {
+          return {
+            success: false,
+            action: rule.action as "BLOCK" | "REVIEW" | "FLAG",
+            severity: rule.severity as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+            reason: `Matched rule: ${rule.category}`,
+          };
+        }
+      } catch (error) {
+        console.warn(`Invalid regex pattern for rule ${rule.id}:`, error);
+        continue;
+      }
+    }
+
     return {
       success: true,
       action: "ALLOW",
+    };
+  }
+
+  private getRulesFromCache() {
+    if (!this.rulesCache) return null;
+    const now = Date.now();
+    if (now - this.rulesCache.timestamp > this.CACHE_TTL) {
+      this.rulesCache = null;
+      return null;
+    }
+    return this.rulesCache.rules;
+  }
+
+  private cacheRules(rules: any[]) {
+    this.rulesCache = {
+      rules,
+      timestamp: Date.now(),
     };
   }
 }

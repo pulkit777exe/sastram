@@ -74,6 +74,12 @@ enum ReportCategory {
   OTHER
 }
 
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum InvitationStatus {
   PENDING
   ACCEPTED
@@ -147,6 +153,8 @@ model User {
   activities    UserActivity[]
   pollVotes     PollVote[]
   subscriptions ThreadSubscription[]
+  appeals       Appeal[]             @relation("AppealSubmitter")
+  moderatedAppeals Appeal[]         @relation("AppealModerator")
 
   // AI features
   aiSearchSessions AiSearchSession[]
@@ -319,6 +327,7 @@ model Message {
   reports     Report[]
   editHistory MessageEdit[]
   mentions    MessageMention[]
+  appeals     Appeal[]         @relation("MessageAppeal")
 
   @@index([sectionId])
   @@index([sectionId, createdAt])
@@ -454,18 +463,25 @@ model ThreadSubscription {
   @@map("thread_subscriptions")
 }
 
-// ── MODERATION (lean version) ──────────────────────────
+model ModerationRule {
+  id        String   @id @default(cuid())
+  pattern   String
+  category  String
+  action    String
+  severity  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-// Replaces: ModerationQueue + ModerationFeedback + ModerationStats
-// + ModerationActionLog + ContentSafetyRule (5 tables → 2)
-// Appeal model kept separately for proper appeal handling
+  @@index([category])
+  @@index([severity])
+  @@map("moderation_rules")
+}
 
 model Appeal {
   id          String       @id @default(cuid())
   messageId   String
   userId      String
   moderatorId String?
-  queueId     String?
   status      AppealStatus @default(PENDING)
   reason      String
   response    String?
@@ -476,12 +492,10 @@ model Appeal {
   message   Message          @relation("MessageAppeal", fields: [messageId], references: [id], onDelete: Cascade)
   user      User             @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: Cascade)
   moderator User?            @relation("AppealModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
-  queue     ModerationQueue? @relation("QueueAppeals", fields: [queueId], references: [id], onDelete: SetNull)
 
   @@index([messageId])
   @@index([userId])
   @@index([moderatorId])
-  @@index([queueId])
   @@index([status])
   @@index([createdAt])
   @@map("appeals")
