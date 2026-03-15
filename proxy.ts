@@ -6,6 +6,9 @@ const PUBLIC_PATHS = [
   "/api/auth",
   "/api/email-otp",
   "/api/newsletter",
+  "/api/bootstrap",
+  "/api/sign-in",
+  "/api/forget-password",
 ];
 
 export default async function proxy(request: NextRequest) {
