@@ -5,6 +5,7 @@ import type {
   ThreadRecord,
   ThreadSummary,
   CommunitySummary,
+  ThreadDNA,
 } from "./types";
 
 export function slugifyTitle(title: string) {
@@ -64,6 +65,10 @@ export function buildThreadDetailDTO(
       summary ??
       ((thread as Record<string, unknown>).aiSummary as string) ??
       null,
+    resolutionScore: thread.resolutionScore,
+    threadDna: thread.threadDna ? (thread.threadDna as unknown as ThreadDNA) : undefined,
+    lastVerifiedAt: thread.lastVerifiedAt,
+    isOutdated: thread.isOutdated,
     subscriptionCount,
     messages:
       thread.messages?.map((message) => ({

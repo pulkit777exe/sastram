@@ -11,6 +11,9 @@ import {
   getThreadMembers,
   updateThreadMemberRole,
   removeThreadMember,
+  updateThreadDNA,
+  updateResolutionScore,
+  updateThreadStaleness,
 } from "./repository";
 import { prisma } from "@/lib/infrastructure/prisma";
 import { SectionRole } from "@prisma/client";
@@ -19,6 +22,7 @@ const threadSchema = z.object({
   title: z.string().min(3),
   description: z.string().max(480).optional().or(z.literal("")),
   communityId: z.string().cuid().optional().or(z.literal("")),
+  initialMessage: z.string().optional(),
 });
 
 const threadIdSchema = z.object({
@@ -43,6 +47,7 @@ export async function createThreadAction(formData: FormData) {
     title: formData.get("title"),
     description: formData.get("description"),
     communityId: formData.get("communityId"),
+    initialMessage: formData.get("initialMessage"),
   });
 
   if (!parsed.success) {
@@ -60,6 +65,7 @@ export async function createThreadAction(formData: FormData) {
       communityId: parsed.data.communityId || null,
       slug,
       createdBy: session.user.id,
+      initialMessage: parsed.data.initialMessage,
     });
 
     revalidatePath("/dashboard");

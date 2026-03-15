@@ -57,6 +57,13 @@ export interface ThreadSummary {
 }
 
 // Detailed thread view with messages
+export interface ThreadDNA {
+  questionType: "factual" | "opinion" | "technical" | "comparison" | "other";
+  expertiseLevel: "beginner" | "intermediate" | "advanced" | "expert";
+  topics: string[];
+  readTimeMinutes: number;
+}
+
 export interface ThreadDetail extends ThreadSummary {
   messages: MessageWithDetails[];
   summary?: string | null;
@@ -64,6 +71,10 @@ export interface ThreadDetail extends ThreadSummary {
   userRole?: SectionRole | null; // Current user's role in this thread
   isSubscribed?: boolean;
   unreadCount?: number;
+  resolutionScore?: number | null;
+  threadDna?: ThreadDNA;
+  lastVerifiedAt?: Date | null;
+  isOutdated?: boolean;
 }
 
 // Message with full details

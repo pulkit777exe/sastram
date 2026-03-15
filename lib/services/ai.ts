@@ -1,9 +1,22 @@
 import { withRetry } from "@/lib/utils/retry";
+import { z } from "zod";
+
+const THREAD_DNA_PROMPT = {
+  system: "You are a helpful assistant that analyzes discussion threads and extracts structured 'Thread DNA' information. Return ONLY valid JSON with these fields: questionType (one of 'factual', 'opinion', 'technical', 'comparison', 'other'), expertiseLevel (one of 'beginner', 'intermediate', 'advanced', 'expert'), topics (array of 3-5 key topics), readTimeMinutes (estimated reading time in minutes as integer).",
+  fields: [
+    "questionType: one of 'factual', 'opinion', 'technical', 'comparison', 'other'",
+    "expertiseLevel: one of 'beginner', 'intermediate', 'advanced', 'expert'",
+    "topics: array of 3-5 key topics",
+    "readTimeMinutes: estimated reading time in minutes (integer)"
+  ]
+};
 
 export interface AIService {
   generateSummary(content: string): Promise<string>;
   generateThreadSummary(messages: any[]): Promise<string>;
   generateDailyDigest(messages: any[]): Promise<string>;
+  generateThreadDNA(messages: any[]): Promise<Record<string, any>>;
+  calculateResolutionScore(messages: any[]): Promise<number>;
 }
 
 export class GeminiService implements AIService {
@@ -42,6 +55,96 @@ Summary:`;
       .map((m) => `User ${m.sender?.name || "Unknown"}: ${m.content}`)
       .join("\n");
     return this.generateSummary(content);
+  }
+
+  async generateThreadDNA(messages: any[]): Promise<Record<string, any>> {
+    try {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(this.apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      const content = messages
+        .map((m) => `User ${m.sender?.name || "Unknown"}: ${m.content}`)
+        .join("\n");
+
+      const prompt = `Analyze the following discussion thread and extract structured "Thread DNA" information. Return ONLY valid JSON with these fields:
+${THREAD_DNA_PROMPT.fields.join("\n")}
+
+Messages:
+${content}
+
+JSON response:`;
+
+      const result = await withRetry((signal) =>
+        model.generateContent(prompt, { signal, timeout: 15_000 }),
+      );
+      const response = await result.response;
+      const text = response.text().trim().replace(/```json\n?|```\n?/g, "").trim();
+      
+      const threadDNASchema = z.object({
+        questionType: z.enum(["factual", "opinion", "technical", "comparison", "other"]),
+        expertiseLevel: z.enum(["beginner", "intermediate", "advanced", "expert"]),
+        topics: z.array(z.string()).min(3).max(5),
+        readTimeMinutes: z.number().int().min(1),
+      });
+      
+      const parsedDNA = threadDNASchema.safeParse(JSON.parse(text));
+      if (!parsedDNA.success) {
+        console.error("Invalid thread DNA format:", parsedDNA.error);
+        return {
+          questionType: "other",
+          expertiseLevel: "intermediate",
+          topics: ["general discussion"],
+          readTimeMinutes: 1,
+        };
+      }
+      
+      return parsedDNA.data;
+    } catch (error) {
+      console.error("Gemini API error:", error);
+      return {
+        questionType: "other",
+        expertiseLevel: "intermediate",
+        topics: ["general discussion"],
+        readTimeMinutes: 1,
+      };
+    }
+  }
+
+  async calculateResolutionScore(messages: any[]): Promise<number> {
+    try {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(this.apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      const content = messages
+        .map((m) => `User ${m.sender?.name || "Unknown"}: ${m.content}`)
+        .join("\n");
+
+      const prompt = `Calculate a resolution score (0-100) for this discussion thread. The score should reflect how well the original question/topic has been resolved. Consider:
+- Whether there's a clear answer or solution
+- The depth and quality of responses
+- The level of consensus among participants
+- How comprehensively the topic is covered
+
+Return ONLY a single integer between 0 and 100.
+
+Messages:
+${content}
+
+Score:`;
+
+      const result = await withRetry((signal) =>
+        model.generateContent(prompt, { signal, timeout: 15_000 }),
+      );
+      const response = await result.response;
+      const text = response.text().trim();
+      const score = parseInt(text, 10);
+      return isNaN(score) ? 50 : Math.max(0, Math.min(100, score));
+    } catch (error) {
+      console.error("Gemini API error:", error);
+      return 50; // Default score if calculation fails
+    }
   }
 
   async generateDailyDigest(messages: any[]): Promise<string> {
@@ -138,6 +241,131 @@ export class OpenAIService implements AIService {
       .map((m) => `User ${m.sender?.name || "Unknown"}: ${m.content}`)
       .join("\n");
     return this.generateSummary(content);
+  }
+
+  async generateThreadDNA(messages: any[]): Promise<Record<string, any>> {
+    try {
+      const content = messages
+        .map((m) => `User ${m.sender?.name || "Unknown"}: ${m.content}`)
+        .join("\n");
+
+      const data = await withRetry(async (signal) => {
+        const response = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-3.5-turbo",
+              messages: [
+                {
+                  role: "system",
+                  content: THREAD_DNA_PROMPT.system,
+                },
+                {
+                  role: "user",
+                  content: `Messages:\n${content}`,
+                },
+              ],
+              max_tokens: 200,
+              temperature: 0.7,
+            }),
+            signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
+
+        return response.json();
+      });
+
+      const text = data.choices[0]?.message?.content || "{}";
+      const cleaned = text.trim().replace(/```json\n?|```\n?/g, "").trim();
+      
+      const threadDNASchema = z.object({
+        questionType: z.enum(["factual", "opinion", "technical", "comparison", "other"]),
+        expertiseLevel: z.enum(["beginner", "intermediate", "advanced", "expert"]),
+        topics: z.array(z.string()).min(3).max(5),
+        readTimeMinutes: z.number().int().min(1),
+      });
+      
+      const parsedDNA = threadDNASchema.safeParse(JSON.parse(cleaned));
+      if (!parsedDNA.success) {
+        console.error("Invalid thread DNA format:", parsedDNA.error);
+        return {
+          questionType: "other",
+          expertiseLevel: "intermediate",
+          topics: ["general discussion"],
+          readTimeMinutes: 1,
+        };
+      }
+      
+      return parsedDNA.data;
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      return {
+        questionType: "other",
+        expertiseLevel: "intermediate",
+        topics: ["general discussion"],
+        readTimeMinutes: 1,
+      };
+    }
+  }
+
+  async calculateResolutionScore(messages: any[]): Promise<number> {
+    try {
+      const content = messages
+        .map((m) => `User ${m.sender?.name || "Unknown"}: ${m.content}`)
+        .join("\n");
+
+      const data = await withRetry(async (signal) => {
+        const response = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-3.5-turbo",
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are a helpful assistant that calculates resolution scores (0-100) for discussion threads. The score should reflect how well the original question/topic has been resolved. Consider: whether there's a clear answer/solution, depth/quality of responses, level of consensus, comprehensiveness. Return ONLY a single integer between 0 and 100.",
+                },
+                {
+                  role: "user",
+                  content: `Messages:\n${content}`,
+                },
+              ],
+              max_tokens: 50,
+              temperature: 0.7,
+            }),
+            signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
+
+        return response.json();
+      });
+
+      const text = data.choices[0]?.message?.content || "50";
+      const score = parseInt(text.trim(), 10);
+      return isNaN(score) ? 50 : Math.max(0, Math.min(100, score));
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      return 50; // Default score if calculation fails
+    }
   }
 
   async generateDailyDigest(messages: any[]): Promise<string> {
@@ -244,6 +472,17 @@ try {
         generateDailyDigest: async (messages: any[]) => {
           return "<p>AI service not configured.</p>";
         },
+        generateThreadDNA: async (messages: any[]) => {
+          return {
+            questionType: "other",
+            expertiseLevel: "intermediate",
+            topics: ["general discussion"],
+            readTimeMinutes: 1,
+          };
+        },
+        calculateResolutionScore: async (messages: any[]) => {
+          return 50;
+        },
       };
     }
   } catch (fallbackError) {
@@ -259,6 +498,17 @@ try {
       },
       generateDailyDigest: async (messages: any[]) => {
         return "<p>AI service not configured.</p>";
+      },
+      generateThreadDNA: async (messages: any[]) => {
+        return {
+          questionType: "other",
+          expertiseLevel: "intermediate",
+          topics: ["general discussion"],
+          readTimeMinutes: 1,
+        };
+      },
+      calculateResolutionScore: async (messages: any[]) => {
+        return 50;
       },
     };
   }

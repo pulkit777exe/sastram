@@ -9,6 +9,7 @@ import type {
 import { SectionRole } from "@prisma/client";
 import { buildThreadDTO, buildThreadDetailDTO } from "./service";
 import { dedupe } from "@/lib/dedupe";
+import { aiService } from "@/lib/services/ai";
 
 type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
   include: {
@@ -226,6 +227,7 @@ export async function createThread(payload: {
   communityId?: string | null;
   slug: string;
   createdBy: string;
+  initialMessage?: string;
 }): Promise<ThreadSummary> {
   const thread = await prisma.section.create({
     data: {
@@ -241,6 +243,18 @@ export async function createThread(payload: {
           status: "ACTIVE",
         },
       },
+      messages: payload.initialMessage ? {
+        create: {
+          content: payload.initialMessage,
+          senderId: payload.createdBy,
+          depth: 0,
+          isAiResponse: false,
+          isEdited: false,
+          isPinned: false,
+          likeCount: 0,
+          replyCount: 0,
+        },
+      } : undefined,
     },
     include: {
       community: true,
@@ -253,6 +267,48 @@ export async function createThread(payload: {
       },
     },
   });
+
+  // If there's an initial message, generate thread DNA and resolution score
+  if (payload.initialMessage) {
+    const initialMessages = [{
+      id: thread.messages[0].id,
+      content: payload.initialMessage,
+      senderId: payload.createdBy,
+      sender: {
+        id: payload.createdBy,
+        name: null,
+        image: null,
+      },
+      createdAt: thread.messages[0].createdAt,
+    }];
+    
+    try {
+      const [threadDNA, resolutionScore] = await Promise.all([
+        aiService.generateThreadDNA(initialMessages),
+        aiService.calculateResolutionScore(initialMessages),
+      ]);
+
+      await prisma.section.update({
+        where: { id: thread.id },
+        data: { threadDna: threadDNA, resolutionScore },
+      });
+    } catch (error) {
+      console.error("Failed to generate thread metadata:", error);
+      // Set explicit default values if AI calls fail
+      await prisma.section.update({
+        where: { id: thread.id },
+        data: {
+          threadDna: {
+            questionType: "other",
+            expertiseLevel: "intermediate",
+            topics: ["general discussion"],
+            readTimeMinutes: 1,
+          },
+          resolutionScore: 50,
+        },
+      });
+    }
+  }
 
   const typedThread = thread as SectionWithCommunityAndMessages;
   return buildThreadDTO(
@@ -361,5 +417,46 @@ export async function removeThreadMember(
         userId,
       },
     },
+  });
+}
+
+import { z } from "zod";
+
+const threadDNASchema = z.object({
+  questionType: z.enum(["factual", "opinion", "technical", "comparison", "other"]),
+  expertiseLevel: z.enum(["beginner", "intermediate", "advanced", "expert"]),
+  topics: z.array(z.string()).min(3).max(5),
+  readTimeMinutes: z.number().int().min(1),
+});
+
+export async function updateThreadDNA(
+  threadId: string,
+  threadDNA: Record<string, any>,
+): Promise<void> {
+  const validatedDNA = threadDNASchema.parse(threadDNA);
+  await prisma.section.update({
+    where: { id: threadId },
+    data: { threadDna: validatedDNA },
+  });
+}
+
+export async function updateResolutionScore(
+  threadId: string,
+  score: number,
+): Promise<void> {
+  const validatedScore = z.number().int().min(0).max(100).parse(score);
+  await prisma.section.update({
+    where: { id: threadId },
+    data: { resolutionScore: validatedScore },
+  });
+}
+
+export async function updateThreadStaleness(
+  threadId: string,
+  isOutdated: boolean,
+): Promise<void> {
+  await prisma.section.update({
+    where: { id: threadId },
+    data: { isOutdated, lastVerifiedAt: new Date() },
   });
 }
