@@ -683,14 +683,15 @@ model ThreadInvitation {
 
 // Groups a user's search session (one query = one session)
 model AiSearchSession {
-  id           String   @id @default(cuid())
-  userId       String
-  query        String   @db.Text
-  queryHash    String // sha256 of normalized query for dedup
-  queryType    String? // factual | opinion | technical | comparison
-  cacheHit     Boolean  @default(false)
-  processingMs Int?
-  createdAt    DateTime @default(now())
+  id              String   @id @default(cuid())
+  userId          String
+  query           String   @db.Text
+  queryHash       String // sha256 of normalized query for dedup
+  queryType       String? // factual | opinion | technical | comparison
+  cacheHit        Boolean  @default(false)
+  processingMs    Int?
+  createdAt       DateTime @default(now())
+  lastPrewarmedAt DateTime?
 
   user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   results AiSearchResult[]

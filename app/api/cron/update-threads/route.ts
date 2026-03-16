@@ -3,6 +3,8 @@ import { prisma } from "@/lib/infrastructure/prisma";
 import { aiService } from "@/lib/services/ai";
 import { notifyMultipleUsers } from "@/modules/notifications/repository";
 import { NotificationType } from "@prisma/client";
+import { updateAllThreadRelations } from "@/modules/threads/relations";
+import { prewarmFollowUpQueries } from "@/modules/ai-search/query-warming";
 
 export async function GET(req: NextRequest) {
   // Verify Cron Secret (optional but recommended for production)
@@ -39,6 +41,8 @@ export async function GET(req: NextRequest) {
       updatedScore: 0,
       markedOutdated: 0,
       sentNotifications: 0,
+      relationsUpdated: 0,
+      prewarmedQueries: 0,
       errors: 0,
     };
 
@@ -194,8 +198,16 @@ export async function GET(req: NextRequest) {
     }
   };
 
-  // Process threads with controlled concurrency
-  await processWithConcurrency(threads, concurrencyLimit, processThread);
+    // Process threads with controlled concurrency
+    await processWithConcurrency(threads, concurrencyLimit, processThread);
+
+    // Update thread relations
+    const relationsResult = await updateAllThreadRelations();
+    results.relationsUpdated = relationsResult.updated;
+
+    // Pre-warm follow-up queries
+    const prewarmResult = await prewarmFollowUpQueries();
+    results.prewarmedQueries = prewarmResult.prewarmed;
 
     return NextResponse.json({ success: true, results });
   } catch (error) {
