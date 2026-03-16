@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Bell, Moon, Upload, Image as ImageIcon, X } from "lucide-react";
 import {
   updateUserProfile,
   uploadAvatar,
   uploadBanner,
+  updateProfilePrivacyAction,
 } from "@/modules/users/actions";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
@@ -76,8 +78,19 @@ export function SettingsForm({ user }: SettingsFormProps) {
   const [bannerUrl, setBannerUrl] = useState(user.bannerUrl || "");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [profilePrivacy, setProfilePrivacy] = useState("PUBLIC");
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleUpdatePrivacy(privacy: string) {
+    const result = await updateProfilePrivacyAction(privacy);
+    if (result?.error) {
+      toast.error(result.error);
+    } else {
+      setProfilePrivacy(privacy);
+      toast.success("Profile privacy updated successfully!");
+    }
+  }
 
   async function handleSubmit(formData: FormData) {
     const result = await updateUserProfile(formData);
@@ -413,6 +426,46 @@ export function SettingsForm({ user }: SettingsFormProps) {
               </p>
             </div>
             <Switch id="push-notifs" />
+          </div>
+        </div>
+      </motion.div>
+
+      <motion.div
+        variants={item}
+        className="rounded-xl border border-border bg-card p-6 shadow-sm"
+      >
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 text-green-500">
+            <User className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Profile Privacy</h2>
+            <p className="text-sm text-muted-foreground">
+              Control who can view your profile and activity.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="grid gap-3">
+            <Label className="text-base font-medium text-foreground">
+              Privacy Level
+            </Label>
+            <Select value={profilePrivacy} onValueChange={handleUpdatePrivacy}>
+              <SelectTrigger className="w-full h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all">
+                <SelectValue placeholder="Select privacy level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PUBLIC">Public</SelectItem>
+                <SelectItem value="PRIVATE">Private</SelectItem>
+                <SelectItem value="FOLLOWERS_ONLY">Followers Only</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {profilePrivacy === "PUBLIC" && "Your profile is visible to everyone."}
+              {profilePrivacy === "PRIVATE" && "Only you can view your profile."}
+              {profilePrivacy === "FOLLOWERS_ONLY" && "Only your followers can view your profile."}
+            </p>
           </div>
         </div>
       </motion.div>

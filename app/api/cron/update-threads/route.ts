@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/infrastructure/prisma";
 import { aiService } from "@/lib/services/ai";
+import { notifyMultipleUsers } from "@/modules/notifications/repository";
+import { NotificationType } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   // Verify Cron Secret (optional but recommended for production)
@@ -27,6 +29,7 @@ export async function GET(req: NextRequest) {
           orderBy: { createdAt: "desc" },
           include: { sender: true },
         },
+        subscriptions: true,
       },
     });
 
@@ -35,6 +38,7 @@ export async function GET(req: NextRequest) {
       updatedDNA: 0,
       updatedScore: 0,
       markedOutdated: 0,
+      sentNotifications: 0,
       errors: 0,
     };
 
@@ -87,11 +91,12 @@ export async function GET(req: NextRequest) {
       });
       results.updatedDNA++;
 
-      // Update resolution score
-      const score = await aiService.calculateResolutionScore(messages);
+      // Update resolution score and check for significant changes
+      const oldScore = thread.resolutionScore;
+      const newScore = await aiService.calculateResolutionScore(messages);
       await prisma.section.update({
         where: { id: thread.id },
-        data: { resolutionScore: score },
+        data: { resolutionScore: newScore },
       });
       results.updatedScore++;
 
@@ -103,6 +108,85 @@ export async function GET(req: NextRequest) {
           data: { isOutdated, lastVerifiedAt: new Date() },
         });
         results.markedOutdated++;
+      }
+
+      // Detect conflicts in messages
+      const conflictResult = await aiService.detectConflicts(messages);
+      if (conflictResult.hasConflict) {
+        await prisma.section.update({
+          where: { id: thread.id },
+          data: { 
+            isOutdated: true,
+            lastVerifiedAt: new Date(),
+          },
+        });
+        results.markedOutdated++;
+      }
+
+      // Send AI insight notifications to subscribers
+      const subscriberIds = thread.subscriptions.map((sub: any) => sub.userId);
+      if (subscriberIds.length > 0) {
+        const notifications = [];
+        
+        // Send resolution score change notification if significant (>= 20 points)
+        if (oldScore !== null && Math.abs(newScore - oldScore) >= 20) {
+          notifications.push({
+            userIds: subscriberIds,
+            type: NotificationType.AI_INSIGHT,
+            title: `Resolution score updated for "${thread.name}"`,
+            message: `The resolution score for this thread has changed from ${oldScore} to ${newScore}.`,
+            data: {
+              threadId: thread.id,
+              threadName: thread.name,
+              oldScore,
+              newScore,
+              type: "resolution_score_change"
+            }
+          });
+        }
+
+        // Send outdated thread notification
+        if (isOutdated) {
+          notifications.push({
+            userIds: subscriberIds,
+            type: NotificationType.AI_INSIGHT,
+            title: `Thread "${thread.name}" may be outdated`,
+            message: "This thread hasn't been updated in over a week and may contain outdated information.",
+            data: {
+              threadId: thread.id,
+              threadName: thread.name,
+              type: "thread_outdated"
+            }
+          });
+        }
+
+        // Send conflict detection notification
+        if (conflictResult.hasConflict) {
+          notifications.push({
+            userIds: subscriberIds,
+            type: NotificationType.AI_INSIGHT,
+            title: `Conflict detected in "${thread.name}"`,
+            message: conflictResult.reason || "A conflict has been detected in this thread. Please review the messages.",
+            data: {
+              threadId: thread.id,
+              threadName: thread.name,
+              conflictingMessages: conflictResult.conflictingMessages,
+              type: "conflict_detected"
+            }
+          });
+        }
+
+        // Send all notifications
+        for (const notification of notifications) {
+          await notifyMultipleUsers(
+            notification.userIds,
+            notification.type,
+            notification.title,
+            notification.message,
+            notification.data
+          );
+          results.sentNotifications += notification.userIds.length;
+        }
       }
     } catch (error) {
       console.error(`Failed to process thread ${thread.id}:`, error);

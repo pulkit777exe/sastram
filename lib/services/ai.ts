@@ -17,6 +17,7 @@ export interface AIService {
   generateDailyDigest(messages: any[]): Promise<string>;
   generateThreadDNA(messages: any[]): Promise<Record<string, any>>;
   calculateResolutionScore(messages: any[]): Promise<number>;
+  detectConflicts(messages: any[]): Promise<{ hasConflict: boolean; conflictingMessages?: number[]; reason?: string }>;
 }
 
 export class GeminiService implements AIService {
@@ -144,6 +145,53 @@ Score:`;
     } catch (error) {
       console.error("Gemini API error:", error);
       return 50; // Default score if calculation fails
+    }
+  }
+
+  async detectConflicts(messages: any[]): Promise<{ hasConflict: boolean; conflictingMessages?: [number, number]; reason?: string }> {
+    try {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(this.apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      const content = messages
+        .map((m, index) => `${index + 1}. User ${m.sender?.name || "Unknown"}: ${m.content}`)
+        .join("\n");
+
+      const prompt = `Analyze the following discussion thread for conflicting messages. A conflict is when two messages present contradictory information or opposing viewpoints that can't both be true. 
+
+Return a JSON object with:
+- hasConflict: boolean indicating if there are any conflicts
+- conflictingMessages: optional array of two message numbers that conflict (e.g., [1, 3])
+- reason: optional string explaining the nature of the conflict
+
+Messages:
+${content}
+
+JSON response:`;
+
+      const result = await withRetry((signal) =>
+        model.generateContent(prompt, { signal, timeout: 15_000 }),
+      );
+      const response = await result.response;
+      const text = response.text().trim().replace(/```json\n?|```\n?/g, "").trim();
+      
+      const conflictSchema = z.object({
+        hasConflict: z.boolean(),
+        conflictingMessages: z.array(z.number()).length(2).optional(),
+        reason: z.string().optional(),
+      });
+      
+      const parsed = conflictSchema.safeParse(JSON.parse(text));
+      if (!parsed.success) {
+        console.error("Invalid conflict detection format:", parsed.error);
+        return { hasConflict: false };
+      }
+      
+      return parsed.data as { hasConflict: boolean; conflictingMessages?: [number, number]; reason?: string };
+    } catch (error) {
+      console.error("Gemini API error:", error);
+      return { hasConflict: false };
     }
   }
 
@@ -368,6 +416,69 @@ export class OpenAIService implements AIService {
     }
   }
 
+  async detectConflicts(messages: any[]): Promise<{ hasConflict: boolean; conflictingMessages?: number[]; reason?: string }> {
+    try {
+      const content = messages
+        .map((m, index) => `${index + 1}. User ${m.sender?.name || "Unknown"}: ${m.content}`)
+        .join("\n");
+
+      const data = await withRetry(async (signal) => {
+        const response = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-3.5-turbo",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a helpful assistant that analyzes discussion threads for conflicting messages. A conflict is when two messages present contradictory information or opposing viewpoints that can't both be true. Return a JSON object with hasConflict (boolean), conflictingMessages (optional array of two message numbers), and reason (optional string explaining the conflict).",
+                },
+                {
+                  role: "user",
+                  content: `Messages:\n${content}`,
+                },
+              ],
+              max_tokens: 200,
+              temperature: 0.7,
+            }),
+            signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
+
+        return response.json();
+      });
+
+      const text = data.choices[0]?.message?.content || "{}";
+      const cleaned = text.trim().replace(/```json\n?|```\n?/g, "").trim();
+      
+      const conflictSchema = z.object({
+        hasConflict: z.boolean(),
+        conflictingMessages: z.array(z.number()).length(2).optional(),
+        reason: z.string().optional(),
+      });
+      
+      const parsed = conflictSchema.safeParse(JSON.parse(cleaned));
+      if (!parsed.success) {
+        console.error("Invalid conflict detection format:", parsed.error);
+        return { hasConflict: false };
+      }
+      
+      return parsed.data as { hasConflict: boolean; conflictingMessages?: [number, number]; reason?: string };
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      return { hasConflict: false };
+    }
+  }
+
   async generateDailyDigest(messages: any[]): Promise<string> {
     const content = messages
       .map((m) => `User ${m.sender?.name || "Unknown"}: ${m.content}`)
@@ -459,31 +570,34 @@ try {
       aiServiceInstance = new OpenAIService(openaiKey);
     } else {
       // Last resort: stub service
-      aiServiceInstance = {
-        generateSummary: async (content: string) => {
-          console.warn(
-            "AI service not configured, returning placeholder summary",
-          );
-          return `AI-generated summary for: ${content.substring(0, 50)}...`;
-        },
-        generateThreadSummary: async (messages: any[]) => {
-          return "AI service not configured.";
-        },
-        generateDailyDigest: async (messages: any[]) => {
-          return "<p>AI service not configured.</p>";
-        },
-        generateThreadDNA: async (messages: any[]) => {
-          return {
-            questionType: "other",
-            expertiseLevel: "intermediate",
-            topics: ["general discussion"],
-            readTimeMinutes: 1,
+          aiServiceInstance = {
+            generateSummary: async (content: string) => {
+              console.warn(
+                "AI service not configured, returning placeholder summary",
+              );
+              return `AI-generated summary for: ${content.substring(0, 50)}...`;
+            },
+            generateThreadSummary: async (messages: any[]) => {
+              return "AI service not configured.";
+            },
+            generateDailyDigest: async (messages: any[]) => {
+              return "<p>AI service not configured.</p>";
+            },
+            generateThreadDNA: async (messages: any[]) => {
+              return {
+                questionType: "other",
+                expertiseLevel: "intermediate",
+                topics: ["general discussion"],
+                readTimeMinutes: 1,
+              };
+            },
+            calculateResolutionScore: async (messages: any[]) => {
+              return 50;
+            },
+            detectConflicts: async (messages: any[]) => {
+              return { hasConflict: false };
+            },
           };
-        },
-        calculateResolutionScore: async (messages: any[]) => {
-          return 50;
-        },
-      };
     }
   } catch (fallbackError) {
     aiServiceInstance = {
@@ -509,6 +623,9 @@ try {
       },
       calculateResolutionScore: async (messages: any[]) => {
         return 50;
+      },
+      detectConflicts: async (messages: any[]) => {
+        return { hasConflict: false };
       },
     };
   }
