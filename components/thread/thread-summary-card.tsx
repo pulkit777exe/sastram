@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -19,8 +19,76 @@ export function ThreadSummaryCard({
   className,
 }: ThreadSummaryCardProps) {
   const [summary, setSummary] = useState(initialSummary);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!initialSummary);
   const router = useRouter();
+
+  // Poll job status
+  const pollJobStatus = (jobId: string) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/ai/jobs?jobId=${jobId}`);
+        if (response.ok) {
+          const jobData = await response.json();
+          
+          if (jobData.state === "completed") {
+            clearInterval(pollInterval);
+            setSummary(jobData.result.summary);
+            setIsLoading(false);
+            toast.success("Thread summary generated!");
+            router.refresh();
+          } else if (jobData.state === "failed") {
+            clearInterval(pollInterval);
+            setIsLoading(false);
+            toast.error("Failed to generate summary. Please try again.");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to poll job status:", error);
+        clearInterval(pollInterval);
+        setIsLoading(false);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return pollInterval;
+  };
+
+  // Load summary if not provided initially
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | undefined;
+    
+    if (!initialSummary) {
+      const loadSummary = async () => {
+        try {
+          const response = await fetch("/api/ai/thread-summary", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ threadId }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.jobId) {
+              // Start polling for job completion
+              intervalId = pollJobStatus(data.jobId);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load thread summary:", error);
+          setIsLoading(false);
+        }
+      };
+
+      loadSummary();
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [initialSummary, threadId]);
 
   const handleSynthesize = async () => {
     setIsLoading(true);
@@ -38,13 +106,14 @@ export function ThreadSummaryCard({
       }
 
       const data = await response.json();
-      setSummary(data.summary);
-      toast.success("Thread summary generated!");
-      router.refresh();
+      if (data.jobId) {
+        // Start polling for job completion
+        const pollInterval = pollJobStatus(data.jobId);
+        return () => clearInterval(pollInterval);
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to generate summary. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };

@@ -22,6 +22,8 @@ interface NotificationFilters {
   offset?: number;
 }
 
+import { publishUserEvent } from "@/lib/infrastructure/websocket";
+
 export async function createNotification({
   userId,
   type,
@@ -29,7 +31,7 @@ export async function createNotification({
   message,
   data,
 }: CreateNotificationParams) {
-  return prisma.notification.create({
+  const notification = await prisma.notification.create({
     data: {
       userId,
       type,
@@ -38,6 +40,17 @@ export async function createNotification({
       data: data as Prisma.InputJsonValue,
     },
   });
+
+  // Get actual unread count
+  const unreadCount = await getUnreadCount(userId);
+
+  // Publish notification count update to user's WebSocket connections
+  publishUserEvent(userId, {
+    type: "NOTIFICATION_COUNT_UPDATE",
+    payload: { unreadCount },
+  });
+
+  return notification;
 }
 
 export async function createBulkNotifications(

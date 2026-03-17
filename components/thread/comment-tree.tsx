@@ -66,7 +66,12 @@ export function CommentTree({
   messages,
   threadId,
   currentUser,
-}: CommentTreeProps) {
+  onTypingStart,
+  onTypingStop,
+}: CommentTreeProps & {
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
+}) {
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [localMessages, setLocalMessages] = useState<Message[]>(messages);
@@ -203,6 +208,8 @@ export function CommentTree({
             onMessageUpdate={handleMessageUpdate}
             allMessages={localMessages}
             animateMessageId={animateMessageId}
+            onTypingStart={onTypingStart}
+            onTypingStop={onTypingStop}
           />
         </div>
       ) : (
@@ -223,6 +230,8 @@ export function CommentTree({
             onMessageUpdate={handleMessageUpdate}
             allMessages={localMessages}
             animateMessageId={animateMessageId}
+            onTypingStart={onTypingStart}
+            onTypingStop={onTypingStop}
           />
         ))
       )}
@@ -252,6 +261,8 @@ interface CommentNodeProps {
   onMessageUpdate: (messageId: string, updates: Partial<Message>) => void;
   allMessages: Message[];
   animateMessageId: string | null;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
 }
 
 function CommentNode({
@@ -269,6 +280,8 @@ function CommentNode({
   onMessageUpdate,
   allMessages,
   animateMessageId,
+  onTypingStart,
+  onTypingStop,
 }: CommentNodeProps) {
   const [appealOpen, setAppealOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -310,7 +323,7 @@ function CommentNode({
       {depth > 0 && (
         <button
           onClick={() => onToggleCollapse(node.id)}
-          className="absolute left-0 top-0 bottom-0 w-[2px] cursor-pointer z-10
+          className="absolute left-0 top-0 bottom-0 w-0.5 cursor-pointer z-10
                      bg-[rgba(55,54,252,0.15)] hover:bg-[rgba(55,54,252,0.4)]
                      transition-colors duration-150 rounded-full"
           style={{ marginLeft: "-11px" }}
@@ -388,7 +401,7 @@ function CommentNode({
                   <Textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    className="min-h-[80px] max-h-[250px] resize-none text-[14px]"
+                    className="min-h-20 max-h-[250px] resize-none text-[14px]"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') {
@@ -581,6 +594,8 @@ function CommentNode({
           visualDepth={depth + 1}
           onCancel={onCancelReply}
           onMessagePosted={onMessagePosted}
+          onTypingStart={onTypingStart}
+          onTypingStop={onTypingStop}
         />
       )}
 
@@ -681,6 +696,8 @@ interface InlineReplyBoxProps {
   visualDepth: number;
   onCancel: () => void;
   onMessagePosted: (message: Message) => void;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
 }
 
 function InlineReplyBox({
@@ -690,6 +707,8 @@ function InlineReplyBox({
   visualDepth,
   onCancel,
   onMessagePosted,
+  onTypingStart,
+  onTypingStop,
 }: InlineReplyBoxProps) {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -818,17 +837,23 @@ function InlineReplyBox({
               onChange={(e) => {
                 setContent(e.target.value);
                 setError(null);
+                onTypingStart?.();
               }}
               placeholder="Write your reply…"
               className="min-h-[60px] max-h-[200px] text-sm resize-none shadow-none border-0 bg-transparent p-0 focus-visible:ring-0"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   handleSubmit();
+                  onTypingStop?.();
                 }
                 if (e.key === "Escape") {
                   onCancel();
+                  onTypingStop?.();
+                } else {
+                  onTypingStart?.();
                 }
               }}
+              onBlur={() => onTypingStop?.()}
             />
 
             {error && <p className="text-[11px] text-red-500 mt-1">{error}</p>}

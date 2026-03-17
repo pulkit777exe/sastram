@@ -87,11 +87,13 @@ export function ThreadLiveWrapper({
               </p>
             </div>
           ) : (
-            <CommentTree
-              messages={liveMessages}
-              threadId={threadId}
-              currentUser={currentUser}
-            />
+      <CommentTree
+            messages={liveMessages}
+            threadId={threadId}
+            currentUser={currentUser}
+            onTypingStart={emitTypingStart}
+            onTypingStop={emitTypingStop}
+          />
           )}
         </div>
       </div>

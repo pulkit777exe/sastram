@@ -9,6 +9,8 @@ interface ReplyBoxProps {
   threadId: string;
   parentId?: string;
   onSuccess?: () => void;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
 }
 
 type ToolbarAction = "bold" | "italic" | "code" | "link";
@@ -17,6 +19,8 @@ export default function ReplyBox({
   threadId,
   parentId,
   onSuccess,
+  onTypingStart,
+  onTypingStop,
 }: ReplyBoxProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
@@ -183,7 +187,18 @@ export default function ReplyBox({
           onChange={(event) => {
             setValue(event.target.value);
             if (error) setError(null);
+            onTypingStart?.();
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+              onTypingStop?.();
+            } else {
+              onTypingStart?.();
+            }
+          }}
+          onBlur={() => onTypingStop?.()}
           placeholder="Add your reply. Press Ctrl+Enter or Cmd+Enter to submit."
           className="min-h-[80px] w-full resize-none border-0 bg-transparent text-[14px] leading-normal text-(--text) outline-none"
         />

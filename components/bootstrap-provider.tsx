@@ -31,6 +31,7 @@ export type BootstrapData = {
 type BootstrapContextValue = {
   data: BootstrapData | null;
   isLoading: boolean;
+  error: Error | null;
   setData: (data: BootstrapData) => void;
   setNotificationCount: (count: number) => void;
   incrementNotificationCount: (delta?: number) => void;
@@ -45,22 +46,28 @@ const BootstrapContext = createContext<BootstrapContextValue | null>(null);
 export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<BootstrapData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const mountedRef = useRef(true);
+  const wsRef = useRef<WebSocket | null>(null);
 
   const fetchBootstrap = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/bootstrap", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
-        setIsLoading(false);
-        return;
+        throw new Error(`Failed to fetch bootstrap data: ${res.status}`);
       }
       const payload = (await res.json()) as BootstrapData;
       if (mountedRef.current) {
         setData(payload);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err : new Error("Unknown error"));
       }
     } finally {
       if (mountedRef.current) {
@@ -83,6 +90,43 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
         : prev,
     );
   }, []);
+
+  // Connect to user notifications WebSocket
+  useEffect(() => {
+    if (typeof window === "undefined" || !data?.user.id) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const url = `${protocol}://${window.location.host}/ws/notifications`;
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("Notifications WebSocket connected");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "NOTIFICATION_COUNT_UPDATE") {
+          setNotificationCount(message.payload.unreadCount);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("Notifications WebSocket error:", error);
+    };
+
+    ws.onclose = () => {
+      console.log("Notifications WebSocket closed");
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [data?.user.id, setNotificationCount]);
 
   const incrementNotificationCount = useCallback((delta: number = 1) => {
     setData((prev) =>
@@ -130,6 +174,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     () => ({
       data,
       isLoading,
+      error,
       setData,
       setNotificationCount,
       incrementNotificationCount,
@@ -141,6 +186,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     [
       data,
       isLoading,
+      error,
       setData,
       setNotificationCount,
       incrementNotificationCount,

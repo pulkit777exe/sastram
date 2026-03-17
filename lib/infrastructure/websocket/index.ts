@@ -1,3 +1,3 @@
 export { createThreadSocket, getThreadSocketUrl } from "./client";
-export { initWebSocketServer, publishThreadEvent } from "./server";
+export { initWebSocketServer, publishThreadEvent, publishUserEvent } from "./server";
 

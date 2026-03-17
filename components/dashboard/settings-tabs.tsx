@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { User, Mail } from "lucide-react";
+import { User, Mail, Settings } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 
@@ -12,6 +12,7 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "newsletters", label: "Newsletters", icon: Mail },
+    { id: "preferences", label: "Preferences", icon: Settings },
   ];
 
   function handleTabChange(tabId: string) {
