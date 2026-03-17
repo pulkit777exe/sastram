@@ -1,0 +1,204 @@
+"use client";
+
+import { useEffect, useRef, useCallback, useState } from "react";
+import { createThreadSocket } from "@/lib/infrastructure/websocket/client";
+import { validateWebSocketMessage } from "@/lib/schemas/websocket";
+import type { Message } from "@/lib/types/index";
+
+export interface TypingUser {
+  userId: string;
+  userName: string;
+}
+
+interface UseThreadWebSocketOptions {
+  threadId: string;
+  currentUserId: string;
+  onNewMessage?: (message: Message) => void;
+  onMessageDeleted?: (messageId: string) => void;
+  onTypingUpdate?: (typers: TypingUser[]) => void;
+}
+
+export function useThreadWebSocket({
+  threadId,
+  currentUserId,
+  onNewMessage,
+  onMessageDeleted,
+  onTypingUpdate,
+}: UseThreadWebSocketOptions) {
+  const wsRef = useRef<WebSocket | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingEmitRef = useRef<number>(0);
+  const [typers, setTypers] = useState<TypingUser[]>([]);
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Keep callbacks fresh without re-connecting
+  const callbacksRef = useRef({ onNewMessage, onMessageDeleted, onTypingUpdate });
+  useEffect(() => {
+    callbacksRef.current = { onNewMessage, onMessageDeleted, onTypingUpdate };
+  });
+
+  useEffect(() => {
+    const ws = createThreadSocket(threadId);
+    if (!ws) return;
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      try {
+        const raw = JSON.parse(event.data);
+        const validation = validateWebSocketMessage(raw);
+        if (!validation.success) return;
+
+        const msg = validation.data;
+
+        switch (msg.type) {
+          case "NEW_MESSAGE": {
+            const payload = msg.payload as Record<string, unknown>;
+            const senderId = payload.senderId as string;
+            // Don't echo own messages back
+            if (senderId === currentUserId) return;
+
+            const sender = payload.sender as { id: string; name: string; image?: string | null } | undefined;
+
+            const newMsg: Message = {
+              id: payload.id as string,
+              content: payload.content as string,
+              senderId,
+              sectionId: payload.sectionId as string,
+              parentId: (payload.parentId as string | null) ?? null,
+              createdAt: new Date(payload.createdAt as string),
+              updatedAt: new Date(payload.createdAt as string),
+              depth: 0,
+              isEdited: false,
+              isPinned: false,
+              likeCount: 0,
+              replyCount: 0,
+              isAiResponse: false,
+              deletedAt: null,
+              sender: sender
+                ? { id: sender.id, name: sender.name, image: sender.image ?? null }
+                : { id: senderId, name: "User", image: null },
+              attachments: Array.isArray(payload.attachments)
+                ? (payload.attachments as Array<{ id: string; url: string; type: string; name?: string | null; size?: number | null }>).map((a) => ({
+                    id: a.id,
+                    url: a.url,
+                    type: a.type,
+                    name: a.name ?? null,
+                    size: a.size ?? null,
+                  }))
+                : [],
+              section: { id: payload.sectionId as string, name: "", slug: "" },
+            };
+            callbacksRef.current.onNewMessage?.(newMsg);
+
+            // Remove sender from typing list
+            setTypers((prev) => prev.filter((t) => t.userId !== senderId));
+            break;
+          }
+
+          case "MESSAGE_DELETED": {
+            const { messageId } = msg.payload as { messageId: string };
+            callbacksRef.current.onMessageDeleted?.(messageId);
+            break;
+          }
+
+          case "USER_TYPING": {
+            const { userId, userName } = msg.payload as { userId: string; userName: string; sectionId: string };
+            if (userId === currentUserId) return;
+
+            setTypers((prev) => {
+              if (prev.some((t) => t.userId === userId)) return prev;
+              return [...prev, { userId, userName }];
+            });
+
+            // Auto-remove after 3s
+            const existing = typingTimersRef.current.get(userId);
+            if (existing) clearTimeout(existing);
+            typingTimersRef.current.set(
+              userId,
+              setTimeout(() => {
+                setTypers((prev) => prev.filter((t) => t.userId !== userId));
+                typingTimersRef.current.delete(userId);
+              }, 3000)
+            );
+            break;
+          }
+
+          case "USER_STOPPED_TYPING": {
+            const { userId } = msg.payload as { userId: string; sectionId: string };
+            setTypers((prev) => prev.filter((t) => t.userId !== userId));
+            const timer = typingTimersRef.current.get(userId);
+            if (timer) {
+              clearTimeout(timer);
+              typingTimersRef.current.delete(userId);
+            }
+            break;
+          }
+        }
+      } catch {
+        // ignore malformed messages
+      }
+    };
+
+    // Capture ref value for cleanup
+    const timersMap = typingTimersRef.current;
+
+    return () => {
+      ws.close();
+      wsRef.current = null;
+      timersMap.forEach((t) => clearTimeout(t));
+      timersMap.clear();
+    };
+  }, [threadId, currentUserId]);
+
+  // Propagate typers to parent
+  useEffect(() => {
+    callbacksRef.current.onTypingUpdate?.(typers);
+  }, [typers]);
+
+  const sendWsMessage = useCallback(
+    (type: string, payload: Record<string, unknown>) => {
+      const ws = wsRef.current;
+      if (!ws) return;
+
+      const message = JSON.stringify({ type, payload });
+      
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(message);
+      } else if (ws.readyState === WebSocket.CONNECTING) {
+        // Queue the message to send when the socket opens
+        const sendWhenOpen = () => {
+          ws.send(message);
+          ws.removeEventListener('open', sendWhenOpen);
+        };
+        ws.addEventListener('open', sendWhenOpen);
+      }
+    },
+    []
+  );
+
+  const emitTypingStop = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    lastTypingEmitRef.current = 0;
+    sendWsMessage("USER_STOPPED_TYPING", { sectionId: threadId });
+  }, [threadId, sendWsMessage]);
+
+  const emitTypingStart = useCallback(() => {
+    const now = Date.now();
+    // Debounce: only emit once every 3s
+    if (now - lastTypingEmitRef.current < 3000) return;
+    lastTypingEmitRef.current = now;
+
+    sendWsMessage("USER_TYPING", { sectionId: threadId });
+
+    // Auto-stop after 3s of inactivity
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTypingStop();
+    }, 3000);
+  }, [threadId, sendWsMessage, emitTypingStop]);
+
+  return { emitTypingStart, emitTypingStop, typers };
+}

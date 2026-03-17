@@ -2,17 +2,10 @@ import { z } from "zod";
 import { REPORT_STATUS } from "@/lib/config/constants";
 
 const reportCategoryValues = [
-  "HATE_SPEECH",
-  "HARASSMENT",
-  "VIOLENCE_THREATS",
-  "SELF_HARM",
-  "ADULT_CONTENT",
   "SPAM",
-  "SCAM_FRAUD",
+  "HARASSMENT",
   "MISINFORMATION",
-  "IMPERSONATION",
-  "PRIVATE_INFO",
-  "COPYRIGHT",
+  "ADULT_CONTENT",
   "OTHER",
 ] as const;
 

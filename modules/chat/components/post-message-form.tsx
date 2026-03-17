@@ -17,13 +17,17 @@ interface PostMessageFormProps {
     userName: string;
   } | null;
   onCancelReply?: () => void;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
 }
 
 export function PostMessageForm({ 
   sectionId, 
   onMessagePosted,
   replyTo,
-  onCancelReply
+  onCancelReply,
+  onTypingStart,
+  onTypingStop,
 }: PostMessageFormProps) {
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -146,11 +150,14 @@ export function PostMessageForm({
              if (e.key === 'Enter' && !e.shiftKey) {
                e.preventDefault();
                formRef.current?.requestSubmit();
-             }
-             if (e.key === 'Escape' && replyTo) {
+               onTypingStop?.();
+             } else if (e.key === 'Escape' && replyTo) {
                onCancelReply?.();
+             } else {
+               onTypingStart?.();
              }
           }}
+          onBlur={() => onTypingStop?.()}
         />
 
         <div className="flex items-center gap-1 shrink-0">

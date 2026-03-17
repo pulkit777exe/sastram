@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/infrastructure/prisma";
 import { auth } from "@/lib/services/auth";
+import { requireSession } from "@/modules/auth/session";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { filterBadLanguage } from "@/lib/services/content-safety";
@@ -14,6 +15,7 @@ import { logAction } from "@/modules/audit/repository";
 import {
   editMessageSchema,
   pinMessageSchema,
+  deleteMessageSchema,
   getMessageEditHistorySchema,
 } from "./schemas";
 
@@ -424,5 +426,68 @@ export async function getMessageEditHistory(messageId: string) {
     return { data: edits, error: null };
   } catch (error) {
     return handleActionError("getMessageEditHistory", error);
+  }
+}
+
+export async function deleteMessage(messageId: string) {
+  const validation = deleteMessageSchema.safeParse({ messageId });
+  if (!validation.success) {
+    return { data: null, error: "Invalid input" };
+  }
+
+  try {
+    const session = await requireSession();
+    
+    // Check ownership or moderator role
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      include: { section: true },
+    });
+
+    if (!message) {
+      return { data: null, error: "Message not found" };
+    }
+
+    let canDelete = message.senderId === session.user.id;
+    if (!canDelete) {
+      if (message.sectionId) {
+        const memberRole = await getMemberRole(message.sectionId, session.user.id);
+        if (memberRole && ["OWNER", "MODERATOR"].includes(memberRole.role)) {
+          canDelete = true;
+        }
+      }
+    }
+
+    if (!canDelete) {
+      return { data: null, error: "Insufficient permissions to delete this message" };
+    }
+
+    await prisma.message.update({
+      where: { id: messageId },
+      data: { deletedAt: new Date() },
+    });
+
+    await logAction({
+      action: "MESSAGE_DELETED",
+      entityType: "Message",
+      entityId: messageId,
+      userId: session.user.id,
+    });
+
+    if (message.section?.slug) {
+      revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
+    }
+    
+    // Also emit websocket event for live updates
+    try {
+      if (message.sectionId) {
+         const { emitMessageDeleted } = await import("@/modules/ws/publisher");
+         await emitMessageDeleted(message.sectionId, messageId);
+      }
+    } catch(e) { /* ignore ws errors */ }
+
+    return { data: null, error: null };
+  } catch (error) {
+    return handleActionError("deleteMessage", error);
   }
 }

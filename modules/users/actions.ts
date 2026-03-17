@@ -4,7 +4,7 @@ import { prisma } from "@/lib/infrastructure/prisma";
 import { requireSession } from "@/modules/auth/session";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
-import { updateUserProfileSchema, updateProfilePrivacySchema } from "./schemas";
+import { updateUserProfileSchema, updateProfilePrivacySchema, updateUserPreferencesSchema } from "./schemas";
 import { FILE_LIMITS } from "@/lib/config/constants";
 import {
   getPublicProfile,
@@ -222,6 +222,43 @@ export async function updateProfilePrivacyAction(privacy: string) {
     return { data: null, error: null };
   } catch (error) {
     console.error("[updateProfilePrivacyAction]", error);
+    return { data: null, error: "Something went wrong" };
+  }
+}
+
+export async function updateUserPreferencesAction(preferences: Record<string, any>) {
+  const parsed = updateUserPreferencesSchema.safeParse(preferences);
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
+
+  try {
+    const session = await requireSession();
+    
+    // Get existing preferences to deep merge
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { preferences: true }
+    });
+    
+    const existingPrefs = typeof user?.preferences === 'object' && user?.preferences !== null 
+      ? user.preferences 
+      : {};
+      
+    const newPrefs = {
+      ...existingPrefs,
+      ...parsed.data
+    };
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { preferences: newPrefs }
+    });
+
+    revalidatePath("/dashboard/settings");
+    return { data: null, error: null };
+  } catch (error) {
+    console.error("[updateUserPreferencesAction]", error);
     return { data: null, error: "Something went wrong" };
   }
 }

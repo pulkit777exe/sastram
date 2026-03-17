@@ -9,9 +9,12 @@ import {
   FileIcon,
   Download,
   ThumbsUp,
-  ArrowRight,
   X,
   Loader2,
+  Trash2,
+  Edit2,
+  Pin,
+  ArrowRight,
 } from "lucide-react";
 import TimeAgo from "@/components/ui/TimeAgo";
 import type { Message, Attachment } from "@/lib/types/index";
@@ -22,7 +25,7 @@ import {
   loadCollapseStates,
   saveCollapseState,
 } from "@/modules/messages/service";
-import { postMessage } from "@/modules/messages/actions";
+import { postMessage, editMessage, pinMessage, deleteMessage } from "@/modules/messages/actions";
 import { toggleReaction } from "@/modules/reactions/actions";
 import { toast } from "sonner";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -55,6 +58,7 @@ interface CommentTreeProps {
     id: string;
     name: string | null;
     image: string | null;
+    role?: string;
   };
 }
 
@@ -119,6 +123,12 @@ export function CommentTree({
 
   const handleCancelReply = useCallback(() => {
     setActiveReplyId(null);
+  }, []);
+
+  const handleMessageUpdate = useCallback((messageId: string, updates: Partial<Message>) => {
+    setLocalMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, ...updates } : m))
+    );
   }, []);
 
   const handleMessagePosted = useCallback((newMessage: Message) => {
@@ -190,6 +200,7 @@ export function CommentTree({
             onToggleCollapse={toggleCollapse}
             onMessagePosted={handleMessagePosted}
             onFocusBranch={handleFocusBranch}
+            onMessageUpdate={handleMessageUpdate}
             allMessages={localMessages}
             animateMessageId={animateMessageId}
           />
@@ -209,6 +220,7 @@ export function CommentTree({
             onToggleCollapse={toggleCollapse}
             onMessagePosted={handleMessagePosted}
             onFocusBranch={handleFocusBranch}
+            onMessageUpdate={handleMessageUpdate}
             allMessages={localMessages}
             animateMessageId={animateMessageId}
           />
@@ -228,6 +240,7 @@ interface CommentNodeProps {
     id: string;
     name: string | null;
     image: string | null;
+    role?: string;
   };
   activeReplyId: string | null;
   collapsedIds: Set<string>;
@@ -236,6 +249,7 @@ interface CommentNodeProps {
   onToggleCollapse: (messageId: string) => void;
   onMessagePosted: (message: Message) => void;
   onFocusBranch: (messageId: string) => void;
+  onMessageUpdate: (messageId: string, updates: Partial<Message>) => void;
   allMessages: Message[];
   animateMessageId: string | null;
 }
@@ -252,6 +266,7 @@ function CommentNode({
   onToggleCollapse,
   onMessagePosted,
   onFocusBranch,
+  onMessageUpdate,
   allMessages,
   animateMessageId,
 }: CommentNodeProps) {
@@ -259,6 +274,12 @@ function CommentNode({
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(node.likeCount ?? 0);
   const [isLiking, setIsLiking] = useState(false);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(node.content);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
 
   const isCollapsed = collapsedIds.has(node.id);
   const hasChildren = node.children.length > 0;
@@ -268,6 +289,10 @@ function CommentNode({
   const beyondDepthLimit = depth >= MAX_VISUAL_DEPTH;
   const descendantCount = countDescendants(node);
   const shouldAnimate = animateMessageId === node.id;
+
+  const canEdit = isOwnMessage && !isDeleted;
+  const canDelete = isOwnMessage && !isDeleted;
+  const canPin = ["ADMIN", "MODERATOR", "OWNER"].includes(currentUser.role || "") && !isDeleted;
 
   // Parent reference for "Replying to" context
   const parentMessage = node.parentId
@@ -358,12 +383,52 @@ function CommentNode({
                 )}
               </div>
 
-              <div className="text-foreground/80 text-[14px] leading-relaxed whitespace-pre-wrap wrap-break-word">
-                {node.content}
-              </div>
+              {isEditing ? (
+                <div className="w-full max-w-lg mt-1 relative space-y-2">
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="min-h-[80px] max-h-[250px] resize-none text-[14px]"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                         setIsEditing(false);
+                         setEditContent(node.content);
+                      }
+                    }}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      setIsEditing(false);
+                      setEditContent(node.content);
+                    }}>Cancel</Button>
+                    <Button 
+                      size="sm" 
+                      disabled={isSavingEdit || !editContent.trim() || editContent === node.content}
+                      onClick={async () => {
+                        setIsSavingEdit(true);
+                        const res = await editMessage(node.id, editContent);
+                        if (!res?.error) {
+                          onMessageUpdate(node.id, { content: editContent, isEdited: true });
+                          setIsEditing(false);
+                        } else {
+                          toast.error(res.error);
+                        }
+                        setIsSavingEdit(false);
+                      }}
+                    >
+                      {isSavingEdit ? "Saving..." : "Save Edit"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-foreground/80 text-[14px] leading-relaxed whitespace-pre-wrap wrap-break-word">
+                  {node.content}
+                </div>
+              )}
 
               {/* Attachments */}
-              {node.attachments && node.attachments.length > 0 && (
+              {node.attachments && node.attachments.length > 0 && !isEditing && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {node.attachments.map((file) => (
                     <AttachmentItem key={file.id} file={file} />
@@ -372,6 +437,7 @@ function CommentNode({
               )}
 
               {/* Action bar */}
+              {!isEditing && (
               <div className="flex items-center gap-3 pt-1.5">
                 <button
                   onClick={async () => {
@@ -435,18 +501,72 @@ function CommentNode({
 
                 <button
                   onClick={() => setAppealOpen(true)}
-                  className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground hover:underline transition-colors"
+                  className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground hover:underline transition-colors hidden sm:block"
                 >
                   Appeal
                 </button>
 
-                {hasChildren && (
-                  <span className="text-[10px] text-muted-foreground/40 tabular-nums ml-auto">
-                    {descendantCount}{" "}
-                    {descendantCount === 1 ? "reply" : "replies"}
-                  </span>
-                )}
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                  {canEdit && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded"
+                      title="Edit message"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={async () => {
+                        if (confirm("Are you sure you want to delete this message?")) {
+                          setIsDeleting(true);
+                          const res = await deleteMessage(node.id);
+                          if (!res?.error) {
+                            onMessageUpdate(node.id, { deletedAt: new Date(), content: "This message was removed" });
+                          } else {
+                            toast.error(res.error);
+                            setIsDeleting(false);
+                          }
+                        }
+                      }}
+                      disabled={isDeleting}
+                      className="text-muted-foreground/40 hover:text-red-500 transition-colors p-1 rounded"
+                      title="Delete message"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                  {canPin && (
+                    <button
+                      onClick={async () => {
+                        setIsPinning(true);
+                        const wasPinned = node.isPinned;
+                        // Optimistic
+                        onMessageUpdate(node.id, { isPinned: !wasPinned });
+                        const res = await pinMessage(node.id);
+                        if (res?.error) {
+                          onMessageUpdate(node.id, { isPinned: wasPinned });
+                          toast.error(res.error);
+                        }
+                        setIsPinning(false);
+                      }}
+                      disabled={isPinning}
+                      className={`transition-colors p-1 rounded ${node.isPinned ? "text-indigo-500" : "text-muted-foreground/40 hover:text-indigo-500"}`}
+                      title={node.isPinned ? "Unpin message" : "Pin message"}
+                    >
+                      <Pin size={13} />
+                    </button>
+                  )}
+                  {hasChildren && (
+                    <span className="text-[10px] text-muted-foreground/40 tabular-nums ml-2 hidden sm:inline-block">
+                      {descendantCount}{" "}
+                      {descendantCount === 1 ? "reply" : "replies"}
+                    </span>
+                  )}
+                </div>
               </div>
+              )}
             </div>
           </div>
         </div>
@@ -502,6 +622,7 @@ function CommentNode({
               onToggleCollapse={onToggleCollapse}
               onMessagePosted={onMessagePosted}
               onFocusBranch={onFocusBranch}
+              onMessageUpdate={onMessageUpdate}
               allMessages={allMessages}
               animateMessageId={animateMessageId}
             />

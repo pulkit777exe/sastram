@@ -25,3 +25,10 @@ export const updateProfilePrivacySchema = z.object({
   privacy: z.enum(["PUBLIC", "PRIVATE", "FOLLOWERS_ONLY"]),
 });
 
+export const updateUserPreferencesSchema = z.object({
+  emailDigest: z.enum(["daily", "weekly", "never"]).optional(),
+  pushEnabled: z.boolean().optional(),
+  theme: z.enum(["light", "dark", "system"]).optional(),
+  aiSummaryEnabled: z.boolean().optional(),
+}).catchall(z.any());
+

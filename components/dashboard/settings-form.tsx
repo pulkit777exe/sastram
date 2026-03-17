@@ -12,6 +12,7 @@ import {
   uploadAvatar,
   uploadBanner,
   updateProfilePrivacyAction,
+  updateUserPreferencesAction,
 } from "@/modules/users/actions";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
@@ -33,6 +34,8 @@ interface SettingsFormProps {
     image?: string | null;
     avatarUrl?: string | null;
     bannerUrl?: string | null;
+    profilePrivacy?: string;
+    preferences?: any;
   };
 }
 
@@ -78,9 +81,34 @@ export function SettingsForm({ user }: SettingsFormProps) {
   const [bannerUrl, setBannerUrl] = useState(user.bannerUrl || "");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
-  const [profilePrivacy, setProfilePrivacy] = useState("PUBLIC");
+  const [profilePrivacy, setProfilePrivacy] = useState(user.profilePrivacy || "PUBLIC");
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  const [emailNotifs, setEmailNotifs] = useState(() => {
+    return user.preferences?.emailDigest !== "never";
+  });
+  const [pushNotifs, setPushNotifs] = useState(() => {
+    return !!user.preferences?.pushEnabled;
+  });
+
+  async function handleToggleEmail(enabled: boolean) {
+    setEmailNotifs(enabled);
+    const result = await updateUserPreferencesAction({
+      emailDigest: enabled ? "daily" : "never",
+    });
+    if (result?.error) toast.error(result.error);
+    else toast.success("Email preferences updated!");
+  }
+
+  async function handleTogglePush(enabled: boolean) {
+    setPushNotifs(enabled);
+    const result = await updateUserPreferencesAction({
+      pushEnabled: enabled,
+    });
+    if (result?.error) toast.error(result.error);
+    else toast.success("Push preferences updated!");
+  }
 
   async function handleUpdatePrivacy(privacy: string) {
     const result = await updateProfilePrivacyAction(privacy);
@@ -411,7 +439,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
                 Receive daily summaries of your subscribed topics.
               </p>
             </div>
-            <Switch id="email-notifs" defaultChecked />
+            <Switch 
+              id="email-notifs" 
+              checked={emailNotifs}
+              onCheckedChange={handleToggleEmail}
+            />
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
@@ -425,7 +457,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
                 Receive real-time alerts for mentions.
               </p>
             </div>
-            <Switch id="push-notifs" />
+            <Switch 
+              id="push-notifs" 
+              checked={pushNotifs}
+              onCheckedChange={handleTogglePush}
+            />
           </div>
         </div>
       </motion.div>

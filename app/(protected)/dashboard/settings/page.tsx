@@ -38,6 +38,8 @@ export default async function SettingsPage({
       image: true,
       avatarUrl: true,
       bannerUrl: true,
+      preferences: true,
+      profilePrivacy: true,
     },
   });
 

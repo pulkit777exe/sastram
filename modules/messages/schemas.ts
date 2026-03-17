@@ -20,6 +20,10 @@ export const pinMessageSchema = z.object({
   messageId: z.string().cuid("Invalid message ID"),
 });
 
+export const deleteMessageSchema = z.object({
+  messageId: z.string().cuid("Invalid message ID"),
+});
+
 export const getMessageEditHistorySchema = z.object({
   messageId: z.string().cuid("Invalid message ID"),
 });

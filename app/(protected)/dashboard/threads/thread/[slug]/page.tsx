@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { CommentTree } from "@/components/thread/comment-tree";
-import { PostMessageForm } from "@/modules/chat/components/post-message-form";
+import { ThreadLiveWrapper } from "@/components/thread/thread-live-wrapper";
 import { ThreadSubscribeButton } from "@/components/thread/subscribe-button";
 import { InviteFriendButton } from "@/components/thread/invite-friend-button";
 import {
@@ -18,8 +17,10 @@ import { subscribeToThreadAction } from "@/modules/newsletter/actions";
 import Link from "next/link";
 import TimeAgo from "@/components/ui/TimeAgo";
 import { ThreadManagementControls } from "@/components/thread/thread-management-controls";
-import { ThreadSummaryCard } from "@/components/thread/thread-summary-card";
 import ResolutionScoreCard from "@/components/panels/ResolutionScoreCard";
+import ThreadDnaCard from "@/components/panels/ThreadDnaCard";
+import AiSynthesisCard from "@/components/panels/AiSynthesisCard";
+import { parseThreadDna } from "@/lib/schemas/thread-dna";
 
 export default async function ThreadPage({
   params,
@@ -31,6 +32,8 @@ export default async function ThreadPage({
   const thread = await getThreadWithFullContext(slug, session.user.id);
 
   if (!thread) notFound();
+
+  const threadDna = parseThreadDna(thread.threadDna);
 
   const subscribeAction = async () => {
     "use server";
@@ -112,35 +115,16 @@ export default async function ThreadPage({
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-6 md:p-8">
-            {allMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                  <MessageSquare size={24} />
-                </div>
-                <h3 className="text-zinc-900 font-medium mb-1">
-                  No comments yet
-                </h3>
-                <p className="text-zinc-500 text-sm">
-                  Be the first to share your thoughts on this topic!
-                </p>
-              </div>
-            ) : (
-              <CommentTree
-                messages={allMessages}
-                threadId={thread.id}
-                currentUser={session.user}
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="p-4 bg-background border-t border-border/60">
-          <div className="max-w-4xl mx-auto">
-            <PostMessageForm sectionId={thread.id} />
-          </div>
-        </div>
+        <ThreadLiveWrapper
+          messages={allMessages}
+          threadId={thread.id}
+          currentUser={{
+            id: session.user.id,
+            name: session.user.name || "User",
+            image: session.user.image || null,
+            role: session.user.role,
+          }}
+        />
       </main>
 
       <aside className="w-[320px] hidden xl:flex flex-col overflow-y-auto bg-background/50">
@@ -180,61 +164,47 @@ export default async function ThreadPage({
           </form>
 
           <div className="mt-3">
-            <InviteFriendButton threadId={thread.id} threadName={thread.title} />
+            <InviteFriendButton
+              threadId={thread.id}
+              threadName={thread.title}
+            />
           </div>
         </div>
 
-         <div className="p-6">
-           <ThreadSummaryCard
-             threadId={thread.id}
-             initialSummary={thread.aiSummary}
-             className="mb-8"
-           />
+        <div className="p-6 space-y-6">
+          <AiSynthesisCard
+            summary={thread.aiSummary}
+            sources={thread.aiSearchSession?.results ?? []}
+            lastUpdated={thread.aiSearchSession?.lastUpdated ?? null}
+            threadId={thread.id}
+            messageCount={thread._count.messages}
+          />
 
-           {thread.resolutionScore !== null && (
-             <div className="mb-8">
-               <ResolutionScoreCard
-                 score={thread.resolutionScore}
-                 breakdown={{
-                   quality: Math.floor(thread.resolutionScore * 0.6),
-                   sources: Math.floor(thread.resolutionScore * 0.25),
-                   votes: Math.floor(thread.resolutionScore * 0.15),
-                 }}
-               />
-             </div>
-           )}
+          <ResolutionScoreCard score={thread.resolutionScore} />
 
-           {thread.threadDna && (
-             <div className="mb-8 p-4 bg-muted/50 rounded-xl">
-               <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
-                 Thread DNA
-               </p>
-               <pre className="text-xs text-zinc-600 overflow-x-auto">
-                 {JSON.stringify(thread.threadDna, null, 2)}
-               </pre>
-             </div>
-           )}
+          {threadDna && <ThreadDnaCard dna={threadDna} />}
 
-           {thread.isOutdated && (
-             <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-               <p className="text-[10px] text-amber-600 font-medium mb-2 uppercase tracking-wider">
-                 Stale Content Warning
-               </p>
-               <p className="text-xs text-amber-800">
-                 This thread may contain outdated information that contradicts newer content.
-               </p>
-             </div>
-           )}
+          {thread.isOutdated && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-[10px] text-amber-600 font-medium mb-2 uppercase tracking-wider">
+                Stale Content Warning
+              </p>
+              <p className="text-xs text-amber-800">
+                This thread may contain outdated information that contradicts
+                newer content.
+              </p>
+            </div>
+          )}
 
-           <div className="mt-8">
-             <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
-               Created
-             </p>
-             <p className="text-xs text-zinc-600 font-medium">
-               <TimeAgo date={thread.createdAt} />
-             </p>
-           </div>
-         </div>
+          <div>
+            <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
+              Created
+            </p>
+            <p className="text-xs text-zinc-600 font-medium">
+              <TimeAgo date={thread.createdAt} />
+            </p>
+          </div>
+        </div>
 
         {isAdmin(session.user) && (
           <div className="p-6 mt-auto border-t border-border/60">

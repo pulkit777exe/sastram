@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
 interface AiSource {
   source: string;
@@ -14,14 +16,19 @@ interface AiSynthesisCardProps {
   sources: AiSource[];
   lastUpdated: Date | null;
   threadId: string;
+  messageCount: number;
 }
 
 export default function AiSynthesisCard({
   summary,
   sources,
   threadId,
+  messageCount,
 }: AiSynthesisCardProps) {
   const router = useRouter();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hasSummary = summary !== null && summary.length > 0;
+  const isGenerating = !hasSummary && messageCount >= 5;
 
   const handleTransfer = () => {
     const params = new URLSearchParams({ context: threadId });
@@ -41,21 +48,62 @@ export default function AiSynthesisCard({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleTransfer}
-          className="rounded-[6px] border border-border px-[10px] py-[4px] text-[11px] font-medium text-(--blue) hover:bg-(--blue-dim)"
-        >
-          Transfer
-        </button>
+        <div className="flex items-center gap-[6px]">
+          {hasSummary && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="rounded-[6px] border border-border px-[8px] py-[4px] text-[11px] font-medium text-muted hover:bg-(--bg) transition-colors"
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-[12px] w-[12px]" />
+              ) : (
+                <ChevronRight className="h-[12px] w-[12px]" />
+              )}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleTransfer}
+            className="rounded-[6px] border border-border px-[10px] py-[4px] text-[11px] font-medium text-(--blue) hover:bg-(--blue-dim)"
+          >
+            Transfer
+          </button>
+        </div>
       </div>
 
       <div className="space-y-[10px] text-[13px] text-muted">
-        <p className="text-[13px] text-(--text)">
-          {summary || "AI will synthesize this thread once enough messages are available."}
-        </p>
+        {isGenerating ? (
+          <div className="flex items-center gap-[8px]">
+            <Loader2 className="h-[14px] w-[14px] animate-spin text-(--blue)" />
+            <p className="text-[13px] text-muted">Summary generating...</p>
+          </div>
+        ) : hasSummary ? (
+          <>
+            <p className="text-[13px] text-(--text)">
+              {isExpanded
+                ? summary
+                : summary.length > 150
+                  ? `${summary.slice(0, 150)}…`
+                  : summary}
+            </p>
+            {!isExpanded && summary.length > 150 && (
+              <button
+                type="button"
+                onClick={() => setIsExpanded(true)}
+                className="text-[11px] font-medium text-(--blue) hover:underline"
+              >
+                Read more
+              </button>
+            )}
+          </>
+        ) : (
+          <p className="text-[13px] text-(--text)">
+            AI will synthesize this thread once enough messages are available.
+          </p>
+        )}
 
-        {sources.length > 0 && (
+        {isExpanded && sources.length > 0 && (
           <div className="mt-[8px] space-y-[6px]">
             {sources.map((source) => {
               const confidence =
@@ -106,4 +154,3 @@ export default function AiSynthesisCard({
     </section>
   );
 }
-

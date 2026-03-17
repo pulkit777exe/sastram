@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/modules/auth/session";
 import { prisma } from "@/lib/infrastructure/prisma";
-import { aiService } from "@/lib/services/ai";
+import { getAiJobQueue, AIJobType } from "@/lib/infrastructure/bullmq";
 import { z } from "zod";
 
 const summaryRequestSchema = z.object({
@@ -41,16 +41,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ summary: "No messages to summarize yet." });
     }
 
-    // Generate summary
-    const summary = await aiService.generateThreadSummary(messages);
+    // Add job to AI queue
+    const aiJobQueue = getAiJobQueue();
+    const job = await aiJobQueue.add(
+      AIJobType.GENERATE_THREAD_SUMMARY,
+      { threadId, messages, userId: session.user.id },
+      {
+        jobId: `generate-summary-${threadId}`,
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
 
-    // Update thread with new summary
-    await prisma.section.update({
-      where: { id: threadId },
-      data: { aiSummary: summary },
+    return NextResponse.json({ 
+      jobId: job.id, 
+      status: "pending",
+      message: "Summary generation started" 
     });
-
-    return NextResponse.json({ summary });
   } catch (error) {
     console.error("Error generating thread summary:", error);
     return NextResponse.json(
