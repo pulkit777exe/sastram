@@ -19,8 +19,8 @@ import TimeAgo from "@/components/ui/TimeAgo";
 import { ThreadManagementControls } from "@/components/thread/thread-management-controls";
 import ResolutionScoreCard from "@/components/panels/ResolutionScoreCard";
 import ThreadDnaCard from "@/components/panels/ThreadDnaCard";
-import AiSynthesisCard from "@/components/panels/AiSynthesisCard";
 import { parseThreadDna } from "@/lib/schemas/thread-dna";
+import { ThreadSummaryCard } from "@/components/thread/thread-summary-card";
 
 export default async function ThreadPage({
   params,
@@ -172,12 +172,10 @@ export default async function ThreadPage({
         </div>
 
         <div className="p-6 space-y-6">
-          <AiSynthesisCard
-            summary={thread.aiSummary}
-            sources={thread.aiSearchSession?.results ?? []}
-            lastUpdated={thread.aiSearchSession?.lastUpdated ?? null}
+          <ThreadSummaryCard 
             threadId={thread.id}
-            messageCount={thread._count.messages}
+            initialSummary={thread.aiSummary}
+            className=""
           />
 
           <ResolutionScoreCard score={thread.resolutionScore} />
