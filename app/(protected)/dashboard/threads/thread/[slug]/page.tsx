@@ -160,6 +160,7 @@ export default async function ThreadPage({
             <ThreadSubscribeButton
               subscribed={thread.isSubscribed}
               threadName={thread.title}
+              threadId={thread.id}
             />
           </form>
 

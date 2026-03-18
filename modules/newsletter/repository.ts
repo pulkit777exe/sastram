@@ -56,6 +56,30 @@ export async function isUserSubscribedToThread(threadId: string, userId: string)
   return Boolean(subscription);
 }
 
+import { DigestFrequency } from "@prisma/client";
+
+export async function updateSubscriptionFrequency({
+  threadId,
+  userId,
+  frequency,
+}: {
+  threadId: string;
+  userId: string;
+  frequency: DigestFrequency;
+}) {
+  return prisma.threadSubscription.update({
+    where: {
+      threadId_userId: {
+        threadId,
+        userId,
+      },
+    },
+    data: {
+      frequency,
+    },
+  });
+}
+
 // Stub functions for missing digest functionality
 export async function scheduleThreadDigest(threadId: string) {
   // TODO: Implement digest scheduling

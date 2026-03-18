@@ -14,15 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { updateSubscriptionFrequencyAction } from "@/modules/newsletter/actions";
+import { toast } from "sonner";
 
 interface ThreadSubscribeButtonProps {
   subscribed: boolean;
   threadName?: string;
+  threadId: string;
 }
 
 export function ThreadSubscribeButton({
   subscribed,
   threadName = "this thread",
+  threadId,
 }: ThreadSubscribeButtonProps) {
   const { pending } = useFormStatus();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -73,7 +77,23 @@ export function ThreadSubscribeButton({
         </Button>
         
         {subscribed && (
-          <Select value={frequency} onValueChange={setFrequency}>
+          <Select
+            value={frequency}
+            onValueChange={async (newFrequency) => {
+              setFrequency(newFrequency);
+              const result = await updateSubscriptionFrequencyAction({
+                threadId: threadId, // Wait, do we have threadId?
+                frequency: newFrequency.toUpperCase(),
+              });
+              if (result.error) {
+                toast.error("Failed to update subscription frequency");
+                // Revert to previous frequency
+                setFrequency(frequency);
+              } else {
+                toast.success("Subscription frequency updated");
+              }
+            }}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Notification frequency" />
             </SelectTrigger>

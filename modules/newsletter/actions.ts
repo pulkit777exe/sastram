@@ -19,6 +19,11 @@ const subscribeSchema = z.object({
   slug: z.string().min(1),
 });
 
+const updateSubscriptionFrequencySchema = z.object({
+  threadId: z.string().cuid(),
+  frequency: z.enum(["DAILY", "WEEKLY", "NEVER"]),
+});
+
 export async function unsubscribeFromThread(threadId: string) {
   const parsed = threadIdSchema.safeParse({ threadId });
   if (!parsed.success) {
@@ -45,6 +50,49 @@ export async function unsubscribeFromThread(threadId: string) {
     return { data: null, error: null };
   } catch (error) {
     console.error("[unsubscribeFromThread]", error);
+    return { data: null, error: "Something went wrong" };
+  }
+}
+
+export async function updateSubscriptionFrequencyAction({
+  threadId,
+  frequency,
+}: {
+  threadId: string;
+  frequency: string;
+}) {
+  const parsed = updateSubscriptionFrequencySchema.safeParse({
+    threadId,
+    frequency,
+  });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
+
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return { data: null, error: "Something went wrong" };
+    }
+
+    await prisma.threadSubscription.update({
+      where: {
+        threadId_userId: {
+          threadId: parsed.data.threadId,
+          userId: session.user.id,
+        },
+      },
+      data: {
+        frequency: parsed.data.frequency,
+      },
+    });
+
+    return { data: null, error: null };
+  } catch (error) {
+    console.error("[updateSubscriptionFrequencyAction]", error);
     return { data: null, error: "Something went wrong" };
   }
 }

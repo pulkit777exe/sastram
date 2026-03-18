@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, PlusCircle, FileIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { toast } from "sonner";
+import { validateFile } from "@/lib/services/content-safety";
 
 interface ReplyBoxProps {
   threadId: string;
@@ -27,8 +29,24 @@ export default function ReplyBox({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canSubmit = useMemo(() => value.trim().length > 0, [value]);
+  const canSubmit = useMemo(() => value.trim().length > 0 || selectedFile, [value, selectedFile]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateFile(file);
+    if (!validation.isValid) {
+      toast.error(validation.error);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+  };
 
   const applyInlineFormat = useCallback((action: ToolbarAction) => {
     const textarea = document.getElementById(
@@ -63,17 +81,18 @@ export default function ReplyBox({
     setIsSubmitting(true);
     setError(null);
 
+    const formData = new FormData();
+    formData.append("threadId", threadId);
+    formData.append("body", value.trim());
+    if (parentId) formData.append("parentId", parentId);
+    if (selectedFile) {
+      formData.append("files", selectedFile);
+    }
+
     try {
       const response = await fetch("/api/messages", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          threadId,
-          parentId: parentId ?? null,
-          body: value.trim(),
-        }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -82,6 +101,8 @@ export default function ReplyBox({
       }
 
       setValue("");
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       if (onSuccess) onSuccess();
     } catch (err) {
       setError(
@@ -91,7 +112,7 @@ export default function ReplyBox({
       setIsSubmitting(false);
       router.refresh();
     }
-  }, [canSubmit, isSubmitting, threadId, parentId, value, onSuccess, router]);
+  }, [canSubmit, isSubmitting, threadId, parentId, value, selectedFile, onSuccess, router]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -125,15 +146,40 @@ export default function ReplyBox({
   };
 
   return (
-    <div className="flex flex-col gap-[12px]">
+    <div className="flex flex-col gap-3">
+      {/* File preview */}
+      {selectedFile && (
+        <div className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm">
+          <FileIcon className="h-4 w-4 text-muted-foreground" />
+          <span className="truncate flex-1">{selectedFile.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedFile(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <span className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
           Reply
         </span>
       </div>
 
-      <div className="rounded-[12px] border border-border bg-(--surface) p-[12px]">
-        <div className="mb-[8px] flex items-center gap-[8px]">
+      <div className="rounded-[12px] border border-border bg-(--surface) p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-[6px] px-[8px] py-[4px] text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+          >
+            <PlusCircle className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={() => applyInlineFormat("bold")}
@@ -180,6 +226,14 @@ export default function ReplyBox({
             </button>
           </div>
         </div>
+
+        {/* File input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          onChange={handleFileSelect}
+        />
 
         <textarea
           id="thread-reply-box"
@@ -233,4 +287,3 @@ export default function ReplyBox({
     </div>
   );
 }
-
