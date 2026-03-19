@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAiJobQueue, getAiJobQueueEvents } from "@/lib/infrastructure/bullmq";
+import { getAiPipelineQueues } from "@/lib/infrastructure/bullmq";
 import { requireSession } from "@/modules/auth/session";
+import type { Job } from "bullmq";
+
+async function findJob(jobId: string): Promise<{ job: Job; queueName: string } | null> {
+  const queues = getAiPipelineQueues();
+
+  for (const queue of queues) {
+    const job = await queue.getJob(jobId);
+    if (job) {
+      return { job, queueName: queue.name };
+    }
+  }
+
+  return null;
+}
 
 // Get job status
 export async function GET(req: NextRequest) {
@@ -20,8 +34,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const aiJobQueue = getAiJobQueue();
-    const job = await aiJobQueue.getJob(jobId);
+    const result = await findJob(jobId);
+    const job = result?.job;
 
     if (!job) {
       return NextResponse.json(
@@ -31,7 +45,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if user has access to the job
-    if (job.data.userId && job.data.userId !== session.user.id) {
+    const jobDataPayload = job.data as { userId?: string };
+    if (jobDataPayload.userId && jobDataPayload.userId !== session.user.id) {
       return NextResponse.json(
         { error: "Unauthorized to access this job" },
         { status: 403 },
@@ -43,6 +58,7 @@ export async function GET(req: NextRequest) {
       id: job.id,
       name: job.name,
       state: jobState,
+      queue: result?.queueName,
       createdAt: job.timestamp,
       attempts: job.attemptsMade,
       maxAttempts: job.opts.attempts,
@@ -84,8 +100,8 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const aiJobQueue = getAiJobQueue();
-    const job = await aiJobQueue.getJob(jobId);
+    const result = await findJob(jobId);
+    const job = result?.job;
 
     if (!job) {
       return NextResponse.json(

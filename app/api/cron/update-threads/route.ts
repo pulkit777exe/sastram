@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/infrastructure/prisma";
-import { getAiJobQueue, AIJobType } from "@/lib/infrastructure/bullmq";
+import {
+  AIJobType,
+  DEFAULT_JOB_OPTIONS,
+  getAiInsightNotificationsQueue,
+  getConflictDetectionQueue,
+  getDailyDigestQueue,
+  getResolutionScoreQueue,
+  getThreadDnaQueue,
+} from "@/lib/infrastructure/bullmq";
 import { updateAllThreadRelations } from "@/modules/threads/relations";
 import { prewarmFollowUpQueries } from "@/modules/ai-search/query-warming";
 
@@ -33,7 +41,11 @@ export async function GET(req: NextRequest) {
     });
 
     const jobPromises = [];
-    const aiJobQueue = getAiJobQueue();
+    const threadDnaQueue = getThreadDnaQueue();
+    const resolutionScoreQueue = getResolutionScoreQueue();
+    const conflictDetectionQueue = getConflictDetectionQueue();
+    const dailyDigestQueue = getDailyDigestQueue();
+    const aiInsightNotificationsQueue = getAiInsightNotificationsQueue();
 
     // Process each thread and collect data for notifications
     for (const thread of threads) {
@@ -50,112 +62,83 @@ export async function GET(req: NextRequest) {
 
       // Add jobs for each AI task
       jobPromises.push(
-        aiJobQueue.add(
+        threadDnaQueue.add(
           AIJobType.GENERATE_THREAD_DNA,
           { threadId: thread.id, messages, cronJob: true },
-          { jobId: `generate-dna-${thread.id}-${Date.now()}` }
+          {
+            ...DEFAULT_JOB_OPTIONS,
+            jobId: `generate-dna-${thread.id}-${Date.now()}`,
+          },
         )
       );
 
-      // For resolution score, we need both old and new values for notifications
       const oldScore = thread.resolutionScore;
       jobPromises.push(
-        (async () => {
-          const { aiService } = await import('@/lib/services/ai');
-          const newScore = await aiService.calculateResolutionScore(messages);
-          
-          await prisma.section.update({
-            where: { id: thread.id },
-            data: { resolutionScore: newScore },
-          });
-
-          // If there are subscribers and score changed significantly, add notification job
-          if (subscriberIds.length > 0 && oldScore !== null && Math.abs(newScore - oldScore) >= 20) {
-            jobPromises.push(
-              aiJobQueue.add(
-                AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
-                { 
-                  subscriberIds, 
-                  threadId: thread.id, 
-                  threadName: thread.name,
-                  oldScore,
-                  newScore,
-                  isOutdated,
-                  cronJob: true
-                },
-                { jobId: `send-notifications-${thread.id}-${Date.now()}` }
-              )
-            );
-          }
-
-          return { resolutionScore: newScore };
-        })()
+        resolutionScoreQueue.add(
+          AIJobType.CALCULATE_RESOLUTION_SCORE,
+          {
+            threadId: thread.id,
+            messages,
+            subscriberIds,
+            threadName: thread.name,
+            oldScore,
+            isOutdated,
+            cronJob: true,
+          },
+          {
+            ...DEFAULT_JOB_OPTIONS,
+            jobId: `resolution-score-${thread.id}-${Date.now()}`,
+          },
+        ),
       );
 
-      // For conflict detection
       jobPromises.push(
-        (async () => {
-          const { aiService } = await import('@/lib/services/ai');
-          const conflictResult = await aiService.detectConflicts(messages);
-          
-          if (conflictResult.hasConflict) {
-            await prisma.section.update({
-              where: { id: thread.id },
-              data: { 
-                isOutdated: true,
-                lastVerifiedAt: new Date(),
-              },
-            });
-
-            // If there are subscribers, add conflict notification job
-            if (subscriberIds.length > 0) {
-              jobPromises.push(
-                aiJobQueue.add(
-                  AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
-                  { 
-                    subscriberIds, 
-                    threadId: thread.id, 
-                    threadName: thread.name,
-                    oldScore,
-                    isOutdated: true,
-                    conflictResult,
-                    cronJob: true
-                  },
-                  { jobId: `send-notifications-${thread.id}-${Date.now()}` }
-                )
-              );
-            }
-          }
-
-          return { conflictResult };
-        })()
+        conflictDetectionQueue.add(
+          AIJobType.DETECT_CONFLICTS,
+          {
+            threadId: thread.id,
+            messages,
+            subscriberIds,
+            threadName: thread.name,
+            oldScore,
+            cronJob: true,
+          },
+          {
+            ...DEFAULT_JOB_OPTIONS,
+            jobId: `conflict-detection-${thread.id}-${Date.now()}`,
+          },
+        ),
       );
 
-      // Add daily digest job if there are subscribers
       if (subscriberIds.length > 0) {
         jobPromises.push(
-          aiJobQueue.add(
+          dailyDigestQueue.add(
             AIJobType.GENERATE_DAILY_DIGEST,
             { messages, subscriberIds, cronJob: true },
-            { jobId: `generate-digest-${thread.id}-${Date.now()}` }
+            {
+              ...DEFAULT_JOB_OPTIONS,
+              jobId: `generate-digest-${thread.id}-${Date.now()}`,
+            },
           )
         );
       }
 
-      // Add outdated thread notification job
       if (subscriberIds.length > 0 && isOutdated) {
         jobPromises.push(
-          aiJobQueue.add(
+          aiInsightNotificationsQueue.add(
             AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
             { 
               subscriberIds, 
               threadId: thread.id, 
               threadName: thread.name,
-              oldScore,
+              oldScore: oldScore ?? undefined,
               isOutdated,
               cronJob: true
             },
-            { jobId: `send-notifications-${thread.id}-${Date.now()}` }
+            {
+              ...DEFAULT_JOB_OPTIONS,
+              jobId: `send-notifications-${thread.id}-${Date.now()}`,
+            },
           )
         );
       }

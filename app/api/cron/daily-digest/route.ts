@@ -85,6 +85,11 @@ export async function GET(req: NextRequest) {
 
       // Send Email
       try {
+        if (!sub.email) {
+          results.skipped++;
+          continue;
+        }
+
         await sendEmail({
           to: sub.email,
           subject: `Daily Digest: ${thread.name}`,
