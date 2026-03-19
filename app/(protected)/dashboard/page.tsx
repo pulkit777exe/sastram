@@ -15,30 +15,88 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ThreadInsights } from "@/components/dashboard/thread-insights";
 import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
 import { cn } from "@/lib/utils/cn";
+import { prisma } from "@/lib/infrastructure/prisma";
+import Link from "next/link";
 
-export default async function DashboardPage() {
+function parseTagFilter(raw: string | string[] | undefined): string[] {
+  if (!raw) return [];
+  const values = Array.isArray(raw) ? raw : [raw];
+  return values
+    .flatMap((value) => value.split(","))
+    .map((tag) => tag.trim().toLowerCase())
+    .filter((tag, index, all) => tag.length > 0 && all.indexOf(tag) === index);
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const selectedTags = parseTagFilter(params.tag);
   const session = await getSession();
   if (!session) return null;
-  const [{ threads }, communities] = await Promise.all([
+  const [{ threads }, communities, topicSections] = await Promise.all([
     listThreads(),
     listCommunities(),
+    prisma.section.findMany({
+      where:
+        selectedTags.length > 0
+          ? {
+              AND: selectedTags.map((tagSlug) => ({
+                tags: {
+                  some: {
+                    tag: { slug: tagSlug },
+                  },
+                },
+              })),
+            }
+          : {},
+      include: {
+        community: true,
+        tags: {
+          include: {
+            tag: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        messages: {
+          select: { senderId: true },
+        },
+        _count: {
+          select: {
+            messages: true,
+          },
+        },
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      take: 50,
+    }),
   ]);
 
-  const totalMessages = threads.reduce(
+  const totalMessages = topicSections.reduce(
     (acc, thread) => acc + thread.messageCount,
     0,
   );
-  const activeThreads = threads.length;
+  const activeThreads = topicSections.length;
 
-  const threadTopics = threads.map((thread) => ({
+  const threadTopics = topicSections.map((thread) => ({
     id: thread.id,
     slug: thread.slug,
     title: thread.name,
     description: thread.description || "No description",
-    activeUsers: thread.activeUsers,
-    messagesCount: thread.messageCount,
-    trending: thread.messageCount > 10,
-    tags: [thread.community?.title ?? "General"],
+    activeUsers: new Set(thread.messages.map((message) => message.senderId)).size,
+    messagesCount: thread._count.messages,
+    trending: thread._count.messages > 10,
+    tags:
+      thread.tags.length > 0
+        ? thread.tags.map((relation) => relation.tag.name)
+        : [thread.community?.title ?? "general"],
   }));
 
   return (
@@ -60,6 +118,23 @@ export default async function DashboardPage() {
           {isAdmin(session.user) && <CreateTopicButton />}
         </div>
       </div>
+
+      {selectedTags.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-muted-foreground">
+            Filtering by:
+          </span>
+          {selectedTags.map((tag) => (
+            <Link
+              key={tag}
+              href="/dashboard"
+              className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
+            >
+              #{tag} ×
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <DarkMetric

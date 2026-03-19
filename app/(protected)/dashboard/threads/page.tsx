@@ -3,24 +3,63 @@ import { Input } from "@/components/ui/input";
 import { Search, Hash } from "lucide-react";
 import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
 import { TopicGrid } from "@/components/dashboard/topic-grid";
+import Link from "next/link";
+
+function parseTagFilter(raw: string | string[] | undefined): string[] {
+  if (!raw) return [];
+  const values = Array.isArray(raw) ? raw : [raw];
+  return values
+    .flatMap((value) => value.split(","))
+    .map((tag) => tag.trim().toLowerCase())
+    .filter((tag, index, all) => tag.length > 0 && all.indexOf(tag) === index);
+}
 
 export default async function TopicsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string | string[] }>;
 }) {
-  const query = (await searchParams).q || "";
+  const params = await searchParams;
+  const query = params.q || "";
+  const selectedTags = parseTagFilter(params.tag);
 
   const sections = await prisma.section.findMany({
       where: {
-        OR: [
-          { name: { contains: query, mode: "insensitive" } },
-          { description: { contains: query, mode: "insensitive" } },
-        ],
+        ...(query
+          ? {
+              OR: [
+                { name: { contains: query, mode: "insensitive" } },
+                { description: { contains: query, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+        ...(selectedTags.length > 0
+          ? {
+              AND: selectedTags.map((tagSlug) => ({
+                tags: {
+                  some: {
+                    tag: {
+                      slug: tagSlug,
+                    },
+                  },
+                },
+              })),
+            }
+          : {}),
       },
       include: {
         messages: {
           select: { senderId: true },
+        },
+        tags: {
+          include: {
+            tag: {
+              select: {
+                name: true,
+                slug: true,
+              },
+            },
+          },
         },
         _count: {
           select: {
@@ -43,7 +82,10 @@ export default async function TopicsPage({
       activeUsers: uniqueSenders.size,
       messagesCount: section._count.messages,
       trending: section._count.messages > 5,
-      tags: ["General"],
+      tags:
+        section.tags.length > 0
+          ? section.tags.map((relation) => relation.tag.name)
+          : ["general"],
     };
   });
 
@@ -90,6 +132,23 @@ export default async function TopicsPage({
           <span>Hottest</span>
         </div>
       </div>
+
+      {selectedTags.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-muted-foreground">
+            Filtering by:
+          </span>
+          {selectedTags.map((tag) => (
+            <Link
+              key={tag}
+              href={`/dashboard/threads?q=${encodeURIComponent(query)}`}
+              className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
+            >
+              #{tag} ×
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="pt-4">
         <TopicGrid topics={formattedSections} />
