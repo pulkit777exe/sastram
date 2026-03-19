@@ -17,6 +17,7 @@ import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
 import { cn } from "@/lib/utils/cn";
 import { prisma } from "@/lib/infrastructure/prisma";
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 
 function parseTagFilter(raw: string | string[] | undefined): string[] {
   if (!raw) return [];
@@ -64,7 +65,7 @@ export default async function DashboardPage({
           },
         },
         messages: {
-          select: { senderId: true },
+          select: { senderId: true, createdAt: true },
         },
         _count: {
           select: {
@@ -78,6 +79,25 @@ export default async function DashboardPage({
       take: 50,
     }),
   ]);
+  const topicSectionIds = topicSections.map((section) => section.id);
+  let readReceiptRows: Array<{ threadId: string; readAt: Date }> = [];
+  if (topicSectionIds.length > 0) {
+    try {
+      readReceiptRows = await prisma.$queryRaw<
+        Array<{ threadId: string; readAt: Date }>
+      >`
+        SELECT "threadId", "readAt"
+        FROM "read_receipts"
+        WHERE "userId" = ${session.user.id}
+          AND "threadId" IN (${Prisma.join(topicSectionIds)})
+      `;
+    } catch (error) {
+      console.error("[dashboard.readReceipts]", error);
+    }
+  }
+  const readAtByThread = new Map(
+    readReceiptRows.map((row) => [row.threadId, row.readAt]),
+  );
 
   const totalMessages = topicSections.reduce(
     (acc, thread) => acc + thread.messageCount,
@@ -85,19 +105,36 @@ export default async function DashboardPage({
   );
   const activeThreads = topicSections.length;
 
-  const threadTopics = topicSections.map((thread) => ({
-    id: thread.id,
-    slug: thread.slug,
-    title: thread.name,
-    description: thread.description || "No description",
-    activeUsers: new Set(thread.messages.map((message) => message.senderId)).size,
-    messagesCount: thread._count.messages,
-    trending: thread._count.messages > 10,
-    tags:
-      thread.tags.length > 0
-        ? thread.tags.map((relation) => relation.tag.name)
-        : [thread.community?.title ?? "general"],
-  }));
+  const threadTopics = topicSections.map((thread) => {
+    const readAt = readAtByThread.get(thread.id);
+    const unreadCount = thread.messages.filter((message) => {
+      if (message.senderId === session.user.id) {
+        return false;
+      }
+
+      if (!readAt) {
+        return true;
+      }
+
+      return message.createdAt > readAt;
+    }).length;
+
+    return {
+      id: thread.id,
+      slug: thread.slug,
+      title: thread.name,
+      description: thread.description || "No description",
+      activeUsers: new Set(thread.messages.map((message) => message.senderId))
+        .size,
+      messagesCount: thread._count.messages,
+      unreadCount,
+      trending: thread._count.messages > 10,
+      tags:
+        thread.tags.length > 0
+          ? thread.tags.map((relation) => relation.tag.name)
+          : [thread.community?.title ?? "general"],
+    };
+  });
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">

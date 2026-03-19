@@ -152,6 +152,7 @@ model User {
   badges        UserBadgeEarned[]
   activities    UserActivity[]
   pollVotes     PollVote[]
+  readReceipts  ReadReceipt[]
   subscriptions ThreadSubscription[]
   appeals       Appeal[]             @relation("AppealSubmitter")
   moderatedAppeals Appeal[]         @relation("AppealModerator")
@@ -272,6 +273,7 @@ model Section {
   tags          ThreadTagRelation[]
   poll          Poll?
   subscriptions ThreadSubscription[]
+  readReceipts  ReadReceipt[]
   relatedTo     ThreadRelation[]     @relation("SourceThread")
   relatedFrom   ThreadRelation[]     @relation("TargetThread")
 
@@ -327,6 +329,7 @@ model Message {
   reports     Report[]
   editHistory MessageEdit[]
   mentions    MessageMention[]
+  readReceipts ReadReceipt[]    @relation("ReadReceiptMessage")
   appeals     Appeal[]         @relation("MessageAppeal")
 
   @@index([sectionId])
@@ -391,6 +394,26 @@ model Reaction {
   @@unique([messageId, userId, emoji])
   @@index([messageId])
   @@map("reactions")
+}
+
+model ReadReceipt {
+  id                String    @id
+  threadId          String
+  userId            String
+  lastReadMessageId String?
+  readAt            DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  thread          Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadMessage Message? @relation("ReadReceiptMessage", fields: [lastReadMessageId], references: [id], onDelete: SetNull)
+
+  @@unique([threadId, userId])
+  @@index([threadId])
+  @@index([userId])
+  @@index([readAt])
+  @@map("read_receipts")
 }
 
 // ── SOCIAL ─────────────────────────────────────────────

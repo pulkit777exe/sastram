@@ -4,6 +4,8 @@ import { Search, Hash } from "lucide-react";
 import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
 import { TopicGrid } from "@/components/dashboard/topic-grid";
 import Link from "next/link";
+import { getSession } from "@/modules/auth/session";
+import { Prisma } from "@prisma/client";
 
 function parseTagFilter(raw: string | string[] | undefined): string[] {
   if (!raw) return [];
@@ -19,6 +21,7 @@ export default async function TopicsPage({
 }: {
   searchParams: Promise<{ q?: string; tag?: string | string[] }>;
 }) {
+  const session = await getSession();
   const params = await searchParams;
   const query = params.q || "";
   const selectedTags = parseTagFilter(params.tag);
@@ -49,7 +52,7 @@ export default async function TopicsPage({
       },
       include: {
         messages: {
-          select: { senderId: true },
+          select: { senderId: true, createdAt: true },
         },
         tags: {
           include: {
@@ -71,9 +74,41 @@ export default async function TopicsPage({
         messages: { _count: "desc" },
       },
     });
+  const sectionIds = sections.map((section) => section.id);
+  let readReceiptRows: Array<{ threadId: string; readAt: Date }> = [];
+  if (session?.user && sectionIds.length > 0) {
+    try {
+      readReceiptRows = await prisma.$queryRaw<
+        Array<{ threadId: string; readAt: Date }>
+      >`
+        SELECT "threadId", "readAt"
+        FROM "read_receipts"
+        WHERE "userId" = ${session.user.id}
+          AND "threadId" IN (${Prisma.join(sectionIds)})
+      `;
+    } catch (error) {
+      console.error("[threads.readReceipts]", error);
+    }
+  }
+  const readAtByThread = new Map(
+    readReceiptRows.map((row) => [row.threadId, row.readAt]),
+  );
 
   const formattedSections = sections.map((section) => {
     const uniqueSenders = new Set(section.messages.map((m) => m.senderId));
+    const readAt = readAtByThread.get(section.id);
+    const unreadCount = section.messages.filter((message) => {
+      if (message.senderId === session?.user.id) {
+        return false;
+      }
+
+      if (!readAt) {
+        return true;
+      }
+
+      return message.createdAt > readAt;
+    }).length;
+
     return {
       id: section.id,
       slug: section.slug,
@@ -81,6 +116,7 @@ export default async function TopicsPage({
       description: section.description || "",
       activeUsers: uniqueSenders.size,
       messagesCount: section._count.messages,
+      unreadCount,
       trending: section._count.messages > 5,
       tags:
         section.tags.length > 0

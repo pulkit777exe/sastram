@@ -21,6 +21,7 @@ import ResolutionScoreCard from "@/components/panels/ResolutionScoreCard";
 import ThreadDnaCard from "@/components/panels/ThreadDnaCard";
 import { parseThreadDna } from "@/lib/schemas/thread-dna";
 import { ThreadSummaryCard } from "@/components/thread/thread-summary-card";
+import { getThreadReadReceipt } from "@/modules/read-receipts/repository";
 
 export default async function ThreadPage({
   params,
@@ -30,6 +31,9 @@ export default async function ThreadPage({
   const { slug } = await params;
   const session = await requireSession();
   const thread = await getThreadWithFullContext(slug, session.user.id);
+  const readReceipt = thread
+    ? await getThreadReadReceipt(thread.id, session.user.id)
+    : null;
 
   if (!thread) notFound();
 
@@ -80,6 +84,20 @@ export default async function ThreadPage({
     },
   }));
 
+  const unreadMessages = thread.messages.filter((message) => {
+    if (message.senderId === session.user.id) {
+      return false;
+    }
+
+    if (!readReceipt?.readAt) {
+      return true;
+    }
+
+    return message.createdAt > readReceipt.readAt;
+  });
+  const initialUnreadCount = unreadMessages.length;
+  const firstUnreadMessageId = unreadMessages[0]?.id ?? null;
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
@@ -121,6 +139,8 @@ export default async function ThreadPage({
         <ThreadLiveWrapper
           messages={allMessages}
           threadId={thread.id}
+          initialUnreadCount={initialUnreadCount}
+          initialFirstUnreadMessageId={firstUnreadMessageId}
           poll={
             thread.poll
               ? {

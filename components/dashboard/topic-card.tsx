@@ -14,6 +14,7 @@ interface TopicCardProps {
   description: string;
   activeUsers: number;
   messagesCount: number;
+  unreadCount?: number;
   trending?: boolean;
   tags: string[];
 }
@@ -24,6 +25,7 @@ export function TopicCard({
   description,
   activeUsers,
   messagesCount,
+  unreadCount = 0,
   trending,
   tags,
 }: TopicCardProps) {
@@ -46,6 +48,12 @@ export function TopicCard({
             {title}
           </h3>
         </Link>
+        {unreadCount > 0 && (
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+            {unreadCount} unread
+          </div>
+        )}
         <p className="mb-4 text-sm text-muted-foreground line-clamp-2 leading-relaxed">
           {description}
         </p>

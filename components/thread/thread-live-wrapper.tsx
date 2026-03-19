@@ -1,16 +1,20 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommentTree } from "@/components/thread/comment-tree";
 import { PostMessageForm } from "@/modules/chat/components/post-message-form";
 import { useThreadWebSocket, type TypingUser } from "@/hooks/useThreadWebSocket";
 import type { Message } from "@/lib/types/index";
 import TimeAgo from "@/components/ui/TimeAgo";
 import { PollPanel } from "@/components/thread/poll-panel";
+import { markThreadReadAction } from "@/modules/read-receipts/actions";
+import { toasts } from "@/lib/utils/toast";
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
   threadId: string;
+  initialUnreadCount: number;
+  initialFirstUnreadMessageId: string | null;
   poll: {
     id: string;
     question: string;
@@ -30,13 +34,22 @@ interface ThreadLiveWrapperProps {
 export function ThreadLiveWrapper({
   messages,
   threadId,
+  initialUnreadCount,
+  initialFirstUnreadMessageId,
   poll,
   canManagePoll,
   currentUser,
 }: ThreadLiveWrapperProps) {
   const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+  const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(
+    initialFirstUnreadMessageId,
+  );
   const animateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMarkingReadRef = useRef(false);
   const [animateId, setAnimateId] = useState<string | null>(null);
 
   const pinnedMessage = useMemo(
@@ -44,12 +57,52 @@ export function ThreadLiveWrapper({
     [liveMessages],
   );
 
+  const isAtBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return true;
+    const threshold = 80;
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight <=
+      threshold
+    );
+  }, []);
+
+  const markThreadAsRead = useCallback(
+    async (force: boolean = false) => {
+      if (unreadCount <= 0 || isMarkingReadRef.current) {
+        return;
+      }
+      if (!force && !isAtBottom()) {
+        return;
+      }
+
+      const latestMessageId = liveMessages[liveMessages.length - 1]?.id ?? null;
+      isMarkingReadRef.current = true;
+      const result = await markThreadReadAction(threadId, latestMessageId);
+      isMarkingReadRef.current = false;
+
+      if (result.error) {
+        toasts.serverError();
+        return;
+      }
+
+      setUnreadCount(0);
+      setFirstUnreadMessageId(null);
+    },
+    [isAtBottom, liveMessages, threadId, unreadCount],
+  );
+
   const handleWsNewMessage = useCallback((newMessage: Message) => {
+    const wasAtBottom = isAtBottom();
     setLiveMessages((prev) => [...prev, newMessage]);
     setAnimateId(newMessage.id);
     if (animateTimerRef.current) clearTimeout(animateTimerRef.current);
     animateTimerRef.current = setTimeout(() => setAnimateId(null), 700);
-  }, []);
+    if (!wasAtBottom) {
+      setUnreadCount((prev) => prev + 1);
+      setFirstUnreadMessageId((prev) => prev ?? newMessage.id);
+    }
+  }, [isAtBottom]);
 
   const handleWsMessageDeleted = useCallback((messageId: string) => {
     setLiveMessages((prev) =>
@@ -92,18 +145,79 @@ export function ThreadLiveWrapper({
     [emitTypingStop]
   );
 
+  const scrollToFirstUnread = useCallback(() => {
+    if (firstUnreadMessageId) {
+      const target = document.getElementById(`message-${firstUnreadMessageId}`);
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [firstUnreadMessageId]);
+
+  useEffect(() => {
+    if (unreadCount <= 0) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      void markThreadAsRead(true);
+    }, 30000);
+
+    return () => clearTimeout(timeout);
+  }, [markThreadAsRead, unreadCount]);
+
+  useEffect(() => {
+    return () => {
+      if (readDebounceRef.current) {
+        clearTimeout(readDebounceRef.current);
+      }
+    };
+  }, []);
+
   // Suppress animateId to avoid lint — it's available if CommentTree needs it
   void animateId;
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={() => {
+          if (readDebounceRef.current) {
+            clearTimeout(readDebounceRef.current);
+          }
+          readDebounceRef.current = setTimeout(() => {
+            void markThreadAsRead(false);
+          }, 250);
+        }}
+      >
         <div className="max-w-4xl mx-auto p-6 md:p-8">
           <PollPanel
             threadId={threadId}
             initialPoll={poll}
             canManagePoll={canManagePoll}
           />
+
+          {unreadCount > 0 && (
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-blue-700">
+                  {unreadCount} unread {unreadCount === 1 ? "message" : "messages"}
+                </p>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-blue-700 underline hover:text-blue-900"
+                  onClick={scrollToFirstUnread}
+                >
+                  Scroll to first unread message
+                </button>
+              </div>
+            </div>
+          )}
 
           {pinnedMessage && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3">

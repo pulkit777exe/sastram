@@ -10,6 +10,7 @@ interface Topic {
   description: string;
   activeUsers: number;
   messagesCount: number;
+  unreadCount?: number;
   trending: boolean;
   tags: string[];
 }
