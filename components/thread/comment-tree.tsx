@@ -5,6 +5,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Reply,
   FileIcon,
   Download,
@@ -25,9 +32,15 @@ import {
   loadCollapseStates,
   saveCollapseState,
 } from "@/modules/messages/service";
-import { postMessage, editMessage, pinMessage, deleteMessage } from "@/modules/messages/actions";
+import {
+  postMessage,
+  editMessage,
+  pinMessage,
+  deleteMessage,
+  getMessageEditHistory,
+} from "@/modules/messages/actions";
 import { toggleReaction } from "@/modules/reactions/actions";
-import { toast } from "sonner";
+import { toasts } from "@/lib/utils/toast";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ReportButton } from "./report-button";
 import { AppealMessageModal } from "./appeal-message-modal";
@@ -47,6 +60,57 @@ function findNodeById(nodes: MessageNode[], id: string): MessageNode | null {
     }
   }
   return null;
+}
+
+type EditHistoryEntry = {
+  id: string;
+  content: string;
+  editedAt: Date | string;
+};
+
+function formatEditedAt(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function renderMentionContent(content: string) {
+  return content.split(/(@[\w.-]+)/g).map((part, index) => {
+    if (part.startsWith("@")) {
+      return (
+        <span key={`${part}-${index}`} className="text-blue-600 font-medium">
+          {part}
+        </span>
+      );
+    }
+
+    return <span key={`${part}-${index}`}>{part}</span>;
+  });
+}
+
+function renderDiffLine(text: string, compareTo: string, className: string) {
+  const compareWords = new Set(compareTo.toLowerCase().split(/\s+/));
+
+  return text.split(/(\s+)/).map((token, index) => {
+    if (!token.trim()) {
+      return <span key={`${token}-${index}`}>{token}</span>;
+    }
+
+    const isDifferent = !compareWords.has(token.toLowerCase());
+    return (
+      <span
+        key={`${token}-${index}`}
+        className={isDifferent ? className : undefined}
+      >
+        {token}
+      </span>
+    );
+  });
 }
 
 // ─── Main Component ────────────────────────────────────────
@@ -292,7 +356,12 @@ function CommentNode({
   const [editContent, setEditContent] = useState(node.content);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isPinning, setIsPinning] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [editHistory, setEditHistory] = useState<EditHistoryEntry[]>([]);
+  const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const isCollapsed = collapsedIds.has(node.id);
   const hasChildren = node.children.length > 0;
@@ -302,15 +371,89 @@ function CommentNode({
   const beyondDepthLimit = depth >= MAX_VISUAL_DEPTH;
   const descendantCount = countDescendants(node);
   const shouldAnimate = animateMessageId === node.id;
+  const isModerator = ["ADMIN", "MODERATOR", "OWNER"].includes(
+    currentUser.role || "",
+  );
 
   const canEdit = isOwnMessage && !isDeleted;
-  const canDelete = isOwnMessage && !isDeleted;
-  const canPin = ["ADMIN", "MODERATOR", "OWNER"].includes(currentUser.role || "") && !isDeleted;
+  const canDelete = (isOwnMessage || isModerator) && !isDeleted;
+  const canPin = isModerator && !isDeleted;
 
   // Parent reference for "Replying to" context
   const parentMessage = node.parentId
     ? allMessages.find((m) => m.id === node.parentId)
     : null;
+
+  useEffect(() => {
+    setEditContent(node.content);
+  }, [node.content]);
+
+  useEffect(() => {
+    if (!isEditing || !editTextareaRef.current) {
+      return;
+    }
+
+    const textarea = editTextareaRef.current;
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 250)}px`;
+  }, [isEditing, editContent]);
+
+  const handleSaveEdit = useCallback(async () => {
+    const trimmed = editContent.trim();
+    if (!trimmed || trimmed === node.content) {
+      return;
+    }
+
+    setIsSavingEdit(true);
+    const res = await editMessage(node.id, trimmed);
+    if (!res?.error) {
+      onMessageUpdate(node.id, {
+        content: trimmed,
+        isEdited: true,
+        updatedAt: new Date(),
+      });
+      setIsEditing(false);
+      setIsSavingEdit(false);
+      return;
+    }
+
+    toasts.serverError();
+    setIsSavingEdit(false);
+  }, [editContent, node.id, node.content, onMessageUpdate]);
+
+  const openHistoryModal = useCallback(async () => {
+    setIsHistoryOpen(true);
+    setIsLoadingHistory(true);
+    const res = await getMessageEditHistory(node.id);
+    if (res.error || !Array.isArray(res.data)) {
+      setEditHistory([]);
+      toasts.serverError();
+      setIsLoadingHistory(false);
+      return;
+    }
+
+    setEditHistory(
+      res.data.map((entry) => ({
+        id: entry.id,
+        content: entry.content,
+        editedAt: entry.editedAt,
+      })),
+    );
+    setIsLoadingHistory(false);
+  }, [node.id]);
+
+  const historyVersions = useMemo(() => {
+    const versions: Array<EditHistoryEntry & { isCurrent?: boolean }> = [
+      {
+        id: `${node.id}-current`,
+        content: node.content,
+        editedAt: node.updatedAt,
+        isCurrent: true,
+      },
+      ...editHistory,
+    ];
+    return versions;
+  }, [node.id, node.content, node.updatedAt, editHistory]);
 
   return (
     <div
@@ -333,7 +476,10 @@ function CommentNode({
 
       {/* Message Card */}
       {isDeleted ? (
-        <DeletedMessagePlaceholder />
+        <DeletedMessagePlaceholder
+          originalContent={node.content}
+          canViewOriginal={isModerator}
+        />
       ) : (
         <div className="py-2">
           {/* Reply reference */}
@@ -390,15 +536,21 @@ function CommentNode({
                   <TimeAgo date={node.createdAt} />
                 </span>
                 {node.isEdited && (
-                  <span className="text-[10px] text-muted-foreground/50">
-                    (edited)
-                  </span>
+                  <button
+                    type="button"
+                    className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground underline-offset-2 hover:underline"
+                    title={`Last edited ${formatEditedAt(node.updatedAt)}`}
+                    onClick={openHistoryModal}
+                  >
+                    edited
+                  </button>
                 )}
               </div>
 
               {isEditing ? (
                 <div className="w-full max-w-lg mt-1 relative space-y-2">
                   <Textarea
+                    ref={editTextareaRef}
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     className="min-h-20 max-h-[250px] resize-none text-[14px]"
@@ -407,6 +559,11 @@ function CommentNode({
                       if (e.key === 'Escape') {
                          setIsEditing(false);
                          setEditContent(node.content);
+                         return;
+                      }
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        void handleSaveEdit();
                       }
                     }}
                   />
@@ -418,17 +575,7 @@ function CommentNode({
                     <Button 
                       size="sm" 
                       disabled={isSavingEdit || !editContent.trim() || editContent === node.content}
-                      onClick={async () => {
-                        setIsSavingEdit(true);
-                        const res = await editMessage(node.id, editContent);
-                        if (!res?.error) {
-                          onMessageUpdate(node.id, { content: editContent, isEdited: true });
-                          setIsEditing(false);
-                        } else {
-                          toast.error(res.error);
-                        }
-                        setIsSavingEdit(false);
-                      }}
+                      onClick={() => void handleSaveEdit()}
                     >
                       {isSavingEdit ? "Saving..." : "Save Edit"}
                     </Button>
@@ -436,7 +583,7 @@ function CommentNode({
                 </div>
               ) : (
                 <div className="text-foreground/80 text-[14px] leading-relaxed whitespace-pre-wrap wrap-break-word">
-                  {node.content}
+                  {renderMentionContent(node.content)}
                 </div>
               )}
 
@@ -468,7 +615,7 @@ function CommentNode({
                       setLikeCount((prev) =>
                         wasLiked ? prev + 1 : Math.max(0, prev - 1),
                       );
-                      toast.error("Failed to update like");
+                      toasts.error("Failed to update like");
                     }
                     setIsLiking(false);
                   }}
@@ -523,7 +670,7 @@ function CommentNode({
                   {canEdit && (
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded"
+                      className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100"
                       title="Edit message"
                     >
                       <Edit2 size={13} />
@@ -531,20 +678,9 @@ function CommentNode({
                   )}
                   {canDelete && (
                     <button
-                      onClick={async () => {
-                        if (confirm("Are you sure you want to delete this message?")) {
-                          setIsDeleting(true);
-                          const res = await deleteMessage(node.id);
-                          if (!res?.error) {
-                            onMessageUpdate(node.id, { deletedAt: new Date(), content: "This message was removed" });
-                          } else {
-                            toast.error(res.error);
-                            setIsDeleting(false);
-                          }
-                        }
-                      }}
+                      onClick={() => setShowDeleteConfirm((prev) => !prev)}
                       disabled={isDeleting}
-                      className="text-muted-foreground/40 hover:text-red-500 transition-colors p-1 rounded"
+                      className="text-muted-foreground/40 hover:text-red-500 transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100"
                       title="Delete message"
                     >
                       <Trash2 size={13} />
@@ -560,12 +696,12 @@ function CommentNode({
                         const res = await pinMessage(node.id);
                         if (res?.error) {
                           onMessageUpdate(node.id, { isPinned: wasPinned });
-                          toast.error(res.error);
+                          toasts.error("Failed to pin message. Try again.");
                         }
                         setIsPinning(false);
                       }}
                       disabled={isPinning}
-                      className={`transition-colors p-1 rounded ${node.isPinned ? "text-indigo-500" : "text-muted-foreground/40 hover:text-indigo-500"}`}
+                      className={`transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100 ${node.isPinned ? "text-indigo-500 opacity-100" : "text-muted-foreground/40 hover:text-indigo-500"}`}
                       title={node.isPinned ? "Unpin message" : "Pin message"}
                     >
                       <Pin size={13} />
@@ -579,6 +715,40 @@ function CommentNode({
                   )}
                 </div>
               </div>
+              )}
+
+              {showDeleteConfirm && canDelete && (
+                <div className="mt-2 flex items-center gap-2 rounded-md border border-red-200/80 bg-red-50/60 px-2.5 py-1.5 text-[11px] text-red-700">
+                  <span>Are you sure?</span>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-6 px-2 text-[11px]"
+                    disabled={isDeleting}
+                    onClick={async () => {
+                      setIsDeleting(true);
+                      const res = await deleteMessage(node.id);
+                      if (!res?.error) {
+                        onMessageUpdate(node.id, { deletedAt: new Date() });
+                        setShowDeleteConfirm(false);
+                      } else {
+                        toasts.serverError();
+                      }
+                      setIsDeleting(false);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px]"
+                    disabled={isDeleting}
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -662,23 +832,115 @@ function CommentNode({
         isOpen={appealOpen}
         onClose={() => setAppealOpen(false)}
       />
+
+      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit History</DialogTitle>
+            <DialogDescription>
+              Review previous versions of this message.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingHistory ? (
+            <div className="py-8 text-sm text-muted-foreground">
+              Loading history...
+            </div>
+          ) : (
+            <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+              {historyVersions.map((version, index) => {
+                const older = historyVersions[index + 1];
+                return (
+                  <div
+                    key={version.id}
+                    className="rounded-lg border border-border/60 p-3 space-y-2"
+                  >
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>
+                        {version.isCurrent ? "Current version" : "Previous version"}
+                      </span>
+                      <span>{formatEditedAt(version.editedAt)}</span>
+                    </div>
+
+                    <div className="rounded-md bg-muted/40 p-2 text-sm whitespace-pre-wrap">
+                      {older ? (
+                        <div className="space-y-1">
+                          <p className="text-[11px] font-medium text-emerald-700">
+                            Additions
+                          </p>
+                          <p>
+                            {renderDiffLine(
+                              version.content,
+                              older.content,
+                              "bg-emerald-100 text-emerald-800 rounded px-0.5",
+                            )}
+                          </p>
+                          <p className="text-[11px] font-medium text-rose-700 pt-1">
+                            Removals
+                          </p>
+                          <p>
+                            {renderDiffLine(
+                              older.content,
+                              version.content,
+                              "bg-rose-100 text-rose-700 rounded px-0.5 line-through",
+                            )}
+                          </p>
+                        </div>
+                      ) : (
+                        version.content
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 // ─── Deleted Message Placeholder ───────────────────────────
 
-function DeletedMessagePlaceholder() {
+function DeletedMessagePlaceholder({
+  originalContent,
+  canViewOriginal,
+}: {
+  originalContent: string;
+  canViewOriginal: boolean;
+}) {
+  const [showOriginal, setShowOriginal] = useState(false);
+
   return (
-    <div className="py-2 flex items-center gap-3 opacity-50">
-      <Avatar className="w-8 h-8 shrink-0">
+    <div className="py-2 flex items-start gap-3 opacity-70">
+      <Avatar className="w-8 h-8 shrink-0 mt-0.5">
         <AvatarFallback className="bg-muted text-muted-foreground text-xs">
           ?
         </AvatarFallback>
       </Avatar>
-      <span className="text-sm text-muted-foreground italic">
-        This message was removed
-      </span>
+
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground italic">
+          This message was removed
+        </p>
+        {canViewOriginal && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowOriginal((prev) => !prev)}
+              className="text-[11px] text-indigo-600 hover:text-indigo-700 underline"
+            >
+              {showOriginal ? "Hide original" : "View original"}
+            </button>
+            {showOriginal && (
+              <p className="text-xs text-foreground/70 blur-sm hover:blur-none transition">
+                {originalContent}
+              </p>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -795,7 +1057,7 @@ function InlineReplyBox({
       };
 
       onMessagePosted(newMsg);
-      toast.success("Reply posted!");
+      toasts.sent();
       router.refresh();
     }
   }
