@@ -10,8 +10,16 @@ import {
 } from "@/modules/notifications/repository";
 import { getNotificationsSchema, markNotificationReadSchema } from "./schemas";
 
-export async function getNotifications(unreadOnly: boolean = false) {
-  const parsed = getNotificationsSchema.safeParse({ unreadOnly });
+export async function getNotifications(params?: {
+  unreadOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
+  const parsed = getNotificationsSchema.safeParse({
+    unreadOnly: params?.unreadOnly ?? false,
+    limit: params?.limit ?? 20,
+    offset: params?.offset ?? 0,
+  });
   if (!parsed.success) {
     return { data: null, error: "Invalid input" };
   }
@@ -21,6 +29,8 @@ export async function getNotifications(unreadOnly: boolean = false) {
     const notifications = await getUserNotifications({
       userId: session.user.id,
       unreadOnly: parsed.data.unreadOnly,
+      limit: parsed.data.limit,
+      offset: parsed.data.offset,
     });
     return { data: notifications, error: null };
   } catch (error) {

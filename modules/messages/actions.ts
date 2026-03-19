@@ -204,6 +204,9 @@ export async function postMessage(formData: FormData) {
             data: {
               messageId: message.id,
               sectionId,
+              linkUrl: message.section?.slug
+                ? `/dashboard/threads/thread/${message.section.slug}?focus=${message.id}`
+                : null,
             },
           },
         });

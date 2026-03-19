@@ -19,6 +19,7 @@ export function DashboardHeader() {
   const [open, setOpen] = React.useState(false);
   const { data: bootstrapData } = useBootstrap();
   const unreadCount = bootstrapData?.unreadNotificationCount ?? 0;
+  const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -55,13 +56,13 @@ export function DashboardHeader() {
 
         <div className="flex items-center gap-4">
           <Link
-            href="/dashboard/messages"
+            href="/dashboard/notifications"
             className="relative p-2 hover:bg-muted rounded-full transition-colors"
           >
             <Bell className="h-5 w-5 text-muted-foreground" />
             {unreadCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white">
-                {unreadCount}
+              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center p-0 bg-red-500 text-white text-[10px]">
+                {unreadLabel}
               </Badge>
             )}
           </Link>

@@ -105,7 +105,7 @@ export function Sidebar({
     { icon: Search, label: "Search", href: "/dashboard/search" },
     { icon: Sparkles, label: "Sastram AI", href: "/dashboard/ai-search" },
     { icon: Activity, label: "Activity", href: "/dashboard/activity" },
-    { icon: Bell, label: "Notifications", href: "/dashboard/messages", badge: unreadCount > 0 ? unreadCount : undefined },
+    { icon: Bell, label: "Notifications", href: "/dashboard/notifications", badge: unreadCount > 0 ? unreadCount : undefined },
     { icon: Settings, label: "Settings", href: "/dashboard/settings" },
   ];
 
