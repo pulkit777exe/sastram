@@ -12,13 +12,15 @@ const PUBLIC_PATHS = [
 ];
 
 export default async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
 
   const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
   const sessionCookie = request.cookies.get("better-auth.session_token");
 
   if (!sessionCookie && !isPublic) {
     const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("reason", "unauthorized");
+    loginUrl.searchParams.set("redirect", `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);
   }
 

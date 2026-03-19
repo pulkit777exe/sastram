@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { logger } from "@/lib/infrastructure/logger";
 
 export type UserActivityDetails = Record<string, unknown> | null;
 
@@ -19,6 +20,15 @@ interface UserActivityFilters {
   endDate?: Date;
   limit?: number;
   offset?: number;
+}
+
+async function safeList<T>(label: string, query: () => Promise<T[]>): Promise<T[]> {
+  try {
+    return (await query()) ?? [];
+  } catch (error) {
+    logger.error(label, error);
+    return [];
+  }
 }
 
 export async function logAction({
@@ -55,46 +65,50 @@ export async function getUserActivities(filters?: UserActivityFilters) {
     }
   }
 
-  return prisma.userActivity.findMany({
-    where,
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatarUrl: true,
+  return safeList("[getUserActivities]", () =>
+    prisma.userActivity.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: filters?.limit || 100,
-    skip: filters?.offset || 0,
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: filters?.limit || 100,
+      skip: filters?.offset || 0,
+    }),
+  );
 }
 
 export async function getEntityHistory(entityType: string, entityId: string) {
-  return prisma.userActivity.findMany({
-    where: {
-      entityType,
-      entityId,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatarUrl: true,
+  return safeList("[getEntityHistory]", () =>
+    prisma.userActivity.findMany({
+      where: {
+        entityType,
+        entityId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+  );
 }
 
 export async function getUserActivity(
@@ -102,25 +116,27 @@ export async function getUserActivity(
   limit: number = 50,
   offset: number = 0
 ) {
-  return prisma.userActivity.findMany({
-    where: {
-      userId,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          avatarUrl: true,
+  return safeList("[getUserActivity]", () =>
+    prisma.userActivity.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: limit,
-    skip: offset,
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: limit,
+      skip: offset,
+    }),
+  );
 }
 
 export async function getUserActivityStats(filters?: {
@@ -206,17 +222,19 @@ export async function getMostActiveUsers(
     .map((item) => item.userId)
     .filter((id): id is string => id !== null);
 
-  const users = await prisma.user.findMany({
-    where: {
-      id: { in: userIds },
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      avatarUrl: true,
-    },
-  });
+  const users = await safeList("[getMostActiveUsers:users]", () =>
+    prisma.user.findMany({
+      where: {
+        id: { in: userIds },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+      },
+    }),
+  );
 
   const userMap = new Map(users.map((user) => [user.id, user]));
 
@@ -251,22 +269,24 @@ export async function searchUserActivities(
     if (filters.endDate) where.createdAt.lte = filters.endDate;
   }
 
-  return prisma.userActivity.findMany({
-    where,
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+  return safeList("[searchUserActivities]", () =>
+    prisma.userActivity.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: limit,
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: limit,
+    }),
+  );
 }
 
 export async function cleanupOldUserActivities(daysToKeep: number = 90) {

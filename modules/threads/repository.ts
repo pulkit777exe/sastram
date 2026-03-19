@@ -10,6 +10,7 @@ import { SectionRole } from "@prisma/client";
 import { buildThreadDTO, buildThreadDetailDTO } from "./service";
 import { dedupe } from "@/lib/dedupe";
 import { aiService } from "@/lib/services/ai";
+import { logger } from "@/lib/infrastructure/logger";
 
 type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
   include: {
@@ -70,91 +71,105 @@ export async function listThreads(
 ): Promise<PaginatedThreads> {
   const { page = 1, pageSize = 10, sortBy = "recent" } = params;
   const skip = (page - 1) * pageSize;
-
-  const [totalItems, threads] = await dedupe(
-    `threads:list:${page}:${pageSize}:${sortBy}`,
-    () =>
-      Promise.all([
-        prisma.section.count(),
-        prisma.section.findMany({
-          where: {},
-          include: {
-            community: true,
-            messages: {
-              where: {
-                deletedAt: null,
-                createdAt: {
-                  gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                },
-              },
-              select: {
-                senderId: true,
-                createdAt: true,
-              },
-            },
-            members: {
-              where: {
-                status: "ACTIVE",
-              },
-            },
-            _count: {
-              select: {
-                messages: {
-                  where: {
-                    deletedAt: null,
+  try {
+    const [totalItems, threads] = await dedupe(
+      `threads:list:${page}:${pageSize}:${sortBy}`,
+      () =>
+        Promise.all([
+          prisma.section.count(),
+          prisma.section.findMany({
+            where: {},
+            include: {
+              community: true,
+              messages: {
+                where: {
+                  deletedAt: null,
+                  createdAt: {
+                    gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
                   },
                 },
-                members: {
-                  where: {
-                    status: "ACTIVE",
+                select: {
+                  senderId: true,
+                  createdAt: true,
+                },
+              },
+              members: {
+                where: {
+                  status: "ACTIVE",
+                },
+              },
+              _count: {
+                select: {
+                  messages: {
+                    where: {
+                      deletedAt: null,
+                    },
+                  },
+                  members: {
+                    where: {
+                      status: "ACTIVE",
+                    },
                   },
                 },
               },
             },
-          },
-          orderBy:
-            sortBy === "oldest"
-              ? { createdAt: "asc" }
-              : sortBy === "popular"
-                ? { messageCount: "desc" }
-                : { updatedAt: "desc" },
-          skip,
-          take: pageSize,
-        }),
-      ]),
-  );
-
-  let mappedThreads = threads.map((thread: SectionWithCommunityAndCount) => {
-    const uniqueActiveUsers = new Set(thread.messages.map((m) => m.senderId));
-    return buildThreadDTO(
-      thread as unknown as ThreadRecord,
-      thread._count.messages,
-      uniqueActiveUsers.size,
-      thread._count.members,
+            orderBy:
+              sortBy === "oldest"
+                ? { createdAt: "asc" }
+                : sortBy === "popular"
+                  ? { messageCount: "desc" }
+                  : { updatedAt: "desc" },
+            skip,
+            take: pageSize,
+          }),
+        ]),
     );
-  });
 
-  if (sortBy === "trending") {
-    mappedThreads = mappedThreads.sort((a, b) => {
-      const scoreA = a.activeUsers * 2 + a.messageCount;
-      const scoreB = b.activeUsers * 2 + b.messageCount;
-      return scoreB - scoreA;
+    let mappedThreads = (threads ?? []).map((thread: SectionWithCommunityAndCount) => {
+      const uniqueActiveUsers = new Set(thread.messages.map((m) => m.senderId));
+      return buildThreadDTO(
+        thread as unknown as ThreadRecord,
+        thread._count.messages,
+        uniqueActiveUsers.size,
+        thread._count.members,
+      );
     });
+
+    if (sortBy === "trending") {
+      mappedThreads = mappedThreads.sort((a, b) => {
+        const scoreA = a.activeUsers * 2 + a.messageCount;
+        const scoreB = b.activeUsers * 2 + b.messageCount;
+        return scoreB - scoreA;
+      });
+    }
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    return {
+      threads: mappedThreads,
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  } catch (error) {
+    logger.error("[listThreads]", error);
+    return {
+      threads: [],
+      pagination: {
+        page,
+        pageSize,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
-
-  const totalPages = Math.ceil(totalItems / pageSize);
-
-  return {
-    threads: mappedThreads,
-    pagination: {
-      page,
-      pageSize,
-      totalItems,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    },
-  };
 }
 
 export async function getThreadBySlug(
@@ -327,40 +342,45 @@ export async function deleteThread(threadId: string): Promise<void> {
 export async function getThreadMembers(
   threadId: string,
 ): Promise<ThreadMember[]> {
-  const members = await prisma.sectionMember.findMany({
-    where: {
-      sectionId: threadId,
-      status: "ACTIVE",
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
-          status: true,
-          lastSeenAt: true,
+  try {
+    const members = await prisma.sectionMember.findMany({
+      where: {
+        sectionId: threadId,
+        status: "ACTIVE",
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            status: true,
+            lastSeenAt: true,
+          },
         },
       },
-    },
-    orderBy: {
-      joinedAt: "asc",
-    },
-  });
+      orderBy: {
+        joinedAt: "asc",
+      },
+    });
 
-  return members.map((member) => ({
-    id: member.id,
-    userId: member.userId,
-    role: member.role,
-    joinedAt: member.joinedAt,
-    user: {
-      id: member.user.id,
-      name: member.user.name,
-      avatarUrl: member.user.image,
-      status: member.user.status,
-      lastSeenAt: member.user.lastSeenAt,
-    },
-  }));
+    return (members ?? []).map((member) => ({
+      id: member.id,
+      userId: member.userId,
+      role: member.role,
+      joinedAt: member.joinedAt,
+      user: {
+        id: member.user.id,
+        name: member.user.name,
+        avatarUrl: member.user.image,
+        status: member.user.status,
+        lastSeenAt: member.user.lastSeenAt,
+      },
+    }));
+  } catch (error) {
+    logger.error("[getThreadMembers]", error);
+    return [];
+  }
 }
 
 export async function addThreadMember(

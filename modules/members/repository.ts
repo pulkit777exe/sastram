@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/infrastructure/prisma";
 import { SectionRole, MemberStatus } from "@prisma/client";
 import { dedupe } from "@/lib/dedupe";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function addMember(
   sectionId: string,
@@ -56,52 +57,66 @@ export async function updateMemberRole(
 }
 
 export async function getSectionMembers(sectionId: string) {
-  return dedupe(`members:section:${sectionId}`, () =>
-    prisma.sectionMember.findMany({
-      where: {
-        sectionId,
-        status: "ACTIVE",
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            lastSeenAt: true,
+  try {
+    return (
+      (await dedupe(`members:section:${sectionId}`, () =>
+        prisma.sectionMember.findMany({
+          where: {
+            sectionId,
+            status: "ACTIVE",
           },
-        },
-      },
-      orderBy: [
-        { role: "asc" }, // OWNER first, then MODERATOR, then MEMBER
-        { joinedAt: "asc" },
-      ],
-    }),
-  );
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                lastSeenAt: true,
+              },
+            },
+          },
+          orderBy: [
+            { role: "asc" }, // OWNER first, then MODERATOR, then MEMBER
+            { joinedAt: "asc" },
+          ],
+        }),
+      )) ?? []
+    );
+  } catch (error) {
+    logger.error("[getSectionMembers]", error);
+    return [];
+  }
 }
 
 export async function getUserMemberships(userId: string) {
-  return dedupe(`members:user:${userId}`, () =>
-    prisma.sectionMember.findMany({
-      where: {
-        userId,
-        status: "ACTIVE",
-      },
-      include: {
-        section: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
+  try {
+    return (
+      (await dedupe(`members:user:${userId}`, () =>
+        prisma.sectionMember.findMany({
+          where: {
+            userId,
+            status: "ACTIVE",
           },
-        },
-      },
-      orderBy: {
-        joinedAt: "desc",
-      },
-    }),
-  );
+          include: {
+            section: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+          orderBy: {
+            joinedAt: "desc",
+          },
+        }),
+      )) ?? []
+    );
+  } catch (error) {
+    logger.error("[getUserMemberships]", error);
+    return [];
+  }
 }
 
 export async function getMemberRole(sectionId: string, userId: string) {

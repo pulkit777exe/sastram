@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-export default function DashboardError({
+export default function ProtectedError({
   error,
   reset,
 }: {

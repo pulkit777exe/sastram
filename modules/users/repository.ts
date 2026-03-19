@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/infrastructure/prisma";
 import { ProfilePrivacy } from "@prisma/client";
 import { dedupe } from "@/lib/dedupe";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function getPublicProfile(userId: string, viewerId?: string) {
   const user = await prisma.user.findUnique({
@@ -84,44 +85,53 @@ export async function getUserThreads(
   limit: number = 20,
   offset: number = 0,
 ) {
-  const [threads, total] = await Promise.all([
-    prisma.section.findMany({
-      where: {
-        createdBy: userId,
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        messageCount: true,
-        memberCount: true,
-        createdAt: true,
-        updatedAt: true,
-        community: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
+  try {
+    const [threads, total] = await Promise.all([
+      prisma.section.findMany({
+        where: {
+          createdBy: userId,
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          messageCount: true,
+          memberCount: true,
+          createdAt: true,
+          updatedAt: true,
+          community: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.section.count({
-      where: {
-        createdBy: userId,
-      },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.section.count({
+        where: {
+          createdBy: userId,
+        },
+      }),
+    ]);
 
-  return {
-    threads,
-    total,
-    hasMore: offset + limit < total,
-  };
+    return {
+      threads: threads ?? [],
+      total,
+      hasMore: offset + limit < total,
+    };
+  } catch (error) {
+    logger.error("[getUserThreads]", error);
+    return {
+      threads: [],
+      total: 0,
+      hasMore: false,
+    };
+  }
 }
 
 export async function updateProfilePrivacy(
@@ -139,52 +149,61 @@ export async function getUserMessages(
   limit: number = 20,
   offset: number = 0,
 ) {
-  const [messages, total] = await Promise.all([
-    prisma.message.findMany({
-      where: {
-        senderId: userId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        content: true,
-        createdAt: true,
-        parentId: true,
-        section: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
+  try {
+    const [messages, total] = await Promise.all([
+      prisma.message.findMany({
+        where: {
+          senderId: userId,
+          deletedAt: null,
         },
-        parent: {
-          select: {
-            id: true,
-            content: true,
-            sender: {
-              select: {
-                id: true,
-                name: true,
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          parentId: true,
+          section: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          parent: {
+            select: {
+              id: true,
+              content: true,
+              sender: {
+                select: {
+                  id: true,
+                  name: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.message.count({
-      where: {
-        senderId: userId,
-        deletedAt: null,
-      },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.message.count({
+        where: {
+          senderId: userId,
+          deletedAt: null,
+        },
+      }),
+    ]);
 
-  return {
-    messages,
-    total,
-    hasMore: offset + limit < total,
-  };
+    return {
+      messages: messages ?? [],
+      total,
+      hasMore: offset + limit < total,
+    };
+  } catch (error) {
+    logger.error("[getUserMessages]", error);
+    return {
+      messages: [],
+      total: 0,
+      hasMore: false,
+    };
+  }
 }

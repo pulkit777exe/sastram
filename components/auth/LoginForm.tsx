@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,6 +23,7 @@ import { signIn, signUp, authClient } from "@/lib/services/auth-client";
 import axios from "axios";
 import { GithubIcon } from "@/public/icons/github";
 import { ChromeIcon } from "@/public/icons/google";
+import { toasts } from "@/lib/utils/toast";
 
 type AuthMode = "signin" | "signup" | "email-otp" | "otp-verify";
 
@@ -55,7 +56,36 @@ function UserAuthForm({
   const [countdown, setCountdown] = useState(0);
   const [otpEmail, setOtpEmail] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const hasShownReasonToast = useRef(false);
+  const verifyingOtpRef = useRef(false);
+
+  const redirectTarget = React.useMemo(() => {
+    const candidate = searchParams.get("redirect");
+    if (!candidate || !candidate.startsWith("/")) {
+      return "/dashboard";
+    }
+    return candidate;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (hasShownReasonToast.current) {
+      return;
+    }
+
+    const reason = searchParams.get("reason");
+    if (reason === "session_expired") {
+      toasts.sessionExpired();
+      hasShownReasonToast.current = true;
+      return;
+    }
+
+    if (reason === "unauthorized") {
+      toasts.info("You need to sign in to access that page.");
+      hasShownReasonToast.current = true;
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -75,7 +105,7 @@ function UserAuthForm({
           email,
           password,
           name: name || email.split("@")[0],
-          callbackURL: "/dashboard",
+          callbackURL: redirectTarget,
         });
 
         if (result.error) {
@@ -84,17 +114,17 @@ function UserAuthForm({
           return;
         }
         if (result.data) {
-          router.push("/dashboard");
+          router.push(redirectTarget);
           router.refresh();
         } else {
-          router.push("/dashboard");
+          router.push(redirectTarget);
           router.refresh();
         }
       } else {
         const result = await signIn.email({
           email,
           password,
-          callbackURL: "/dashboard",
+          callbackURL: redirectTarget,
         });
 
         if (result.error) {
@@ -107,10 +137,10 @@ function UserAuthForm({
         }
 
         if (result.data) {
-          router.push("/dashboard");
+          router.push(redirectTarget);
           router.refresh();
         } else {
-          router.push("/dashboard");
+          router.push(redirectTarget);
           router.refresh();
         }
       }
@@ -130,7 +160,7 @@ function UserAuthForm({
     try {
       const result = await signIn.social({
         provider,
-        callbackURL: "/dashboard",
+        callbackURL: redirectTarget,
       });
 
       if (result.error) {
@@ -181,6 +211,46 @@ function UserAuthForm({
     }
   };
 
+  const verifyOtpCode = async (otpCode: string) => {
+    if (otpCode.length !== 6 || verifyingOtpRef.current) {
+      return;
+    }
+
+    verifyingOtpRef.current = true;
+    setLoadingState("otp");
+    setError(null);
+
+    try {
+      const result = await authClient.signIn.emailOtp({
+        email: otpEmail,
+        otp: otpCode,
+      });
+
+      if (result.error) {
+        const message = result.error.message || "Invalid verification code";
+        if (/expired/i.test(message)) {
+          toasts.otpExpired();
+        } else {
+          toasts.invalidOtp();
+        }
+
+        setError(message);
+        setLoadingState(null);
+        verifyingOtpRef.current = false;
+        return;
+      }
+
+      router.push(redirectTarget);
+      router.refresh();
+    } catch (err) {
+      console.error("Verify OTP error:", err);
+      toasts.serverError();
+      setError("Verification failed. Please try again.");
+      setLoadingState(null);
+      verifyingOtpRef.current = false;
+    }
+  };
+
   const handleOTPChange = (index: number, value: string) => {
     if (value.length > 1) {
       const pastedValues = value.slice(0, 6).split("");
@@ -193,6 +263,10 @@ function UserAuthForm({
       setOtp(newOtp);
       const nextIndex = Math.min(index + pastedValues.length, 5);
       inputRefs.current[nextIndex]?.focus();
+      const pastedOtp = newOtp.join("");
+      if (pastedOtp.length === 6) {
+        void verifyOtpCode(pastedOtp);
+      }
       return;
     }
 
@@ -202,6 +276,11 @@ function UserAuthForm({
 
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
+    }
+
+    const currentOtp = newOtp.join("");
+    if (currentOtp.length === 6) {
+      void verifyOtpCode(currentOtp);
     }
   };
 
@@ -219,28 +298,7 @@ function UserAuthForm({
       return;
     }
 
-    setLoadingState("otp");
-    setError(null);
-
-    try {
-      const result = await authClient.signIn.emailOtp({
-        email: otpEmail,
-        otp: otpCode,
-      });
-
-      if (result.error) {
-        setError(result.error.message || "Invalid verification code");
-        setLoadingState(null);
-        return;
-      }
-
-      router.push("/dashboard");
-      router.refresh();
-    } catch (err) {
-      console.error("Verify OTP error:", err);
-      setError("Verification failed. Please try again.");
-      setLoadingState(null);
-    }
+    await verifyOtpCode(otpCode);
   };
 
   const handleResendOTP = async () => {
@@ -519,6 +577,16 @@ function UserAuthForm({
                 )}
               </button>
             </div>
+            {mode === "signin" && (
+              <div className="flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-brand hover:text-brand/80"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            )}
           </div>
           {error && (
             <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">

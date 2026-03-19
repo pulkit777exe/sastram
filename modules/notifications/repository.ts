@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/infrastructure/prisma";
 import { NotificationType, Prisma } from "@prisma/client";
 import { dedupe } from "@/lib/dedupe";
+import { logger } from "@/lib/infrastructure/logger";
 
 export type NotificationData = Record<string, unknown> | null;
 
@@ -86,18 +87,25 @@ export async function getUserNotifications(filters: NotificationFilters) {
     if (filters.endDate) where.createdAt.lte = filters.endDate;
   }
 
-  return dedupe(
-    `notifications:list:${JSON.stringify(filters)}`,
-    () =>
-      prisma.notification.findMany({
-        where,
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: filters.limit || 50,
-        skip: filters.offset || 0,
-      }),
-  );
+  try {
+    return (
+      (await dedupe(
+        `notifications:list:${JSON.stringify(filters)}`,
+        () =>
+          prisma.notification.findMany({
+            where,
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: filters.limit || 50,
+            skip: filters.offset || 0,
+          }),
+      )) ?? []
+    );
+  } catch (error) {
+    logger.error("[getUserNotifications]", error);
+    return [];
+  }
 }
 
 export async function getNotificationById(notificationId: string) {
@@ -212,7 +220,7 @@ export async function getUnreadCountByType(userId: string) {
     }),
   );
 
-  return notifications.reduce(
+  return (notifications ?? []).reduce(
     (acc, item) => {
       acc[item.type] = item._count.type;
       return acc;
@@ -299,15 +307,22 @@ export async function getRecentNotifications(
   userId: string,
   limit: number = 10
 ) {
-  return dedupe(`notifications:recent:${userId}:${limit}`, () =>
-    prisma.notification.findMany({
-      where: { userId },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: limit,
-    }),
-  );
+  try {
+    return (
+      (await dedupe(`notifications:recent:${userId}:${limit}`, () =>
+        prisma.notification.findMany({
+          where: { userId },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: limit,
+        }),
+      )) ?? []
+    );
+  } catch (error) {
+    logger.error("[getRecentNotifications]", error);
+    return [];
+  }
 }
 
 export async function notifyMultipleUsers(

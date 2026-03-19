@@ -15,6 +15,7 @@ import { buildThreadSlug } from "@/modules/threads/service";
 import { emitThreadMessage } from "@/modules/ws/publisher";
 import { z } from "zod";
 import { attachmentInputSchema } from "@/lib/schemas/database";
+import { safeAction } from "@/lib/utils/action-wrapper";
 
 const createConversationSchema = z.object({
   name: z.string().min(1),
@@ -41,13 +42,13 @@ const sendMessageSchema = z
   );
 
 export async function getConversations(): Promise<ActionResponse<Conversation[]>> {
-  try {
+  const result = await safeAction(async () => {
     const session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session) {
-      return { data: null, error: "Something went wrong" };
+      throw new Error("Something went wrong");
     }
 
     const sections = await prisma.section.findMany({
@@ -77,11 +78,15 @@ export async function getConversations(): Promise<ActionResponse<Conversation[]>
       type: "channel" as const,
     }));
 
-    return { data: conversations, error: null };
-  } catch (error) {
-    logger.error("[GET_CONVERSATIONS]", error);
-    return { data: null, error: "Something went wrong" };
+    return conversations;
+  });
+
+  if (result.error) {
+    logger.error("[GET_CONVERSATIONS]", result.error);
+    return { data: [], error: "Something went wrong" };
   }
+
+  return { data: result.data ?? [], error: null };
 }
 
 export async function createConversation(data: {
@@ -147,13 +152,13 @@ export async function getMessages(
     return { data: null, error: "Invalid input" };
   }
 
-  try {
+  const result = await safeAction(async () => {
     const session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session) {
-      return { data: null, error: "Something went wrong" };
+      throw new Error("Something went wrong");
     }
 
     const messages = await prisma.message.findMany({
@@ -178,11 +183,15 @@ export async function getMessages(
       status: "read" as const,
     }));
 
-    return { data: formattedMessages, error: null };
-  } catch (error) {
-    logger.error("[GET_MESSAGES]", error);
-    return { data: null, error: "Something went wrong" };
+    return formattedMessages;
+  });
+
+  if (result.error) {
+    logger.error("[GET_MESSAGES]", result.error);
+    return { data: [], error: "Something went wrong" };
   }
+
+  return { data: result.data ?? [], error: null };
 }
 
 export async function sendMessage(data: {

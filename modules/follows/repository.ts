@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function followUser(followerId: string, followingId: string) {
   // Prevent self-follow
@@ -100,71 +101,89 @@ export async function unfollowUser(followerId: string, followingId: string) {
 }
 
 export async function getFollowers(userId: string, limit: number = 50, offset: number = 0) {
-  const [follows, total] = await Promise.all([
-    prisma.userFollow.findMany({
-      where: { followingId: userId },
-      include: {
-        follower: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            avatarUrl: true,
-            bio: true,
-            followerCount: true,
-            followingCount: true,
+  try {
+    const [follows, total] = await Promise.all([
+      prisma.userFollow.findMany({
+        where: { followingId: userId },
+        include: {
+          follower: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              avatarUrl: true,
+              bio: true,
+              followerCount: true,
+              followingCount: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.userFollow.count({
-      where: { followingId: userId },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.userFollow.count({
+        where: { followingId: userId },
+      }),
+    ]);
 
-  return {
-    followers: follows.map((f) => f.follower),
-    total,
-    hasMore: offset + limit < total,
-  };
+    return {
+      followers: (follows ?? []).map((follow) => follow.follower),
+      total,
+      hasMore: offset + limit < total,
+    };
+  } catch (error) {
+    logger.error("[getFollowers]", error);
+    return {
+      followers: [],
+      total: 0,
+      hasMore: false,
+    };
+  }
 }
 
 export async function getFollowing(userId: string, limit: number = 50, offset: number = 0) {
-  const [follows, total] = await Promise.all([
-    prisma.userFollow.findMany({
-      where: { followerId: userId },
-      include: {
-        following: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            avatarUrl: true,
-            bio: true,
-            followerCount: true,
-            followingCount: true,
+  try {
+    const [follows, total] = await Promise.all([
+      prisma.userFollow.findMany({
+        where: { followerId: userId },
+        include: {
+          following: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              avatarUrl: true,
+              bio: true,
+              followerCount: true,
+              followingCount: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.userFollow.count({
-      where: { followerId: userId },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.userFollow.count({
+        where: { followerId: userId },
+      }),
+    ]);
 
-  return {
-    following: follows.map((f) => f.following),
-    total,
-    hasMore: offset + limit < total,
-  };
+    return {
+      following: (follows ?? []).map((follow) => follow.following),
+      total,
+      hasMore: offset + limit < total,
+    };
+  } catch (error) {
+    logger.error("[getFollowing]", error);
+    return {
+      following: [],
+      total: 0,
+      hasMore: false,
+    };
+  }
 }
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
@@ -181,37 +200,45 @@ export async function isFollowing(followerId: string, followingId: string): Prom
 }
 
 export async function getMutualFollows(userId1: string, userId2: string) {
-  // Get users that both userId1 and userId2 follow
-  const user1Following = await prisma.userFollow.findMany({
-    where: { followerId: userId1 },
-    select: { followingId: true },
-  });
+  try {
+    // Get users that both userId1 and userId2 follow
+    const user1Following = await prisma.userFollow.findMany({
+      where: { followerId: userId1 },
+      select: { followingId: true },
+    });
 
-  const user2Following = await prisma.userFollow.findMany({
-    where: { followerId: userId2 },
-    select: { followingId: true },
-  });
+    const user2Following = await prisma.userFollow.findMany({
+      where: { followerId: userId2 },
+      select: { followingId: true },
+    });
 
-  const user1FollowingIds = new Set(user1Following.map((f) => f.followingId));
-  const mutualIds = user2Following
-    .map((f) => f.followingId)
-    .filter((id) => user1FollowingIds.has(id));
+    const user1FollowingIds = new Set(
+      (user1Following ?? []).map((follow) => follow.followingId),
+    );
+    const mutualIds = (user2Following ?? [])
+      .map((follow) => follow.followingId)
+      .filter((id) => user1FollowingIds.has(id));
 
-  if (mutualIds.length === 0) {
+    if (mutualIds.length === 0) {
+      return [];
+    }
+
+    return (
+      (await prisma.user.findMany({
+        where: {
+          id: { in: mutualIds },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          avatarUrl: true,
+        },
+      })) ?? []
+    );
+  } catch (error) {
+    logger.error("[getMutualFollows]", error);
     return [];
   }
-
-  return prisma.user.findMany({
-    where: {
-      id: { in: mutualIds },
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      image: true,
-      avatarUrl: true,
-    },
-  });
 }
-

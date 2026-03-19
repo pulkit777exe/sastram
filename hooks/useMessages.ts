@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Message } from "@/types";
 import { getMessages, sendMessage } from "@/modules/chat/actions";
-import { toast } from "sonner";
 import type { AttachmentInput } from "@/lib/types/index";
+import { toasts } from "@/lib/utils/toast";
 
 export function useMessages(conversationId: string) {
   return useQuery({
@@ -12,10 +12,7 @@ export function useMessages(conversationId: string) {
       if (result.error) {
         throw new Error(result.error);
       }
-      if (!result.data) {
-        throw new Error("No messages found");
-      }
-      return result.data as Message[];
+      return (result.data ?? []) as Message[];
     },
     enabled: !!conversationId,
   });
@@ -40,7 +37,7 @@ export function useSendMessage(conversationId: string) {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to send message");
+      toasts.error(error.message || "Failed to send message");
     }
   });
 }

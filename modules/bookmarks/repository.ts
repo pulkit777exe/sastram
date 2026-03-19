@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function bookmarkThread(userId: string, threadId: string) {
   // Check if already bookmarked
@@ -49,46 +50,55 @@ export async function getUserBookmarks(
   limit: number = 20,
   offset: number = 0
 ) {
-  const [bookmarks, total] = await Promise.all([
-    prisma.userBookmark.findMany({
-      where: { userId },
-      include: {
-        thread: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            description: true,
-            messageCount: true,
-            memberCount: true,
-            createdAt: true,
-            updatedAt: true,
-            creator: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-                avatarUrl: true,
+  try {
+    const [bookmarks, total] = await Promise.all([
+      prisma.userBookmark.findMany({
+        where: { userId },
+        include: {
+          thread: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              messageCount: true,
+              memberCount: true,
+              createdAt: true,
+              updatedAt: true,
+              creator: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                  avatarUrl: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.userBookmark.count({
-      where: { userId },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.userBookmark.count({
+        where: { userId },
+      }),
+    ]);
 
-  return {
-    bookmarks: bookmarks.map((b) => b.thread),
-    total,
-    hasMore: offset + limit < total,
-  };
+    return {
+      bookmarks: (bookmarks ?? []).map((bookmark) => bookmark.thread),
+      total,
+      hasMore: offset + limit < total,
+    };
+  } catch (error) {
+    logger.error("[getUserBookmarks]", error);
+    return {
+      bookmarks: [],
+      total: 0,
+      hasMore: false,
+    };
+  }
 }
 
 export async function isBookmarked(userId: string, threadId: string): Promise<boolean> {
@@ -103,4 +113,3 @@ export async function isBookmarked(userId: string, threadId: string): Promise<bo
 
   return !!bookmark;
 }
-

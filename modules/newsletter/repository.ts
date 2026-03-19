@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function subscribeToThreadNewsletter({
   threadId,
@@ -7,10 +8,26 @@ export async function subscribeToThreadNewsletter({
 }: {
   threadId: string;
   userId?: string;
-  email: string;
+  email?: string;
 }) {
+  if (!userId && !email) {
+    throw new Error("Either userId or email is required for thread subscription");
+  }
+
   if (!userId) {
-    throw new Error("UserId is required for thread subscription");
+    return prisma.threadSubscription.upsert({
+      where: {
+        threadId_email: {
+          threadId,
+          email: email!,
+        },
+      },
+      update: {},
+      create: {
+        threadId,
+        email: email!,
+      },
+    });
   }
 
   return prisma.threadSubscription.upsert({
@@ -32,21 +49,35 @@ export async function subscribeToThreadNewsletter({
 }
 
 export async function getThreadTranscript(threadId: string) {
-  return prisma.message.findMany({
-    where: { sectionId: threadId },
-    include: {
-      sender: true,
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
+  try {
+    return (
+      (await prisma.message.findMany({
+        where: { sectionId: threadId },
+        include: {
+          sender: true,
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      })) ?? []
+    );
+  } catch (error) {
+    logger.error("[getThreadTranscript]", error);
+    return [];
+  }
 }
 
 export async function listThreadSubscribers(threadId: string) {
-  return prisma.threadSubscription.findMany({
-    where: { threadId, isActive: true },
-  });
+  try {
+    return (
+      (await prisma.threadSubscription.findMany({
+        where: { threadId, isActive: true },
+      })) ?? []
+    );
+  } catch (error) {
+    logger.error("[listThreadSubscribers]", error);
+    return [];
+  }
 }
 
 export async function isUserSubscribedToThread(threadId: string, userId: string) {
@@ -80,23 +111,33 @@ export async function updateSubscriptionFrequency({
   });
 }
 
-// Stub functions for missing digest functionality
+/**
+ * Schedules a digest for a thread (placeholder implementation)
+ */
 export async function scheduleThreadDigest(threadId: string) {
-  // TODO: Implement digest scheduling
+  console.log(`Scheduling digest for thread ${threadId}`);
   return Promise.resolve();
 }
 
+/**
+ * Gets due digests (placeholder implementation)
+ */
 export async function getDueDigests() {
-  // TODO: Implement due digests retrieval
   return Promise.resolve([] as Array<{ id: string; threadId: string }>);
 }
 
+/**
+ * Marks a digest as processing (placeholder implementation)
+ */
 export async function markDigestProcessing(digestId: string) {
-  // TODO: Implement digest processing marking
+  console.log(`Marking digest ${digestId} as processing`);
   return Promise.resolve();
 }
 
+/**
+ * Completes a digest (placeholder implementation)
+ */
 export async function completeDigest(digestId: string, summary: string, emailCount: number) {
-  // TODO: Implement digest completion
+  console.log(`Completing digest ${digestId} with ${emailCount} emails sent`);
   return Promise.resolve();
 }
