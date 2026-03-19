@@ -1,19 +1,28 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Sun, Moon, Monitor, Bell, Mail, Sparkles } from "lucide-react";
 import { updateUserPreferencesAction } from "@/modules/users/actions";
-import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { toasts } from "@/lib/utils/toast";
+import { useMemo, useState } from "react";
 import { useTheme } from "next-themes";
+import {
+  parseUserPreferences,
+  type UserPreferences,
+} from "@/lib/schemas/user-preferences";
 
 interface PreferencesFormProps {
   user: {
-    preferences?: any;
+    preferences?: unknown;
   };
 }
 
@@ -34,38 +43,35 @@ const item = {
 
 export function PreferencesForm({ user }: PreferencesFormProps) {
   const { setTheme: setNextTheme } = useTheme();
-  const [theme, setTheme] = useState(user.preferences?.theme || "system");
-  const [emailDigest, setEmailDigest] = useState(user.preferences?.emailDigest || "daily");
-  const [pushEnabled, setPushEnabled] = useState(!!user.preferences?.pushEnabled);
-  const [aiSummaryEnabled, setAiSummaryEnabled] = useState(!!user.preferences?.aiSummaryEnabled);
+  const initialPrefs = useMemo(
+    () => parseUserPreferences(user.preferences),
+    [user.preferences],
+  );
+  const [prefs, setPrefs] = useState<UserPreferences>(initialPrefs);
 
-  async function handleUpdateTheme(newTheme: string) {
-    setTheme(newTheme);
-    setNextTheme(newTheme);
-    const result = await updateUserPreferencesAction({ theme: newTheme });
-    if (result?.error) toast.error(result.error);
-    else toast.success("Theme preferences updated!");
-  }
+  async function updatePreference<K extends keyof UserPreferences>(
+    key: K,
+    value: UserPreferences[K],
+  ) {
+    const previous = prefs[key];
+    const nextPrefs = { ...prefs, [key]: value };
+    setPrefs(nextPrefs);
 
-  async function handleUpdateEmailDigest(frequency: string) {
-    setEmailDigest(frequency);
-    const result = await updateUserPreferencesAction({ emailDigest: frequency });
-    if (result?.error) toast.error(result.error);
-    else toast.success("Email preferences updated!");
-  }
+    if (key === "theme") {
+      setNextTheme(value as "light" | "dark" | "system");
+    }
 
-  async function handleUpdatePush(enabled: boolean) {
-    setPushEnabled(enabled);
-    const result = await updateUserPreferencesAction({ pushEnabled: enabled });
-    if (result?.error) toast.error(result.error);
-    else toast.success("Push preferences updated!");
-  }
+    const result = await updateUserPreferencesAction({ [key]: value });
+    if (result?.error) {
+      setPrefs((prev) => ({ ...prev, [key]: previous }));
+      if (key === "theme") {
+        setNextTheme(previous as "light" | "dark" | "system");
+      }
+      toasts.serverError();
+      return;
+    }
 
-  async function handleUpdateAiSummary(enabled: boolean) {
-    setAiSummaryEnabled(enabled);
-    const result = await updateUserPreferencesAction({ aiSummaryEnabled: enabled });
-    if (result?.error) toast.error(result.error);
-    else toast.success("AI summary preferences updated!");
+    toasts.saved();
   }
 
   return (
@@ -96,7 +102,12 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             <Label className="text-base font-medium text-foreground">
               Theme
             </Label>
-            <Select value={theme} onValueChange={handleUpdateTheme}>
+            <Select
+              value={prefs.theme}
+              onValueChange={(value) =>
+                void updatePreference("theme", value as UserPreferences["theme"])
+              }
+            >
               <SelectTrigger className="w-full h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>
@@ -146,7 +157,15 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             <Label className="text-base font-medium text-foreground">
               Digest Frequency
             </Label>
-            <Select value={emailDigest} onValueChange={handleUpdateEmailDigest}>
+            <Select
+              value={prefs.emailDigest}
+              onValueChange={(value) =>
+                void updatePreference(
+                  "emailDigest",
+                  value as UserPreferences["emailDigest"],
+                )
+              }
+            >
               <SelectTrigger className="w-full h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all">
                 <SelectValue placeholder="Select frequency" />
               </SelectTrigger>
@@ -191,8 +210,52 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             </div>
             <Switch
               id="push-notifs"
-              checked={pushEnabled}
-              onCheckedChange={handleUpdatePush}
+              checked={prefs.pushEnabled}
+              onCheckedChange={(enabled) =>
+                void updatePreference("pushEnabled", enabled)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="mention-emails"
+                className="text-base font-medium text-foreground"
+              >
+                @mention Emails
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Receive an email when someone mentions you.
+              </p>
+            </div>
+            <Switch
+              id="mention-emails"
+              checked={prefs.mentionEmails}
+              onCheckedChange={(enabled) =>
+                void updatePreference("mentionEmails", enabled)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="reply-emails"
+                className="text-base font-medium text-foreground"
+              >
+                Reply Emails
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Receive an email when someone replies to you.
+              </p>
+            </div>
+            <Switch
+              id="reply-emails"
+              checked={prefs.replyEmails}
+              onCheckedChange={(enabled) =>
+                void updatePreference("replyEmails", enabled)
+              }
             />
           </div>
         </div>
@@ -229,8 +292,71 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             </div>
             <Switch
               id="ai-summary"
-              checked={aiSummaryEnabled}
-              onCheckedChange={handleUpdateAiSummary}
+              checked={prefs.aiSummaryEnabled}
+              onCheckedChange={(enabled) =>
+                void updatePreference("aiSummaryEnabled", enabled)
+              }
+            />
+          </div>
+        </div>
+      </motion.div>
+
+      <motion.div
+        variants={item}
+        className="rounded-xl border border-border bg-card p-6 shadow-sm"
+      >
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
+            <Monitor className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Privacy</h2>
+            <p className="text-sm text-muted-foreground">
+              Control visibility of your activity and presence.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="online-status"
+                className="text-base font-medium text-foreground"
+              >
+                Show Online Status
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Let others see when you are active.
+              </p>
+            </div>
+            <Switch
+              id="online-status"
+              checked={prefs.showOnlineStatus}
+              onCheckedChange={(enabled) =>
+                void updatePreference("showOnlineStatus", enabled)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="public-activity"
+                className="text-base font-medium text-foreground"
+              >
+                Public Activity Feed
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Show your activity feed on your public profile.
+              </p>
+            </div>
+            <Switch
+              id="public-activity"
+              checked={prefs.publicActivityFeed}
+              onCheckedChange={(enabled) =>
+                void updatePreference("publicActivityFeed", enabled)
+              }
             />
           </div>
         </div>

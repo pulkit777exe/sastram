@@ -13,6 +13,10 @@ import {
 } from "./repository";
 import { ProfilePrivacy } from "@prisma/client";
 import { z } from "zod";
+import {
+  parseUserPreferences,
+  type UserPreferences,
+} from "@/lib/schemas/user-preferences";
 
 const userIdSchema = z.object({
   userId: z.string().cuid(),
@@ -226,7 +230,9 @@ export async function updateProfilePrivacyAction(privacy: string) {
   }
 }
 
-export async function updateUserPreferencesAction(preferences: Record<string, any>) {
+export async function updateUserPreferencesAction(
+  preferences: Partial<UserPreferences>,
+) {
   const parsed = updateUserPreferencesSchema.safeParse(preferences);
   if (!parsed.success) {
     return { data: null, error: "Invalid input" };
@@ -234,20 +240,16 @@ export async function updateUserPreferencesAction(preferences: Record<string, an
 
   try {
     const session = await requireSession();
-    
-    // Get existing preferences to deep merge
+
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { preferences: true }
     });
-    
-    const existingPrefs = typeof user?.preferences === 'object' && user?.preferences !== null 
-      ? user.preferences 
-      : {};
-      
-    const newPrefs = {
+
+    const existingPrefs = parseUserPreferences(user?.preferences);
+    const newPrefs: UserPreferences = {
       ...existingPrefs,
-      ...parsed.data
+      ...parsed.data,
     };
 
     await prisma.user.update({

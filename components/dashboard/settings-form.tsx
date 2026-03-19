@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Bell, Upload, Image as ImageIcon, X } from "lucide-react";
 import {
   updateUserProfile,
@@ -15,10 +14,11 @@ import {
   updateUserPreferencesAction,
 } from "@/modules/users/actions";
 import { useFormStatus } from "react-dom";
-import { toast } from "sonner";
+import { toasts } from "@/lib/utils/toast";
 import { useState, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Image from "next/image";
+import { parseUserPreferences } from "@/lib/schemas/user-preferences";
 
 interface SettingsFormProps {
   user: {
@@ -35,7 +35,7 @@ interface SettingsFormProps {
     avatarUrl?: string | null;
     bannerUrl?: string | null;
     profilePrivacy?: string;
-    preferences?: any;
+    preferences?: unknown;
   };
 }
 
@@ -82,50 +82,63 @@ export function SettingsForm({ user }: SettingsFormProps) {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [profilePrivacy, setProfilePrivacy] = useState(user.profilePrivacy || "PUBLIC");
+  const preferences = parseUserPreferences(user.preferences);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const [emailNotifs, setEmailNotifs] = useState(() => {
-    return user.preferences?.emailDigest !== "never";
+    return preferences.emailDigest !== "never";
   });
   const [pushNotifs, setPushNotifs] = useState(() => {
-    return !!user.preferences?.pushEnabled;
+    return preferences.pushEnabled;
   });
 
   async function handleToggleEmail(enabled: boolean) {
+    const previous = emailNotifs;
     setEmailNotifs(enabled);
     const result = await updateUserPreferencesAction({
       emailDigest: enabled ? "daily" : "never",
     });
-    if (result?.error) toast.error(result.error);
-    else toast.success("Email preferences updated!");
+    if (result?.error) {
+      setEmailNotifs(previous);
+      toasts.serverError();
+      return;
+    }
+    toasts.saved();
   }
 
   async function handleTogglePush(enabled: boolean) {
+    const previous = pushNotifs;
     setPushNotifs(enabled);
     const result = await updateUserPreferencesAction({
       pushEnabled: enabled,
     });
-    if (result?.error) toast.error(result.error);
-    else toast.success("Push preferences updated!");
+    if (result?.error) {
+      setPushNotifs(previous);
+      toasts.serverError();
+      return;
+    }
+    toasts.saved();
   }
 
   async function handleUpdatePrivacy(privacy: string) {
+    const previous = profilePrivacy;
+    setProfilePrivacy(privacy);
     const result = await updateProfilePrivacyAction(privacy);
     if (result?.error) {
-      toast.error(result.error);
-    } else {
-      setProfilePrivacy(privacy);
-      toast.success("Profile privacy updated successfully!");
+      setProfilePrivacy(previous);
+      toasts.serverError();
+      return;
     }
+    toasts.saved();
   }
 
   async function handleSubmit(formData: FormData) {
     const result = await updateUserProfile(formData);
     if (result?.error) {
-      toast.error(result.error);
+      toasts.serverError();
     } else {
-      toast.success("Profile updated successfully!");
+      toasts.saved();
     }
   }
 
@@ -139,10 +152,10 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
     const result = await uploadAvatar(formData);
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else if (result?.data?.url) {
       setAvatarUrl(result.data.url);
-      toast.success("Avatar uploaded successfully!");
+      toasts.saved();
     }
     setUploadingAvatar(false);
     if (avatarInputRef.current) {
@@ -160,10 +173,10 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
     const result = await uploadBanner(formData);
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else if (result?.data?.url) {
       setBannerUrl(result.data.url);
-      toast.success("Banner uploaded successfully!");
+      toasts.saved();
     }
     setUploadingBanner(false);
     if (bannerInputRef.current) {
@@ -487,16 +500,26 @@ export function SettingsForm({ user }: SettingsFormProps) {
             <Label className="text-base font-medium text-foreground">
               Privacy Level
             </Label>
-            <Select value={profilePrivacy} onValueChange={handleUpdatePrivacy}>
-              <SelectTrigger className="w-full h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all">
-                <SelectValue placeholder="Select privacy level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PUBLIC">Public</SelectItem>
-                <SelectItem value="PRIVATE">Private</SelectItem>
-                <SelectItem value="FOLLOWERS_ONLY">Followers Only</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {[
+                { value: "PUBLIC", label: "Public" },
+                { value: "FOLLOWERS_ONLY", label: "Followers Only" },
+                { value: "PRIVATE", label: "Private" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => void handleUpdatePrivacy(option.value)}
+                  className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
+                    profilePrivacy === option.value
+                      ? "border-indigo-500 bg-indigo-500/10 text-indigo-600"
+                      : "border-border bg-background hover:bg-muted"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <p className="text-sm text-muted-foreground">
               {profilePrivacy === "PUBLIC" && "Your profile is visible to everyone."}
               {profilePrivacy === "PRIVATE" && "Only you can view your profile."}

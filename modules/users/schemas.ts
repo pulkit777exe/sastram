@@ -28,7 +28,10 @@ export const updateProfilePrivacySchema = z.object({
 export const updateUserPreferencesSchema = z.object({
   emailDigest: z.enum(["daily", "weekly", "never"]).optional(),
   pushEnabled: z.boolean().optional(),
+  mentionEmails: z.boolean().optional(),
+  replyEmails: z.boolean().optional(),
+  showOnlineStatus: z.boolean().optional(),
+  publicActivityFeed: z.boolean().optional(),
   theme: z.enum(["light", "dark", "system"]).optional(),
   aiSummaryEnabled: z.boolean().optional(),
-}).catchall(z.any());
-
+});
