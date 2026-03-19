@@ -13,7 +13,6 @@ import {
 import type { Message } from "@/lib/types/index";
 import { isAdmin, requireSession } from "@/modules/auth/session";
 import { getThreadWithFullContext } from "@/modules/threads";
-import { subscribeToThreadAction } from "@/modules/newsletter/actions";
 import Link from "next/link";
 import TimeAgo from "@/components/ui/TimeAgo";
 import { ThreadManagementControls } from "@/components/thread/thread-management-controls";
@@ -22,6 +21,7 @@ import ThreadDnaCard from "@/components/panels/ThreadDnaCard";
 import { parseThreadDna } from "@/lib/schemas/thread-dna";
 import { ThreadSummaryCard } from "@/components/thread/thread-summary-card";
 import { getThreadReadReceipt } from "@/modules/read-receipts/repository";
+import { prisma } from "@/lib/infrastructure/prisma";
 
 export default async function ThreadPage({
   params,
@@ -41,14 +41,17 @@ export default async function ThreadPage({
   const canManagePoll =
     thread.createdBy === session.user.id ||
     ["ADMIN", "MODERATOR"].includes(session.user.role);
-
-  const subscribeAction = async () => {
-    "use server";
-    await subscribeToThreadAction({
-      threadId: thread.id,
-      slug: thread.slug,
-    });
-  };
+  const subscription = await prisma.threadSubscription.findUnique({
+    where: {
+      threadId_userId: {
+        threadId: thread.id,
+        userId: session.user.id,
+      },
+    },
+    select: {
+      frequency: true,
+    },
+  });
 
   const allMessages: Message[] = thread.messages.map((m) => ({
     id: m.id,
@@ -191,13 +194,12 @@ export default async function ThreadPage({
             />
           </div>
 
-          <form action={subscribeAction}>
-            <ThreadSubscribeButton
-              subscribed={thread.isSubscribed}
-              threadName={thread.title}
-              threadId={thread.id}
-            />
-          </form>
+          <ThreadSubscribeButton
+            initialFrequency={subscription?.frequency ?? null}
+            threadName={thread.title}
+            threadId={thread.id}
+            slug={thread.slug}
+          />
 
           <div className="mt-3">
             <InviteFriendButton
