@@ -6,10 +6,19 @@ import { PostMessageForm } from "@/modules/chat/components/post-message-form";
 import { useThreadWebSocket, type TypingUser } from "@/hooks/useThreadWebSocket";
 import type { Message } from "@/lib/types/index";
 import TimeAgo from "@/components/ui/TimeAgo";
+import { PollPanel } from "@/components/thread/poll-panel";
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
   threadId: string;
+  poll: {
+    id: string;
+    question: string;
+    options: string[];
+    isActive: boolean;
+    expiresAt: Date | null;
+  } | null;
+  canManagePoll: boolean;
   currentUser: {
     id: string;
     name: string;
@@ -21,6 +30,8 @@ interface ThreadLiveWrapperProps {
 export function ThreadLiveWrapper({
   messages,
   threadId,
+  poll,
+  canManagePoll,
   currentUser,
 }: ThreadLiveWrapperProps) {
   const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
@@ -88,6 +99,12 @@ export function ThreadLiveWrapper({
     <>
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-6 md:p-8">
+          <PollPanel
+            threadId={threadId}
+            initialPoll={poll}
+            canManagePoll={canManagePoll}
+          />
+
           {pinnedMessage && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3">
               <div className="flex items-center justify-between gap-3">

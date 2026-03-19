@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import type { Prisma } from "@prisma/client";
 
 export async function createPoll(
   threadId: string,
@@ -10,7 +11,7 @@ export async function createPoll(
     data: {
       threadId,
       question,
-      options: options as any, // JSON field
+      options: options as Prisma.InputJsonValue,
       expiresAt,
       isActive: true,
     },
@@ -29,11 +30,7 @@ export async function voteOnPoll(pollId: string, userId: string, optionIndex: nu
   });
 
   if (existing) {
-    // Update existing vote
-    return prisma.pollVote.update({
-      where: { id: existing.id },
-      data: { optionIndex },
-    });
+    throw new Error("ALREADY_VOTED");
   }
 
   return prisma.pollVote.create({
@@ -41,6 +38,32 @@ export async function voteOnPoll(pollId: string, userId: string, optionIndex: nu
       pollId,
       userId,
       optionIndex,
+    },
+  });
+}
+
+export async function closePoll(pollId: string) {
+  return prisma.poll.update({
+    where: { id: pollId },
+    data: { isActive: false },
+  });
+}
+
+export async function getPollById(pollId: string) {
+  return prisma.poll.findUnique({
+    where: { id: pollId },
+    select: {
+      id: true,
+      threadId: true,
+      isActive: true,
+      expiresAt: true,
+      thread: {
+        select: {
+          id: true,
+          slug: true,
+          createdBy: true,
+        },
+      },
     },
   });
 }
@@ -115,4 +138,3 @@ export async function getPollByThreadId(threadId: string) {
     },
   });
 }
-

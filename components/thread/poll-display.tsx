@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { voteOnPollAction, getUserVoteAction, getPollResultsAction } from "@/modules/polls/actions";
-import { toast } from "sonner";
+import { toasts } from "@/lib/utils/toast";
 import { CheckCircle2, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { TimeAgo } from "@/components/ui/TimeAgo";
+import type { PollResults } from "@/modules/polls/types";
 
 interface PollDisplayProps {
   poll: {
@@ -23,7 +24,7 @@ interface PollDisplayProps {
 export function PollDisplay({ poll }: PollDisplayProps) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<PollResults | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
 
@@ -48,9 +49,12 @@ export function PollDisplay({ poll }: PollDisplayProps) {
       // Type guard for results
       if (resultsResult?.data) {
         setResults(resultsResult.data);
+      } else if (resultsResult?.error) {
+        toasts.error("Failed to load poll results.", "Try refreshing the page.");
       }
     } catch (error) {
       console.error("Failed to load poll data:", error);
+      toasts.error("Failed to load poll results.", "Try refreshing the page.");
     } finally {
       setIsLoading(false);
     }
@@ -63,15 +67,15 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     try {
       const result = await voteOnPollAction(poll.id, optionIndex);
       if (result?.error) {
-        toast.error(result.error);
+        toasts.error(result.error);
       } else {
         setSelectedOption(optionIndex);
         setHasVoted(true);
-        toast.success("Vote recorded!");
+        toasts.saved();
         await loadPollData();
       }
-    } catch (error) {
-      toast.error("Something went wrong");
+    } catch {
+      toasts.serverError();
     } finally {
       setIsVoting(false);
     }
@@ -81,7 +85,8 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     return <div className="text-muted-foreground">Loading poll...</div>;
   }
 
-  const showResults = hasVoted || !poll.isActive;
+  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now();
+  const showResults = hasVoted || !poll.isActive || isExpired;
 
   return (
     <motion.div
@@ -98,7 +103,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
 
       <div className="space-y-2">
         {poll.options.map((option, index) => {
-           const result = results?.results.find((r: { index: number }) => r.index === index);
+          const result = results?.results.find((r) => r.index === index);
           const percentage = result?.percentage || 0;
           const isSelected = selectedOption === index;
 
@@ -137,7 +142,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
               ) : (
                 <Button
                   onClick={() => handleVote(index)}
-                  disabled={isVoting}
+                  disabled={isVoting || hasVoted || !poll.isActive || isExpired}
                   variant={isSelected ? "default" : "outline"}
                   className="w-full justify-start"
                 >

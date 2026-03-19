@@ -34,6 +34,9 @@ export default async function ThreadPage({
   if (!thread) notFound();
 
   const threadDna = parseThreadDna(thread.threadDna);
+  const canManagePoll =
+    thread.createdBy === session.user.id ||
+    ["ADMIN", "MODERATOR"].includes(session.user.role);
 
   const subscribeAction = async () => {
     "use server";
@@ -118,6 +121,18 @@ export default async function ThreadPage({
         <ThreadLiveWrapper
           messages={allMessages}
           threadId={thread.id}
+          poll={
+            thread.poll
+              ? {
+                  id: thread.poll.id,
+                  question: thread.poll.question,
+                  options: thread.poll.options,
+                  isActive: thread.poll.isActive,
+                  expiresAt: thread.poll.expiresAt,
+                }
+              : null
+          }
+          canManagePoll={canManagePoll}
           currentUser={{
             id: session.user.id,
             name: session.user.name || "User",
