@@ -42,6 +42,9 @@ export function ThreadLiveWrapper({
 }: ThreadLiveWrapperProps) {
   const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [aiInlineStatus, setAiInlineStatus] = useState<
+    Record<string, "pending" | "failed">
+  >({});
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(
     initialFirstUnreadMessageId,
@@ -50,12 +53,57 @@ export function ThreadLiveWrapper({
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMarkingReadRef = useRef(false);
+  const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
   const [animateId, setAnimateId] = useState<string | null>(null);
 
   const pinnedMessage = useMemo(
     () => liveMessages.find((message) => message.isPinned) ?? null,
     [liveMessages],
   );
+
+  const hasAiMention = useCallback((content: string) => /\B@ai\b/i.test(content), []);
+
+  const setAiPending = useCallback((messageId: string) => {
+    setAiInlineStatus((prev) => ({ ...prev, [messageId]: "pending" }));
+
+    const existing = aiInlineTimerRef.current.get(messageId);
+    if (existing) {
+      clearTimeout(existing);
+    }
+
+    const timer = setTimeout(() => {
+      setAiInlineStatus((prev) => {
+        if (prev[messageId] !== "pending") {
+          return prev;
+        }
+        return {
+          ...prev,
+          [messageId]: "failed",
+        };
+      });
+    }, 35000);
+
+    aiInlineTimerRef.current.set(messageId, timer);
+  }, []);
+
+  const clearAiStatus = useCallback((messageId: string) => {
+    setAiInlineStatus((prev) => {
+      if (!(messageId in prev)) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[messageId];
+      return next;
+    });
+
+    const timer = aiInlineTimerRef.current.get(messageId);
+    if (timer) {
+      clearTimeout(timer);
+      aiInlineTimerRef.current.delete(messageId);
+    }
+  }, []);
 
   const isAtBottom = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -102,7 +150,13 @@ export function ThreadLiveWrapper({
       setUnreadCount((prev) => prev + 1);
       setFirstUnreadMessageId((prev) => prev ?? newMessage.id);
     }
-  }, [isAtBottom]);
+
+    if (newMessage.isAiResponse && newMessage.parentId) {
+      clearAiStatus(newMessage.parentId);
+    } else if (hasAiMention(newMessage.content)) {
+      setAiPending(newMessage.id);
+    }
+  }, [clearAiStatus, hasAiMention, isAtBottom, setAiPending]);
 
   const handleWsMessageDeleted = useCallback((messageId: string) => {
     setLiveMessages((prev) =>
@@ -141,8 +195,12 @@ export function ThreadLiveWrapper({
       if (animateTimerRef.current) clearTimeout(animateTimerRef.current);
       animateTimerRef.current = setTimeout(() => setAnimateId(null), 700);
       emitTypingStop();
+
+      if (hasAiMention(newMessage.content)) {
+        setAiPending(newMessage.id);
+      }
     },
-    [emitTypingStop]
+    [emitTypingStop, hasAiMention, setAiPending]
   );
 
   const scrollToFirstUnread = useCallback(() => {
@@ -175,6 +233,10 @@ export function ThreadLiveWrapper({
       if (readDebounceRef.current) {
         clearTimeout(readDebounceRef.current);
       }
+      for (const timer of aiInlineTimerRef.current.values()) {
+        clearTimeout(timer);
+      }
+      aiInlineTimerRef.current.clear();
     };
   }, []);
 
@@ -264,6 +326,7 @@ export function ThreadLiveWrapper({
             messages={liveMessages}
             threadId={threadId}
             currentUser={currentUser}
+            aiInlineStatus={aiInlineStatus}
             onTypingStart={emitTypingStart}
             onTypingStop={emitTypingStop}
           />

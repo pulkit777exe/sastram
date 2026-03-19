@@ -28,10 +28,22 @@ import {
 import { parseMentions, resolveUserMentions } from "@/lib/utils/mention-parser";
 import { sendMentionNotification } from "@/lib/services/email";
 import { recordActivity } from "@/modules/activity/repository";
+import { consumeAiInlineQuota } from "@/lib/services/ai-inline-rate-limit";
+import { getAiInlineQueue } from "@/lib/infrastructure/bullmq";
 
 function handleActionError(actionName: string, error: unknown) {
   console.error(`[${actionName}]`, error);
   return { data: null, error: "Something went wrong" };
+}
+
+function extractAiInlineQuery(content: string): string | null {
+  const match = content.match(/(?:^|\s)@ai\s+(.+)/i);
+  if (!match || !match[1]) {
+    return null;
+  }
+
+  const query = match[1].trim();
+  return query.length > 0 ? query : null;
 }
 
 export async function postMessage(formData: FormData) {
@@ -280,6 +292,29 @@ export async function postMessage(formData: FormData) {
 
     emitThreadMessage(sectionId, payload);
 
+    const aiQuery = extractAiInlineQuery(safeContent);
+    let aiInlineQueued = false;
+    let aiInlineLimited = false;
+    if (aiQuery) {
+      const quota = await consumeAiInlineQuota({
+        userId: session.user.id,
+        threadId: sectionId,
+      });
+
+      if (!quota.allowed) {
+        aiInlineLimited = true;
+      } else {
+        await getAiInlineQueue().add("ai-inline-process", {
+          messageId: message.id,
+          threadId: sectionId,
+          sectionId,
+          query: aiQuery,
+          userId: session.user.id,
+        });
+        aiInlineQueued = true;
+      }
+    }
+
     if (message.section?.slug) {
       revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
     }
@@ -301,6 +336,8 @@ export async function postMessage(formData: FormData) {
       data: {
         message,
         pendingModeration: result.pendingModeration,
+        aiInlineQueued,
+        aiInlineLimited,
       },
       error: null,
     };

@@ -84,7 +84,7 @@ export function useThreadWebSocket({
               isPinned: false,
               likeCount: 0,
               replyCount: 0,
-              isAiResponse: false,
+              isAiResponse: Boolean(payload.isAiResponse),
               deletedAt: null,
               sender: sender
                 ? { id: sender.id, name: sender.name, image: sender.image ?? null }

@@ -410,12 +410,131 @@ export async function handleEmailJob(job: Job<EmailJobData>) {
 }
 
 export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
-  logger.warn(
-    `AI inline handler is not implemented yet. Job ${job.id} parked for future blocks.`,
-    { data: job.data },
+  logger.info(`Processing AI inline job ${job.id}`);
+  const { messageId, sectionId, query } = job.data;
+
+  if (!messageId || !sectionId || !query) {
+    throw new Error("Missing required fields: messageId, sectionId, query");
+  }
+
+  const { prisma } = await import("@/lib/infrastructure/prisma");
+  const { aiService } = await import("@/lib/services/ai");
+  const { emitThreadMessage } = await import("@/modules/ws/publisher");
+
+  const parentMessage = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: {
+      id: true,
+      depth: true,
+      sectionId: true,
+    },
+  });
+
+  if (!parentMessage) {
+    throw new Error(`Parent message ${messageId} not found`);
+  }
+
+  const recentMessages = await prisma.message.findMany({
+    where: { sectionId, deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+    select: {
+      content: true,
+      sender: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  const context = recentMessages
+    .reverse()
+    .map(
+      (message) => `${message.sender?.name || "User"}: ${message.content}`,
+    )
+    .join("\n");
+
+  const synthesis = await aiService.generateSummary(
+    `Answer this forum question in under 200 words and stay grounded in thread context.\n` +
+      `Question: ${query}\n\n` +
+      `Recent thread context:\n${context}`,
   );
 
-  return { queued: true, handled: false };
+  const aiUser = await prisma.user.upsert({
+    where: { email: "ai@sastram.system" },
+    update: {
+      name: "Sastram AI",
+      emailVerified: true,
+    },
+    create: {
+      email: "ai@sastram.system",
+      name: "Sastram AI",
+      emailVerified: true,
+      role: "USER",
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      name: true,
+      image: true,
+    },
+  });
+
+  const aiMessage = await prisma.message.create({
+    data: {
+      content: synthesis.slice(0, 2000),
+      sectionId,
+      senderId: aiUser.id,
+      parentId: parentMessage.id,
+      depth: Math.min((parentMessage.depth ?? 0) + 1, 4),
+      isAiResponse: true,
+      isEdited: false,
+      isPinned: false,
+      likeCount: 0,
+      replyCount: 0,
+    },
+    include: {
+      section: {
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+        },
+      },
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+        },
+      },
+      attachments: true,
+    },
+  });
+
+  emitThreadMessage(sectionId, {
+    id: aiMessage.id,
+    content: aiMessage.content,
+    senderId: aiMessage.senderId,
+    senderName: aiMessage.sender?.name || "Sastram AI",
+    senderAvatar: aiMessage.sender?.image ?? null,
+    createdAt: aiMessage.createdAt,
+    sectionId,
+    parentId: aiMessage.parentId ?? null,
+    depth: aiMessage.depth ?? 0,
+    likeCount: aiMessage.likeCount ?? 0,
+    replyCount: aiMessage.replyCount ?? 0,
+    isAiResponse: true,
+    reactions: [],
+    attachments: [],
+  });
+
+  return {
+    queued: true,
+    handled: true,
+    aiMessageId: aiMessage.id,
+  };
 }
 
 export async function handleStalenessCheckJob(job: Job<StalenessCheckJobData>) {

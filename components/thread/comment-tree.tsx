@@ -124,12 +124,14 @@ interface CommentTreeProps {
     image: string | null;
     role?: string;
   };
+  aiInlineStatus?: Record<string, "pending" | "failed">;
 }
 
 export function CommentTree({
   messages,
   threadId,
   currentUser,
+  aiInlineStatus = {},
   onTypingStart,
   onTypingStop,
 }: CommentTreeProps & {
@@ -272,6 +274,7 @@ export function CommentTree({
             onMessageUpdate={handleMessageUpdate}
             allMessages={localMessages}
             animateMessageId={animateMessageId}
+            aiInlineStatus={aiInlineStatus}
             onTypingStart={onTypingStart}
             onTypingStop={onTypingStop}
           />
@@ -294,6 +297,7 @@ export function CommentTree({
             onMessageUpdate={handleMessageUpdate}
             allMessages={localMessages}
             animateMessageId={animateMessageId}
+            aiInlineStatus={aiInlineStatus}
             onTypingStart={onTypingStart}
             onTypingStop={onTypingStop}
           />
@@ -325,6 +329,7 @@ interface CommentNodeProps {
   onMessageUpdate: (messageId: string, updates: Partial<Message>) => void;
   allMessages: Message[];
   animateMessageId: string | null;
+  aiInlineStatus: Record<string, "pending" | "failed">;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
 }
@@ -344,6 +349,7 @@ function CommentNode({
   onMessageUpdate,
   allMessages,
   animateMessageId,
+  aiInlineStatus,
   onTypingStart,
   onTypingStop,
 }: CommentNodeProps) {
@@ -371,6 +377,7 @@ function CommentNode({
   const beyondDepthLimit = depth >= MAX_VISUAL_DEPTH;
   const descendantCount = countDescendants(node);
   const shouldAnimate = animateMessageId === node.id;
+  const aiStatus = aiInlineStatus[node.id];
   const isModerator = ["ADMIN", "MODERATOR", "OWNER"].includes(
     currentUser.role || "",
   );
@@ -587,6 +594,15 @@ function CommentNode({
                 <div className="text-foreground/80 text-[14px] leading-relaxed whitespace-pre-wrap wrap-break-word">
                   {renderMentionContent(node.content)}
                 </div>
+              )}
+
+              {aiStatus === "pending" && !node.isAiResponse && (
+                <p className="text-[11px] text-blue-600 mt-1">AI is thinking...</p>
+              )}
+              {aiStatus === "failed" && !node.isAiResponse && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  AI couldn&apos;t process this. Try rephrasing your question.
+                </p>
               )}
 
               {/* Attachments */}
@@ -812,6 +828,7 @@ function CommentNode({
               onMessageUpdate={onMessageUpdate}
               allMessages={allMessages}
               animateMessageId={animateMessageId}
+              aiInlineStatus={aiInlineStatus}
             />
           ))}
         </div>

@@ -198,6 +198,10 @@ export function PostMessageForm({
         };
         onMessagePosted(transformedMessage);
       }
+
+      if (result.data.aiInlineLimited) {
+        toasts.aiInlineRateLimit();
+      }
     }
   }  
 
