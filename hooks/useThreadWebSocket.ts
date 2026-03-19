@@ -131,7 +131,7 @@ export function useThreadWebSocket({
               return [...prev, { userId, userName }];
             });
 
-            // Auto-remove after 3s
+            // Auto-remove after 4s without updates
             const existing = typingTimersRef.current.get(userId);
             if (existing) clearTimeout(existing);
             typingTimersRef.current.set(
@@ -139,7 +139,7 @@ export function useThreadWebSocket({
               setTimeout(() => {
                 setTypers((prev) => prev.filter((t) => t.userId !== userId));
                 typingTimersRef.current.delete(userId);
-              }, 3000)
+              }, 4000)
             );
             break;
           }
