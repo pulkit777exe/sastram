@@ -49,7 +49,7 @@ const newMessagePayloadSchema = basePayloadSchema.extend({
  */
 const messageDeletedPayloadSchema = basePayloadSchema.extend({
   messageId: z.string().cuid(),
-  deletedBy: z.string().cuid(),
+  deletedBy: z.string().cuid().optional(),
 });
 
 /**
@@ -97,6 +97,14 @@ const reactionUpdatePayloadSchema = basePayloadSchema.extend({
 });
 
 /**
+ * PIN_UPDATE event payload
+ */
+const pinUpdatePayloadSchema = basePayloadSchema.extend({
+  messageId: z.string().cuid(),
+  isPinned: z.boolean(),
+});
+
+/**
  * ERROR event payload (sent by server)
  */
 const errorPayloadSchema = z.object({
@@ -135,6 +143,10 @@ export const websocketMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("REACTION_UPDATE"),
     payload: reactionUpdatePayloadSchema,
+  }),
+  z.object({
+    type: z.literal("PIN_UPDATE"),
+    payload: pinUpdatePayloadSchema,
   }),
   z.object({
     type: z.literal("ERROR"),
@@ -178,6 +190,10 @@ export const websocketSchemas = {
   reactionUpdate: z.object({
     type: z.literal("REACTION_UPDATE"),
     payload: reactionUpdatePayloadSchema,
+  }),
+  pinUpdate: z.object({
+    type: z.literal("PIN_UPDATE"),
+    payload: pinUpdatePayloadSchema,
   }),
   error: z.object({ type: z.literal("ERROR"), payload: errorPayloadSchema }),
 } as const;

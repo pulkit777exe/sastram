@@ -39,15 +39,14 @@ export async function POST(request: NextRequest) {
   const result = await postMessage(postFormData);
 
   if (!result || ("error" in result && result.error)) {
-    return NextResponse.json(
-      { error: result && "error" in result ? result.error : "Failed to post" },
-      { status: 400 },
-    );
+    const errorMessage = result?.error || "Failed to post message";
+    return NextResponse.json({ error: errorMessage }, { status: 400 });
   }
 
+  const typedResult = result as { data: any };
   return NextResponse.json(
     {
-      message: 'success' in result ? result.data : null,
+      message: typedResult.data,
     },
     { status: 200 },
   );

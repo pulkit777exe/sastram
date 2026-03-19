@@ -15,6 +15,7 @@ interface UseThreadWebSocketOptions {
   currentUserId: string;
   onNewMessage?: (message: Message) => void;
   onMessageDeleted?: (messageId: string) => void;
+  onPinUpdate?: (messageId: string, isPinned: boolean) => void;
   onTypingUpdate?: (typers: TypingUser[]) => void;
 }
 
@@ -23,6 +24,7 @@ export function useThreadWebSocket({
   currentUserId,
   onNewMessage,
   onMessageDeleted,
+  onPinUpdate,
   onTypingUpdate,
 }: UseThreadWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -32,9 +34,19 @@ export function useThreadWebSocket({
   const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Keep callbacks fresh without re-connecting
-  const callbacksRef = useRef({ onNewMessage, onMessageDeleted, onTypingUpdate });
+  const callbacksRef = useRef({
+    onNewMessage,
+    onMessageDeleted,
+    onPinUpdate,
+    onTypingUpdate,
+  });
   useEffect(() => {
-    callbacksRef.current = { onNewMessage, onMessageDeleted, onTypingUpdate };
+    callbacksRef.current = {
+      onNewMessage,
+      onMessageDeleted,
+      onPinUpdate,
+      onTypingUpdate,
+    };
   });
 
   useEffect(() => {
@@ -98,6 +110,15 @@ export function useThreadWebSocket({
           case "MESSAGE_DELETED": {
             const { messageId } = msg.payload as { messageId: string };
             callbacksRef.current.onMessageDeleted?.(messageId);
+            break;
+          }
+
+          case "PIN_UPDATE": {
+            const { messageId, isPinned } = msg.payload as {
+              messageId: string;
+              isPinned: boolean;
+            };
+            callbacksRef.current.onPinUpdate?.(messageId, isPinned);
             break;
           }
 

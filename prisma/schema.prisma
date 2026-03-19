@@ -448,16 +448,17 @@ model Notification {
 model ThreadSubscription {
   id        String          @id @default(cuid())
   threadId  String
-  userId    String
-  email     String
+  userId    String?
+  email     String?
   frequency DigestFrequency @default(WEEKLY)
   isActive  Boolean         @default(true)
   createdAt DateTime        @default(now())
 
   thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, userId])
+  @@unique([threadId, email])
   @@index([threadId])
   @@index([userId])
   @@map("thread_subscriptions")

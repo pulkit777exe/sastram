@@ -98,9 +98,9 @@ export function ThreadSubscribeButton({
               <SelectValue placeholder="Notification frequency" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="instant">Instant</SelectItem>
               <SelectItem value="daily">Daily Digest</SelectItem>
               <SelectItem value="weekly">Weekly Digest</SelectItem>
+              <SelectItem value="never">Never</SelectItem>
             </SelectContent>
           </Select>
         )}

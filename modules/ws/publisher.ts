@@ -23,11 +23,16 @@ export function emitTypingIndicator(
   });
 }
 
-export function emitMessageDeleted(threadId: string, messageId: string) {
+export function emitMessageDeleted(
+  threadId: string,
+  messageId: string,
+  deletedBy?: string,
+) {
   publishThreadEvent(threadId, {
     type: "MESSAGE_DELETED",
     payload: {
       messageId,
+      deletedBy,
       sectionId: threadId,
     },
   });
@@ -49,6 +54,19 @@ export function emitReactionUpdate(
 ) {
   publishThreadEvent(threadId, {
     type: "REACTION_UPDATE",
+    payload: {
+      ...payload,
+      sectionId: threadId,
+    },
+  });
+}
+
+export function emitPinUpdate(
+  threadId: string,
+  payload: { messageId: string; isPinned: boolean },
+) {
+  publishThreadEvent(threadId, {
+    type: "PIN_UPDATE",
     payload: {
       ...payload,
       sectionId: threadId,

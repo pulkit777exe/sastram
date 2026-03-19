@@ -45,6 +45,13 @@ export default function ReplyBox({
       return;
     }
 
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("File size must be less than 10MB");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setSelectedFile(file);
   };
 
@@ -97,7 +104,7 @@ export default function ReplyBox({
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.error || "Failed to post message");
+        throw new Error(data?.error || `Failed to post message: ${response.status}`);
       }
 
       setValue("");
@@ -105,9 +112,9 @@ export default function ReplyBox({
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (onSuccess) onSuccess();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Something went wrong. Try again.",
-      );
+      const errorMessage = err instanceof Error ? err.message : "Something went wrong. Try again.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
       router.refresh();

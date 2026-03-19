@@ -72,7 +72,8 @@ export type WebSocketEventType =
   | "USER_STOPPED_TYPING"
   | "MESSAGE_QUEUED"
   | "MENTION_NOTIFICATION"
-  | "REACTION_UPDATE";
+  | "REACTION_UPDATE"
+  | "PIN_UPDATE";
 
 export interface TypingIndicator {
   userId: string;
