@@ -457,6 +457,8 @@ function CommentNode({
 
   return (
     <div
+      id={`message-${node.id}`}
+      data-message-id={node.id}
       className={`relative group/branch ${
         shouldAnimate ? "animate-in slide-in-from-top-1 fade-in duration-200" : ""
       }`}

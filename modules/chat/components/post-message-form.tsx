@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Gift, Smile, Sticker, Send, Loader2, FileIcon, X, MessageSquare } from "lucide-react";
 import { postMessage } from "@/modules/messages/actions";
-import { toast } from "sonner";
+import { toasts } from "@/lib/utils/toast";
 import { validateFile } from "@/lib/services/content-safety";
 import type { Message } from "@/lib/types/index";
 
@@ -53,7 +53,7 @@ export function PostMessageForm({
     setLoading(false);
   
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else if (result?.data?.message) {
       formRef.current?.reset();
       setSelectedFile(null);
@@ -78,7 +78,7 @@ export function PostMessageForm({
 
     const validation = validateFile(file);
     if (!validation.isValid) {
-      toast.error(validation.error);
+      toasts.error(validation.error || "Invalid file");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }

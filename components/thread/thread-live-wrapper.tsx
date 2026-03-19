@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { CommentTree } from "@/components/thread/comment-tree";
 import { PostMessageForm } from "@/modules/chat/components/post-message-form";
 import { useThreadWebSocket, type TypingUser } from "@/hooks/useThreadWebSocket";
 import type { Message } from "@/lib/types/index";
+import TimeAgo from "@/components/ui/TimeAgo";
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
@@ -27,6 +28,11 @@ export function ThreadLiveWrapper({
   const animateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [animateId, setAnimateId] = useState<string | null>(null);
 
+  const pinnedMessage = useMemo(
+    () => liveMessages.find((message) => message.isPinned) ?? null,
+    [liveMessages],
+  );
+
   const handleWsNewMessage = useCallback((newMessage: Message) => {
     setLiveMessages((prev) => [...prev, newMessage]);
     setAnimateId(newMessage.id);
@@ -37,10 +43,17 @@ export function ThreadLiveWrapper({
   const handleWsMessageDeleted = useCallback((messageId: string) => {
     setLiveMessages((prev) =>
       prev.map((m) =>
-        m.id === messageId
-          ? { ...m, content: "This message was removed", deletedAt: new Date() }
-          : m
+        m.id === messageId ? { ...m, deletedAt: new Date() } : m
       )
+    );
+  }, []);
+
+  const handleWsPinUpdate = useCallback((messageId: string, isPinned: boolean) => {
+    setLiveMessages((prev) =>
+      prev.map((message) => ({
+        ...message,
+        isPinned: message.id === messageId ? isPinned : isPinned ? false : message.isPinned,
+      })),
     );
   }, []);
 
@@ -53,6 +66,7 @@ export function ThreadLiveWrapper({
     currentUserId: currentUser.id,
     onNewMessage: handleWsNewMessage,
     onMessageDeleted: handleWsMessageDeleted,
+    onPinUpdate: handleWsPinUpdate,
     onTypingUpdate: handleTypingUpdate,
   });
 
@@ -74,6 +88,34 @@ export function ThreadLiveWrapper({
     <>
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-6 md:p-8">
+          {pinnedMessage && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-amber-700">
+                    📌 Pinned message by {pinnedMessage.sender.name || "Anonymous"} ·{" "}
+                    <TimeAgo date={pinnedMessage.createdAt} />
+                  </p>
+                  <p className="mt-1 truncate text-sm text-amber-900">
+                    {pinnedMessage.content}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 text-xs font-medium text-amber-700 hover:text-amber-900 underline"
+                  onClick={() => {
+                    const target = document.getElementById(
+                      `message-${pinnedMessage.id}`,
+                    );
+                    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                >
+                  Jump to message
+                </button>
+              </div>
+            </div>
+          )}
+
           {liveMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4">
@@ -112,7 +154,7 @@ export function ThreadLiveWrapper({
                 ? `${typingUsers[0].userName} is typing...`
                 : typingUsers.length === 2
                   ? `${typingUsers[0].userName} and ${typingUsers[1].userName} are typing...`
-                  : `${typingUsers[0].userName} and ${typingUsers.length - 1} others are typing...`}
+                  : "Several people are typing..."}
             </span>
           </div>
         </div>
