@@ -6,7 +6,12 @@ import { requireSession } from "@/modules/auth/session";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { filterBadLanguage } from "@/lib/services/content-safety";
-import { emitThreadMessage, emitMentionNotification } from "@/modules/ws/publisher";
+import {
+  emitThreadMessage,
+  emitMentionNotification,
+  emitMessageDeleted,
+  emitPinUpdate,
+} from "@/modules/ws/publisher";
 import { createMessageWithAttachmentsSchema } from "@/lib/schemas/database";
 import { messageLimiter } from "@/lib/services/rate-limit";
 import { MessageService } from "@/lib/services/moderation";
@@ -17,6 +22,7 @@ import {
   pinMessageSchema,
   deleteMessageSchema,
   getMessageEditHistorySchema,
+  searchMentionUsersSchema,
 } from "./schemas";
 
 import { parseMentions, resolveUserMentions } from "@/lib/utils/mention-parser";
@@ -90,6 +96,13 @@ export async function postMessage(formData: FormData) {
 
   // Content filtering
   const safeContent = filterBadLanguage(content);
+
+  if ((mentions ?? []).length > 10) {
+    return {
+      data: null,
+      error: "A message can include at most 10 mentions.",
+    };
+  }
 
   try {
     const messageService = new MessageService();
@@ -388,9 +401,31 @@ export async function pinMessage(messageId: string) {
       };
     }
 
-    await prisma.message.update({
-      where: { id: messageId },
-      data: { isPinned: !message.isPinned },
+    const shouldPin = !message.isPinned;
+
+    const previouslyPinned = shouldPin
+      ? await prisma.message.findFirst({
+          where: {
+            sectionId: message.sectionId,
+            isPinned: true,
+            id: { not: messageId },
+          },
+          select: { id: true },
+        })
+      : null;
+
+    await prisma.$transaction(async (tx) => {
+      if (shouldPin) {
+        await tx.message.updateMany({
+          where: { sectionId: message.sectionId, isPinned: true },
+          data: { isPinned: false },
+        });
+      }
+
+      await tx.message.update({
+        where: { id: messageId },
+        data: { isPinned: shouldPin },
+      });
     });
 
     await logAction({
@@ -401,6 +436,15 @@ export async function pinMessage(messageId: string) {
       entityId: messageId,
       userId: session.user.id,
     });
+
+    emitPinUpdate(message.sectionId, { messageId, isPinned: shouldPin });
+
+    if (previouslyPinned?.id) {
+      emitPinUpdate(message.sectionId, {
+        messageId: previouslyPinned.id,
+        isPinned: false,
+      });
+    }
 
     revalidatePath(`/dashboard/threads/thread/${message.section?.slug}`);
     return { data: null, error: null };
@@ -423,7 +467,7 @@ export async function getMessageEditHistory(messageId: string) {
       },
     });
 
-    return { data: edits, error: null };
+    return { data: edits ?? [], error: null };
   } catch (error) {
     return handleActionError("getMessageEditHistory", error);
   }
@@ -481,13 +525,84 @@ export async function deleteMessage(messageId: string) {
     // Also emit websocket event for live updates
     try {
       if (message.sectionId) {
-         const { emitMessageDeleted } = await import("@/modules/ws/publisher");
-         await emitMessageDeleted(message.sectionId, messageId);
+        emitMessageDeleted(message.sectionId, messageId, session.user.id);
       }
     } catch(e) { /* ignore ws errors */ }
 
     return { data: null, error: null };
   } catch (error) {
     return handleActionError("deleteMessage", error);
+  }
+}
+
+export async function searchMentionUsers(sectionId: string, query: string) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user) {
+    return { data: [], error: "Something went wrong" };
+  }
+
+  const validation = searchMentionUsersSchema.safeParse({
+    sectionId,
+    query,
+  });
+  if (!validation.success) {
+    return { data: [], error: "Invalid input" };
+  }
+
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        id: { not: session.user.id },
+        memberships: {
+          some: { sectionId: validation.data.sectionId },
+        },
+        OR: [
+          {
+            name: {
+              contains: validation.data.query,
+              mode: "insensitive",
+            },
+          },
+          {
+            email: {
+              contains: validation.data.query,
+              mode: "insensitive",
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+      },
+      orderBy: {
+        reputationPoints: "desc",
+      },
+      take: 5,
+    });
+
+    return {
+      data: users.map((user) => {
+        const base = (user.name || user.email.split("@")[0] || "user")
+          .toLowerCase()
+          .replace(/[^a-z0-9.-]/g, "");
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          handle: base || "user",
+        };
+      }),
+      error: null,
+    };
+  } catch (error) {
+    return handleActionError("searchMentionUsers", error);
   }
 }
