@@ -29,9 +29,15 @@ interface ProfileHeaderProps {
   };
   isOwnProfile: boolean;
   isFollowing?: boolean;
+  limitedView?: boolean;
 }
 
-export function ProfileHeader({ user, isOwnProfile, isFollowing }: ProfileHeaderProps) {
+export function ProfileHeader({
+  user,
+  isOwnProfile,
+  isFollowing,
+  limitedView = false,
+}: ProfileHeaderProps) {
   const displayName = user.name || user.email.split("@")[0];
   const avatarUrl = user.avatarUrl || user.image;
   const initials = displayName
@@ -91,7 +97,7 @@ export function ProfileHeader({ user, isOwnProfile, isFollowing }: ProfileHeader
               {displayName}
             </motion.h1>
 
-            {user.bio && (
+            {!limitedView && user.bio && (
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -102,52 +108,60 @@ export function ProfileHeader({ user, isOwnProfile, isFollowing }: ProfileHeader
               </motion.p>
             )}
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 0.4 }}
-              className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground"
-            >
-              {user.location && (
-                <span className="flex items-center gap-1">
-                  📍 {user.location}
-                </span>
-              )}
-              {user.website && (
-                <a
-                  href={user.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  🔗 Website
-                </a>
-              )}
-              {user.twitter && (
-                <a
-                  href={`https://twitter.com/${user.twitter}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  🐦 Twitter
-                </a>
-              )}
-              {user.github && (
-                <a
-                  href={`https://github.com/${user.github}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  💻 GitHub
-                </a>
-              )}
-            </motion.div>
+            {!limitedView && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+                className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground"
+              >
+                {user.location && (
+                  <span className="flex items-center gap-1">
+                    📍 {user.location}
+                  </span>
+                )}
+                {user.website && (
+                  <a
+                    href={user.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    🔗 Website
+                  </a>
+                )}
+                {user.twitter && (
+                  <a
+                    href={`https://twitter.com/${user.twitter}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    🐦 Twitter
+                  </a>
+                )}
+                {user.github && (
+                  <a
+                    href={`https://github.com/${user.github}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    💻 GitHub
+                  </a>
+                )}
+              </motion.div>
+            )}
+
+            {limitedView && (
+              <p className="text-sm text-muted-foreground">
+                This profile is private.
+              </p>
+            )}
           </div>
 
           {/* Actions */}
-          {!isOwnProfile && (
+          {!isOwnProfile && !limitedView && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -159,21 +173,22 @@ export function ProfileHeader({ user, isOwnProfile, isFollowing }: ProfileHeader
         </div>
 
         {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
-          className="mt-6"
-        >
-          <UserStats
-            reputationPoints={user.reputationPoints}
-            followerCount={user.followerCount}
-            followingCount={user.followingCount}
-            threadsCount={0} // Will be fetched separately
-          />
-        </motion.div>
+        {!limitedView && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.4 }}
+            className="mt-6"
+          >
+            <UserStats
+              reputationPoints={user.reputationPoints}
+              followerCount={user.followerCount}
+              followingCount={user.followingCount}
+              threadsCount={0} // Will be fetched separately
+            />
+          </motion.div>
+        )}
       </div>
     </motion.div>
   );
 }
-
