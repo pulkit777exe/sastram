@@ -14,14 +14,24 @@ import {
 import { createPollSchema, voteOnPollSchema } from "./schemas";
 import { z } from "zod";
 import { getMemberRole } from "@/modules/members/repository";
+import { logger } from "@/lib/infrastructure/logger";
 
-const pollIdSchema = z.object({
-  pollId: z.string().cuid(),
-});
+// ── HELPERS ────────────────────────────────────────────────────────────────
 
-const threadIdSchema = z.object({
-  threadId: z.string().cuid(),
-});
+const pollIdSchema = z.object({ pollId: z.string().cuid() });
+const threadIdSchema = z.object({ threadId: z.string().cuid() });
+
+// Detects Prisma unique constraint violation (P2002)
+function isPrismaUniqueConstraintError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: string }).code === "P2002"
+  );
+}
+
+// ── CREATE POLL ────────────────────────────────────────────────────────────
 
 export async function createPollAction(
   threadId: string,
@@ -29,18 +39,15 @@ export async function createPollAction(
   options: string[],
   expiresAt?: Date,
 ) {
-  const parsed = createPollSchema.safeParse({
-    threadId,
-    question,
-    options,
-    expiresAt,
-  });
+  const parsed = createPollSchema.safeParse({ threadId, question, options, expiresAt });
   if (!parsed.success) {
     return { data: null, error: "Invalid input" };
   }
 
   try {
+    // requireSession enforces auth — session.user.id available for audit if needed
     const session = await requireSession();
+
     const poll = await createPollRepo(
       parsed.data.threadId,
       parsed.data.question,
@@ -48,13 +55,21 @@ export async function createPollAction(
       parsed.data.expiresAt,
     );
 
+    logger.info("[createPollAction] Poll created", {
+      pollId: poll.id,
+      threadId: parsed.data.threadId,
+      createdBy: session.user.id,
+    });
+
     revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
     return { data: poll, error: null };
-  } catch (error) {
-    console.error("[createPollAction]", error);
+  } catch (err) {
+    logger.error("[createPollAction]", { error: err });
     return { data: null, error: "Something went wrong" };
   }
 }
+
+// ── VOTE ON POLL ───────────────────────────────────────────────────────────
 
 export async function voteOnPollAction(pollId: string, optionIndex: number) {
   const parsed = voteOnPollSchema.safeParse({ pollId, optionIndex });
@@ -64,24 +79,20 @@ export async function voteOnPollAction(pollId: string, optionIndex: number) {
 
   try {
     const session = await requireSession();
+
     const poll = await getPollByIdRepo(parsed.data.pollId);
     if (!poll) {
       return { data: null, error: "Poll not found" };
     }
-
     if (!poll.isActive) {
       return { data: null, error: "Voting is closed for this poll" };
     }
-
     if (poll.expiresAt && poll.expiresAt.getTime() < Date.now()) {
       return { data: null, error: "Voting is closed for this poll" };
     }
 
-    const existingVote = await getUserVoteRepo(parsed.data.pollId, session.user.id);
-    if (existingVote) {
-      return { data: null, error: "You have already voted on this poll" };
-    }
-
+    // No pre-check for existing vote here — the DB unique constraint handles it.
+    // voteOnPollRepo will throw a Prisma P2002 error if already voted.
     await voteOnPollRepo(
       parsed.data.pollId,
       session.user.id,
@@ -93,11 +104,17 @@ export async function voteOnPollAction(pollId: string, optionIndex: number) {
     }
 
     return { data: null, error: null };
-  } catch (error) {
-    console.error("[voteOnPollAction]", error);
+  } catch (err) {
+    // Unique constraint = already voted
+    if (isPrismaUniqueConstraintError(err)) {
+      return { data: null, error: "You have already voted on this poll" };
+    }
+    logger.error("[voteOnPollAction]", { error: err });
     return { data: null, error: "Something went wrong" };
   }
 }
+
+// ── GET POLL RESULTS ───────────────────────────────────────────────────────
 
 export async function getPollResultsAction(pollId: string) {
   const parsed = pollIdSchema.safeParse({ pollId });
@@ -108,14 +125,16 @@ export async function getPollResultsAction(pollId: string) {
   try {
     const results = await getPollResultsRepo(parsed.data.pollId);
     if (!results) {
-      return { data: null, error: "Something went wrong" };
+      return { data: null, error: "Poll not found" };
     }
     return { data: results, error: null };
-  } catch (error) {
-    console.error("[getPollResultsAction]", error);
+  } catch (err) {
+    logger.error("[getPollResultsAction]", { error: err });
     return { data: null, error: "Something went wrong" };
   }
 }
+
+// ── GET USER VOTE ──────────────────────────────────────────────────────────
 
 export async function getUserVoteAction(pollId: string) {
   const parsed = pollIdSchema.safeParse({ pollId });
@@ -127,11 +146,13 @@ export async function getUserVoteAction(pollId: string) {
     const session = await requireSession();
     const vote = await getUserVoteRepo(parsed.data.pollId, session.user.id);
     return { data: vote, error: null };
-  } catch (error) {
-    console.error("[getUserVoteAction]", error);
+  } catch (err) {
+    logger.error("[getUserVoteAction]", { error: err });
     return { data: null, error: "Something went wrong" };
   }
 }
+
+// ── GET POLL BY THREAD ─────────────────────────────────────────────────────
 
 export async function getPollByThreadAction(threadId: string) {
   const parsed = threadIdSchema.safeParse({ threadId });
@@ -142,11 +163,13 @@ export async function getPollByThreadAction(threadId: string) {
   try {
     const poll = await getPollByThreadIdRepo(parsed.data.threadId);
     return { data: poll, error: null };
-  } catch (error) {
-    console.error("[getPollByThreadAction]", error);
+  } catch (err) {
+    logger.error("[getPollByThreadAction]", { error: err });
     return { data: null, error: "Something went wrong" };
   }
 }
+
+// ── CLOSE POLL ─────────────────────────────────────────────────────────────
 
 export async function closePollAction(pollId: string) {
   const parsed = pollIdSchema.safeParse({ pollId });
@@ -156,18 +179,26 @@ export async function closePollAction(pollId: string) {
 
   try {
     const session = await requireSession();
+
+    // getPollById already includes thread.createdBy (fixed in repository.ts)
+    // so we only need one query to get everything we need for auth
     const poll = await getPollByIdRepo(parsed.data.pollId);
     if (!poll) {
       return { data: null, error: "Poll not found" };
     }
 
-    let canClose = poll.thread?.createdBy === session.user.id;
-    if (!canClose && poll.threadId) {
+    // Check thread creator first (no extra DB query needed)
+    const isThreadCreator = poll.thread?.createdBy === session.user.id;
+
+    // Check member role only if not thread creator
+    let hasModeratorRole = false;
+    if (!isThreadCreator && poll.threadId) {
       const memberRole = await getMemberRole(poll.threadId, session.user.id);
-      canClose = !!memberRole && ["OWNER", "MODERATOR"].includes(memberRole.role);
+      hasModeratorRole =
+        !!memberRole && ["OWNER", "MODERATOR"].includes(memberRole.role);
     }
 
-    if (!canClose) {
+    if (!isThreadCreator && !hasModeratorRole) {
       return { data: null, error: "Insufficient permissions" };
     }
 
@@ -178,8 +209,8 @@ export async function closePollAction(pollId: string) {
     }
 
     return { data: null, error: null };
-  } catch (error) {
-    console.error("[closePollAction]", error);
+  } catch (err) {
+    logger.error("[closePollAction]", { error: err });
     return { data: null, error: "Something went wrong" };
   }
 }

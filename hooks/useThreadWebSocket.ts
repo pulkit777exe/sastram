@@ -17,6 +17,8 @@ interface UseThreadWebSocketOptions {
   onMessageDeleted?: (messageId: string) => void;
   onPinUpdate?: (messageId: string, isPinned: boolean) => void;
   onTypingUpdate?: (typers: TypingUser[]) => void;
+  // NEW: called when AI stream emits isComplete:true — clears "pending" indicator
+  onAiComplete?: (parentMessageId: string) => void;
 }
 
 export function useThreadWebSocket({
@@ -26,12 +28,15 @@ export function useThreadWebSocket({
   onMessageDeleted,
   onPinUpdate,
   onTypingUpdate,
+  onAiComplete,
 }: UseThreadWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingEmitRef = useRef<number>(0);
   const [typers, setTypers] = useState<TypingUser[]>([]);
-  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
 
   // Keep callbacks fresh without re-connecting
   const callbacksRef = useRef({
@@ -39,6 +44,7 @@ export function useThreadWebSocket({
     onMessageDeleted,
     onPinUpdate,
     onTypingUpdate,
+    onAiComplete,
   });
   useEffect(() => {
     callbacksRef.current = {
@@ -46,6 +52,7 @@ export function useThreadWebSocket({
       onMessageDeleted,
       onPinUpdate,
       onTypingUpdate,
+      onAiComplete,
     };
   });
 
@@ -56,7 +63,7 @@ export function useThreadWebSocket({
 
     ws.onmessage = (event) => {
       try {
-        const raw = JSON.parse(event.data);
+        const raw = JSON.parse(event.data as string);
         const validation = validateWebSocketMessage(raw);
         if (!validation.success) return;
 
@@ -66,10 +73,15 @@ export function useThreadWebSocket({
           case "NEW_MESSAGE": {
             const payload = msg.payload as Record<string, unknown>;
             const senderId = payload.senderId as string;
-            // Don't echo own messages back
-            if (senderId === currentUserId) return;
+            const isAiResponse = Boolean(payload.isAiResponse);
+            const isComplete = Boolean(payload.isComplete);
 
-            const sender = payload.sender as { id: string; name: string; image?: string | null } | undefined;
+            // Don't echo own non-AI messages back (already in state)
+            if (senderId === currentUserId && !isAiResponse) return;
+
+            const sender = payload.sender as
+              | { id: string; name: string; image?: string | null }
+              | undefined;
 
             const newMsg: Message = {
               id: payload.id as string,
@@ -79,18 +91,34 @@ export function useThreadWebSocket({
               parentId: (payload.parentId as string | null) ?? null,
               createdAt: new Date(payload.createdAt as string),
               updatedAt: new Date(payload.createdAt as string),
-              depth: 0,
+              depth: (payload.depth as number) ?? 0,
               isEdited: false,
               isPinned: false,
-              likeCount: 0,
+              likeCount: (payload.likeCount as number) ?? 0,
               replyCount: 0,
-              isAiResponse: Boolean(payload.isAiResponse),
+              isAiResponse,
               deletedAt: null,
               sender: sender
-                ? { id: sender.id, name: sender.name, image: sender.image ?? null }
-                : { id: senderId, name: "User", image: null },
+                ? {
+                    id: sender.id,
+                    name: sender.name,
+                    image: sender.image ?? null,
+                  }
+                : {
+                    id: senderId,
+                    name: isAiResponse ? "Sastram AI" : "User",
+                    image: null,
+                  },
               attachments: Array.isArray(payload.attachments)
-                ? (payload.attachments as Array<{ id: string; url: string; type: string; name?: string | null; size?: number | null }>).map((a) => ({
+                ? (
+                    payload.attachments as Array<{
+                      id: string;
+                      url: string;
+                      type: string;
+                      name?: string | null;
+                      size?: number | null;
+                    }>
+                  ).map((a) => ({
                     id: a.id,
                     url: a.url,
                     type: a.type,
@@ -100,7 +128,14 @@ export function useThreadWebSocket({
                 : [],
               section: { id: payload.sectionId as string, name: "", slug: "" },
             };
+
+            // Deliver message or streaming content update
             callbacksRef.current.onNewMessage?.(newMsg);
+
+            // When AI stream is complete, clear the pending indicator
+            if (isAiResponse && isComplete && newMsg.parentId) {
+              callbacksRef.current.onAiComplete?.(newMsg.parentId);
+            }
 
             // Remove sender from typing list
             setTypers((prev) => prev.filter((t) => t.userId !== senderId));
@@ -123,7 +158,11 @@ export function useThreadWebSocket({
           }
 
           case "USER_TYPING": {
-            const { userId, userName } = msg.payload as { userId: string; userName: string; sectionId: string };
+            const { userId, userName } = msg.payload as {
+              userId: string;
+              userName: string;
+              sectionId: string;
+            };
             if (userId === currentUserId) return;
 
             setTypers((prev) => {
@@ -131,7 +170,6 @@ export function useThreadWebSocket({
               return [...prev, { userId, userName }];
             });
 
-            // Auto-remove after 4s without updates
             const existing = typingTimersRef.current.get(userId);
             if (existing) clearTimeout(existing);
             typingTimersRef.current.set(
@@ -139,13 +177,16 @@ export function useThreadWebSocket({
               setTimeout(() => {
                 setTypers((prev) => prev.filter((t) => t.userId !== userId));
                 typingTimersRef.current.delete(userId);
-              }, 4000)
+              }, 4000),
             );
             break;
           }
 
           case "USER_STOPPED_TYPING": {
-            const { userId } = msg.payload as { userId: string; sectionId: string };
+            const { userId } = msg.payload as {
+              userId: string;
+              sectionId: string;
+            };
             setTypers((prev) => prev.filter((t) => t.userId !== userId));
             const timer = typingTimersRef.current.get(userId);
             if (timer) {
@@ -156,11 +197,10 @@ export function useThreadWebSocket({
           }
         }
       } catch {
-        // ignore malformed messages
+        // Ignore malformed messages
       }
     };
 
-    // Capture ref value for cleanup
     const timersMap = typingTimersRef.current;
 
     return () => {
@@ -182,19 +222,18 @@ export function useThreadWebSocket({
       if (!ws) return;
 
       const message = JSON.stringify({ type, payload });
-      
+
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(message);
       } else if (ws.readyState === WebSocket.CONNECTING) {
-        // Queue the message to send when the socket opens
         const sendWhenOpen = () => {
           ws.send(message);
-          ws.removeEventListener('open', sendWhenOpen);
+          ws.removeEventListener("open", sendWhenOpen);
         };
-        ws.addEventListener('open', sendWhenOpen);
+        ws.addEventListener("open", sendWhenOpen);
       }
     },
-    []
+    [],
   );
 
   const emitTypingStop = useCallback(() => {
@@ -208,13 +247,11 @@ export function useThreadWebSocket({
 
   const emitTypingStart = useCallback(() => {
     const now = Date.now();
-    // Debounce: only emit once every 3s
     if (now - lastTypingEmitRef.current < 3000) return;
     lastTypingEmitRef.current = now;
 
     sendWsMessage("USER_TYPING", { sectionId: threadId });
 
-    // Auto-stop after 3s of inactivity
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       emitTypingStop();

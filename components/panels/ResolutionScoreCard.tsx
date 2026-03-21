@@ -19,12 +19,12 @@ export default function ResolutionScoreCard({
   if (score === null || score === undefined) {
     return (
       <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
-        <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
+        <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em]">
           Resolution score
         </p>
         <div className="mt-[12px] flex items-center gap-[10px]">
           <div className="h-[10px] w-[10px] rounded-full bg-zinc-300 dark:bg-zinc-600" />
-          <span className="text-[13px] text-muted">Not yet scored</span>
+          <span className="text-[13px]">Not yet scored</span>
         </div>
       </section>
     );

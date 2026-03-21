@@ -1,3 +1,13 @@
+// ════════════════════════════════════════════════════════
+// dashboard/page.tsx
+// ════════════════════════════════════════════════════════
+// ReadReceipt actual shape (confirmed from TS errors):
+//   { id, threadId, userId, lastReadMessageId, readAt, createdAt, updatedAt }
+// Key field: threadId (NOT sectionId)
+// Timestamp: readAt (NOT lastReadAt)
+//
+// Fix: use prisma.readReceipt.findMany with correct field names.
+
 import type { ReactNode } from "react";
 import {
   Users,
@@ -6,8 +16,7 @@ import {
   ChevronDown,
   TrendingUp,
 } from "lucide-react";
-import { isAdmin } from "@/modules/auth/session";
-import { getSession } from "@/modules/auth/session";
+import { isAdmin, getSession } from "@/modules/auth/session";
 import { listThreads } from "@/modules/threads/repository";
 import { listCommunities } from "@/modules/communities/repository";
 import { TopicGrid } from "@/components/dashboard/topic-grid";
@@ -17,15 +26,14 @@ import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
 import { cn } from "@/lib/utils/cn";
 import { prisma } from "@/lib/infrastructure/prisma";
 import Link from "next/link";
-import { Prisma } from "@prisma/client";
 
 function parseTagFilter(raw: string | string[] | undefined): string[] {
   if (!raw) return [];
   const values = Array.isArray(raw) ? raw : [raw];
   return values
-    .flatMap((value) => value.split(","))
-    .map((tag) => tag.trim().toLowerCase())
-    .filter((tag, index, all) => tag.length > 0 && all.indexOf(tag) === index);
+    .flatMap((v) => v.split(","))
+    .map((t) => t.trim().toLowerCase())
+    .filter((t, i, all) => t.length > 0 && all.indexOf(t) === i);
 }
 
 export default async function DashboardPage({
@@ -37,6 +45,7 @@ export default async function DashboardPage({
   const selectedTags = parseTagFilter(params.tag);
   const session = await getSession();
   if (!session) return null;
+
   const [{ threads }, communities, topicSections] = await Promise.all([
     listThreads(),
     listCommunities(),
@@ -45,93 +54,79 @@ export default async function DashboardPage({
         selectedTags.length > 0
           ? {
               AND: selectedTags.map((tagSlug) => ({
-                tags: {
-                  some: {
-                    tag: { slug: tagSlug },
-                  },
-                },
+                tags: { some: { tag: { slug: tagSlug } } },
               })),
             }
           : {},
-      include: {
-        community: true,
-        tags: {
-          include: {
-            tag: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-        messages: {
-          select: { senderId: true, createdAt: true },
-        },
-        _count: {
-          select: {
-            messages: true,
-          },
-        },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        messageCount: true,
+        community: { select: { title: true } },
+        tags: { select: { tag: { select: { name: true } } } },
+        messages: { select: { senderId: true, createdAt: true } },
+        _count: { select: { messages: true } },
       },
-      orderBy: {
-        updatedAt: "desc",
-      },
+      orderBy: { updatedAt: "desc" },
       take: 50,
     }),
   ]);
-  const topicSectionIds = topicSections.map((section) => section.id);
-  let readReceiptRows: Array<{ threadId: string; readAt: Date }> = [];
-  if (topicSectionIds.length > 0) {
-    try {
-      readReceiptRows = await prisma.$queryRaw<
-        Array<{ threadId: string; readAt: Date }>
-      >`
-        SELECT "threadId", "readAt"
-        FROM "read_receipts"
-        WHERE "userId" = ${session.user.id}
-          AND "threadId" IN (${Prisma.join(topicSectionIds)})
-      `;
-    } catch (error) {
-      console.error("[dashboard.readReceipts]", error);
-    }
-  }
+
+  // ReadReceipt uses `threadId` to reference the section (despite the name)
+  // and `readAt` as the timestamp field — confirmed from Prisma-generated types
+  const sectionIds = topicSections.map((s) => s.id);
+
+  const readReceiptRows =
+    sectionIds.length > 0
+      ? await prisma.readReceipt
+          .findMany({
+            where: {
+              userId: session.user.id,
+              threadId: { in: sectionIds }, // threadId maps to section in this schema
+            },
+            select: {
+              threadId: true,
+              readAt: true,
+            },
+          })
+          .catch((err) => {
+            console.error("[dashboard.readReceipts]", err);
+            return [];
+          })
+      : [];
+
   const readAtByThread = new Map(
     readReceiptRows.map((row) => [row.threadId, row.readAt]),
   );
 
   const totalMessages = topicSections.reduce(
-    (acc, thread) => acc + thread.messageCount,
+    (acc, t) => acc + t.messageCount,
     0,
   );
-  const activeThreads = topicSections.length;
 
   const threadTopics = topicSections.map((thread) => {
     const readAt = readAtByThread.get(thread.id);
-    const unreadCount = thread.messages.filter((message) => {
-      if (message.senderId === session.user.id) {
-        return false;
-      }
 
-      if (!readAt) {
-        return true;
-      }
-
-      return message.createdAt > readAt;
+    const unreadCount = thread.messages.filter((msg) => {
+      if (msg.senderId === session.user.id) return false;
+      if (!readAt) return true;
+      return msg.createdAt > readAt;
     }).length;
 
     return {
       id: thread.id,
       slug: thread.slug,
       title: thread.name,
-      description: thread.description || "No description",
-      activeUsers: new Set(thread.messages.map((message) => message.senderId))
-        .size,
+      description: thread.description ?? "No description",
+      activeUsers: new Set(thread.messages.map((m) => m.senderId)).size,
       messagesCount: thread._count.messages,
       unreadCount,
       trending: thread._count.messages > 10,
       tags:
         thread.tags.length > 0
-          ? thread.tags.map((relation) => relation.tag.name)
+          ? thread.tags.map((rel) => rel.tag.name)
           : [thread.community?.title ?? "general"],
     };
   });
@@ -140,12 +135,11 @@ export default async function DashboardPage({
     <div className="space-y-10 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className={`text-4xl font-bold tracking-tight`}>Threads</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Threads</h1>
           <p className="text-zinc-500 mt-1">
             Manage and track your community discussions.
           </p>
         </div>
-
         <div className="flex gap-3">
           <div className="border rounded-lg px-4 py-2 flex items-center gap-2 cursor-pointer text-sm transition-colors">
             <span className="font-medium">View:</span>
@@ -176,7 +170,7 @@ export default async function DashboardPage({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <DarkMetric
           label="Active threads"
-          value={activeThreads}
+          value={topicSections.length}
           icon={<MessageSquare size={18} />}
           color="blue"
         />
@@ -195,17 +189,12 @@ export default async function DashboardPage({
       </div>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-widest">
-            Communities
-          </h2>
-        </div>
+        <h2 className="text-sm font-bold uppercase tracking-widest">
+          Communities
+        </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {communities.map((community) => (
-            <Card
-              key={community.id}
-              className="transition-all group cursor-pointer"
-            >
+            <Card key={community.id} className="transition-all group cursor-pointer">
               <CardContent className="p-5">
                 <div className="flex justify-between items-start">
                   <div className="h-10 w-10 rounded-xl flex items-center justify-center bg-secondary transition-colors">
@@ -219,7 +208,7 @@ export default async function DashboardPage({
                 </div>
                 <h3 className="mt-4 text-lg font-bold">{community.title}</h3>
                 <p className="mt-1 text-sm line-clamp-2">
-                  {community.description || "No description yet."}
+                  {community.description ?? "No description yet."}
                 </p>
                 <div className="mt-4 flex items-center gap-2">
                   <span className="text-xs font-medium">
@@ -271,7 +260,9 @@ function DarkMetric({
 
   return (
     <div className="border p-5 rounded-2xl flex items-center gap-4 transition-colors">
-      <div className={cn("p-3 rounded-xl", colors[color])}>{icon}</div>
+      <div className={cn("p-3 rounded-xl", colors[color] ?? colors.blue)}>
+        {icon}
+      </div>
       <div>
         <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
           {label}

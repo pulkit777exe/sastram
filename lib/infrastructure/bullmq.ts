@@ -455,12 +455,6 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
     )
     .join("\n");
 
-  const synthesis = await aiService.generateSummary(
-    `Answer this forum question in under 200 words and stay grounded in thread context.\n` +
-      `Question: ${query}\n\n` +
-      `Recent thread context:\n${context}`,
-  );
-
   const aiUser = await prisma.user.upsert({
     where: { email: "ai@sastram.system" },
     update: {
@@ -481,9 +475,10 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
     },
   });
 
+  // Create initial AI message with empty content
   const aiMessage = await prisma.message.create({
     data: {
-      content: synthesis.slice(0, 2000),
+      content: "",
       sectionId,
       senderId: aiUser.id,
       parentId: parentMessage.id,
@@ -498,37 +493,126 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
       section: {
         select: {
           id: true,
+          name: true,
           slug: true,
-          name: true,
         },
       },
-      sender: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
-        },
-      },
-      attachments: true,
     },
   });
 
+  // Emit initial empty message to notify clients
   emitThreadMessage(sectionId, {
     id: aiMessage.id,
-    content: aiMessage.content,
-    senderId: aiMessage.senderId,
-    senderName: aiMessage.sender?.name || "Sastram AI",
-    senderAvatar: aiMessage.sender?.image ?? null,
+    content: "",
+    senderId: aiUser.id,
+    senderName: aiUser.name,
+    senderAvatar: aiUser.image ?? null,
     createdAt: aiMessage.createdAt,
     sectionId,
     parentId: aiMessage.parentId ?? null,
     depth: aiMessage.depth ?? 0,
-    likeCount: aiMessage.likeCount ?? 0,
-    replyCount: aiMessage.replyCount ?? 0,
+    likeCount: 0,
+    replyCount: 0,
     isAiResponse: true,
     reactions: [],
     attachments: [],
   });
+
+  let fullContent = "";
+  let lastDbUpdateTime = Date.now();
+
+  try {
+    await aiService.generateStreamingResponse(
+      `Answer this forum question in under 200 words and stay grounded in thread context.
+Question: ${query}
+
+Recent thread context:
+${context}`,
+      async (chunk) => {
+        fullContent += chunk;
+        
+        // Update the database only once every 500ms to reduce load
+        const now = Date.now();
+        if (now - lastDbUpdateTime >= 500) {
+          await prisma.message.update({
+            where: { id: aiMessage.id },
+            data: { content: fullContent.slice(0, 2000) },
+          });
+          lastDbUpdateTime = now;
+        }
+
+        // Emit update event with the new content
+        emitThreadMessage(sectionId, {
+          id: aiMessage.id,
+          content: fullContent.slice(0, 2000),
+          senderId: aiUser.id,
+          senderName: aiUser.name ?? "Sastram AI",
+          senderAvatar: aiUser.image ?? null,
+          createdAt: aiMessage.createdAt,
+          sectionId,
+          parentId: aiMessage.parentId ?? null,
+          depth: aiMessage.depth ?? 0,
+          likeCount: 0,
+          replyCount: 0,
+          isAiResponse: true,
+          reactions: [],
+          attachments: [],
+        });
+      },
+    );
+    
+    // Ensure the final content is saved to the database
+    await prisma.message.update({
+      where: { id: aiMessage.id },
+      data: { content: fullContent.slice(0, 2000) },
+    });
+
+    // Emit a final completion event so clients can clear pending state immediately.
+    emitThreadMessage(sectionId, {
+      id: aiMessage.id,
+      content: fullContent.slice(0, 2000),
+      senderId: aiUser.id,
+      senderName: aiUser.name ?? "Sastram AI",
+      senderAvatar: aiUser.image ?? null,
+      createdAt: aiMessage.createdAt,
+      sectionId,
+      parentId: aiMessage.parentId ?? null,
+      depth: aiMessage.depth ?? 0,
+      likeCount: 0,
+      replyCount: 0,
+      isAiResponse: true,
+      isComplete: true,
+      reactions: [],
+      attachments: [],
+    });
+  } catch (error) {
+    logger.error("AI streaming error:", error);
+    const errorMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
+    await prisma.message.update({
+      where: { id: aiMessage.id },
+      data: { content: errorMessage },
+    });
+    emitThreadMessage(sectionId, {
+      id: aiMessage.id,
+      content: errorMessage,
+      senderId: aiUser.id,
+      senderName: aiUser.name ?? "Sastram AI",
+      senderAvatar: aiUser.image ?? null,
+      createdAt: aiMessage.createdAt,
+      sectionId,
+      parentId: aiMessage.parentId ?? null,
+      depth: aiMessage.depth ?? 0,
+      likeCount: 0,
+      replyCount: 0,
+      isAiResponse: true,
+      isComplete: true,
+      reactions: [],
+      attachments: [],
+    });
+    return;
+  }
+
+  logger.info(`AI inline job complete: ${job.id}`);
 
   return {
     queued: true,

@@ -15,15 +15,39 @@ interface ThreadInsightsProps {
 export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
   const selectedSlug = useThreadViewStore((state) => state.selectedThreadSlug);
 
-  const { data = initialThreads, isFetching } = useQuery({
+  const { data = [], isFetching } = useQuery<ThreadSummary[]>({
     queryKey: ["dashboard-threads"],
-    queryFn: fetchThreads,
-    initialData: initialThreads,
+    queryFn: async () => {
+      const result = await fetchThreads();
+
+      // fetchThreads may return { data, error } envelope OR a raw array
+      // depending on whether it's been updated to the new pattern.
+      // Handle both shapes defensively.
+      if (Array.isArray(result)) {
+        return result;
+      }
+
+      // Envelope shape: { data: ThreadSummary[], error: string | null }
+      if (result && typeof result === "object" && "data" in result) {
+        const envelope = result as { data: ThreadSummary[] | null; error: string | null };
+        if (envelope.error) {
+          throw new Error(envelope.error);
+        }
+        return Array.isArray(envelope.data) ? envelope.data : [];
+      }
+
+      // Unexpected shape — return empty rather than crash
+      return [];
+    },
+    initialData: Array.isArray(initialThreads) ? initialThreads : [],
     staleTime: 30_000,
   });
 
   const busiest = useMemo(() => {
-    return [...data]
+    // Defensive: guarantee data is an array before spreading
+    // This guards against any future shape regressions
+    const threads = Array.isArray(data) ? data : [];
+    return [...threads]
       .sort((a, b) => b.messageCount - a.messageCount)
       .slice(0, 3);
   }, [data]);
@@ -65,6 +89,12 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
               role="button"
               tabIndex={0}
               onClick={() => selectThread(thread.slug)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  selectThread(thread.slug);
+                }
+              }}
               className={cn(
                 "group/item flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-200 cursor-pointer border",
                 isActive
@@ -113,7 +143,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
         {busiest.length === 0 && (
           <div className="rounded-xl border border-dashed border-border py-8 text-center">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Cooling Down...
+              {isFetching ? "Loading threads..." : "Cooling Down..."}
             </p>
           </div>
         )}
