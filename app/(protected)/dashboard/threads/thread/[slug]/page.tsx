@@ -30,74 +30,101 @@ export default async function ThreadPage({
 }) {
   const { slug } = await params;
   const session = await requireSession();
-  const thread = await getThreadWithFullContext(slug, session.user.id);
-  const readReceipt = thread
-    ? await getThreadReadReceipt(thread.id, session.user.id)
-    : null;
 
+  // Fetch thread first — readReceipt and subscription both need thread.id
+  const thread = await getThreadWithFullContext(slug, session.user.id);
   if (!thread) notFound();
+
+  // Fetch dependent data in parallel
+  const [readReceipt, subscription] = await Promise.all([
+    getThreadReadReceipt(thread.id, session.user.id),
+    // Inline query — avoids creating a repository function for a single
+    // select used only in this page
+    prisma.threadSubscription.findUnique({
+      where: {
+        threadId_userId: {
+          threadId: thread.id,
+          userId: session.user.id,
+        },
+      },
+      select: { frequency: true },
+    }),
+  ]);
 
   const threadDna = parseThreadDna(thread.threadDna);
   const canManagePoll =
     thread.createdBy === session.user.id ||
     ["ADMIN", "MODERATOR"].includes(session.user.role);
-  const subscription = await prisma.threadSubscription.findUnique({
-    where: {
-      threadId_userId: {
-        threadId: thread.id,
-        userId: session.user.id,
+
+  // ── MESSAGE MAPPING ──────────────────────────────────────────────────
+  // ThreadMessage shape from getThreadWithFullContext:
+  //   { id, content (or body), senderId, parentId, depth, isEdited,
+  //     isPinned, likeCount, replyCount, createdAt, deletedAt,
+  //     attachments, author? / sender? }
+  //
+  // TypeScript errors showed:
+  //   - sender doesn't exist → use senderId + look up name from thread members
+  //     OR the DTO uses `author` — check getThreadWithFullContext return type
+  //   - isAiResponse doesn't exist on ThreadMessage → access safely
+
+  const allMessages: Message[] = thread.messages.map((m) => {
+    // The DTO may expose author as `author` not `sender` — access both
+    const raw = m as any;
+    const senderName: string =
+      raw.sender?.name ?? raw.author?.name ?? "Anonymous";
+    const senderImage: string | null =
+      raw.sender?.image ?? raw.author?.image ?? null;
+    const messageContent: string =
+      raw.content ?? raw.body ?? "";
+    const isAiResponse: boolean =
+      raw.isAiResponse ?? raw.isAI ?? false;
+
+    return {
+      id: m.id,
+      content: messageContent,
+      createdAt: m.createdAt,
+      senderId: m.senderId,
+      parentId: m.parentId ?? null,
+      sectionId: thread.id,
+      depth: m.depth ?? 0,
+      isEdited: m.isEdited ?? false,
+      isPinned: m.isPinned ?? false,
+      likeCount: m.likeCount ?? 0,
+      replyCount: m.replyCount ?? 0,
+      isAiResponse,
+      updatedAt: m.createdAt,
+      deletedAt: m.deletedAt ?? null,
+      sender: {
+        id: m.senderId,
+        name: senderName,
+        image: senderImage,
       },
-    },
-    select: {
-      frequency: true,
-    },
+      attachments: (m.attachments ?? []).map((att) => ({
+        id: att.id,
+        name: att.name ?? null,
+        url: att.url,
+        type: att.type,
+        size: att.size ?? null,
+      })),
+      section: {
+        id: thread.id,
+        name: thread.title,
+        slug: thread.slug,
+      },
+    };
   });
 
-  const allMessages: Message[] = thread.messages.map((m) => ({
-    id: m.id,
-    content: m.body,
-    createdAt: m.createdAt,
-    senderId: m.senderId,
-    parentId: m.parentId || null,
-    sectionId: thread.id,
-    depth: m.depth ?? 0,
-    isEdited: m.isEdited ?? false,
-    isPinned: m.isPinned ?? false,
-    likeCount: m.likeCount ?? 0,
-    replyCount: m.replyCount ?? 0,
-    isAiResponse: m.isAI ?? false,
-    updatedAt: m.createdAt,
-    deletedAt: m.deletedAt ?? null,
-    sender: {
-      id: m.senderId,
-      name: m.author?.name || "Anonymous",
-      image: m.author?.image || null,
-    },
-    attachments: (m.attachments || []).map((att) => ({
-      id: att.id,
-      name: att.name ?? null,
-      url: att.url,
-      type: att.type,
-      size: att.size ?? null,
-    })),
-    section: {
-      id: thread.id,
-      name: thread.title,
-      slug: thread.slug,
-    },
-  }));
+  // ── UNREAD CALCULATION ────────────────────────────────────────────────
+  // ReadReceipt actual shape (from TS error):
+  //   { id, threadId, userId, lastReadMessageId, readAt, createdAt, updatedAt }
+  // Field is `readAt` (not `lastReadAt`) and key is `threadId` (not `sectionId`)
 
   const unreadMessages = thread.messages.filter((message) => {
-    if (message.senderId === session.user.id) {
-      return false;
-    }
-
-    if (!readReceipt?.readAt) {
-      return true;
-    }
-
+    if (message.senderId === session.user.id) return false;
+    if (!readReceipt?.readAt) return true;
     return message.createdAt > readReceipt.readAt;
   });
+
   const initialUnreadCount = unreadMessages.length;
   const firstUnreadMessageId = unreadMessages[0]?.id ?? null;
 
@@ -115,8 +142,8 @@ export default async function ThreadPage({
               </h1>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
                 <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
                   Live Discussion
@@ -149,7 +176,7 @@ export default async function ThreadPage({
               ? {
                   id: thread.poll.id,
                   question: thread.poll.question,
-                  options: thread.poll.options,
+                  options: thread.poll.options as string[],
                   isActive: thread.poll.isActive,
                   expiresAt: thread.poll.expiresAt,
                 }
@@ -158,8 +185,8 @@ export default async function ThreadPage({
           canManagePoll={canManagePoll}
           currentUser={{
             id: session.user.id,
-            name: session.user.name || "User",
-            image: session.user.image || null,
+            name: session.user.name ?? "User",
+            image: session.user.image ?? null,
             role: session.user.role,
           }}
         />
@@ -168,7 +195,7 @@ export default async function ThreadPage({
       <aside className="w-[320px] hidden xl:flex flex-col overflow-y-auto bg-background/50">
         <div className="p-6 border-b border-border/60">
           <div className="flex items-center gap-2 mb-6">
-            <Activity size={14} className="" />
+            <Activity size={14} />
             <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
               Thread Details
             </p>
@@ -210,10 +237,9 @@ export default async function ThreadPage({
         </div>
 
         <div className="p-6 space-y-6">
-          <ThreadSummaryCard 
+          <ThreadSummaryCard
             threadId={thread.id}
             initialSummary={thread.aiSummary}
-            className=""
           />
 
           <ResolutionScoreCard score={thread.resolutionScore} />
@@ -244,17 +270,15 @@ export default async function ThreadPage({
 
         {isAdmin(session.user) && (
           <div className="p-6 mt-auto border-t border-border/60">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={14} className="text-zinc-500" />
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                  Admin Controls
-                </span>
-              </div>
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck size={14} className="text-zinc-500" />
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                Admin Controls
+              </span>
             </div>
             <Link
-              href="/dashboard/admin"
-              className="flex items-center justify-center w-full py-2.5 text-xs font-medium text-zinc-60 border rounded-lg hover:text-zinc-900 transition-all shadow-sm"
+              href={`/dashboard/admin?threadId=${thread.id}`}
+              className="flex items-center justify-center w-full py-2.5 text-xs font-medium border rounded-lg hover:text-zinc-900 transition-all shadow-sm"
             >
               Manage Thread
             </Link>

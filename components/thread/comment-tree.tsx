@@ -155,12 +155,39 @@ export function CommentTree({
     states.forEach((isCollapsed, messageId) => {
       if (isCollapsed) collapsed.add(messageId);
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCollapsedIds(collapsed);
   }, [threadId]);
 
-  // Sync messages prop
+  // Sync messages prop and handle streaming updates
   useEffect(() => {
-    setLocalMessages(messages);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalMessages((prev) => {
+      // Create a map of existing messages for quick lookup
+      const existingMap = new Map(prev.map((msg) => [msg.id, msg]));
+      
+      // Create a map of new messages for quick lookup
+      const newMap = new Map(messages.map((msg) => [msg.id, msg]));
+      
+      // Update with new messages, preserving existing ones
+      const updated = messages.map((msg) => {
+        // If message exists and has content changes, update it (for streaming)
+        if (existingMap.has(msg.id) && existingMap.get(msg.id)?.content !== msg.content) {
+          return msg;
+        }
+        // If message is new, add it
+        if (!existingMap.has(msg.id)) {
+          return msg;
+        }
+        // If no changes, keep existing
+        return existingMap.get(msg.id)!;
+      });
+      
+      // Handle case where messages are removed from props
+      // We only keep messages that are present in the new messages list
+      // Filter out messages that are no longer in the new messages list
+      return updated.filter(msg => newMap.has(msg.id));
+    });
   }, [messages]);
 
   // Build tree from flat messages — memoized
@@ -390,20 +417,6 @@ function CommentNode({
   const parentMessage = node.parentId
     ? allMessages.find((m) => m.id === node.parentId)
     : null;
-
-  useEffect(() => {
-    setEditContent(node.content);
-  }, [node.content]);
-
-  useEffect(() => {
-    if (!isEditing || !editTextareaRef.current) {
-      return;
-    }
-
-    const textarea = editTextareaRef.current;
-    textarea.style.height = "0px";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 250)}px`;
-  }, [isEditing, editContent]);
 
   const handleSaveEdit = useCallback(async () => {
     const trimmed = editContent.trim();

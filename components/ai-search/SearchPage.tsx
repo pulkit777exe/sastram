@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,11 +52,6 @@ export function SearchPage() {
   const [hasKeys, setHasKeys] = useState(() =>
     typeof window !== "undefined" ? hasAllApiKeys() : false,
   );
-
-  // Sync hasKeys on mount (SSR-safe)
-  useEffect(() => {
-    setHasKeys(hasAllApiKeys());
-  }, []);
 
   const addPastSearch = useCallback(
     (query: string, resultCount: number) => {
@@ -317,6 +312,7 @@ export function SearchPage() {
                 className="max-w-3xl mx-auto space-y-4"
               >
                 <SynthesisCard
+                  key={result.synthesis.content}
                   content={result.synthesis.content}
                   conflictData={result.synthesis.conflictData}
                   confidence={result.synthesis.confidence}

@@ -49,55 +49,71 @@ export function ThreadLiveWrapper({
   const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(
     initialFirstUnreadMessageId,
   );
-  const animateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMarkingReadRef = useRef(false);
+  const ownPendingIds = useRef<Set<string>>(new Set());
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
-  const [animateId, setAnimateId] = useState<string | null>(null);
+
+  // ── REFS for markThreadAsRead ─────────────────────────────────────────
+  // Avoids stale closure AND prevents "setState inside setState" React warning.
+  // markThreadAsRead reads from these refs rather than from state directly.
+
+  const liveMessagesRef = useRef<Message[]>(messages);
+  useEffect(() => {
+    liveMessagesRef.current = liveMessages;
+  }, [liveMessages]);
+
+  const unreadCountRef = useRef(initialUnreadCount);
+  useEffect(() => {
+    unreadCountRef.current = unreadCount;
+  }, [unreadCount]);
+
+  // ── DERIVED ───────────────────────────────────────────────────────────
 
   const pinnedMessage = useMemo(
-    () => liveMessages.find((message) => message.isPinned) ?? null,
+    () => liveMessages.find((m) => m.isPinned) ?? null,
     [liveMessages],
   );
 
-  const hasAiMention = useCallback((content: string) => /\B@ai\b/i.test(content), []);
+  const hasAiMention = useCallback(
+    (content: string) => /\B@ai\b/i.test(content),
+    [],
+  );
+
+  const isAtBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
+  }, []);
+
+  // ── @AI STATUS ────────────────────────────────────────────────────────
 
   const setAiPending = useCallback((messageId: string) => {
     setAiInlineStatus((prev) => ({ ...prev, [messageId]: "pending" }));
-
     const existing = aiInlineTimerRef.current.get(messageId);
-    if (existing) {
-      clearTimeout(existing);
-    }
-
+    if (existing) clearTimeout(existing);
+    // 2 minute timeout to allow for worker cold starts
     const timer = setTimeout(() => {
       setAiInlineStatus((prev) => {
-        if (prev[messageId] !== "pending") {
-          return prev;
-        }
-        return {
-          ...prev,
-          [messageId]: "failed",
-        };
+        if (prev[messageId] !== "pending") return prev;
+        return { ...prev, [messageId]: "failed" };
       });
-    }, 35000);
-
+      aiInlineTimerRef.current.delete(messageId);
+    }, 120_000);
     aiInlineTimerRef.current.set(messageId, timer);
   }, []);
 
   const clearAiStatus = useCallback((messageId: string) => {
     setAiInlineStatus((prev) => {
-      if (!(messageId in prev)) {
-        return prev;
-      }
+      if (!(messageId in prev)) return prev;
       const next = { ...prev };
       delete next[messageId];
       return next;
     });
-
     const timer = aiInlineTimerRef.current.get(messageId);
     if (timer) {
       clearTimeout(timer);
@@ -105,28 +121,22 @@ export function ThreadLiveWrapper({
     }
   }, []);
 
-  const isAtBottom = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return true;
-    const threshold = 80;
-    return (
-      container.scrollHeight - container.scrollTop - container.clientHeight <=
-      threshold
-    );
-  }, []);
+  // ── MARK AS READ ──────────────────────────────────────────────────────
+  // Reads from refs — NOT from state or inside a setState updater.
+  // Previous version had setState calls inside setLiveMessages updater
+  // which caused "Cannot update component while rendering" React error.
 
   const markThreadAsRead = useCallback(
     async (force: boolean = false) => {
-      if (unreadCount <= 0 || isMarkingReadRef.current) {
-        return;
-      }
-      if (!force && !isAtBottom()) {
-        return;
-      }
+      if (unreadCountRef.current <= 0) return;
+      if (isMarkingReadRef.current) return;
+      if (!force && !isAtBottom()) return;
 
-      const latestMessageId = liveMessages[liveMessages.length - 1]?.id ?? null;
+      const latestId =
+        liveMessagesRef.current[liveMessagesRef.current.length - 1]?.id ?? null;
+
       isMarkingReadRef.current = true;
-      const result = await markThreadReadAction(threadId, latestMessageId);
+      const result = await markThreadReadAction(threadId, latestId);
       isMarkingReadRef.current = false;
 
       if (result.error) {
@@ -137,43 +147,78 @@ export function ThreadLiveWrapper({
       setUnreadCount(0);
       setFirstUnreadMessageId(null);
     },
-    [isAtBottom, liveMessages, threadId, unreadCount],
+    [isAtBottom, threadId],
   );
 
-  const handleWsNewMessage = useCallback((newMessage: Message) => {
-    const wasAtBottom = isAtBottom();
-    setLiveMessages((prev) => [...prev, newMessage]);
-    setAnimateId(newMessage.id);
-    if (animateTimerRef.current) clearTimeout(animateTimerRef.current);
-    animateTimerRef.current = setTimeout(() => setAnimateId(null), 700);
-    if (!wasAtBottom) {
-      setUnreadCount((prev) => prev + 1);
-      setFirstUnreadMessageId((prev) => prev ?? newMessage.id);
-    }
+  // ── WEBSOCKET HANDLERS ────────────────────────────────────────────────
 
-    if (newMessage.isAiResponse && newMessage.parentId) {
-      clearAiStatus(newMessage.parentId);
-    } else if (hasAiMention(newMessage.content)) {
-      setAiPending(newMessage.id);
-    }
-  }, [clearAiStatus, hasAiMention, isAtBottom, setAiPending]);
+  const handleWsNewMessage = useCallback(
+    (newMessage: Message) => {
+      const wasAtBottom = isAtBottom();
+
+      setLiveMessages((prev) => {
+        // Own message already added via handleMessagePosted
+        if (ownPendingIds.current.has(newMessage.id)) {
+          ownPendingIds.current.delete(newMessage.id);
+          return prev.map((m) =>
+            m.id === newMessage.id ? { ...m, ...newMessage } : m,
+          );
+        }
+
+        // Streaming content update (same ID, new content from AI)
+        const existingIndex = prev.findIndex((m) => m.id === newMessage.id);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            content: newMessage.content,
+          };
+          return updated;
+        }
+
+        // Genuinely new message — schedule unread update OUTSIDE updater
+        // via microtask to avoid setState-in-setState React violation
+        if (!wasAtBottom) {
+          Promise.resolve().then(() => {
+            setUnreadCount((c) => c + 1);
+            setFirstUnreadMessageId((id) => id ?? newMessage.id);
+          });
+        }
+
+        return [...prev, newMessage];
+      });
+    },
+    [isAtBottom],
+  );
+
+  // Called by WebSocket hook when isComplete:true arrives on an AI message
+  const handleAiComplete = useCallback(
+    (parentMessageId: string) => {
+      clearAiStatus(parentMessageId);
+    },
+    [clearAiStatus],
+  );
 
   const handleWsMessageDeleted = useCallback((messageId: string) => {
     setLiveMessages((prev) =>
       prev.map((m) =>
-        m.id === messageId ? { ...m, deletedAt: new Date() } : m
-      )
+        m.id === messageId ? { ...m, deletedAt: new Date() } : m,
+      ),
     );
   }, []);
 
-  const handleWsPinUpdate = useCallback((messageId: string, isPinned: boolean) => {
-    setLiveMessages((prev) =>
-      prev.map((message) => ({
-        ...message,
-        isPinned: message.id === messageId ? isPinned : isPinned ? false : message.isPinned,
-      })),
-    );
-  }, []);
+  const handleWsPinUpdate = useCallback(
+    (messageId: string, isPinned: boolean) => {
+      setLiveMessages((prev) =>
+        prev.map((m) => ({
+          ...m,
+          isPinned:
+            m.id === messageId ? isPinned : isPinned ? false : m.isPinned,
+        })),
+      );
+    },
+    [],
+  );
 
   const handleTypingUpdate = useCallback((typers: TypingUser[]) => {
     setTypingUsers(typers);
@@ -186,62 +231,59 @@ export function ThreadLiveWrapper({
     onMessageDeleted: handleWsMessageDeleted,
     onPinUpdate: handleWsPinUpdate,
     onTypingUpdate: handleTypingUpdate,
+    onAiComplete: handleAiComplete, // ← clears "pending" when stream ends
   });
+
+  // ── POST HANDLER ──────────────────────────────────────────────────────
 
   const handleMessagePosted = useCallback(
     (newMessage: Message) => {
+      ownPendingIds.current.add(newMessage.id);
       setLiveMessages((prev) => [...prev, newMessage]);
-      setAnimateId(newMessage.id);
-      if (animateTimerRef.current) clearTimeout(animateTimerRef.current);
-      animateTimerRef.current = setTimeout(() => setAnimateId(null), 700);
       emitTypingStop();
-
       if (hasAiMention(newMessage.content)) {
         setAiPending(newMessage.id);
       }
     },
-    [emitTypingStop, hasAiMention, setAiPending]
+    [emitTypingStop, hasAiMention, setAiPending],
   );
+
+  // ── SCROLL TO FIRST UNREAD ────────────────────────────────────────────
 
   const scrollToFirstUnread = useCallback(() => {
     if (firstUnreadMessageId) {
-      const target = document.getElementById(`message-${firstUnreadMessageId}`);
-      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById(`message-${firstUnreadMessageId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-
-    const container = scrollContainerRef.current;
-    if (container) {
-      container.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [firstUnreadMessageId]);
 
-  useEffect(() => {
-    if (unreadCount <= 0) {
-      return;
-    }
+  // ── AUTO READ TIMER ───────────────────────────────────────────────────
 
-    const timeout = setTimeout(() => {
+  useEffect(() => {
+    if (unreadCount <= 0) return;
+    const timer = setTimeout(() => {
       void markThreadAsRead(true);
-    }, 30000);
+    }, 30_000);
+    return () => clearTimeout(timer);
+  }, [unreadCount, markThreadAsRead]);
 
-    return () => clearTimeout(timeout);
-  }, [markThreadAsRead, unreadCount]);
+  // ── CLEANUP ───────────────────────────────────────────────────────────
 
   useEffect(() => {
+  const timers = aiInlineTimerRef.current;
     return () => {
-      if (readDebounceRef.current) {
-        clearTimeout(readDebounceRef.current);
-      }
-      for (const timer of aiInlineTimerRef.current.values()) {
+      if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
+    for (const timer of timers.values()) {
         clearTimeout(timer);
       }
-      aiInlineTimerRef.current.clear();
+    timers.clear();
     };
   }, []);
 
-  // Suppress animateId to avoid lint — it's available if CommentTree needs it
-  void animateId;
+  // ── RENDER ────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -249,9 +291,7 @@ export function ThreadLiveWrapper({
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto"
         onScroll={() => {
-          if (readDebounceRef.current) {
-            clearTimeout(readDebounceRef.current);
-          }
+          if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
           readDebounceRef.current = setTimeout(() => {
             void markThreadAsRead(false);
           }, 250);
@@ -268,14 +308,15 @@ export function ThreadLiveWrapper({
             <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold text-blue-700">
-                  {unreadCount} unread {unreadCount === 1 ? "message" : "messages"}
+                  {unreadCount} unread{" "}
+                  {unreadCount === 1 ? "message" : "messages"}
                 </p>
                 <button
                   type="button"
                   className="text-xs font-medium text-blue-700 underline hover:text-blue-900"
                   onClick={scrollToFirstUnread}
                 >
-                  Scroll to first unread message
+                  Scroll to first unread
                 </button>
               </div>
             </div>
@@ -286,7 +327,7 @@ export function ThreadLiveWrapper({
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-amber-700">
-                    📌 Pinned message by {pinnedMessage.sender.name || "Anonymous"} ·{" "}
+                    📌 Pinned by {pinnedMessage.sender.name || "Anonymous"} ·{" "}
                     <TimeAgo date={pinnedMessage.createdAt} />
                   </p>
                   <p className="mt-1 truncate text-sm text-amber-900">
@@ -296,12 +337,11 @@ export function ThreadLiveWrapper({
                 <button
                   type="button"
                   className="shrink-0 text-xs font-medium text-amber-700 hover:text-amber-900 underline"
-                  onClick={() => {
-                    const target = document.getElementById(
-                      `message-${pinnedMessage.id}`,
-                    );
-                    target?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
+                  onClick={() =>
+                    document
+                      .getElementById(`message-${pinnedMessage.id}`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                  }
                 >
                   Jump to message
                 </button>
@@ -312,36 +352,51 @@ export function ThreadLiveWrapper({
           {liveMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-6 h-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                <svg
+                  className="w-6 h-6 text-muted-foreground"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
                 </svg>
               </div>
-              <h3 className="text-foreground font-medium mb-1">No comments yet</h3>
+              <h3 className="text-foreground font-medium mb-1">
+                No comments yet
+              </h3>
               <p className="text-muted-foreground text-sm">
                 Be the first to share your thoughts on this topic!
               </p>
             </div>
           ) : (
-      <CommentTree
-            messages={liveMessages}
-            threadId={threadId}
-            currentUser={currentUser}
-            aiInlineStatus={aiInlineStatus}
-            onTypingStart={emitTypingStart}
-            onTypingStop={emitTypingStop}
-          />
+            <CommentTree
+              messages={liveMessages}
+              threadId={threadId}
+              currentUser={currentUser}
+              aiInlineStatus={aiInlineStatus}
+              onTypingStart={emitTypingStart}
+              onTypingStop={emitTypingStop}
+            />
           )}
         </div>
       </div>
 
-      {/* Typing indicators */}
       {typingUsers.length > 0 && (
         <div className="px-8 py-1.5 text-xs text-muted-foreground">
           <div className="max-w-4xl mx-auto flex items-center gap-2">
             <div className="flex gap-0.5">
-              <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+              {[0, 150, 300].map((delay) => (
+                <span
+                  key={delay}
+                  className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce"
+                  style={{ animationDelay: `${delay}ms` }}
+                />
+              ))}
             </div>
             <span>
               {typingUsers.length === 1

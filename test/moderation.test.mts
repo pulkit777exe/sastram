@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { assert } from "chai";
 import { RegexFilter } from "@/lib/services/moderation";
 import { prisma } from "@/lib/infrastructure/prisma";
 
@@ -27,7 +27,7 @@ describe("Moderation System", () => {
         timestamp: new Date(),
       });
 
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
 
     it("RegexFilter should allow benign content without rules", async () => {
@@ -40,7 +40,7 @@ describe("Moderation System", () => {
         timestamp: new Date(),
       });
 
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
   });
 });

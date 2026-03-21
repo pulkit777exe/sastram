@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Sparkles, Clock } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 import type { ConflictInfo } from "@/modules/ai-search/types";
 
 interface SynthesisCardProps {
@@ -39,22 +39,14 @@ export function SynthesisCard({
   queryType,
 }: SynthesisCardProps) {
   const [displayedContent, setDisplayedContent] = useState("");
-  const [isStreaming, setIsStreaming] = useState(true);
+  const [isStreaming, setIsStreaming] = useState(Boolean(content));
   const containerRef = useRef<HTMLDivElement>(null);
   const charIndex = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!content) {
-      setDisplayedContent("");
-      setIsStreaming(false);
-      return;
-    }
-
-    // Reset for new content
     charIndex.current = 0;
-    setDisplayedContent("");
-    setIsStreaming(true);
+    if (!content) return;
 
     intervalRef.current = setInterval(() => {
       if (charIndex.current >= content.length) {

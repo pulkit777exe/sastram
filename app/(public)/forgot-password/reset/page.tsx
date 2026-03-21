@@ -17,24 +17,25 @@ function hasSpecial(value: string) {
 
 export default function ForgotPasswordResetPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
+  const [email] = useState(() =>
+    typeof window !== "undefined"
+      ? window.sessionStorage.getItem("forgot_password_email") ?? ""
+      : "",
+  );
+  const [otp] = useState(() =>
+    typeof window !== "undefined"
+      ? window.sessionStorage.getItem("forgot_password_otp") ?? ""
+      : "",
+  );
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const storedEmail = window.sessionStorage.getItem("forgot_password_email");
-    const storedOtp = window.sessionStorage.getItem("forgot_password_otp");
-
-    if (!storedEmail || !storedOtp) {
+    if (!email || !otp) {
       router.replace("/forgot-password");
-      return;
     }
-
-    setEmail(storedEmail);
-    setOtp(storedOtp);
-  }, [router]);
+  }, [email, otp, router]);
 
   const validation = useMemo(() => {
     const minLength = password.length >= 8;
