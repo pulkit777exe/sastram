@@ -1,19 +1,17 @@
-import { auth } from "@/lib/services/auth";
-import { headers } from "next/headers";
 import { SettingsForm } from "@/components/dashboard/settings-form";
 import { NewsletterManagement } from "@/components/dashboard/newsletter-management";
+import { PreferencesForm } from "@/components/dashboard/preferences-form";
 import { getUserNewsletterSubscriptions } from "@/modules/newsletter/actions";
 import { SettingsTabs } from "@/components/dashboard/settings-tabs";
 import { prisma } from "@/lib/infrastructure/prisma";
+import { getSession } from "@/modules/auth";
 
 export default async function SettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session?.user) {
     return (
@@ -24,9 +22,10 @@ export default async function SettingsPage({
   }
 
   const tab = (await searchParams).tab || "profile";
-  const subscriptions = await getUserNewsletterSubscriptions();
+  const subscriptionsResult = await getUserNewsletterSubscriptions();
+  const subscriptions = subscriptionsResult.data ?? [];
 
-  const user = await prisma.user.findUnique({
+   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
       id: true,
@@ -37,10 +36,11 @@ export default async function SettingsPage({
       website: true,
       twitter: true,
       github: true,
-      linkedin: true,
       image: true,
       avatarUrl: true,
       bannerUrl: true,
+      preferences: true,
+      profilePrivacy: true,
     },
   });
 
@@ -59,6 +59,7 @@ export default async function SettingsPage({
       {tab === "newsletters" && (
         <NewsletterManagement subscriptions={subscriptions} />
       )}
+      {tab === "preferences" && user && <PreferencesForm user={user} />}
     </div>
   );
 }

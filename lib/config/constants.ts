@@ -25,17 +25,10 @@ export const REPORT_STATUS = {
 export type ReportStatus = (typeof REPORT_STATUS)[keyof typeof REPORT_STATUS];
 
 export const REPORT_CATEGORIES = {
-  HATE_SPEECH: "HATE_SPEECH",
-  HARASSMENT: "HARASSMENT",
-  VIOLENCE_THREATS: "VIOLENCE_THREATS",
-  SELF_HARM: "SELF_HARM",
-  ADULT_CONTENT: "ADULT_CONTENT",
   SPAM: "SPAM",
-  SCAM_FRAUD: "SCAM_FRAUD",
+  HARASSMENT: "HARASSMENT",
   MISINFORMATION: "MISINFORMATION",
-  IMPERSONATION: "IMPERSONATION",
-  PRIVATE_INFO: "PRIVATE_INFO",
-  COPYRIGHT: "COPYRIGHT",
+  ADULT_CONTENT: "ADULT_CONTENT",
   OTHER: "OTHER",
 } as const;
 
@@ -43,17 +36,10 @@ export type ReportCategory =
   (typeof REPORT_CATEGORIES)[keyof typeof REPORT_CATEGORIES];
 
 export const REPORT_CATEGORY_LABELS: Record<ReportCategory, string> = {
-  HATE_SPEECH: "Hate Speech or Discrimination",
-  HARASSMENT: "Harassment or Bullying",
-  VIOLENCE_THREATS: "Threatens Violence",
-  SELF_HARM: "Promotes Self-Harm",
-  ADULT_CONTENT: "Sexual or Adult Content",
   SPAM: "Spam",
-  SCAM_FRAUD: "Scam or Fraud",
+  HARASSMENT: "Harassment or Bullying",
   MISINFORMATION: "False or Misleading Information",
-  IMPERSONATION: "Impersonation",
-  PRIVATE_INFO: "Shares Private Information",
-  COPYRIGHT: "Copyright Violation",
+  ADULT_CONTENT: "Sexual or Adult Content",
   OTHER: "Something Else",
 };
 

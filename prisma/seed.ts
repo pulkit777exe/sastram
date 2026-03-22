@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/infrastructure/prisma";
 import { randomUUID } from "crypto";
-
-const prisma = new PrismaClient();
 
 function slugify(title: string) {
   return title
@@ -14,7 +12,6 @@ function slugify(title: string) {
 async function createThread({
   name,
   description,
-  icon,
   userId,
   communityId,
 }: {
@@ -25,10 +22,9 @@ async function createThread({
   communityId?: string;
 }) {
   return prisma.section.create({
-    data: {
+     data: {
       name,
       description,
-      icon,
       slug: `${slugify(name)}-${randomUUID()}`,
       createdBy: userId,
       communityId,
@@ -40,7 +36,17 @@ async function createThread({
           },
         ],
       },
-    },
+      members: {
+        create: [
+          {
+            userId,
+            role: "OWNER",
+            status: "ACTIVE",
+            joinedAt: new Date(),
+          },
+        ],
+      },
+     },
   });
 }
 

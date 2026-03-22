@@ -20,10 +20,22 @@ export const pinMessageSchema = z.object({
   messageId: z.string().cuid("Invalid message ID"),
 });
 
+export const deleteMessageSchema = z.object({
+  messageId: z.string().cuid("Invalid message ID"),
+});
+
 export const getMessageEditHistorySchema = z.object({
   messageId: z.string().cuid("Invalid message ID"),
 });
 
+export const searchMentionUsersSchema = z.object({
+  sectionId: z.string().cuid("Invalid section ID"),
+  query: z
+    .string()
+    .trim()
+    .min(1, "Query is required")
+    .max(50, "Query must be less than 50 characters"),
+});
+
 // Re-export from lib/schemas/database for backward compatibility
 export { createMessageWithAttachmentsSchema } from "@/lib/schemas/database";
-

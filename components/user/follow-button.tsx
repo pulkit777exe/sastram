@@ -24,37 +24,21 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
     try {
       if (isFollowing) {
         const result = await unfollowUser(userId);
-        if (result && typeof result === "object") {
-          if ("error" in result && result.error) {
-            toast.error(result.error);
-          } else if ("message" in result && result.message) {
-            toast.error(result.message);
-          } else if ("success" in result && result.success) {
-            setIsFollowing(false);
-            toast.success("Unfollowed successfully");
-            router.refresh();
-          } else {
-            toast.error("Failed to unfollow");
-          }
+        if (result?.error) {
+          toast.error(result.error);
         } else {
-          toast.error("Failed to unfollow");
+          setIsFollowing(false);
+          toast.success("Unfollowed successfully");
+          router.refresh();
         }
       } else {
         const result = await followUser(userId);
-        if (result && typeof result === "object") {
-          if ("error" in result && result.error) {
-            toast.error(result.error);
-          } else if ("message" in result && result.message) {
-            toast.error(result.message);
-          } else if ("success" in result && result.success) {
-            setIsFollowing(true);
-            toast.success("Following successfully");
-            router.refresh();
-          } else {
-            toast.error("Failed to follow");
-          }
+        if (result?.error) {
+          toast.error(result.error);
         } else {
-          toast.error("Failed to follow");
+          setIsFollowing(true);
+          toast.success("Following successfully");
+          router.refresh();
         }
       }
     } catch (error) {
@@ -92,4 +76,3 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
     </motion.div>
   );
 }
-

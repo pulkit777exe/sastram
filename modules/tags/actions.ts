@@ -2,8 +2,6 @@
 
 import { requireSession } from "@/modules/auth/session";
 import { revalidatePath } from "next/cache";
-import { validate } from "@/lib/utils/validation";
-import { handleError } from "@/lib/utils/errors";
 import {
   createTag as createTagRepo,
   addTagToThread as addTagToThreadRepo,
@@ -24,70 +22,85 @@ const tagThreadSchema = z.object({
 });
 
 export async function createTagAction(name: string, color?: string) {
-  const session = await requireSession();
-
-  const validation = validate(createTagSchema, { name, color });
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = createTagSchema.safeParse({ name, color });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
-    const tag = await createTagRepo(validation.data.name, validation.data.color);
-    return { success: true, data: tag };
+    await requireSession();
+    const tag = await createTagRepo(parsed.data.name, parsed.data.color);
+    return { data: tag, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[createTagAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function addTagToThreadAction(threadId: string, tagId: string) {
-  const session = await requireSession();
-
-  const validation = validate(tagThreadSchema, { threadId, tagId });
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = tagThreadSchema.safeParse({ threadId, tagId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
-    await addTagToThreadRepo(validation.data.threadId, validation.data.tagId);
-    revalidatePath(`/dashboard/threads/thread/${threadId}`);
-    return { success: true };
+    await requireSession();
+    await addTagToThreadRepo(parsed.data.threadId, parsed.data.tagId);
+    revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[addTagToThreadAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function removeTagFromThreadAction(threadId: string, tagId: string) {
-  const session = await requireSession();
-
-  const validation = validate(tagThreadSchema, { threadId, tagId });
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = tagThreadSchema.safeParse({ threadId, tagId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
-    await removeTagFromThreadRepo(validation.data.threadId, validation.data.tagId);
-    revalidatePath(`/dashboard/threads/thread/${threadId}`);
-    return { success: true };
+    await requireSession();
+    await removeTagFromThreadRepo(parsed.data.threadId, parsed.data.tagId);
+    revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[removeTagFromThreadAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getThreadTagsAction(threadId: string) {
+  const parsed = z.object({ threadId: z.string().cuid() }).safeParse({
+    threadId,
+  });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
+
   try {
-    const tags = await getThreadTagsRepo(threadId);
-    return { success: true, data: tags };
+    const tags = await getThreadTagsRepo(parsed.data.threadId);
+    return { data: tags, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getThreadTagsAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getPopularTagsAction(limit?: number) {
+  const parsed = z
+    .object({ limit: z.number().int().positive().max(100).optional() })
+    .safeParse({ limit });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
+  }
+
   try {
-    const tags = await getPopularTagsRepo(limit || 20);
-    return { success: true, data: tags };
+    const tags = await getPopularTagsRepo(parsed.data.limit || 20);
+    return { data: tags, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getPopularTagsAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
-

@@ -19,25 +19,31 @@ const communitySchema = z.object({
 });
 
 export async function createCommunityAction(formData: FormData) {
-  const session = await requireSession();
-  assertAdmin(session.user);
-
   const parsed = communitySchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description"),
   });
 
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid community data");
+    return { data: null, error: "Invalid input" };
   }
 
-  const slug = buildSlug(parsed.data.title);
-  await createCommunity({
-    title: parsed.data.title,
-    description: parsed.data.description,
-    slug,
-    createdBy: session.user.id,
-  });
+  try {
+    const session = await requireSession();
+    assertAdmin(session.user);
 
-  revalidatePath("/dashboard");
+    const slug = buildSlug(parsed.data.title);
+    await createCommunity({
+      title: parsed.data.title,
+      description: parsed.data.description,
+      slug,
+      createdBy: session.user.id,
+    });
+
+    revalidatePath("/dashboard");
+    return { data: null, error: null };
+  } catch (error) {
+    console.error("[createCommunityAction]", error);
+    return { data: null, error: "Something went wrong" };
+  }
 }

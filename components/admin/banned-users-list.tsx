@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search } from "lucide-react";
-import { format } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils/cn";
 
 export interface BannedUser {
@@ -149,7 +149,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(ban.createdAt), "dd MMM yyyy")}
+                    <TimeAgo date={ban.createdAt} />
                   </TableCell>
                   <TableCell className="text-sm">{ban.reason}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">

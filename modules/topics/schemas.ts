@@ -12,6 +12,6 @@ export const createTopicSchema = z.object({
   description: z.string()
     .max(CONTENT_LIMITS.DESCRIPTION_MAX_LENGTH, `Description must be less than ${CONTENT_LIMITS.DESCRIPTION_MAX_LENGTH} characters`)
     .optional(),
+  tags: z.array(z.string().trim().min(1).max(30)).max(5).optional(),
   icon: z.string().optional(),
 });
-

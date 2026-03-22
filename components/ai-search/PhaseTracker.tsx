@@ -23,7 +23,7 @@ function getPhaseIndex(phase: Phase): number {
 }
 
 export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(() => Date.now() - startTime);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentIndex = getPhaseIndex(currentPhase);
 
@@ -34,11 +34,7 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
       intervalRef.current = null;
     }
 
-    if (currentPhase === "done") {
-      // Final snapshot — no interval needed
-      setElapsed(Date.now() - startTime);
-      return;
-    }
+    if (currentPhase === "done") return;
 
     // Live counter
     intervalRef.current = setInterval(() => {

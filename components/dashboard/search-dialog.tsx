@@ -38,14 +38,12 @@ export function SearchDialog({
       try {
         const res = await searchUsersAction(query, 5);
         
-        if (res && 'success' in res && res.success && res.data) {
+        if (res?.data) {
           setData(res.data.users);
         } else {
           setData([]);
-          if (res && 'error' in res) {
+          if (res?.error) {
             console.error(res.error);
-          } else if (res && 'message' in res) {
-            console.error(res.message);
           }
         }
       } catch (error) {

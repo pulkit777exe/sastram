@@ -1,4 +1,5 @@
-import { requireSession, assertAdmin } from "@/modules/auth/session";
+import { assertAdmin } from "@/modules/auth/session";
+import { getSession } from "@/modules/auth/session";
 import { listCommunities } from "@/modules/communities/repository";
 import { listThreads } from "@/modules/threads/repository";
 import { createCommunityAction } from "@/modules/communities/actions";
@@ -15,13 +16,29 @@ import Link from "next/link";
 import { Flag } from "lucide-react";
 
 export default async function AdminDashboardPage() {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return null;
   assertAdmin(session.user);
 
   const [communities, { threads }] = await Promise.all([
     listCommunities(),
     listThreads(),
   ]);
+
+  const handleCreateCommunity = async (formData: FormData) => {
+    "use server";
+    await createCommunityAction(formData);
+  };
+
+  const handleCreateThread = async (formData: FormData) => {
+    "use server";
+    await createThreadAction(formData);
+  };
+
+  const handleDeleteThread = async (threadId: string) => {
+    "use server";
+    await deleteThreadAction(threadId);
+  };
 
   return (
     <div className="space-y-8">
@@ -67,7 +84,7 @@ export default async function AdminDashboardPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <form action={createCommunityAction} className="space-y-4">
+            <form action={handleCreateCommunity} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="community-title">Title</Label>
                 <Input
@@ -100,7 +117,7 @@ export default async function AdminDashboardPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <form action={createThreadAction} className="space-y-4">
+            <form action={handleCreateThread} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="thread-title">Title</Label>
                 <Input
@@ -163,7 +180,7 @@ export default async function AdminDashboardPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {threads.map((thread) => {
-                const deleteAction = deleteThreadAction.bind(null, thread.id);
+                const deleteAction = handleDeleteThread.bind(null, thread.id);
                 return (
                   <tr key={thread.id} className="text-slate-700">
                     <td className="py-3 font-medium">{thread.name}</td>

@@ -2,6 +2,8 @@
  * Message domain types
  */
 
+import type { Message } from "@/lib/types/index";
+
 export interface MessageWithDetails {
   id: string;
   content: string;
@@ -13,6 +15,9 @@ export interface MessageWithDetails {
   depth: number;
   isEdited: boolean;
   isPinned: boolean;
+  likeCount: number;
+  replyCount: number;
+  isAiResponse: boolean;
   sender: {
     id: string;
     name: string | null;
@@ -31,6 +36,18 @@ export interface MessageWithDetails {
   }>;
 }
 
+/**
+ * A message node in the nested reply tree.
+ * Extends the flat Message type with children and collapse state.
+ */
+export interface MessageNode extends Message {
+  children: MessageNode[];
+  isCollapsed: boolean;
+  likeCount: number;
+  replyCount: number;
+  isAiResponse: boolean;
+}
+
 export interface MessageEditHistory {
   id: string;
   content: string;
@@ -46,4 +63,3 @@ export interface PostMessageResult {
   createdAt: Date;
   sectionId: string;
 }
-

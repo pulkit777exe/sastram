@@ -11,6 +11,8 @@ export {
   deleteThread,
 } from "./repository";
 
+export { getThreadWithFullContext } from "./queries";
+
 export {
   buildThreadSlug,
   buildThreadDTO,

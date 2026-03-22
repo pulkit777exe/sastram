@@ -9,6 +9,7 @@ import {
   Globe,
   MessageCircle,
 } from "lucide-react";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 
 interface SourceCardProps {
   title: string;
@@ -49,19 +50,6 @@ const TIER_CONFIG = {
     desc: "Blog",
   },
 };
-
-function formatDate(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
 
 export function SourceCard({
   title,
@@ -120,7 +108,7 @@ export function SourceCard({
             </span>
             {publishedDate && (
               <span className="text-[10px] text-muted-foreground/70">
-                · {formatDate(publishedDate)}
+                · <TimeAgo date={publishedDate} />
               </span>
             )}
             <span className="text-[10px] text-muted-foreground/40">
@@ -149,8 +137,8 @@ export function SourceCard({
           <AlertTriangle size={10} />
           <span>
             Content from{" "}
-            {publishedDate ? formatDate(publishedDate) : "unknown date"} — may
-            be outdated
+            {publishedDate ? <TimeAgo date={publishedDate} /> : "unknown date"}{" "}
+            — may be outdated
           </span>
         </div>
       )}

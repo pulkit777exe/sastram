@@ -1,22 +1,25 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { dedupe } from "@/lib/dedupe";
 
 export async function getUserReputation(userId: string) {
-  let reputation = await prisma.userReputation.findUnique({
-    where: { userId },
-  });
-
-  if (!reputation) {
-    // Create initial reputation record
-    reputation = await prisma.userReputation.create({
-      data: {
-        userId,
-        points: 0,
-        level: 1,
-      },
+  return dedupe(`reputation:user:${userId}`, async () => {
+    let reputation = await prisma.userReputation.findUnique({
+      where: { userId },
     });
-  }
 
-  return reputation;
+    if (!reputation) {
+      // Create initial reputation record
+      reputation = await prisma.userReputation.create({
+        data: {
+          userId,
+          points: 0,
+          level: 1,
+        },
+      });
+    }
+
+    return reputation;
+  });
 }
 
 export async function awardReputation(
@@ -38,32 +41,35 @@ export async function awardReputation(
 }
 
 export async function calculateReputationPoints(userId: string) {
-  const [threadCount, messageCount, reactionCount, followerCount] = await Promise.all([
-    prisma.section.count({
-      where: {
-        createdBy: userId,
-        deletedAt: null,
-      },
-    }),
-    prisma.message.count({
-      where: {
-        senderId: userId,
-        deletedAt: null,
-      },
-    }),
-    prisma.reaction.count({
-      where: {
-        message: {
-          senderId: userId,
-        },
-      },
-    }),
-    prisma.userFollow.count({
-      where: {
-        followingId: userId,
-      },
-    }),
-  ]);
+  const [threadCount, messageCount, reactionCount, followerCount] = await dedupe(
+    `reputation:calc:${userId}`,
+    () =>
+      Promise.all([
+        prisma.section.count({
+          where: {
+            createdBy: userId,
+          },
+        }),
+        prisma.message.count({
+          where: {
+            senderId: userId,
+            deletedAt: null,
+          },
+        }),
+        prisma.reaction.count({
+          where: {
+            message: {
+              senderId: userId,
+            },
+          },
+        }),
+        prisma.userFollow.count({
+          where: {
+            followingId: userId,
+          },
+        }),
+      ]),
+  );
 
   // Calculate points:
   // - 10 points per thread created
@@ -99,4 +105,3 @@ function calculateLevel(points: number): number {
   // This gives a logarithmic progression
   return Math.floor(Math.sqrt(points / 100)) + 1;
 }
-

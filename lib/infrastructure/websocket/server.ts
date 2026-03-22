@@ -34,6 +34,12 @@ function getThreadId(pathname?: string | null) {
   return threadId;
 }
 
+function isNotificationsRoute(pathname?: string | null) {
+  if (!pathname) return false;
+  const parts = pathname.split("/").filter(Boolean);
+  return parts.includes("notifications");
+}
+
 async function authenticateConnection(
   request: IncomingMessage
 ): Promise<{ userId: string; userName: string } | null> {
@@ -140,9 +146,12 @@ export function initWebSocketServer(server: HTTPServer) {
 
   server.on("upgrade", async (request, socket, head) => {
     const { pathname } = parse(request.url || "");
+    
+    // Check if it's a notifications route
+    const isNotifications = isNotificationsRoute(pathname);
     const threadId = getThreadId(pathname);
 
-    if (!threadId) {
+    if (!isNotifications && !threadId) {
       socket.destroy();
       return;
     }
@@ -151,20 +160,53 @@ export function initWebSocketServer(server: HTTPServer) {
 
     wss?.handleUpgrade(request, socket, head, (ws) => {
       const authWs = ws as AuthenticatedWebSocket;
-      authWs.threadId = threadId;
+      
+      if (threadId) {
+        authWs.threadId = threadId;
+      }
 
       if (authResult) {
         authWs.userId = authResult.userId;
         authWs.userName = authResult.userName;
       }
 
-      registerSocket(threadId, authWs);
+      // Register socket
+      if (threadId) {
+        registerSocket(threadId, authWs);
+      } else if (authResult) {
+        // For notifications route, just register user connection
+        const userConns = connectionsByUserId.get(authResult.userId) ?? new Set();
+        userConns.add(authWs);
+        connectionsByUserId.set(authResult.userId, userConns);
+      }
+
       wss?.emit("connection", authWs, request);
     });
   });
 
   wss.on("connection", (ws: AuthenticatedWebSocket) => {
     const threadId = ws.threadId;
+    const isNotifications = !threadId;
+
+    if (isNotifications) {
+      logger.debug("Client connected to notifications channel");
+      
+      // Handle notifications route
+      ws.on("close", () => {
+        if (ws.userId) {
+          const userConns = connectionsByUserId.get(ws.userId);
+          if (userConns) {
+            userConns.delete(ws);
+            if (userConns.size === 0) {
+              connectionsByUserId.delete(ws.userId);
+            }
+          }
+        }
+      });
+
+      return;
+    }
+
     if (!threadId) {
       ws.close();
       return;
@@ -288,6 +330,19 @@ export function initWebSocketServer(server: HTTPServer) {
   });
 
   return wss;
+}
+
+export function publishUserEvent(userId: string, payload: unknown) {
+  const userConns = connectionsByUserId.get(userId);
+  if (!userConns) return;
+
+  const message =
+    typeof payload === "string" ? payload : JSON.stringify(payload);
+  userConns.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
 }
 
 export function publishThreadEvent(threadId: string, payload: unknown) {

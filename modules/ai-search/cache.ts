@@ -37,28 +37,21 @@ export async function getCachedResult(
   const hash = hashQuery(query);
 
   try {
-    const cached = await prisma.aiSearchCache.findUnique({
-      where: { queryHash: hash },
+    const cached = await prisma.aiSearchResult.findFirst({
+      where: { queryHash: hash, expiresAt: { gt: new Date() } },
     });
 
     if (!cached) return null;
 
-    // Check expiry
-    if (new Date() > cached.expiresAt) {
-      // Cleanup expired entry asynchronously
-      prisma.aiSearchCache.delete({ where: { id: cached.id } }).catch(() => {});
-      return null;
-    }
-
     // Increment hit count asynchronously
-    prisma.aiSearchCache
+    prisma.aiSearchResult
       .update({
         where: { id: cached.id },
         data: { hitCount: { increment: 1 } },
       })
       .catch(() => {});
 
-    const result = cached.resultJson as unknown as AISearchResponse;
+    const result = JSON.parse(cached.synthesis) as unknown as AISearchResponse;
     result.synthesis.cachedAt = cached.createdAt.toISOString();
     return result;
   } catch {
@@ -85,49 +78,35 @@ export async function cacheResult(
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   try {
-    await prisma.aiSearchCache.upsert({
-      where: { queryHash: hash },
-      update: {
-        resultJson: JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue,
-        expiresAt,
-        hitCount: 0,
-      },
-      create: {
-        queryHash: hash,
-        queryOriginal: query.substring(0, 500),
-        resultJson: JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue,
-        expiresAt,
-      },
+    // Get or create a single anonymous session for all cache entries
+    let anonymousSession = await prisma.aiSearchSession.findFirst({
+      where: { userId: "anonymous" },
     });
+
+    if (!anonymousSession) {
+      anonymousSession = await prisma.aiSearchSession.create({
+        data: {
+          userId: "anonymous",
+          query: "", // placeholder query
+          queryHash: hashQuery(""), // hash of empty string
+        },
+      });
+    }
+
+     await prisma.aiSearchResult.create({
+       data: {
+         sessionId: anonymousSession.id,
+         queryHash: hash,
+         synthesis: JSON.stringify(result),
+         expiresAt,
+         sourceCount: result.sources?.length || 0,
+         conflictFound: false,
+         confidence: Math.round(result.synthesis.confidence ?? 0),
+         sources: (result.sources ?? []) as unknown as Prisma.InputJsonValue,
+       },
+     });
   } catch {
     // Caching is non-critical, don't crash the request
-  }
-}
-
-/**
- * Record analytics for a search (no PII, no API keys).
- */
-export async function recordSearchAnalytics(data: {
-  queryHash?: string;
-  queryType?: string;
-  sourceCount?: number;
-  confidenceScore?: number;
-  processingMs?: number;
-  usedCache?: boolean;
-}): Promise<void> {
-  try {
-    await prisma.aiSearchAnalytics.create({
-      data: {
-        queryHash: data.queryHash || "",
-        queryType: data.queryType,
-        sourceCount: data.sourceCount,
-        confidenceScore: data.confidenceScore,
-        processingMs: data.processingMs,
-        usedCache: data.usedCache || false,
-      },
-    });
-  } catch {
-    // Analytics is non-critical
   }
 }
 
@@ -136,7 +115,7 @@ export async function recordSearchAnalytics(data: {
  */
 export async function cleanupExpiredCache(): Promise<number> {
   try {
-    const result = await prisma.aiSearchCache.deleteMany({
+    const result = await prisma.aiSearchResult.deleteMany({
       where: { expiresAt: { lt: new Date() } },
     });
     return result.count;

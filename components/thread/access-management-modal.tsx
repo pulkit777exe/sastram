@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Trash2, Shield, Crown } from "lucide-react";
 import { toast } from "sonner";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import {
   getThreadMembersAction,
   manageThreadMemberAction,
@@ -66,7 +67,14 @@ export function ThreadAccessModal({
     if (isOpen) {
       setLoading(true);
       getThreadMembersAction(threadId)
-        .then(setMembers)
+        .then((result) => {
+          if (result?.error) {
+            toast.error(result.error);
+            setMembers([]);
+            return;
+          }
+          setMembers(result?.data ?? []);
+        })
         .catch(() => toast.error("Failed to load members"))
         .finally(() => setLoading(false));
     }
@@ -99,12 +107,16 @@ export function ThreadAccessModal({
     try {
       if (confirmAction.type === "update_role") {
         if (!confirmAction.role) return;
-        await manageThreadMemberAction({
+        const result = await manageThreadMemberAction({
           threadId,
           userId: confirmAction.userId,
           action: "update_role",
           role: confirmAction.role,
         });
+        if (result?.error) {
+          toast.error(result.error);
+          return;
+        }
         toast.success(`Role updated for ${confirmAction.userName}`);
         setMembers((prev) =>
           prev.map((m) =>
@@ -114,11 +126,15 @@ export function ThreadAccessModal({
           ),
         );
       } else if (confirmAction.type === "remove") {
-        await manageThreadMemberAction({
+        const result = await manageThreadMemberAction({
           threadId,
           userId: confirmAction.userId,
           action: "remove",
         });
+        if (result?.error) {
+          toast.error(result.error);
+          return;
+        }
         toast.success(`${confirmAction.userName} removed from thread`);
         setMembers((prev) =>
           prev.filter((m) => m.userId !== confirmAction.userId),
@@ -188,8 +204,7 @@ export function ThreadAccessModal({
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Joined{" "}
-                              {new Date(member.joinedAt).toLocaleDateString()}
+                              Joined <TimeAgo date={member.joinedAt} />
                             </p>
                           </div>
                         </div>

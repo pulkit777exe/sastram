@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AppealsSystem } from "@/lib/services/moderation";
 import { requireModerator } from "@/lib/middleware/moderation";
 import { ok, fail } from "@/lib/http/api-response";
-
-const appeals = new AppealsSystem();
+import { resolveAppeal } from "@/modules/appeals/actions";
 
 export async function POST(
   request: NextRequest,
@@ -22,23 +20,25 @@ export async function POST(
       })
     }
 
-    if (!body.decision) {
+    if (typeof body.approved !== "boolean") {
       return NextResponse.json(
-        fail("VALIDATION_ERROR", "decision is required"),
+        fail("VALIDATION_ERROR", "approved is required and must be a boolean"),
         { 
           status: 400
          }
       );
     }
 
-    const appeal = await appeals.reviewAppeal({
-      appealId: id,
-      moderatorId: session.user.id,
-      decision: body.decision,
-      response: body.response,
-    });
+    const result = await resolveAppeal(id, body.approved);
+    
+    if ('error' in result && result.error) {
+      return NextResponse.json(
+        fail("INTERNAL_ERROR", result.error),
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json(ok({ appeal }));
+    return NextResponse.json(ok({ appeal: { id, approved: body.approved } }));
   } catch (error) {
     return NextResponse.json(
       fail("INTERNAL_ERROR", "Failed to review appeal", error),
@@ -46,4 +46,3 @@ export async function POST(
     );
   }
 }
-

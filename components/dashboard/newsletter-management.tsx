@@ -7,6 +7,7 @@ import { unsubscribeFromThread } from "@/modules/newsletter/actions";
 import { toast } from "sonner";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 
 interface NewsletterSubscription {
   id: string;
@@ -43,9 +44,9 @@ export function NewsletterManagement({
         return next;
       });
 
-      if (result && "error" in result && result.error) {
+      if (result?.error) {
         toast.error(result.error);
-      } else if (result && "success" in result && result.success) {
+      } else {
         toast.success("Unsubscribed successfully!");
       }
     });
@@ -111,8 +112,7 @@ export function NewsletterManagement({
                     )}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span>
-                        Subscribed{" "}
-                        {new Date(subscription.createdAt).toLocaleDateString()}
+                        Subscribed <TimeAgo date={subscription.createdAt} />
                       </span>
                       <Link
                         href={`/dashboard/threads/thread/${subscription.thread.slug}`}

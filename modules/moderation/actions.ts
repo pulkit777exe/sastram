@@ -8,9 +8,7 @@ import { logAction } from "@/modules/audit/repository";
 import { rateLimit } from "@/lib/services/rate-limit";
 import { createNotification } from "@/modules/notifications/repository";
 import { z } from "zod";
-import { handleError } from "@/lib/utils/errors";
-import { validate } from "@/lib/utils/validation";
-import { AuditAction } from "@prisma/client";
+
 import {
   banUserSchema,
   deleteMessageSchema,
@@ -19,6 +17,25 @@ import {
   getMessageDetailsSchema,
   getModerationQueueSchema,
 } from "./schemas";
+
+const bulkDeleteSchema = z.object({
+  messageIds: z.array(z.string().cuid()).min(1).max(100),
+  reason: z.string().max(500).optional(),
+});
+
+const unbanSchema = z.object({
+  banId: z.string().cuid(),
+});
+
+const deleteCommunitySchema = z.object({
+  communityId: z.string().cuid(),
+  reason: z.string().max(500).optional(),
+});
+
+const deleteThreadSchema = z.object({
+  threadId: z.string().cuid(),
+  reason: z.string().max(500).optional(),
+});
 
 async function applyModerationRateLimit(userId: string) {
   try {
@@ -77,7 +94,7 @@ async function validateEntityForDeletion(
         where: { id: entityId },
         select: {
           id: true,
-          deletedAt: true,
+          
           sectionId: true,
           senderId: true,
           section: {
@@ -94,7 +111,7 @@ async function validateEntityForDeletion(
         where: { id: entityId },
         select: {
           id: true,
-          deletedAt: true,
+          
           name: true,
           slug: true,
           messageCount: true,
@@ -107,7 +124,7 @@ async function validateEntityForDeletion(
         where: { id: entityId },
         select: {
           id: true,
-          deletedAt: true,
+          
           title: true,
           slug: true,
         },
@@ -119,43 +136,35 @@ async function validateEntityForDeletion(
     throw new Error(`${entityType} not found`);
   }
 
-  if (entity.deletedAt) {
-    throw new Error(`${entityType} already deleted`);
-  }
-
   return entity;
 }
 
 export async function deleteMessageAction(
   messageId: string,
   sectionSlug: string,
-  reason?: string
+  reason?: string,
 ) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  const validation = validate(deleteMessageSchema, {
+  const validation = deleteMessageSchema.safeParse({
     messageId,
     sectionSlug,
     reason,
   });
 
   if (!validation.success) {
-    return { error: validation.error };
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
+
     await applyModerationRateLimit(session.user.id);
-  } catch (error) {
-    return { error: (error as Error).message };
-  }
 
-  try {
     const message = await validateEntityForDeletion("message", messageId);
 
     // Type guard: ensure it's a message entity
     if (!("sectionId" in message)) {
-      return { error: "Invalid entity type" };
+      return { data: null, error: "Invalid entity type" };
     }
 
     await prisma.$transaction(async (tx) => {
@@ -194,7 +203,7 @@ export async function deleteMessageAction(
       action: "MESSAGE_DELETED",
       entityType: "Message",
       entityId: messageId,
-      performedBy: session.user.id,
+      userId: session.user.id,
       details: {
         reason,
         sectionSlug,
@@ -207,39 +216,32 @@ export async function deleteMessageAction(
     revalidatePath(`/dashboard/threads/thread/${sectionSlug}`);
     revalidatePath("/dashboard/admin/moderation");
 
-    return { success: true };
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[deleteMessageAction]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function bulkDeleteMessages(
   messageIds: string[],
-  reason?: string
+  reason?: string,
 ) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  if (!messageIds || messageIds.length === 0) {
-    return { error: "No messages provided" };
-  }
-
-  if (messageIds.length > 100) {
-    return { error: "Cannot delete more than 100 messages at once" };
+  const parsed = bulkDeleteSchema.safeParse({ messageIds, reason });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
     await applyModerationRateLimit(session.user.id);
-  } catch (error) {
-    return { error: (error as Error).message };
-  }
 
-  try {
     const result = await prisma.$transaction(async (tx) => {
       const messages = await tx.message.findMany({
         where: {
-          id: { in: messageIds },
-          deletedAt: null,
+          id: { in: parsed.data.messageIds },
+          
         },
         select: {
           id: true,
@@ -252,7 +254,7 @@ export async function bulkDeleteMessages(
         throw new Error("No valid messages found to delete");
       }
 
-      await tx.message.updateMany({
+       await tx.message.updateMany({
         where: {
           id: { in: messages.map((m) => m.id) },
         },
@@ -299,27 +301,28 @@ export async function bulkDeleteMessages(
       return { deletedCount: messages.length };
     });
 
-    await logAction({
-      action: AuditAction.MESSAGE_DELETED,
-      entityType: "Message",
-      entityId: "bulk",
-      performedBy: session.user.id,
-      details: {
-        messageIds,
-        reason,
-        count: result.deletedCount,
-        bulk: true,
-      },
-    });
+      await logAction({
+        action: "MESSAGE_DELETED",
+        entityType: "Message",
+        entityId: "bulk",
+        userId: session.user.id,
+        details: {
+          messageIds: parsed.data.messageIds,
+          reason: parsed.data.reason,
+          count: result.deletedCount,
+          bulk: true,
+        },
+      });
 
     revalidatePath("/dashboard/admin/moderation");
 
     return {
-      success: true,
-      deletedCount: result.deletedCount,
+      data: { deletedCount: result.deletedCount },
+      error: null,
     };
   } catch (error) {
-    return handleError(error);
+    console.error("[bulkDeleteMessages]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
@@ -328,12 +331,9 @@ export async function banUser(
   reason: string,
   customReason?: string,
   threadId?: string,
-  expiresAt?: Date
+  expiresAt?: Date,
 ) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  const validation = validate(banUserSchema, {
+  const validation = banUserSchema.safeParse({
     userId,
     reason,
     customReason,
@@ -342,52 +342,49 @@ export async function banUser(
   });
 
   if (!validation.success) {
-    return { error: validation.error };
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
     await applyModerationRateLimit(session.user.id);
-  } catch (error) {
-    return { error: (error as Error).message };
-  }
 
-  try {
     const targetUser = await validateModerationTarget(
-      userId,
+      validation.data.userId,
       session.user.id,
-      session.user.role || "ADMIN"
+      session.user.role || "ADMIN",
     );
 
     const existingBan = await prisma.userBan.findFirst({
       where: {
-        userId,
+        userId: validation.data.userId,
         isActive: true,
-        threadId: threadId || null,
+        threadId: validation.data.threadId || null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
     });
 
     if (existingBan) {
       return {
-        error: threadId
+        data: null,
+        error: validation.data.threadId
           ? "User is already banned from this thread"
           : "User is already globally banned",
       };
     }
 
-    if (threadId) {
-      const thread = await prisma.section.findUnique({
-        where: { id: threadId },
-        select: { id: true, name: true, deletedAt: true },
+     let thread: { id: string; name: string } | null;
+    if (validation.data.threadId) {
+      thread = await prisma.section.findUnique({
+        where: { id: validation.data.threadId },
+        select: { id: true, name: true },
       });
 
       if (!thread) {
-        return { error: "Thread not found" };
+        return { data: null, error: "Thread not found" };
       }
 
-      if (thread.deletedAt) {
-        return { error: "Cannot ban from deleted thread" };
-      }
     }
 
     const ban = await prisma.$transaction(async (tx) => {
@@ -396,7 +393,7 @@ export async function banUser(
           userId: validation.data.userId,
           bannedBy: session.user.id,
           reason: validation.data.reason,
-          customReason: validation.data.customReason,
+
           threadId: validation.data.threadId,
           expiresAt: validation.data.expiresAt,
           isActive: true,
@@ -413,29 +410,29 @@ export async function banUser(
 
       if (!threadId) {
         await tx.user.update({
-          where: { id: userId },
+          where: { id: validation.data.userId },
           data: { status: "BANNED" },
         });
       }
 
-      const banMessage = threadId
-        ? `You have been banned from "${
-            newBan.thread?.name || "a thread"
-          }". Reason: ${reason}`
-        : `Your account has been banned. Reason: ${reason}`;
+      const banMessage = validation.data.threadId
+        ? `You have been banned from "${thread?.name}". Reason: ${validation.data.reason}`
+        : `Your account has been banned. Reason: ${validation.data.reason}`;
 
       await tx.notification.create({
         data: {
           userId,
-          type: "BAN",
-          title: threadId ? "Thread Ban" : "Account Banned",
-          message: customReason ? `${banMessage}. ${customReason}` : banMessage,
+          type: "SYSTEM",
+          title: validation.data.threadId ? "Thread Ban" : "Account Banned",
+          message: validation.data.customReason
+            ? `${banMessage}. ${validation.data.customReason}`
+            : banMessage,
           data: {
             banId: newBan.id,
-            reason,
-            customReason,
-            threadId,
-            expiresAt: expiresAt?.toISOString(),
+            reason: validation.data.reason,
+            customReason: validation.data.customReason,
+            threadId: validation.data.threadId,
+            expiresAt: validation.data.expiresAt?.toISOString(),
             bannedBy: session.user.id,
           },
         },
@@ -447,12 +444,11 @@ export async function banUser(
     await logAction({
       action: "USER_BANNED",
       entityType: "User",
-      entityId: userId,
-      userId: userId,
-      performedBy: session.user.id,
+      entityId: validation.data.userId,
+      userId: session.user.id,
       details: {
         reason: validation.data.reason,
-        customReason: validation.data.customReason,
+        
         threadId: validation.data.threadId,
         expiresAt: validation.data.expiresAt,
         targetUserEmail: targetUser.email,
@@ -464,33 +460,32 @@ export async function banUser(
     revalidatePath("/dashboard");
 
     return {
-      success: true,
-      banId: ban.id,
-      expiresAt: ban.expiresAt,
+      data: {
+        banId: ban.id,
+        expiresAt: ban.expiresAt,
+      },
+      error: null,
     };
   } catch (error) {
-    return handleError(error);
+    console.error("[banUser]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function unbanUser(banId: string) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  if (!banId || !z.string().cuid().safeParse(banId).success) {
-    return { error: "Invalid ban ID" };
+  const parsed = unbanSchema.safeParse({ banId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
     await applyModerationRateLimit(session.user.id);
-  } catch (error) {
-    return { error: (error as Error).message };
-  }
 
-  try {
     const result = await prisma.$transaction(async (tx) => {
       const ban = await tx.userBan.findUnique({
-        where: { id: banId },
+        where: { id: parsed.data.banId },
         select: {
           userId: true,
           threadId: true,
@@ -513,7 +508,7 @@ export async function unbanUser(banId: string) {
       }
 
       await tx.userBan.update({
-        where: { id: banId },
+        where: { id: parsed.data.banId },
         data: { isActive: false },
       });
 
@@ -523,7 +518,7 @@ export async function unbanUser(banId: string) {
             userId: ban.userId,
             threadId: null,
             isActive: true,
-            id: { not: banId },
+            id: { not: parsed.data.banId },
           },
         });
 
@@ -544,7 +539,7 @@ export async function unbanUser(banId: string) {
             ? "You have been unbanned from a thread and can now participate again."
             : "Your account ban has been lifted. You can now use the platform again.",
           data: {
-            banId,
+            banId: parsed.data.banId,
             unbannedBy: session.user.id,
           },
         },
@@ -554,13 +549,12 @@ export async function unbanUser(banId: string) {
     });
 
     await logAction({
-      action: AuditAction.USER_UNBANNED,
+      action: "USER_UNBANNED",
       entityType: "User",
       entityId: result.userId,
-      userId: result.userId,
-      performedBy: session.user.id,
+      userId: session.user.id,
       details: {
-        banId,
+        banId: parsed.data.banId,
         wasGlobalBan: !result.threadId,
         targetUserEmail: result.user.email,
         targetUserName: result.user.name,
@@ -569,9 +563,10 @@ export async function unbanUser(banId: string) {
 
     revalidatePath("/dashboard/admin/moderation");
 
-    return { success: true };
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[unbanUser]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
@@ -581,30 +576,26 @@ export async function getBannedUsers(filters?: {
   limit?: number;
   offset?: number;
 }) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  const validation = filters
-    ? validate(getBannedUsersSchema, filters)
-    : { success: true as const, data: {} };
+  const validation = getBannedUsersSchema.safeParse(filters ?? {});
   if (!validation.success) {
-    return {
-      error: "error" in validation ? validation.error : "Validation failed",
-    };
+    return { data: null, error: "Invalid input" };
   }
 
-  const limit = Math.min(filters?.limit || 50, 100);
-  const offset = filters?.offset || 0;
-
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
+
+    const limit = Math.min(validation.data.limit || 50, 100);
+    const offset = validation.data.offset || 0;
+
     const whereClause: any = {};
 
-    if (filters?.isActive !== undefined) {
-      whereClause.isActive = filters.isActive;
+    if (validation.data.isActive !== undefined) {
+      whereClause.isActive = validation.data.isActive;
     }
 
-    if (filters?.threadId) {
-      whereClause.threadId = filters.threadId;
+    if (validation.data.threadId) {
+      whereClause.threadId = validation.data.threadId;
     }
 
     const [bans, totalCount] = await Promise.all([
@@ -645,73 +636,61 @@ export async function getBannedUsers(filters?: {
     ]);
 
     return {
-      success: true,
-      bans,
-      pagination: {
-        total: totalCount,
-        limit,
-        offset,
-        hasMore: offset + limit < totalCount,
+      data: {
+        bans,
+        pagination: {
+          total: totalCount,
+          limit,
+          offset,
+          hasMore: offset + limit < totalCount,
+        },
       },
+      error: null,
     };
   } catch (error) {
-    return handleError(error);
+    console.error("[getBannedUsers]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function deleteCommunity(communityId: string, reason?: string) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  const validation = validate(deleteEntitySchema, {
-    entityId: communityId,
-    reason,
-  });
-
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = deleteCommunitySchema.safeParse({ communityId, reason });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
     await applyModerationRateLimit(session.user.id);
-  } catch (error) {
-    return { error: (error as Error).message };
-  }
 
-  try {
-    const community = await validateEntityForDeletion("community", communityId);
+    const community = await validateEntityForDeletion(
+      "community",
+      parsed.data.communityId,
+    );
 
     // Type guard: ensure it's a community entity
     if (!("title" in community)) {
-      return { error: "Invalid entity type" };
+      return { data: null, error: "Invalid entity type" };
     }
 
     const sectionCount = await prisma.section.count({
-      where: { communityId, deletedAt: null },
+      where: { communityId: parsed.data.communityId },
     });
 
     await prisma.$transaction(async (tx) => {
-      await tx.community.update({
-        where: { id: communityId },
-        data: { deletedAt: new Date() },
-      });
-
-      await tx.section.updateMany({
-        where: {
-          communityId,
-          deletedAt: null,
-        },
-        data: { deletedAt: new Date() },
+      await tx.community.delete({
+        where: { id: parsed.data.communityId },
       });
     });
 
     await logAction({
-      action: AuditAction.SECTION_DELETED, // Using SECTION_DELETED as closest match
+      action: "SECTION_DELETED", // Using SECTION_DELETED as closest match
       entityType: "Community",
-      entityId: communityId,
-      performedBy: session.user.id,
+      entityId: parsed.data.communityId,
+      userId: session.user.id,
       details: {
-        reason,
+        reason: parsed.data.reason,
         communityTitle: community.title,
         communitySlug: community.slug,
         affectedSections: sectionCount,
@@ -722,53 +701,47 @@ export async function deleteCommunity(communityId: string, reason?: string) {
     revalidatePath("/dashboard/admin/moderation");
 
     return {
-      success: true,
-      affectedSections: sectionCount,
+      data: { affectedSections: sectionCount },
+      error: null,
     };
   } catch (error) {
-    return handleError(error);
+    console.error("[deleteCommunity]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function deleteThread(threadId: string, reason?: string) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  const validation = validate(deleteEntitySchema, {
-    entityId: threadId,
-    reason,
-  });
-
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = deleteThreadSchema.safeParse({ threadId, reason });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
     await applyModerationRateLimit(session.user.id);
-  } catch (error) {
-    return { error: (error as Error).message };
-  }
 
-  try {
-    const thread = await validateEntityForDeletion("section", threadId);
+    const thread = await validateEntityForDeletion(
+      "section",
+      parsed.data.threadId,
+    );
 
     // Type guard: ensure it's a section entity
     if (!("name" in thread && "slug" in thread)) {
-      return { error: "Invalid entity type" };
+      return { data: null, error: "Invalid entity type" };
     }
 
     const members = await prisma.sectionMember.findMany({
       where: {
-        sectionId: threadId,
+        sectionId: parsed.data.threadId,
         status: "ACTIVE",
       },
       select: { userId: true },
     });
 
     await prisma.$transaction(async (tx) => {
-      await tx.section.update({
-        where: { id: threadId },
-        data: { deletedAt: new Date() },
+      await tx.section.delete({
+        where: { id: parsed.data.threadId },
       });
 
       if (members.length > 0) {
@@ -777,13 +750,13 @@ export async function deleteThread(threadId: string, reason?: string) {
             userId: member.userId,
             type: "SYSTEM" as const,
             title: "Thread Deleted",
-            message: reason
-              ? `The thread "${thread.name}" has been deleted. Reason: ${reason}`
+            message: parsed.data.reason
+              ? `The thread "${thread.name}" has been deleted. Reason: ${parsed.data.reason}`
               : `The thread "${thread.name}" has been deleted by a moderator.`,
             data: {
-              threadId,
+              threadId: parsed.data.threadId,
               threadName: thread.name,
-              reason,
+              reason: parsed.data.reason,
             },
           })),
         });
@@ -791,12 +764,12 @@ export async function deleteThread(threadId: string, reason?: string) {
     });
 
     await logAction({
-      action: AuditAction.SECTION_DELETED,
+      action: "SECTION_DELETED",
       entityType: "Section",
-      entityId: threadId,
-      performedBy: session.user.id,
+      entityId: parsed.data.threadId,
+      userId: session.user.id,
       details: {
-        reason,
+        reason: parsed.data.reason,
         threadName: thread.name,
         threadSlug: thread.slug,
         messageCount: thread.messageCount,
@@ -810,26 +783,27 @@ export async function deleteThread(threadId: string, reason?: string) {
     revalidatePath("/dashboard/admin/moderation");
 
     return {
-      success: true,
-      notifiedMembers: members.length,
+      data: { notifiedMembers: members.length },
+      error: null,
     };
   } catch (error) {
-    return handleError(error);
+    console.error("[deleteThread]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getMessageDetails(messageId: string) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  const validation = validate(getMessageDetailsSchema, { messageId });
+  const validation = getMessageDetailsSchema.safeParse({ messageId });
   if (!validation.success) {
-    return { error: validation.error };
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
+
     const message = await prisma.message.findUnique({
-      where: { id: messageId },
+      where: { id: validation.data.messageId },
       include: {
         sender: {
           select: {
@@ -873,7 +847,7 @@ export async function getMessageDetails(messageId: string) {
         },
         reports: {
           where: {
-            status: { in: ["PENDING", "REVIEWING"] },
+            status: { in: ["PENDING"] },
           },
           include: {
             reporter: {
@@ -897,7 +871,7 @@ export async function getMessageDetails(messageId: string) {
     });
 
     if (!message) {
-      return { error: "Message not found" };
+      return { data: null, error: "Message not found" };
     }
 
     const recentMessages = await prisma.message.count({
@@ -906,7 +880,7 @@ export async function getMessageDetails(messageId: string) {
         createdAt: {
           gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
         },
-        deletedAt: null,
+        
       },
     });
 
@@ -923,7 +897,6 @@ export async function getMessageDetails(messageId: string) {
     });
 
     return {
-      success: true,
       data: {
         message,
         context: {
@@ -931,9 +904,11 @@ export async function getMessageDetails(messageId: string) {
           activeBans: senderBans,
         },
       },
+      error: null,
     };
   } catch (error) {
-    return handleError(error);
+    console.error("[getMessageDetails]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
@@ -942,24 +917,20 @@ export async function getModerationQueue(filters?: {
   limit?: number;
   offset?: number;
 }) {
-  const session = await requireSession();
-  await assertAdmin(session.user);
-
-  const validation = filters
-    ? validate(getModerationQueueSchema, filters)
-    : { success: true as const, data: {} };
+  const validation = getModerationQueueSchema.safeParse(filters ?? {});
   if (!validation.success) {
-    return {
-      error: "error" in validation ? validation.error : "Validation failed",
-    };
+    return { data: null, error: "Invalid input" };
   }
 
-  const limit = Math.min(filters?.limit || 20, 100);
-  const offset = filters?.offset || 0;
-
   try {
+    const session = await requireSession();
+    await assertAdmin(session.user);
+
+    const limit = Math.min(validation.data.limit || 20, 100);
+    const offset = validation.data.offset || 0;
+
     const whereClause: any = {
-      status: filters?.status || { in: ["PENDING", "REVIEWING"] },
+      status: validation.data.status || { in: ["PENDING", "REVIEWING"] },
     };
 
     const [reports, totalCount] = await Promise.all([
@@ -1005,7 +976,6 @@ export async function getModerationQueue(filters?: {
     ]);
 
     return {
-      success: true,
       data: {
         reports,
         pagination: {
@@ -1015,8 +985,10 @@ export async function getModerationQueue(filters?: {
           hasMore: offset + limit < totalCount,
         },
       },
+      error: null,
     };
   } catch (error) {
-    return handleError(error);
+    console.error("[getModerationQueue]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }

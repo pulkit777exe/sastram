@@ -22,7 +22,7 @@ export type ThreadRecord = Section & {
     attachments?: Attachment[];
     replies?: Message[];
   })[];
-  newsletterSubscriptions?: { id: string; email: string }[];
+  subscriptions?: { id: string; email: string }[];
 };
 
 // Thread summary for list views
@@ -57,6 +57,13 @@ export interface ThreadSummary {
 }
 
 // Detailed thread view with messages
+export interface ThreadDNA {
+  questionType: "factual" | "opinion" | "technical" | "comparison" | "other";
+  expertiseLevel: "beginner" | "intermediate" | "advanced" | "expert";
+  topics: string[];
+  readTimeMinutes: number;
+}
+
 export interface ThreadDetail extends ThreadSummary {
   messages: MessageWithDetails[];
   summary?: string | null;
@@ -64,6 +71,10 @@ export interface ThreadDetail extends ThreadSummary {
   userRole?: SectionRole | null; // Current user's role in this thread
   isSubscribed?: boolean;
   unreadCount?: number;
+  resolutionScore?: number | null;
+  threadDna?: ThreadDNA;
+  lastVerifiedAt?: Date | null;
+  isOutdated?: boolean;
 }
 
 // Message with full details
@@ -75,8 +86,12 @@ export interface MessageWithDetails {
   depth: number;
   isEdited: boolean;
   isPinned: boolean;
+  likeCount: number;
+  replyCount: number;
+  isAiResponse: boolean;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date | null;
   sender: {
     id: string;
     name: string | null;
@@ -85,7 +100,7 @@ export interface MessageWithDetails {
   };
   reactions?: ReactionSummary[];
   attachments?: AttachmentInfo[];
-  replyCount?: number;
+  replyCountDisplay?: number;
   replies?: MessageWithDetails[];
 }
 

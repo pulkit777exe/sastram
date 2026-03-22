@@ -10,6 +10,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import type { Message, Attachment } from "@/lib/types/index";
 import Image from "next/image";
 
@@ -145,7 +146,7 @@ function ThreadMessage({
               {message.sender.name || "Unknown"}
             </span>
             <span className="text-xs text-[#72767d] ml-1">
-              {formatTime(message.createdAt)}
+              <TimeAgo date={message.createdAt} />
             </span>
             {message.isEdited && (
               <span className="text-xs text-[#72767d]">(edited)</span>
@@ -337,29 +338,6 @@ function AttachmentItem({ file }: { file: Attachment }) {
       </a>
     </div>
   );
-}
-
-export function formatTime(date: Date | string) {
-  const d = new Date(date);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (d.toDateString() === today.toDateString()) {
-    return `Today at ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  } else if (d.toDateString() === yesterday.toDateString()) {
-    return `Yesterday at ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  } else {
-    return (
-      d.toLocaleDateString([], {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }) +
-      " " +
-      d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    );
-  }
 }
 
 function formatBytes(bytes: number, decimals = 2) {

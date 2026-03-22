@@ -19,7 +19,7 @@ import {
   Ban,
   Eye,
 } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils/cn";
 import type { ReportWithContext } from "@/modules/reports/types";
 
@@ -129,7 +129,7 @@ export function ReportReviewPanel({
                 {msg.content}
               </p>
               <div className="text-[10px] text-muted-foreground mt-1">
-                {format(new Date(msg.createdAt), "h:mm a")}
+                <TimeAgo date={msg.createdAt} />
               </div>
             </div>
           ))}
@@ -246,7 +246,7 @@ export function ReportReviewPanel({
                 Account Age
               </div>
               <p className="text-sm font-medium text-foreground">
-                {formatDistanceToNow(new Date(userProfile.createdAt))}
+                <TimeAgo date={userProfile.createdAt} />
               </p>
             </div>
             <div className="bg-muted rounded-lg p-3">
@@ -287,9 +287,7 @@ export function ReportReviewPanel({
                         {violation.action}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
-                        {formatDistanceToNow(new Date(violation.createdAt), {
-                          addSuffix: true,
-                        })}
+                        <TimeAgo date={violation.createdAt} />
                       </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-0.5">

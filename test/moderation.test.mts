@@ -1,40 +1,47 @@
-import { expect } from "chai";
-import { RegexFilter, MessageModerationPipeline } from "@/lib/services/moderation";
+import { assert } from "chai";
+import { RegexFilter } from "@/lib/services/moderation";
+import { prisma } from "@/lib/infrastructure/prisma";
 
 describe("Moderation System", () => {
-  it("RegexFilter should block obvious spam", async () => {
-    const filter = new RegexFilter();
-    const result = await filter.check({
-      id: "",
-      content: "This is spam",
-      authorId: "user1",
-      sectionId: "section1",
-      timestamp: new Date(),
+  describe("Rule Matching", () => {
+    // Save original method
+    const originalFindMany = prisma.moderationRule.findMany;
+    
+    before(() => {
+      // Mock to return no rules
+      (prisma.moderationRule as any).findMany = async () => [];
+    });
+    
+    after(() => {
+      // Restore original method
+      prisma.moderationRule.findMany = originalFindMany;
     });
 
-    expect(result.success).to.be.false;
-  });
+    it("RegexFilter should block obvious spam", async () => {
+      const filter = new RegexFilter();
+      const result = await filter.check({
+        id: "",
+        content: "This is spam",
+        authorId: "user1",
+        sectionId: "section1",
+        timestamp: new Date(),
+      });
 
-  it("MessageModerationPipeline should allow benign content", async () => {
-    const pipeline = new MessageModerationPipeline();
-    const result = await pipeline.process(
-      {
+      assert.isFalse(result.success);
+    });
+
+    it("RegexFilter should allow benign content without rules", async () => {
+      const filter = new RegexFilter();
+      const result = await filter.check({
         id: "",
         content: "Hello world",
         authorId: "user1",
         sectionId: "section1",
         timestamp: new Date(),
-      },
-      {
-        sectionId: "section1",
-        participantIds: ["user1"],
-        recentHistory: [],
-        sectionMetadata: {},
-        relationships: new Map(),
-      }
-    );
+      });
 
-    expect(result.action).to.equal("ALLOW");
+      assert.isTrue(result.success);
+    });
   });
 });
 

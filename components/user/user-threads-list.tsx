@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { MessageSquare, Calendar, Users } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils/cn";
 
 interface Thread {
@@ -61,7 +61,7 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {formatDistanceToNow(thread.createdAt, { addSuffix: true })}
+                <TimeAgo date={thread.createdAt} />
               </span>
             </div>
           </Link>
@@ -70,4 +70,3 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
     </div>
   );
 }
-
