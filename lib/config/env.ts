@@ -14,10 +14,10 @@ const envSchema = z.object({
   PORT: z.string().default("3000").transform(Number),
 
   // Database
-  DATABASE_URL: z.string().url("DATABASE_URL must be a valid URL"),
+  DATABASE_URL: z.url("DATABASE_URL must be a valid URL"),
 
   // Redis (rate limiting, queues, caching)
-  REDIS_URL: z.string().url("REDIS_URL must be a valid URL").optional(),
+  REDIS_URL: z.url("REDIS_URL must be a valid URL").optional(),
 
   // Better Auth
   BETTER_AUTH_SECRET: z
@@ -85,7 +85,7 @@ const envSchema = z.object({
   MODERATION_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
   MAX_MESSAGES_PER_MINUTE: z.coerce.number().int().positive().default(20),
   MAX_MESSAGES_PER_HOUR: z.coerce.number().int().positive().default(200),
-  MODERATION_WEBHOOK_URL: z.string().url().optional(),
+  MODERATION_WEBHOOK_URL: z.url().optional(),
 });
 
 /**
