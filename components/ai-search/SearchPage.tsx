@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +11,7 @@ import { SynthesisCard } from "./SynthesisCard";
 import { SourceCard } from "./SourceCard";
 import { TableView } from "./TableView";
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from "./ApiKeysModal";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import type {
   SearchConfig,
   AISearchResponse,
@@ -52,11 +53,6 @@ export function SearchPage() {
     typeof window !== "undefined" ? hasAllApiKeys() : false,
   );
 
-  // Sync hasKeys on mount (SSR-safe)
-  useEffect(() => {
-    setHasKeys(hasAllApiKeys());
-  }, []);
-
   const addPastSearch = useCallback(
     (query: string, resultCount: number) => {
       const newSearch: PastSearch = {
@@ -71,7 +67,12 @@ export function SearchPage() {
       ].slice(0, 10);
       setPastSearches(updated);
       try {
-        localStorage.setItem("sastram_past_searches", JSON.stringify(updated));
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "sastram_past_searches",
+            JSON.stringify(updated),
+          );
+        }
       } catch {}
     },
     [pastSearches],
@@ -311,6 +312,7 @@ export function SearchPage() {
                 className="max-w-3xl mx-auto space-y-4"
               >
                 <SynthesisCard
+                  key={result.synthesis.content}
                   content={result.synthesis.content}
                   conflictData={result.synthesis.conflictData}
                   confidence={result.synthesis.confidence}
@@ -348,7 +350,7 @@ export function SearchPage() {
                 {result.synthesis.cachedAt && (
                   <p className="text-center text-[11px] text-muted-foreground/60 pt-2">
                     Cached result from{" "}
-                    {new Date(result.synthesis.cachedAt).toLocaleString()}
+                    <TimeAgo date={result.synthesis.cachedAt} />
                   </p>
                 )}
               </motion.div>

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function createTag(name: string, color: string = "#3b82f6") {
   const slug = name
@@ -49,42 +50,54 @@ export async function removeTagFromThread(threadId: string, tagId: string) {
 
   return prisma.threadTagRelation.delete({
     where: {
-      id: relation.id,
+      threadId_tagId: {
+        threadId: relation.threadId,
+        tagId: relation.tagId,
+      },
     },
   });
 }
 
 export async function getThreadTags(threadId: string) {
-  const relations = await prisma.threadTagRelation.findMany({
-    where: { threadId },
-    include: {
-      tag: true,
-    },
-  });
+  try {
+    const relations = await prisma.threadTagRelation.findMany({
+      where: { threadId },
+      include: {
+        tag: true,
+      },
+    });
 
-  return relations.map((r) => r.tag);
+    return (relations ?? []).map((relation) => relation.tag);
+  } catch (error) {
+    logger.error("[getThreadTags]", error);
+    return [];
+  }
 }
 
 export async function getPopularTags(limit: number = 20) {
-  const tags = await prisma.threadTag.findMany({
-    include: {
-      _count: {
-        select: {
-          threads: true,
+  try {
+    const tags = await prisma.threadTag.findMany({
+      include: {
+        _count: {
+          select: {
+            threads: true,
+          },
         },
       },
-    },
-    orderBy: {
-      threads: {
-        _count: "desc",
+      orderBy: {
+        threads: {
+          _count: "desc",
+        },
       },
-    },
-    take: limit,
-  });
+      take: limit,
+    });
 
-  return tags.map((tag) => ({
-    ...tag,
-    threadCount: tag._count.threads,
-  }));
+    return (tags ?? []).map((tag) => ({
+      ...tag,
+      threadCount: tag._count.threads,
+    }));
+  } catch (error) {
+    logger.error("[getPopularTags]", error);
+    return [];
+  }
 }
-

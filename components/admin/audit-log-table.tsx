@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import TimeAgo from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils/cn";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -59,9 +59,7 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
           {entries.map((entry) => (
             <TableRow key={entry.id} className="border-border">
               <TableCell className="text-sm text-muted-foreground">
-                {formatDistanceToNow(new Date(entry.timestamp), {
-                  addSuffix: true,
-                })}
+                <TimeAgo date={entry.timestamp} />
               </TableCell>
               <TableCell>
                 <Badge

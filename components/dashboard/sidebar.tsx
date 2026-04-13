@@ -26,6 +26,7 @@ import Link from "next/link";
 import { LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { useBootstrap } from "@/components/bootstrap-provider";
 
 export function Sidebar({
   name,
@@ -48,9 +49,13 @@ export function Sidebar({
     return false;
   });
 
+  const { data: bootstrapData } = useBootstrap();
+  const unreadCount = bootstrapData?.unreadNotificationCount ?? 0;
+
   const hideTimeout = useRef<number | null>(null);
 
   const clearHideTimeout = () => {
+    if (typeof window === "undefined") return;
     if (hideTimeout.current) {
       window.clearTimeout(hideTimeout.current);
       hideTimeout.current = null;
@@ -66,6 +71,7 @@ export function Sidebar({
 
   const handleMouseLeave = () => {
     clearHideTimeout();
+    if (typeof window === "undefined") return;
     hideTimeout.current = window.setTimeout(() => {
       setShowProfileMenu(false);
       hideTimeout.current = null;
@@ -99,7 +105,7 @@ export function Sidebar({
     { icon: Search, label: "Search", href: "/dashboard/search" },
     { icon: Sparkles, label: "Sastram AI", href: "/dashboard/ai-search" },
     { icon: Activity, label: "Activity", href: "/dashboard/activity" },
-    { icon: Bell, label: "Notifications", href: "/dashboard/messages" },
+    { icon: Bell, label: "Notifications", href: "/dashboard/notifications", badge: unreadCount > 0 ? unreadCount : undefined },
     { icon: Settings, label: "Settings", href: "/dashboard/settings" },
   ];
 
@@ -194,6 +200,7 @@ export function Sidebar({
                   (item.href !== "/dashboard" && pathname.startsWith(item.href))
                 }
                 collapsed={false}
+                badge={item.badge}
               />
             ))}
 
@@ -331,6 +338,7 @@ interface NavItemProps {
   href: string;
   active?: boolean;
   collapsed: boolean;
+  badge?: number;
 }
 
 function NavItem({
@@ -339,6 +347,7 @@ function NavItem({
   href,
   active = false,
   collapsed,
+  badge,
 }: NavItemProps) {
   if (href === "#") {
     return (
@@ -386,7 +395,16 @@ function NavItem({
       />
       {!collapsed && <span className="text-sm font-medium">{label}</span>}
 
-      {active && !collapsed && (
+      {badge != null && badge > 0 && (
+        <span className={cn(
+          "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1",
+          collapsed && "absolute -top-1 -right-1 h-4 min-w-4 text-[9px]"
+        )}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+
+      {active && !collapsed && !badge && (
         <div className="ml-auto w-2 h-2 rounded-full bg-brand shadow-[0_0_8px_rgba(55,54,252,0.5)]" />
       )}
     </Link>

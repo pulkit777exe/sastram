@@ -166,16 +166,10 @@ export function createSuccessResponseSchema<T extends z.ZodTypeAny>(
 export function createActionResponseSchema<T extends z.ZodTypeAny>(
   dataSchema: T
 ) {
-  return z.union([
-    z.object({
-      success: z.literal(true),
-      data: dataSchema,
-    }),
-    z.object({
-      success: z.literal(false),
-      error: z.string(),
-    }),
-  ]);
+  return z.object({
+    data: dataSchema.nullable(),
+    error: z.string().nullable(),
+  });
 }
 
 /**

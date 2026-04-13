@@ -18,6 +18,18 @@ const newMessagePayloadSchema = basePayloadSchema.extend({
   senderAvatar: z.string().url().nullable().optional(),
   createdAt: z.coerce.date(),
   parentId: z.string().cuid().optional(),
+  depth: z.number().int().min(0).optional(),
+  likeCount: z.number().int().min(0).optional(),
+  replyCount: z.number().int().min(0).optional(),
+  isAiResponse: z.boolean().optional(),
+  reactions: z
+    .array(
+      z.object({
+        type: z.string(),
+        _count: z.number().int().min(0),
+      }),
+    )
+    .optional(),
   mentions: z.array(z.string().cuid()).optional(),
   attachments: z
     .array(
@@ -37,7 +49,7 @@ const newMessagePayloadSchema = basePayloadSchema.extend({
  */
 const messageDeletedPayloadSchema = basePayloadSchema.extend({
   messageId: z.string().cuid(),
-  deletedBy: z.string().cuid(),
+  deletedBy: z.string().cuid().optional(),
 });
 
 /**
@@ -73,6 +85,23 @@ const mentionNotificationPayloadSchema = basePayloadSchema.extend({
   mentionedByName: z.string(),
   content: z.string(),
   parentId: z.string().cuid().optional(),
+});
+
+/**
+ * REACTION_UPDATE event payload
+ */
+const reactionUpdatePayloadSchema = basePayloadSchema.extend({
+  messageId: z.string().cuid(),
+  reactionType: z.string().min(1),
+  count: z.number().int().min(0),
+});
+
+/**
+ * PIN_UPDATE event payload
+ */
+const pinUpdatePayloadSchema = basePayloadSchema.extend({
+  messageId: z.string().cuid(),
+  isPinned: z.boolean(),
 });
 
 /**
@@ -112,6 +141,14 @@ export const websocketMessageSchema = z.discriminatedUnion("type", [
     payload: mentionNotificationPayloadSchema,
   }),
   z.object({
+    type: z.literal("REACTION_UPDATE"),
+    payload: reactionUpdatePayloadSchema,
+  }),
+  z.object({
+    type: z.literal("PIN_UPDATE"),
+    payload: pinUpdatePayloadSchema,
+  }),
+  z.object({
     type: z.literal("ERROR"),
     payload: errorPayloadSchema,
   }),
@@ -149,6 +186,14 @@ export const websocketSchemas = {
   mentionNotification: z.object({
     type: z.literal("MENTION_NOTIFICATION"),
     payload: mentionNotificationPayloadSchema,
+  }),
+  reactionUpdate: z.object({
+    type: z.literal("REACTION_UPDATE"),
+    payload: reactionUpdatePayloadSchema,
+  }),
+  pinUpdate: z.object({
+    type: z.literal("PIN_UPDATE"),
+    payload: pinUpdatePayloadSchema,
   }),
   error: z.object({ type: z.literal("ERROR"), payload: errorPayloadSchema }),
 } as const;

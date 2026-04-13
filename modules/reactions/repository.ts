@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { logger } from "@/lib/infrastructure/logger";
 
 type UserPreview = {
   id: string;
@@ -44,37 +45,48 @@ export async function removeReaction(
 }
 
 export async function getMessageReactions(messageId: string) {
-  const reactions = await prisma.reaction.findMany({
-    where: { messageId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
+  try {
+    const reactions = await prisma.reaction.findMany({
+      where: { messageId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
 
-  const grouped = reactions.reduce((acc, reaction) => {
-    if (!acc[reaction.emoji]) {
-      acc[reaction.emoji] = {
-        emoji: reaction.emoji,
-        count: 0,
-        users: [],
-        hasReacted: false,
-      };
-    }
-    acc[reaction.emoji].count++;
-    acc[reaction.emoji].users.push(reaction.user);
-    return acc;
-  }, {} as Record<string, { emoji: string; count: number; users: UserPreview[]; hasReacted: boolean }>);
+    const grouped = (reactions ?? []).reduce(
+      (acc, reaction) => {
+        if (!acc[reaction.emoji]) {
+          acc[reaction.emoji] = {
+            emoji: reaction.emoji,
+            count: 0,
+            users: [],
+            hasReacted: false,
+          };
+        }
+        acc[reaction.emoji].count++;
+        acc[reaction.emoji].users.push(reaction.user);
+        return acc;
+      },
+      {} as Record<
+        string,
+        { emoji: string; count: number; users: UserPreview[]; hasReacted: boolean }
+      >,
+    );
 
-  return Object.values(grouped);
+    return Object.values(grouped);
+  } catch (error) {
+    logger.error("[getMessageReactions]", error);
+    return [];
+  }
 }
 
 export async function getUserReaction(

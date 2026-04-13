@@ -11,7 +11,6 @@ export const updateUserProfileSchema = z.object({
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
   twitter: z.string().max(50, "Twitter handle must be less than 50 characters").optional(),
   github: z.string().max(50, "GitHub username must be less than 50 characters").optional(),
-  linkedin: z.string().max(50, "LinkedIn username must be less than 50 characters").optional(),
 });
 
 export const uploadAvatarSchema = z.object({
@@ -26,3 +25,13 @@ export const updateProfilePrivacySchema = z.object({
   privacy: z.enum(["PUBLIC", "PRIVATE", "FOLLOWERS_ONLY"]),
 });
 
+export const updateUserPreferencesSchema = z.object({
+  emailDigest: z.enum(["daily", "weekly", "never"]).optional(),
+  pushEnabled: z.boolean().optional(),
+  mentionEmails: z.boolean().optional(),
+  replyEmails: z.boolean().optional(),
+  showOnlineStatus: z.boolean().optional(),
+  publicActivityFeed: z.boolean().optional(),
+  theme: z.enum(["light", "dark", "system"]).optional(),
+  aiSummaryEnabled: z.boolean().optional(),
+});

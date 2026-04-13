@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/infrastructure/prisma";
 import { ProfileHeader } from "@/components/user/profile-header";
-import { requireSession } from "@/modules/auth/session";
+import { getSession } from "@/modules/auth/session";
 
 export default async function PublicProfilePage({
   params,
@@ -9,7 +9,8 @@ export default async function PublicProfilePage({
   params: { userId: string };
 }) {
   const { userId } = await params;
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return null;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -22,7 +23,6 @@ export default async function PublicProfilePage({
       website: true,
       twitter: true,
       github: true,
-      linkedin: true,
       image: true,
       avatarUrl: true,
       bannerUrl: true,
@@ -30,6 +30,7 @@ export default async function PublicProfilePage({
       followerCount: true,
       followingCount: true,
       createdAt: true,
+      profilePrivacy: true,
     },
   });
 
@@ -47,12 +48,34 @@ export default async function PublicProfilePage({
     },
   });
 
+  const isOwnProfile = session.user.id === user.id;
+  const canViewFull =
+    isOwnProfile ||
+    user.profilePrivacy === "PUBLIC" ||
+    (user.profilePrivacy === "FOLLOWERS_ONLY" && !!isFollowing);
+
+  const profileUser = canViewFull
+    ? user
+    : {
+        ...user,
+        bio: null,
+        location: null,
+        website: null,
+        twitter: null,
+        github: null,
+        bannerUrl: null,
+        reputationPoints: 0,
+        followerCount: 0,
+        followingCount: 0,
+      };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <ProfileHeader
-        user={user}
-        isOwnProfile={session.user.id === user.id}
+        user={profileUser}
+        isOwnProfile={isOwnProfile}
         isFollowing={!!isFollowing}
+        limitedView={!canViewFull}
       />
     </div>
   );

@@ -1,9 +1,6 @@
 import { describe, it } from "mocha";
-import { expect } from "chai";
-import {
-  validateWebSocketMessage,
-  websocketSchemas,
-} from "../lib/schemas/websocket.js";
+import { assert } from "chai";
+import { validateWebSocketMessage } from "../lib/schemas/websocket.js";
 import {
   createMessageWithAttachmentsSchema,
   createThreadSchema,
@@ -33,7 +30,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = validateWebSocketMessage(message);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should reject invalid NEW_MESSAGE with missing required fields", () => {
@@ -46,7 +43,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = validateWebSocketMessage(message);
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
 
     it("should validate USER_TYPING event", () => {
@@ -60,7 +57,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = validateWebSocketMessage(message);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should validate USER_STOPPED_TYPING event", () => {
@@ -73,7 +70,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = validateWebSocketMessage(message);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should reject invalid message type", () => {
@@ -85,7 +82,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = validateWebSocketMessage(message);
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
 
     it("should validate MESSAGE_DELETED event", () => {
@@ -99,7 +96,50 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = validateWebSocketMessage(message);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
+    });
+
+    it("should validate REACTION_UPDATE event", () => {
+      const message = {
+        type: "REACTION_UPDATE",
+        payload: {
+          messageId: "clmsg123456789",
+          reactionType: "👍",
+          count: 2,
+          sectionId: "clsect123456789",
+        },
+      };
+      const result = validateWebSocketMessage(message);
+      assert.isTrue(result.success);
+    });
+
+    it("should validate PIN_UPDATE event", () => {
+      const message = {
+        type: "PIN_UPDATE",
+        payload: {
+          messageId: "clmsg123456789",
+          isPinned: true,
+          sectionId: "clsect123456789",
+        },
+      };
+      const result = validateWebSocketMessage(message);
+      assert.isTrue(result.success);
+    });
+
+    it("should validate MENTION_NOTIFICATION event", () => {
+      const message = {
+        type: "MENTION_NOTIFICATION",
+        payload: {
+          messageId: "clmsg123456789",
+          mentionedUserId: "cluser987654321",
+          mentionedBy: "cluser123456789",
+          mentionedByName: "Alice",
+          content: "Hey @alice",
+          sectionId: "clsect123456789",
+        },
+      };
+      const result = validateWebSocketMessage(message);
+      assert.isTrue(result.success);
     });
   });
 
@@ -111,7 +151,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createMessageWithAttachmentsSchema.safeParse(data);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should reject message with empty content", () => {
@@ -121,7 +161,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createMessageWithAttachmentsSchema.safeParse(data);
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
 
     it("should reject message with content exceeding max length", () => {
@@ -131,7 +171,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createMessageWithAttachmentsSchema.safeParse(data);
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
 
     it("should validate message with attachments", () => {
@@ -149,7 +189,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createMessageWithAttachmentsSchema.safeParse(data);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should validate thread creation with valid data", () => {
@@ -161,7 +201,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createThreadSchema.safeParse(data);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should reject thread with invalid slug", () => {
@@ -172,7 +212,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createThreadSchema.safeParse(data);
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
 
     it("should validate community creation", () => {
@@ -184,7 +224,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createCommunitySchema.safeParse(data);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should reject attachment with invalid URL", () => {
@@ -196,7 +236,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = attachmentInputSchema.safeParse(data);
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
   });
 
@@ -214,7 +254,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = uploadResponseSchema.safeParse(response);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should validate thread creation request", () => {
@@ -225,7 +265,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createThreadRequestSchema.safeParse(request);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should reject thread with short title", () => {
@@ -235,7 +275,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createThreadRequestSchema.safeParse(request);
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
 
     it("should validate community creation request", () => {
@@ -245,7 +285,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createCommunityRequestSchema.safeParse(request);
-      expect(result.success).to.be.true;
+      assert.isTrue(result.success);
     });
 
     it("should reject community with description exceeding max length", () => {
@@ -255,7 +295,7 @@ describe("Zod Schema Validation", () => {
       };
 
       const result = createCommunityRequestSchema.safeParse(request);
-      expect(result.success).to.be.false;
+      assert.isFalse(result.success);
     });
   });
 
@@ -270,7 +310,8 @@ describe("Zod Schema Validation", () => {
       }
 
       // Just verify the function runs without throwing
-      expect(result).to.have.property("success");
+      assert.isObject(result);
+      assert.property(result, "success");
     });
   });
 });

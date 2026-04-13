@@ -15,8 +15,8 @@ export function AppealForm() {
     const result = await submitAppeal(formData);
     setIsSubmitting(false);
 
-    if (result && "message" in result && result.message) {
-      toast.error(result.message);
+    if (result?.error) {
+      toast.error(result.error);
     } else {
       toast.success("Appeal submitted successfully");
       router.refresh();

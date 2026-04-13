@@ -1,17 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Conversation } from "@/types";
 import { getConversations, createConversation } from "@/modules/chat/actions";
-import { toast } from "sonner";
+import { toasts } from "@/lib/utils/toast";
 
 export function useConversations() {
   return useQuery({
     queryKey: ["conversations"],
     queryFn: async () => {
       const result = await getConversations();
-      if (!result.success) {
+      if (result.error) {
         throw new Error(result.error);
       }
-      return result.data as Conversation[];
+      return (result.data ?? []) as Conversation[];
     },
   });
 }
@@ -27,17 +27,20 @@ export function useCreateConversation() {
       memberIds?: string[]
     }) => {
       const result = await createConversation(data);
-      if (!result.success) {
+      if (result.error) {
         throw new Error(result.error);
+      }
+      if (!result.data) {
+        throw new Error("Conversation could not be created");
       }
       return result.data as Conversation;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      toast.success("Channel created successfully");
+      toasts.success("Channel created successfully");
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to create channel");
+      toasts.error(error.message || "Failed to create channel");
     }
   });
 }

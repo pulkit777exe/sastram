@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/infrastructure/prisma";
 import { requireModerator } from "@/lib/middleware/moderation";
 import { ok, fail } from "@/lib/http/api-response";
+import { prisma } from "@/lib/infrastructure/prisma";
 
 export async function GET() {
   try {
@@ -14,27 +14,31 @@ export async function GET() {
   }
 
   try {
-    const [latestStats, queueSize] = await Promise.all([
-      prisma.moderationStats.findMany({
-        orderBy: { windowStart: "desc" },
-        take: 24,
-      }),
-      prisma.moderationQueue.count({
-        where: { status: { in: ["QUEUED", "FLAGGED"] } },
-      }),
+    const [pendingReports, activeBans, resolvedReports, totalRules] = await Promise.all([
+      prisma.report.count({ where: { status: "PENDING" } }),
+      prisma.userBan.count({ where: { isActive: true } }),
+      prisma.report.count({ where: { status: "RESOLVED" } }),
+      prisma.moderationRule.count(),
     ]);
+
+    const latestStats = [
+      { label: "Pending Reports", value: pendingReports },
+      { label: "Active Bans", value: activeBans },
+      { label: "Resolved Reports", value: resolvedReports },
+      { label: "Moderation Rules", value: totalRules },
+    ];
 
     return NextResponse.json(
       ok({
         latestStats,
-        queueSize,
+        queueSize: pendingReports,
       })
     );
   } catch (error) {
+    console.error("[GET_MODERATION_STATS]", error);
     return NextResponse.json(
       fail("INTERNAL_ERROR", "Failed to load moderation stats", error),
       { status: 500 }
     );
   }
 }
-

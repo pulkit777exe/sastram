@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import axios from "axios";
 import { cn } from "@/lib/utils/cn";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 
 interface ThreadDigest {
   id: string;
@@ -250,12 +251,12 @@ export function NewsletterDigestAdmin({
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>
                           Scheduled:{" "}
-                          {new Date(digest.scheduledFor).toLocaleDateString()}
+                          <TimeAgo date={digest.scheduledFor} />
                         </span>
                         {digest.processedAt && (
                           <span>
                             Sent:{" "}
-                            {new Date(digest.processedAt).toLocaleString()}
+                            <TimeAgo date={digest.processedAt} />
                           </span>
                         )}
                         {digest.emailCount > 0 && (

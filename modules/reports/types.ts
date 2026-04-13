@@ -1,6 +1,5 @@
 import type {
   ReportCategory,
-  ReportPriority,
   ReportStatus,
 } from "@/lib/config/constants";
 
@@ -15,9 +14,7 @@ export interface Report {
   category: ReportCategory;
   details: string | null;
   status: ReportStatus;
-  priority: ReportPriority;
   resolvedBy: string | null;
-  resolvedAt: Date | null;
   resolution: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -42,11 +39,6 @@ export interface Report {
     name: string | null;
     email: string;
   };
-  resolver: {
-    id: string;
-    name: string | null;
-    email: string;
-  } | null;
 }
 
 export interface ReportWithContext extends Report {
@@ -105,7 +97,6 @@ export interface ReportWithContext extends Report {
 export interface ReportQueueItem {
   id: string;
   category: ReportCategory;
-  priority: ReportPriority;
   status: ReportStatus;
   createdAt: Date;
   reportCount: number;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowUpDown, Download, ExternalLink } from "lucide-react";
 import type { Source } from "@/modules/ai-search/types";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 
 interface TableViewProps {
   sources: Source[];
@@ -196,12 +197,7 @@ export function TableView({ sources }: TableViewProps) {
                   </span>
                 </td>
                 <td className="px-4 py-2.5 text-center text-muted-foreground">
-                  {s.publishedDate
-                    ? new Date(s.publishedDate).toLocaleDateString("en-US", {
-                        year: "2-digit",
-                        month: "short",
-                      })
-                    : "—"}
+                  {s.publishedDate ? <TimeAgo date={s.publishedDate} /> : "—"}
                 </td>
                 <td className="px-4 py-2.5 text-muted-foreground capitalize">
                   {s.provider}

@@ -8,66 +8,73 @@ import {
   markAllAsRead,
   getUnreadCount,
 } from "@/modules/notifications/repository";
-import { validate } from "@/lib/utils/validation";
-import { handleError } from "@/lib/utils/errors";
 import { getNotificationsSchema, markNotificationReadSchema } from "./schemas";
 
-export async function getNotifications(unreadOnly: boolean = false) {
-  const session = await requireSession();
-
-  const validation = validate(getNotificationsSchema, { unreadOnly });
-  if (!validation.success) {
-    return { error: validation.error };
+export async function getNotifications(params?: {
+  unreadOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
+  const parsed = getNotificationsSchema.safeParse({
+    unreadOnly: params?.unreadOnly ?? false,
+    limit: params?.limit ?? 20,
+    offset: params?.offset ?? 0,
+  });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
+    const session = await requireSession();
     const notifications = await getUserNotifications({
       userId: session.user.id,
-      unreadOnly: validation.data.unreadOnly,
+      unreadOnly: parsed.data.unreadOnly,
+      limit: parsed.data.limit,
+      offset: parsed.data.offset,
     });
-    return { success: true, data: notifications };
+    return { data: notifications, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getNotifications]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function markNotificationRead(notificationId: string) {
-  const session = await requireSession();
-
-  const validation = validate(markNotificationReadSchema, { notificationId });
-  if (!validation.success) {
-    return { error: validation.error };
+  const parsed = markNotificationReadSchema.safeParse({ notificationId });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
-    await markAsRead(notificationId);
+    await requireSession();
+    await markAsRead(parsed.data.notificationId);
     revalidatePath("/dashboard");
-    return { success: true };
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[markNotificationRead]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function markAllNotificationsRead() {
-  const session = await requireSession();
-
   try {
+    const session = await requireSession();
     await markAllAsRead(session.user.id);
     revalidatePath("/dashboard");
-    return { success: true };
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[markAllNotificationsRead]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
 
 export async function getUnreadNotificationCount() {
-  const session = await requireSession();
-
   try {
+    const session = await requireSession();
     const count = await getUnreadCount(session.user.id);
-    return { success: true, data: { count } };
+    return { data: { count }, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[getUnreadNotificationCount]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
-

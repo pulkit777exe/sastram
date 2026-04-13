@@ -1,11 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Search, Command } from "lucide-react";
+import { Search, Command, Bell } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { usePathname } from "next/navigation";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { SearchDialog } from "./search-dialog";
+import { useBootstrap } from "@/components/bootstrap-provider";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 export function DashboardHeader() {
   const pathname = usePathname();
@@ -14,6 +17,9 @@ export function DashboardHeader() {
     (segment) => segment.charAt(0).toUpperCase() + segment.slice(1),
   );
   const [open, setOpen] = React.useState(false);
+  const { data: bootstrapData } = useBootstrap();
+  const unreadCount = bootstrapData?.unreadNotificationCount ?? 0;
+  const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -49,6 +55,17 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex items-center gap-4">
+          <Link
+            href="/dashboard/notifications"
+            className="relative p-2 hover:bg-muted rounded-full transition-colors"
+          >
+            <Bell className="h-5 w-5 text-muted-foreground" />
+            {unreadCount > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center p-0 bg-red-500 text-white text-[10px]">
+                {unreadLabel}
+              </Badge>
+            )}
+          </Link>
           <div
             className="relative hidden md:block cursor-pointer"
             onClick={() => setOpen(true)}

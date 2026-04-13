@@ -54,7 +54,7 @@ export async function requireSession(
 ): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect("/login?reason=session_expired");
   }
 
   if (checkBanStatus && session.user.status === "BANNED") {

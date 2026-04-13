@@ -1,50 +1,73 @@
 "use server";
 
 import { prisma } from "@/lib/infrastructure/prisma";
-import { topicSchema } from "@/lib/utils/security";
 import { auth } from "@/lib/services/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { buildThreadSlug } from "@/modules/threads/service";
-import { validate } from "@/lib/utils/validation";
-import { handleError } from "@/lib/utils/errors";
 import { createTopicSchema } from "./schemas";
+import { createTag, addTagToThread } from "@/modules/tags/repository";
 
 export async function createTopic(formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
-  const icon = formData.get("icon") as string || "Hash";
+  const icon = (formData.get("icon") as string) || "Hash";
+  const rawTags = formData.get("tags");
 
-  // Use topicSchema for validation (maps description to content)
-  const validation = topicSchema.safeParse({ title, content: description });
-  
-  if (!validation.success) {
-    return { error: validation.error.issues[0]?.message };
+  let tags: string[] = [];
+  if (typeof rawTags === "string" && rawTags.length > 0) {
+    try {
+      const parsedTags = JSON.parse(rawTags);
+      if (Array.isArray(parsedTags)) {
+        tags = parsedTags
+          .filter((tag): tag is string => typeof tag === "string")
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0);
+      }
+    } catch {
+      tags = [];
+    }
   }
 
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return { error: "Unauthorized" };
+  const parsed = createTopicSchema.safeParse({ title, description, tags, icon });
+  if (!parsed.success) {
+    return { data: null, error: "Invalid input" };
   }
 
   try {
-    await prisma.section.create({
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return { data: null, error: "Something went wrong" };
+    }
+
+    const section = await prisma.section.create({
       data: {
-        name: title,
-        description: description,
-        icon: icon,
+        name: parsed.data.title,
+        description: parsed.data.description,
         createdBy: session.user.id,
-        slug: buildThreadSlug(title),
+        slug: buildThreadSlug(parsed.data.title),
       },
     });
 
+    const uniqueTags = Array.from(
+      new Set((parsed.data.tags ?? []).map((tag) => tag.toLowerCase())),
+    ).slice(0, 5);
+
+    if (uniqueTags.length > 0) {
+      for (const tagName of uniqueTags) {
+        const tag = await createTag(tagName);
+        await addTagToThread(section.id, tag.id);
+      }
+    }
+
     revalidatePath("/dashboard");
-    return { success: true };
+    revalidatePath("/dashboard/threads");
+    return { data: null, error: null };
   } catch (error) {
-    return handleError(error);
+    console.error("[createTopic]", error);
+    return { data: null, error: "Something went wrong" };
   }
 }
-

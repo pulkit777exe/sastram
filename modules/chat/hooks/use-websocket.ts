@@ -16,15 +16,22 @@ export function useThreadWebSocket(threadId: string | null) {
   const [lastMessage, setLastMessage] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<TypingIndicator[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const mounted = useRef(true);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const reconnectAttemptsRef = useRef(0);
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!threadId) return;
 
     function connect() {
-      if (!threadId) return;
+      if (!threadId || !mounted.current) return;
       const ws = createThreadSocket(threadId);
       if (!ws) return;
 
@@ -32,11 +39,13 @@ export function useThreadWebSocket(threadId: string | null) {
 
       ws.onopen = () => {
         logger.debug(`Connected to thread socket ${threadId}`);
+        if (!mounted.current) return;
         setIsConnected(true);
         reconnectAttemptsRef.current = 0; // Reset reconnect attempts on successful connection
       };
 
       ws.onmessage = (event) => {
+        if (!mounted.current) return;
         try {
           const data: WebSocketEvent = JSON.parse(event.data);
 
@@ -76,6 +85,7 @@ export function useThreadWebSocket(threadId: string | null) {
 
       ws.onclose = () => {
         logger.debug("Disconnected from thread socket");
+        if (!mounted.current) return;
         setIsConnected(false);
         setTypingUsers([]); // Clear typing indicators on disconnect
 

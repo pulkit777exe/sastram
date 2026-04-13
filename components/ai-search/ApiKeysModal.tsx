@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Eye, EyeOff, Check, X, KeyRound } from "lucide-react";
 
 interface ApiKeysModalProps {
@@ -44,18 +44,16 @@ export function ApiKeysModal({
   onClose,
   onKeysChange,
 }: ApiKeysModalProps) {
-  const [keys, setKeys] = useState<Record<string, string>>({});
-  const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
-
-  // Load keys from localStorage on mount
-  useEffect(() => {
+  const [keys, setKeys] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
     const loaded: Record<string, string> = {};
     KEY_CONFIGS.forEach((config) => {
       const saved = localStorage.getItem(config.storageKey);
       if (saved) loaded[config.id] = saved;
     });
-    setKeys(loaded);
-  }, [isOpen]);
+    return loaded;
+  });
+  const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
 
   const handleKeyChange = (id: string, value: string) => {
     const updated = { ...keys, [id]: value };
@@ -63,7 +61,7 @@ export function ApiKeysModal({
 
     // Persist to localStorage
     const config = KEY_CONFIGS.find((c) => c.id === id);
-    if (config) {
+    if (config && typeof window !== "undefined") {
       if (value) {
         localStorage.setItem(config.storageKey, value);
       } else {

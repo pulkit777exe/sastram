@@ -33,26 +33,21 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: "desc" },
     });
 
-    const conversations = sections.map((section) => {
-      const lastMessage = section.messages[0];
-      return {
-        id: section.id,
-        name: section.name,
-        avatar: section.icon || "",
-        lastMessage: lastMessage
-          ? `${lastMessage.sender.name}: ${lastMessage.content.substring(0, 50)}...`
-          : "No messages yet",
-        timestamp: lastMessage
-          ? new Date(lastMessage.createdAt).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "",
-        unread: 0, // Implement unread count logic if needed
-        online: false,
-        type: "channel" as const,
-      };
-    });
+     const conversations = sections.map((section) => {
+       const lastMessage = section.messages[0];
+       return {
+         id: section.id,
+         name: section.name,
+         avatar: "",
+         lastMessage: lastMessage
+           ? `${lastMessage.sender.name}: ${lastMessage.content.substring(0, 50)}...`
+           : "No messages yet",
+         timestamp: lastMessage ? new Date(lastMessage.createdAt).toISOString() : "",
+         unread: 0, // Implement unread count logic if needed
+         online: false,
+         type: "channel" as const,
+       };
+     });
 
     return NextResponse.json(conversations);
   } catch (error) {
@@ -101,16 +96,16 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      id: section.id,
-      name: section.name,
-      avatar: section.icon || "",
-      lastMessage: "No messages yet",
-      timestamp: "",
-      unread: 0,
-      online: false,
-      type: "channel" as const,
-    });
+     return NextResponse.json({
+       id: section.id,
+       name: section.name,
+       avatar: "",
+       lastMessage: "No messages yet",
+       timestamp: "",
+       unread: 0,
+       online: false,
+       type: "channel" as const,
+     });
   } catch (error) {
     logger.error("Error creating section:", error);
     return NextResponse.json(

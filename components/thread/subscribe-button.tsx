@@ -1,73 +1,155 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useFormStatus } from "react-dom";
-import { cn } from "@/lib/utils/cn";
-import { Bell, Check, Loader2 } from "lucide-react";
-import { SubscriptionSuccessModal } from "./SubscriptionSuccessModal";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
+import {
+  subscribeToThreadAction,
+  unsubscribeFromThread,
+  updateSubscriptionFrequencyAction,
+} from "@/modules/newsletter/actions";
+import { toasts } from "@/lib/utils/toast";
+
+type SubscriptionFrequency = "DAILY" | "WEEKLY" | "NEVER" | null;
 
 interface ThreadSubscribeButtonProps {
-  subscribed: boolean;
   threadName?: string;
+  threadId: string;
+  slug: string;
+  initialFrequency: SubscriptionFrequency;
 }
 
+const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
+  { label: "Not subscribed", value: null },
+  { label: "Daily", value: "DAILY" },
+  { label: "Weekly", value: "WEEKLY" },
+  { label: "Never", value: "NEVER" },
+];
+
 export function ThreadSubscribeButton({
-  subscribed,
   threadName = "this thread",
+  threadId,
+  slug,
+  initialFrequency,
 }: ThreadSubscribeButtonProps) {
-  const { pending } = useFormStatus();
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const prevPendingRef = useRef(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [frequency, setFrequency] = useState<SubscriptionFrequency>(
+    initialFrequency,
+  );
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Use effect to detect transition from pending to not pending
+  const triggerLabel = useMemo(() => {
+    if (!frequency) return "Not subscribed";
+    if (frequency === "DAILY") return "Daily";
+    if (frequency === "WEEKLY") return "Weekly";
+    return "Never";
+  }, [frequency]);
+
   useEffect(() => {
-    const wasPending = prevPendingRef.current;
-    
-    // Update ref for next time
-    prevPendingRef.current = pending;
+    const onOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target || containerRef.current?.contains(target)) {
+        return;
+      }
+      setIsOpen(false);
+    };
 
-    // Trigger modal on next tick to avoid synchronous setState
-    if (wasPending && !pending && !subscribed) {
-      const timer = setTimeout(() => setShowSuccessModal(true), 0);
-      return () => clearTimeout(timer);
+    document.addEventListener("mousedown", onOutsideClick);
+    return () => document.removeEventListener("mousedown", onOutsideClick);
+  }, []);
+
+  const setSubscription = async (nextFrequency: SubscriptionFrequency) => {
+    if (isSaving || nextFrequency === frequency) {
+      setIsOpen(false);
+      return;
     }
-  }, [pending, subscribed]);
 
-  const label = subscribed ? "Subscribed" : "Subscribe to newsletter";
-  const Icon = subscribed ? Check : pending ? Loader2 : Bell;
+    const previous = frequency;
+    setFrequency(nextFrequency);
+    setIsSaving(true);
+    setIsOpen(false);
+
+    try {
+      if (nextFrequency === null || nextFrequency === "NEVER") {
+        const result = await unsubscribeFromThread(threadId);
+        if (result.error) {
+          setFrequency(previous);
+          toasts.serverError();
+          return;
+        }
+
+        toasts.saved();
+        return;
+      }
+
+      if (!previous || previous === "NEVER") {
+        const subscribe = await subscribeToThreadAction({ threadId, slug });
+        if (subscribe.error) {
+          setFrequency(previous);
+          toasts.serverError();
+          return;
+        }
+      }
+
+      const update = await updateSubscriptionFrequencyAction({
+        threadId,
+        frequency: nextFrequency,
+      });
+      if (update.error) {
+        setFrequency(previous);
+        toasts.serverError();
+        return;
+      }
+
+      toasts.saved();
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <>
+    <div ref={containerRef} className="relative">
       <Button
-        type="submit"
-        variant={subscribed ? "outline" : "default"}
-        disabled={pending || subscribed}
-        className={cn(
-          "w-full rounded-xl font-medium transition-all group bg-linear-to-r from-indigo-500 to-indigo-600 hover:bg-indigo-400 text-white",
-          subscribed
-            ? "bg-secondary"
-            : "shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40"
-        )}
+        type="button"
+        variant="outline"
+        disabled={isSaving}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="w-full justify-between rounded-xl border-border/70"
       >
-        <AnimatedIcon
-          icon={Icon}
-          animateOnHover={!pending}
-          className={cn(
-            "w-4 h-4 mr-2 transition-transform",
-            pending && "animate-spin",
-            !subscribed && !pending && "group-hover:scale-110"
-          )}
-        />
-        {pending ? "Subscribing..." : label}
+        <span className="inline-flex items-center gap-2">
+          <Bell className="h-4 w-4" />
+          {triggerLabel}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {isSaving ? "Saving..." : "Change"}
+        </span>
       </Button>
 
-      <SubscriptionSuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        threadName={threadName}
-      />
-    </>
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-2 rounded-lg border border-border bg-popover shadow-lg z-20">
+          <div className="p-2">
+            {OPTIONS.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                disabled={isSaving}
+                onClick={() => void setSubscription(option.value)}
+                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                  frequency === option.value
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "hover:bg-muted text-foreground"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+            Updates for {threadName}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

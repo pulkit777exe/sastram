@@ -14,10 +14,10 @@ export async function getAdminStats() {
     activeUsers24h,
     pendingReports,
   ] = await Promise.all([
-    prisma.user.count({ where: { deletedAt: null } }),
-    prisma.section.count({ where: { deletedAt: null } }),
+    prisma.user.count(),
+    prisma.section.count(),
     prisma.message.count({ where: { deletedAt: null } }),
-    prisma.community.count({ where: { deletedAt: null } }),
+    prisma.community.count(),
     prisma.user.count({
       where: {
         lastSeenAt: {
@@ -41,4 +41,3 @@ export async function getAdminStats() {
     pendingReports,
   };
 }
-

@@ -1,75 +1,124 @@
 import { prisma } from "@/lib/infrastructure/prisma";
+import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+
+// ── SCHEMA ─────────────────────────────────────────────────────────────────
+// Parse poll.options from Prisma Json field safely.
+// If the DB value is malformed, this throws early with a clear error
+// instead of causing a silent runtime crash downstream.
+
+const optionsSchema = z.array(z.string());
+
+function parsePollOptions(raw: Prisma.JsonValue): string[] {
+  const result = optionsSchema.safeParse(raw);
+  if (!result.success) {
+    throw new Error(
+      `[Poll] options field has unexpected shape: ${result.error.message}`,
+    );
+  }
+  return result.data;
+}
+
+// ── CREATE ─────────────────────────────────────────────────────────────────
 
 export async function createPoll(
   threadId: string,
   question: string,
   options: string[],
-  expiresAt?: Date
+  expiresAt?: Date,
 ) {
   return prisma.poll.create({
     data: {
       threadId,
       question,
-      options: options as any, // JSON field
+      options: options as Prisma.InputJsonValue,
       expiresAt,
       isActive: true,
     },
   });
 }
 
-export async function voteOnPoll(pollId: string, userId: string, optionIndex: number) {
-  // Check if already voted
-  const existing = await prisma.pollVote.findUnique({
-    where: {
-      pollId_userId: {
-        pollId,
-        userId,
-      },
-    },
-  });
+// ── VOTE ───────────────────────────────────────────────────────────────────
+// The unique constraint on [pollId, userId] in the DB enforces one-vote-per-user.
+// We do NOT pre-check for an existing vote here — that would be an extra
+// round trip for every vote. Instead the action catches the constraint error.
 
-  if (existing) {
-    // Update existing vote
-    return prisma.pollVote.update({
-      where: { id: existing.id },
-      data: { optionIndex },
-    });
-  }
-
+export async function voteOnPoll(
+  pollId: string,
+  userId: string,
+  optionIndex: number,
+) {
   return prisma.pollVote.create({
-    data: {
-      pollId,
-      userId,
-      optionIndex,
-    },
+    data: { pollId, userId, optionIndex },
   });
 }
 
-export async function getPollResults(pollId: string) {
-  const poll = await prisma.poll.findUnique({
+// ── CLOSE ──────────────────────────────────────────────────────────────────
+
+export async function closePoll(pollId: string) {
+  return prisma.poll.update({
     where: { id: pollId },
-    include: {
-      votes: true,
-      _count: {
+    data: { isActive: false },
+  });
+}
+
+// ── GET BY ID ──────────────────────────────────────────────────────────────
+
+export async function getPollById(pollId: string) {
+  return prisma.poll.findUnique({
+    where: { id: pollId },
+    select: {
+      id: true,
+      threadId: true,
+      isActive: true,
+      expiresAt: true,
+      thread: {
         select: {
-          votes: true,
+          id: true,
+          slug: true,
+          // Include createdBy here so closePollAction doesn't need
+          // a separate query to check thread ownership
+          createdBy: true,
         },
       },
     },
   });
+}
 
-  if (!poll) {
-    return null;
-  }
+// ── GET RESULTS ────────────────────────────────────────────────────────────
+// Uses DB-level aggregation (groupBy) instead of loading all vote rows
+// into Node.js memory. At 10,000 votes this is critical for performance.
 
-  const options = poll.options as string[];
-  const voteCounts = new Array(options.length).fill(0);
+export async function getPollResults(pollId: string) {
+  const [poll, voteCounts] = await Promise.all([
+    prisma.poll.findUnique({
+      where: { id: pollId },
+      select: {
+        id: true,
+        question: true,
+        options: true,
+        isActive: true,
+        expiresAt: true,
+        _count: { select: { votes: true } },
+      },
+    }),
+    prisma.pollVote.groupBy({
+      by: ["optionIndex"],
+      where: { pollId },
+      _count: { optionIndex: true },
+    }),
+  ]);
 
-  poll.votes.forEach((vote) => {
-    if (vote.optionIndex >= 0 && vote.optionIndex < options.length) {
-      voteCounts[vote.optionIndex]++;
-    }
-  });
+  if (!poll) return null;
+
+  // Parse options through Zod — throws clearly if shape is wrong
+  const options = parsePollOptions(poll.options);
+  const totalVotes = poll._count.votes;
+
+  // Build a lookup map: optionIndex → count
+  const countByIndex = new Map<number, number>(
+    voteCounts.map((row) => [row.optionIndex, row._count.optionIndex]),
+  );
 
   return {
     poll: {
@@ -78,41 +127,35 @@ export async function getPollResults(pollId: string) {
       options,
       isActive: poll.isActive,
       expiresAt: poll.expiresAt,
-      totalVotes: poll._count.votes,
+      totalVotes,
     },
-    results: options.map((option, index) => ({
-      option,
-      index,
-      votes: voteCounts[index],
-      percentage:
-        poll._count.votes > 0 ? (voteCounts[index] / poll._count.votes) * 100 : 0,
-    })),
+    results: options.map((option, index) => {
+      const votes = countByIndex.get(index) ?? 0;
+      return {
+        option,
+        index,
+        votes,
+        percentage: totalVotes > 0 ? (votes / totalVotes) * 100 : 0,
+      };
+    }),
   };
 }
 
-export async function getUserVote(pollId: string, userId: string) {
-  const vote = await prisma.pollVote.findUnique({
-    where: {
-      pollId_userId: {
-        pollId,
-        userId,
-      },
-    },
-  });
+// ── GET USER VOTE ──────────────────────────────────────────────────────────
 
-  return vote;
+export async function getUserVote(pollId: string, userId: string) {
+  return prisma.pollVote.findUnique({
+    where: { pollId_userId: { pollId, userId } },
+  });
 }
+
+// ── GET BY THREAD ──────────────────────────────────────────────────────────
 
 export async function getPollByThreadId(threadId: string) {
   return prisma.poll.findUnique({
     where: { threadId },
     include: {
-      _count: {
-        select: {
-          votes: true,
-        },
-      },
+      _count: { select: { votes: true } },
     },
   });
 }
-

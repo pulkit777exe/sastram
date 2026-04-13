@@ -94,6 +94,13 @@ export async function processPendingDigests() {
     let emailCount = 0;
 
     for (const subscriber of subscribers) {
+      if (!subscriber.email) {
+        logger.warn(
+          `Skipping digest email for subscriber ${subscriber.userId} because no email is set`,
+        );
+        continue;
+      }
+
       try {
         await sendNewsletterDigest(
           subscriber.email,
