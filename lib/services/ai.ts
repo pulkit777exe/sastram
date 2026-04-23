@@ -504,21 +504,42 @@ class AIServiceFactory {
   }
 }
 
+class NoOpAIService implements AIService {
+  async generateSummary() {
+    return "Summary unavailable (AI not configured).";
+  }
+  async generateThreadSummary() {
+    return "Summary unavailable (AI not configured).";
+  }
+  async generateDailyDigest() {
+    return "<p>AI digest not available.</p>";
+  }
+  async generateThreadDNA() {
+    return DEFAULT_THREAD_DNA;
+  }
+  async calculateResolutionScore() {
+    return 50;
+  }
+  async detectConflicts() {
+    return { hasConflict: false };
+  }
+  async generateStreamingResponse(_content: string, onChunk: (chunk: string) => void) {
+    onChunk("(AI not configured)");
+  }
+}
+
 // ── SINGLETON EXPORT ───────────────────────────────────────────────────────
-// Throws loudly at startup if misconfigured.
-// Never silently stubs — callers must know when AI is unavailable.
 
 function createAiService(): AIService {
   const provider = (process.env.AI_PROVIDER as 'gemini' | 'openai' | undefined) ?? 'gemini';
-
-  // IMPORTANT: OPENAI_API_KEY — no NEXT_PUBLIC_ prefix (server secret only)
   const key = provider === 'gemini' ? process.env.GEMINI_API_KEY : process.env.OPENAI_API_KEY;
 
   if (!key) {
-    throw new Error(
+    logger.warn(
       `[AI Service] ${provider === 'gemini' ? 'GEMINI_API_KEY' : 'OPENAI_API_KEY'} ` +
-        `is not set. AI features will not work.`
+        `not set. AI features disabled.`
     );
+    return new NoOpAIService();
   }
 
   logger.info(`[AI Service] Initializing with provider: ${provider}`);

@@ -162,6 +162,12 @@ export const DEFAULT_JOB_OPTIONS: JobsOptions = {
   removeOnFail: { count: 500 },
 };
 
+export const FAILED_QUEUE_NAME = 'failed-jobs';
+
+export const failedQueue = new Queue(FAILED_QUEUE_NAME, {
+  connection: redisConnection,
+});
+
 const queueCache = new Map<QueueName, Queue>();
 
 function getQueue(queueName: QueueName): Queue {

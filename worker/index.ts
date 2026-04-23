@@ -77,12 +77,24 @@ const workers = queueDefinitions.map(({ queueName, handler }) => {
     },
   });
 
-  worker.on('failed', (job, err) => {
-    logger.error(`[${queueName}] job ${job?.id} failed`, {
+  worker.on('failed', async (job, err) => {
+    logger.error(`[${queueName}] job ${job?.id} failed after ${job?.attemptsMade} attempts`, {
       error: err.message,
       jobData: job?.data,
       attemptsMade: job?.attemptsMade,
     });
+
+    if (job && job.attemptsMade === job.opts.attempts) {
+      const { failedQueue } = await import('../lib/infrastructure/bullmq');
+      await failedQueue.add('dlq', {
+        originalQueue: queueName,
+        jobId: job.id,
+        jobData: job.data,
+        failedError: err.message,
+        failedAt: new Date().toISOString(),
+      });
+      logger.error(`[${queueName}] job ${job.id} moved to dead letter queue`);
+    }
   });
 
   worker.on('error', (err) => {

@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import fs from 'fs/promises';
 import path from 'path';
+import sanitizeHtml from 'sanitize-html';
 import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
 import { DEFAULT_JOB_OPTIONS, getEmailQueue, type EmailJobData } from '@/lib/infrastructure/bullmq';
@@ -142,9 +143,14 @@ export async function sendNewsletterDigest(
   messageCount?: number,
   participantCount?: number
 ) {
+  const cleanSummary = sanitizeHtml(summary, {
+    allowedTags: ['h3', 'p', 'ul', 'li', 'strong', 'em', 'b', 'i'],
+    allowedAttributes: {},
+  });
+
   const html = await loadTemplate('newsletter-digest.html', {
     threadName,
-    summary,
+    summary: cleanSummary,
     threadUrl,
     messageCount: String(messageCount || 0),
     participantCount: String(participantCount || 0),

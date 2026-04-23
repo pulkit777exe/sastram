@@ -27,6 +27,35 @@ const redis =
       })
     : null;
 
+class InMemoryRateLimiter implements RateLimiter {
+  private requests: Map<string, number[]> = new Map();
+  private maxPoints: number;
+  private duration: number;
+
+  constructor(maxPoints: number, duration: number) {
+    this.maxPoints = maxPoints;
+    this.duration = duration;
+  }
+
+  async check(identifier: string): Promise<{ success: boolean }> {
+    const now = Date.now();
+    const requests = this.requests.get(identifier) || [];
+
+    const filtered = requests.filter((timestamp) => now - timestamp < this.duration * 1000);
+
+    if (filtered.length >= this.maxPoints) {
+      return { success: false };
+    }
+
+    filtered.push(now);
+    this.requests.set(identifier, filtered);
+
+    return { success: true };
+  }
+}
+
+const inMemoryLimiter = new InMemoryRateLimiter(100, 60);
+
 // Helper to create a rate limiter wrapper
 const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
   const config = rateLimitConfig[bucket];
@@ -40,7 +69,7 @@ const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
   const ratelimit = new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(config.points, `${config.duration} s`),
-    analytics: true,
+    analytics: false,
   });
 
   return {
@@ -49,9 +78,9 @@ const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
         const result = await ratelimit.limit(identifier);
         return { success: result.success };
       } catch (error) {
-        console.error(`Rate limit check failed for ${bucket}:`, error);
-        // Fail open if Redis is down
-        return { success: true };
+        console.error(`Redis rate limit check failed for ${bucket}, falling back to in-memory:`, error);
+        const memLimit = new InMemoryRateLimiter(config.points, config.duration);
+        return memLimit.check(identifier);
       }
     },
   };
@@ -80,33 +109,6 @@ export async function checkRateLimit(userId: string, bucket: RateLimitBucket): P
 
   if (!result.success) {
     throw new Error(`Rate limit exceeded. Please try again in 10 sec seconds.`);
-  }
-}
-
-class InMemoryRateLimiter implements RateLimiter {
-  private requests: Map<string, number[]> = new Map();
-  private maxPoints: number;
-  private duration: number;
-
-  constructor(maxPoints: number, duration: number) {
-    this.maxPoints = maxPoints;
-    this.duration = duration;
-  }
-
-  async check(identifier: string): Promise<{ success: boolean }> {
-    const now = Date.now();
-    const requests = this.requests.get(identifier) || [];
-
-    const filtered = requests.filter((timestamp) => now - timestamp < this.duration * 1000);
-
-    if (filtered.length >= this.maxPoints) {
-      return { success: false };
-    }
-
-    filtered.push(now);
-    this.requests.set(identifier, filtered);
-
-    return { success: true };
   }
 }
 
