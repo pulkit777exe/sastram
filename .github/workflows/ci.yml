@@ -26,6 +26,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Check formatting
+        run: npm run format:check || (echo "❌ Formatting issues! Run 'npm run format' to fix." && exit 1)
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
