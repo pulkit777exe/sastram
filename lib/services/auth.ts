@@ -41,6 +41,14 @@ export const auth = betterAuth({
           return;
         }
 
+        const isDevelopment = process.env.NODE_ENV === 'development';
+
+        if (isDevelopment) {
+          logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
+          console.log(`[DEV OTP] ${type} for ${email}: ${otp}`);
+          return;
+        }
+
         try {
           logger.info(`Sending ${type} OTP to ${email}`);
           await sendOTPEmail(email, otp, type);

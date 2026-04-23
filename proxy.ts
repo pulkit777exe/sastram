@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   '/api/email-otp',
   '/api/sign-in',
   '/api/forget-password',
+  '/api/cron',
 ];
 
 const SECURITY_HEADERS = {
