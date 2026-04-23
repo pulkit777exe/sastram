@@ -1,8 +1,3 @@
-// ─────────────────────────────────────────────────────────────
-// POST /api/ai/forum-search
-// Production-ready endpoint with comprehensive error handling
-// ─────────────────────────────────────────────────────────────
-
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { sanitizeSearchQuery, validateApiKeys } from "@/lib/sanitize";
