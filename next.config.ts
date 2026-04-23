@@ -18,8 +18,8 @@ const nextConfig: NextConfig = {
 const sentryConfig = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
   wideOrientation: true,
-  silent: !process.env.CI,
   widenClientFileUpload: true,
   tunnelRoute: '/monitoring',
   webpack: {
