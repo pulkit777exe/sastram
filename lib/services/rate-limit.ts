@@ -18,14 +18,19 @@ type RateLimiter = {
   check: (identifier: string) => Promise<{ success: boolean }>;
 };
 
-// Create Redis client
-const redis =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    ? new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      })
-    : null;
+let redis: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (redis) return redis;
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null;
+  }
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+  return redis;
+}
 
 class InMemoryRateLimiter implements RateLimiter {
   private requests: Map<string, number[]> = new Map();
@@ -59,15 +64,16 @@ const inMemoryLimiter = new InMemoryRateLimiter(100, 60);
 // Helper to create a rate limiter wrapper
 const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
   const config = rateLimitConfig[bucket];
+  const r = getRedis();
 
-  if (!redis || !env.RATE_LIMIT_ENABLED) {
+  if (!r || !env.RATE_LIMIT_ENABLED) {
     return {
       check: async () => ({ success: true }),
     };
   }
 
   const ratelimit = new Ratelimit({
-    redis,
+    redis: r,
     limiter: Ratelimit.slidingWindow(config.points, `${config.duration} s`),
     analytics: false,
   });
