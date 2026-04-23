@@ -14,7 +14,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
-    "test": "node --import tsx --import global-jsdom/register ./node_modules/mocha/bin/mocha.js test/**/*.test.mts",
+    "test": "node --import tsx --import tsconfig-paths/register --import ./test/setup.ts ./node_modules/mocha/bin/mocha.js test/**/*.test.mts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -39,5 +39,11 @@
     "follow-redirects@<1.15.12": "1.15.12",
     "hono@<4.12.14": "4.12.14",
     "@hono/node-server@<1.19.13": "1.19.13"
+  },
+  "devDependencies": {
+    "tsconfig-paths": "^4.2.0"
+  },
+  "dependencies": {
+    "@sentry/nextjs": "^10"
   }
 }
