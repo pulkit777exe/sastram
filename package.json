@@ -18,7 +18,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -88,6 +90,7 @@
     "global-jsdom": "^27.0.0",
     "jsdom": "^27.2.0",
     "mocha": "^11.7.5",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4.0.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
