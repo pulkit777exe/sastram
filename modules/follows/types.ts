@@ -38,4 +38,3 @@ export interface FollowingResponse {
   total: number;
   hasMore: boolean;
 }
-

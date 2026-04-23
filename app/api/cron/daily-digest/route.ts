@@ -1,17 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { aiService } from "@/lib/services/ai";
-import { sendEmail } from "@/lib/services/email";
-import { startOfDay, endOfDay } from "date-fns";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { aiService } from '@/lib/services/ai';
+import { sendEmail } from '@/lib/services/email';
+import { startOfDay, endOfDay } from 'date-fns';
 
 export async function GET(req: NextRequest) {
   // Verify Cron Secret (optional but recommended for production)
-  const authHeader = req.headers.get("authorization");
-  if (
-    process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authHeader = req.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
@@ -23,7 +20,7 @@ export async function GET(req: NextRequest) {
     const subscriptions = await prisma.threadSubscription.findMany({
       where: {
         isActive: true,
-        frequency: "DAILY", // Currently we only support daily
+        frequency: 'DAILY', // Currently we only support daily
       },
       include: {
         thread: {
@@ -36,7 +33,7 @@ export async function GET(req: NextRequest) {
                 },
               },
               include: { sender: true },
-              orderBy: { createdAt: "asc" },
+              orderBy: { createdAt: 'asc' },
             },
           },
         },
@@ -64,7 +61,7 @@ export async function GET(req: NextRequest) {
       }
 
       // Generate or retrieve summary for this thread
-      let summaryHtml = "";
+      let summaryHtml = '';
       try {
         if (!threadSummaries.has(thread.id)) {
           // Store the promise immediately to handle concurrent processing if we parallelize
@@ -75,10 +72,7 @@ export async function GET(req: NextRequest) {
 
         summaryHtml = await threadSummaries.get(thread.id);
       } catch (err) {
-        console.error(
-          `Failed to generate summary for thread ${thread.id}:`,
-          err,
-        );
+        console.error(`Failed to generate summary for thread ${thread.id}:`, err);
         results.errors++;
         continue;
       }
@@ -116,10 +110,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, results });
   } catch (error) {
-    console.error("Daily digest cron error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 },
-    );
+    console.error('Daily digest cron error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

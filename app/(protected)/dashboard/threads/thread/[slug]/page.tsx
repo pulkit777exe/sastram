@@ -1,33 +1,22 @@
-import { notFound } from "next/navigation";
-import { ThreadLiveWrapper } from "@/components/thread/thread-live-wrapper";
-import { ThreadSubscribeButton } from "@/components/thread/subscribe-button";
-import { InviteFriendButton } from "@/components/thread/invite-friend-button";
-import {
-  Hash,
-  Users,
-  MessageSquare,
-  ShieldCheck,
-  TrendingUp,
-  Activity,
-} from "lucide-react";
-import type { Message } from "@/lib/types/index";
-import { isAdmin, requireSession } from "@/modules/auth/session";
-import { getThreadWithFullContext } from "@/modules/threads";
-import Link from "next/link";
-import TimeAgo from "@/components/ui/TimeAgo";
-import { ThreadManagementControls } from "@/components/thread/thread-management-controls";
-import ResolutionScoreCard from "@/components/panels/ResolutionScoreCard";
-import ThreadDnaCard from "@/components/panels/ThreadDnaCard";
-import { parseThreadDna } from "@/lib/schemas/thread-dna";
-import { ThreadSummaryCard } from "@/components/thread/thread-summary-card";
-import { getThreadReadReceipt } from "@/modules/read-receipts/repository";
-import { prisma } from "@/lib/infrastructure/prisma";
+import { notFound } from 'next/navigation';
+import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
+import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
+import { InviteFriendButton } from '@/components/thread/invite-friend-button';
+import { Hash, Users, MessageSquare, ShieldCheck, TrendingUp, Activity } from 'lucide-react';
+import type { Message } from '@/lib/types/index';
+import { isAdmin, requireSession } from '@/modules/auth/session';
+import { getThreadWithFullContext } from '@/modules/threads';
+import Link from 'next/link';
+import TimeAgo from '@/components/ui/TimeAgo';
+import { ThreadManagementControls } from '@/components/thread/thread-management-controls';
+import ResolutionScoreCard from '@/components/panels/ResolutionScoreCard';
+import ThreadDnaCard from '@/components/panels/ThreadDnaCard';
+import { parseThreadDna } from '@/lib/schemas/thread-dna';
+import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
+import { getThreadReadReceipt } from '@/modules/read-receipts/repository';
+import { prisma } from '@/lib/infrastructure/prisma';
 
-export default async function ThreadPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function ThreadPage({ params }: { params: { slug: string } }) {
   const { slug } = await params;
   const session = await requireSession();
 
@@ -53,8 +42,7 @@ export default async function ThreadPage({
 
   const threadDna = parseThreadDna(thread.threadDna);
   const canManagePoll =
-    thread.createdBy === session.user.id ||
-    ["ADMIN", "MODERATOR"].includes(session.user.role);
+    thread.createdBy === session.user.id || ['ADMIN', 'MODERATOR'].includes(session.user.role);
 
   // ── MESSAGE MAPPING ──────────────────────────────────────────────────
   // ThreadMessage shape from getThreadWithFullContext:
@@ -70,14 +58,10 @@ export default async function ThreadPage({
   const allMessages: Message[] = thread.messages.map((m) => {
     // The DTO may expose author as `author` not `sender` — access both
     const raw = m as any;
-    const senderName: string =
-      raw.sender?.name ?? raw.author?.name ?? "Anonymous";
-    const senderImage: string | null =
-      raw.sender?.image ?? raw.author?.image ?? null;
-    const messageContent: string =
-      raw.content ?? raw.body ?? "";
-    const isAiResponse: boolean =
-      raw.isAiResponse ?? raw.isAI ?? false;
+    const senderName: string = raw.sender?.name ?? raw.author?.name ?? 'Anonymous';
+    const senderImage: string | null = raw.sender?.image ?? raw.author?.image ?? null;
+    const messageContent: string = raw.content ?? raw.body ?? '';
+    const isAiResponse: boolean = raw.isAiResponse ?? raw.isAI ?? false;
 
     return {
       id: m.id,
@@ -137,9 +121,7 @@ export default async function ThreadPage({
               <Hash size={20} strokeWidth={2.5} />
             </div>
             <div className="flex flex-col gap-0.5">
-              <h1 className="text-lg font-bold tracking-tight text-foreground">
-                {thread.title}
-              </h1>
+              <h1 className="text-lg font-bold tracking-tight text-foreground">{thread.title}</h1>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -185,7 +167,7 @@ export default async function ThreadPage({
           canManagePoll={canManagePoll}
           currentUser={{
             id: session.user.id,
-            name: session.user.name ?? "User",
+            name: session.user.name ?? 'User',
             image: session.user.image ?? null,
             role: session.user.role,
           }}
@@ -201,19 +183,11 @@ export default async function ThreadPage({
             </p>
           </div>
 
-          <h2 className="text-xl font-bold mb-3 text-foreground">
-            {thread.title}
-          </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-            {thread.description}
-          </p>
+          <h2 className="text-xl font-bold mb-3 text-foreground">{thread.title}</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8">{thread.description}</p>
 
           <div className="grid grid-cols-2 gap-3 mb-8">
-            <StatCard
-              icon={<Users size={16} />}
-              label="Members"
-              value={thread._count.members}
-            />
+            <StatCard icon={<Users size={16} />} label="Members" value={thread._count.members} />
             <StatCard
               icon={<MessageSquare size={16} />}
               label="Messages"
@@ -229,18 +203,12 @@ export default async function ThreadPage({
           />
 
           <div className="mt-3">
-            <InviteFriendButton
-              threadId={thread.id}
-              threadName={thread.title}
-            />
+            <InviteFriendButton threadId={thread.id} threadName={thread.title} />
           </div>
         </div>
 
         <div className="p-6 space-y-6">
-          <ThreadSummaryCard
-            threadId={thread.id}
-            initialSummary={thread.aiSummary}
-          />
+          <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
 
           <ResolutionScoreCard score={thread.resolutionScore} />
 
@@ -252,8 +220,7 @@ export default async function ThreadPage({
                 Stale Content Warning
               </p>
               <p className="text-xs text-amber-800">
-                This thread may contain outdated information that contradicts
-                newer content.
+                This thread may contain outdated information that contradicts newer content.
               </p>
             </div>
           )}
@@ -302,13 +269,9 @@ function StatCard({
     <div className="flex flex-col p-3 rounded-xl border border-border/60 bg-card/50">
       <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
         {icon}
-        <span className="text-[10px] font-medium uppercase tracking-wider">
-          {label}
-        </span>
+        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
       </div>
-      <span className="text-lg font-bold text-foreground tabular-nums">
-        {value}
-      </span>
+      <span className="text-lg font-bold text-foreground tabular-nums">{value}</span>
     </div>
   );
 }

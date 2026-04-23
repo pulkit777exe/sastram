@@ -1,60 +1,52 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { useState, useRef, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import * as React from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
-import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  LoaderIcon,
-  Eye,
-  EyeOff,
-  Mail,
-  ArrowLeft,
-  CheckCircle2,
-  Command,
-} from "lucide-react";
-import { signIn, signUp, authClient } from "@/lib/services/auth-client";
-import axios from "axios";
-import { GithubIcon } from "@/public/icons/github";
-import { ChromeIcon } from "@/public/icons/google";
-import { toasts } from "@/lib/utils/toast";
+import { cn } from '@/lib/utils/cn';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { LoaderIcon, Eye, EyeOff, Mail, ArrowLeft, CheckCircle2, Command } from 'lucide-react';
+import { signIn, signUp, authClient } from '@/lib/services/auth-client';
+import axios from 'axios';
+import { GithubIcon } from '@/public/icons/github';
+import { ChromeIcon } from '@/public/icons/google';
+import { toasts } from '@/lib/utils/toast';
 
-type AuthMode = "signin" | "signup" | "email-otp" | "otp-verify";
+type AuthMode = 'signin' | 'signup' | 'email-otp' | 'otp-verify';
 
 const inputStyles =
-  "h-12 rounded-xl bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all";
-const labelStyles = "text-muted-foreground text-sm font-medium";
+  'h-12 rounded-xl bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all';
+const labelStyles = 'text-muted-foreground text-sm font-medium';
 const primaryButtonStyles =
-  "h-12 rounded-xl bg-brand hover:bg-brand/90 text-white font-medium shadow-lg shadow-brand/20 transition-all hover:scale-[1.02] active:scale-[0.98]";
+  'h-12 rounded-xl bg-brand hover:bg-brand/90 text-white font-medium shadow-lg shadow-brand/20 transition-all hover:scale-[1.02] active:scale-[0.98]';
 const outlineButtonStyles =
-  "h-12 rounded-xl border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground transition-all";
+  'h-12 rounded-xl border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground transition-all';
 
 function UserAuthForm({
   className,
   mode,
   setMode,
   ...props
-}: React.ComponentProps<"div"> & {
+}: React.ComponentProps<'div'> & {
   mode: AuthMode;
   setMode: (mode: AuthMode) => void;
 }) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [loadingState, setLoadingState] = useState<
-    "email" | "github" | "google" | "otp" | null
-  >(null);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loadingState, setLoadingState] = useState<'email' | 'github' | 'google' | 'otp' | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
-  const [otpEmail, setOtpEmail] = useState("");
+  const [otpEmail, setOtpEmail] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -62,9 +54,9 @@ function UserAuthForm({
   const verifyingOtpRef = useRef(false);
 
   const redirectTarget = React.useMemo(() => {
-    const candidate = searchParams.get("redirect");
-    if (!candidate || !candidate.startsWith("/")) {
-      return "/dashboard";
+    const candidate = searchParams.get('redirect');
+    if (!candidate || !candidate.startsWith('/')) {
+      return '/dashboard';
     }
     return candidate;
   }, [searchParams]);
@@ -74,15 +66,15 @@ function UserAuthForm({
       return;
     }
 
-    const reason = searchParams.get("reason");
-    if (reason === "session_expired") {
+    const reason = searchParams.get('reason');
+    if (reason === 'session_expired') {
       toasts.sessionExpired();
       hasShownReasonToast.current = true;
       return;
     }
 
-    if (reason === "unauthorized") {
-      toasts.info("You need to sign in to access that page.");
+    if (reason === 'unauthorized') {
+      toasts.info('You need to sign in to access that page.');
       hasShownReasonToast.current = true;
     }
   }, [searchParams]);
@@ -96,20 +88,20 @@ function UserAuthForm({
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoadingState("email");
+    setLoadingState('email');
     setError(null);
 
     try {
-      if (mode === "signup") {
+      if (mode === 'signup') {
         const result = await signUp.email({
           email,
           password,
-          name: name || email.split("@")[0],
+          name: name || email.split('@')[0],
           callbackURL: redirectTarget,
         });
 
         if (result.error) {
-          setError(result.error.message || "Signup failed. Please try again.");
+          setError(result.error.message || 'Signup failed. Please try again.');
           setLoadingState(null);
           return;
         }
@@ -128,10 +120,7 @@ function UserAuthForm({
         });
 
         if (result.error) {
-          setError(
-            result.error.message ||
-              "Login failed. Please check your credentials."
-          );
+          setError(result.error.message || 'Login failed. Please check your credentials.');
           setLoadingState(null);
           return;
         }
@@ -145,16 +134,16 @@ function UserAuthForm({
         }
       }
     } catch (error) {
-      console.error(`${mode === "signup" ? "Signup" : "Login"} failed:`, error);
+      console.error(`${mode === 'signup' ? 'Signup' : 'Login'} failed:`, error);
       setError(
         (error instanceof Error ? error.message : String(error)) ||
-          `${mode === "signup" ? "Signup" : "Login"} failed. Please try again.`
+          `${mode === 'signup' ? 'Signup' : 'Login'} failed. Please try again.`
       );
       setLoadingState(null);
     }
   };
 
-  const handleSocialLogin = async (provider: "google" | "github") => {
+  const handleSocialLogin = async (provider: 'google' | 'github') => {
     setLoadingState(provider);
     setError(null);
     try {
@@ -164,17 +153,15 @@ function UserAuthForm({
       });
 
       if (result.error) {
-        setError(
-          result.error.message || "Social login failed. Please try again."
-        );
+        setError(result.error.message || 'Social login failed. Please try again.');
         setLoadingState(null);
         return;
       }
     } catch (error) {
-      console.error("Social login failed:", error);
+      console.error('Social login failed:', error);
       setError(
         (error instanceof Error ? error.message : String(error)) ||
-          "Social login failed. Please try again."
+          'Social login failed. Please try again.'
       );
       setLoadingState(null);
     }
@@ -182,30 +169,27 @@ function UserAuthForm({
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoadingState("otp");
+    setLoadingState('otp');
     setError(null);
 
     try {
-      const { data } = await axios.post(
-        "/api/email-otp/send-verification-otp",
-        {
-          email: otpEmail,
-          type: "sign-in",
-        }
-      );
+      const { data } = await axios.post('/api/email-otp/send-verification-otp', {
+        email: otpEmail,
+        type: 'sign-in',
+      });
 
       if (data.error) {
-        setError(data.error?.message || "Failed to send verification code");
+        setError(data.error?.message || 'Failed to send verification code');
         setLoadingState(null);
         return;
       }
 
-      setMode("otp-verify");
+      setMode('otp-verify');
       setCountdown(60);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
-      console.error("Send OTP error:", err);
-      setError("Failed to send verification code. Please try again.");
+      console.error('Send OTP error:', err);
+      setError('Failed to send verification code. Please try again.');
     } finally {
       setLoadingState(null);
     }
@@ -217,7 +201,7 @@ function UserAuthForm({
     }
 
     verifyingOtpRef.current = true;
-    setLoadingState("otp");
+    setLoadingState('otp');
     setError(null);
 
     try {
@@ -227,7 +211,7 @@ function UserAuthForm({
       });
 
       if (result.error) {
-        const message = result.error.message || "Invalid verification code";
+        const message = result.error.message || 'Invalid verification code';
         if (/expired/i.test(message)) {
           toasts.otpExpired();
         } else {
@@ -243,9 +227,9 @@ function UserAuthForm({
       router.push(redirectTarget);
       router.refresh();
     } catch (err) {
-      console.error("Verify OTP error:", err);
+      console.error('Verify OTP error:', err);
       toasts.serverError();
-      setError("Verification failed. Please try again.");
+      setError('Verification failed. Please try again.');
       setLoadingState(null);
       verifyingOtpRef.current = false;
     }
@@ -253,7 +237,7 @@ function UserAuthForm({
 
   const handleOTPChange = (index: number, value: string) => {
     if (value.length > 1) {
-      const pastedValues = value.slice(0, 6).split("");
+      const pastedValues = value.slice(0, 6).split('');
       const newOtp = [...otp];
       pastedValues.forEach((char, i) => {
         if (index + i < 6) {
@@ -263,7 +247,7 @@ function UserAuthForm({
       setOtp(newOtp);
       const nextIndex = Math.min(index + pastedValues.length, 5);
       inputRefs.current[nextIndex]?.focus();
-      const pastedOtp = newOtp.join("");
+      const pastedOtp = newOtp.join('');
       if (pastedOtp.length === 6) {
         void verifyOtpCode(pastedOtp);
       }
@@ -278,23 +262,23 @@ function UserAuthForm({
       inputRefs.current[index + 1]?.focus();
     }
 
-    const currentOtp = newOtp.join("");
+    const currentOtp = newOtp.join('');
     if (currentOtp.length === 6) {
       void verifyOtpCode(currentOtp);
     }
   };
 
   const handleOTPKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    const otpCode = otp.join("");
+    const otpCode = otp.join('');
     if (otpCode.length !== 6) {
-      setError("Please enter the complete 6-digit code");
+      setError('Please enter the complete 6-digit code');
       return;
     }
 
@@ -304,35 +288,32 @@ function UserAuthForm({
   const handleResendOTP = async () => {
     if (countdown > 0) return;
 
-    setLoadingState("otp");
+    setLoadingState('otp');
     setError(null);
 
     try {
-      const { data } = await axios.post(
-        "/api/email-otp/send-verification-otp",
-        {
-          email: otpEmail,
-          type: "sign-in",
-        }
-      );
+      const { data } = await axios.post('/api/email-otp/send-verification-otp', {
+        email: otpEmail,
+        type: 'sign-in',
+      });
 
       if (data.error) {
-        throw new Error("Failed to resend code");
+        throw new Error('Failed to resend code');
       }
 
       setCountdown(60);
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch {
-      setError("Failed to resend code. Please try again.");
+      setError('Failed to resend code. Please try again.');
     } finally {
       setLoadingState(null);
     }
   };
 
-  if (mode === "email-otp") {
+  if (mode === 'email-otp') {
     return (
-      <div className={cn("grid gap-6", className)} {...props}>
+      <div className={cn('grid gap-6', className)} {...props}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -359,7 +340,7 @@ function UserAuthForm({
                   onChange={(e) => setOtpEmail(e.target.value)}
                   required
                   disabled={loadingState !== null}
-                  className={cn(inputStyles, "pl-12")}
+                  className={cn(inputStyles, 'pl-12')}
                 />
               </div>
             </div>
@@ -373,9 +354,9 @@ function UserAuthForm({
             <Button
               type="submit"
               disabled={loadingState !== null || !otpEmail}
-              className={primaryButtonStyles + " w-full"}
+              className={primaryButtonStyles + ' w-full'}
             >
-              {loadingState === "otp" ? (
+              {loadingState === 'otp' ? (
                 <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Mail className="mr-2 h-4 w-4" />
@@ -387,7 +368,7 @@ function UserAuthForm({
               type="button"
               variant="ghost"
               onClick={() => {
-                setMode("signin");
+                setMode('signin');
                 setError(null);
               }}
               className="w-full text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -402,9 +383,9 @@ function UserAuthForm({
   }
 
   // OTP Verification Form
-  if (mode === "otp-verify") {
+  if (mode === 'otp-verify') {
     return (
-      <div className={cn("grid gap-6", className)} {...props}>
+      <div className={cn('grid gap-6', className)} {...props}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -416,8 +397,7 @@ function UserAuthForm({
                 <CheckCircle2 className="w-7 h-7 text-brand" />
               </div>
               <p className="text-sm text-muted-foreground">
-                Code sent to{" "}
-                <span className="font-medium text-foreground">{otpEmail}</span>
+                Code sent to <span className="font-medium text-foreground">{otpEmail}</span>
               </p>
             </div>
 
@@ -437,12 +417,7 @@ function UserAuthForm({
                     pattern="[0-9]*"
                     maxLength={6}
                     value={digit}
-                    onChange={(e) =>
-                      handleOTPChange(
-                        index,
-                        e.target.value.replace(/[^0-9]/g, "")
-                      )
-                    }
+                    onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
                     disabled={loadingState !== null}
                     className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
@@ -459,12 +434,10 @@ function UserAuthForm({
 
             <Button
               type="submit"
-              disabled={loadingState !== null || otp.join("").length !== 6}
-              className={primaryButtonStyles + " w-full"}
+              disabled={loadingState !== null || otp.join('').length !== 6}
+              className={primaryButtonStyles + ' w-full'}
             >
-              {loadingState === "otp" ? (
-                <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
+              {loadingState === 'otp' ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : null}
               Verify & Sign In
             </Button>
 
@@ -474,19 +447,19 @@ function UserAuthForm({
                 onClick={handleResendOTP}
                 disabled={countdown > 0 || loadingState !== null}
                 className={cn(
-                  "text-brand font-medium transition-colors hover:text-brand/80",
+                  'text-brand font-medium transition-colors hover:text-brand/80',
                   countdown > 0 &&
-                    "text-muted-foreground cursor-not-allowed hover:text-muted-foreground"
+                    'text-muted-foreground cursor-not-allowed hover:text-muted-foreground'
                 )}
               >
-                {countdown > 0 ? `Resend code in ${countdown}s` : "Resend code"}
+                {countdown > 0 ? `Resend code in ${countdown}s` : 'Resend code'}
               </button>
               <div>
                 <button
                   type="button"
                   onClick={() => {
-                    setMode("email-otp");
-                    setOtp(["", "", "", "", "", ""]);
+                    setMode('email-otp');
+                    setOtp(['', '', '', '', '', '']);
                     setError(null);
                   }}
                   className="text-muted-foreground hover:text-foreground transition-colors text-xs"
@@ -503,10 +476,10 @@ function UserAuthForm({
   }
 
   return (
-    <div className={cn("grid gap-6", className)} {...props}>
+    <div className={cn('grid gap-6', className)} {...props}>
       <form onSubmit={handleEmailAuth}>
         <div className="grid gap-4">
-          {mode === "signup" && (
+          {mode === 'signup' && (
             <div className="grid gap-2">
               <Label className={labelStyles} htmlFor="name">
                 Name
@@ -551,38 +524,29 @@ function UserAuthForm({
               <Input
                 id="password"
                 placeholder="Enter your password"
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 autoCapitalize="none"
-                autoComplete={
-                  mode === "signup" ? "new-password" : "current-password"
-                }
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 autoCorrect="off"
                 disabled={loadingState !== null}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className={cn(inputStyles, "pr-10")}
+                className={cn(inputStyles, 'pr-10')}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loadingState !== null}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none disabled:opacity-50 transition-colors"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
-            {mode === "signin" && (
+            {mode === 'signin' && (
               <div className="flex justify-end">
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-brand hover:text-brand/80"
-                >
+                <Link href="/forgot-password" className="text-xs text-brand hover:text-brand/80">
                   Forgot password?
                 </Link>
               </div>
@@ -594,24 +558,18 @@ function UserAuthForm({
             </p>
           )}
 
-          <Button
-            disabled={loadingState !== null}
-            type="submit"
-            className={primaryButtonStyles}
-          >
-            {loadingState === "email" && (
-              <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {mode === "signup" ? "Create Account" : "Sign In"}
+          <Button disabled={loadingState !== null} type="submit" className={primaryButtonStyles}>
+            {loadingState === 'email' && <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />}
+            {mode === 'signup' ? 'Create Account' : 'Sign In'}
           </Button>
         </div>
       </form>
 
-      {mode === "signin" && (
+      {mode === 'signin' && (
         <button
           type="button"
           onClick={() => {
-            setMode("email-otp");
+            setMode('email-otp');
             setOtpEmail(email);
             setError(null);
           }}
@@ -638,10 +596,10 @@ function UserAuthForm({
           variant="outline"
           type="button"
           disabled={loadingState !== null}
-          onClick={() => handleSocialLogin("github")}
-          className={cn(outlineButtonStyles, "flex-1")}
+          onClick={() => handleSocialLogin('github')}
+          className={cn(outlineButtonStyles, 'flex-1')}
         >
-          {loadingState === "github" ? (
+          {loadingState === 'github' ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <div className="mr-2 opacity-90 invert dark:invert-0">
@@ -654,10 +612,10 @@ function UserAuthForm({
           variant="outline"
           type="button"
           disabled={loadingState !== null}
-          onClick={() => handleSocialLogin("google")}
-          className={cn(outlineButtonStyles, "flex-1")}
+          onClick={() => handleSocialLogin('google')}
+          className={cn(outlineButtonStyles, 'flex-1')}
         >
-          {loadingState === "google" ? (
+          {loadingState === 'google' ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <div className="mr-2">
@@ -672,24 +630,20 @@ function UserAuthForm({
         <button
           type="button"
           onClick={() => {
-            setMode(mode === "signin" ? "signup" : "signin");
+            setMode(mode === 'signin' ? 'signup' : 'signin');
             setError(null);
           }}
           className="text-zinc-500 hover:text-white transition-colors"
         >
-          {mode === "signin" ? (
+          {mode === 'signin' ? (
             <>
-              Don&apos;t have an account?{" "}
-              <span className="text-indigo-400 hover:underline underline-offset-4">
-                Sign up
-              </span>
+              Don&apos;t have an account?{' '}
+              <span className="text-indigo-400 hover:underline underline-offset-4">Sign up</span>
             </>
           ) : (
             <>
-              Already have an account?{" "}
-              <span className="text-indigo-400 hover:underline underline-offset-4">
-                Sign in
-              </span>
+              Already have an account?{' '}
+              <span className="text-indigo-400 hover:underline underline-offset-4">Sign in</span>
             </>
           )}
         </button>
@@ -699,37 +653,36 @@ function UserAuthForm({
 }
 
 export function LoginForm() {
-  const [mode, setMode] = useState<AuthMode>("signin");
+  const [mode, setMode] = useState<AuthMode>('signin');
 
   const getTitle = () => {
     switch (mode) {
-      case "signup":
-        return "Create your account";
-      case "email-otp":
-        return "Sign in with OTP";
-      case "otp-verify":
-        return "Verify your email";
+      case 'signup':
+        return 'Create your account';
+      case 'email-otp':
+        return 'Sign in with OTP';
+      case 'otp-verify':
+        return 'Verify your email';
       default:
-        return "Welcome back";
+        return 'Welcome back';
     }
   };
 
   const getSubtitle = () => {
     switch (mode) {
-      case "signup":
-        return "Join the community today.";
-      case "email-otp":
-        return "Use a one-time verification code sent to your inbox.";
-      case "otp-verify":
-        return "Check your inbox for the code.";
+      case 'signup':
+        return 'Join the community today.';
+      case 'email-otp':
+        return 'Use a one-time verification code sent to your inbox.';
+      case 'otp-verify':
+        return 'Check your inbox for the code.';
       default:
-        return "Enter your details to access your dashboard.";
+        return 'Enter your details to access your dashboard.';
     }
   };
 
   return (
     <div className="flex justify-center items-center h-screen w-full overflow-hidden bg-background">
-
       <div className="flex items-center justify-center p-8 bg-background text-foreground relative">
         <div className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[400px]">
           <div className="flex flex-col gap-2 text-center mb-4">
@@ -747,9 +700,7 @@ export function LoginForm() {
                 exit={{ opacity: 0, y: -5 }}
                 transition={{ duration: 0.2 }}
               >
-                <h1 className="text-3xl font-bold tracking-tight mb-2">
-                  {getTitle()}
-                </h1>
+                <h1 className="text-3xl font-bold tracking-tight mb-2">{getTitle()}</h1>
                 <p className="text-muted-foreground text-sm">{getSubtitle()}</p>
               </motion.div>
             </AnimatePresence>
@@ -761,14 +712,14 @@ export function LoginForm() {
           </div>
 
           <p className="px-8 text-center text-xs text-muted-foreground">
-            By clicking continue, you agree to our{" "}
+            By clicking continue, you agree to our{' '}
             <Link
               href="/terms"
               className="underline underline-offset-4 hover:text-primary transition-colors"
             >
               Terms of Service
-            </Link>{" "}
-            and{" "}
+            </Link>{' '}
+            and{' '}
             <Link
               href="/privacy"
               className="underline underline-offset-4 hover:text-primary transition-colors"

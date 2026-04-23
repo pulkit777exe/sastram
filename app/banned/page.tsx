@@ -1,20 +1,20 @@
-import { getSession } from "@/modules/auth/session";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { redirect } from "next/navigation";
-import TimeAgo from "@/components/ui/TimeAgo";
+import { getSession } from '@/modules/auth/session';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { redirect } from 'next/navigation';
+import TimeAgo from '@/components/ui/TimeAgo';
 
 export default async function BannedPage() {
   const session = await getSession();
   if (!session) return null;
   const status = session.user.status;
 
-  if (status !== "BANNED" && status !== "SUSPENDED") {
-    redirect("/dashboard");
+  if (status !== 'BANNED' && status !== 'SUSPENDED') {
+    redirect('/dashboard');
   }
 
   const ban = await prisma.userBan.findFirst({
     where: { userId: session.user.id, isActive: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
     include: { issuer: { select: { name: true } } },
   });
 
@@ -27,11 +27,10 @@ export default async function BannedPage() {
 
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-foreground">
-            {status === "BANNED" ? "Account Banned" : "Account Suspended"}
+            {status === 'BANNED' ? 'Account Banned' : 'Account Suspended'}
           </h1>
           <p className="text-muted-foreground">
-            Your account has been{" "}
-            {status === "BANNED" ? "permanently banned" : "suspended"} from
+            Your account has been {status === 'BANNED' ? 'permanently banned' : 'suspended'} from
             Sastram.
           </p>
         </div>
@@ -54,7 +53,7 @@ export default async function BannedPage() {
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Issued By:</span>
-              <span>{ban.issuer.name || "System"}</span>
+              <span>{ban.issuer.name || 'System'}</span>
             </div>
           </div>
         )}

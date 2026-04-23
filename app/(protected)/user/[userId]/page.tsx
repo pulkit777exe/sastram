@@ -1,13 +1,9 @@
-import { notFound } from "next/navigation";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { ProfileHeader } from "@/components/user/profile-header";
-import { getSession } from "@/modules/auth/session";
+import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { ProfileHeader } from '@/components/user/profile-header';
+import { getSession } from '@/modules/auth/session';
 
-export default async function PublicProfilePage({
-  params,
-}: {
-  params: { userId: string };
-}) {
+export default async function PublicProfilePage({ params }: { params: { userId: string } }) {
   const { userId } = await params;
   const session = await getSession();
   if (!session) return null;
@@ -51,8 +47,8 @@ export default async function PublicProfilePage({
   const isOwnProfile = session.user.id === user.id;
   const canViewFull =
     isOwnProfile ||
-    user.profilePrivacy === "PUBLIC" ||
-    (user.profilePrivacy === "FOLLOWERS_ONLY" && !!isFollowing);
+    user.profilePrivacy === 'PUBLIC' ||
+    (user.profilePrivacy === 'FOLLOWERS_ONLY' && !!isFollowing);
 
   const profileUser = canViewFull
     ? user

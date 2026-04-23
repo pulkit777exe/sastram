@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Mail, X } from "lucide-react";
-import { unsubscribeFromThread } from "@/modules/newsletter/actions";
-import { toast } from "sonner";
-import { useState, useTransition } from "react";
-import Link from "next/link";
-import { TimeAgo } from "@/components/ui/TimeAgo";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Mail, X } from 'lucide-react';
+import { unsubscribeFromThread } from '@/modules/newsletter/actions';
+import { toast } from 'sonner';
+import { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { TimeAgo } from '@/components/ui/TimeAgo';
 
 interface NewsletterSubscription {
   id: string;
@@ -25,12 +25,8 @@ interface NewsletterManagementProps {
   subscriptions: NewsletterSubscription[];
 }
 
-export function NewsletterManagement({
-  subscriptions,
-}: NewsletterManagementProps) {
-  const [pendingSubscriptions, setPendingSubscriptions] = useState<Set<string>>(
-    new Set()
-  );
+export function NewsletterManagement({ subscriptions }: NewsletterManagementProps) {
+  const [pendingSubscriptions, setPendingSubscriptions] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
   async function handleUnsubscribe(threadId: string) {
@@ -47,7 +43,7 @@ export function NewsletterManagement({
       if (result?.error) {
         toast.error(result.error);
       } else {
-        toast.success("Unsubscribed successfully!");
+        toast.success('Unsubscribed successfully!');
       }
     });
   }
@@ -63,8 +59,8 @@ export function NewsletterManagement({
             No Newsletter Subscriptions
           </h3>
           <p className="text-sm text-muted-foreground max-w-sm">
-            You haven&apos;t subscribed to any thread newsletters yet. Subscribe
-            to threads to receive daily digests.
+            You haven&apos;t subscribed to any thread newsletters yet. Subscribe to threads to
+            receive daily digests.
           </p>
           <Link href="/dashboard/threads">
             <Button className="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white">
@@ -83,9 +79,7 @@ export function NewsletterManagement({
           <Mail className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-foreground">
-            Newsletter Subscriptions
-          </h2>
+          <h2 className="text-lg font-bold text-foreground">Newsletter Subscriptions</h2>
           <p className="text-sm text-muted-foreground">
             Manage your thread newsletter subscriptions.
           </p>
@@ -101,9 +95,7 @@ export function NewsletterManagement({
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-foreground">
-                        {subscription.thread.name}
-                      </h3>
+                      <h3 className="font-semibold text-foreground">{subscription.thread.name}</h3>
                     </div>
                     {subscription.thread.description && (
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
@@ -130,7 +122,7 @@ export function NewsletterManagement({
                     className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10 border-red-200 dark:border-red-900/50"
                   >
                     {isPending ? (
-                      "Unsubscribing..."
+                      'Unsubscribing...'
                     ) : (
                       <>
                         <X className="h-4 w-4 mr-1" />

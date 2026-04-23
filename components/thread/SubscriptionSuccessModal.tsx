@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Mail, Sparkles, CheckCircle2, Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import confetti from "canvas-confetti";
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Mail, Sparkles, CheckCircle2, Bell } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import confetti from 'canvas-confetti';
 
 interface SubscriptionSuccessModalProps {
   isOpen: boolean;
@@ -35,14 +35,14 @@ export function SubscriptionSuccessModal({
           angle: 60,
           spread: 55,
           origin: { x: 0 },
-          colors: ["#6366f1", "#8b5cf6", "#a855f7"],
+          colors: ['#6366f1', '#8b5cf6', '#a855f7'],
         });
         confetti({
           particleCount: 3,
           angle: 120,
           spread: 55,
           origin: { x: 1 },
-          colors: ["#6366f1", "#8b5cf6", "#a855f7"],
+          colors: ['#6366f1', '#8b5cf6', '#a855f7'],
         });
 
         if (Date.now() < end) {
@@ -71,7 +71,7 @@ export function SubscriptionSuccessModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
           >
             <div className="bg-card rounded-2xl border border-border shadow-2xl overflow-hidden text-foreground">
@@ -89,7 +89,7 @@ export function SubscriptionSuccessModal({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{
-                    type: "spring",
+                    type: 'spring',
                     damping: 15,
                     stiffness: 200,
                     delay: 0.1,
@@ -114,10 +114,8 @@ export function SubscriptionSuccessModal({
                   transition={{ delay: 0.25 }}
                   className="text-muted-foreground mb-6"
                 >
-                  You&apos;ll now receive AI-powered summaries for{" "}
-                  <span className="text-foreground font-medium">
-                    {threadName}
-                  </span>
+                  You&apos;ll now receive AI-powered summaries for{' '}
+                  <span className="text-foreground font-medium">{threadName}</span>
                 </motion.p>
 
                 {/* What to expect */}

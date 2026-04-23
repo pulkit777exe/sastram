@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { logger } from "@/lib/infrastructure/logger";
-import { createThreadSocket } from "@/lib/infrastructure/websocket/client";
-import type { TypingIndicator, WebSocketEventType } from "@/lib/types/index";
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { logger } from '@/lib/infrastructure/logger';
+import { createThreadSocket } from '@/lib/infrastructure/websocket/client';
+import type { TypingIndicator, WebSocketEventType } from '@/lib/types/index';
 
 interface WebSocketEvent {
   type: WebSocketEventType;
@@ -50,7 +50,7 @@ export function useThreadWebSocket(threadId: string | null) {
           const data: WebSocketEvent = JSON.parse(event.data);
 
           // Handle typing indicators
-          if (data.type === "USER_TYPING") {
+          if (data.type === 'USER_TYPING') {
             const typingData = data.payload as unknown as {
               userId: string;
               userName: string;
@@ -68,11 +68,9 @@ export function useThreadWebSocket(threadId: string | null) {
                 },
               ];
             });
-          } else if (data.type === "USER_STOPPED_TYPING") {
+          } else if (data.type === 'USER_STOPPED_TYPING') {
             const typingData = data.payload as unknown as { userId: string };
-            setTypingUsers((prev) =>
-              prev.filter((u) => u.userId !== typingData.userId)
-            );
+            setTypingUsers((prev) => prev.filter((u) => u.userId !== typingData.userId));
           } else {
             // For other events, pass raw data to parent
             setLastMessage(event.data);
@@ -84,16 +82,13 @@ export function useThreadWebSocket(threadId: string | null) {
       };
 
       ws.onclose = () => {
-        logger.debug("Disconnected from thread socket");
+        logger.debug('Disconnected from thread socket');
         if (!mounted.current) return;
         setIsConnected(false);
         setTypingUsers([]); // Clear typing indicators on disconnect
 
         // Exponential backoff reconnection
-        const backoffDelay = Math.min(
-          1000 * Math.pow(2, reconnectAttemptsRef.current),
-          30000
-        );
+        const backoffDelay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
         reconnectAttemptsRef.current += 1;
 
         reconnectTimeoutRef.current = setTimeout(() => {
@@ -102,7 +97,7 @@ export function useThreadWebSocket(threadId: string | null) {
       };
 
       ws.onerror = (error) => {
-        logger.error("WebSocket error:", error);
+        logger.error('WebSocket error:', error);
       };
     }
 
@@ -123,7 +118,7 @@ export function useThreadWebSocket(threadId: string | null) {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(message);
     } else {
-      logger.warn("WebSocket is not connected");
+      logger.warn('WebSocket is not connected');
     }
   }, []);
 
@@ -131,7 +126,7 @@ export function useThreadWebSocket(threadId: string | null) {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
-          type: isTyping ? "USER_TYPING" : "USER_STOPPED_TYPING",
+          type: isTyping ? 'USER_TYPING' : 'USER_STOPPED_TYPING',
         })
       );
     }

@@ -1,39 +1,39 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { auth } from "@/lib/services/auth";
-import { requireSession } from "@/modules/auth/session";
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { filterBadLanguage } from "@/lib/services/content-safety";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { auth } from '@/lib/services/auth';
+import { requireSession } from '@/modules/auth/session';
+import { headers } from 'next/headers';
+import { revalidatePath } from 'next/cache';
+import { filterBadLanguage } from '@/lib/services/content-safety';
 import {
   emitThreadMessage,
   emitMentionNotification,
   emitMessageDeleted,
   emitPinUpdate,
-} from "@/modules/ws/publisher";
-import { createMessageWithAttachmentsSchema } from "@/lib/schemas/database";
-import { messageLimiter } from "@/lib/services/rate-limit";
-import { MessageService } from "@/lib/services/moderation";
-import { getMemberRole } from "@/modules/members/repository";
-import { logAction } from "@/modules/audit/repository";
+} from '@/modules/ws/publisher';
+import { createMessageWithAttachmentsSchema } from '@/lib/schemas/database';
+import { messageLimiter } from '@/lib/services/rate-limit';
+import { MessageService } from '@/lib/services/moderation';
+import { getMemberRole } from '@/modules/members/repository';
+import { logAction } from '@/modules/audit/repository';
 import {
   editMessageSchema,
   pinMessageSchema,
   deleteMessageSchema,
   getMessageEditHistorySchema,
   searchMentionUsersSchema,
-} from "./schemas";
+} from './schemas';
 
-import { parseMentions, resolveUserMentions } from "@/lib/utils/mention-parser";
-import { sendMentionNotification } from "@/lib/services/email";
-import { recordActivity } from "@/modules/activity/repository";
-import { consumeAiInlineQuota } from "@/lib/services/ai-inline-rate-limit";
-import { getAiInlineQueue } from "@/lib/infrastructure/bullmq";
+import { parseMentions, resolveUserMentions } from '@/lib/utils/mention-parser';
+import { sendMentionNotification } from '@/lib/services/email';
+import { recordActivity } from '@/modules/activity/repository';
+import { consumeAiInlineQuota } from '@/lib/services/ai-inline-rate-limit';
+import { getAiInlineQueue } from '@/lib/infrastructure/bullmq';
 
 function handleActionError(actionName: string, error: unknown) {
   console.error(`[${actionName}]`, error);
-  return { data: null, error: "Something went wrong" };
+  return { data: null, error: 'Something went wrong' };
 }
 
 function extractAiInlineQuery(content: string): string | null {
@@ -47,10 +47,10 @@ function extractAiInlineQuery(content: string): string | null {
 }
 
 export async function postMessage(formData: FormData) {
-  const content = formData.get("content") as string;
-  const sectionId = formData.get("sectionId") as string;
-  const parentId = formData.get("parentId") as string | null;
-  const mentionsRaw = formData.get("mentions") as string | null;
+  const content = formData.get('content') as string;
+  const sectionId = formData.get('sectionId') as string;
+  const parentId = formData.get('parentId') as string | null;
+  const mentionsRaw = formData.get('mentions') as string | null;
 
   // Parse mentions from content and combine with explicit mentions
   const parsedMentions = parseMentions(content);
@@ -60,14 +60,9 @@ export async function postMessage(formData: FormData) {
     try {
       const explicitMentions = JSON.parse(mentionsRaw) as string[];
       // Resolve usernames from parsed mentions to user IDs
-      const resolvedMentions = await resolveUserMentions(
-        parsedMentions.usernames,
-        prisma,
-      );
+      const resolvedMentions = await resolveUserMentions(parsedMentions.usernames, prisma);
       // Combine explicit mentions (already user IDs) with resolved mentions
-      mentions = Array.from(
-        new Set([...explicitMentions, ...resolvedMentions]),
-      );
+      mentions = Array.from(new Set([...explicitMentions, ...resolvedMentions]));
     } catch {
       // If explicit mentions fail, try to resolve parsed mentions
       mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
@@ -87,7 +82,7 @@ export async function postMessage(formData: FormData) {
   if (!validation.success) {
     return {
       data: null,
-      error: "Invalid input",
+      error: 'Invalid input',
     };
   }
 
@@ -96,14 +91,14 @@ export async function postMessage(formData: FormData) {
   });
 
   if (!session?.user) {
-    return { data: null, error: "Something went wrong" };
+    return { data: null, error: 'Something went wrong' };
   }
 
   // Rate limiting
   try {
     await messageLimiter.check(session.user.id);
   } catch {
-    return { data: null, error: "Rate limit exceeded. Please slow down." };
+    return { data: null, error: 'Rate limit exceeded. Please slow down.' };
   }
 
   // Content filtering
@@ -112,7 +107,7 @@ export async function postMessage(formData: FormData) {
   if ((mentions ?? []).length > 10) {
     return {
       data: null,
-      error: "A message can include at most 10 mentions.",
+      error: 'A message can include at most 10 mentions.',
     };
   }
 
@@ -121,7 +116,7 @@ export async function postMessage(formData: FormData) {
 
     const recentMessages = await prisma.message.findMany({
       where: { sectionId, deletedAt: null },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       take: 10,
       select: {
         id: true,
@@ -155,7 +150,7 @@ export async function postMessage(formData: FormData) {
 
     const result = await messageService.processMessage(
       {
-        id: "",
+        id: '',
         content: safeContent,
         authorId: session.user.id,
         sectionId,
@@ -163,13 +158,13 @@ export async function postMessage(formData: FormData) {
         timestamp: new Date(),
         metadata: { edited: false },
       },
-      context,
+      context
     );
 
     if (!result.success) {
       return {
         data: { pendingModeration: result.pendingModeration ?? null },
-        error: result.reason || "Message blocked by content filter",
+        error: result.reason || 'Message blocked by content filter',
       };
     }
 
@@ -208,11 +203,9 @@ export async function postMessage(formData: FormData) {
         await prisma.notification.create({
           data: {
             userId,
-            type: "MENTION",
-            title: "You were mentioned",
-            message: `${
-              session.user.name || session.user.email
-            } mentioned you in a message`,
+            type: 'MENTION',
+            title: 'You were mentioned',
+            message: `${session.user.name || session.user.email} mentioned you in a message`,
             data: {
               messageId: message.id,
               sectionId,
@@ -257,9 +250,9 @@ export async function postMessage(formData: FormData) {
               session.user.name || session.user.email,
               thread.name,
               safeContent.substring(0, 200),
-              threadUrl,
+              threadUrl
             ).catch((error) => {
-              console.error("Failed to send mention email:", error);
+              console.error('Failed to send mention email:', error);
             });
           }
         }
@@ -304,7 +297,7 @@ export async function postMessage(formData: FormData) {
       if (!quota.allowed) {
         aiInlineLimited = true;
       } else {
-        await getAiInlineQueue().add("ai-inline-process", {
+        await getAiInlineQueue().add('ai-inline-process', {
           messageId: message.id,
           threadId: sectionId,
           sectionId,
@@ -318,13 +311,13 @@ export async function postMessage(formData: FormData) {
     if (message.section?.slug) {
       revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
     }
-    revalidatePath("/dashboard");
+    revalidatePath('/dashboard');
 
     // Record activity for message posted
     await recordActivity({
       userId: session.user.id,
-      type: "MESSAGE_POSTED",
-      entityType: "Message",
+      type: 'MESSAGE_POSTED',
+      entityType: 'Message',
       entityId: message.id,
       metadata: {
         sectionId,
@@ -342,7 +335,7 @@ export async function postMessage(formData: FormData) {
       error: null,
     };
   } catch (error) {
-    return handleActionError("postMessage", error);
+    return handleActionError('postMessage', error);
   }
 }
 
@@ -352,12 +345,12 @@ export async function editMessage(messageId: string, content: string) {
   });
 
   if (!session?.user) {
-    return { data: null, error: "Something went wrong" };
+    return { data: null, error: 'Something went wrong' };
   }
 
   const validation = editMessageSchema.safeParse({ messageId, content });
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -368,11 +361,11 @@ export async function editMessage(messageId: string, content: string) {
     });
 
     if (!message) {
-      return { data: null, error: "Message not found" };
+      return { data: null, error: 'Message not found' };
     }
 
     if (message.senderId !== session.user.id) {
-      return { data: null, error: "You can only edit your own messages" };
+      return { data: null, error: 'You can only edit your own messages' };
     }
 
     // Save edit history
@@ -393,10 +386,10 @@ export async function editMessage(messageId: string, content: string) {
       },
     });
 
-    revalidatePath("/dashboard/threads");
+    revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    return handleActionError("editMessage", error);
+    return handleActionError('editMessage', error);
   }
 }
 
@@ -406,12 +399,12 @@ export async function pinMessage(messageId: string) {
   });
 
   if (!session?.user) {
-    return { data: null, error: "Something went wrong" };
+    return { data: null, error: 'Something went wrong' };
   }
 
   const validation = pinMessageSchema.safeParse({ messageId });
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -427,17 +420,16 @@ export async function pinMessage(messageId: string) {
     });
 
     if (!message) {
-      return { data: null, error: "Message not found" };
+      return { data: null, error: 'Message not found' };
     }
 
     // Check if user has permission (moderator or owner)
     const memberRole = await getMemberRole(message.sectionId, session.user.id);
 
-    if (!memberRole || !["OWNER", "MODERATOR"].includes(memberRole.role)) {
+    if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
       return {
         data: null,
-        error:
-          "Insufficient permissions. Only moderators and owners can pin messages.",
+        error: 'Insufficient permissions. Only moderators and owners can pin messages.',
       };
     }
 
@@ -469,10 +461,8 @@ export async function pinMessage(messageId: string) {
     });
 
     await logAction({
-      action: message.isPinned
-        ? "MESSAGE_UPDATED"
-        : "MESSAGE_UPDATED",
-      entityType: "Message",
+      action: message.isPinned ? 'MESSAGE_UPDATED' : 'MESSAGE_UPDATED',
+      entityType: 'Message',
       entityId: messageId,
       userId: session.user.id,
     });
@@ -489,39 +479,39 @@ export async function pinMessage(messageId: string) {
     revalidatePath(`/dashboard/threads/thread/${message.section?.slug}`);
     return { data: null, error: null };
   } catch (error) {
-    return handleActionError("pinMessage", error);
+    return handleActionError('pinMessage', error);
   }
 }
 
 export async function getMessageEditHistory(messageId: string) {
   const validation = getMessageEditHistorySchema.safeParse({ messageId });
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const edits = await prisma.messageEdit.findMany({
       where: { messageId: validation.data.messageId },
       orderBy: {
-        editedAt: "desc",
+        editedAt: 'desc',
       },
     });
 
     return { data: edits ?? [], error: null };
   } catch (error) {
-    return handleActionError("getMessageEditHistory", error);
+    return handleActionError('getMessageEditHistory', error);
   }
 }
 
 export async function deleteMessage(messageId: string) {
   const validation = deleteMessageSchema.safeParse({ messageId });
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const session = await requireSession();
-    
+
     // Check ownership or moderator role
     const message = await prisma.message.findUnique({
       where: { id: messageId },
@@ -529,21 +519,21 @@ export async function deleteMessage(messageId: string) {
     });
 
     if (!message) {
-      return { data: null, error: "Message not found" };
+      return { data: null, error: 'Message not found' };
     }
 
     let canDelete = message.senderId === session.user.id;
     if (!canDelete) {
       if (message.sectionId) {
         const memberRole = await getMemberRole(message.sectionId, session.user.id);
-        if (memberRole && ["OWNER", "MODERATOR"].includes(memberRole.role)) {
+        if (memberRole && ['OWNER', 'MODERATOR'].includes(memberRole.role)) {
           canDelete = true;
         }
       }
     }
 
     if (!canDelete) {
-      return { data: null, error: "Insufficient permissions to delete this message" };
+      return { data: null, error: 'Insufficient permissions to delete this message' };
     }
 
     await prisma.message.update({
@@ -552,8 +542,8 @@ export async function deleteMessage(messageId: string) {
     });
 
     await logAction({
-      action: "MESSAGE_DELETED",
-      entityType: "Message",
+      action: 'MESSAGE_DELETED',
+      entityType: 'Message',
       entityId: messageId,
       userId: session.user.id,
     });
@@ -561,17 +551,19 @@ export async function deleteMessage(messageId: string) {
     if (message.section?.slug) {
       revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
     }
-    
+
     // Also emit websocket event for live updates
     try {
       if (message.sectionId) {
         emitMessageDeleted(message.sectionId, messageId, session.user.id);
       }
-    } catch(e) { /* ignore ws errors */ }
+    } catch (e) {
+      /* ignore ws errors */
+    }
 
     return { data: null, error: null };
   } catch (error) {
-    return handleActionError("deleteMessage", error);
+    return handleActionError('deleteMessage', error);
   }
 }
 
@@ -581,7 +573,7 @@ export async function searchMentionUsers(sectionId: string, query: string) {
   });
 
   if (!session?.user) {
-    return { data: [], error: "Something went wrong" };
+    return { data: [], error: 'Something went wrong' };
   }
 
   const validation = searchMentionUsersSchema.safeParse({
@@ -589,7 +581,7 @@ export async function searchMentionUsers(sectionId: string, query: string) {
     query,
   });
   if (!validation.success) {
-    return { data: [], error: "Invalid input" };
+    return { data: [], error: 'Invalid input' };
   }
 
   try {
@@ -603,13 +595,13 @@ export async function searchMentionUsers(sectionId: string, query: string) {
           {
             name: {
               contains: validation.data.query,
-              mode: "insensitive",
+              mode: 'insensitive',
             },
           },
           {
             email: {
               contains: validation.data.query,
-              mode: "insensitive",
+              mode: 'insensitive',
             },
           },
         ],
@@ -621,28 +613,28 @@ export async function searchMentionUsers(sectionId: string, query: string) {
         image: true,
       },
       orderBy: {
-        reputationPoints: "desc",
+        reputationPoints: 'desc',
       },
       take: 5,
     });
 
     return {
       data: users.map((user) => {
-        const base = (user.name || user.email.split("@")[0] || "user")
+        const base = (user.name || user.email.split('@')[0] || 'user')
           .toLowerCase()
-          .replace(/[^a-z0-9.-]/g, "");
+          .replace(/[^a-z0-9.-]/g, '');
 
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           image: user.image,
-          handle: base || "user",
+          handle: base || 'user',
         };
       }),
       error: null,
     };
   } catch (error) {
-    return handleActionError("searchMentionUsers", error);
+    return handleActionError('searchMentionUsers', error);
   }
 }

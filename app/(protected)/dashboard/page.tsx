@@ -8,30 +8,24 @@
 //
 // Fix: use prisma.readReceipt.findMany with correct field names.
 
-import type { ReactNode } from "react";
-import {
-  Users,
-  MessageSquare,
-  Star,
-  ChevronDown,
-  TrendingUp,
-} from "lucide-react";
-import { isAdmin, getSession } from "@/modules/auth/session";
-import { listThreads } from "@/modules/threads/repository";
-import { listCommunities } from "@/modules/communities/repository";
-import { TopicGrid } from "@/components/dashboard/topic-grid";
-import { Card, CardContent } from "@/components/ui/card";
-import { ThreadInsights } from "@/components/dashboard/thread-insights";
-import { CreateTopicButton } from "@/components/dashboard/create-topic-button";
-import { cn } from "@/lib/utils/cn";
-import { prisma } from "@/lib/infrastructure/prisma";
-import Link from "next/link";
+import type { ReactNode } from 'react';
+import { Users, MessageSquare, Star, ChevronDown, TrendingUp } from 'lucide-react';
+import { isAdmin, getSession } from '@/modules/auth/session';
+import { listThreads } from '@/modules/threads/repository';
+import { listCommunities } from '@/modules/communities/repository';
+import { TopicGrid } from '@/components/dashboard/topic-grid';
+import { Card, CardContent } from '@/components/ui/card';
+import { ThreadInsights } from '@/components/dashboard/thread-insights';
+import { CreateTopicButton } from '@/components/dashboard/create-topic-button';
+import { cn } from '@/lib/utils/cn';
+import { prisma } from '@/lib/infrastructure/prisma';
+import Link from 'next/link';
 
 function parseTagFilter(raw: string | string[] | undefined): string[] {
   if (!raw) return [];
   const values = Array.isArray(raw) ? raw : [raw];
   return values
-    .flatMap((v) => v.split(","))
+    .flatMap((v) => v.split(','))
     .map((t) => t.trim().toLowerCase())
     .filter((t, i, all) => t.length > 0 && all.indexOf(t) === i);
 }
@@ -69,7 +63,7 @@ export default async function DashboardPage({
         messages: { select: { senderId: true, createdAt: true } },
         _count: { select: { messages: true } },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { updatedAt: 'desc' },
       take: 50,
     }),
   ]);
@@ -92,19 +86,14 @@ export default async function DashboardPage({
             },
           })
           .catch((err) => {
-            console.error("[dashboard.readReceipts]", err);
+            console.error('[dashboard.readReceipts]', err);
             return [];
           })
       : [];
 
-  const readAtByThread = new Map(
-    readReceiptRows.map((row) => [row.threadId, row.readAt]),
-  );
+  const readAtByThread = new Map(readReceiptRows.map((row) => [row.threadId, row.readAt]));
 
-  const totalMessages = topicSections.reduce(
-    (acc, t) => acc + t.messageCount,
-    0,
-  );
+  const totalMessages = topicSections.reduce((acc, t) => acc + t.messageCount, 0);
 
   const threadTopics = topicSections.map((thread) => {
     const readAt = readAtByThread.get(thread.id);
@@ -119,7 +108,7 @@ export default async function DashboardPage({
       id: thread.id,
       slug: thread.slug,
       title: thread.name,
-      description: thread.description ?? "No description",
+      description: thread.description ?? 'No description',
       activeUsers: new Set(thread.messages.map((m) => m.senderId)).size,
       messagesCount: thread._count.messages,
       unreadCount,
@@ -127,7 +116,7 @@ export default async function DashboardPage({
       tags:
         thread.tags.length > 0
           ? thread.tags.map((rel) => rel.tag.name)
-          : [thread.community?.title ?? "general"],
+          : [thread.community?.title ?? 'general'],
     };
   });
 
@@ -136,9 +125,7 @@ export default async function DashboardPage({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">Threads</h1>
-          <p className="text-zinc-500 mt-1">
-            Manage and track your community discussions.
-          </p>
+          <p className="text-zinc-500 mt-1">Manage and track your community discussions.</p>
         </div>
         <div className="flex gap-3">
           <div className="border rounded-lg px-4 py-2 flex items-center gap-2 cursor-pointer text-sm transition-colors">
@@ -152,9 +139,7 @@ export default async function DashboardPage({
 
       {selectedTags.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-medium text-muted-foreground">
-            Filtering by:
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Filtering by:</span>
           {selectedTags.map((tag) => (
             <Link
               key={tag}
@@ -189,9 +174,7 @@ export default async function DashboardPage({
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-widest">
-          Communities
-        </h2>
+        <h2 className="text-sm font-bold uppercase tracking-widest">Communities</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {communities.map((community) => (
             <Card key={community.id} className="transition-all group cursor-pointer">
@@ -208,12 +191,10 @@ export default async function DashboardPage({
                 </div>
                 <h3 className="mt-4 text-lg font-bold">{community.title}</h3>
                 <p className="mt-1 text-sm line-clamp-2">
-                  {community.description ?? "No description yet."}
+                  {community.description ?? 'No description yet.'}
                 </p>
                 <div className="mt-4 flex items-center gap-2">
-                  <span className="text-xs font-medium">
-                    {community.threadCount} threads
-                  </span>
+                  <span className="text-xs font-medium">{community.threadCount} threads</span>
                   <div className="h-1 w-1 rounded-full bg-zinc-700" />
                   <span className="text-xs font-medium">Updated today</span>
                 </div>
@@ -226,9 +207,7 @@ export default async function DashboardPage({
       <section className="space-y-4">
         <div className="flex items-center gap-2 mb-6">
           <TrendingUp size={18} className="text-indigo-500" />
-          <h2 className="text-sm font-bold uppercase tracking-widest">
-            Trending Threads
-          </h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest">Trending Threads</h2>
         </div>
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="rounded-2xl overflow-hidden">
@@ -253,20 +232,16 @@ function DarkMetric({
   color: string;
 }) {
   const colors: Record<string, string> = {
-    blue: "text-blue-400 bg-blue-400/10",
-    indigo: "text-indigo-400 bg-indigo-400/10",
-    amber: "text-amber-400 bg-amber-400/10",
+    blue: 'text-blue-400 bg-blue-400/10',
+    indigo: 'text-indigo-400 bg-indigo-400/10',
+    amber: 'text-amber-400 bg-amber-400/10',
   };
 
   return (
     <div className="border p-5 rounded-2xl flex items-center gap-4 transition-colors">
-      <div className={cn("p-3 rounded-xl", colors[color] ?? colors.blue)}>
-        {icon}
-      </div>
+      <div className={cn('p-3 rounded-xl', colors[color] ?? colors.blue)}>{icon}</div>
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-          {label}
-        </p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">{label}</p>
         <p className="text-2xl font-bold">{value}</p>
       </div>
     </div>

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/modules/auth/session";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { aiService } from "@/lib/services/ai";
-import { z } from "zod";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireSession } from '@/modules/auth/session';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { aiService } from '@/lib/services/ai';
+import { z } from 'zod';
 
 const scoreRequestSchema = z.object({
   threadId: z.string(),
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireSession();
     if (!session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
@@ -23,15 +23,15 @@ export async function POST(req: NextRequest) {
       where: { id: threadId },
       include: {
         messages: {
-          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || "50", 10), // Limit to configured number of messages for score calculation
-          orderBy: { createdAt: "desc" },
+          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10), // Limit to configured number of messages for score calculation
+          orderBy: { createdAt: 'desc' },
           include: { sender: true },
         },
       },
     });
 
     if (!thread) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
     }
 
     // Reverse to chronological order for AI
@@ -52,10 +52,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ score });
   } catch (error) {
-    console.error("Error calculating resolution score:", error);
-    return NextResponse.json(
-      { error: "Failed to calculate resolution score" },
-      { status: 500 },
-    );
+    console.error('Error calculating resolution score:', error);
+    return NextResponse.json({ error: 'Failed to calculate resolution score' }, { status: 500 });
   }
 }

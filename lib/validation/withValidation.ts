@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ZodSchema } from "zod";
-import { ApiResponse } from "@/lib/http/api-response";
+import { NextRequest, NextResponse } from 'next/server';
+import { ZodSchema } from 'zod';
+import { ApiResponse } from '@/lib/http/api-response';
 
 type HandlerContext<TBody, TQuery> = {
   body: TBody;
@@ -38,17 +38,17 @@ export function withValidation<TBody = unknown, TQuery = Record<string, string>>
       // @ts-expect-error – we know body/query are present when schemas are provided
       return await config.handler({ body, query, request });
     } catch (error: any) {
-      if (error?.name === "ZodError") {
+      if (error?.name === 'ZodError') {
         const res: ApiResponse<null> = {
           success: false,
           error: {
-            code: "VALIDATION_ERROR",
-            message: "Invalid request payload",
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid request payload',
             details: error.flatten(),
           },
           metadata: {
             timestamp: new Date().toISOString(),
-            requestId: request.headers.get("x-request-id") ?? "",
+            requestId: request.headers.get('x-request-id') ?? '',
           },
         };
 
@@ -58,12 +58,12 @@ export function withValidation<TBody = unknown, TQuery = Record<string, string>>
       const res: ApiResponse<null> = {
         success: false,
         error: {
-          code: "INTERNAL_ERROR",
-          message: "Something went wrong",
+          code: 'INTERNAL_ERROR',
+          message: 'Something went wrong',
         },
         metadata: {
           timestamp: new Date().toISOString(),
-          requestId: request.headers.get("x-request-id") ?? "",
+          requestId: request.headers.get('x-request-id') ?? '',
         },
       };
 
@@ -74,15 +74,15 @@ export function withValidation<TBody = unknown, TQuery = Record<string, string>>
 
 // Very small sanitization helper – trims strings and normalizes whitespace
 function sanitizeObject<T>(value: T): T {
-  if (typeof value === "string") {
-    return value.trim().replace(/\s+/g, " ") as unknown as T;
+  if (typeof value === 'string') {
+    return value.trim().replace(/\s+/g, ' ') as unknown as T;
   }
 
   if (Array.isArray(value)) {
     return value.map((v) => sanitizeObject(v)) as unknown as T;
   }
 
-  if (value && typeof value === "object") {
+  if (value && typeof value === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
       result[key] = sanitizeObject(v);
@@ -92,4 +92,3 @@ function sanitizeObject<T>(value: T): T {
 
   return value;
 }
-

@@ -1,8 +1,8 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const userPreferencesSchema = z.object({
-  theme: z.enum(["light", "dark", "system"]).default("system"),
-  emailDigest: z.enum(["daily", "weekly", "never"]).default("daily"),
+  theme: z.enum(['light', 'dark', 'system']).default('system'),
+  emailDigest: z.enum(['daily', 'weekly', 'never']).default('daily'),
   pushEnabled: z.boolean().default(true),
   mentionEmails: z.boolean().default(true),
   replyEmails: z.boolean().default(true),

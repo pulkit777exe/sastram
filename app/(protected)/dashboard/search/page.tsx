@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Search, MessageSquare, Users, FileText } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Search, MessageSquare, Users, FileText } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   searchThreadsAction,
   searchMessagesAction,
   searchUsersAction,
-} from "@/modules/search/actions";
-import Link from "next/link";
+} from '@/modules/search/actions';
+import Link from 'next/link';
 
-type SearchType = "all" | "threads" | "messages" | "users";
+type SearchType = 'all' | 'threads' | 'messages' | 'users';
 
 export default function SearchPage() {
-  const [query, setQuery] = useState("");
-  const [searchType, setSearchType] = useState<SearchType>("all");
+  const [query, setQuery] = useState('');
+  const [searchType, setSearchType] = useState<SearchType>('all');
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<any>(null);
 
@@ -28,13 +28,13 @@ export default function SearchPage() {
     try {
       const promises: Promise<any>[] = [];
 
-      if (searchType === "all" || searchType === "threads") {
+      if (searchType === 'all' || searchType === 'threads') {
         promises.push(searchThreadsAction(query));
       }
-      if (searchType === "all" || searchType === "messages") {
+      if (searchType === 'all' || searchType === 'messages') {
         promises.push(searchMessagesAction(query));
       }
-      if (searchType === "all" || searchType === "users") {
+      if (searchType === 'all' || searchType === 'users') {
         promises.push(searchUsersAction(query));
       }
 
@@ -45,7 +45,7 @@ export default function SearchPage() {
         users: searchResults[2]?.data || null,
       });
     } catch (error) {
-      console.error("Search error:", error);
+      console.error('Search error:', error);
     } finally {
       setIsSearching(false);
     }
@@ -65,27 +65,25 @@ export default function SearchPage() {
               placeholder="Search threads, messages, or users..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1"
             />
             <Button onClick={handleSearch} disabled={isSearching}>
-              {isSearching ? "Searching..." : "Search"}
+              {isSearching ? 'Searching...' : 'Search'}
             </Button>
           </div>
 
           <div className="flex gap-2">
-            {(["all", "threads", "messages", "users"] as SearchType[]).map(
-              (type) => (
-                <Button
-                  key={type}
-                  variant={searchType === type ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSearchType(type)}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </Button>
-              )
-            )}
+            {(['all', 'threads', 'messages', 'users'] as SearchType[]).map((type) => (
+              <Button
+                key={type}
+                variant={searchType === type ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSearchType(type)}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </Button>
+            ))}
           </div>
         </Card>
 
@@ -103,16 +101,11 @@ export default function SearchPage() {
                 </h2>
                 <div className="grid gap-4">
                   {results.threads.threads?.map((thread: any) => (
-                    <Link
-                      key={thread.id}
-                      href={`/dashboard/threads/thread/${thread.slug}`}
-                    >
+                    <Link key={thread.id} href={`/dashboard/threads/thread/${thread.slug}`}>
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <h3 className="font-semibold">{thread.name}</h3>
                         {thread.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {thread.description}
-                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">{thread.description}</p>
                         )}
                       </Card>
                     </Link>
@@ -136,8 +129,7 @@ export default function SearchPage() {
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <p className="text-sm">{message.content}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          by {message.sender.name || message.sender.email} in{" "}
-                          {message.section.name}
+                          by {message.sender.name || message.sender.email} in {message.section.name}
                         </p>
                       </Card>
                     </Link>
@@ -154,18 +146,11 @@ export default function SearchPage() {
                 </h2>
                 <div className="grid gap-4">
                   {results.users.users?.map((user: any) => (
-                    <Link
-                      key={user.id}
-                      href={`/user/${user.id}`}
-                    >
+                    <Link key={user.id} href={`/user/${user.id}`}>
                       <Card className="p-4 hover:bg-accent transition-colors">
-                        <h3 className="font-semibold">
-                          {user.name || user.email}
-                        </h3>
+                        <h3 className="font-semibold">{user.name || user.email}</h3>
                         {user.bio && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {user.bio}
-                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">{user.bio}</p>
                         )}
                       </Card>
                     </Link>

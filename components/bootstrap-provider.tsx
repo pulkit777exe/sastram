@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   createContext,
@@ -8,10 +8,10 @@ import {
   useMemo,
   useRef,
   useState,
-} from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import type { Community, UserActivity } from "@prisma/client";
+} from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import type { Community, UserActivity } from '@prisma/client';
 
 export type BootstrapUser = {
   id: string;
@@ -70,14 +70,14 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/bootstrap", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/bootstrap', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
 
       // Session expired — redirect to login cleanly
       if (res.status === 401) {
-        router.replace("/login?reason=session_expired");
+        router.replace('/login?reason=session_expired');
         return;
       }
 
@@ -92,12 +92,12 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       if (!mountedRef.current) return;
-      const error = err instanceof Error ? err : new Error("Failed to load app data");
+      const error = err instanceof Error ? err : new Error('Failed to load app data');
       setError(error);
-      toast.error("Failed to load your data.", {
-        description: "Please refresh the page to try again.",
+      toast.error('Failed to load your data.', {
+        description: 'Please refresh the page to try again.',
         action: {
-          label: "Refresh",
+          label: 'Refresh',
           onClick: () => window.location.reload(),
         },
         duration: Infinity, // stays until dismissed or page refreshes
@@ -120,7 +120,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
 
   const connectWebSocket = useCallback((userId: string) => {
     // Don't connect in SSR or if we've given up
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     if (!shouldReconnectRef.current) return;
     if (reconnectAttemptRef.current >= WS_MAX_ATTEMPTS) {
       // Silent failure after max attempts — non-critical feature
@@ -134,7 +134,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       wsRef.current = null;
     }
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     // Pass userId as query param for server-side auth
     const url = `${protocol}://${window.location.host}/api/ws/notifications?userId=${userId}`;
 
@@ -161,7 +161,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
           type: string;
           payload: { unreadCount: number };
         };
-        if (message.type === "NOTIFICATION_COUNT_UPDATE") {
+        if (message.type === 'NOTIFICATION_COUNT_UPDATE') {
           setNotificationCount(message.payload.unreadCount);
         }
       } catch {
@@ -174,9 +174,9 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       // Log what we can — the onclose handler will fire next
       // and that's where we handle reconnection
       const wsEvent = event as ErrorEvent;
-      if (process.env.NODE_ENV === "development") {
-        console.warn("[NotificationsWS] Connection error", {
-          message: wsEvent.message || "No error details available",
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[NotificationsWS] Connection error', {
+          message: wsEvent.message || 'No error details available',
           readyState: ws.readyState,
           url: ws.url,
         });
@@ -186,10 +186,10 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     };
 
     ws.onclose = (event: CloseEvent) => {
-      if (process.env.NODE_ENV === "development") {
-        console.warn("[NotificationsWS] Connection closed", {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[NotificationsWS] Connection closed', {
           code: event.code,
-          reason: event.reason || "No reason provided",
+          reason: event.reason || 'No reason provided',
           wasClean: event.wasClean,
         });
       }
@@ -205,29 +205,32 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const scheduleReconnect = useCallback((userId: string) => {
-    if (!mountedRef.current) return;
-    if (!shouldReconnectRef.current) return;
+  const scheduleReconnect = useCallback(
+    (userId: string) => {
+      if (!mountedRef.current) return;
+      if (!shouldReconnectRef.current) return;
 
-    // Clear any existing timer
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-    }
-
-    reconnectAttemptRef.current += 1;
-
-    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (capped)
-    const delay = Math.min(
-      WS_INITIAL_DELAY_MS * Math.pow(2, reconnectAttemptRef.current - 1),
-      WS_MAX_DELAY_MS
-    );
-
-    reconnectTimerRef.current = setTimeout(() => {
-      if (mountedRef.current && shouldReconnectRef.current) {
-        connectWebSocket(userId);
+      // Clear any existing timer
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
       }
-    }, delay);
-  }, [connectWebSocket]);
+
+      reconnectAttemptRef.current += 1;
+
+      // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (capped)
+      const delay = Math.min(
+        WS_INITIAL_DELAY_MS * Math.pow(2, reconnectAttemptRef.current - 1),
+        WS_MAX_DELAY_MS
+      );
+
+      reconnectTimerRef.current = setTimeout(() => {
+        if (mountedRef.current && shouldReconnectRef.current) {
+          connectWebSocket(userId);
+        }
+      }, delay);
+    },
+    [connectWebSocket]
+  );
 
   // Connect when we have a user ID from bootstrap
   useEffect(() => {
@@ -243,7 +246,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(reconnectTimerRef.current);
       }
       if (wsRef.current) {
-        wsRef.current.close(1000, "Component unmounted");
+        wsRef.current.close(1000, 'Component unmounted');
         wsRef.current = null;
       }
     };
@@ -252,9 +255,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   // ── NOTIFICATION HELPERS ─────────────────────────────────────────────────
 
   const setNotificationCount = useCallback((count: number) => {
-    setData((prev) =>
-      prev ? { ...prev, unreadNotificationCount: Math.max(0, count) } : prev
-    );
+    setData((prev) => (prev ? { ...prev, unreadNotificationCount: Math.max(0, count) } : prev));
   }, []);
 
   const incrementNotificationCount = useCallback((delta: number = 1) => {
@@ -262,10 +263,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       prev
         ? {
             ...prev,
-            unreadNotificationCount: Math.max(
-              0,
-              prev.unreadNotificationCount + delta
-            ),
+            unreadNotificationCount: Math.max(0, prev.unreadNotificationCount + delta),
           }
         : prev
     );
@@ -276,10 +274,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       prev
         ? {
             ...prev,
-            unreadNotificationCount: Math.max(
-              0,
-              prev.unreadNotificationCount - delta
-            ),
+            unreadNotificationCount: Math.max(0, prev.unreadNotificationCount - delta),
           }
         : prev
     );
@@ -288,15 +283,11 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   // ── USER / REPUTATION HELPERS ────────────────────────────────────────────
 
   const updateUser = useCallback((user: Partial<BootstrapUser>) => {
-    setData((prev) =>
-      prev ? { ...prev, user: { ...prev.user, ...user } } : prev
-    );
+    setData((prev) => (prev ? { ...prev, user: { ...prev.user, ...user } } : prev));
   }, []);
 
   const updateReputation = useCallback((points: number, level: number) => {
-    setData((prev) =>
-      prev ? { ...prev, reputation: { points, level } } : prev
-    );
+    setData((prev) => (prev ? { ...prev, reputation: { points, level } } : prev));
   }, []);
 
   const invalidate = useCallback(async () => {
@@ -331,17 +322,13 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     ]
   );
 
-  return (
-    <BootstrapContext.Provider value={value}>
-      {children}
-    </BootstrapContext.Provider>
-  );
+  return <BootstrapContext.Provider value={value}>{children}</BootstrapContext.Provider>;
 }
 
 export function useBootstrap() {
   const ctx = useContext(BootstrapContext);
   if (!ctx) {
-    throw new Error("useBootstrap must be used within BootstrapProvider");
+    throw new Error('useBootstrap must be used within BootstrapProvider');
   }
   return ctx;
 }

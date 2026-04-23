@@ -3,7 +3,7 @@
  * Data access for admin operations
  */
 
-import { prisma } from "@/lib/infrastructure/prisma";
+import { prisma } from '@/lib/infrastructure/prisma';
 
 export async function getAdminStats() {
   const [
@@ -27,7 +27,7 @@ export async function getAdminStats() {
     }),
     prisma.report.count({
       where: {
-        status: "PENDING",
+        status: 'PENDING',
       },
     }),
   ]);

@@ -1,5 +1,5 @@
-import { Redis } from "@upstash/redis";
-import { logger } from "@/lib/infrastructure/logger";
+import { Redis } from '@upstash/redis';
+import { logger } from '@/lib/infrastructure/logger';
 
 const redis =
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
@@ -19,7 +19,7 @@ function getSecondsUntilUtcMidnight() {
     now.getUTCDate() + 1,
     0,
     0,
-    0,
+    0
   );
   return Math.max(1, Math.floor((nextUtcMidnight - now.getTime()) / 1000));
 }
@@ -46,7 +46,7 @@ export async function consumeAiInlineQuota(params: {
       used,
     };
   } catch (error) {
-    logger.error("[consumeAiInlineQuota]", error);
+    logger.error('[consumeAiInlineQuota]', error);
     return { allowed: true, used: 0 };
   }
 }

@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { MessageSquare, Calendar, Users } from "lucide-react";
-import TimeAgo from "@/components/ui/TimeAgo";
-import { cn } from "@/lib/utils/cn";
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { MessageSquare, Calendar, Users } from 'lucide-react';
+import TimeAgo from '@/components/ui/TimeAgo';
+import { cn } from '@/lib/utils/cn';
 
 interface Thread {
   id: string;

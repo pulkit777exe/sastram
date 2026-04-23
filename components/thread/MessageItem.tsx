@@ -1,13 +1,10 @@
-"use client";
+'use client';
 
-import { useState, type MouseEvent } from "react";
-import Image from "next/image";
-import { cn } from "@/lib/utils/cn";
-import TimeAgo from "./TimeAgo";
-import type {
-  ThreadMessage,
-  ThreadMessageReactionAggregate,
-} from "@/modules/threads/queries";
+import { useState, type MouseEvent } from 'react';
+import Image from 'next/image';
+import { cn } from '@/lib/utils/cn';
+import TimeAgo from './TimeAgo';
+import type { ThreadMessage, ThreadMessageReactionAggregate } from '@/modules/threads/queries';
 
 interface MessageItemProps {
   message: ThreadMessage;
@@ -16,10 +13,7 @@ interface MessageItemProps {
   currentUserId: string;
   onReply: (messageId: string) => void;
   onMarkAnswer: (messageId: string) => void;
-  onReact?: (
-    messageId: string,
-    type: ThreadMessageReactionAggregate["type"],
-  ) => void;
+  onReact?: (messageId: string, type: ThreadMessageReactionAggregate['type']) => void;
 }
 
 export default function MessageItem({
@@ -31,8 +25,7 @@ export default function MessageItem({
   onMarkAnswer,
   onReact,
 }: MessageItemProps) {
-  const upvoteReaction =
-    message.reactions.find((r) => r.type === "UPVOTE") ?? null;
+  const upvoteReaction = message.reactions.find((r) => r.type === 'UPVOTE') ?? null;
 
   const [upvotes, setUpvotes] = useState(upvoteReaction?._count ?? 0);
   const [optimisticDelta, setOptimisticDelta] = useState(0);
@@ -40,8 +33,7 @@ export default function MessageItem({
 
   const isAuthor = message.author.id === currentUserId;
 
-  const avatarSize =
-    depth === 0 ? 32 : depth === 1 ? 24 : depth >= 2 ? 20 : 32;
+  const avatarSize = depth === 0 ? 32 : depth === 1 ? 24 : depth >= 2 ? 20 : 32;
 
   const isAiMessage = message.isAI;
 
@@ -57,20 +49,20 @@ export default function MessageItem({
     setIsVoting(true);
 
     try {
-      await fetch("/api/reactions", {
-        method: "POST",
+      await fetch('/api/reactions', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           messageId: message.id,
-          type: "UPVOTE",
+          type: 'UPVOTE',
         }),
       });
 
       setUpvotes(nextTotal);
       if (onReact) {
-        onReact(message.id, "UPVOTE");
+        onReact(message.id, 'UPVOTE');
       }
     } catch {
       setOptimisticDelta(optimisticDelta);
@@ -83,23 +75,18 @@ export default function MessageItem({
 
   const containerClasses =
     depth === 0
-      ? "pt-[16px] pb-[20px]"
+      ? 'pt-[16px] pb-[20px]'
       : depth === 1
-        ? "pt-[12px] pb-[16px] pl-[16px] border-l-[1.5px] border-border"
-        : "pt-[10px] pb-[14px] pl-[16px] border-l border-dashed border-border";
+        ? 'pt-[12px] pb-[16px] pl-[16px] border-l-[1.5px] border-border'
+        : 'pt-[10px] pb-[14px] pl-[16px] border-l border-dashed border-border';
 
   return (
     <article
-      className={cn(
-        "flex gap-[12px]",
-        depth === 0 ? "border-b border-border last:border-b-0" : "",
-      )}
+      className={cn('flex gap-[12px]', depth === 0 ? 'border-b border-border last:border-b-0' : '')}
     >
       <div className="flex flex-col items-center gap-[8px]">
         <div
-          className={cn(
-            "relative overflow-hidden rounded-full bg-(--blue-light)",
-          )}
+          className={cn('relative overflow-hidden rounded-full bg-(--blue-light)')}
           style={{
             width: avatarSize,
             height: avatarSize,
@@ -108,24 +95,19 @@ export default function MessageItem({
           {message.author.image ? (
             <Image
               src={message.author.image}
-              alt={message.author.name ?? "Author avatar"}
+              alt={message.author.name ?? 'Author avatar'}
               fill
               className="object-cover"
             />
           ) : null}
         </div>
-        <div
-          className={cn(
-            "flex-1 w-px bg-border",
-            isAiMessage && "bg-[rgba(55,54,252,0.15)]",
-          )}
-        />
+        <div className={cn('flex-1 w-px bg-border', isAiMessage && 'bg-[rgba(55,54,252,0.15)]')} />
       </div>
 
-      <div className={cn("flex-1 min-w-0", containerClasses)}>
+      <div className={cn('flex-1 min-w-0', containerClasses)}>
         <div className="flex flex-wrap items-center gap-[6px] text-[12px]">
           <span className="font-(--font-dm-sans) text-[13px] text-(--text)">
-            {message.author.name ?? "Unknown"}
+            {message.author.name ?? 'Unknown'}
           </span>
 
           {isOP && (
@@ -145,9 +127,8 @@ export default function MessageItem({
 
         <div
           className={cn(
-            "mt-[8px] rounded-[8px] bg-transparent text-[14px] leading-normal text-(--text)",
-            isAiMessage &&
-              "bg-(--blue-dim) border border-[rgba(55,54,252,0.1)]",
+            'mt-[8px] rounded-[8px] bg-transparent text-[14px] leading-normal text-(--text)',
+            isAiMessage && 'bg-(--blue-dim) border border-[rgba(55,54,252,0.1)]'
           )}
         >
           <p className="whitespace-pre-wrap wrap-break-word">{message.body}</p>
@@ -159,16 +140,12 @@ export default function MessageItem({
             onClick={handleUpvote}
             disabled={isVoting}
             className={cn(
-              "inline-flex items-center gap-[6px] rounded-[999px] border border-transparent px-[8px] py-[4px] font-medium transition-colors",
-              effectiveUpvotes > 0
-                ? "text-(--blue)"
-                : "text-muted hover:text-(--blue)",
+              'inline-flex items-center gap-[6px] rounded-[999px] border border-transparent px-[8px] py-[4px] font-medium transition-colors',
+              effectiveUpvotes > 0 ? 'text-(--blue)' : 'text-muted hover:text-(--blue)'
             )}
           >
             <span>▲</span>
-            <span className="tabular-nums">
-              {effectiveUpvotes > 0 ? effectiveUpvotes : ""}
-            </span>
+            <span className="tabular-nums">{effectiveUpvotes > 0 ? effectiveUpvotes : ''}</span>
           </button>
 
           <button
@@ -200,4 +177,3 @@ export default function MessageItem({
     </article>
   );
 }
-

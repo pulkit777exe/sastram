@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CommentTree } from "@/components/thread/comment-tree";
-import { PostMessageForm } from "@/modules/chat/components/post-message-form";
-import { useThreadWebSocket, type TypingUser } from "@/hooks/useThreadWebSocket";
-import type { Message } from "@/lib/types/index";
-import TimeAgo from "@/components/ui/TimeAgo";
-import { PollPanel } from "@/components/thread/poll-panel";
-import { markThreadReadAction } from "@/modules/read-receipts/actions";
-import { toasts } from "@/lib/utils/toast";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CommentTree } from '@/components/thread/comment-tree';
+import { PostMessageForm } from '@/modules/chat/components/post-message-form';
+import { useThreadWebSocket, type TypingUser } from '@/hooks/useThreadWebSocket';
+import type { Message } from '@/lib/types/index';
+import TimeAgo from '@/components/ui/TimeAgo';
+import { PollPanel } from '@/components/thread/poll-panel';
+import { markThreadReadAction } from '@/modules/read-receipts/actions';
+import { toasts } from '@/lib/utils/toast';
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
@@ -42,21 +42,15 @@ export function ThreadLiveWrapper({
 }: ThreadLiveWrapperProps) {
   const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
-  const [aiInlineStatus, setAiInlineStatus] = useState<
-    Record<string, "pending" | "failed">
-  >({});
+  const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed'>>({});
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(
-    initialFirstUnreadMessageId,
-  );
+  const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(initialFirstUnreadMessageId);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMarkingReadRef = useRef(false);
   const ownPendingIds = useRef<Set<string>>(new Set());
-  const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map(),
-  );
+  const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // ── REFS for markThreadAsRead ─────────────────────────────────────────
   // Avoids stale closure AND prevents "setState inside setState" React warning.
@@ -74,15 +68,9 @@ export function ThreadLiveWrapper({
 
   // ── DERIVED ───────────────────────────────────────────────────────────
 
-  const pinnedMessage = useMemo(
-    () => liveMessages.find((m) => m.isPinned) ?? null,
-    [liveMessages],
-  );
+  const pinnedMessage = useMemo(() => liveMessages.find((m) => m.isPinned) ?? null, [liveMessages]);
 
-  const hasAiMention = useCallback(
-    (content: string) => /\B@ai\b/i.test(content),
-    [],
-  );
+  const hasAiMention = useCallback((content: string) => /\B@ai\b/i.test(content), []);
 
   const isAtBottom = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -93,14 +81,14 @@ export function ThreadLiveWrapper({
   // ── @AI STATUS ────────────────────────────────────────────────────────
 
   const setAiPending = useCallback((messageId: string) => {
-    setAiInlineStatus((prev) => ({ ...prev, [messageId]: "pending" }));
+    setAiInlineStatus((prev) => ({ ...prev, [messageId]: 'pending' }));
     const existing = aiInlineTimerRef.current.get(messageId);
     if (existing) clearTimeout(existing);
     // 2 minute timeout to allow for worker cold starts
     const timer = setTimeout(() => {
       setAiInlineStatus((prev) => {
-        if (prev[messageId] !== "pending") return prev;
-        return { ...prev, [messageId]: "failed" };
+        if (prev[messageId] !== 'pending') return prev;
+        return { ...prev, [messageId]: 'failed' };
       });
       aiInlineTimerRef.current.delete(messageId);
     }, 120_000);
@@ -132,8 +120,7 @@ export function ThreadLiveWrapper({
       if (isMarkingReadRef.current) return;
       if (!force && !isAtBottom()) return;
 
-      const latestId =
-        liveMessagesRef.current[liveMessagesRef.current.length - 1]?.id ?? null;
+      const latestId = liveMessagesRef.current[liveMessagesRef.current.length - 1]?.id ?? null;
 
       isMarkingReadRef.current = true;
       const result = await markThreadReadAction(threadId, latestId);
@@ -147,7 +134,7 @@ export function ThreadLiveWrapper({
       setUnreadCount(0);
       setFirstUnreadMessageId(null);
     },
-    [isAtBottom, threadId],
+    [isAtBottom, threadId]
   );
 
   // ── WEBSOCKET HANDLERS ────────────────────────────────────────────────
@@ -160,9 +147,7 @@ export function ThreadLiveWrapper({
         // Own message already added via handleMessagePosted
         if (ownPendingIds.current.has(newMessage.id)) {
           ownPendingIds.current.delete(newMessage.id);
-          return prev.map((m) =>
-            m.id === newMessage.id ? { ...m, ...newMessage } : m,
-          );
+          return prev.map((m) => (m.id === newMessage.id ? { ...m, ...newMessage } : m));
         }
 
         // Streaming content update (same ID, new content from AI)
@@ -188,7 +173,7 @@ export function ThreadLiveWrapper({
         return [...prev, newMessage];
       });
     },
-    [isAtBottom],
+    [isAtBottom]
   );
 
   // Called by WebSocket hook when isComplete:true arrives on an AI message
@@ -196,29 +181,23 @@ export function ThreadLiveWrapper({
     (parentMessageId: string) => {
       clearAiStatus(parentMessageId);
     },
-    [clearAiStatus],
+    [clearAiStatus]
   );
 
   const handleWsMessageDeleted = useCallback((messageId: string) => {
     setLiveMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId ? { ...m, deletedAt: new Date() } : m,
-      ),
+      prev.map((m) => (m.id === messageId ? { ...m, deletedAt: new Date() } : m))
     );
   }, []);
 
-  const handleWsPinUpdate = useCallback(
-    (messageId: string, isPinned: boolean) => {
-      setLiveMessages((prev) =>
-        prev.map((m) => ({
-          ...m,
-          isPinned:
-            m.id === messageId ? isPinned : isPinned ? false : m.isPinned,
-        })),
-      );
-    },
-    [],
-  );
+  const handleWsPinUpdate = useCallback((messageId: string, isPinned: boolean) => {
+    setLiveMessages((prev) =>
+      prev.map((m) => ({
+        ...m,
+        isPinned: m.id === messageId ? isPinned : isPinned ? false : m.isPinned,
+      }))
+    );
+  }, []);
 
   const handleTypingUpdate = useCallback((typers: TypingUser[]) => {
     setTypingUsers(typers);
@@ -245,7 +224,7 @@ export function ThreadLiveWrapper({
         setAiPending(newMessage.id);
       }
     },
-    [emitTypingStop, hasAiMention, setAiPending],
+    [emitTypingStop, hasAiMention, setAiPending]
   );
 
   // ── SCROLL TO FIRST UNREAD ────────────────────────────────────────────
@@ -254,10 +233,10 @@ export function ThreadLiveWrapper({
     if (firstUnreadMessageId) {
       document
         .getElementById(`message-${firstUnreadMessageId}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [firstUnreadMessageId]);
 
   // ── AUTO READ TIMER ───────────────────────────────────────────────────
@@ -273,13 +252,13 @@ export function ThreadLiveWrapper({
   // ── CLEANUP ───────────────────────────────────────────────────────────
 
   useEffect(() => {
-  const timers = aiInlineTimerRef.current;
+    const timers = aiInlineTimerRef.current;
     return () => {
       if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
-    for (const timer of timers.values()) {
+      for (const timer of timers.values()) {
         clearTimeout(timer);
       }
-    timers.clear();
+      timers.clear();
     };
   }, []);
 
@@ -298,18 +277,13 @@ export function ThreadLiveWrapper({
         }}
       >
         <div className="max-w-4xl mx-auto p-6 md:p-8">
-          <PollPanel
-            threadId={threadId}
-            initialPoll={poll}
-            canManagePoll={canManagePoll}
-          />
+          <PollPanel threadId={threadId} initialPoll={poll} canManagePoll={canManagePoll} />
 
           {unreadCount > 0 && (
             <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold text-blue-700">
-                  {unreadCount} unread{" "}
-                  {unreadCount === 1 ? "message" : "messages"}
+                  {unreadCount} unread {unreadCount === 1 ? 'message' : 'messages'}
                 </p>
                 <button
                   type="button"
@@ -327,12 +301,10 @@ export function ThreadLiveWrapper({
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-amber-700">
-                    📌 Pinned by {pinnedMessage.sender.name || "Anonymous"} ·{" "}
+                    📌 Pinned by {pinnedMessage.sender.name || 'Anonymous'} ·{' '}
                     <TimeAgo date={pinnedMessage.createdAt} />
                   </p>
-                  <p className="mt-1 truncate text-sm text-amber-900">
-                    {pinnedMessage.content}
-                  </p>
+                  <p className="mt-1 truncate text-sm text-amber-900">{pinnedMessage.content}</p>
                 </div>
                 <button
                   type="button"
@@ -340,7 +312,7 @@ export function ThreadLiveWrapper({
                   onClick={() =>
                     document
                       .getElementById(`message-${pinnedMessage.id}`)
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                   }
                 >
                   Jump to message
@@ -366,9 +338,7 @@ export function ThreadLiveWrapper({
                   />
                 </svg>
               </div>
-              <h3 className="text-foreground font-medium mb-1">
-                No comments yet
-              </h3>
+              <h3 className="text-foreground font-medium mb-1">No comments yet</h3>
               <p className="text-muted-foreground text-sm">
                 Be the first to share your thoughts on this topic!
               </p>
@@ -403,7 +373,7 @@ export function ThreadLiveWrapper({
                 ? `${typingUsers[0].userName} is typing...`
                 : typingUsers.length === 2
                   ? `${typingUsers[0].userName} and ${typingUsers[1].userName} are typing...`
-                  : "Several people are typing..."}
+                  : 'Several people are typing...'}
             </span>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import type { ThreadWithFullContext } from "@/modules/threads/queries";
+import type { ThreadWithFullContext } from '@/modules/threads/queries';
 
 interface ParticipantsCardProps {
   thread: ThreadWithFullContext;
@@ -21,16 +21,13 @@ export default function ParticipantsCard({ thread }: ParticipantsCardProps) {
           >
             <div className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-(--blue-dim)">
               <span className="text-[11px] font-medium text-(--blue)">
-                {member.user.name?.slice(0, 1).toUpperCase() ?? "U"}
+                {member.user.name?.slice(0, 1).toUpperCase() ?? 'U'}
               </span>
             </div>
-            <span className="text-[12px] text-(--text)">
-              {member.user.name ?? "Unknown"}
-            </span>
+            <span className="text-[12px] text-(--text)">{member.user.name ?? 'Unknown'}</span>
           </div>
         ))}
       </div>
     </section>
   );
 }
-

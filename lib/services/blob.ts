@@ -1,4 +1,4 @@
-import { put, del } from "@vercel/blob";
+import { put, del } from '@vercel/blob';
 
 export interface UploadOptions {
   maxSizeBytes?: number;
@@ -7,13 +7,13 @@ export interface UploadOptions {
 
 const DEFAULT_MAX_SIZE = 4.5 * 1024 * 1024; // 4.5MB
 const DEFAULT_ALLOWED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "application/pdf",
-  "video/mp4",
-  "video/webm",
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'video/mp4',
+  'video/webm',
 ];
 
 export async function uploadFile(
@@ -26,7 +26,7 @@ export async function uploadFile(
   // Validate file size
   if (file.size > maxSize) {
     return {
-      url: "",
+      url: '',
       error: `File size exceeds ${maxSize / 1024 / 1024}MB limit`,
     };
   }
@@ -34,22 +34,22 @@ export async function uploadFile(
   // Validate file type
   if (!allowedTypes.includes(file.type)) {
     return {
-      url: "",
+      url: '',
       error: `File type ${file.type} is not allowed`,
     };
   }
 
   try {
     const blob = await put(file.name, file, {
-      access: "public",
+      access: 'public',
     });
 
     return { url: blob.url };
   } catch (error) {
-    console.error("Error uploading file:", error);
+    console.error('Error uploading file:', error);
     return {
-      url: "",
-      error: "Failed to upload file",
+      url: '',
+      error: 'Failed to upload file',
     };
   }
 }
@@ -59,32 +59,31 @@ export async function deleteFile(url: string): Promise<{ success: boolean; error
     await del(url);
     return { success: true };
   } catch (error) {
-    console.error("Error deleting file:", error);
+    console.error('Error deleting file:', error);
     return {
       success: false,
-      error: "Failed to delete file",
+      error: 'Failed to delete file',
     };
   }
 }
 
 export function validateImageFile(file: File): { valid: boolean; error?: string } {
-  const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const maxSize = 5 * 1024 * 1024; // 5MB for images
 
   if (!allowedTypes.includes(file.type)) {
     return {
       valid: false,
-      error: "Only JPEG, PNG, GIF, and WebP images are allowed",
+      error: 'Only JPEG, PNG, GIF, and WebP images are allowed',
     };
   }
 
   if (file.size > maxSize) {
     return {
       valid: false,
-      error: "Image size must be less than 4.5MB",
+      error: 'Image size must be less than 4.5MB',
     };
   }
 
   return { valid: true };
 }
-

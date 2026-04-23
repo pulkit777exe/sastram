@@ -1,7 +1,7 @@
-import { getSession } from "@/modules/auth/session";
-import { getNotifications } from "@/modules/notifications/actions";
-import { NotificationList } from "@/components/notifications/notification-list";
-import { Bell } from "lucide-react";
+import { getSession } from '@/modules/auth/session';
+import { getNotifications } from '@/modules/notifications/actions';
+import { NotificationList } from '@/components/notifications/notification-list';
+import { Bell } from 'lucide-react';
 
 export default async function NotificationsPage() {
   const session = await getSession();
@@ -21,7 +21,7 @@ export default async function NotificationsPage() {
   const notifications = raw.map((notification) => {
     const data =
       notification.data &&
-      typeof notification.data === "object" &&
+      typeof notification.data === 'object' &&
       !Array.isArray(notification.data)
         ? (notification.data as Record<string, unknown>)
         : {};
@@ -30,7 +30,7 @@ export default async function NotificationsPage() {
       id: notification.id,
       type: notification.type,
       title: notification.title,
-      message: notification.message ?? "",
+      message: notification.message ?? '',
       isRead: notification.isRead,
       createdAt: notification.createdAt,
       linkUrl: (data.linkUrl as string) ?? null,
@@ -45,9 +45,7 @@ export default async function NotificationsPage() {
           <span>Notifications</span>
         </div>
         <h1 className="text-4xl font-bold tracking-tight">Notifications</h1>
-        <p className="text-zinc-500 mt-2">
-          Stay updated with mentions, replies, and activity.
-        </p>
+        <p className="text-zinc-500 mt-2">Stay updated with mentions, replies, and activity.</p>
       </div>
 
       <NotificationList notifications={notifications} />

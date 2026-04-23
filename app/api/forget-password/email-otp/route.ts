@@ -1,5 +1,5 @@
-import { auth } from "@/lib/services/auth";
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from '@/lib/services/auth';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   const { email } = await request.json();
@@ -8,5 +8,5 @@ export async function POST(request: NextRequest) {
       email,
     },
   });
-  return NextResponse.json(data, {status: 200});
+  return NextResponse.json(data, { status: 200 });
 }

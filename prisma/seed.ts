@@ -1,12 +1,12 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { randomUUID } from "crypto";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { randomUUID } from 'crypto';
 
 function slugify(title: string) {
   return title
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 async function createThread({
@@ -22,7 +22,7 @@ async function createThread({
   communityId?: string;
 }) {
   return prisma.section.create({
-     data: {
+    data: {
       name,
       description,
       slug: `${slugify(name)}-${randomUUID()}`,
@@ -40,75 +40,75 @@ async function createThread({
         create: [
           {
             userId,
-            role: "OWNER",
-            status: "ACTIVE",
+            role: 'OWNER',
+            status: 'ACTIVE',
             joinedAt: new Date(),
           },
         ],
       },
-     },
+    },
   });
 }
 
 async function main() {
   const user = await prisma.user.upsert({
-    where: { email: "test@example.com" },
+    where: { email: 'test@example.com' },
     update: {},
     create: {
-      email: "test@example.com",
-      name: "Test User",
-      image: "https://github.com/shadcn.png",
-      role: "ADMIN",
+      email: 'test@example.com',
+      name: 'Test User',
+      image: 'https://github.com/shadcn.png',
+      role: 'ADMIN',
     },
   });
 
   const researchCommunity = await prisma.community.create({
     data: {
-      title: "Research Lab",
-      description: "Long-form exploration into AGI alignment and governance.",
-      slug: `${slugify("Research Lab")}-${randomUUID()}`,
+      title: 'Research Lab',
+      description: 'Long-form exploration into AGI alignment and governance.',
+      slug: `${slugify('Research Lab')}-${randomUUID()}`,
       createdBy: user.id,
     },
   });
 
   const builderCommunity = await prisma.community.create({
     data: {
-      title: "Indie Builders",
-      description: "Shipping stories, growth experiments, indie accountability.",
-      slug: `${slugify("Indie Builders")}-${randomUUID()}`,
+      title: 'Indie Builders',
+      description: 'Shipping stories, growth experiments, indie accountability.',
+      slug: `${slugify('Indie Builders')}-${randomUUID()}`,
       createdBy: user.id,
     },
   });
 
   const threads = [
     {
-      name: "Artificial Intelligence & Ethics",
-      description: "Discuss ethical implications of AGI and LLM deployments.",
-      icon: "Brain",
+      name: 'Artificial Intelligence & Ethics',
+      description: 'Discuss ethical implications of AGI and LLM deployments.',
+      icon: 'Brain',
       communityId: researchCommunity.id,
     },
     {
-      name: "Sustainable Energy Solutions",
-      description: "Solar, wind, fusion, and breakthroughs in energy storage.",
-      icon: "Zap",
+      name: 'Sustainable Energy Solutions',
+      description: 'Solar, wind, fusion, and breakthroughs in energy storage.',
+      icon: 'Zap',
       communityId: researchCommunity.id,
     },
     {
-      name: "Space Exploration 2025",
-      description: "Artemis, Starship, and human-rated mission planning.",
-      icon: "Rocket",
+      name: 'Space Exploration 2025',
+      description: 'Artemis, Starship, and human-rated mission planning.',
+      icon: 'Rocket',
       communityId: researchCommunity.id,
     },
     {
-      name: "Best Rust Web Frameworks?",
-      description: "Compare Actix, Axum, Rocket for production work.",
-      icon: "Code",
+      name: 'Best Rust Web Frameworks?',
+      description: 'Compare Actix, Axum, Rocket for production work.',
+      icon: 'Code',
       communityId: builderCommunity.id,
     },
     {
-      name: "Indie Hacking Tips",
-      description: "Launch week retrospectives and weeklies.",
-      icon: "Laptop",
+      name: 'Indie Hacking Tips',
+      description: 'Launch week retrospectives and weeklies.',
+      icon: 'Laptop',
       communityId: builderCommunity.id,
     },
   ];
@@ -117,7 +117,7 @@ async function main() {
     await createThread({ ...thread, userId: user.id });
   }
 
-  console.log("Seeding completed.");
+  console.log('Seeding completed.');
 }
 
 main()

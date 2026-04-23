@@ -1,19 +1,19 @@
-import { randomUUID } from "crypto";
-import type { Community, UserStatus } from "@prisma/client";
+import { randomUUID } from 'crypto';
+import type { Community, UserStatus } from '@prisma/client';
 import type {
   ThreadDetail,
   ThreadRecord,
   ThreadSummary,
   CommunitySummary,
   ThreadDNA,
-} from "./types";
+} from './types';
 
 export function slugifyTitle(title: string) {
   return title
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export function buildThreadSlug(title: string, existingId?: string) {
@@ -26,7 +26,7 @@ export function buildThreadDTO(
   thread: ThreadRecord,
   messageCount: number,
   activeUsers: number,
-  memberCount: number,
+  memberCount: number
 ): ThreadSummary {
   return {
     id: thread.id,
@@ -57,14 +57,11 @@ export function buildThreadDetailDTO(
   activeUsers: number,
   memberCount: number,
   summary?: string | null,
-  subscriptionCount?: number,
+  subscriptionCount?: number
 ): ThreadDetail {
   return {
     ...buildThreadDTO(thread, messageCount, activeUsers, memberCount),
-    summary:
-      summary ??
-      ((thread as Record<string, unknown>).aiSummary as string) ??
-      null,
+    summary: summary ?? ((thread as Record<string, unknown>).aiSummary as string) ?? null,
     resolutionScore: thread.resolutionScore,
     threadDna: thread.threadDna ? (thread.threadDna as unknown as ThreadDNA) : undefined,
     lastVerifiedAt: thread.lastVerifiedAt,
@@ -76,8 +73,7 @@ export function buildThreadDetailDTO(
         content: message.content,
         senderId: message.senderId,
         parentId: message.parentId ?? null,
-        senderName:
-          message.sender?.name || message.sender?.email || "Anonymous",
+        senderName: message.sender?.name || message.sender?.email || 'Anonymous',
         senderAvatar: message.sender?.image,
         createdAt: message.createdAt,
         updatedAt: message.updatedAt,
@@ -85,25 +81,21 @@ export function buildThreadDetailDTO(
         depth: message.depth ?? 0,
         isEdited: message.isEdited ?? false,
         isPinned: message.isPinned ?? false,
-        likeCount:
-          ((message as Record<string, unknown>).likeCount as number) ?? 0,
-        replyCount:
-          ((message as Record<string, unknown>).replyCount as number) ?? 0,
-        isAiResponse:
-          ((message as Record<string, unknown>).isAiResponse as boolean) ??
-          false,
+        likeCount: ((message as Record<string, unknown>).likeCount as number) ?? 0,
+        replyCount: ((message as Record<string, unknown>).replyCount as number) ?? 0,
+        isAiResponse: ((message as Record<string, unknown>).isAiResponse as boolean) ?? false,
         sender: message.sender
           ? {
               id: message.sender.id,
               name: message.sender.name,
               avatarUrl: message.sender.image,
-              status: (message.sender.status as UserStatus) || "ACTIVE",
+              status: (message.sender.status as UserStatus) || 'ACTIVE',
             }
           : {
               id: message.senderId,
               name: null,
               avatarUrl: null,
-              status: "ACTIVE" as UserStatus,
+              status: 'ACTIVE' as UserStatus,
             },
         attachments:
           ((message as Record<string, unknown>).attachments as Array<{
@@ -117,10 +109,7 @@ export function buildThreadDetailDTO(
   };
 }
 
-export function buildCommunityDTO(
-  community: Community,
-  threadCount: number,
-): CommunitySummary {
+export function buildCommunityDTO(community: Community, threadCount: number): CommunitySummary {
   return {
     id: community.id,
     slug: community.slug,

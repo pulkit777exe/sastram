@@ -1,9 +1,9 @@
-"use server";
+'use server';
 
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { requireSession, assertAdmin } from "@/modules/auth/session";
-import { buildThreadSlug } from "./service";
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { requireSession, assertAdmin } from '@/modules/auth/session';
+import { buildThreadSlug } from './service';
 import {
   createThread,
   deleteThread,
@@ -14,14 +14,14 @@ import {
   updateThreadDNA,
   updateResolutionScore,
   updateThreadStaleness,
-} from "./repository";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { SectionRole } from "@prisma/client";
+} from './repository';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { SectionRole } from '@prisma/client';
 
 const threadSchema = z.object({
   title: z.string().min(3),
-  description: z.string().max(480).optional().or(z.literal("")),
-  communityId: z.string().cuid().optional().or(z.literal("")),
+  description: z.string().max(480).optional().or(z.literal('')),
+  communityId: z.string().cuid().optional().or(z.literal('')),
   initialMessage: z.string().optional(),
 });
 
@@ -32,26 +32,26 @@ const threadIdSchema = z.object({
 const threadListSchema = z.object({
   page: z.number().int().positive().optional(),
   pageSize: z.number().int().positive().max(100).optional(),
-  sortBy: z.enum(["recent", "popular", "trending", "oldest"]).optional(),
+  sortBy: z.enum(['recent', 'popular', 'trending', 'oldest']).optional(),
 });
 
 const manageMemberSchema = z.object({
   threadId: z.string().cuid(),
   userId: z.string().cuid(),
-  action: z.enum(["update_role", "remove"]),
+  action: z.enum(['update_role', 'remove']),
   role: z.nativeEnum(SectionRole).optional(),
 });
 
 export async function createThreadAction(formData: FormData) {
   const parsed = threadSchema.safeParse({
-    title: formData.get("title"),
-    description: formData.get("description"),
-    communityId: formData.get("communityId"),
-    initialMessage: formData.get("initialMessage"),
+    title: formData.get('title'),
+    description: formData.get('description'),
+    communityId: formData.get('communityId'),
+    initialMessage: formData.get('initialMessage'),
   });
 
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -68,18 +68,18 @@ export async function createThreadAction(formData: FormData) {
       initialMessage: parsed.data.initialMessage,
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath('/dashboard');
     return { data: null, error: null };
   } catch (error) {
-    console.error("[createThreadAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[createThreadAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function deleteThreadAction(threadId: string) {
   const parsed = threadIdSchema.safeParse({ threadId });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -87,37 +87,37 @@ export async function deleteThreadAction(threadId: string) {
     assertAdmin(session.user);
 
     await deleteThread(parsed.data.threadId);
-    revalidatePath("/dashboard");
+    revalidatePath('/dashboard');
     return { data: null, error: null };
   } catch (error) {
-    console.error("[deleteThreadAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[deleteThreadAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function getDashboardThreads(params?: {
   page?: number;
   pageSize?: number;
-  sortBy?: "recent" | "popular" | "trending" | "oldest";
+  sortBy?: 'recent' | 'popular' | 'trending' | 'oldest';
 }) {
   const parsed = threadListSchema.safeParse(params ?? {});
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const result = await listThreads(parsed.data);
     return { data: result, error: null };
   } catch (error) {
-    console.error("[getDashboardThreads]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getDashboardThreads]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function getThreadMembersAction(threadId: string) {
   const parsed = threadIdSchema.safeParse({ threadId });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -125,20 +125,20 @@ export async function getThreadMembersAction(threadId: string) {
     const members = await getThreadMembers(parsed.data.threadId);
     return { data: members, error: null };
   } catch (error) {
-    console.error("[getThreadMembersAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getThreadMembersAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function manageThreadMemberAction(payload: {
   threadId: string;
   userId: string;
-  action: "update_role" | "remove";
+  action: 'update_role' | 'remove';
   role?: SectionRole;
 }) {
   const parsed = manageMemberSchema.safeParse(payload);
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -150,7 +150,7 @@ export async function manageThreadMemberAction(payload: {
     });
 
     if (!thread) {
-      return { data: null, error: "Something went wrong" };
+      return { data: null, error: 'Something went wrong' };
     }
 
     const isCreator = thread.createdBy === session.user.id;
@@ -160,31 +160,27 @@ export async function manageThreadMemberAction(payload: {
       try {
         assertAdmin(session.user);
       } catch {
-        return { data: null, error: "Something went wrong" };
+        return { data: null, error: 'Something went wrong' };
       }
     }
 
     if (parsed.data.userId === session.user.id) {
-      return { data: null, error: "Something went wrong" };
+      return { data: null, error: 'Something went wrong' };
     }
 
-    if (parsed.data.action === "update_role") {
+    if (parsed.data.action === 'update_role') {
       if (!parsed.data.role) {
-        return { data: null, error: "Invalid input" };
+        return { data: null, error: 'Invalid input' };
       }
-      await updateThreadMemberRole(
-        parsed.data.threadId,
-        parsed.data.userId,
-        parsed.data.role,
-      );
-    } else if (parsed.data.action === "remove") {
+      await updateThreadMemberRole(parsed.data.threadId, parsed.data.userId, parsed.data.role);
+    } else if (parsed.data.action === 'remove') {
       await removeThreadMember(parsed.data.threadId, parsed.data.userId);
     }
 
     revalidatePath(`/dashboard/threads/thread/${thread.slug}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error("[manageThreadMemberAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[manageThreadMemberAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

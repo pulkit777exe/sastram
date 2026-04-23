@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { TypingIndicator } from "@/lib/types/index";
+import type { TypingIndicator } from '@/lib/types/index';
 
 interface TypingIndicatorProps {
   users: TypingIndicator[];
@@ -13,15 +13,15 @@ export function TypingIndicatorComponent({ users }: TypingIndicatorProps) {
     <div className="flex items-center gap-2 px-5 text-[#b9bbbe] text-sm font-medium h-6">
       <div className="flex gap-1">
         {[0, 150, 300].map((delay) => (
-          <span 
+          <span
             key={delay}
-            className="w-2 h-2 rounded-full animate-pulse" 
+            className="w-2 h-2 rounded-full animate-pulse"
             style={{ animationDelay: `${delay}ms` }}
           />
         ))}
       </div>
       <span className="truncate max-w-full">
-        {users.length > 1 ? "Several people are typing..." : `${users[0].userName} is typing...`}
+        {users.length > 1 ? 'Several people are typing...' : `${users[0].userName} is typing...`}
       </span>
     </div>
   );

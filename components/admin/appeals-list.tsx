@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import TimeAgo from "@/components/ui/TimeAgo";
+import { useState } from 'react';
+import TimeAgo from '@/components/ui/TimeAgo';
 import {
   Table,
   TableBody,
@@ -9,9 +9,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { resolveAppeal } from "@/modules/appeals/actions";
-import { toast } from "sonner";
-import { Check, X } from "lucide-react";
+} from '@/components/ui/dialog';
+import { resolveAppeal } from '@/modules/appeals/actions';
+import { toast } from 'sonner';
+import { Check, X } from 'lucide-react';
 
 interface Appeal {
   id: string;
@@ -42,15 +42,13 @@ interface Appeal {
 export function AppealsList({ appeals }: { appeals: Appeal[] }) {
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [actionType, setActionType] = useState<"APPROVE" | "REJECT" | null>(
-    null
-  );
+  const [actionType, setActionType] = useState<'APPROVE' | 'REJECT' | null>(null);
 
   const handleResolve = async () => {
     if (!selectedAppeal || !actionType) return;
 
     setIsProcessing(true);
-    const approved = actionType === "APPROVE";
+    const approved = actionType === 'APPROVE';
 
     // In a real app, we might want to send a rejection reason note.
     // For now assuming resolveAppeal handles basic logic.
@@ -60,9 +58,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
     if (result?.error) {
       toast.error(result.error);
     } else {
-      toast.success(
-        `Appeal ${approved ? "approved" : "rejected"} successfully`
-      );
+      toast.success(`Appeal ${approved ? 'approved' : 'rejected'} successfully`);
       setSelectedAppeal(null);
       setActionType(null);
     }
@@ -97,32 +93,25 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={appeal.reporter.image || undefined} />
-                      <AvatarFallback>
-                        {appeal.reporter.name?.charAt(0) || "U"}
-                      </AvatarFallback>
+                      <AvatarFallback>{appeal.reporter.name?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-medium text-sm">{appeal.reporter.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {appeal.reporter.email}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{appeal.reporter.email}</p>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   <TimeAgo date={appeal.banDate} />
                 </TableCell>
-                <TableCell
-                  className="max-w-[200px] truncate text-sm"
-                  title={appeal.banReason}
-                >
+                <TableCell className="max-w-[200px] truncate text-sm" title={appeal.banReason}>
                   {appeal.banReason}
                 </TableCell>
                 <TableCell
                   className="max-w-[300px] truncate text-sm italic text-muted-foreground"
-                  title={appeal.details || ""}
+                  title={appeal.details || ''}
                 >
-                  &quot;{appeal.details || "No appeal reason provided"}&quot;
+                  &quot;{appeal.details || 'No appeal reason provided'}&quot;
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
@@ -131,7 +120,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                       variant="ghost"
                       onClick={() => {
                         setSelectedAppeal(appeal);
-                        setActionType("REJECT");
+                        setActionType('REJECT');
                       }}
                       className="text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
@@ -142,7 +131,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                       variant="ghost"
                       onClick={() => {
                         setSelectedAppeal(appeal);
-                        setActionType("APPROVE");
+                        setActionType('APPROVE');
                       }}
                       className="text-green-500 hover:text-green-700 hover:bg-green-50"
                     >
@@ -156,21 +145,16 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
         </Table>
       </div>
 
-      <Dialog
-        open={!!selectedAppeal}
-        onOpenChange={(open) => !open && setSelectedAppeal(null)}
-      >
+      <Dialog open={!!selectedAppeal} onOpenChange={(open) => !open && setSelectedAppeal(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === "APPROVE"
-                ? "Approve Appeal & Unban User"
-                : "Reject Appeal"}
+              {actionType === 'APPROVE' ? 'Approve Appeal & Unban User' : 'Reject Appeal'}
             </DialogTitle>
             <DialogDescription>
-              {actionType === "APPROVE"
-                ? "This will immediately unban the user and restore their access."
-                : "The user will remain banned. They cannot submit another appeal for this ban."}
+              {actionType === 'APPROVE'
+                ? 'This will immediately unban the user and restore their access.'
+                : 'The user will remain banned. They cannot submit another appeal for this ban.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -185,7 +169,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
 
                 <span className="text-muted-foreground">Appeal:</span>
                 <div className="p-3 bg-muted rounded-md text-xs italic">
-                  &quot;{selectedAppeal.details || "No appeal reason provided"}&quot;
+                  &quot;{selectedAppeal.details || 'No appeal reason provided'}&quot;
                 </div>
               </div>
             </div>
@@ -196,15 +180,15 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
               Cancel
             </Button>
             <Button
-              variant={actionType === "APPROVE" ? "default" : "destructive"}
+              variant={actionType === 'APPROVE' ? 'default' : 'destructive'}
               onClick={handleResolve}
               disabled={isProcessing}
             >
               {isProcessing
-                ? "Processing..."
-                : actionType === "APPROVE"
-                ? "Approve Appeal"
-                : "Reject Appeal"}
+                ? 'Processing...'
+                : actionType === 'APPROVE'
+                  ? 'Approve Appeal'
+                  : 'Reject Appeal'}
             </Button>
           </DialogFooter>
         </DialogContent>

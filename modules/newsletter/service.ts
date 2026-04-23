@@ -1,11 +1,11 @@
-"use server";
+'use server';
 
-import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/services/auth";
-import { headers } from "next/headers";
-import { aiService } from "@/lib/services/ai";
-import { logger } from "@/lib/infrastructure/logger";
-import { prisma } from "@/lib/infrastructure/prisma";
+import { revalidatePath } from 'next/cache';
+import { auth } from '@/lib/services/auth';
+import { headers } from 'next/headers';
+import { aiService } from '@/lib/services/ai';
+import { logger } from '@/lib/infrastructure/logger';
+import { prisma } from '@/lib/infrastructure/prisma';
 import {
   completeDigest,
   getDueDigests,
@@ -14,21 +14,15 @@ import {
   markDigestProcessing,
   scheduleThreadDigest,
   subscribeToThreadNewsletter,
-} from "./repository";
+} from './repository';
 
-export async function subscribeToThread({
-  threadId,
-  slug,
-}: {
-  threadId: string;
-  slug: string;
-}) {
+export async function subscribeToThread({ threadId, slug }: { threadId: string; slug: string }) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
   if (!session) {
-    throw new Error("You must be signed in to subscribe");
+    throw new Error('You must be signed in to subscribe');
   }
 
   const email = session.user.email;
@@ -56,20 +50,15 @@ export async function processPendingDigests() {
     const content = transcript
       .map(
         (message) =>
-          `${message.sender?.name || message.sender?.email || "Anonymous"}: ${
-            message.content
-          }`
+          `${message.sender?.name || message.sender?.email || 'Anonymous'}: ${message.content}`
       )
-      .join("\n");
+      .join('\n');
 
     let summary: string;
     try {
       summary = await aiService.generateSummary(content);
     } catch (error) {
-      logger.error(
-        `Failed to generate AI summary for thread ${digest.threadId}:`,
-        error
-      );
+      logger.error(`Failed to generate AI summary for thread ${digest.threadId}:`, error);
       summary = `This thread had ${transcript.length} messages from ${uniqueParticipants.size} participants. Join the discussion to see what's happening!`;
     }
 
@@ -90,13 +79,13 @@ export async function processPendingDigests() {
     const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`;
 
     // Send emails via Resend
-    const { sendNewsletterDigest } = await import("@/lib/services/email");
+    const { sendNewsletterDigest } = await import('@/lib/services/email');
     let emailCount = 0;
 
     for (const subscriber of subscribers) {
       if (!subscriber.email) {
         logger.warn(
-          `Skipping digest email for subscriber ${subscriber.userId} because no email is set`,
+          `Skipping digest email for subscriber ${subscriber.userId} because no email is set`
         );
         continue;
       }
@@ -111,20 +100,13 @@ export async function processPendingDigests() {
           uniqueParticipants.size
         );
         emailCount++;
-        logger.info(
-          `Sent digest email to ${subscriber.email} for thread ${thread.name}`
-        );
+        logger.info(`Sent digest email to ${subscriber.email} for thread ${thread.name}`);
       } catch (error) {
-        logger.error(
-          `Failed to send digest email to ${subscriber.email}:`,
-          error
-        );
+        logger.error(`Failed to send digest email to ${subscriber.email}:`, error);
       }
     }
 
     await completeDigest(digest.id, summary, emailCount);
-    logger.info(
-      `Completed digest for thread ${thread.name}: sent ${emailCount} emails`
-    );
+    logger.info(`Completed digest for thread ${thread.name}: sent ${emailCount} emails`);
   }
 }

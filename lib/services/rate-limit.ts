@@ -1,6 +1,6 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
-import { env } from "@/lib/config/env";
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+import { env } from '@/lib/config/env';
 
 export const rateLimitConfig = {
   auth: { points: 5, duration: 900 }, // 5 requests per 15 min
@@ -65,26 +65,21 @@ export async function rateLimit(params: {
   return limiter.check(params.key);
 }
 
-export const authLimiter: RateLimiter = createRateLimiter("auth");
-export const apiLimiter: RateLimiter = createRateLimiter("api");
-export const uploadLimiter: RateLimiter = createRateLimiter("upload");
-export const websocketLimiter: RateLimiter = createRateLimiter("websocket");
-export const messageLimiter: RateLimiter = createRateLimiter("message");
-export const newsletterLimiter: RateLimiter = createRateLimiter("newsletter");
+export const authLimiter: RateLimiter = createRateLimiter('auth');
+export const apiLimiter: RateLimiter = createRateLimiter('api');
+export const uploadLimiter: RateLimiter = createRateLimiter('upload');
+export const websocketLimiter: RateLimiter = createRateLimiter('websocket');
+export const messageLimiter: RateLimiter = createRateLimiter('message');
+export const newsletterLimiter: RateLimiter = createRateLimiter('newsletter');
 
-export async function checkRateLimit(
-  userId: string,
-  bucket: RateLimitBucket
-): Promise<void> {
+export async function checkRateLimit(userId: string, bucket: RateLimitBucket): Promise<void> {
   const result = await rateLimit({
     key: userId,
     type: bucket,
   });
 
   if (!result.success) {
-    throw new Error(
-      `Rate limit exceeded. Please try again in 10 sec seconds.`
-    );
+    throw new Error(`Rate limit exceeded. Please try again in 10 sec seconds.`);
   }
 }
 
@@ -102,9 +97,7 @@ class InMemoryRateLimiter implements RateLimiter {
     const now = Date.now();
     const requests = this.requests.get(identifier) || [];
 
-    const filtered = requests.filter(
-      (timestamp) => now - timestamp < this.duration * 1000
-    );
+    const filtered = requests.filter((timestamp) => now - timestamp < this.duration * 1000);
 
     if (filtered.length >= this.maxPoints) {
       return { success: false };
@@ -117,9 +110,7 @@ class InMemoryRateLimiter implements RateLimiter {
   }
 }
 
-export function createInMemoryRateLimiter(
-  bucket: RateLimitBucket
-): RateLimiter {
+export function createInMemoryRateLimiter(bucket: RateLimitBucket): RateLimiter {
   const config = rateLimitConfig[bucket];
   return new InMemoryRateLimiter(config.points, config.duration);
 }

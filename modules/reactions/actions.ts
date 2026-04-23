@@ -1,20 +1,16 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { requireSession } from "@/modules/auth/session";
-import { revalidatePath } from "next/cache";
-import {
-  addReaction,
-  removeReaction,
-  getMessageReactions,
-} from "@/modules/reactions/repository";
-import { emitReactionUpdate } from "@/modules/ws/publisher";
-import { toggleReactionSchema, getReactionSummarySchema } from "./schemas";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { requireSession } from '@/modules/auth/session';
+import { revalidatePath } from 'next/cache';
+import { addReaction, removeReaction, getMessageReactions } from '@/modules/reactions/repository';
+import { emitReactionUpdate } from '@/modules/ws/publisher';
+import { toggleReactionSchema, getReactionSummarySchema } from './schemas';
 
 export async function toggleReaction(messageId: string, emoji: string) {
   const parsed = toggleReactionSchema.safeParse({ messageId, emoji });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -43,7 +39,7 @@ export async function toggleReaction(messageId: string, emoji: string) {
         select: { sectionId: true },
       }),
       prisma.reaction.groupBy({
-        by: ["emoji"],
+        by: ['emoji'],
         where: { messageId: parsed.data.messageId },
         _count: { _all: true },
       }),
@@ -58,25 +54,25 @@ export async function toggleReaction(messageId: string, emoji: string) {
       });
     }
 
-    revalidatePath("/dashboard/threads");
+    revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    console.error("[toggleReaction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[toggleReaction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function getReactionSummary(messageId: string) {
   const parsed = getReactionSummarySchema.safeParse({ messageId });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const reactions = await getMessageReactions(parsed.data.messageId);
     return { data: reactions, error: null };
   } catch (error) {
-    console.error("[getReactionSummary]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getReactionSummary]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

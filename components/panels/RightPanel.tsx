@@ -1,10 +1,10 @@
-import type { ThreadWithFullContext } from "@/modules/threads/queries";
-import { parseThreadDna } from "@/lib/schemas/thread-dna";
-import ThreadInfoCard from "./ThreadInfoCard";
-import ResolutionScoreCard from "./ResolutionScoreCard";
-import AiSynthesisCard from "./AiSynthesisCard";
-import ParticipantsCard from "./ParticipantsCard";
-import ThreadDnaCard from "./ThreadDnaCard";
+import type { ThreadWithFullContext } from '@/modules/threads/queries';
+import { parseThreadDna } from '@/lib/schemas/thread-dna';
+import ThreadInfoCard from './ThreadInfoCard';
+import ResolutionScoreCard from './ResolutionScoreCard';
+import AiSynthesisCard from './AiSynthesisCard';
+import ParticipantsCard from './ParticipantsCard';
+import ThreadDnaCard from './ThreadDnaCard';
 
 interface RightPanelProps {
   thread: ThreadWithFullContext;

@@ -2,5 +2,4 @@
  * Auth Components barrel export
  */
 
-export * from "./LoginForm";
-
+export * from './LoginForm';

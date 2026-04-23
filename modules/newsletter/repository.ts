@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function subscribeToThreadNewsletter({
   threadId,
@@ -11,7 +11,7 @@ export async function subscribeToThreadNewsletter({
   email?: string;
 }) {
   if (!userId && !email) {
-    throw new Error("Either userId or email is required for thread subscription");
+    throw new Error('Either userId or email is required for thread subscription');
   }
 
   if (!userId) {
@@ -57,12 +57,12 @@ export async function getThreadTranscript(threadId: string) {
           sender: true,
         },
         orderBy: {
-          createdAt: "asc",
+          createdAt: 'asc',
         },
       })) ?? []
     );
   } catch (error) {
-    logger.error("[getThreadTranscript]", error);
+    logger.error('[getThreadTranscript]', error);
     return [];
   }
 }
@@ -75,7 +75,7 @@ export async function listThreadSubscribers(threadId: string) {
       })) ?? []
     );
   } catch (error) {
-    logger.error("[listThreadSubscribers]", error);
+    logger.error('[listThreadSubscribers]', error);
     return [];
   }
 }
@@ -87,7 +87,7 @@ export async function isUserSubscribedToThread(threadId: string, userId: string)
   return Boolean(subscription);
 }
 
-import { DigestFrequency } from "@prisma/client";
+import { DigestFrequency } from '@prisma/client';
 
 export async function updateSubscriptionFrequency({
   threadId,

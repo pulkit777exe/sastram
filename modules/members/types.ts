@@ -2,7 +2,7 @@
  * Member domain types
  */
 
-import { SectionRole, MemberStatus } from "@prisma/client";
+import { SectionRole, MemberStatus } from '@prisma/client';
 
 export interface SectionMember {
   id: string;
@@ -19,4 +19,3 @@ export interface SectionMember {
     image: string | null;
   };
 }
-

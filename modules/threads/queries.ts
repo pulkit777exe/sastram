@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import type { Prisma } from "@prisma/client";
-import { dedupe } from "@/lib/dedupe";
+import { prisma } from '@/lib/infrastructure/prisma';
+import type { Prisma } from '@prisma/client';
+import { dedupe } from '@/lib/dedupe';
 
 export type ThreadMessageReactionAggregate = {
   type: string;
@@ -133,7 +133,7 @@ type ThreadRow = {
 
 export async function getThreadWithFullContext(
   slug: string,
-  userId: string,
+  userId: string
 ): Promise<ThreadWithFullContext | null> {
   return dedupe(`threads:full:${slug}:${userId}`, async () => {
     const rows = await prisma.$queryRaw<ThreadRow[]>`

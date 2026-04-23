@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 
 interface AiSource {
   source: string;
@@ -81,11 +81,7 @@ export default function AiSynthesisCard({
         ) : hasSummary ? (
           <>
             <p className="text-[13px] text-(--text)">
-              {isExpanded
-                ? summary
-                : summary.length > 150
-                  ? `${summary.slice(0, 150)}…`
-                  : summary}
+              {isExpanded ? summary : summary.length > 150 ? `${summary.slice(0, 150)}…` : summary}
             </p>
             {!isExpanded && summary.length > 150 && (
               <button
@@ -107,22 +103,18 @@ export default function AiSynthesisCard({
           <div className="mt-[8px] space-y-[6px]">
             {sources.map((source) => {
               const confidence =
-                source.confidence < 0
-                  ? 0
-                  : source.confidence > 100
-                    ? 100
-                    : source.confidence;
+                source.confidence < 0 ? 0 : source.confidence > 100 ? 100 : source.confidence;
 
               const confidenceClass =
                 confidence >= 90
-                  ? "text-(--green)"
+                  ? 'text-(--green)'
                   : confidence >= 70
-                    ? "text-(--amber)"
-                    : "text-muted";
+                    ? 'text-(--amber)'
+                    : 'text-muted';
 
               return (
                 <div
-                  key={`${source.source}-${source.url ?? ""}`}
+                  key={`${source.source}-${source.url ?? ''}`}
                   className="flex items-center justify-between gap-[8px]"
                 >
                   <div className="flex items-center gap-[8px]">
@@ -132,9 +124,7 @@ export default function AiSynthesisCard({
                       </span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[12px] text-(--text)">
-                        {source.source}
-                      </span>
+                      <span className="text-[12px] text-(--text)">{source.source}</span>
                       {source.snippet && (
                         <span className="text-[11px] text-muted line-clamp-1">
                           {source.snippet}

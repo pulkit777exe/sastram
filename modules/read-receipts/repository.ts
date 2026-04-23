@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
-import { randomUUID } from "crypto";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
+import { randomUUID } from 'crypto';
 
 export type ThreadReadReceipt = {
   readAt: Date;
@@ -9,7 +9,7 @@ export type ThreadReadReceipt = {
 
 export async function getThreadReadReceipt(
   threadId: string,
-  userId: string,
+  userId: string
 ): Promise<ThreadReadReceipt | null> {
   try {
     const rows = await prisma.$queryRaw<ThreadReadReceipt[]>`
@@ -21,7 +21,7 @@ export async function getThreadReadReceipt(
 
     return rows[0] ?? null;
   } catch (error) {
-    logger.error("[getThreadReadReceipt]", error);
+    logger.error('[getThreadReadReceipt]', error);
     return null;
   }
 }
@@ -45,6 +45,6 @@ export async function upsertThreadReadReceipt(params: {
         "updatedAt" = NOW()
     `;
   } catch (error) {
-    logger.error("[upsertThreadReadReceipt]", error);
+    logger.error('[upsertThreadReadReceipt]', error);
   }
 }

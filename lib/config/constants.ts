@@ -1,112 +1,107 @@
 export const USER_ROLES = {
-  USER: "USER",
-  MODERATOR: "MODERATOR",
-  ADMIN: "ADMIN",
+  USER: 'USER',
+  MODERATOR: 'MODERATOR',
+  ADMIN: 'ADMIN',
 } as const;
 
 export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 export const USER_STATUS = {
-  ACTIVE: "ACTIVE",
-  SUSPENDED: "SUSPENDED",
-  BANNED: "BANNED",
-  DELETED: "DELETED",
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  BANNED: 'BANNED',
+  DELETED: 'DELETED',
 } as const;
 
 export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
 
 export const REPORT_STATUS = {
-  PENDING: "PENDING",
-  REVIEWING: "REVIEWING",
-  RESOLVED: "RESOLVED",
-  DISMISSED: "DISMISSED",
+  PENDING: 'PENDING',
+  REVIEWING: 'REVIEWING',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
 } as const;
 
 export type ReportStatus = (typeof REPORT_STATUS)[keyof typeof REPORT_STATUS];
 
 export const REPORT_CATEGORIES = {
-  SPAM: "SPAM",
-  HARASSMENT: "HARASSMENT",
-  MISINFORMATION: "MISINFORMATION",
-  ADULT_CONTENT: "ADULT_CONTENT",
-  OTHER: "OTHER",
+  SPAM: 'SPAM',
+  HARASSMENT: 'HARASSMENT',
+  MISINFORMATION: 'MISINFORMATION',
+  ADULT_CONTENT: 'ADULT_CONTENT',
+  OTHER: 'OTHER',
 } as const;
 
-export type ReportCategory =
-  (typeof REPORT_CATEGORIES)[keyof typeof REPORT_CATEGORIES];
+export type ReportCategory = (typeof REPORT_CATEGORIES)[keyof typeof REPORT_CATEGORIES];
 
 export const REPORT_CATEGORY_LABELS: Record<ReportCategory, string> = {
-  SPAM: "Spam",
-  HARASSMENT: "Harassment or Bullying",
-  MISINFORMATION: "False or Misleading Information",
-  ADULT_CONTENT: "Sexual or Adult Content",
-  OTHER: "Something Else",
+  SPAM: 'Spam',
+  HARASSMENT: 'Harassment or Bullying',
+  MISINFORMATION: 'False or Misleading Information',
+  ADULT_CONTENT: 'Sexual or Adult Content',
+  OTHER: 'Something Else',
 };
 
 export const REPORT_PRIORITY = {
-  CRITICAL: "CRITICAL",
-  HIGH: "HIGH",
-  MEDIUM: "MEDIUM",
-  LOW: "LOW",
+  CRITICAL: 'CRITICAL',
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
 } as const;
 
-export type ReportPriority =
-  (typeof REPORT_PRIORITY)[keyof typeof REPORT_PRIORITY];
+export type ReportPriority = (typeof REPORT_PRIORITY)[keyof typeof REPORT_PRIORITY];
 
 export const BAN_REASONS = {
-  SPAM: "SPAM",
-  HARASSMENT: "HARASSMENT",
-  HATE_SPEECH: "HATE_SPEECH",
-  ILLEGAL_CONTENT: "ILLEGAL_CONTENT",
-  IMPERSONATION: "IMPERSONATION",
-  THREATS: "THREATS",
-  DOXXING: "DOXXING",
-  OTHER: "OTHER",
+  SPAM: 'SPAM',
+  HARASSMENT: 'HARASSMENT',
+  HATE_SPEECH: 'HATE_SPEECH',
+  ILLEGAL_CONTENT: 'ILLEGAL_CONTENT',
+  IMPERSONATION: 'IMPERSONATION',
+  THREATS: 'THREATS',
+  DOXXING: 'DOXXING',
+  OTHER: 'OTHER',
 } as const;
 
 export type BanReason = (typeof BAN_REASONS)[keyof typeof BAN_REASONS];
 
 export const SECTION_VISIBILITY = {
-  PUBLIC: "PUBLIC",
-  PRIVATE: "PRIVATE",
-  RESTRICTED: "RESTRICTED",
+  PUBLIC: 'PUBLIC',
+  PRIVATE: 'PRIVATE',
+  RESTRICTED: 'RESTRICTED',
 } as const;
 
-export type SectionVisibility =
-  (typeof SECTION_VISIBILITY)[keyof typeof SECTION_VISIBILITY];
+export type SectionVisibility = (typeof SECTION_VISIBILITY)[keyof typeof SECTION_VISIBILITY];
 
 export const COMMUNITY_VISIBILITY = {
-  PUBLIC: "PUBLIC",
-  PRIVATE: "PRIVATE",
-  UNLISTED: "UNLISTED",
+  PUBLIC: 'PUBLIC',
+  PRIVATE: 'PRIVATE',
+  UNLISTED: 'UNLISTED',
 } as const;
 
-export type CommunityVisibility =
-  (typeof COMMUNITY_VISIBILITY)[keyof typeof COMMUNITY_VISIBILITY];
+export type CommunityVisibility = (typeof COMMUNITY_VISIBILITY)[keyof typeof COMMUNITY_VISIBILITY];
 
 export const MEMBER_STATUS = {
-  ACTIVE: "ACTIVE",
-  INVITED: "INVITED",
-  LEFT: "LEFT",
-  REMOVED: "REMOVED",
+  ACTIVE: 'ACTIVE',
+  INVITED: 'INVITED',
+  LEFT: 'LEFT',
+  REMOVED: 'REMOVED',
 } as const;
 
 export type MemberStatus = (typeof MEMBER_STATUS)[keyof typeof MEMBER_STATUS];
 
 export const NOTIFICATION_TYPES = {
-  MESSAGE: "MESSAGE",
-  REPLY: "REPLY",
-  MENTION: "MENTION",
-  REACTION: "REACTION",
-  INVITATION: "INVITATION",
-  DIGEST: "DIGEST",
-  REPORT: "REPORT",
-  BAN: "BAN",
-  SYSTEM: "SYSTEM",
+  MESSAGE: 'MESSAGE',
+  REPLY: 'REPLY',
+  MENTION: 'MENTION',
+  REACTION: 'REACTION',
+  INVITATION: 'INVITATION',
+  DIGEST: 'DIGEST',
+  REPORT: 'REPORT',
+  BAN: 'BAN',
+  SYSTEM: 'SYSTEM',
 } as const;
 
-export type NotificationType =
-  (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
+export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
 
 export const FILE_LIMITS = {
   MAX_SIZE_BYTES: 4.5 * 1024 * 1024,
@@ -116,9 +111,9 @@ export const FILE_LIMITS = {
 } as const;
 
 export const RATE_LIMITS = {
-  MESSAGE: { count: 10, window: "10 s" },
-  MODERATION: { count: 50, window: "1 m" },
-  API: { count: 100, window: "1 m" },
+  MESSAGE: { count: 10, window: '10 s' },
+  MODERATION: { count: 50, window: '1 m' },
+  API: { count: 100, window: '1 m' },
 } as const;
 
 export const PAGINATION = {

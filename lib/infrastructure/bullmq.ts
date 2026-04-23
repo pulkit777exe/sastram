@@ -1,29 +1,29 @@
-import { Job, Queue, QueueEvents, type JobsOptions } from "bullmq";
-import { logger } from "@/lib/infrastructure/logger";
+import { Job, Queue, QueueEvents, type JobsOptions } from 'bullmq';
+import { logger } from '@/lib/infrastructure/logger';
 
 const DEFAULT_REDIS_PORT = 6379;
 
 export const QUEUE_NAMES = {
-  THREAD_SUMMARY: "thread-summary",
-  RESOLUTION_SCORE: "resolution-score",
-  THREAD_DNA: "thread-dna",
-  CONFLICT_DETECTION: "conflict-detection",
-  DAILY_DIGEST: "daily-digest",
-  AI_INSIGHT_NOTIFICATIONS: "ai-insight-notifications",
-  EMAIL: "email",
-  AI_INLINE: "ai-inline",
-  STALENESS_CHECK: "staleness-check",
+  THREAD_SUMMARY: 'thread-summary',
+  RESOLUTION_SCORE: 'resolution-score',
+  THREAD_DNA: 'thread-dna',
+  CONFLICT_DETECTION: 'conflict-detection',
+  DAILY_DIGEST: 'daily-digest',
+  AI_INSIGHT_NOTIFICATIONS: 'ai-insight-notifications',
+  EMAIL: 'email',
+  AI_INLINE: 'ai-inline',
+  STALENESS_CHECK: 'staleness-check',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
 export enum AIJobType {
-  GENERATE_THREAD_SUMMARY = "generate-thread-summary",
-  GENERATE_THREAD_DNA = "generate-thread-dna",
-  CALCULATE_RESOLUTION_SCORE = "calculate-resolution-score",
-  DETECT_CONFLICTS = "detect-conflicts",
-  GENERATE_DAILY_DIGEST = "generate-daily-digest",
-  SEND_AI_INSIGHT_NOTIFICATIONS = "send-ai-insight-notifications",
+  GENERATE_THREAD_SUMMARY = 'generate-thread-summary',
+  GENERATE_THREAD_DNA = 'generate-thread-dna',
+  CALCULATE_RESOLUTION_SCORE = 'calculate-resolution-score',
+  DETECT_CONFLICTS = 'detect-conflicts',
+  GENERATE_DAILY_DIGEST = 'generate-daily-digest',
+  SEND_AI_INSIGHT_NOTIFICATIONS = 'send-ai-insight-notifications',
 }
 
 export interface AIConflictResult {
@@ -132,17 +132,17 @@ function buildRedisConnection(): RedisConnectionOptions {
         port: parsed.port ? Number(parsed.port) : DEFAULT_REDIS_PORT,
         username: parsed.username || undefined,
         password: parsed.password || undefined,
-        tls: parsed.protocol === "rediss:" ? {} : undefined,
+        tls: parsed.protocol === 'rediss:' ? {} : undefined,
         maxRetriesPerRequest: null,
         enableReadyCheck: false,
       };
     } catch (error) {
-      logger.warn("Invalid REDIS_URL. Falling back to REDIS_HOST/REDIS_PORT", error);
+      logger.warn('Invalid REDIS_URL. Falling back to REDIS_HOST/REDIS_PORT', error);
     }
   }
 
   return {
-    host: process.env.REDIS_HOST || "127.0.0.1",
+    host: process.env.REDIS_HOST || '127.0.0.1',
     port: Number(process.env.REDIS_PORT || String(DEFAULT_REDIS_PORT)),
     password: process.env.REDIS_PASSWORD,
     maxRetriesPerRequest: null,
@@ -155,7 +155,7 @@ export const redisConnection = buildRedisConnection();
 export const DEFAULT_JOB_OPTIONS: JobsOptions = {
   attempts: 3,
   backoff: {
-    type: "exponential",
+    type: 'exponential',
     delay: 2000,
   },
   removeOnComplete: { count: 100 },
@@ -275,7 +275,7 @@ export async function handleThreadSummaryJob(job: Job<ThreadSummaryJobData>) {
   const { threadId, messages } = job.data;
 
   if (!threadId || !messages) {
-    throw new Error("Missing required fields: threadId and messages");
+    throw new Error('Missing required fields: threadId and messages');
   }
 
   return handleGenerateThreadSummary(threadId, messages);
@@ -286,7 +286,7 @@ export async function handleThreadDnaJob(job: Job<ThreadDnaJobData>) {
   const { threadId, messages } = job.data;
 
   if (!threadId || !messages) {
-    throw new Error("Missing required fields: threadId and messages");
+    throw new Error('Missing required fields: threadId and messages');
   }
 
   return handleGenerateThreadDNA(threadId, messages);
@@ -297,7 +297,7 @@ export async function handleResolutionScoreJob(job: Job<ResolutionScoreJobData>)
   const { threadId, messages, subscriberIds, threadName, oldScore, isOutdated, cronJob } = job.data;
 
   if (!threadId || !messages) {
-    throw new Error("Missing required fields: threadId and messages");
+    throw new Error('Missing required fields: threadId and messages');
   }
 
   const resolutionScore = await handleCalculateResolutionScore(threadId, messages);
@@ -305,7 +305,7 @@ export async function handleResolutionScoreJob(job: Job<ResolutionScoreJobData>)
   if (
     Array.isArray(subscriberIds) &&
     subscriberIds.length > 0 &&
-    typeof threadName === "string" &&
+    typeof threadName === 'string' &&
     oldScore != null &&
     Math.abs(resolutionScore - oldScore) >= 20
   ) {
@@ -320,7 +320,7 @@ export async function handleResolutionScoreJob(job: Job<ResolutionScoreJobData>)
         isOutdated,
         cronJob,
       } satisfies AIInsightNotificationJobData,
-      DEFAULT_JOB_OPTIONS,
+      DEFAULT_JOB_OPTIONS
     );
   }
 
@@ -332,7 +332,7 @@ export async function handleConflictDetectionJob(job: Job<ConflictDetectionJobDa
   const { threadId, messages, subscriberIds, threadName, oldScore, cronJob } = job.data;
 
   if (!threadId || !messages) {
-    throw new Error("Missing required fields: threadId and messages");
+    throw new Error('Missing required fields: threadId and messages');
   }
 
   const { conflictResult } = await handleDetectConflicts(threadId, messages);
@@ -341,7 +341,7 @@ export async function handleConflictDetectionJob(job: Job<ConflictDetectionJobDa
     conflictResult.hasConflict &&
     Array.isArray(subscriberIds) &&
     subscriberIds.length > 0 &&
-    typeof threadName === "string"
+    typeof threadName === 'string'
   ) {
     await getAiInsightNotificationsQueue().add(
       AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
@@ -354,7 +354,7 @@ export async function handleConflictDetectionJob(job: Job<ConflictDetectionJobDa
         conflictResult,
         cronJob,
       } satisfies AIInsightNotificationJobData,
-      DEFAULT_JOB_OPTIONS,
+      DEFAULT_JOB_OPTIONS
     );
   }
 
@@ -366,30 +366,19 @@ export async function handleDailyDigestJob(job: Job<DailyDigestJobData>) {
   const { messages, subscriberIds } = job.data;
 
   if (!messages || !subscriberIds) {
-    throw new Error("Missing required fields: messages and subscriberIds");
+    throw new Error('Missing required fields: messages and subscriberIds');
   }
 
   return handleGenerateDailyDigest(messages, subscriberIds);
 }
 
-export async function handleAIInsightNotificationsJob(
-  job: Job<AIInsightNotificationJobData>,
-) {
+export async function handleAIInsightNotificationsJob(job: Job<AIInsightNotificationJobData>) {
   logger.info(`Processing AI insight notifications job ${job.id}`);
-  const {
-    subscriberIds,
-    threadId,
-    threadName,
-    oldScore,
-    newScore,
-    isOutdated,
-    conflictResult,
-  } = job.data;
+  const { subscriberIds, threadId, threadName, oldScore, newScore, isOutdated, conflictResult } =
+    job.data;
 
   if (!subscriberIds || !threadId || !threadName) {
-    throw new Error(
-      "Missing required fields: subscriberIds, threadId, and threadName",
-    );
+    throw new Error('Missing required fields: subscriberIds, threadId, and threadName');
   }
 
   return handleSendAIInsightNotifications(
@@ -399,13 +388,13 @@ export async function handleAIInsightNotificationsJob(
     oldScore,
     newScore,
     isOutdated,
-    conflictResult,
+    conflictResult
   );
 }
 
 export async function handleEmailJob(job: Job<EmailJobData>) {
   logger.info(`Processing email job ${job.id}`);
-  const { sendEmailNow } = await import("@/lib/services/email");
+  const { sendEmailNow } = await import('@/lib/services/email');
   return sendEmailNow(job.data);
 }
 
@@ -414,12 +403,12 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   const { messageId, sectionId, query } = job.data;
 
   if (!messageId || !sectionId || !query) {
-    throw new Error("Missing required fields: messageId, sectionId, query");
+    throw new Error('Missing required fields: messageId, sectionId, query');
   }
 
-  const { prisma } = await import("@/lib/infrastructure/prisma");
-  const { aiService } = await import("@/lib/services/ai");
-  const { emitThreadMessage } = await import("@/modules/ws/publisher");
+  const { prisma } = await import('@/lib/infrastructure/prisma');
+  const { aiService } = await import('@/lib/services/ai');
+  const { emitThreadMessage } = await import('@/modules/ws/publisher');
 
   const parentMessage = await prisma.message.findUnique({
     where: { id: messageId },
@@ -436,7 +425,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
 
   const recentMessages = await prisma.message.findMany({
     where: { sectionId, deletedAt: null },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
     take: 8,
     select: {
       content: true,
@@ -450,23 +439,21 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
 
   const context = recentMessages
     .reverse()
-    .map(
-      (message) => `${message.sender?.name || "User"}: ${message.content}`,
-    )
-    .join("\n");
+    .map((message) => `${message.sender?.name || 'User'}: ${message.content}`)
+    .join('\n');
 
   const aiUser = await prisma.user.upsert({
-    where: { email: "ai@sastram.system" },
+    where: { email: 'ai@sastram.system' },
     update: {
-      name: "Sastram AI",
+      name: 'Sastram AI',
       emailVerified: true,
     },
     create: {
-      email: "ai@sastram.system",
-      name: "Sastram AI",
+      email: 'ai@sastram.system',
+      name: 'Sastram AI',
       emailVerified: true,
-      role: "USER",
-      status: "ACTIVE",
+      role: 'USER',
+      status: 'ACTIVE',
     },
     select: {
       id: true,
@@ -478,7 +465,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   // Create initial AI message with empty content
   const aiMessage = await prisma.message.create({
     data: {
-      content: "",
+      content: '',
       sectionId,
       senderId: aiUser.id,
       parentId: parentMessage.id,
@@ -503,7 +490,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   // Emit initial empty message to notify clients
   emitThreadMessage(sectionId, {
     id: aiMessage.id,
-    content: "",
+    content: '',
     senderId: aiUser.id,
     senderName: aiUser.name,
     senderAvatar: aiUser.image ?? null,
@@ -518,7 +505,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
     attachments: [],
   });
 
-  let fullContent = "";
+  let fullContent = '';
   let lastDbUpdateTime = Date.now();
 
   try {
@@ -530,7 +517,7 @@ Recent thread context:
 ${context}`,
       async (chunk) => {
         fullContent += chunk;
-        
+
         // Update the database only once every 500ms to reduce load
         const now = Date.now();
         if (now - lastDbUpdateTime >= 500) {
@@ -546,7 +533,7 @@ ${context}`,
           id: aiMessage.id,
           content: fullContent.slice(0, 2000),
           senderId: aiUser.id,
-          senderName: aiUser.name ?? "Sastram AI",
+          senderName: aiUser.name ?? 'Sastram AI',
           senderAvatar: aiUser.image ?? null,
           createdAt: aiMessage.createdAt,
           sectionId,
@@ -558,9 +545,9 @@ ${context}`,
           reactions: [],
           attachments: [],
         });
-      },
+      }
     );
-    
+
     // Ensure the final content is saved to the database
     await prisma.message.update({
       where: { id: aiMessage.id },
@@ -572,7 +559,7 @@ ${context}`,
       id: aiMessage.id,
       content: fullContent.slice(0, 2000),
       senderId: aiUser.id,
-      senderName: aiUser.name ?? "Sastram AI",
+      senderName: aiUser.name ?? 'Sastram AI',
       senderAvatar: aiUser.image ?? null,
       createdAt: aiMessage.createdAt,
       sectionId,
@@ -586,7 +573,7 @@ ${context}`,
       attachments: [],
     });
   } catch (error) {
-    logger.error("AI streaming error:", error);
+    logger.error('AI streaming error:', error);
     const errorMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
     await prisma.message.update({
       where: { id: aiMessage.id },
@@ -596,7 +583,7 @@ ${context}`,
       id: aiMessage.id,
       content: errorMessage,
       senderId: aiUser.id,
-      senderName: aiUser.name ?? "Sastram AI",
+      senderName: aiUser.name ?? 'Sastram AI',
       senderAvatar: aiUser.image ?? null,
       createdAt: aiMessage.createdAt,
       sectionId,
@@ -624,15 +611,15 @@ ${context}`,
 export async function handleStalenessCheckJob(job: Job<StalenessCheckJobData>) {
   logger.warn(
     `Staleness check handler is not implemented yet. Job ${job.id} parked for future blocks.`,
-    { data: job.data },
+    { data: job.data }
   );
 
   return { queued: true, handled: false };
 }
 
 async function handleGenerateThreadSummary(threadId: string, messages: any[]) {
-  const { prisma } = await import("@/lib/infrastructure/prisma");
-  const { aiService } = await import("@/lib/services/ai");
+  const { prisma } = await import('@/lib/infrastructure/prisma');
+  const { aiService } = await import('@/lib/services/ai');
 
   logger.info(`Generating thread summary for thread: ${threadId}`);
   const summary = await aiService.generateThreadSummary(messages);
@@ -646,8 +633,8 @@ async function handleGenerateThreadSummary(threadId: string, messages: any[]) {
 }
 
 async function handleGenerateThreadDNA(threadId: string, messages: any[]) {
-  const { prisma } = await import("@/lib/infrastructure/prisma");
-  const { aiService } = await import("@/lib/services/ai");
+  const { prisma } = await import('@/lib/infrastructure/prisma');
+  const { aiService } = await import('@/lib/services/ai');
 
   logger.info(`Generating thread DNA for thread: ${threadId}`);
   const threadDNA = await aiService.generateThreadDNA(messages);
@@ -661,8 +648,8 @@ async function handleGenerateThreadDNA(threadId: string, messages: any[]) {
 }
 
 async function handleCalculateResolutionScore(threadId: string, messages: any[]) {
-  const { prisma } = await import("@/lib/infrastructure/prisma");
-  const { aiService } = await import("@/lib/services/ai");
+  const { prisma } = await import('@/lib/infrastructure/prisma');
+  const { aiService } = await import('@/lib/services/ai');
 
   logger.info(`Calculating resolution score for thread: ${threadId}`);
   const score = await aiService.calculateResolutionScore(messages);
@@ -676,8 +663,8 @@ async function handleCalculateResolutionScore(threadId: string, messages: any[])
 }
 
 async function handleDetectConflicts(threadId: string, messages: any[]) {
-  const { prisma } = await import("@/lib/infrastructure/prisma");
-  const { aiService } = await import("@/lib/services/ai");
+  const { prisma } = await import('@/lib/infrastructure/prisma');
+  const { aiService } = await import('@/lib/services/ai');
 
   logger.info(`Detecting conflicts for thread: ${threadId}`);
   const conflictResult = await aiService.detectConflicts(messages);
@@ -696,21 +683,17 @@ async function handleDetectConflicts(threadId: string, messages: any[]) {
 }
 
 async function handleGenerateDailyDigest(messages: any[], subscriberIds: string[]) {
-  const { notifyMultipleUsers } = await import("@/modules/notifications/repository");
-  const { NotificationType } = await import("@prisma/client");
-  const { aiService } = await import("@/lib/services/ai");
+  const { notifyMultipleUsers } = await import('@/modules/notifications/repository');
+  const { NotificationType } = await import('@prisma/client');
+  const { aiService } = await import('@/lib/services/ai');
 
   logger.info(`Generating daily digest for ${subscriberIds.length} subscribers`);
 
   const digest = await aiService.generateDailyDigest(messages);
 
-  await notifyMultipleUsers(
-    subscriberIds,
-    NotificationType.AI_INSIGHT,
-    "Daily Digest",
-    digest,
-    { type: "daily_digest" },
-  );
+  await notifyMultipleUsers(subscriberIds, NotificationType.AI_INSIGHT, 'Daily Digest', digest, {
+    type: 'daily_digest',
+  });
 
   return { digestLength: digest.length };
 }
@@ -722,10 +705,10 @@ async function handleSendAIInsightNotifications(
   oldScore?: number,
   newScore?: number,
   isOutdated?: boolean,
-  conflictResult?: AIConflictResult,
+  conflictResult?: AIConflictResult
 ) {
-  const { notifyMultipleUsers } = await import("@/modules/notifications/repository");
-  const { NotificationType } = await import("@prisma/client");
+  const { notifyMultipleUsers } = await import('@/modules/notifications/repository');
+  const { NotificationType } = await import('@prisma/client');
 
   logger.info(`Sending AI insight notifications for thread: ${threadId}`);
 
@@ -748,7 +731,7 @@ async function handleSendAIInsightNotifications(
         threadName,
         oldScore,
         newScore,
-        type: "resolution_score_change",
+        type: 'resolution_score_change',
       },
     });
   }
@@ -763,7 +746,7 @@ async function handleSendAIInsightNotifications(
       data: {
         threadId,
         threadName,
-        type: "thread_outdated",
+        type: 'thread_outdated',
       },
     });
   }
@@ -775,12 +758,12 @@ async function handleSendAIInsightNotifications(
       title: `Conflict detected in "${threadName}"`,
       message:
         conflictResult.reason ||
-        "A conflict has been detected in this thread. Please review the messages.",
+        'A conflict has been detected in this thread. Please review the messages.',
       data: {
         threadId,
         threadName,
         conflictingMessages: conflictResult.conflictingMessages,
-        type: "conflict_detected",
+        type: 'conflict_detected',
       },
     });
   }
@@ -791,7 +774,7 @@ async function handleSendAIInsightNotifications(
       notification.type,
       notification.title,
       notification.message,
-      notification.data,
+      notification.data
     );
   }
 

@@ -13,4 +13,3 @@ export interface Notification {
   createdAt: Date;
   readAt: Date | null;
 }
-

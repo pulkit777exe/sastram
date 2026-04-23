@@ -1,11 +1,11 @@
-import { notFound } from "next/navigation";
-import { getSession } from "@/modules/auth/session";
-import { getThreadWithFullContext } from "@/modules/threads";
-import ThreadHeader from "@/components/thread/ThreadHeader";
-import MessageTree from "@/components/thread/MessageTree";
-import ReplyBox from "@/components/thread/ReplyBox";
-import RightPanel from "@/components/panels/RightPanel";
-import AcceptedAnswerBanner from "@/components/thread/AcceptedAnswerBanner";
+import { notFound } from 'next/navigation';
+import { getSession } from '@/modules/auth/session';
+import { getThreadWithFullContext } from '@/modules/threads';
+import ThreadHeader from '@/components/thread/ThreadHeader';
+import MessageTree from '@/components/thread/MessageTree';
+import ReplyBox from '@/components/thread/ReplyBox';
+import RightPanel from '@/components/panels/RightPanel';
+import AcceptedAnswerBanner from '@/components/thread/AcceptedAnswerBanner';
 
 interface ThreadPageParams {
   params: {
@@ -32,11 +32,7 @@ export default async function ThreadPage({ params }: ThreadPageParams) {
     <div className="h-full w-full bg-(--bg) text-(--text)">
       <div className="grid h-full grid-cols-[minmax(0,1fr)_300px] gap-6 p-6">
         <main className="flex min-w-0 flex-col gap-4 overflow-y-auto">
-          <ThreadHeader
-            thread={thread}
-            isBookmarked={isBookmarked}
-            isSubscribed={isSubscribed}
-          />
+          <ThreadHeader thread={thread} isBookmarked={isBookmarked} isSubscribed={isSubscribed} />
 
           <div className="mt-2 flex-1 rounded-[10px] bg-(--surface) p-5">
             <AcceptedAnswerBanner answer={null} />

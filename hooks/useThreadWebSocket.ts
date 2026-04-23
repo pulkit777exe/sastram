@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useCallback, useState } from "react";
-import { createThreadSocket } from "@/lib/infrastructure/websocket/client";
-import { validateWebSocketMessage } from "@/lib/schemas/websocket";
-import type { Message } from "@/lib/types/index";
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { createThreadSocket } from '@/lib/infrastructure/websocket/client';
+import { validateWebSocketMessage } from '@/lib/schemas/websocket';
+import type { Message } from '@/lib/types/index';
 
 export interface TypingUser {
   userId: string;
@@ -34,9 +34,7 @@ export function useThreadWebSocket({
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingEmitRef = useRef<number>(0);
   const [typers, setTypers] = useState<TypingUser[]>([]);
-  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map(),
-  );
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Keep callbacks fresh without re-connecting
   const callbacksRef = useRef({
@@ -70,7 +68,7 @@ export function useThreadWebSocket({
         const msg = validation.data;
 
         switch (msg.type) {
-          case "NEW_MESSAGE": {
+          case 'NEW_MESSAGE': {
             const payload = msg.payload as Record<string, unknown>;
             const senderId = payload.senderId as string;
             const isAiResponse = Boolean(payload.isAiResponse);
@@ -106,7 +104,7 @@ export function useThreadWebSocket({
                   }
                 : {
                     id: senderId,
-                    name: isAiResponse ? "Sastram AI" : "User",
+                    name: isAiResponse ? 'Sastram AI' : 'User',
                     image: null,
                   },
               attachments: Array.isArray(payload.attachments)
@@ -126,7 +124,7 @@ export function useThreadWebSocket({
                     size: a.size ?? null,
                   }))
                 : [],
-              section: { id: payload.sectionId as string, name: "", slug: "" },
+              section: { id: payload.sectionId as string, name: '', slug: '' },
             };
 
             // Deliver message or streaming content update
@@ -142,13 +140,13 @@ export function useThreadWebSocket({
             break;
           }
 
-          case "MESSAGE_DELETED": {
+          case 'MESSAGE_DELETED': {
             const { messageId } = msg.payload as { messageId: string };
             callbacksRef.current.onMessageDeleted?.(messageId);
             break;
           }
 
-          case "PIN_UPDATE": {
+          case 'PIN_UPDATE': {
             const { messageId, isPinned } = msg.payload as {
               messageId: string;
               isPinned: boolean;
@@ -157,7 +155,7 @@ export function useThreadWebSocket({
             break;
           }
 
-          case "USER_TYPING": {
+          case 'USER_TYPING': {
             const { userId, userName } = msg.payload as {
               userId: string;
               userName: string;
@@ -177,12 +175,12 @@ export function useThreadWebSocket({
               setTimeout(() => {
                 setTypers((prev) => prev.filter((t) => t.userId !== userId));
                 typingTimersRef.current.delete(userId);
-              }, 4000),
+              }, 4000)
             );
             break;
           }
 
-          case "USER_STOPPED_TYPING": {
+          case 'USER_STOPPED_TYPING': {
             const { userId } = msg.payload as {
               userId: string;
               sectionId: string;
@@ -216,25 +214,22 @@ export function useThreadWebSocket({
     callbacksRef.current.onTypingUpdate?.(typers);
   }, [typers]);
 
-  const sendWsMessage = useCallback(
-    (type: string, payload: Record<string, unknown>) => {
-      const ws = wsRef.current;
-      if (!ws) return;
+  const sendWsMessage = useCallback((type: string, payload: Record<string, unknown>) => {
+    const ws = wsRef.current;
+    if (!ws) return;
 
-      const message = JSON.stringify({ type, payload });
+    const message = JSON.stringify({ type, payload });
 
-      if (ws.readyState === WebSocket.OPEN) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+    } else if (ws.readyState === WebSocket.CONNECTING) {
+      const sendWhenOpen = () => {
         ws.send(message);
-      } else if (ws.readyState === WebSocket.CONNECTING) {
-        const sendWhenOpen = () => {
-          ws.send(message);
-          ws.removeEventListener("open", sendWhenOpen);
-        };
-        ws.addEventListener("open", sendWhenOpen);
-      }
-    },
-    [],
-  );
+        ws.removeEventListener('open', sendWhenOpen);
+      };
+      ws.addEventListener('open', sendWhenOpen);
+    }
+  }, []);
 
   const emitTypingStop = useCallback(() => {
     if (typingTimeoutRef.current) {
@@ -242,7 +237,7 @@ export function useThreadWebSocket({
       typingTimeoutRef.current = null;
     }
     lastTypingEmitRef.current = 0;
-    sendWsMessage("USER_STOPPED_TYPING", { sectionId: threadId });
+    sendWsMessage('USER_STOPPED_TYPING', { sectionId: threadId });
   }, [threadId, sendWsMessage]);
 
   const emitTypingStart = useCallback(() => {
@@ -250,7 +245,7 @@ export function useThreadWebSocket({
     if (now - lastTypingEmitRef.current < 3000) return;
     lastTypingEmitRef.current = now;
 
-    sendWsMessage("USER_TYPING", { sectionId: threadId });
+    sendWsMessage('USER_TYPING', { sectionId: threadId });
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {

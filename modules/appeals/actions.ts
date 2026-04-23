@@ -1,13 +1,13 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { requireSession } from "@/modules/auth/session";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { logAction } from "@/modules/audit/repository";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { requireSession } from '@/modules/auth/session';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { logAction } from '@/modules/audit/repository';
 
 const createAppealSchema = z.object({
-  reason: z.string().min(10, "Reason must be at least 10 characters long"),
+  reason: z.string().min(10, 'Reason must be at least 10 characters long'),
   reportId: z.string().optional(),
 });
 
@@ -18,69 +18,66 @@ const resolveAppealSchema = z.object({
 
 export async function submitAppeal(formData: FormData) {
   const rawData = {
-    reason: formData.get("reason"),
-    reportId: formData.get("reportId"),
+    reason: formData.get('reason'),
+    reportId: formData.get('reportId'),
   };
 
   const validation = createAppealSchema.safeParse(rawData);
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const session = await requireSession(false);
 
-    if (
-      session.user.status !== "BANNED" &&
-      session.user.status !== "SUSPENDED"
-    ) {
-      return { data: null, error: "You are not banned" };
+    if (session.user.status !== 'BANNED' && session.user.status !== 'SUSPENDED') {
+      return { data: null, error: 'You are not banned' };
     }
 
     // Find active bans for the user
     const activeBans = await prisma.userBan.findMany({
-      where: { 
-        userId: session.user.id, 
-        isActive: true 
+      where: {
+        userId: session.user.id,
+        isActive: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
 
     if (activeBans.length === 0) {
-      return { data: null, error: "No active ban found to appeal" };
+      return { data: null, error: 'No active ban found to appeal' };
     }
 
-     const sourceReport = validation.data.reportId
-       ? await prisma.report.findUnique({
-           where: { id: validation.data.reportId },
-           select: { messageId: true },
-         })
-       : await prisma.report.findFirst({
-           where: {
-             message: { senderId: session.user.id },
-           },
-           orderBy: { createdAt: "desc" },
-           select: { messageId: true },
-         });
+    const sourceReport = validation.data.reportId
+      ? await prisma.report.findUnique({
+          where: { id: validation.data.reportId },
+          select: { messageId: true },
+        })
+      : await prisma.report.findFirst({
+          where: {
+            message: { senderId: session.user.id },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { messageId: true },
+        });
 
-     if (!sourceReport?.messageId) {
-       return { data: null, error: "No report found to appeal" };
-     }
+    if (!sourceReport?.messageId) {
+      return { data: null, error: 'No report found to appeal' };
+    }
 
-     // Create a report to serve as the appeal (tagged via details prefix)
-     const appealReport = await prisma.report.create({
-       data: {
-         messageId: sourceReport.messageId,
-         reporterId: session.user.id,
-         category: "OTHER" as const,
-         details: `APPEAL: ${validation.data.reason}`,
-         status: "PENDING" as const,
-       },
-     });
+    // Create a report to serve as the appeal (tagged via details prefix)
+    const appealReport = await prisma.report.create({
+      data: {
+        messageId: sourceReport.messageId,
+        reporterId: session.user.id,
+        category: 'OTHER' as const,
+        details: `APPEAL: ${validation.data.reason}`,
+        status: 'PENDING' as const,
+      },
+    });
 
     await logAction({
-      action: "APPEAL_SUBMITTED",
-      entityType: "Report",
+      action: 'APPEAL_SUBMITTED',
+      entityType: 'Report',
       entityId: appealReport.id,
       userId: session.user.id,
       details: {
@@ -89,11 +86,11 @@ export async function submitAppeal(formData: FormData) {
       },
     });
 
-    revalidatePath("/banned");
+    revalidatePath('/banned');
     return { data: null, error: null };
   } catch (error) {
-    console.error("[submitAppeal]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[submitAppeal]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -115,16 +112,16 @@ type AppealWithBanInfo = {
 export async function getAppeals() {
   try {
     const session = await requireSession();
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return { data: null, error: "Something went wrong" };
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
+      return { data: null, error: 'Something went wrong' };
     }
- 
+
     // Get all pending reports that are appeals (details prefix)
     const appeals = await prisma.report.findMany({
       where: {
-        status: "PENDING",
-        category: "OTHER",
-        details: { startsWith: "APPEAL:" },
+        status: 'PENDING',
+        category: 'OTHER',
+        details: { startsWith: 'APPEAL:' },
       },
       include: {
         reporter: {
@@ -136,7 +133,7 @@ export async function getAppeals() {
           },
         },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: 'asc' },
     });
 
     // For each appeal, get associated active bans
@@ -147,35 +144,35 @@ export async function getAppeals() {
             userId: appeal.reporterId,
             isActive: true,
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: { createdAt: 'desc' },
         });
 
         return {
           ...appeal,
-          details: appeal.details?.replace(/^APPEAL:\\s*/i, "") ?? null,
-          banReason: activeBans[0]?.reason || "Unknown",
+          details: appeal.details?.replace(/^APPEAL:\\s*/i, '') ?? null,
+          banReason: activeBans[0]?.reason || 'Unknown',
           banDate: activeBans[0]?.createdAt || new Date(),
         };
-      }),
+      })
     );
 
     return { data: appealsWithBanInfo, error: null };
   } catch (error) {
-    console.error("[getAppeals]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getAppeals]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function resolveAppeal(appealId: string, approved: boolean) {
   const parsed = resolveAppealSchema.safeParse({ appealId, approved });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const session = await requireSession();
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return { data: null, error: "Something went wrong" };
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
+      return { data: null, error: 'Something went wrong' };
     }
 
     const appeal = await prisma.report.findUnique({
@@ -184,7 +181,7 @@ export async function resolveAppeal(appealId: string, approved: boolean) {
     });
 
     if (!appeal) {
-      return { data: null, error: "Appeal not found" };
+      return { data: null, error: 'Appeal not found' };
     }
 
     await prisma.$transaction(async (tx) => {
@@ -192,7 +189,7 @@ export async function resolveAppeal(appealId: string, approved: boolean) {
       await tx.report.update({
         where: { id: appealId },
         data: {
-          status: parsed.data.approved ? "RESOLVED" : "DISMISSED",
+          status: parsed.data.approved ? 'RESOLVED' : 'DISMISSED',
           resolvedBy: session.user.id,
         },
       });
@@ -223,7 +220,7 @@ export async function resolveAppeal(appealId: string, approved: boolean) {
           if (otherActiveBans === 0) {
             await tx.user.update({
               where: { id: appeal.reporterId },
-              data: { status: "ACTIVE" },
+              data: { status: 'ACTIVE' },
             });
           }
         }
@@ -231,8 +228,8 @@ export async function resolveAppeal(appealId: string, approved: boolean) {
     });
 
     await logAction({
-      action: "APPEAL_RESOLVED",
-      entityType: "Report",
+      action: 'APPEAL_RESOLVED',
+      entityType: 'Report',
       entityId: appealId,
       userId: session.user.id,
       details: {
@@ -241,10 +238,10 @@ export async function resolveAppeal(appealId: string, approved: boolean) {
       },
     });
 
-    revalidatePath("/dashboard/admin/appeals");
+    revalidatePath('/dashboard/admin/appeals');
     return { data: null, error: null };
   } catch (error) {
-    console.error("[resolveAppeal]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[resolveAppeal]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

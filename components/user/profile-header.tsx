@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import Image from "next/image";
-import { User } from "@prisma/client";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { FollowButton } from "./follow-button";
-import { UserStats } from "./user-stats";
-import { cn } from "@/lib/utils/cn";
+import { motion } from 'framer-motion';
+import Image from 'next/image';
+import { User } from '@prisma/client';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { FollowButton } from './follow-button';
+import { UserStats } from './user-stats';
+import { cn } from '@/lib/utils/cn';
 
 interface ProfileHeaderProps {
   user: {
@@ -38,12 +38,12 @@ export function ProfileHeader({
   isFollowing,
   limitedView = false,
 }: ProfileHeaderProps) {
-  const displayName = user.name || user.email.split("@")[0];
+  const displayName = user.name || user.email.split('@')[0];
   const avatarUrl = user.avatarUrl || user.image;
   const initials = displayName
-    .split(" ")
+    .split(' ')
     .map((n) => n[0])
-    .join("")
+    .join('')
     .toUpperCase()
     .slice(0, 2);
 
@@ -116,9 +116,7 @@ export function ProfileHeader({
                 className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground"
               >
                 {user.location && (
-                  <span className="flex items-center gap-1">
-                    📍 {user.location}
-                  </span>
+                  <span className="flex items-center gap-1">📍 {user.location}</span>
                 )}
                 {user.website && (
                   <a
@@ -154,9 +152,7 @@ export function ProfileHeader({
             )}
 
             {limitedView && (
-              <p className="text-sm text-muted-foreground">
-                This profile is private.
-              </p>
+              <p className="text-sm text-muted-foreground">This profile is private.</p>
             )}
           </div>
 

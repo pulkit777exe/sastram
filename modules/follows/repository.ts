@@ -1,10 +1,10 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function followUser(followerId: string, followingId: string) {
   // Prevent self-follow
   if (followerId === followingId) {
-    throw new Error("Cannot follow yourself");
+    throw new Error('Cannot follow yourself');
   }
 
   // Check if already following
@@ -119,7 +119,7 @@ export async function getFollowers(userId: string, limit: number = 50, offset: n
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
@@ -134,7 +134,7 @@ export async function getFollowers(userId: string, limit: number = 50, offset: n
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[getFollowers]", error);
+    logger.error('[getFollowers]', error);
     return {
       followers: [],
       total: 0,
@@ -162,7 +162,7 @@ export async function getFollowing(userId: string, limit: number = 50, offset: n
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
@@ -177,7 +177,7 @@ export async function getFollowing(userId: string, limit: number = 50, offset: n
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[getFollowing]", error);
+    logger.error('[getFollowing]', error);
     return {
       following: [],
       total: 0,
@@ -212,9 +212,7 @@ export async function getMutualFollows(userId1: string, userId2: string) {
       select: { followingId: true },
     });
 
-    const user1FollowingIds = new Set(
-      (user1Following ?? []).map((follow) => follow.followingId),
-    );
+    const user1FollowingIds = new Set((user1Following ?? []).map((follow) => follow.followingId));
     const mutualIds = (user2Following ?? [])
       .map((follow) => follow.followingId)
       .filter((id) => user1FollowingIds.has(id));
@@ -238,7 +236,7 @@ export async function getMutualFollows(userId1: string, userId2: string) {
       })) ?? []
     );
   } catch (error) {
-    logger.error("[getMutualFollows]", error);
+    logger.error('[getMutualFollows]', error);
     return [];
   }
 }

@@ -1,13 +1,23 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Gift, Smile, Sticker, Send, Loader2, FileIcon, X, MessageSquare } from "lucide-react";
-import { postMessage, searchMentionUsers } from "@/modules/messages/actions";
-import { toasts } from "@/lib/utils/toast";
-import { validateFile } from "@/lib/services/content-safety";
-import type { Message } from "@/lib/types/index";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  PlusCircle,
+  Gift,
+  Smile,
+  Sticker,
+  Send,
+  Loader2,
+  FileIcon,
+  X,
+  MessageSquare,
+} from 'lucide-react';
+import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
+import { toasts } from '@/lib/utils/toast';
+import { validateFile } from '@/lib/services/content-safety';
+import type { Message } from '@/lib/types/index';
 
 interface PostMessageFormProps {
   sectionId: string;
@@ -29,8 +39,8 @@ type MentionCandidate = {
   handle: string;
 };
 
-export function PostMessageForm({ 
-  sectionId, 
+export function PostMessageForm({
+  sectionId,
   onMessagePosted,
   replyTo,
   onCancelReply,
@@ -39,7 +49,7 @@ export function PostMessageForm({
 }: PostMessageFormProps) {
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState('');
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
   const [mentionCandidates, setMentionCandidates] = useState<MentionCandidate[]>([]);
   const [mentionOpen, setMentionOpen] = useState(false);
@@ -72,19 +82,16 @@ export function PostMessageForm({
       const target = event.target as Node | null;
       if (!target) return;
 
-      if (
-        mentionListRef.current?.contains(target) ||
-        textareaRef.current?.contains(target)
-      ) {
+      if (mentionListRef.current?.contains(target) || textareaRef.current?.contains(target)) {
         return;
       }
 
       closeMentions();
     };
 
-    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener('mousedown', handleOutsideClick);
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener('mousedown', handleOutsideClick);
     };
   }, [closeMentions]);
 
@@ -99,7 +106,7 @@ export function PostMessageForm({
       setMentionOpen(users.length > 0);
       setActiveMentionIndex(0);
     },
-    [sectionId],
+    [sectionId]
   );
 
   const detectMentionQuery = useCallback(
@@ -124,7 +131,7 @@ export function PostMessageForm({
         void resolveMentionCandidates(query);
       }, 120);
     },
-    [closeMentions, resolveMentionCandidates],
+    [closeMentions, resolveMentionCandidates]
   );
 
   const applyMentionSelection = useCallback(
@@ -148,50 +155,50 @@ export function PostMessageForm({
         textarea.setSelectionRange(nextCursor, nextCursor);
       });
     },
-    [content, mentionStartIndex, closeMentions],
+    [content, mentionStartIndex, closeMentions]
   );
 
   async function handleSubmit(formData: FormData) {
     if (!content.trim()) {
-      toasts.error("Message cannot be empty");
+      toasts.error('Message cannot be empty');
       return;
     }
 
     setLoading(true);
-    formData.append("sectionId", sectionId);
-    formData.set("content", content);
-  
+    formData.append('sectionId', sectionId);
+    formData.set('content', content);
+
     if (selectedFile) {
-      formData.append("fileName", selectedFile.name);
-      formData.append("fileType", selectedFile.type);
-      formData.append("fileSize", selectedFile.size.toString());
+      formData.append('fileName', selectedFile.name);
+      formData.append('fileType', selectedFile.type);
+      formData.append('fileSize', selectedFile.size.toString());
     }
 
     if (replyTo) {
-      formData.append("parentId", replyTo.messageId);
+      formData.append('parentId', replyTo.messageId);
     }
 
     if (mentionedUserIds.length > 0) {
-      formData.append("mentions", JSON.stringify(mentionedUserIds));
+      formData.append('mentions', JSON.stringify(mentionedUserIds));
     }
-  
+
     const result = await postMessage(formData);
     setLoading(false);
-  
+
     if (result?.error) {
       toasts.error(result.error);
     } else if (result?.data?.message) {
       formRef.current?.reset();
       setSelectedFile(null);
-      setContent("");
+      setContent('');
       setMentionedUserIds([]);
       closeMentions();
       onCancelReply?.();
-      
+
       if (onMessagePosted) {
         const transformedMessage = {
           ...result.data.message,
-          attachments: result.data.message.attachments.map(att => ({
+          attachments: result.data.message.attachments.map((att) => ({
             ...att,
             size: att.size !== null ? Number(att.size) : null,
           })),
@@ -203,7 +210,7 @@ export function PostMessageForm({
         toasts.aiInlineRateLimit();
       }
     }
-  }  
+  }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -211,17 +218,15 @@ export function PostMessageForm({
 
     const validation = validateFile(file);
     if (!validation.isValid) {
-      toasts.error(validation.error || "Invalid file");
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      toasts.error(validation.error || 'Invalid file');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setSelectedFile(file);
   };
 
-  const placeholder = replyTo 
-    ? `Reply to ${replyTo.userName}...`
-    : "Message #chat";
+  const placeholder = replyTo ? `Reply to ${replyTo.userName}...` : 'Message #chat';
 
   return (
     <form ref={formRef} action={handleSubmit} className="relative px-4 pb-0 pt-0">
@@ -243,14 +248,16 @@ export function PostMessageForm({
       )}
 
       {selectedFile && (
-        <div className={`absolute ${replyTo ? '-top-24' : '-top-14'} left-4 bg-[#2f3136] border border-[#202225] p-2 rounded-md text-sm flex items-center gap-2 shadow-md`}>
+        <div
+          className={`absolute ${replyTo ? '-top-24' : '-top-14'} left-4 bg-[#2f3136] border border-[#202225] p-2 rounded-md text-sm flex items-center gap-2 shadow-md`}
+        >
           <FileIcon className="h-4 w-4 text-[#b9bbbe]" />
           <span className="truncate max-w-[200px] text-[#dcddde]">{selectedFile.name}</span>
           <button
             type="button"
             onClick={() => {
               setSelectedFile(null);
-              if (fileInputRef.current) fileInputRef.current.value = "";
+              if (fileInputRef.current) fileInputRef.current.value = '';
             }}
             className="ml-2 cursor-pointer text-[#72767d] hover:text-[#dcddde]"
           >
@@ -259,9 +266,11 @@ export function PostMessageForm({
         </div>
       )}
 
-      <div className={`flex items-center rounded-lg p-0 pr-2 focus-within:ring-1 focus-within:ring-[#5865f2] transition-all ${
-        replyTo ? 'border-t border-[#202225] rounded-t-none' : ''
-      }`}>
+      <div
+        className={`flex items-center rounded-lg p-0 pr-2 focus-within:ring-1 focus-within:ring-[#5865f2] transition-all ${
+          replyTo ? 'border-t border-[#202225] rounded-t-none' : ''
+        }`}
+      >
         <Button
           type="button"
           variant="ghost"
@@ -271,9 +280,9 @@ export function PostMessageForm({
         >
           <PlusCircle className="h-6 w-6" />
         </Button>
-        
+
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
-        
+
         <Textarea
           ref={textareaRef}
           name="content"
@@ -288,58 +297,73 @@ export function PostMessageForm({
           }}
           className="flex-1 min-h-11 max-h-[50vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-3 px-2 text-base"
           onKeyDown={(e) => {
-             if (mentionOpen && mentionCandidates.length > 0) {
-               if (e.key === "ArrowDown") {
-                 e.preventDefault();
-                 setActiveMentionIndex((prev) =>
-                   prev + 1 >= mentionCandidates.length ? 0 : prev + 1,
-                 );
-                 return;
-               }
-               if (e.key === "ArrowUp") {
-                 e.preventDefault();
-                 setActiveMentionIndex((prev) =>
-                   prev - 1 < 0 ? mentionCandidates.length - 1 : prev - 1,
-                 );
-                 return;
-               }
-               if (e.key === "Enter" && !e.shiftKey) {
-                 e.preventDefault();
-                 const selected = mentionCandidates[activeMentionIndex];
-                 if (selected) {
-                   applyMentionSelection(selected);
-                 }
-                 return;
-               }
-               if (e.key === "Escape") {
-                 e.preventDefault();
-                 closeMentions();
-                 return;
-               }
-             }
+            if (mentionOpen && mentionCandidates.length > 0) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActiveMentionIndex((prev) =>
+                  prev + 1 >= mentionCandidates.length ? 0 : prev + 1
+                );
+                return;
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActiveMentionIndex((prev) =>
+                  prev - 1 < 0 ? mentionCandidates.length - 1 : prev - 1
+                );
+                return;
+              }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const selected = mentionCandidates[activeMentionIndex];
+                if (selected) {
+                  applyMentionSelection(selected);
+                }
+                return;
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                closeMentions();
+                return;
+              }
+            }
 
-             if (e.key === 'Enter' && !e.shiftKey) {
-               e.preventDefault();
-               formRef.current?.requestSubmit();
-               onTypingStop?.();
-             } else if (e.key === 'Escape' && replyTo) {
-               onCancelReply?.();
-               closeMentions();
-             } else {
-               onTypingStart?.();
-             }
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              formRef.current?.requestSubmit();
+              onTypingStop?.();
+            } else if (e.key === 'Escape' && replyTo) {
+              onCancelReply?.();
+              closeMentions();
+            } else {
+              onTypingStart?.();
+            }
           }}
           onBlur={() => onTypingStop?.()}
         />
 
         <div className="flex items-center gap-1 shrink-0">
-          <Button type="button" variant="ghost" size="icon" className="hover:bg-transparent h-10 w-10">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hover:bg-transparent h-10 w-10"
+          >
             <Gift className="h-6 w-6" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="hover:bg-transparent h-10 w-10">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hover:bg-transparent h-10 w-10"
+          >
             <Sticker className="h-6 w-6" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="hover:bg-transparent h-10 w-10">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hover:bg-transparent h-10 w-10"
+          >
             <Smile className="h-6 w-6" />
           </Button>
         </div>
@@ -357,8 +381,8 @@ export function PostMessageForm({
                 type="button"
                 className={`w-full px-3 py-2 text-left text-sm transition-colors ${
                   index === activeMentionIndex
-                    ? "bg-muted text-foreground"
-                    : "hover:bg-muted/70 text-muted-foreground"
+                    ? 'bg-muted text-foreground'
+                    : 'hover:bg-muted/70 text-muted-foreground'
                 }`}
                 onMouseEnter={() => setActiveMentionIndex(index)}
                 onClick={() => applyMentionSelection(candidate)}
@@ -366,9 +390,7 @@ export function PostMessageForm({
                 <div className="font-medium text-foreground">
                   {candidate.name || candidate.email}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  @{candidate.handle}
-                </div>
+                <div className="text-xs text-muted-foreground">@{candidate.handle}</div>
               </button>
             ))}
           </div>
@@ -376,11 +398,7 @@ export function PostMessageForm({
       )}
 
       <div className="hidden">
-        <Button 
-          type="submit" 
-          disabled={loading} 
-          className="rounded-md px-4 h-10 shadow-sm"
-        >
+        <Button type="submit" disabled={loading} className="rounded-md px-4 h-10 shadow-sm">
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
         </Button>
       </div>

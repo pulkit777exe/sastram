@@ -1,18 +1,18 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { auth } from "@/lib/services/auth";
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { inviteFriendSchema } from "./schemas";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { auth } from '@/lib/services/auth';
+import { headers } from 'next/headers';
+import { revalidatePath } from 'next/cache';
+import { inviteFriendSchema } from './schemas';
 
 export async function inviteFriendToThread(formData: FormData) {
-  const threadId = formData.get("threadId") as string;
-  const email = formData.get("email") as string;
+  const threadId = formData.get('threadId') as string;
+  const email = formData.get('email') as string;
 
   const parsed = inviteFriendSchema.safeParse({ threadId, email });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -21,7 +21,7 @@ export async function inviteFriendToThread(formData: FormData) {
     });
 
     if (!session?.user) {
-      return { data: null, error: "Something went wrong" };
+      return { data: null, error: 'Something went wrong' };
     }
 
     // Check if thread exists
@@ -31,7 +31,7 @@ export async function inviteFriendToThread(formData: FormData) {
     });
 
     if (!thread) {
-      return { data: null, error: "Thread not found" };
+      return { data: null, error: 'Thread not found' };
     }
 
     // Check if invitation already exists
@@ -47,7 +47,7 @@ export async function inviteFriendToThread(formData: FormData) {
     if (existingInvitation) {
       return {
         data: null,
-        error: "You have already invited this friend to this thread",
+        error: 'You have already invited this friend to this thread',
       };
     }
 
@@ -57,7 +57,7 @@ export async function inviteFriendToThread(formData: FormData) {
         threadId: parsed.data.threadId,
         senderId: session.user.id,
         email: parsed.data.email,
-        status: "PENDING",
+        status: 'PENDING',
       },
       include: {
         thread: {
@@ -80,7 +80,7 @@ export async function inviteFriendToThread(formData: FormData) {
     revalidatePath(`/dashboard/threads/thread/${thread.slug}`);
     return { data: invitation, error: null };
   } catch (error) {
-    console.error("[inviteFriendToThread]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[inviteFriendToThread]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

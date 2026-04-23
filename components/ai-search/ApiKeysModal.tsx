@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Eye, EyeOff, Check, X, KeyRound } from "lucide-react";
+import { useState } from 'react';
+import { Eye, EyeOff, Check, X, KeyRound } from 'lucide-react';
 
 interface ApiKeysModalProps {
   isOpen: boolean;
@@ -11,41 +11,35 @@ interface ApiKeysModalProps {
 
 const KEY_CONFIGS = [
   {
-    id: "exa",
-    label: "Exa API Key",
-    storageKey: "sastram_exa_key",
-    placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    id: 'exa',
+    label: 'Exa API Key',
+    storageKey: 'sastram_exa_key',
+    placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
     validate: (key: string) =>
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        key,
-      ),
-    description: "Get your key from exa.ai",
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key),
+    description: 'Get your key from exa.ai',
   },
   {
-    id: "tavily",
-    label: "Tavily API Key",
-    storageKey: "sastram_tavily_key",
-    placeholder: "tvly-xxxxxxxxxxxxx",
-    validate: (key: string) => key.startsWith("tvly-") && key.length > 10,
-    description: "Get your key from tavily.com",
+    id: 'tavily',
+    label: 'Tavily API Key',
+    storageKey: 'sastram_tavily_key',
+    placeholder: 'tvly-xxxxxxxxxxxxx',
+    validate: (key: string) => key.startsWith('tvly-') && key.length > 10,
+    description: 'Get your key from tavily.com',
   },
   {
-    id: "gemini",
-    label: "Gemini API Key",
-    storageKey: "sastram_gemini_key",
-    placeholder: "AIzaXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    validate: (key: string) => key.startsWith("AIza") && key.length > 20,
-    description: "Get your key from aistudio.google.com",
+    id: 'gemini',
+    label: 'Gemini API Key',
+    storageKey: 'sastram_gemini_key',
+    placeholder: 'AIzaXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    validate: (key: string) => key.startsWith('AIza') && key.length > 20,
+    description: 'Get your key from aistudio.google.com',
   },
 ];
 
-export function ApiKeysModal({
-  isOpen,
-  onClose,
-  onKeysChange,
-}: ApiKeysModalProps) {
+export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProps) {
   const [keys, setKeys] = useState<Record<string, string>>(() => {
-    if (typeof window === "undefined") return {};
+    if (typeof window === 'undefined') return {};
     const loaded: Record<string, string> = {};
     KEY_CONFIGS.forEach((config) => {
       const saved = localStorage.getItem(config.storageKey);
@@ -61,7 +55,7 @@ export function ApiKeysModal({
 
     // Persist to localStorage
     const config = KEY_CONFIGS.find((c) => c.id === id);
-    if (config && typeof window !== "undefined") {
+    if (config && typeof window !== 'undefined') {
       if (value) {
         localStorage.setItem(config.storageKey, value);
       } else {
@@ -70,14 +64,12 @@ export function ApiKeysModal({
     }
 
     // Notify parent
-    const allPresent = KEY_CONFIGS.every(
-      (c) => updated[c.id] && updated[c.id].length > 0,
-    );
+    const allPresent = KEY_CONFIGS.every((c) => updated[c.id] && updated[c.id].length > 0);
     onKeysChange(allPresent);
   };
 
   const clearKey = (id: string) => {
-    handleKeyChange(id, "");
+    handleKeyChange(id, '');
   };
 
   if (!isOpen) return null;
@@ -85,10 +77,7 @@ export function ApiKeysModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
@@ -109,25 +98,22 @@ export function ApiKeysModal({
         {/* Info */}
         <div className="px-5 py-3 bg-foreground/2">
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Your API keys are stored <strong>only in your browser</strong> and
-            never sent to our servers for storage. They are passed securely via
-            request headers for each search.
+            Your API keys are stored <strong>only in your browser</strong> and never sent to our
+            servers for storage. They are passed securely via request headers for each search.
           </p>
         </div>
 
         {/* Key inputs */}
         <div className="px-5 py-4 space-y-4">
           {KEY_CONFIGS.map((config) => {
-            const value = keys[config.id] || "";
+            const value = keys[config.id] || '';
             const isValid = value ? config.validate(value) : false;
             const show = showKeys[config.id] || false;
 
             return (
               <div key={config.id}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-foreground">
-                    {config.label}
-                  </label>
+                  <label className="text-xs font-medium text-foreground">{config.label}</label>
                   {value && (
                     <span className="flex items-center gap-1 text-[10px]">
                       {isValid ? (
@@ -144,19 +130,15 @@ export function ApiKeysModal({
                 </div>
                 <div className="relative">
                   <input
-                    type={show ? "text" : "password"}
+                    type={show ? 'text' : 'password'}
                     value={value}
-                    onChange={(e) =>
-                      handleKeyChange(config.id, e.target.value.trim())
-                    }
+                    onChange={(e) => handleKeyChange(config.id, e.target.value.trim())}
                     placeholder={config.placeholder}
                     className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-foreground/20 pr-16 font-mono"
                   />
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                     <button
-                      onClick={() =>
-                        setShowKeys({ ...showKeys, [config.id]: !show })
-                      }
+                      onClick={() => setShowKeys({ ...showKeys, [config.id]: !show })}
                       className="p-1.5 text-muted-foreground/50 hover:text-foreground transition-colors"
                     >
                       {show ? <EyeOff size={12} /> : <Eye size={12} />}
@@ -171,9 +153,7 @@ export function ApiKeysModal({
                     )}
                   </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground/50 mt-1">
-                  {config.description}
-                </p>
+                <p className="text-[10px] text-muted-foreground/50 mt-1">{config.description}</p>
               </div>
             );
           })}
@@ -201,11 +181,11 @@ export function getStoredApiKeys(): {
   tavily: string;
   gemini: string;
 } {
-  if (typeof window === "undefined") return { exa: "", tavily: "", gemini: "" };
+  if (typeof window === 'undefined') return { exa: '', tavily: '', gemini: '' };
   return {
-    exa: localStorage.getItem("sastram_exa_key") || "",
-    tavily: localStorage.getItem("sastram_tavily_key") || "",
-    gemini: localStorage.getItem("sastram_gemini_key") || "",
+    exa: localStorage.getItem('sastram_exa_key') || '',
+    tavily: localStorage.getItem('sastram_tavily_key') || '',
+    gemini: localStorage.getItem('sastram_gemini_key') || '',
   };
 }
 

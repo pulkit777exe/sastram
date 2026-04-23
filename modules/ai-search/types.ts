@@ -3,14 +3,14 @@
 // ─────────────────────────────────────────────────────────────
 
 export interface SearchConfig {
-  exaMode: "agentic" | "instant" | "websets";
-  tavilyMode: "search" | "extract" | "crawl" | "research";
-  sourceFilter: "all" | "technical" | "reddit-hn" | "docs";
-  searchMode: "standard" | "instant" | "table";
+  exaMode: 'agentic' | 'instant' | 'websets';
+  tavilyMode: 'search' | 'extract' | 'crawl' | 'research';
+  sourceFilter: 'all' | 'technical' | 'reddit-hn' | 'docs';
+  searchMode: 'standard' | 'instant' | 'table';
 }
 
 export interface QueryClassification {
-  type: "factual" | "opinion" | "technical" | "comparison";
+  type: 'factual' | 'opinion' | 'technical' | 'comparison';
   primaryDomain: string;
   suggestedSources: string[];
   searchTerms: string[];
@@ -28,7 +28,7 @@ export interface Source {
   tier: 1 | 2 | 3 | 4;
   confidence: number;
   isOutdated: boolean;
-  provider: "exa" | "tavily";
+  provider: 'exa' | 'tavily';
 }
 
 export interface ConflictInfo {
@@ -41,7 +41,7 @@ export interface ConflictInfo {
 export interface SynthesisResult {
   content: string;
   confidence: number;
-  queryType: QueryClassification["type"];
+  queryType: QueryClassification['type'];
   sourceCount: number;
   conflictData: ConflictInfo;
   processingTimeMs: number;
@@ -51,7 +51,7 @@ export interface SynthesisResult {
 export interface AISearchResponse {
   synthesis: SynthesisResult;
   sources: Source[];
-  phase: "classify" | "search" | "crossref" | "synthesize" | "done";
+  phase: 'classify' | 'search' | 'crossref' | 'synthesize' | 'done';
   error?: string;
 }
 

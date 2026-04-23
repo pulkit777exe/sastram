@@ -1,10 +1,10 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * Base payload schema - all WebSocket messages must have a sectionId
  */
 const basePayloadSchema = z.object({
-  sectionId: z.string().cuid("Invalid section ID"),
+  sectionId: z.string().cuid('Invalid section ID'),
 });
 
 /**
@@ -27,7 +27,7 @@ const newMessagePayloadSchema = basePayloadSchema.extend({
       z.object({
         type: z.string(),
         _count: z.number().int().min(0),
-      }),
+      })
     )
     .optional(),
   mentions: z.array(z.string().cuid()).optional(),
@@ -36,7 +36,7 @@ const newMessagePayloadSchema = basePayloadSchema.extend({
       z.object({
         id: z.string().cuid(),
         url: z.string().url(),
-        type: z.enum(["IMAGE", "GIF", "FILE", "VIDEO"]),
+        type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
         name: z.string().nullable(),
         size: z.number().int().positive().nullable(),
       })
@@ -115,41 +115,41 @@ const errorPayloadSchema = z.object({
 /**
  * Discriminated union of all WebSocket message types
  */
-export const websocketMessageSchema = z.discriminatedUnion("type", [
+export const websocketMessageSchema = z.discriminatedUnion('type', [
   z.object({
-    type: z.literal("NEW_MESSAGE"),
+    type: z.literal('NEW_MESSAGE'),
     payload: newMessagePayloadSchema,
   }),
   z.object({
-    type: z.literal("MESSAGE_DELETED"),
+    type: z.literal('MESSAGE_DELETED'),
     payload: messageDeletedPayloadSchema,
   }),
   z.object({
-    type: z.literal("USER_TYPING"),
+    type: z.literal('USER_TYPING'),
     payload: userTypingPayloadSchema,
   }),
   z.object({
-    type: z.literal("USER_STOPPED_TYPING"),
+    type: z.literal('USER_STOPPED_TYPING'),
     payload: userStoppedTypingPayloadSchema,
   }),
   z.object({
-    type: z.literal("MESSAGE_QUEUED"),
+    type: z.literal('MESSAGE_QUEUED'),
     payload: messageQueuedPayloadSchema,
   }),
   z.object({
-    type: z.literal("MENTION_NOTIFICATION"),
+    type: z.literal('MENTION_NOTIFICATION'),
     payload: mentionNotificationPayloadSchema,
   }),
   z.object({
-    type: z.literal("REACTION_UPDATE"),
+    type: z.literal('REACTION_UPDATE'),
     payload: reactionUpdatePayloadSchema,
   }),
   z.object({
-    type: z.literal("PIN_UPDATE"),
+    type: z.literal('PIN_UPDATE'),
     payload: pinUpdatePayloadSchema,
   }),
   z.object({
-    type: z.literal("ERROR"),
+    type: z.literal('ERROR'),
     payload: errorPayloadSchema,
   }),
 ]);
@@ -164,38 +164,38 @@ export type WebSocketMessage = z.infer<typeof websocketMessageSchema>;
  */
 export const websocketSchemas = {
   newMessage: z.object({
-    type: z.literal("NEW_MESSAGE"),
+    type: z.literal('NEW_MESSAGE'),
     payload: newMessagePayloadSchema,
   }),
   messageDeleted: z.object({
-    type: z.literal("MESSAGE_DELETED"),
+    type: z.literal('MESSAGE_DELETED'),
     payload: messageDeletedPayloadSchema,
   }),
   userTyping: z.object({
-    type: z.literal("USER_TYPING"),
+    type: z.literal('USER_TYPING'),
     payload: userTypingPayloadSchema,
   }),
   userStoppedTyping: z.object({
-    type: z.literal("USER_STOPPED_TYPING"),
+    type: z.literal('USER_STOPPED_TYPING'),
     payload: userStoppedTypingPayloadSchema,
   }),
   messageQueued: z.object({
-    type: z.literal("MESSAGE_QUEUED"),
+    type: z.literal('MESSAGE_QUEUED'),
     payload: messageQueuedPayloadSchema,
   }),
   mentionNotification: z.object({
-    type: z.literal("MENTION_NOTIFICATION"),
+    type: z.literal('MENTION_NOTIFICATION'),
     payload: mentionNotificationPayloadSchema,
   }),
   reactionUpdate: z.object({
-    type: z.literal("REACTION_UPDATE"),
+    type: z.literal('REACTION_UPDATE'),
     payload: reactionUpdatePayloadSchema,
   }),
   pinUpdate: z.object({
-    type: z.literal("PIN_UPDATE"),
+    type: z.literal('PIN_UPDATE'),
     payload: pinUpdatePayloadSchema,
   }),
-  error: z.object({ type: z.literal("ERROR"), payload: errorPayloadSchema }),
+  error: z.object({ type: z.literal('ERROR'), payload: errorPayloadSchema }),
 } as const;
 
 /**

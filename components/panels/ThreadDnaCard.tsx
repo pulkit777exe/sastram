@@ -1,22 +1,22 @@
-import type { ThreadDNA } from "@/lib/schemas/thread-dna";
+import type { ThreadDNA } from '@/lib/schemas/thread-dna';
 
 interface ThreadDnaCardProps {
   dna: ThreadDNA;
 }
 
 const QUESTION_TYPE_COLORS: Record<string, string> = {
-  factual: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
-  opinion: "bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400",
-  technical: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
-  comparison: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
-  other: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-400",
+  factual: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
+  opinion: 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400',
+  technical: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+  comparison: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+  other: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-400',
 };
 
 const EXPERTISE_COLORS: Record<string, string> = {
-  beginner: "bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400",
-  intermediate: "bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400",
-  advanced: "bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400",
-  expert: "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400",
+  beginner: 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400',
+  intermediate: 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400',
+  advanced: 'bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400',
+  expert: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
 };
 
 export default function ThreadDnaCard({ dna }: ThreadDnaCardProps) {

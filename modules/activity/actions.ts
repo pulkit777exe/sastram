@@ -1,12 +1,12 @@
-"use server";
+'use server';
 
-import { requireSession } from "@/modules/auth/session";
+import { requireSession } from '@/modules/auth/session';
 import {
   recordActivity as recordActivityRepo,
   getUserActivity as getUserActivityRepo,
   getFollowedUsersActivity as getFollowedUsersActivityRepo,
-} from "./repository";
-import { z } from "zod";
+} from './repository';
+import { z } from 'zod';
 
 const recordActivitySchema = z.object({
   type: z.string().min(1),
@@ -25,7 +25,7 @@ export async function recordActivityAction(
   type: string,
   entityType: string,
   entityId: string,
-  metadata?: any,
+  metadata?: any
 ) {
   const parsed = recordActivitySchema.safeParse({
     type,
@@ -34,7 +34,7 @@ export async function recordActivityAction(
     metadata,
   });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -48,41 +48,34 @@ export async function recordActivityAction(
     });
     return { data: null, error: null };
   } catch (error) {
-    console.error("[recordActivityAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[recordActivityAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
-export async function getUserActivityAction(
-  userId: string,
-  limit?: number,
-  offset?: number,
-) {
+export async function getUserActivityAction(userId: string, limit?: number, offset?: number) {
   const parsed = activityQuerySchema.safeParse({ userId, limit, offset });
   if (!parsed.success || !parsed.data.userId) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const result = await getUserActivityRepo(
       parsed.data.userId,
       parsed.data.limit || 20,
-      parsed.data.offset || 0,
+      parsed.data.offset || 0
     );
     return { data: result, error: null };
   } catch (error) {
-    console.error("[getUserActivityAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getUserActivityAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
-export async function getFollowedUsersActivityAction(
-  limit?: number,
-  offset?: number,
-) {
+export async function getFollowedUsersActivityAction(limit?: number, offset?: number) {
   const parsed = activityQuerySchema.safeParse({ limit, offset });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -90,11 +83,11 @@ export async function getFollowedUsersActivityAction(
     const result = await getFollowedUsersActivityRepo(
       session.user.id,
       parsed.data.limit || 20,
-      parsed.data.offset || 0,
+      parsed.data.offset || 0
     );
     return { data: result, error: null };
   } catch (error) {
-    console.error("[getFollowedUsersActivityAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getFollowedUsersActivityAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

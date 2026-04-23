@@ -1,13 +1,13 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { revalidatePath } from "next/cache";
-import { requireSession, assertAdmin } from "@/modules/auth/session";
-import { emitMessageDeleted } from "@/modules/ws/publisher";
-import { logAction } from "@/modules/audit/repository";
-import { rateLimit } from "@/lib/services/rate-limit";
-import { createNotification } from "@/modules/notifications/repository";
-import { z } from "zod";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { revalidatePath } from 'next/cache';
+import { requireSession, assertAdmin } from '@/modules/auth/session';
+import { emitMessageDeleted } from '@/modules/ws/publisher';
+import { logAction } from '@/modules/audit/repository';
+import { rateLimit } from '@/lib/services/rate-limit';
+import { createNotification } from '@/modules/notifications/repository';
+import { z } from 'zod';
 
 import {
   banUserSchema,
@@ -16,7 +16,7 @@ import {
   getBannedUsersSchema,
   getMessageDetailsSchema,
   getModerationQueueSchema,
-} from "./schemas";
+} from './schemas';
 
 const bulkDeleteSchema = z.object({
   messageIds: z.array(z.string().cuid()).min(1).max(100),
@@ -39,15 +39,15 @@ const deleteThreadSchema = z.object({
 
 async function applyModerationRateLimit(userId: string) {
   try {
-    const result = await rateLimit({ key: userId, type: "api" });
+    const result = await rateLimit({ key: userId, type: 'api' });
     if (!result.success) {
-      throw new Error("Rate limit exceeded. Please slow down.");
+      throw new Error('Rate limit exceeded. Please slow down.');
     }
   } catch (error) {
     if (error instanceof Error) {
       throw error;
     }
-    throw new Error("Rate limit exceeded. Please slow down.");
+    throw new Error('Rate limit exceeded. Please slow down.');
   }
 }
 
@@ -57,7 +57,7 @@ async function validateModerationTarget(
   moderatorRole: string
 ) {
   if (targetUserId === moderatorId) {
-    throw new Error("Cannot perform moderation actions on yourself");
+    throw new Error('Cannot perform moderation actions on yourself');
   }
 
   const targetUser = await prisma.user.findUnique({
@@ -72,29 +72,29 @@ async function validateModerationTarget(
   });
 
   if (!targetUser) {
-    throw new Error("Target user not found");
+    throw new Error('Target user not found');
   }
 
-  if (targetUser.role === "ADMIN" && moderatorRole !== "SUPER_ADMIN") {
-    throw new Error("Cannot moderate administrator accounts");
+  if (targetUser.role === 'ADMIN' && moderatorRole !== 'SUPER_ADMIN') {
+    throw new Error('Cannot moderate administrator accounts');
   }
 
   return targetUser;
 }
 
 async function validateEntityForDeletion(
-  entityType: "message" | "section" | "community",
+  entityType: 'message' | 'section' | 'community',
   entityId: string
 ) {
   let entity;
 
   switch (entityType) {
-    case "message":
+    case 'message':
       entity = await prisma.message.findUnique({
         where: { id: entityId },
         select: {
           id: true,
-          
+
           sectionId: true,
           senderId: true,
           section: {
@@ -106,12 +106,12 @@ async function validateEntityForDeletion(
         },
       });
       break;
-    case "section":
+    case 'section':
       entity = await prisma.section.findUnique({
         where: { id: entityId },
         select: {
           id: true,
-          
+
           name: true,
           slug: true,
           messageCount: true,
@@ -119,12 +119,12 @@ async function validateEntityForDeletion(
         },
       });
       break;
-    case "community":
+    case 'community':
       entity = await prisma.community.findUnique({
         where: { id: entityId },
         select: {
           id: true,
-          
+
           title: true,
           slug: true,
         },
@@ -139,11 +139,7 @@ async function validateEntityForDeletion(
   return entity;
 }
 
-export async function deleteMessageAction(
-  messageId: string,
-  sectionSlug: string,
-  reason?: string,
-) {
+export async function deleteMessageAction(messageId: string, sectionSlug: string, reason?: string) {
   const validation = deleteMessageSchema.safeParse({
     messageId,
     sectionSlug,
@@ -151,7 +147,7 @@ export async function deleteMessageAction(
   });
 
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -160,11 +156,11 @@ export async function deleteMessageAction(
 
     await applyModerationRateLimit(session.user.id);
 
-    const message = await validateEntityForDeletion("message", messageId);
+    const message = await validateEntityForDeletion('message', messageId);
 
     // Type guard: ensure it's a message entity
-    if (!("sectionId" in message)) {
-      return { data: null, error: "Invalid entity type" };
+    if (!('sectionId' in message)) {
+      return { data: null, error: 'Invalid entity type' };
     }
 
     await prisma.$transaction(async (tx) => {
@@ -185,11 +181,11 @@ export async function deleteMessageAction(
       await tx.notification.create({
         data: {
           userId: message.senderId,
-          type: "SYSTEM",
-          title: "Message Deleted",
+          type: 'SYSTEM',
+          title: 'Message Deleted',
           message: reason
             ? `Your message was deleted by a moderator. Reason: ${reason}`
-            : "Your message was deleted by a moderator.",
+            : 'Your message was deleted by a moderator.',
           data: {
             messageId,
             sectionSlug,
@@ -200,8 +196,8 @@ export async function deleteMessageAction(
     });
 
     await logAction({
-      action: "MESSAGE_DELETED",
-      entityType: "Message",
+      action: 'MESSAGE_DELETED',
+      entityType: 'Message',
       entityId: messageId,
       userId: session.user.id,
       details: {
@@ -214,22 +210,19 @@ export async function deleteMessageAction(
     emitMessageDeleted(message.sectionId, messageId);
 
     revalidatePath(`/dashboard/threads/thread/${sectionSlug}`);
-    revalidatePath("/dashboard/admin/moderation");
+    revalidatePath('/dashboard/admin/moderation');
 
     return { data: null, error: null };
   } catch (error) {
-    console.error("[deleteMessageAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[deleteMessageAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
-export async function bulkDeleteMessages(
-  messageIds: string[],
-  reason?: string,
-) {
+export async function bulkDeleteMessages(messageIds: string[], reason?: string) {
   const parsed = bulkDeleteSchema.safeParse({ messageIds, reason });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -241,7 +234,6 @@ export async function bulkDeleteMessages(
       const messages = await tx.message.findMany({
         where: {
           id: { in: parsed.data.messageIds },
-          
         },
         select: {
           id: true,
@@ -251,10 +243,10 @@ export async function bulkDeleteMessages(
       });
 
       if (messages.length === 0) {
-        throw new Error("No valid messages found to delete");
+        throw new Error('No valid messages found to delete');
       }
 
-       await tx.message.updateMany({
+      await tx.message.updateMany({
         where: {
           id: { in: messages.map((m) => m.id) },
         },
@@ -263,10 +255,13 @@ export async function bulkDeleteMessages(
         },
       });
 
-      const sectionCounts = messages.reduce((acc, msg) => {
-        acc[msg.sectionId] = (acc[msg.sectionId] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const sectionCounts = messages.reduce(
+        (acc, msg) => {
+          acc[msg.sectionId] = (acc[msg.sectionId] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       for (const [sectionId, count] of Object.entries(sectionCounts)) {
         await tx.section.update({
@@ -282,15 +277,13 @@ export async function bulkDeleteMessages(
       const uniqueSenders = [...new Set(messages.map((m) => m.senderId))];
 
       for (const senderId of uniqueSenders) {
-        const userMessageCount = messages.filter(
-          (m) => m.senderId === senderId
-        ).length;
+        const userMessageCount = messages.filter((m) => m.senderId === senderId).length;
 
         await tx.notification.create({
           data: {
             userId: senderId,
-            type: "SYSTEM",
-            title: "Messages Deleted",
+            type: 'SYSTEM',
+            title: 'Messages Deleted',
             message: reason
               ? `${userMessageCount} of your messages were deleted by a moderator. Reason: ${reason}`
               : `${userMessageCount} of your messages were deleted by a moderator.`,
@@ -301,28 +294,28 @@ export async function bulkDeleteMessages(
       return { deletedCount: messages.length };
     });
 
-      await logAction({
-        action: "MESSAGE_DELETED",
-        entityType: "Message",
-        entityId: "bulk",
-        userId: session.user.id,
-        details: {
-          messageIds: parsed.data.messageIds,
-          reason: parsed.data.reason,
-          count: result.deletedCount,
-          bulk: true,
-        },
-      });
+    await logAction({
+      action: 'MESSAGE_DELETED',
+      entityType: 'Message',
+      entityId: 'bulk',
+      userId: session.user.id,
+      details: {
+        messageIds: parsed.data.messageIds,
+        reason: parsed.data.reason,
+        count: result.deletedCount,
+        bulk: true,
+      },
+    });
 
-    revalidatePath("/dashboard/admin/moderation");
+    revalidatePath('/dashboard/admin/moderation');
 
     return {
       data: { deletedCount: result.deletedCount },
       error: null,
     };
   } catch (error) {
-    console.error("[bulkDeleteMessages]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[bulkDeleteMessages]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -331,7 +324,7 @@ export async function banUser(
   reason: string,
   customReason?: string,
   threadId?: string,
-  expiresAt?: Date,
+  expiresAt?: Date
 ) {
   const validation = banUserSchema.safeParse({
     userId,
@@ -342,7 +335,7 @@ export async function banUser(
   });
 
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -353,7 +346,7 @@ export async function banUser(
     const targetUser = await validateModerationTarget(
       validation.data.userId,
       session.user.id,
-      session.user.role || "ADMIN",
+      session.user.role || 'ADMIN'
     );
 
     const existingBan = await prisma.userBan.findFirst({
@@ -369,12 +362,12 @@ export async function banUser(
       return {
         data: null,
         error: validation.data.threadId
-          ? "User is already banned from this thread"
-          : "User is already globally banned",
+          ? 'User is already banned from this thread'
+          : 'User is already globally banned',
       };
     }
 
-     let thread: { id: string; name: string } | null;
+    let thread: { id: string; name: string } | null;
     if (validation.data.threadId) {
       thread = await prisma.section.findUnique({
         where: { id: validation.data.threadId },
@@ -382,9 +375,8 @@ export async function banUser(
       });
 
       if (!thread) {
-        return { data: null, error: "Thread not found" };
+        return { data: null, error: 'Thread not found' };
       }
-
     }
 
     const ban = await prisma.$transaction(async (tx) => {
@@ -411,7 +403,7 @@ export async function banUser(
       if (!threadId) {
         await tx.user.update({
           where: { id: validation.data.userId },
-          data: { status: "BANNED" },
+          data: { status: 'BANNED' },
         });
       }
 
@@ -422,8 +414,8 @@ export async function banUser(
       await tx.notification.create({
         data: {
           userId,
-          type: "SYSTEM",
-          title: validation.data.threadId ? "Thread Ban" : "Account Banned",
+          type: 'SYSTEM',
+          title: validation.data.threadId ? 'Thread Ban' : 'Account Banned',
           message: validation.data.customReason
             ? `${banMessage}. ${validation.data.customReason}`
             : banMessage,
@@ -442,13 +434,13 @@ export async function banUser(
     });
 
     await logAction({
-      action: "USER_BANNED",
-      entityType: "User",
+      action: 'USER_BANNED',
+      entityType: 'User',
       entityId: validation.data.userId,
       userId: session.user.id,
       details: {
         reason: validation.data.reason,
-        
+
         threadId: validation.data.threadId,
         expiresAt: validation.data.expiresAt,
         targetUserEmail: targetUser.email,
@@ -456,8 +448,8 @@ export async function banUser(
       },
     });
 
-    revalidatePath("/dashboard/admin/moderation");
-    revalidatePath("/dashboard");
+    revalidatePath('/dashboard/admin/moderation');
+    revalidatePath('/dashboard');
 
     return {
       data: {
@@ -467,15 +459,15 @@ export async function banUser(
       error: null,
     };
   } catch (error) {
-    console.error("[banUser]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[banUser]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function unbanUser(banId: string) {
   const parsed = unbanSchema.safeParse({ banId });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -500,11 +492,11 @@ export async function unbanUser(banId: string) {
       });
 
       if (!ban) {
-        throw new Error("Ban not found");
+        throw new Error('Ban not found');
       }
 
       if (!ban.isActive) {
-        throw new Error("Ban is already inactive");
+        throw new Error('Ban is already inactive');
       }
 
       await tx.userBan.update({
@@ -525,7 +517,7 @@ export async function unbanUser(banId: string) {
         if (otherActiveBans === 0) {
           await tx.user.update({
             where: { id: ban.userId },
-            data: { status: "ACTIVE" },
+            data: { status: 'ACTIVE' },
           });
         }
       }
@@ -533,11 +525,11 @@ export async function unbanUser(banId: string) {
       await tx.notification.create({
         data: {
           userId: ban.userId,
-          type: "SYSTEM",
-          title: ban.threadId ? "Thread Ban Lifted" : "Account Unbanned",
+          type: 'SYSTEM',
+          title: ban.threadId ? 'Thread Ban Lifted' : 'Account Unbanned',
           message: ban.threadId
-            ? "You have been unbanned from a thread and can now participate again."
-            : "Your account ban has been lifted. You can now use the platform again.",
+            ? 'You have been unbanned from a thread and can now participate again.'
+            : 'Your account ban has been lifted. You can now use the platform again.',
           data: {
             banId: parsed.data.banId,
             unbannedBy: session.user.id,
@@ -549,8 +541,8 @@ export async function unbanUser(banId: string) {
     });
 
     await logAction({
-      action: "USER_UNBANNED",
-      entityType: "User",
+      action: 'USER_UNBANNED',
+      entityType: 'User',
       entityId: result.userId,
       userId: session.user.id,
       details: {
@@ -561,12 +553,12 @@ export async function unbanUser(banId: string) {
       },
     });
 
-    revalidatePath("/dashboard/admin/moderation");
+    revalidatePath('/dashboard/admin/moderation');
 
     return { data: null, error: null };
   } catch (error) {
-    console.error("[unbanUser]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[unbanUser]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -578,7 +570,7 @@ export async function getBannedUsers(filters?: {
 }) {
   const validation = getBannedUsersSchema.safeParse(filters ?? {});
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -627,7 +619,7 @@ export async function getBannedUsers(filters?: {
           },
         },
         orderBy: {
-          createdAt: "desc",
+          createdAt: 'desc',
         },
         take: limit,
         skip: offset,
@@ -648,15 +640,15 @@ export async function getBannedUsers(filters?: {
       error: null,
     };
   } catch (error) {
-    console.error("[getBannedUsers]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getBannedUsers]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function deleteCommunity(communityId: string, reason?: string) {
   const parsed = deleteCommunitySchema.safeParse({ communityId, reason });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -664,14 +656,11 @@ export async function deleteCommunity(communityId: string, reason?: string) {
     await assertAdmin(session.user);
     await applyModerationRateLimit(session.user.id);
 
-    const community = await validateEntityForDeletion(
-      "community",
-      parsed.data.communityId,
-    );
+    const community = await validateEntityForDeletion('community', parsed.data.communityId);
 
     // Type guard: ensure it's a community entity
-    if (!("title" in community)) {
-      return { data: null, error: "Invalid entity type" };
+    if (!('title' in community)) {
+      return { data: null, error: 'Invalid entity type' };
     }
 
     const sectionCount = await prisma.section.count({
@@ -685,8 +674,8 @@ export async function deleteCommunity(communityId: string, reason?: string) {
     });
 
     await logAction({
-      action: "SECTION_DELETED", // Using SECTION_DELETED as closest match
-      entityType: "Community",
+      action: 'SECTION_DELETED', // Using SECTION_DELETED as closest match
+      entityType: 'Community',
       entityId: parsed.data.communityId,
       userId: session.user.id,
       details: {
@@ -697,23 +686,23 @@ export async function deleteCommunity(communityId: string, reason?: string) {
       },
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/admin/moderation");
+    revalidatePath('/dashboard');
+    revalidatePath('/dashboard/admin/moderation');
 
     return {
       data: { affectedSections: sectionCount },
       error: null,
     };
   } catch (error) {
-    console.error("[deleteCommunity]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[deleteCommunity]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function deleteThread(threadId: string, reason?: string) {
   const parsed = deleteThreadSchema.safeParse({ threadId, reason });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -721,20 +710,17 @@ export async function deleteThread(threadId: string, reason?: string) {
     await assertAdmin(session.user);
     await applyModerationRateLimit(session.user.id);
 
-    const thread = await validateEntityForDeletion(
-      "section",
-      parsed.data.threadId,
-    );
+    const thread = await validateEntityForDeletion('section', parsed.data.threadId);
 
     // Type guard: ensure it's a section entity
-    if (!("name" in thread && "slug" in thread)) {
-      return { data: null, error: "Invalid entity type" };
+    if (!('name' in thread && 'slug' in thread)) {
+      return { data: null, error: 'Invalid entity type' };
     }
 
     const members = await prisma.sectionMember.findMany({
       where: {
         sectionId: parsed.data.threadId,
-        status: "ACTIVE",
+        status: 'ACTIVE',
       },
       select: { userId: true },
     });
@@ -748,8 +734,8 @@ export async function deleteThread(threadId: string, reason?: string) {
         await tx.notification.createMany({
           data: members.map((member) => ({
             userId: member.userId,
-            type: "SYSTEM" as const,
-            title: "Thread Deleted",
+            type: 'SYSTEM' as const,
+            title: 'Thread Deleted',
             message: parsed.data.reason
               ? `The thread "${thread.name}" has been deleted. Reason: ${parsed.data.reason}`
               : `The thread "${thread.name}" has been deleted by a moderator.`,
@@ -764,8 +750,8 @@ export async function deleteThread(threadId: string, reason?: string) {
     });
 
     await logAction({
-      action: "SECTION_DELETED",
-      entityType: "Section",
+      action: 'SECTION_DELETED',
+      entityType: 'Section',
       entityId: parsed.data.threadId,
       userId: session.user.id,
       details: {
@@ -778,24 +764,24 @@ export async function deleteThread(threadId: string, reason?: string) {
       },
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/threads");
-    revalidatePath("/dashboard/admin/moderation");
+    revalidatePath('/dashboard');
+    revalidatePath('/dashboard/threads');
+    revalidatePath('/dashboard/admin/moderation');
 
     return {
       data: { notifiedMembers: members.length },
       error: null,
     };
   } catch (error) {
-    console.error("[deleteThread]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[deleteThread]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function getMessageDetails(messageId: string) {
   const validation = getMessageDetailsSchema.safeParse({ messageId });
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -847,7 +833,7 @@ export async function getMessageDetails(messageId: string) {
         },
         reports: {
           where: {
-            status: { in: ["PENDING"] },
+            status: { in: ['PENDING'] },
           },
           include: {
             reporter: {
@@ -858,12 +844,12 @@ export async function getMessageDetails(messageId: string) {
             },
           },
           orderBy: {
-            createdAt: "desc",
+            createdAt: 'desc',
           },
         },
         editHistory: {
           orderBy: {
-            editedAt: "desc",
+            editedAt: 'desc',
           },
           take: 5,
         },
@@ -871,7 +857,7 @@ export async function getMessageDetails(messageId: string) {
     });
 
     if (!message) {
-      return { data: null, error: "Message not found" };
+      return { data: null, error: 'Message not found' };
     }
 
     const recentMessages = await prisma.message.count({
@@ -880,7 +866,6 @@ export async function getMessageDetails(messageId: string) {
         createdAt: {
           gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
         },
-        
       },
     });
 
@@ -907,19 +892,19 @@ export async function getMessageDetails(messageId: string) {
       error: null,
     };
   } catch (error) {
-    console.error("[getMessageDetails]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getMessageDetails]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function getModerationQueue(filters?: {
-  status?: "PENDING" | "REVIEWING";
+  status?: 'PENDING' | 'REVIEWING';
   limit?: number;
   offset?: number;
 }) {
   const validation = getModerationQueueSchema.safeParse(filters ?? {});
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -930,7 +915,7 @@ export async function getModerationQueue(filters?: {
     const offset = validation.data.offset || 0;
 
     const whereClause: any = {
-      status: validation.data.status || { in: ["PENDING", "REVIEWING"] },
+      status: validation.data.status || { in: ['PENDING', 'REVIEWING'] },
     };
 
     const [reports, totalCount] = await Promise.all([
@@ -967,7 +952,7 @@ export async function getModerationQueue(filters?: {
           },
         },
         orderBy: {
-          createdAt: "desc",
+          createdAt: 'desc',
         },
         take: limit,
         skip: offset,
@@ -988,7 +973,7 @@ export async function getModerationQueue(filters?: {
       error: null,
     };
   } catch (error) {
-    console.error("[getModerationQueue]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getModerationQueue]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

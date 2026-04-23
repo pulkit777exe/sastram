@@ -1,16 +1,11 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { Prisma } from "@prisma/client";
-import type {
-  ThreadDetail,
-  ThreadRecord,
-  ThreadSummary,
-  ThreadMember,
-} from "./types";
-import { SectionRole } from "@prisma/client";
-import { buildThreadDTO, buildThreadDetailDTO } from "./service";
-import { dedupe } from "@/lib/dedupe";
-import { aiService } from "@/lib/services/ai";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { Prisma } from '@prisma/client';
+import type { ThreadDetail, ThreadRecord, ThreadSummary, ThreadMember } from './types';
+import { SectionRole } from '@prisma/client';
+import { buildThreadDTO, buildThreadDetailDTO } from './service';
+import { dedupe } from '@/lib/dedupe';
+import { aiService } from '@/lib/services/ai';
+import { logger } from '@/lib/infrastructure/logger';
 
 type SectionWithCommunityAndCount = Prisma.SectionGetPayload<{
   include: {
@@ -51,7 +46,7 @@ type SectionWithCommunityAndMessages = Prisma.SectionGetPayload<{
 export interface ListThreadsParams {
   page?: number;
   pageSize?: number;
-  sortBy?: "recent" | "popular" | "trending" | "oldest";
+  sortBy?: 'recent' | 'popular' | 'trending' | 'oldest';
 }
 
 export interface PaginatedThreads {
@@ -66,63 +61,59 @@ export interface PaginatedThreads {
   };
 }
 
-export async function listThreads(
-  params: ListThreadsParams = {},
-): Promise<PaginatedThreads> {
-  const { page = 1, pageSize = 10, sortBy = "recent" } = params;
+export async function listThreads(params: ListThreadsParams = {}): Promise<PaginatedThreads> {
+  const { page = 1, pageSize = 10, sortBy = 'recent' } = params;
   const skip = (page - 1) * pageSize;
   try {
-    const [totalItems, threads] = await dedupe(
-      `threads:list:${page}:${pageSize}:${sortBy}`,
-      () =>
-        Promise.all([
-          prisma.section.count(),
-          prisma.section.findMany({
-            where: {},
-            include: {
-              community: true,
-              messages: {
-                where: {
-                  deletedAt: null,
-                  createdAt: {
-                    gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                  },
-                },
-                select: {
-                  senderId: true,
-                  createdAt: true,
+    const [totalItems, threads] = await dedupe(`threads:list:${page}:${pageSize}:${sortBy}`, () =>
+      Promise.all([
+        prisma.section.count(),
+        prisma.section.findMany({
+          where: {},
+          include: {
+            community: true,
+            messages: {
+              where: {
+                deletedAt: null,
+                createdAt: {
+                  gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
                 },
               },
-              members: {
-                where: {
-                  status: "ACTIVE",
-                },
+              select: {
+                senderId: true,
+                createdAt: true,
               },
-              _count: {
-                select: {
-                  messages: {
-                    where: {
-                      deletedAt: null,
-                    },
+            },
+            members: {
+              where: {
+                status: 'ACTIVE',
+              },
+            },
+            _count: {
+              select: {
+                messages: {
+                  where: {
+                    deletedAt: null,
                   },
-                  members: {
-                    where: {
-                      status: "ACTIVE",
-                    },
+                },
+                members: {
+                  where: {
+                    status: 'ACTIVE',
                   },
                 },
               },
             },
-            orderBy:
-              sortBy === "oldest"
-                ? { createdAt: "asc" }
-                : sortBy === "popular"
-                  ? { messageCount: "desc" }
-                  : { updatedAt: "desc" },
-            skip,
-            take: pageSize,
-          }),
-        ]),
+          },
+          orderBy:
+            sortBy === 'oldest'
+              ? { createdAt: 'asc' }
+              : sortBy === 'popular'
+                ? { messageCount: 'desc' }
+                : { updatedAt: 'desc' },
+          skip,
+          take: pageSize,
+        }),
+      ])
     );
 
     let mappedThreads = (threads ?? []).map((thread: SectionWithCommunityAndCount) => {
@@ -131,11 +122,11 @@ export async function listThreads(
         thread as unknown as ThreadRecord,
         thread._count.messages,
         uniqueActiveUsers.size,
-        thread._count.members,
+        thread._count.members
       );
     });
 
-    if (sortBy === "trending") {
+    if (sortBy === 'trending') {
       mappedThreads = mappedThreads.sort((a, b) => {
         const scoreA = a.activeUsers * 2 + a.messageCount;
         const scoreB = b.activeUsers * 2 + b.messageCount;
@@ -157,7 +148,7 @@ export async function listThreads(
       },
     };
   } catch (error) {
-    logger.error("[listThreads]", error);
+    logger.error('[listThreads]', error);
     return {
       threads: [],
       pagination: {
@@ -172,9 +163,7 @@ export async function listThreads(
   }
 }
 
-export async function getThreadBySlug(
-  slug: string,
-): Promise<ThreadDetail | null> {
+export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null> {
   const record = await dedupe(`threads:bySlug:${slug}`, () =>
     prisma.section.findFirst({
       where: {
@@ -196,7 +185,7 @@ export async function getThreadBySlug(
             attachments: true,
           },
           orderBy: {
-            createdAt: "asc",
+            createdAt: 'asc',
           },
         },
         subscriptions: true,
@@ -210,7 +199,7 @@ export async function getThreadBySlug(
           },
         },
       },
-    }),
+    })
   );
 
   if (!record) {
@@ -222,7 +211,7 @@ export async function getThreadBySlug(
   const memberCount = await prisma.sectionMember.count({
     where: {
       sectionId: typedRecord.id,
-      status: "ACTIVE",
+      status: 'ACTIVE',
     },
   });
 
@@ -232,7 +221,7 @@ export async function getThreadBySlug(
     new Set(typedRecord.messages.map((m) => m.senderId)).size,
     memberCount,
     typedRecord.aiSummary ?? undefined,
-    typedRecord.subscriptions?.length ?? 0,
+    typedRecord.subscriptions?.length ?? 0
   );
 }
 
@@ -254,22 +243,24 @@ export async function createThread(payload: {
       members: {
         create: {
           userId: payload.createdBy,
-          role: "OWNER",
-          status: "ACTIVE",
+          role: 'OWNER',
+          status: 'ACTIVE',
         },
       },
-      messages: payload.initialMessage ? {
-        create: {
-          content: payload.initialMessage,
-          senderId: payload.createdBy,
-          depth: 0,
-          isAiResponse: false,
-          isEdited: false,
-          isPinned: false,
-          likeCount: 0,
-          replyCount: 0,
-        },
-      } : undefined,
+      messages: payload.initialMessage
+        ? {
+            create: {
+              content: payload.initialMessage,
+              senderId: payload.createdBy,
+              depth: 0,
+              isAiResponse: false,
+              isEdited: false,
+              isPinned: false,
+              likeCount: 0,
+              replyCount: 0,
+            },
+          }
+        : undefined,
     },
     include: {
       community: true,
@@ -285,18 +276,20 @@ export async function createThread(payload: {
 
   // If there's an initial message, generate thread DNA and resolution score
   if (payload.initialMessage) {
-    const initialMessages = [{
-      id: thread.messages[0].id,
-      content: payload.initialMessage,
-      senderId: payload.createdBy,
-      sender: {
-        id: payload.createdBy,
-        name: null,
-        image: null,
+    const initialMessages = [
+      {
+        id: thread.messages[0].id,
+        content: payload.initialMessage,
+        senderId: payload.createdBy,
+        sender: {
+          id: payload.createdBy,
+          name: null,
+          image: null,
+        },
+        createdAt: thread.messages[0].createdAt,
       },
-      createdAt: thread.messages[0].createdAt,
-    }];
-    
+    ];
+
     try {
       const [threadDNA, resolutionScore] = await Promise.all([
         aiService.generateThreadDNA(initialMessages),
@@ -308,15 +301,15 @@ export async function createThread(payload: {
         data: { threadDna: threadDNA, resolutionScore },
       });
     } catch (error) {
-      console.error("Failed to generate thread metadata:", error);
+      console.error('Failed to generate thread metadata:', error);
       // Set explicit default values if AI calls fail
       await prisma.section.update({
         where: { id: thread.id },
         data: {
           threadDna: {
-            questionType: "other",
-            expertiseLevel: "intermediate",
-            topics: ["general discussion"],
+            questionType: 'other',
+            expertiseLevel: 'intermediate',
+            topics: ['general discussion'],
             readTimeMinutes: 1,
           },
           resolutionScore: 50,
@@ -330,7 +323,7 @@ export async function createThread(payload: {
     typedThread as ThreadRecord,
     typedThread._count.messages,
     0,
-    typedThread._count.members,
+    typedThread._count.members
   );
 }
 
@@ -339,14 +332,12 @@ export async function deleteThread(threadId: string): Promise<void> {
     where: { id: threadId },
   });
 }
-export async function getThreadMembers(
-  threadId: string,
-): Promise<ThreadMember[]> {
+export async function getThreadMembers(threadId: string): Promise<ThreadMember[]> {
   try {
     const members = await prisma.sectionMember.findMany({
       where: {
         sectionId: threadId,
-        status: "ACTIVE",
+        status: 'ACTIVE',
       },
       include: {
         user: {
@@ -360,7 +351,7 @@ export async function getThreadMembers(
         },
       },
       orderBy: {
-        joinedAt: "asc",
+        joinedAt: 'asc',
       },
     });
 
@@ -378,7 +369,7 @@ export async function getThreadMembers(
       },
     }));
   } catch (error) {
-    logger.error("[getThreadMembers]", error);
+    logger.error('[getThreadMembers]', error);
     return [];
   }
 }
@@ -386,7 +377,7 @@ export async function getThreadMembers(
 export async function addThreadMember(
   threadId: string,
   userId: string,
-  role: SectionRole = "MEMBER",
+  role: SectionRole = 'MEMBER'
 ): Promise<void> {
   await prisma.sectionMember.upsert({
     where: {
@@ -397,13 +388,13 @@ export async function addThreadMember(
     },
     update: {
       role,
-      status: "ACTIVE",
+      status: 'ACTIVE',
     },
     create: {
       sectionId: threadId,
       userId,
       role,
-      status: "ACTIVE",
+      status: 'ACTIVE',
     },
   });
 }
@@ -411,7 +402,7 @@ export async function addThreadMember(
 export async function updateThreadMemberRole(
   threadId: string,
   userId: string,
-  role: SectionRole,
+  role: SectionRole
 ): Promise<void> {
   await prisma.sectionMember.update({
     where: {
@@ -426,10 +417,7 @@ export async function updateThreadMemberRole(
   });
 }
 
-export async function removeThreadMember(
-  threadId: string,
-  userId: string,
-): Promise<void> {
+export async function removeThreadMember(threadId: string, userId: string): Promise<void> {
   await prisma.sectionMember.delete({
     where: {
       sectionId_userId: {
@@ -440,18 +428,18 @@ export async function removeThreadMember(
   });
 }
 
-import { z } from "zod";
+import { z } from 'zod';
 
 const threadDNASchema = z.object({
-  questionType: z.enum(["factual", "opinion", "technical", "comparison", "other"]),
-  expertiseLevel: z.enum(["beginner", "intermediate", "advanced", "expert"]),
+  questionType: z.enum(['factual', 'opinion', 'technical', 'comparison', 'other']),
+  expertiseLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
   topics: z.array(z.string()).min(3).max(5),
   readTimeMinutes: z.number().int().min(1),
 });
 
 export async function updateThreadDNA(
   threadId: string,
-  threadDNA: Record<string, any>,
+  threadDNA: Record<string, any>
 ): Promise<void> {
   const validatedDNA = threadDNASchema.parse(threadDNA);
   await prisma.section.update({
@@ -460,10 +448,7 @@ export async function updateThreadDNA(
   });
 }
 
-export async function updateResolutionScore(
-  threadId: string,
-  score: number,
-): Promise<void> {
+export async function updateResolutionScore(threadId: string, score: number): Promise<void> {
   const validatedScore = z.number().int().min(0).max(100).parse(score);
   await prisma.section.update({
     where: { id: threadId },
@@ -471,10 +456,7 @@ export async function updateResolutionScore(
   });
 }
 
-export async function updateThreadStaleness(
-  threadId: string,
-  isOutdated: boolean,
-): Promise<void> {
+export async function updateThreadStaleness(threadId: string, isOutdated: boolean): Promise<void> {
   await prisma.section.update({
     where: { id: threadId },
     data: { isOutdated, lastVerifiedAt: new Date() },

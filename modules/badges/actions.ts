@@ -1,12 +1,12 @@
-"use server";
+'use server';
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from 'next/cache';
 import {
   getUserBadges as getUserBadgesRepo,
   checkAndAwardBadges as checkAndAwardBadgesRepo,
   getAllBadges as getAllBadgesRepo,
-} from "./repository";
-import { z } from "zod";
+} from './repository';
+import { z } from 'zod';
 
 const userIdSchema = z.object({
   userId: z.string().cuid(),
@@ -15,22 +15,22 @@ const userIdSchema = z.object({
 export async function getUserBadgesAction(userId: string) {
   const parsed = userIdSchema.safeParse({ userId });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const badges = await getUserBadgesRepo(parsed.data.userId);
     return { data: badges, error: null };
   } catch (error) {
-    console.error("[getUserBadgesAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getUserBadgesAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function checkAndAwardBadgesAction(userId: string) {
   const parsed = userIdSchema.safeParse({ userId });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -40,8 +40,8 @@ export async function checkAndAwardBadgesAction(userId: string) {
     }
     return { data: awardedBadges, error: null };
   } catch (error) {
-    console.error("[checkAndAwardBadgesAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[checkAndAwardBadgesAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -50,7 +50,7 @@ export async function getAllBadgesAction() {
     const badges = await getAllBadgesRepo();
     return { data: badges, error: null };
   } catch (error) {
-    console.error("[getAllBadgesAction]", error);
-    return { data: null, error: "Something went wrong" };
+    console.error('[getAllBadgesAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

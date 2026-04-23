@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,20 +10,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
-import { createTopic } from "@/modules/topics/actions";
-import { getPopularTagsAction } from "@/modules/tags/actions";
-import { toasts } from "@/lib/utils/toast";
-import { useRouter } from "next/navigation";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
+import { createTopic } from '@/modules/topics/actions';
+import { getPopularTagsAction } from '@/modules/tags/actions';
+import { toasts } from '@/lib/utils/toast';
+import { useRouter } from 'next/navigation';
 
 export function CreateTopicButton() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [tagInput, setTagInput] = useState("");
+  const [tagInput, setTagInput] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [popularTags, setPopularTags] = useState<string[]>([]);
   const router = useRouter();
@@ -51,15 +51,15 @@ export function CreateTopicButton() {
     const tag = rawTag.trim().toLowerCase();
     if (!tag) return;
     if (selectedTags.includes(tag)) {
-      setTagInput("");
+      setTagInput('');
       return;
     }
     if (selectedTags.length >= 5) {
-      toasts.error("You can add up to 5 tags.");
+      toasts.error('You can add up to 5 tags.');
       return;
     }
     setSelectedTags((prev) => [...prev, tag]);
-    setTagInput("");
+    setTagInput('');
   }
 
   function removeTag(tag: string) {
@@ -68,7 +68,7 @@ export function CreateTopicButton() {
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
-    formData.set("tags", JSON.stringify(selectedTags));
+    formData.set('tags', JSON.stringify(selectedTags));
     const result = await createTopic(formData);
     setLoading(false);
 
@@ -78,7 +78,7 @@ export function CreateTopicButton() {
       toasts.saved();
       setOpen(false);
       setSelectedTags([]);
-      setTagInput("");
+      setTagInput('');
       router.refresh();
     }
   }
@@ -90,9 +90,7 @@ export function CreateTopicButton() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold tracking-tight">
-            Create New Topic
-          </DialogTitle>
+          <DialogTitle className="text-xl font-bold tracking-tight">Create New Topic</DialogTitle>
           <DialogDescription className="text-zinc-500">
             Start a new discussion thread. It will appear on the global feed.
           </DialogDescription>
@@ -108,12 +106,7 @@ export function CreateTopicButton() {
             <Label htmlFor="description" className="text-zinc-500">
               Description
             </Label>
-            <Textarea
-              id="description"
-              name="description"
-              className="min-h-[100px]"
-              required
-            />
+            <Textarea id="description" name="description" className="min-h-[100px]" required />
           </div>
 
           <div className="space-y-2">
@@ -126,7 +119,7 @@ export function CreateTopicButton() {
               onChange={(event) => setTagInput(event.target.value)}
               placeholder="Type a tag and press Enter"
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === ",") {
+                if (event.key === 'Enter' || event.key === ',') {
                   event.preventDefault();
                   addTag(tagInput);
                 }
@@ -168,7 +161,7 @@ export function CreateTopicButton() {
               disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold"
             >
-              {loading ? <Loader2 className="animate-spin" /> : "Create Topic"}
+              {loading ? <Loader2 className="animate-spin" /> : 'Create Topic'}
             </Button>
           </DialogFooter>
         </form>
