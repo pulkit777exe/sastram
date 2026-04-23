@@ -85,7 +85,8 @@ const workers = queueDefinitions.map(({ queueName, handler }) => {
     });
 
     if (job && job.attemptsMade === job.opts.attempts) {
-      const { failedQueue } = await import('../lib/infrastructure/bullmq');
+      const { getFailedQueue } = await import('../lib/infrastructure/bullmq');
+      const failedQueue = getFailedQueue();
       await failedQueue.add('dlq', {
         originalQueue: queueName,
         jobId: job.id,
