@@ -20,8 +20,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "prepare": "husky install"
+    "format:check": "prettier --check ."
   },
   "lint-staged": {
     "**/*.{js,ts,tsx,jsx}": "eslint --fix",
