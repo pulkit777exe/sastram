@@ -98,7 +98,7 @@ export async function sendEmailNow({
 export async function sendOTPEmail(
   to: string,
   otp: string,
-  type: "sign-in" | "email-verification" | "forget-password",
+  type: "sign-in" | "email-verification" | "forget-password" | "change-email",
 ) {
   const typeConfig = {
     "sign-in": {
@@ -118,6 +118,12 @@ export async function sendOTPEmail(
       subtitle: "Password recovery request",
       action: "password reset",
       subject: "Your Sastram password reset code",
+    },
+    "change-email": {
+      title: "Update Your Email",
+      subtitle: "Email change request",
+      action: "email change",
+      subject: "Verify Your Sastram Email Change",
     },
   };
 

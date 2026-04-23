@@ -43,11 +43,7 @@ export const auth = betterAuth({
 
         try {
           logger.info(`Sending ${type} OTP to ${email}`);
-          if (type === "change-email") {
-            logger.warn("change-email OTP type not yet supported");
-            return;
-          }
-          await sendOTPEmail(email, otp, type as "sign-in" | "email-verification" | "forget-password");
+          await sendOTPEmail(email, otp, type);
           logger.info(`Successfully sent ${type} OTP to ${email}`);
         } catch (error) {
           logger.error(`Failed to send ${type} OTP to ${email}:`, error);
