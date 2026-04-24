@@ -548,9 +548,13 @@ function UserAuthForm({
             </div>
             {mode === 'signin' && (
               <div className="flex justify-end">
-                <Link href="/forgot-password" className="text-xs text-brand hover:text-brand/80">
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  className="text-xs text-brand hover:text-brand/80"
+                >
                   Forgot password?
-                </Link>
+                </button>
               </div>
             )}
           </div>
