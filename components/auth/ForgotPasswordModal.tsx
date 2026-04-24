@@ -18,11 +18,12 @@ import { toasts } from '@/lib/utils/toast';
 interface ForgotPasswordModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialEmail?: string;
 }
 
-export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalProps) {
+export function ForgotPasswordModal({ open, onOpenChange, initialEmail = '' }: ForgotPasswordModalProps) {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -36,7 +37,12 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
         body: JSON.stringify({ email }),
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        result = {};
+      }
 
       if (!response.ok || result?.error) {
         toasts.serverError();

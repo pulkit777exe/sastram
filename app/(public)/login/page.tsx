@@ -7,12 +7,20 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [email, setEmail] = useState('');
 
   return (
     <div className="bg-background">
       <ThemeToggle />
-      <LoginForm onForgotPassword={() => setShowForgotPassword(true)} />
-      <ForgotPasswordModal open={showForgotPassword} onOpenChange={setShowForgotPassword} />
+      <LoginForm 
+        onForgotPassword={() => setShowForgotPassword(true)} 
+        onEmailChange={setEmail}
+      />
+      <ForgotPasswordModal 
+        open={showForgotPassword} 
+        onOpenChange={setShowForgotPassword}
+        initialEmail={email}
+      />
     </div>
   );
 }

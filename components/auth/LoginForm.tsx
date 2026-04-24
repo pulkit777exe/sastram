@@ -513,7 +513,10 @@ function UserAuthForm({
               autoCorrect="off"
               disabled={loadingState !== null}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (onEmailChange) onEmailChange(e.target.value);
+                }}
               required
               className={inputStyles}
             />
@@ -645,8 +648,10 @@ function UserAuthForm({
 
 export function LoginForm({
   onForgotPassword,
+  onEmailChange,
 }: {
   onForgotPassword?: () => void;
+  onEmailChange?: (email: string) => void;
 }) {
   const [mode, setMode] = useState<AuthMode>('signin');
   const props = onForgotPassword ? { onForgotPassword } : {};

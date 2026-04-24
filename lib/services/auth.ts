@@ -41,11 +41,13 @@ export const auth = betterAuth({
           return;
         }
 
+        // Always log in development
+        logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
+        console.log(`[DEV OTP] ${type} for ${email}: ${otp}`);
+
         const isDevelopment = process.env.NODE_ENV === 'development';
 
         if (isDevelopment) {
-          logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
-          console.log(`[DEV OTP] ${type} for ${email}: ${otp}`);
           return;
         }
 
