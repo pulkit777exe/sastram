@@ -18,6 +18,7 @@ import {
   Shield,
   Bookmark,
   Activity,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { usePathname, useRouter } from 'next/navigation';
@@ -27,6 +28,7 @@ import { LucideIcon } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { useBootstrap } from '@/components/bootstrap-provider';
+import { signOut } from '@/lib/services/auth-client';
 
 export function Sidebar({
   name,
@@ -93,6 +95,15 @@ export function Sidebar({
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/dashboard/threads?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/login?reason=logged_out');
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   };
 
@@ -309,6 +320,13 @@ export function Sidebar({
               <AnimatedIcon icon={Mail} size={14} />
               <span>Newsletters</span>
             </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full"
+            >
+              <AnimatedIcon icon={LogOut} size={14} className="text-red-500" />
+              <span className="font-medium">Log out</span>
+            </button>
           </div>
         )}
       </div>
