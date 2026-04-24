@@ -31,10 +31,12 @@ function UserAuthForm({
   className,
   mode,
   setMode,
+  onForgotPassword,
   ...props
 }: React.ComponentProps<'div'> & {
   mode: AuthMode;
   setMode: (mode: AuthMode) => void;
+  onForgotPassword?: () => void;
 }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -618,7 +620,7 @@ function UserAuthForm({
             setMode(mode === 'signin' ? 'signup' : 'signin');
             setError(null);
           }}
-          className="text-zinc-500 hover:text-white transition-colors"
+          className="text-zinc-500 transition-colors"
         >
           {mode === 'signin' ? (
             <>
@@ -637,8 +639,13 @@ function UserAuthForm({
   );
 }
 
-export function LoginForm() {
+export function LoginForm({
+  onForgotPassword,
+}: {
+  onForgotPassword?: () => void;
+}) {
   const [mode, setMode] = useState<AuthMode>('signin');
+  const props = onForgotPassword ? { onForgotPassword } : {};
 
   const getTitle = () => {
     switch (mode) {
@@ -693,7 +700,7 @@ export function LoginForm() {
 
           {/* Form Container */}
           <div className="p-1">
-            <UserAuthForm mode={mode} setMode={setMode} />
+            <UserAuthForm mode={mode} setMode={setMode} onForgotPassword={onForgotPassword} />
           </div>
 
           <p className="px-8 text-center text-xs text-muted-foreground">
