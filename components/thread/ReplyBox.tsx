@@ -90,7 +90,7 @@ export default function ReplyBox({
 
     const formData = new FormData();
     formData.append('threadId', threadId);
-    formData.append('body', value.trim());
+    formData.append('content', value.trim());
     if (parentId) formData.append('parentId', parentId);
     if (selectedFile) {
       formData.append('files', selectedFile);

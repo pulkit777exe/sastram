@@ -38,7 +38,7 @@ export function getThreadChannel(sectionId: string): string {
 // Each needs its own dedicated connection.
 
 function createRedisClient(label: string): Redis {
-  const url = process.env.REDIS_URL;
+  const url = process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL;
   if (!url) {
     throw new Error(`[Redis ${label}] REDIS_URL is not set`);
   }

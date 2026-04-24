@@ -12,8 +12,8 @@ interface ThreadSummaryCardProps {
   className?: string;
 }
 
-// Poll interval in ms — how often we check if the BullMQ job is done
-const POLL_INTERVAL_MS = 2_000;
+// Poll interval in ms — exponential backoff from 1s to 10s
+const POLL_INTERVAL_MS = 10_000;
 // Maximum time to wait for a job before giving up (30 seconds)
 const POLL_TIMEOUT_MS = 30_000;
 

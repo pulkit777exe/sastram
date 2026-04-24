@@ -122,7 +122,7 @@ type RedisConnectionOptions = {
 };
 
 function buildRedisConnection(): RedisConnectionOptions {
-  const redisUrl = process.env.REDIS_URL;
+  const redisUrl = process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL;
 
   if (redisUrl) {
     try {

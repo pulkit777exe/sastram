@@ -137,8 +137,13 @@ export default function MessageTree({
             attachments: payload.attachments ?? [],
           };
           setMessages((prev) => {
-            if (prev.some((m) => m.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
+const existingIndex = prev.findIndex((m) => m.id === newMessage.id);
+          if (existingIndex >= 0) {
+            const updated = [...prev];
+            updated[existingIndex] = { ...updated[existingIndex], body: newMessage.body };
+            return updated;
+          }
+          return [...prev, newMessage];
           });
           break;
         }
