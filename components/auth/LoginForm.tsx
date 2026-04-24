@@ -565,21 +565,6 @@ function UserAuthForm({
         </div>
       </form>
 
-      {mode === 'signin' && (
-        <button
-          type="button"
-          onClick={() => {
-            setMode('email-otp');
-            setOtpEmail(email);
-            setError(null);
-          }}
-          className="text-center text-sm text-brand hover:text-brand/80 font-medium transition-colors group flex items-center justify-center"
-        >
-          <Mail className="inline mr-1.5 h-3.5 w-3.5" />
-          Sign in with Email OTP instead
-        </button>
-      )}
-
       <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border" />

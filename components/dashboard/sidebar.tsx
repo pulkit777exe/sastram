@@ -322,7 +322,7 @@ export function Sidebar({
             </Link>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-800/20 transition-colors w-full"
             >
               <AnimatedIcon icon={LogOut} size={14} className="text-red-500" />
               <span className="font-medium">Log out</span>
