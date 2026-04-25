@@ -1,7 +1,7 @@
 'use server';
 
+import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
-
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import {
@@ -11,14 +11,11 @@ import {
   getThreadTags as getThreadTagsRepo,
   getPopularTags as getPopularTagsRepo,
 } from './repository';
-import { z } from 'zod';
+import { createServerAction, withValidation } from '@/lib/utils/server-action';
 
 const createTagSchema = z.object({
   name: z.string().min(1).max(50),
-  color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
 });
 
 const tagThreadSchema = z.object({
@@ -26,86 +23,48 @@ const tagThreadSchema = z.object({
   tagId: z.string().cuid(),
 });
 
-export async function createTagAction(name: string, color?: string) {
-  const parsed = createTagSchema.safeParse({ name, color });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
+export const createTagAction = createServerAction(
+  { schema: createTagSchema, actionName: 'createTagAction' },
+  async ({ name, color }) => {
     await requireSession();
-    const tag = await createTagRepo(parsed.data.name, parsed.data.color);
+    const tag = await createTagRepo(name, color);
     return { data: tag, error: null };
-  } catch (error) {
-    logger.error('[createTagAction]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
-export async function addTagToThreadAction(threadId: string, tagId: string) {
-  const parsed = tagThreadSchema.safeParse({ threadId, tagId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
+export const addTagToThreadAction = createServerAction(
+  { schema: tagThreadSchema, actionName: 'addTagToThreadAction' },
+  async ({ threadId, tagId }) => {
     await requireSession();
-    await addTagToThreadRepo(parsed.data.threadId, parsed.data.tagId);
-    revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
+    await addTagToThreadRepo(threadId, tagId);
+    revalidatePath(`/dashboard/threads/thread/${threadId}`);
     return { data: null, error: null };
-  } catch (error) {
-    logger.error('[addTagToThreadAction]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
-export async function removeTagFromThreadAction(threadId: string, tagId: string) {
-  const parsed = tagThreadSchema.safeParse({ threadId, tagId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
+export const removeTagFromThreadAction = createServerAction(
+  { schema: tagThreadSchema, actionName: 'removeTagFromThreadAction' },
+  async ({ threadId, tagId }) => {
     await requireSession();
-    await removeTagFromThreadRepo(parsed.data.threadId, parsed.data.tagId);
-    revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
+    await removeTagFromThreadRepo(threadId, tagId);
+    revalidatePath(`/dashboard/threads/thread/${threadId}`);
     return { data: null, error: null };
-  } catch (error) {
-    logger.error('[removeTagFromThreadAction]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
-export async function getThreadTagsAction(threadId: string) {
-  const parsed = z.object({ threadId: z.string().cuid() }).safeParse({
-    threadId,
-  });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const tags = await getThreadTagsRepo(parsed.data.threadId);
+export const getThreadTagsAction = createServerAction(
+  { schema: z.object({ threadId: z.string().cuid() }), actionName: 'getThreadTagsAction' },
+  async ({ threadId }) => {
+    const tags = await getThreadTagsRepo(threadId);
     return { data: tags, error: null };
-  } catch (error) {
-    logger.error('[getThreadTagsAction]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
-export async function getPopularTagsAction(limit?: number) {
-  const parsed = z
-    .object({ limit: z.number().int().positive().max(100).optional() })
-    .safeParse({ limit });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const tags = await getPopularTagsRepo(parsed.data.limit || 20);
+export const getPopularTagsAction = withValidation(
+  z.object({ limit: z.number().int().positive().max(100).optional() }),
+  'getPopularTagsAction',
+  async ({ limit }) => {
+    const tags = await getPopularTagsRepo(limit || 20);
     return { data: tags, error: null };
-  } catch (error) {
-    logger.error('[getPopularTagsAction]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
