@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -50,7 +51,7 @@ export async function joinSection(sectionId: string) {
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[joinSection]', error);
+    logger.error('[joinSection]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -78,7 +79,7 @@ export async function leaveSection(sectionId: string) {
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[leaveSection]', error);
+    logger.error('[leaveSection]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -120,7 +121,7 @@ export async function inviteMember(sectionId: string, email: string, role: Secti
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[inviteMember]', error);
+    logger.error('[inviteMember]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -144,7 +145,7 @@ export async function updateMemberRoleAction(sectionId: string, userId: string, 
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[updateMemberRoleAction]', error);
+    logger.error('[updateMemberRoleAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -178,7 +179,7 @@ export async function removeMemberAction(sectionId: string, userId: string) {
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[removeMemberAction]', error);
+    logger.error('[removeMemberAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -193,7 +194,7 @@ export async function getSectionMembersAction(sectionId: string) {
     const members = await getSectionMembers(parsed.data.sectionId);
     return { data: members, error: null };
   } catch (error) {
-    console.error('[getSectionMembersAction]', error);
+    logger.error('[getSectionMembersAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -58,7 +59,7 @@ export async function followUser(userId: string) {
 
     return { data: null, error: null };
   } catch (error) {
-    console.error('[followUser]', error);
+    logger.error('[followUser]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -78,7 +79,7 @@ export async function unfollowUser(userId: string) {
 
     return { data: null, error: null };
   } catch (error) {
-    console.error('[unfollowUser]', error);
+    logger.error('[unfollowUser]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -98,7 +99,7 @@ export async function getFollowers(userId: string, limit?: number, offset?: numb
 
     return { data: result, error: null };
   } catch (error) {
-    console.error('[getFollowers]', error);
+    logger.error('[getFollowers]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -118,7 +119,7 @@ export async function getFollowing(userId: string, limit?: number, offset?: numb
 
     return { data: result, error: null };
   } catch (error) {
-    console.error('[getFollowing]', error);
+    logger.error('[getFollowing]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -134,7 +135,7 @@ export async function checkFollowingStatus(userId: string) {
     const isFollowing = await isFollowingRepo(session.user.id, parsed.data.userId);
     return { data: { isFollowing }, error: null };
   } catch (error) {
-    console.error('[checkFollowingStatus]', error);
+    logger.error('[checkFollowingStatus]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

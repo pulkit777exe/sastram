@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -46,7 +47,7 @@ export async function unsubscribeFromThread(threadId: string) {
     revalidatePath('/dashboard/settings');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[unsubscribeFromThread]', error);
+    logger.error('[unsubscribeFromThread]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -89,7 +90,7 @@ export async function updateSubscriptionFrequencyAction({
 
     return { data: null, error: null };
   } catch (error) {
-    console.error('[updateSubscriptionFrequencyAction]', error);
+    logger.error('[updateSubscriptionFrequencyAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -125,7 +126,7 @@ export async function getUserNewsletterSubscriptions() {
 
     return { data: subscriptions, error: null };
   } catch (error) {
-    console.error('[getUserNewsletterSubscriptions]', error);
+    logger.error('[getUserNewsletterSubscriptions]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -162,7 +163,7 @@ export async function subscribeToThreadAction({
     revalidatePath(`/dashboard/threads/thread/${parsed.data.slug}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error('[subscribeToThreadAction]', error);
+    logger.error('[subscribeToThreadAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

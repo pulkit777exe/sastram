@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAiPipelineQueues } from '@/lib/infrastructure/bullmq';
 import { requireSession } from '@/modules/auth/session';
+import { logger } from '@/lib/infrastructure/logger';
 import type { Job } from 'bullmq';
 
 async function findJob(jobId: string): Promise<{ job: Job; queueName: string } | null> {
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(jobData);
   } catch (error) {
-    console.error('Error getting job status:', error);
+    logger.error('Error getting job status:', error);
     return NextResponse.json({ error: 'Failed to get job status' }, { status: 500 });
   }
 }
@@ -96,7 +97,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Job cancelled' });
   } catch (error) {
-    console.error('Error cancelling job:', error);
+    logger.error('Error cancelling job:', error);
     return NextResponse.json({ error: 'Failed to cancel job' }, { status: 500 });
   }
 }

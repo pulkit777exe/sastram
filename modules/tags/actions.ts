@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { requireSession } from '@/modules/auth/session';
@@ -35,7 +36,7 @@ export async function createTagAction(name: string, color?: string) {
     const tag = await createTagRepo(parsed.data.name, parsed.data.color);
     return { data: tag, error: null };
   } catch (error) {
-    console.error('[createTagAction]', error);
+    logger.error('[createTagAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -52,7 +53,7 @@ export async function addTagToThreadAction(threadId: string, tagId: string) {
     revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error('[addTagToThreadAction]', error);
+    logger.error('[addTagToThreadAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -69,7 +70,7 @@ export async function removeTagFromThreadAction(threadId: string, tagId: string)
     revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error('[removeTagFromThreadAction]', error);
+    logger.error('[removeTagFromThreadAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -86,7 +87,7 @@ export async function getThreadTagsAction(threadId: string) {
     const tags = await getThreadTagsRepo(parsed.data.threadId);
     return { data: tags, error: null };
   } catch (error) {
-    console.error('[getThreadTagsAction]', error);
+    logger.error('[getThreadTagsAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -103,7 +104,7 @@ export async function getPopularTagsAction(limit?: number) {
     const tags = await getPopularTagsRepo(parsed.data.limit || 20);
     return { data: tags, error: null };
   } catch (error) {
-    console.error('[getPopularTagsAction]', error);
+    logger.error('[getPopularTagsAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Prisma } from '@prisma/client';
 import { aiService } from '@/lib/services/ai';
@@ -122,7 +123,7 @@ export async function findRelatedThreads(threadId: string): Promise<
 
     return relatedThreads;
   } catch (error) {
-    console.error(`Failed to find related threads for ${threadId}:`, error);
+    logger.error(`Failed to find related threads for ${threadId}:`, error);
     return [];
   }
 }
@@ -197,12 +198,12 @@ export async function updateAllThreadRelations(): Promise<{
         const related = await findRelatedThreads(thread.id);
         stats.updated += related.length;
       } catch (error) {
-        console.error(`Failed to update relations for thread ${thread.id}:`, error);
+        logger.error(`Failed to update relations for thread ${thread.id}:`, error);
         stats.errors++;
       }
     }
   } catch (error) {
-    console.error('Failed to update all thread relations:', error);
+    logger.error('Failed to update all thread relations:', error);
     stats.errors++;
   }
 
@@ -224,7 +225,7 @@ export async function cleanupOldThreadRelations(): Promise<{ deleted: number }> 
 
     return { deleted: result.count };
   } catch (error) {
-    console.error('Failed to cleanup old thread relations:', error);
+    logger.error('Failed to cleanup old thread relations:', error);
     return { deleted: 0 };
   }
 }

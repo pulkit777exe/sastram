@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(validatedResponse.data);
   } catch (error) {
-    console.error('Error uploading files:', error);
+    logger.error('Error uploading files:', error);
     return NextResponse.json({ error: 'Failed to upload files' }, { status: 500 });
   }
 }
@@ -113,9 +113,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ files: uploadedFiles });
   } catch (error) {
-    console.error("Error uploading files:", error);
+    logger.error('Error uploading files:', error);
     return NextResponse.json(
-      { error: "Failed to upload files" },
+      { error: 'Failed to upload files' },
       { status: 500 }
     );
   }

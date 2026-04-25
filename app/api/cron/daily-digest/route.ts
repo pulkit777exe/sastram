@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { sendEmail } from '@/lib/services/email';
+import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay } from 'date-fns';
 
 export async function GET(req: NextRequest) {
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
 
         summaryHtml = await threadSummaries.get(thread.id);
       } catch (err) {
-        console.error(`Failed to generate summary for thread ${thread.id}:`, err);
+        logger.error(`Failed to generate summary for thread ${thread.id}:`, err);
         results.errors++;
         continue;
       }
@@ -102,7 +103,7 @@ export async function GET(req: NextRequest) {
         });
         results.sent++;
       } catch (err) {
-        console.error(`Failed to send email to ${sub.email}:`, err);
+        logger.error(`Failed to send email to ${sub.email}:`, err);
         results.errors++;
       }
       results.processed++;
@@ -110,7 +111,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, results });
   } catch (error) {
-    console.error('Daily digest cron error:', error);
+    logger.error('Daily digest cron error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

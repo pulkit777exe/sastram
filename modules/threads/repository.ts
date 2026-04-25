@@ -301,7 +301,7 @@ export async function createThread(payload: {
         data: { threadDna: threadDNA, resolutionScore },
       });
     } catch (error) {
-      console.error('Failed to generate thread metadata:', error);
+      logger.error('Failed to generate thread metadata:', error);
       // Set explicit default values if AI calls fail
       await prisma.section.update({
         where: { id: thread.id },

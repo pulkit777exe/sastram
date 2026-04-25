@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { executeAISearch } from '@/modules/ai-search/service';
+import { logger } from '@/lib/infrastructure/logger';
 import type { SearchConfig } from '@/modules/ai-search/types';
 
 // Follow-up query patterns based on query type
@@ -126,12 +127,12 @@ export async function prewarmFollowUpQueries(): Promise<{
           data: { lastPrewarmedAt: new Date() },
         });
       } catch (error) {
-        console.error(`Failed to pre-warm queries for search ${search.id}:`, error);
+        logger.error(`Failed to pre-warm queries for search ${search.id}:`, error);
         stats.errors++;
       }
     }
   } catch (error) {
-    console.error('Failed to pre-warm follow-up queries:', error);
+    logger.error('Failed to pre-warm follow-up queries:', error);
     stats.errors++;
   }
 
@@ -195,14 +196,14 @@ export async function prewarmQueriesForThread(threadId: string): Promise<{
           await executeAISearch(query, config, keys);
           stats.prewarmed++;
         } catch (error) {
-          console.error(`Failed to pre-warm query "${query}":`, error);
+          logger.error(`Failed to pre-warm query "${query}":`, error);
           stats.errors++;
         }
         stats.processed++;
       }
     }
   } catch (error) {
-    console.error(`Failed to pre-warm queries for thread ${threadId}:`, error);
+    logger.error(`Failed to pre-warm queries for thread ${threadId}:`, error);
     stats.errors++;
   }
 

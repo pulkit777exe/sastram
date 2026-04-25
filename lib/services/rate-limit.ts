@@ -1,5 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { logger } from '@/lib/infrastructure/logger';
 import { env } from '@/lib/config/env';
 
 export const rateLimitConfig = {
@@ -84,7 +85,7 @@ const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
         const result = await ratelimit.limit(identifier);
         return { success: result.success };
       } catch (error) {
-        console.error(`Redis rate limit check failed for ${bucket}, falling back to in-memory:`, error);
+        logger.error(`Redis rate limit check failed for ${bucket}, falling back to in-memory:`, error);
         const memLimit = new InMemoryRateLimiter(config.points, config.duration);
         return memLimit.check(identifier);
       }

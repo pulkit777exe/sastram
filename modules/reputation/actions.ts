@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { requireSession } from '@/modules/auth/session';
@@ -34,7 +35,7 @@ export async function getUserReputationAction(userId: string) {
     const reputation = await getUserReputationRepo(parsed.data.userId);
     return { data: reputation, error: null };
   } catch (error) {
-    console.error('[getUserReputationAction]', error);
+    logger.error('[getUserReputationAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -57,7 +58,7 @@ export async function awardReputationAction(userId: string, points: number, reas
     revalidatePath(`/user/${parsed.data.userId}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error('[awardReputationAction]', error);
+    logger.error('[awardReputationAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -73,7 +74,7 @@ export async function syncReputationPointsAction(userId: string) {
     revalidatePath(`/user/${parsed.data.userId}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error('[syncReputationPointsAction]', error);
+    logger.error('[syncReputationPointsAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -102,7 +103,7 @@ export async function awardReputationForAction(
     }
     return { data: null, error: null };
   } catch (error) {
-    console.error('[awardReputationForAction]', error);
+    logger.error('[awardReputationForAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -80,7 +81,7 @@ export async function inviteFriendToThread(formData: FormData) {
     revalidatePath(`/dashboard/threads/thread/${thread.slug}`);
     return { data: invitation, error: null };
   } catch (error) {
-    console.error('[inviteFriendToThread]', error);
+    logger.error('[inviteFriendToThread]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

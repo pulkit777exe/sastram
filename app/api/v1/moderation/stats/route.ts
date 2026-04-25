@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireModerator } from '@/lib/middleware/moderation';
 import { ok, fail } from '@/lib/http/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function GET() {
   try {
@@ -32,7 +33,7 @@ export async function GET() {
       })
     );
   } catch (error) {
-    console.error('[GET_MODERATION_STATS]', error);
+    logger.error('[GET_MODERATION_STATS]', error);
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load moderation stats', error), {
       status: 500,
     });

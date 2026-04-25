@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { put } from '@vercel/blob';
@@ -62,7 +63,7 @@ export async function updateUserProfile(formData: FormData) {
     revalidatePath('/dashboard/settings/profile');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[updateUserProfile]', error);
+    logger.error('[updateUserProfile]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -108,7 +109,7 @@ export async function uploadAvatar(formData: FormData) {
     revalidatePath('/dashboard/settings/profile');
     return { data: { url: blob.url }, error: null };
   } catch (error) {
-    console.error('[uploadAvatar]', error);
+    logger.error('[uploadAvatar]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -154,7 +155,7 @@ export async function uploadBanner(formData: FormData) {
     revalidatePath('/dashboard/settings/profile');
     return { data: { url: blob.url }, error: null };
   } catch (error) {
-    console.error('[uploadBanner]', error);
+    logger.error('[uploadBanner]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -175,7 +176,7 @@ export async function getUserProfile(userId: string) {
 
     return { data: profile, error: null };
   } catch (error) {
-    console.error('[getUserProfile]', error);
+    logger.error('[getUserProfile]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -194,7 +195,7 @@ export async function getUserThreadsAction(userId: string, limit?: number, offse
     );
     return { data: result, error: null };
   } catch (error) {
-    console.error('[getUserThreadsAction]', error);
+    logger.error('[getUserThreadsAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -212,7 +213,7 @@ export async function updateProfilePrivacyAction(privacy: string) {
     revalidatePath(`/user/${session.user.id}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error('[updateProfilePrivacyAction]', error);
+    logger.error('[updateProfilePrivacyAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -245,7 +246,7 @@ export async function updateUserPreferencesAction(preferences: Partial<UserPrefe
     revalidatePath('/dashboard/settings');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[updateUserPreferencesAction]', error);
+    logger.error('[updateUserPreferencesAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

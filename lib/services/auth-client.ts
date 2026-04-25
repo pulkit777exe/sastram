@@ -1,7 +1,6 @@
 import { createAuthClient } from 'better-auth/react';
 import { emailOTPClient } from 'better-auth/client/plugins';
 
-// Get baseURL - use window.location.origin in browser, fallback to env var
 const getBaseURL = () => {
   if (typeof window !== 'undefined') {
     return window.location.origin;
@@ -14,6 +13,8 @@ export const authClient = createAuthClient({
   plugins: [emailOTPClient()],
 });
 
-console.log('Auth client initialized with baseURL:', getBaseURL());
+if (process.env.NODE_ENV === 'development') {
+  console.log('Auth client initialized with baseURL:', getBaseURL());
+}
 
 export const { signIn, signOut, signUp, useSession } = authClient;

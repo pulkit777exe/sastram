@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -57,7 +58,7 @@ export async function toggleReaction(messageId: string, emoji: string) {
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[toggleReaction]', error);
+    logger.error('[toggleReaction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -72,7 +73,7 @@ export async function getReactionSummary(messageId: string) {
     const reactions = await getMessageReactions(parsed.data.messageId);
     return { data: reactions, error: null };
   } catch (error) {
-    console.error('[getReactionSummary]', error);
+    logger.error('[getReactionSummary]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

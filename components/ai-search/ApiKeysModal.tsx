@@ -31,7 +31,7 @@ const KEY_CONFIGS = [
     id: 'gemini',
     label: 'Gemini API Key',
     storageKey: 'sastram_gemini_key',
-    placeholder: 'AIzaXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    placeholder: 'Enter your API key',
     validate: (key: string) => key.startsWith('AIza') && key.length > 20,
     description: 'Get your key from aistudio.google.com',
   },

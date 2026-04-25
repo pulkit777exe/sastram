@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -91,7 +92,7 @@ export async function createReport(data: {
       error: null,
     };
   } catch (error) {
-    console.error('[createReport]', error);
+    logger.error('[createReport]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -157,7 +158,7 @@ export async function getReports(filters?: { status?: string; limit?: number; of
 
     return { data: reports, error: null };
   } catch (error) {
-    console.error('[getReports]', error);
+    logger.error('[getReports]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -198,7 +199,7 @@ export async function getReportStats() {
       error: null,
     };
   } catch (error) {
-    console.error('[getReportStats]', error);
+    logger.error('[getReportStats]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -357,7 +358,7 @@ export async function getReportWithContext(reportId: string) {
       error: null,
     };
   } catch (error) {
-    console.error('[getReportWithContext]', error);
+    logger.error('[getReportWithContext]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -387,7 +388,7 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
     revalidatePath('/dashboard/admin/moderation');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[updateReportStatusAction]', error);
+    logger.error('[updateReportStatusAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -424,7 +425,7 @@ export async function getMyReports() {
     }));
     return { data, error: null };
   } catch (error) {
-    console.error('[getMyReports]', error);
+    logger.error('[getMyReports]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -599,7 +600,7 @@ export async function resolveReport(data: {
       error: null,
     };
   } catch (error) {
-    console.error('[resolveReport]', error);
+    logger.error('[resolveReport]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

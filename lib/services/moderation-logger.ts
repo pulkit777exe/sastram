@@ -1,3 +1,5 @@
+import { logger } from '@/lib/infrastructure/logger';
+
 export function logModerationEvent(event: {
   type: string;
   messageId?: string;
@@ -6,8 +8,7 @@ export function logModerationEvent(event: {
   timestamp?: Date;
 }) {
   const ts = event.timestamp ?? new Date();
-  // Basic structured log; can be wired to external providers later
-  console.log('[MODERATION]', {
+  logger.info('[MODERATION]', {
     ...event,
     timestamp: ts.toISOString(),
   });

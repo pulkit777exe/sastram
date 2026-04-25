@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -89,7 +90,7 @@ export async function submitAppeal(formData: FormData) {
     revalidatePath('/banned');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[submitAppeal]', error);
+    logger.error('[submitAppeal]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -158,7 +159,7 @@ export async function getAppeals() {
 
     return { data: appealsWithBanInfo, error: null };
   } catch (error) {
-    console.error('[getAppeals]', error);
+    logger.error('[getAppeals]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -241,7 +242,7 @@ export async function resolveAppeal(appealId: string, approved: boolean) {
     revalidatePath('/dashboard/admin/appeals');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[resolveAppeal]', error);
+    logger.error('[resolveAppeal]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import {
@@ -27,7 +28,7 @@ export async function searchThreadsAction(query: string, limit?: number, offset?
     );
     return { data: result, error: null };
   } catch (error) {
-    console.error('[searchThreadsAction]', error);
+    logger.error('[searchThreadsAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -52,7 +53,7 @@ export async function searchMessagesAction(
     );
     return { data: result, error: null };
   } catch (error) {
-    console.error('[searchMessagesAction]', error);
+    logger.error('[searchMessagesAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -67,7 +68,7 @@ export async function searchUsersAction(query: string, limit?: number, offset?: 
     const result = await searchUsersRepo(parsed.data.query, parsed.data.limit, parsed.data.offset);
     return { data: result, error: null };
   } catch (error) {
-    console.error('[searchUsersAction]', error);
+    logger.error('[searchUsersAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

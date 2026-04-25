@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -214,7 +215,7 @@ export async function deleteMessageAction(messageId: string, sectionSlug: string
 
     return { data: null, error: null };
   } catch (error) {
-    console.error('[deleteMessageAction]', error);
+    logger.error('[deleteMessageAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -314,7 +315,7 @@ export async function bulkDeleteMessages(messageIds: string[], reason?: string) 
       error: null,
     };
   } catch (error) {
-    console.error('[bulkDeleteMessages]', error);
+    logger.error('[bulkDeleteMessages]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -459,7 +460,7 @@ export async function banUser(
       error: null,
     };
   } catch (error) {
-    console.error('[banUser]', error);
+    logger.error('[banUser]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -557,7 +558,7 @@ export async function unbanUser(banId: string) {
 
     return { data: null, error: null };
   } catch (error) {
-    console.error('[unbanUser]', error);
+    logger.error('[unbanUser]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -640,7 +641,7 @@ export async function getBannedUsers(filters?: {
       error: null,
     };
   } catch (error) {
-    console.error('[getBannedUsers]', error);
+    logger.error('[getBannedUsers]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -694,7 +695,7 @@ export async function deleteCommunity(communityId: string, reason?: string) {
       error: null,
     };
   } catch (error) {
-    console.error('[deleteCommunity]', error);
+    logger.error('[deleteCommunity]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -773,7 +774,7 @@ export async function deleteThread(threadId: string, reason?: string) {
       error: null,
     };
   } catch (error) {
-    console.error('[deleteThread]', error);
+    logger.error('[deleteThread]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -892,7 +893,7 @@ export async function getMessageDetails(messageId: string) {
       error: null,
     };
   } catch (error) {
-    console.error('[getMessageDetails]', error);
+    logger.error('[getMessageDetails]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -973,7 +974,7 @@ export async function getModerationQueue(filters?: {
       error: null,
     };
   } catch (error) {
-    console.error('[getModerationQueue]', error);
+    logger.error('[getModerationQueue]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

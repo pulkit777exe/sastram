@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sanitizeSearchQuery, validateApiKeys } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch } from '@/modules/ai-search/service';
 import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
 
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     // Log without exposing internals
-    console.error('AI Search error:', error instanceof Error ? error.message : 'Unknown error');
+    logger.error('AI Search error:', error instanceof Error ? error.message : 'Unknown error');
 
     // Check for specific error types
     if (error instanceof Error) {

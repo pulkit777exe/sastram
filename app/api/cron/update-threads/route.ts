@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import {
@@ -160,7 +161,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Update threads cron error:', error);
+    logger.error('Update threads cron error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { requireSession } from '@/modules/auth/session';
@@ -48,7 +49,7 @@ export async function recordActivityAction(
     });
     return { data: null, error: null };
   } catch (error) {
-    console.error('[recordActivityAction]', error);
+    logger.error('[recordActivityAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -67,7 +68,7 @@ export async function getUserActivityAction(userId: string, limit?: number, offs
     );
     return { data: result, error: null };
   } catch (error) {
-    console.error('[getUserActivityAction]', error);
+    logger.error('[getUserActivityAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -87,7 +88,7 @@ export async function getFollowedUsersActivityAction(limit?: number, offset?: nu
     );
     return { data: result, error: null };
   } catch (error) {
-    console.error('[getFollowedUsersActivityAction]', error);
+    logger.error('[getFollowedUsersActivityAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 /**
@@ -26,7 +27,7 @@ export async function getAdminDashboardData() {
       error: null,
     };
   } catch (error) {
-    console.error('[getAdminDashboardData]', error);
+    logger.error('[getAdminDashboardData]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

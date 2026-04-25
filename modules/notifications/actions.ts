@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { requireSession } from '@/modules/auth/session';
@@ -34,7 +35,7 @@ export async function getNotifications(params?: {
     });
     return { data: notifications, error: null };
   } catch (error) {
-    console.error('[getNotifications]', error);
+    logger.error('[getNotifications]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -51,7 +52,7 @@ export async function markNotificationRead(notificationId: string) {
     revalidatePath('/dashboard');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[markNotificationRead]', error);
+    logger.error('[markNotificationRead]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -63,7 +64,7 @@ export async function markAllNotificationsRead() {
     revalidatePath('/dashboard');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[markAllNotificationsRead]', error);
+    logger.error('[markAllNotificationsRead]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -74,7 +75,7 @@ export async function getUnreadNotificationCount() {
     const count = await getUnreadCount(session.user.id);
     return { data: { count }, error: null };
   } catch (error) {
-    console.error('[getUnreadNotificationCount]', error);
+    logger.error('[getUnreadNotificationCount]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

@@ -1,4 +1,5 @@
 import { put, del } from '@vercel/blob';
+import { logger } from '@/lib/infrastructure/logger';
 
 export interface UploadOptions {
   maxSizeBytes?: number;
@@ -46,7 +47,7 @@ export async function uploadFile(
 
     return { url: blob.url };
   } catch (error) {
-    console.error('Error uploading file:', error);
+    logger.error('Error uploading file:', error);
     return {
       url: '',
       error: 'Failed to upload file',
@@ -59,7 +60,7 @@ export async function deleteFile(url: string): Promise<{ success: boolean; error
     await del(url);
     return { success: true };
   } catch (error) {
-    console.error('Error deleting file:', error);
+    logger.error('Error deleting file:', error);
     return {
       success: false,
       error: 'Failed to delete file',

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { postMessage } from '@/modules/messages/actions';
+import { requireSession } from '@/modules/auth/session';
 
 export async function POST(request: NextRequest) {
+  const session = await requireSession();
+  if (!session.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const formData = await request.formData();
 
   const threadId = formData.get('threadId') as string;

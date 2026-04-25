@@ -2,6 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { env } from '@/lib/config/env';
 import { containsBadLanguage } from '@/lib/services/content-safety';
 import { aiService } from '@/lib/services/ai';
+import { logger } from '@/lib/infrastructure/logger';
 import type { ReportCategory } from '@prisma/client';
 
 export type MessageLike = {
@@ -79,7 +80,7 @@ export class RegexFilter {
           };
         }
       } catch (error) {
-        console.warn(`Invalid regex pattern for rule ${rule.id}:`, error);
+        logger.warn(`Invalid regex pattern for rule ${rule.id}:`, error);
         continue;
       }
     }
@@ -147,7 +148,7 @@ export class MLClassifier {
           const match = summary.match(/toxicity[:\s]+([0-9.]+)/i);
           toxicity = match ? parseFloat(match[1]) : 0;
         } catch (error) {
-          console.warn('Could not analyze content, defaulting to safe:', error);
+          logger.warn('Could not analyze content, defaulting to safe:', error);
           toxicity = 0;
         }
       }
@@ -180,7 +181,7 @@ export class MLClassifier {
         categories,
       };
     } catch (error) {
-      console.error('ML classifier error:', error);
+      logger.error('ML classifier error:', error);
       return {
         action: 'REVIEW',
         severity: 'LOW',
@@ -223,7 +224,7 @@ export class ContextualAnalyzer {
             : undefined,
       };
     } catch (error) {
-      console.error('Contextual analyzer error:', error);
+      logger.error('Contextual analyzer error:', error);
       return { shouldEscalate: false };
     }
   }
@@ -350,7 +351,7 @@ export class MessageService {
         });
       }
     } catch (error) {
-      console.error('Message processing error:', error);
+      logger.error('Message processing error:', error);
       throw new Error(
         `Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
       );

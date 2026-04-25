@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -67,7 +68,7 @@ export async function createTopic(formData: FormData) {
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[createTopic]', error);
+    logger.error('[createTopic]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

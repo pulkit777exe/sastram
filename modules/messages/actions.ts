@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -32,7 +33,7 @@ import { consumeAiInlineQuota } from '@/lib/services/ai-inline-rate-limit';
 import { getAiInlineQueue } from '@/lib/infrastructure/bullmq';
 
 function handleActionError(actionName: string, error: unknown) {
-  console.error(`[${actionName}]`, error);
+  logger.error(`[${actionName}]`, error);
   return { data: null, error: 'Something went wrong' };
 }
 
@@ -252,7 +253,7 @@ export async function postMessage(formData: FormData) {
               safeContent.substring(0, 200),
               threadUrl
             ).catch((error) => {
-              console.error('Failed to send mention email:', error);
+              logger.error('Failed to send mention email:', error);
             });
           }
         }

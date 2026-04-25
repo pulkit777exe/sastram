@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -71,7 +72,7 @@ export async function createThreadAction(formData: FormData) {
     revalidatePath('/dashboard');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[createThreadAction]', error);
+    logger.error('[createThreadAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -90,7 +91,7 @@ export async function deleteThreadAction(threadId: string) {
     revalidatePath('/dashboard');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[deleteThreadAction]', error);
+    logger.error('[deleteThreadAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -109,7 +110,7 @@ export async function getDashboardThreads(params?: {
     const result = await listThreads(parsed.data);
     return { data: result, error: null };
   } catch (error) {
-    console.error('[getDashboardThreads]', error);
+    logger.error('[getDashboardThreads]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -125,7 +126,7 @@ export async function getThreadMembersAction(threadId: string) {
     const members = await getThreadMembers(parsed.data.threadId);
     return { data: members, error: null };
   } catch (error) {
-    console.error('[getThreadMembersAction]', error);
+    logger.error('[getThreadMembersAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -180,7 +181,7 @@ export async function manageThreadMemberAction(payload: {
     revalidatePath(`/dashboard/threads/thread/${thread.slug}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error('[manageThreadMemberAction]', error);
+    logger.error('[manageThreadMemberAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

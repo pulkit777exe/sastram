@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { requireSession } from '@/modules/auth/session';
@@ -40,7 +41,7 @@ export async function toggleBookmark(threadId: string) {
 
     return { data: { isBookmarked: !isBookmarked }, error: null };
   } catch (error) {
-    console.error('[toggleBookmark]', error);
+    logger.error('[toggleBookmark]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -60,7 +61,7 @@ export async function getBookmarkedThreads(limit?: number, offset?: number) {
     );
     return { data: result, error: null };
   } catch (error) {
-    console.error('[getBookmarkedThreads]', error);
+    logger.error('[getBookmarkedThreads]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -76,7 +77,7 @@ export async function checkBookmarkStatus(threadId: string) {
     const isBookmarked = await isBookmarkedRepo(session.user.id, parsed.data.threadId);
     return { data: { isBookmarked }, error: null };
   } catch (error) {
-    console.error('[checkBookmarkStatus]', error);
+    logger.error('[checkBookmarkStatus]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

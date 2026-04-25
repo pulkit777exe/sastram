@@ -32,11 +32,13 @@ function UserAuthForm({
   mode,
   setMode,
   onForgotPassword,
+  onEmailChange,
   ...props
 }: React.ComponentProps<'div'> & {
   mode: AuthMode;
   setMode: (mode: AuthMode) => void;
   onForgotPassword?: () => void;
+  onEmailChange?: (email: string) => void;
 }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

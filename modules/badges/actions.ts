@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -22,7 +23,7 @@ export async function getUserBadgesAction(userId: string) {
     const badges = await getUserBadgesRepo(parsed.data.userId);
     return { data: badges, error: null };
   } catch (error) {
-    console.error('[getUserBadgesAction]', error);
+    logger.error('[getUserBadgesAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -40,7 +41,7 @@ export async function checkAndAwardBadgesAction(userId: string) {
     }
     return { data: awardedBadges, error: null };
   } catch (error) {
-    console.error('[checkAndAwardBadgesAction]', error);
+    logger.error('[checkAndAwardBadgesAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }
@@ -50,7 +51,7 @@ export async function getAllBadgesAction() {
     const badges = await getAllBadgesRepo();
     return { data: badges, error: null };
   } catch (error) {
-    console.error('[getAllBadgesAction]', error);
+    logger.error('[getAllBadgesAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

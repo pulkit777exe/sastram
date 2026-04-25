@@ -1,3 +1,4 @@
+import { logger } from '@/lib/infrastructure/logger';
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -43,7 +44,7 @@ export async function createCommunityAction(formData: FormData) {
     revalidatePath('/dashboard');
     return { data: null, error: null };
   } catch (error) {
-    console.error('[createCommunityAction]', error);
+    logger.error('[createCommunityAction]', error);
     return { data: null, error: 'Something went wrong' };
   }
 }

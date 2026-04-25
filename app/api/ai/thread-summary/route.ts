@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSession } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType, DEFAULT_JOB_OPTIONS, getThreadSummaryQueue } from '@/lib/infrastructure/bullmq';
+import { rateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 
 const summaryRequestSchema = z.object({
@@ -13,6 +15,15 @@ export async function POST(req: NextRequest) {
     const session = await requireSession();
     if (!session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+    const rateLimitResult = await rateLimit(ip);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
     }
 
     const body = await req.json();
@@ -58,7 +69,7 @@ export async function POST(req: NextRequest) {
       message: 'Summary generation started',
     });
   } catch (error) {
-    console.error('Error generating thread summary:', error);
+    logger.error('Error generating thread summary:', error);
     return NextResponse.json({ error: 'Failed to generate summary' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 import { withRetry } from '@/lib/utils/retry';
+import { logger } from '@/lib/infrastructure/logger';
 import type {
   SearchConfig,
   QueryClassification,
@@ -205,7 +206,7 @@ async function searchWithExa(
       }
     );
   } catch (error) {
-    console.error('Exa search failed:', error);
+    logger.error('Exa search failed:', error);
     return [];
   }
 }
@@ -279,7 +280,7 @@ async function searchWithTavily(
 
     return { sources, answer: data.answer };
   } catch (error) {
-    console.error('Tavily search failed:', error);
+    logger.error('Tavily search failed:', error);
     return { sources: [] };
   }
 }
@@ -452,7 +453,7 @@ Return plain text with light markdown (bold, bullets only). No headers with #.`;
       processingTimeMs: 0, // Calculated by caller
     };
   } catch (error) {
-    console.error('Synthesis failed:', error);
+    logger.error('Synthesis failed:', error);
     return {
       content: tavilyAnswer || 'Synthesis failed. Please check your Gemini API key and try again.',
       confidence: tavilyAnswer ? 40 : 0,

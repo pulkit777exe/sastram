@@ -43,7 +43,6 @@ export const auth = betterAuth({
 
         // Always log in development
         logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
-        console.log(`[DEV OTP] ${type} for ${email}: ${otp}`);
 
         const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -57,7 +56,7 @@ export const auth = betterAuth({
           logger.info(`Successfully sent ${type} OTP to ${email}`);
         } catch (error) {
           logger.error(`Failed to send ${type} OTP to ${email}:`, error);
-          console.log(`[DEV FALLBACK] ${type} OTP for ${email}: ${otp}`);
+          logger.info(`[DEV FALLBACK] ${type} OTP for ${email}: ${otp}`);
         }
       },
     }),
