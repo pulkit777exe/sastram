@@ -1,5 +1,6 @@
-import { logger } from '@/lib/infrastructure/logger';
 'use server';
+
+import { logger } from '@/lib/infrastructure/logger';
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';

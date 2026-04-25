@@ -4,7 +4,6 @@ import { emailOTP } from 'better-auth/plugins';
 import { oAuthProxy } from 'better-auth/plugins';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { getEnv } from '@/lib/config/env';
-import { sendOTPEmail } from '@/lib/services/email';
 import { logger } from '@/lib/infrastructure/logger';
 
 const env = getEnv();
@@ -41,7 +40,6 @@ export const auth = betterAuth({
           return;
         }
 
-        // Always log in development
         logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
 
         const isDevelopment = process.env.NODE_ENV === 'development';
@@ -52,6 +50,8 @@ export const auth = betterAuth({
 
         try {
           logger.info(`Sending ${type} OTP to ${email}`);
+          // Dynamic import to avoid bundling fs in client
+          const { sendOTPEmail } = await import('@/lib/services/email');
           await sendOTPEmail(email, otp, type);
           logger.info(`Successfully sent ${type} OTP to ${email}`);
         } catch (error) {
