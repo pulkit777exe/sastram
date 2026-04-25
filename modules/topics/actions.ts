@@ -1,42 +1,25 @@
 'use server';
 
+import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
-
 import { prisma } from '@/lib/infrastructure/prisma';
 import { auth } from '@/lib/services/auth';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/modules/threads/service';
-import { createTopicSchema } from './schemas';
 import { createTag, addTagToThread } from '@/modules/tags/repository';
+import { createServerAction } from '@/lib/utils/server-action';
 
-export async function createTopic(formData: FormData) {
-  const title = formData.get('title') as string;
-  const description = formData.get('description') as string;
-  const icon = (formData.get('icon') as string) || 'Hash';
-  const rawTags = formData.get('tags');
+const createTopicSchema = z.object({
+  title: z.string().min(3),
+  description: z.string().max(280).optional().or(z.literal('')),
+  icon: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
 
-  let tags: string[] = [];
-  if (typeof rawTags === 'string' && rawTags.length > 0) {
-    try {
-      const parsedTags = JSON.parse(rawTags);
-      if (Array.isArray(parsedTags)) {
-        tags = parsedTags
-          .filter((tag): tag is string => typeof tag === 'string')
-          .map((tag) => tag.trim())
-          .filter((tag) => tag.length > 0);
-      }
-    } catch {
-      tags = [];
-    }
-  }
-
-  const parsed = createTopicSchema.safeParse({ title, description, tags, icon });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
+export const createTopic = createServerAction(
+  { schema: createTopicSchema, actionName: 'createTopic' },
+  async ({ title, description, icon, tags }) => {
     const session = await auth.api.getSession({
       headers: await headers(),
     });
@@ -47,15 +30,15 @@ export async function createTopic(formData: FormData) {
 
     const section = await prisma.section.create({
       data: {
-        name: parsed.data.title,
-        description: parsed.data.description,
+        name: title,
+        description: description,
         createdBy: session.user.id,
-        slug: buildThreadSlug(parsed.data.title),
+        slug: buildThreadSlug(title),
       },
     });
 
     const uniqueTags = Array.from(
-      new Set((parsed.data.tags ?? []).map((tag) => tag.toLowerCase()))
+      new Set((tags ?? []).map((tag) => tag.toLowerCase()))
     ).slice(0, 5);
 
     if (uniqueTags.length > 0) {
@@ -68,8 +51,5 @@ export async function createTopic(formData: FormData) {
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
-  } catch (error) {
-    logger.error('[createTopic]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);

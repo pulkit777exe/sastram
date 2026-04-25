@@ -1,7 +1,7 @@
 'use server';
 
+import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
-
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
@@ -12,25 +12,37 @@ import {
   getFollowing as getFollowingRepo,
   isFollowing as isFollowingRepo,
 } from './repository';
-import { followUserSchema, getFollowersSchema, getFollowingSchema } from './schemas';
 import { createNotification } from '@/modules/notifications/repository';
+import { createServerAction } from '@/lib/utils/server-action';
+import { userIdSchema } from '@/lib/utils/validation-common';
 
-export async function followUser(userId: string) {
-  const parsed = followUserSchema.safeParse({ userId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
+const followUserSchema = z.object({
+  userId: z.string().cuid(),
+});
 
-  try {
+const getFollowersSchema = z.object({
+  userId: z.string().cuid(),
+  limit: z.number().int().positive().max(100).optional(),
+  offset: z.number().int().nonnegative().optional(),
+});
+
+const getFollowingSchema = z.object({
+  userId: z.string().cuid(),
+  limit: z.number().int().positive().max(100).optional(),
+  offset: z.number().int().nonnegative().optional(),
+});
+
+export const followUser = createServerAction(
+  { schema: followUserSchema, actionName: 'followUser', requireAuth: true },
+  async ({ userId }) => {
     const session = await requireSession();
-    // Prevent self-follow
-    if (session.user.id === parsed.data.userId) {
+
+    if (session.user.id === userId) {
       return { data: null, error: 'Cannot follow yourself' };
     }
 
-    // Check if user exists
     const targetUser = await prisma.user.findUnique({
-      where: { id: parsed.data.userId },
+      where: { id: userId },
       select: { id: true, name: true, email: true },
     });
 
@@ -38,11 +50,10 @@ export async function followUser(userId: string) {
       return { data: null, error: 'User not found' };
     }
 
-    await followUserRepo(session.user.id, parsed.data.userId);
+    await followUserRepo(session.user.id, userId);
 
-    // Create notification for the user being followed
     await createNotification({
-      userId: parsed.data.userId,
+      userId,
       type: 'SYSTEM',
       title: 'New Follower',
       message: `${session.user.name || session.user.email} started following you`,
@@ -52,91 +63,47 @@ export async function followUser(userId: string) {
       },
     });
 
-    // Record activity (will be implemented in activity module)
-    // await recordActivity({...});
+    revalidatePath(`/user/${userId}`);
+    revalidatePath('/dashboard');
+
+    return { data: null, error: null };
+  }
+);
+
+export const unfollowUser = createServerAction(
+  { schema: followUserSchema, actionName: 'unfollowUser', requireAuth: true },
+  async ({ userId }) => {
+    const session = await requireSession();
+    await unfollowUserRepo(session.user.id, userId);
 
     revalidatePath(`/user/${userId}`);
     revalidatePath('/dashboard');
 
     return { data: null, error: null };
-  } catch (error) {
-    logger.error('[followUser]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
-export async function unfollowUser(userId: string) {
-  const parsed = followUserSchema.safeParse({ userId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const session = await requireSession();
-    await unfollowUserRepo(session.user.id, parsed.data.userId);
-
-    revalidatePath(`/user/${userId}`);
-    revalidatePath('/dashboard');
-
-    return { data: null, error: null };
-  } catch (error) {
-    logger.error('[unfollowUser]', error);
-    return { data: null, error: 'Something went wrong' };
-  }
-}
-
-export async function getFollowers(userId: string, limit?: number, offset?: number) {
-  const parsed = getFollowersSchema.safeParse({ userId, limit, offset });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const result = await getFollowersRepo(
-      parsed.data.userId,
-      parsed.data.limit,
-      parsed.data.offset
-    );
-
+export const getFollowers = createServerAction(
+  { schema: getFollowersSchema, actionName: 'getFollowers' },
+  async ({ userId, limit, offset }) => {
+    const result = await getFollowersRepo(userId, limit, offset);
     return { data: result, error: null };
-  } catch (error) {
-    logger.error('[getFollowers]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
-export async function getFollowing(userId: string, limit?: number, offset?: number) {
-  const parsed = getFollowingSchema.safeParse({ userId, limit, offset });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const result = await getFollowingRepo(
-      parsed.data.userId,
-      parsed.data.limit,
-      parsed.data.offset
-    );
-
+export const getFollowing = createServerAction(
+  { schema: getFollowingSchema, actionName: 'getFollowing' },
+  async ({ userId, limit, offset }) => {
+    const result = await getFollowingRepo(userId, limit, offset);
     return { data: result, error: null };
-  } catch (error) {
-    logger.error('[getFollowing]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
-export async function checkFollowingStatus(userId: string) {
-  const parsed = followUserSchema.safeParse({ userId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
+export const checkFollowingStatus = createServerAction(
+  { schema: followUserSchema, actionName: 'checkFollowingStatus', requireAuth: true },
+  async ({ userId }) => {
     const session = await requireSession();
-    const isFollowing = await isFollowingRepo(session.user.id, parsed.data.userId);
+    const isFollowing = await isFollowingRepo(session.user.id, userId);
     return { data: { isFollowing }, error: null };
-  } catch (error) {
-    logger.error('[checkFollowingStatus]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
