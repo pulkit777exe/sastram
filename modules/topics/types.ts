@@ -11,4 +11,3 @@ export interface Topic {
   createdAt: Date;
   updatedAt: Date;
 }
-

@@ -2,8 +2,8 @@
  * Shared validation utilities
  */
 
-import { z } from "zod";
-import { ValidationError } from "./errors";
+import { z } from 'zod';
+import { ValidationError } from './errors';
 
 /**
  * Validate data against a Zod schema
@@ -20,8 +20,8 @@ export function validate<T>(
 
   const firstError = result.error.issues[0];
   const errorMessage = firstError
-    ? `${firstError.path.join(".")}: ${firstError.message}`
-    : "Validation failed";
+    ? `${firstError.path.join('.')}: ${firstError.message}`
+    : 'Validation failed';
 
   return { success: false, error: errorMessage };
 }
@@ -29,11 +29,7 @@ export function validate<T>(
 /**
  * Validate and throw on error
  */
-export function validateOrThrow<T>(
-  schema: z.ZodSchema<T>,
-  data: unknown,
-  field?: string
-): T {
+export function validateOrThrow<T>(schema: z.ZodSchema<T>, data: unknown, field?: string): T {
   const result = validate(schema, data);
 
   if (!result.success) {
@@ -58,4 +54,3 @@ export function parseFormData<T>(
 
   return validate(schema, data);
 }
-

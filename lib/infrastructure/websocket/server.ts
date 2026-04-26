@@ -1,11 +1,11 @@
-import { Server as HTTPServer, IncomingMessage } from "http";
-import { parse } from "url";
-import { WebSocketServer, WebSocket } from "ws";
-import { logger } from "@/lib/infrastructure/logger";
-import { auth } from "@/lib/services/auth";
-import type { TypingIndicator } from "@/lib/types/index";
-import { validateWebSocketMessage } from "@/lib/schemas/websocket";
-import { rateLimit } from "@/lib/services/rate-limit";
+import { Server as HTTPServer, IncomingMessage } from 'http';
+import { parse } from 'url';
+import { WebSocketServer, WebSocket } from 'ws';
+import { logger } from '@/lib/infrastructure/logger';
+import { auth } from '@/lib/services/auth';
+import type { TypingIndicator } from '@/lib/types/index';
+import { validateWebSocketMessage } from '@/lib/schemas/websocket';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 type ThreadChannel = Set<WebSocket>;
 
@@ -23,12 +23,12 @@ const typingIndicators = new Map<string, Map<string, TypingIndicator>>(); // Map
 
 function getThreadId(pathname?: string | null) {
   if (!pathname) return null;
-  const parts = pathname.split("/").filter(Boolean);
+  const parts = pathname.split('/').filter(Boolean);
   if (parts.length < 3) {
     return null;
   }
   const [wsRoot, threadSegment, threadId] = parts;
-  if (wsRoot !== "ws" || threadSegment !== "thread" || !threadId) {
+  if (wsRoot !== 'ws' || threadSegment !== 'thread' || !threadId) {
     return null;
   }
   return threadId;
@@ -36,8 +36,8 @@ function getThreadId(pathname?: string | null) {
 
 function isNotificationsRoute(pathname?: string | null) {
   if (!pathname) return false;
-  const parts = pathname.split("/").filter(Boolean);
-  return parts.includes("notifications");
+  const parts = pathname.split('/').filter(Boolean);
+  return parts.includes('notifications');
 }
 
 async function authenticateConnection(
@@ -63,7 +63,7 @@ async function authenticateConnection(
     }
     return null;
   } catch (error) {
-    logger.error("Authentication error:", error);
+    logger.error('Authentication error:', error);
     return null;
   }
 }
@@ -79,7 +79,7 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
     connectionsByUserId.set(socket.userId, userConns);
   }
 
-  socket.on("close", () => {
+  socket.on('close', () => {
     channel.delete(socket);
     if (channel.size === 0) {
       threadChannels.delete(threadId);
@@ -106,12 +106,12 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
     }
   });
 
-  socket.on("error", (error) => {
-    logger.error("WebSocket error:", error);
+  socket.on('error', (error) => {
+    logger.error('WebSocket error:', error);
   });
 
   socket.isAlive = true;
-  socket.on("pong", () => {
+  socket.on('pong', () => {
     socket.isAlive = true;
   });
 }
@@ -125,7 +125,7 @@ function cleanupTypingIndicators() {
       if (indicator.timestamp && now - indicator.timestamp > TYPING_TIMEOUT) {
         threadTyping.delete(userId);
         publishThreadEvent(threadId, {
-          type: "USER_STOPPED_TYPING",
+          type: 'USER_STOPPED_TYPING',
           payload: { userId, sectionId: threadId },
         });
       }
@@ -144,9 +144,9 @@ export function initWebSocketServer(server: HTTPServer) {
 
   wss = new WebSocketServer({ noServer: true });
 
-  server.on("upgrade", async (request, socket, head) => {
-    const { pathname } = parse(request.url || "");
-    
+  server.on('upgrade', async (request, socket, head) => {
+    const { pathname } = parse(request.url || '');
+
     // Check if it's a notifications route
     const isNotifications = isNotificationsRoute(pathname);
     const threadId = getThreadId(pathname);
@@ -160,7 +160,7 @@ export function initWebSocketServer(server: HTTPServer) {
 
     wss?.handleUpgrade(request, socket, head, (ws) => {
       const authWs = ws as AuthenticatedWebSocket;
-      
+
       if (threadId) {
         authWs.threadId = threadId;
       }
@@ -180,19 +180,19 @@ export function initWebSocketServer(server: HTTPServer) {
         connectionsByUserId.set(authResult.userId, userConns);
       }
 
-      wss?.emit("connection", authWs, request);
+      wss?.emit('connection', authWs, request);
     });
   });
 
-  wss.on("connection", (ws: AuthenticatedWebSocket) => {
+  wss.on('connection', (ws: AuthenticatedWebSocket) => {
     const threadId = ws.threadId;
     const isNotifications = !threadId;
 
     if (isNotifications) {
-      logger.debug("Client connected to notifications channel");
-      
+      logger.debug('Client connected to notifications channel');
+
       // Handle notifications route
-      ws.on("close", () => {
+      ws.on('close', () => {
         if (ws.userId) {
           const userConns = connectionsByUserId.get(ws.userId);
           if (userConns) {
@@ -214,22 +214,22 @@ export function initWebSocketServer(server: HTTPServer) {
 
     logger.debug(
       `Client connected to thread ${threadId}${
-        ws.userId ? ` (user: ${ws.userName})` : " (anonymous)"
+        ws.userId ? ` (user: ${ws.userName})` : ' (anonymous)'
       }`
     );
 
-    ws.on("message", async (data) => {
+    ws.on('message', async (data) => {
       try {
         const rawMessage = JSON.parse(data.toString());
 
         const validation = validateWebSocketMessage(rawMessage);
         if (!validation.success) {
-          logger.warn("Invalid WebSocket message:", validation.error.issues);
+          logger.warn('Invalid WebSocket message:', validation.error.issues);
           ws.send(
             JSON.stringify({
-              type: "ERROR",
+              type: 'ERROR',
               payload: {
-                error: "Invalid message format",
+                error: 'Invalid message format',
                 details: validation.error.issues[0]?.message,
               },
             })
@@ -244,14 +244,14 @@ export function initWebSocketServer(server: HTTPServer) {
           ws.userId ??
           //@ts-expect-error underlying socket has remoteAddress
           (ws._socket?.remoteAddress as string | undefined) ??
-          "anonymous";
+          'anonymous';
         const limitKey = `ws:${threadId}:${identifier}`;
-        const result = await rateLimit({ key: limitKey, type: "websocket" });
+        const result = await rateLimit({ key: limitKey, type: 'websocket' });
         if (!result.success) {
           ws.send(
             JSON.stringify({
-              type: "ERROR",
-              payload: { error: "Rate limit exceeded" },
+              type: 'ERROR',
+              payload: { error: 'Rate limit exceeded' },
             })
           );
           return;
@@ -259,19 +259,18 @@ export function initWebSocketServer(server: HTTPServer) {
 
         if (
           !ws.userId &&
-          (message.type === "USER_TYPING" ||
-            message.type === "USER_STOPPED_TYPING")
+          (message.type === 'USER_TYPING' || message.type === 'USER_STOPPED_TYPING')
         ) {
           ws.send(
             JSON.stringify({
-              type: "ERROR",
-              payload: { error: "Authentication required to send messages" },
+              type: 'ERROR',
+              payload: { error: 'Authentication required to send messages' },
             })
           );
           return;
         }
 
-        if (message.type === "USER_TYPING" && ws.userId && ws.userName) {
+        if (message.type === 'USER_TYPING' && ws.userId && ws.userName) {
           const threadTyping = typingIndicators.get(threadId) ?? new Map();
           threadTyping.set(ws.userId, {
             userId: ws.userId,
@@ -282,32 +281,32 @@ export function initWebSocketServer(server: HTTPServer) {
           typingIndicators.set(threadId, threadTyping);
 
           publishThreadEvent(threadId, {
-            type: "USER_TYPING",
+            type: 'USER_TYPING',
             payload: {
               userId: ws.userId,
               userName: ws.userName,
               sectionId: threadId,
             },
           });
-        } else if (message.type === "USER_STOPPED_TYPING" && ws.userId) {
+        } else if (message.type === 'USER_STOPPED_TYPING' && ws.userId) {
           const threadTyping = typingIndicators.get(threadId);
           if (threadTyping) {
             threadTyping.delete(ws.userId);
           }
 
           publishThreadEvent(threadId, {
-            type: "USER_STOPPED_TYPING",
+            type: 'USER_STOPPED_TYPING',
             payload: { userId: ws.userId, sectionId: threadId },
           });
         } else {
           publishThreadEvent(threadId, message);
         }
       } catch (error) {
-        logger.error("Error processing WebSocket message:", error);
+        logger.error('Error processing WebSocket message:', error);
         ws.send(
           JSON.stringify({
-            type: "ERROR",
-            payload: { error: "Failed to process message" },
+            type: 'ERROR',
+            payload: { error: 'Failed to process message' },
           })
         );
       }
@@ -325,7 +324,7 @@ export function initWebSocketServer(server: HTTPServer) {
     });
   }, 30000); // 30 sec
 
-  wss.on("close", () => {
+  wss.on('close', () => {
     clearInterval(heartbeatInterval);
   });
 
@@ -336,8 +335,7 @@ export function publishUserEvent(userId: string, payload: unknown) {
   const userConns = connectionsByUserId.get(userId);
   if (!userConns) return;
 
-  const message =
-    typeof payload === "string" ? payload : JSON.stringify(payload);
+  const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
   userConns.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -349,12 +347,10 @@ export function publishThreadEvent(threadId: string, payload: unknown) {
   const channel = threadChannels.get(threadId);
   if (!channel) return;
 
-  const message =
-    typeof payload === "string" ? payload : JSON.stringify(payload);
+  const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
   channel.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
     }
   });
 }
-

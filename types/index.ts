@@ -6,7 +6,7 @@ export interface Conversation {
   timestamp: string;
   unread: number;
   online: boolean;
-  type: "channel" | "dm";
+  type: 'channel' | 'dm';
 }
 
 export interface Message {
@@ -18,7 +18,7 @@ export interface Message {
   timestamp: string;
   avatar: string;
   isOwn: boolean;
-  status?: "sent" | "delivered" | "read";
+  status?: 'sent' | 'delivered' | 'read';
 }
 
 export interface User {

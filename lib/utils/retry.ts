@@ -2,7 +2,7 @@ export async function withRetry<T>(
   fn: (signal: AbortSignal) => Promise<T>,
   retries = 3,
   baseDelayMs = 300,
-  timeoutMs = 15_000,
+  timeoutMs = 15_000
 ): Promise<T> {
   let lastError: unknown;
 
@@ -24,5 +24,5 @@ export async function withRetry<T>(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Retry failed");
+  throw lastError instanceof Error ? lastError : new Error('Retry failed');
 }

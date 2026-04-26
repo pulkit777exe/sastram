@@ -1,7 +1,17 @@
-import { auth } from "@/lib/services/auth";
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from '@/lib/services/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
+  const rateLimitResult = await rateLimit(ip);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 }
+    );
+  }
+
   const { email, otp } = await request.json();
   const data = await auth.api.signInEmailOTP({
     body: {
@@ -9,5 +19,5 @@ export async function POST(request: NextRequest) {
       otp,
     },
   });
-  return NextResponse.json(data, {status: 200});
+  return NextResponse.json(data, { status: 200 });
 }

@@ -3,7 +3,7 @@
  * Defines what actions different roles can perform
  */
 
-import { USER_ROLES, type UserRole } from "./constants";
+import { USER_ROLES, type UserRole } from './constants';
 
 export const PERMISSIONS = {
   // Message permissions
@@ -57,4 +57,3 @@ export function canModerate(role: UserRole): boolean {
 export function isAdmin(role: UserRole): boolean {
   return role === USER_ROLES.ADMIN;
 }
-

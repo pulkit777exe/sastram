@@ -30,4 +30,3 @@ export interface BookmarkedThreadsResponse {
   total: number;
   hasMore: boolean;
 }
-

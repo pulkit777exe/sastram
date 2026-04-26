@@ -9,7 +9,7 @@ import type {
   SectionVisibility,
   SectionRole,
   UserStatus,
-} from "@prisma/client";
+} from '@prisma/client';
 
 // Base thread record with all relations
 export type ThreadRecord = Section & {
@@ -58,8 +58,8 @@ export interface ThreadSummary {
 
 // Detailed thread view with messages
 export interface ThreadDNA {
-  questionType: "factual" | "opinion" | "technical" | "comparison" | "other";
-  expertiseLevel: "beginner" | "intermediate" | "advanced" | "expert";
+  questionType: 'factual' | 'opinion' | 'technical' | 'comparison' | 'other';
+  expertiseLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   topics: string[];
   readTimeMinutes: number;
 }
@@ -211,7 +211,7 @@ export interface ThreadFilters {
   communityId?: string;
   visibility?: SectionVisibility;
   search?: string;
-  sortBy?: "recent" | "popular" | "active" | "oldest";
+  sortBy?: 'recent' | 'popular' | 'active' | 'oldest';
   page?: number;
   pageSize?: number;
 }

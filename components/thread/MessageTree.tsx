@@ -1,12 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type {
-  ThreadMessage,
-  ThreadMessageReactionAggregate,
-} from "@/modules/threads/queries";
-import MessageItem from "./MessageItem";
-import { useBootstrap } from "@/components/bootstrap-provider";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ThreadMessage, ThreadMessageReactionAggregate } from '@/modules/threads/queries';
+import MessageItem from './MessageItem';
+import { useBootstrap } from '@/components/bootstrap-provider';
 
 export interface MessageNode extends ThreadMessage {
   children: MessageNode[];
@@ -22,7 +19,7 @@ function buildTree(messages: ThreadMessage[]): MessageNode[] {
     map.set(msg.id, {
       ...msg,
       children: [],
-    }),
+    })
   );
 
   messages.forEach((msg) => {
@@ -40,10 +37,10 @@ function buildTree(messages: ThreadMessage[]): MessageNode[] {
 function updateReactionCounts(
   reactions: ThreadMessageReactionAggregate[],
   reactionType: string,
-  count: number,
+  count: number
 ) {
   const next = reactions.map((reaction) =>
-    reaction.type === reactionType ? { ...reaction, _count: count } : reaction,
+    reaction.type === reactionType ? { ...reaction, _count: count } : reaction
   );
 
   if (!next.some((reaction) => reaction.type === reactionType) && count > 0) {
@@ -83,9 +80,7 @@ export default function MessageTree({
       return;
     }
 
-    const ws = new WebSocket(
-      `${process.env.NEXT_PUBLIC_WS_URL}/thread/${threadId}`,
-    );
+    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WS_URL}/thread/${threadId}`);
 
     ws.onmessage = (event) => {
       if (!mounted.current) return;
@@ -95,7 +90,7 @@ export default function MessageTree({
       };
 
       switch (message.type) {
-        case "NEW_MESSAGE": {
+        case 'NEW_MESSAGE': {
           const payload = message.payload as {
             id: string;
             content: string;
@@ -142,12 +137,17 @@ export default function MessageTree({
             attachments: payload.attachments ?? [],
           };
           setMessages((prev) => {
-            if (prev.some((m) => m.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
+const existingIndex = prev.findIndex((m) => m.id === newMessage.id);
+          if (existingIndex >= 0) {
+            const updated = [...prev];
+            updated[existingIndex] = { ...updated[existingIndex], body: newMessage.body };
+            return updated;
+          }
+          return [...prev, newMessage];
           });
           break;
         }
-        case "REACTION_UPDATE": {
+        case 'REACTION_UPDATE': {
           const payload = message.payload as {
             messageId: string;
             reactionType: string;
@@ -161,26 +161,24 @@ export default function MessageTree({
                     reactions: updateReactionCounts(
                       m.reactions || [],
                       payload.reactionType,
-                      payload.count,
+                      payload.count
                     ),
                   }
-                : m,
-            ),
+                : m
+            )
           );
           break;
         }
-        case "AI_RESPONSE_READY": {
+        case 'AI_RESPONSE_READY': {
           const payload = message.payload as { message: ThreadMessage };
           setMessages((prev) => {
-            const next = prev.filter(
-              (m) => m.body !== payload.message.body || m.isAI,
-            );
+            const next = prev.filter((m) => m.body !== payload.message.body || m.isAI);
             if (next.some((m) => m.id === payload.message.id)) return next;
             return [...next, payload.message];
           });
           break;
         }
-        case "MENTION_NOTIFICATION": {
+        case 'MENTION_NOTIFICATION': {
           const payload = message.payload as {
             mentionedUserId?: string;
           };
@@ -189,7 +187,7 @@ export default function MessageTree({
           }
           break;
         }
-        case "RESOLUTION_UPDATE":
+        case 'RESOLUTION_UPDATE':
         default:
           break;
       }
@@ -228,16 +226,11 @@ interface MessageBranchProps {
   rootAuthorId: string;
 }
 
-function MessageBranch({
-  node,
-  depth,
-  currentUserId,
-  rootAuthorId,
-}: MessageBranchProps) {
+function MessageBranch({ node, depth, currentUserId, rootAuthorId }: MessageBranchProps) {
   const isBeyondMaxDepth = depth >= MAX_VISUAL_DEPTH;
 
   return (
-    <div className={depth > 0 ? "ml-[44px]" : ""}>
+    <div className={depth > 0 ? 'ml-[44px]' : ''}>
       <MessageItem
         message={node}
         depth={depth}
@@ -262,10 +255,7 @@ function MessageBranch({
       )}
 
       {isBeyondMaxDepth && node.children.length > 0 && (
-        <button
-          type="button"
-          className="mt-[8px] text-[12px] font-medium text-(--blue)"
-        >
+        <button type="button" className="mt-[8px] text-[12px] font-medium text-(--blue)">
           View more replies →
         </button>
       )}

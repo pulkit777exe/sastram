@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Users } from "lucide-react";
-import { ThreadAccessModal } from "./access-management-modal";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Users } from 'lucide-react';
+import { ThreadAccessModal } from './access-management-modal';
 
 interface ThreadManagementControlsProps {
   threadId: string;

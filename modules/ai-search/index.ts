@@ -1,5 +1,5 @@
-export { executeAISearch } from "./service";
-export { getCachedResult, cacheResult } from "./cache";
+export { executeAISearch } from './service';
+export { getCachedResult, cacheResult } from './cache';
 export type {
   SearchConfig,
   QueryClassification,
@@ -8,4 +8,4 @@ export type {
   SynthesisResult,
   AISearchResponse,
   PastSearch,
-} from "./types";
+} from './types';

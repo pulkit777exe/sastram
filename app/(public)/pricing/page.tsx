@@ -1,20 +1,13 @@
-import {
-  Check,
-  Sparkles,
-  Zap,
-  MessageSquare,
-  Shield,
-  Crown,
-} from "lucide-react";
-import Link from "next/link";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Check, Sparkles, Zap, MessageSquare, Shield, Crown } from 'lucide-react';
+import Link from 'next/link';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const features = [
-  { icon: Sparkles, text: "AI-powered replies & suggestions" },
-  { icon: Zap, text: "Priority message delivery" },
-  { icon: MessageSquare, text: "Unlimited thread creation" },
-  { icon: Shield, text: "Advanced moderation tools" },
-  { icon: Crown, text: "Exclusive Pro badge" },
+  { icon: Sparkles, text: 'AI-powered replies & suggestions' },
+  { icon: Zap, text: 'Priority message delivery' },
+  { icon: MessageSquare, text: 'Unlimited thread creation' },
+  { icon: Shield, text: 'Advanced moderation tools' },
+  { icon: Crown, text: 'Exclusive Pro badge' },
 ];
 
 export default function PricingPage() {
@@ -45,15 +38,15 @@ export default function PricingPage() {
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
-            Unlock the full power of{" "}
+            Unlock the full power of{' '}
             <span className="bg-linear-to-r from-brand via-purple-500 to-pink-500 bg-clip-text text-transparent">
               Sastram
             </span>
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12">
-            Get access to AI-powered features, priority support, and exclusive
-            tools designed to supercharge your discussions.
+            Get access to AI-powered features, priority support, and exclusive tools designed to
+            supercharge your discussions.
           </p>
 
           <div className="max-w-md mx-auto">
@@ -66,9 +59,7 @@ export default function PricingPage() {
                   <Crown size={12} />
                   Most Popular
                 </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">
-                  Pro Plan
-                </h2>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Pro Plan</h2>
                 <p className="text-muted-foreground text-sm mb-6">
                   Everything you need for power users
                 </p>
@@ -83,9 +74,7 @@ export default function PricingPage() {
                       <div className="shrink-0 w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center">
                         <feature.icon size={16} className="text-brand" />
                       </div>
-                      <span className="text-foreground text-sm">
-                        {feature.text}
-                      </span>
+                      <span className="text-foreground text-sm">{feature.text}</span>
                     </li>
                   ))}
                 </ul>

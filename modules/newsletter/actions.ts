@@ -1,14 +1,13 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { auth } from "@/lib/services/auth";
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
-import {
-  subscribeToThreadNewsletter,
-  scheduleThreadDigest,
-} from "./repository";
-import { z } from "zod";
+import { logger } from '@/lib/infrastructure/logger';
+
+import { prisma } from '@/lib/infrastructure/prisma';
+import { auth } from '@/lib/services/auth';
+import { headers } from 'next/headers';
+import { revalidatePath } from 'next/cache';
+import { subscribeToThreadNewsletter, scheduleThreadDigest } from './repository';
+import { z } from 'zod';
 
 const threadIdSchema = z.object({
   threadId: z.string().cuid(),
@@ -21,13 +20,13 @@ const subscribeSchema = z.object({
 
 const updateSubscriptionFrequencySchema = z.object({
   threadId: z.string().cuid(),
-  frequency: z.enum(["DAILY", "WEEKLY", "NEVER"]),
+  frequency: z.enum(['DAILY', 'WEEKLY', 'NEVER']),
 });
 
 export async function unsubscribeFromThread(threadId: string) {
   const parsed = threadIdSchema.safeParse({ threadId });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -36,7 +35,7 @@ export async function unsubscribeFromThread(threadId: string) {
     });
 
     if (!session?.user) {
-      return { data: null, error: "Something went wrong" };
+      return { data: null, error: 'Something went wrong' };
     }
 
     await prisma.threadSubscription.deleteMany({
@@ -46,11 +45,11 @@ export async function unsubscribeFromThread(threadId: string) {
       },
     });
 
-    revalidatePath("/dashboard/settings");
+    revalidatePath('/dashboard/settings');
     return { data: null, error: null };
   } catch (error) {
-    console.error("[unsubscribeFromThread]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[unsubscribeFromThread]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -66,7 +65,7 @@ export async function updateSubscriptionFrequencyAction({
     frequency,
   });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -75,7 +74,7 @@ export async function updateSubscriptionFrequencyAction({
     });
 
     if (!session?.user) {
-      return { data: null, error: "Something went wrong" };
+      return { data: null, error: 'Something went wrong' };
     }
 
     await prisma.threadSubscription.update({
@@ -92,8 +91,8 @@ export async function updateSubscriptionFrequencyAction({
 
     return { data: null, error: null };
   } catch (error) {
-    console.error("[updateSubscriptionFrequencyAction]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[updateSubscriptionFrequencyAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -122,14 +121,14 @@ export async function getUserNewsletterSubscriptions() {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     });
 
     return { data: subscriptions, error: null };
   } catch (error) {
-    console.error("[getUserNewsletterSubscriptions]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[getUserNewsletterSubscriptions]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -142,7 +141,7 @@ export async function subscribeToThreadAction({
 }) {
   const parsed = subscribeSchema.safeParse({ threadId, slug });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -151,7 +150,7 @@ export async function subscribeToThreadAction({
     });
 
     if (!session?.user) {
-      return { data: null, error: "Something went wrong" };
+      return { data: null, error: 'Something went wrong' };
     }
 
     const email = session.user.email;
@@ -165,7 +164,7 @@ export async function subscribeToThreadAction({
     revalidatePath(`/dashboard/threads/thread/${parsed.data.slug}`);
     return { data: null, error: null };
   } catch (error) {
-    console.error("[subscribeToThreadAction]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[subscribeToThreadAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

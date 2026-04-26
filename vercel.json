@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/worker?queue=EMAIL",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/worker?queue=DAILY_DIGEST",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/worker?queue=STALENESS_CHECK",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

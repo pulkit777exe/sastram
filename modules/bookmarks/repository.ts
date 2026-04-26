@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function bookmarkThread(userId: string, threadId: string) {
   // Check if already bookmarked
@@ -45,11 +45,7 @@ export async function unbookmarkThread(userId: string, threadId: string) {
   });
 }
 
-export async function getUserBookmarks(
-  userId: string,
-  limit: number = 20,
-  offset: number = 0
-) {
+export async function getUserBookmarks(userId: string, limit: number = 20, offset: number = 0) {
   try {
     const [bookmarks, total] = await Promise.all([
       prisma.userBookmark.findMany({
@@ -77,7 +73,7 @@ export async function getUserBookmarks(
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
@@ -92,7 +88,7 @@ export async function getUserBookmarks(
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[getUserBookmarks]", error);
+    logger.error('[getUserBookmarks]', error);
     return {
       bookmarks: [],
       total: 0,

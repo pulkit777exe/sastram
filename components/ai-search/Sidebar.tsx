@@ -1,17 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import {
-  Plus,
-  Search,
-  BookOpen,
-  Code2,
-  X,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import type { PastSearch } from "@/modules/ai-search/types";
-import { TimeAgo } from "@/components/ui/TimeAgo";
+import { useState, useEffect } from 'react';
+import { Plus, Search, BookOpen, Code2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { PastSearch } from '@/modules/ai-search/types';
+import { TimeAgo } from '@/components/ui/TimeAgo';
 
 interface SidebarProps {
   searches: PastSearch[];
@@ -39,14 +31,14 @@ export function Sidebar({
   return (
     <div
       className={`relative h-full flex flex-col bg-card border border-border rounded-2xl transition-all duration-250 ease-in-out overflow-hidden ${
-        collapsed ? "w-0 border-0 p-0" : "w-[220px]"
+        collapsed ? 'w-0 border-0 p-0' : 'w-[220px]'
       }`}
     >
       {/* Toggle button */}
       <button
         onClick={onToggle}
         className={`absolute top-4 z-10 p-1 rounded-md bg-card border border-border text-muted-foreground hover:text-foreground transition-all duration-200 ${
-          collapsed ? "-right-8" : "right-2"
+          collapsed ? '-right-8' : 'right-2'
         }`}
       >
         {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -56,9 +48,7 @@ export function Sidebar({
         <>
           {/* Header */}
           <div className="px-4 pt-4 pb-2">
-            <h2 className="text-sm font-semibold text-foreground tracking-tight">
-              Sastram AI
-            </h2>
+            <h2 className="text-sm font-semibold text-foreground tracking-tight">Sastram AI</h2>
           </div>
 
           {/* Nav items */}
@@ -93,9 +83,7 @@ export function Sidebar({
             >
               <Code2 size={14} />
               API Keys
-              {hasApiKeys && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              )}
+              {hasApiKeys && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500" />}
             </button>
           </div>
 
@@ -105,9 +93,7 @@ export function Sidebar({
           {/* Recent searches */}
           <div className="flex-1 overflow-y-auto px-2">
             {searches.length === 0 ? (
-              <p className="px-3 text-[11px] text-muted-foreground/50 italic">
-                No recent searches
-              </p>
+              <p className="px-3 text-[11px] text-muted-foreground/50 italic">No recent searches</p>
             ) : (
               <div className="space-y-0.5">
                 {searches.map((s) => (
@@ -122,9 +108,7 @@ export function Sidebar({
                       className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors truncate pr-7"
                     >
                       <span className="truncate block">
-                        {s.query.length > 32
-                          ? s.query.substring(0, 32) + "..."
-                          : s.query}
+                        {s.query.length > 32 ? s.query.substring(0, 32) + '...' : s.query}
                       </span>
                       <span className="text-[10px] text-muted-foreground/50 block">
                         <TimeAgo date={s.timestamp} />
@@ -154,12 +138,8 @@ export function Sidebar({
                 S
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground truncate">
-                  Sastram User
-                </p>
-                <p className="text-[10px] text-muted-foreground truncate">
-                  Personal workspace
-                </p>
+                <p className="text-xs font-medium text-foreground truncate">Sastram User</p>
+                <p className="text-[10px] text-muted-foreground truncate">Personal workspace</p>
               </div>
             </div>
           </div>

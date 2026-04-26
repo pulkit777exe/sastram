@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { ProfilePrivacy } from "@prisma/client";
-import { dedupe } from "@/lib/dedupe";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { ProfilePrivacy } from '@prisma/client';
+import { dedupe } from '@/lib/dedupe';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function getPublicProfile(userId: string, viewerId?: string) {
   const user = await prisma.user.findUnique({
@@ -42,7 +42,7 @@ export async function getPublicProfile(userId: string, viewerId?: string) {
       const isFollowing = await prisma.userFollow.findUnique({
         where: {
           followerId_followingId: {
-            followerId: viewerId || "",
+            followerId: viewerId || '',
             followingId: userId,
           },
         },
@@ -76,15 +76,11 @@ export async function getUserBootstrapProfile(userId: string) {
         reputationPoints: true,
         isPro: true,
       },
-    }),
+    })
   );
 }
 
-export async function getUserThreads(
-  userId: string,
-  limit: number = 20,
-  offset: number = 0,
-) {
+export async function getUserThreads(userId: string, limit: number = 20, offset: number = 0) {
   try {
     const [threads, total] = await Promise.all([
       prisma.section.findMany({
@@ -108,7 +104,7 @@ export async function getUserThreads(
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
@@ -125,7 +121,7 @@ export async function getUserThreads(
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[getUserThreads]", error);
+    logger.error('[getUserThreads]', error);
     return {
       threads: [],
       total: 0,
@@ -134,21 +130,14 @@ export async function getUserThreads(
   }
 }
 
-export async function updateProfilePrivacy(
-  userId: string,
-  privacy: ProfilePrivacy,
-) {
+export async function updateProfilePrivacy(userId: string, privacy: ProfilePrivacy) {
   return prisma.user.update({
     where: { id: userId },
     data: { profilePrivacy: privacy },
   });
 }
 
-export async function getUserMessages(
-  userId: string,
-  limit: number = 20,
-  offset: number = 0,
-) {
+export async function getUserMessages(userId: string, limit: number = 20, offset: number = 0) {
   try {
     const [messages, total] = await Promise.all([
       prisma.message.findMany({
@@ -181,7 +170,7 @@ export async function getUserMessages(
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
@@ -199,7 +188,7 @@ export async function getUserMessages(
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[getUserMessages]", error);
+    logger.error('[getUserMessages]', error);
     return {
       messages: [],
       total: 0,

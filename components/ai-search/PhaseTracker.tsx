@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from 'react';
+import { Check, Loader2 } from 'lucide-react';
 
-type Phase = "classify" | "search" | "crossref" | "synthesize" | "done";
+type Phase = 'classify' | 'search' | 'crossref' | 'synthesize' | 'done';
 
 interface PhaseTrackerProps {
   currentPhase: Phase;
@@ -11,11 +11,11 @@ interface PhaseTrackerProps {
 }
 
 const PHASES: { key: Phase; label: string }[] = [
-  { key: "classify", label: "Classify" },
-  { key: "search", label: "Search" },
-  { key: "crossref", label: "Cross-ref" },
-  { key: "synthesize", label: "Synthesize" },
-  { key: "done", label: "Done" },
+  { key: 'classify', label: 'Classify' },
+  { key: 'search', label: 'Search' },
+  { key: 'crossref', label: 'Cross-ref' },
+  { key: 'synthesize', label: 'Synthesize' },
+  { key: 'done', label: 'Done' },
 ];
 
 function getPhaseIndex(phase: Phase): number {
@@ -34,7 +34,7 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
       intervalRef.current = null;
     }
 
-    if (currentPhase === "done") return;
+    if (currentPhase === 'done') return;
 
     // Live counter
     intervalRef.current = setInterval(() => {
@@ -59,13 +59,10 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
       aria-valuemax={PHASES.length - 1}
     >
       {PHASES.map((phase, index) => {
-        const isDone =
-          index < currentIndex ||
-          (phase.key === "done" && currentPhase === "done");
-        const isActive = index === currentIndex && currentPhase !== "done";
+        const isDone = index < currentIndex || (phase.key === 'done' && currentPhase === 'done');
+        const isActive = index === currentIndex && currentPhase !== 'done';
         const isPending =
-          index > currentIndex &&
-          !(phase.key === "done" && currentPhase === "done");
+          index > currentIndex && !(phase.key === 'done' && currentPhase === 'done');
 
         return (
           <div key={phase.key} className="flex items-center gap-1 flex-1">
@@ -73,17 +70,15 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
               className={`
                 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
                 transition-all duration-300 w-full
-                ${isDone ? "bg-foreground/10 text-foreground" : ""}
-                ${isActive ? "bg-foreground text-background animate-pulse" : ""}
-                ${isPending ? "bg-muted text-muted-foreground/50" : ""}
+                ${isDone ? 'bg-foreground/10 text-foreground' : ''}
+                ${isActive ? 'bg-foreground text-background animate-pulse' : ''}
+                ${isPending ? 'bg-muted text-muted-foreground/50' : ''}
               `}
             >
               {isDone && <Check size={12} className="shrink-0" />}
-              {isActive && (
-                <Loader2 size={12} className="shrink-0 animate-spin" />
-              )}
+              {isActive && <Loader2 size={12} className="shrink-0 animate-spin" />}
               <span className="truncate">{phase.label}</span>
-              {phase.key === "done" && currentPhase === "done" && (
+              {phase.key === 'done' && currentPhase === 'done' && (
                 <span className="text-[10px] opacity-70 ml-0.5 tabular-nums">
                   {formatTime(elapsed)}
                 </span>

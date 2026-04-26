@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Mail,
   RefreshCw,
@@ -14,18 +14,18 @@ import {
   Sparkles,
   Users,
   Calendar,
-} from "lucide-react";
-import { toast } from "sonner";
-import axios from "axios";
-import { cn } from "@/lib/utils/cn";
-import { TimeAgo } from "@/components/ui/TimeAgo";
+} from 'lucide-react';
+import { toast } from 'sonner';
+import axios from 'axios';
+import { cn } from '@/lib/utils/cn';
+import { TimeAgo } from '@/components/ui/TimeAgo';
 
 interface ThreadDigest {
   id: string;
   threadId: string;
   scheduledFor: Date;
   processedAt: Date | null;
-  status: "PENDING" | "PROCESSING" | "SENT" | "FAILED";
+  status: 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
   summary: string | null;
   emailCount: number;
   thread: {
@@ -41,66 +41,51 @@ interface NewsletterDigestAdminProps {
   totalSubscribers: number;
 }
 
-export function NewsletterDigestAdmin({
-  digests,
-  totalSubscribers,
-}: NewsletterDigestAdminProps) {
+export function NewsletterDigestAdmin({ digests, totalSubscribers }: NewsletterDigestAdminProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
   async function handleGenerateDigests() {
     setIsGenerating(true);
     try {
-      await axios.post("/api/newsletter/generate");
-      toast.success("Newsletter digests generated and sent successfully!");
+      await axios.post('/api/newsletter/generate');
+      toast.success('Newsletter digests generated and sent successfully!');
     } catch (error) {
-      console.error("Failed to generate digests:", error);
-      toast.error("Failed to generate newsletter digests");
+      console.error('Failed to generate digests:', error);
+      toast.error('Failed to generate newsletter digests');
     } finally {
       setIsGenerating(false);
     }
   }
 
-  const pendingDigests = digests.filter((d) => d.status === "PENDING");
-  const sentDigests = digests.filter((d) => d.status === "SENT");
+  const pendingDigests = digests.filter((d) => d.status === 'PENDING');
+  const sentDigests = digests.filter((d) => d.status === 'SENT');
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "PENDING":
+      case 'PENDING':
         return (
-          <Badge
-            variant="outline"
-            className="text-amber-500 border-amber-500/30 bg-amber-500/10"
-          >
+          <Badge variant="outline" className="text-amber-500 border-amber-500/30 bg-amber-500/10">
             <Clock className="w-3 h-3 mr-1" />
             Pending
           </Badge>
         );
-      case "PROCESSING":
+      case 'PROCESSING':
         return (
-          <Badge
-            variant="outline"
-            className="text-blue-500 border-blue-500/30 bg-blue-500/10"
-          >
+          <Badge variant="outline" className="text-blue-500 border-blue-500/30 bg-blue-500/10">
             <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
             Processing
           </Badge>
         );
-      case "SENT":
+      case 'SENT':
         return (
-          <Badge
-            variant="outline"
-            className="text-green-500 border-green-500/30 bg-green-500/10"
-          >
+          <Badge variant="outline" className="text-green-500 border-green-500/30 bg-green-500/10">
             <CheckCircle2 className="w-3 h-3 mr-1" />
             Sent
           </Badge>
         );
-      case "FAILED":
+      case 'FAILED':
         return (
-          <Badge
-            variant="outline"
-            className="text-red-500 border-red-500/30 bg-red-500/10"
-          >
+          <Badge variant="outline" className="text-red-500 border-red-500/30 bg-red-500/10">
             <AlertCircle className="w-3 h-3 mr-1" />
             Failed
           </Badge>
@@ -118,12 +103,8 @@ export function NewsletterDigestAdmin({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-indigo-500 font-medium">
-                  Total Subscribers
-                </p>
-                <p className="text-3xl font-bold text-foreground mt-1">
-                  {totalSubscribers}
-                </p>
+                <p className="text-sm text-indigo-500 font-medium">Total Subscribers</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{totalSubscribers}</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-indigo-500/10 flex items-center justify-center">
                 <Users className="h-6 w-6 text-indigo-500" />
@@ -136,12 +117,8 @@ export function NewsletterDigestAdmin({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-amber-500 font-medium">
-                  Pending Digests
-                </p>
-                <p className="text-3xl font-bold text-foreground mt-1">
-                  {pendingDigests.length}
-                </p>
+                <p className="text-sm text-amber-500 font-medium">Pending Digests</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{pendingDigests.length}</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
                 <Clock className="h-6 w-6 text-amber-500" />
@@ -154,12 +131,8 @@ export function NewsletterDigestAdmin({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-green-500 font-medium">
-                  Sent This Week
-                </p>
-                <p className="text-3xl font-bold text-foreground mt-1">
-                  {sentDigests.length}
-                </p>
+                <p className="text-sm text-green-500 font-medium">Sent This Week</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{sentDigests.length}</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-green-500/10 flex items-center justify-center">
                 <Send className="h-6 w-6 text-green-500" />
@@ -178,9 +151,7 @@ export function NewsletterDigestAdmin({
                 <Sparkles className="h-5 w-5 text-indigo-500" />
               </div>
               <div>
-                <CardTitle className="text-foreground">
-                  Generate Newsletter Digests
-                </CardTitle>
+                <CardTitle className="text-foreground">Generate Newsletter Digests</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
                   Trigger AI-powered digest generation for all pending threads
                 </p>
@@ -232,37 +203,31 @@ export function NewsletterDigestAdmin({
                 <div
                   key={digest.id}
                   className={cn(
-                    "rounded-xl border p-4 transition-colors",
-                    digest.status === "SENT"
-                      ? "border-green-500/20 bg-green-500/5"
-                      : digest.status === "PENDING"
-                      ? "border-amber-500/20 bg-amber-500/5"
-                      : "border-border bg-muted/50"
+                    'rounded-xl border p-4 transition-colors',
+                    digest.status === 'SENT'
+                      ? 'border-green-500/20 bg-green-500/5'
+                      : digest.status === 'PENDING'
+                        ? 'border-amber-500/20 bg-amber-500/5'
+                        : 'border-border bg-muted/50'
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-foreground">
-                          {digest.thread.name}
-                        </h3>
+                        <h3 className="font-semibold text-foreground">{digest.thread.name}</h3>
                         {getStatusBadge(digest.status)}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>
-                          Scheduled:{" "}
-                          <TimeAgo date={digest.scheduledFor} />
+                          Scheduled: <TimeAgo date={digest.scheduledFor} />
                         </span>
                         {digest.processedAt && (
                           <span>
-                            Sent:{" "}
-                            <TimeAgo date={digest.processedAt} />
+                            Sent: <TimeAgo date={digest.processedAt} />
                           </span>
                         )}
                         {digest.emailCount > 0 && (
-                          <span className="text-green-500">
-                            {digest.emailCount} emails sent
-                          </span>
+                          <span className="text-green-500">{digest.emailCount} emails sent</span>
                         )}
                       </div>
                       {digest.summary && (

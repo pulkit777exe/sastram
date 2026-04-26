@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 export type UserActivityDetails = Record<string, unknown> | null;
 
@@ -65,7 +65,7 @@ export async function getUserActivities(filters?: UserActivityFilters) {
     }
   }
 
-  return safeList("[getUserActivities]", () =>
+  return safeList('[getUserActivities]', () =>
     prisma.userActivity.findMany({
       where,
       include: {
@@ -79,16 +79,16 @@ export async function getUserActivities(filters?: UserActivityFilters) {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       take: filters?.limit || 100,
       skip: filters?.offset || 0,
-    }),
+    })
   );
 }
 
 export async function getEntityHistory(entityType: string, entityId: string) {
-  return safeList("[getEntityHistory]", () =>
+  return safeList('[getEntityHistory]', () =>
     prisma.userActivity.findMany({
       where: {
         entityType,
@@ -105,18 +105,14 @@ export async function getEntityHistory(entityType: string, entityId: string) {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
-    }),
+    })
   );
 }
 
-export async function getUserActivity(
-  userId: string,
-  limit: number = 50,
-  offset: number = 0
-) {
-  return safeList("[getUserActivity]", () =>
+export async function getUserActivity(userId: string, limit: number = 50, offset: number = 0) {
+  return safeList('[getUserActivity]', () =>
     prisma.userActivity.findMany({
       where: {
         userId,
@@ -131,11 +127,11 @@ export async function getUserActivity(
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       take: limit,
       skip: offset,
-    }),
+    })
   );
 }
 
@@ -159,14 +155,14 @@ export async function getUserActivityStats(filters?: {
   const [totalCount, actionBreakdown, entityTypeBreakdown] = await Promise.all([
     prisma.userActivity.count({ where }),
     prisma.userActivity.groupBy({
-      by: ["type"],
+      by: ['type'],
       where,
       _count: {
         type: true,
       },
     }),
     prisma.userActivity.groupBy({
-      by: ["entityType"],
+      by: ['entityType'],
       where,
       _count: {
         entityType: true,
@@ -187,11 +183,7 @@ export async function getUserActivityStats(filters?: {
   };
 }
 
-export async function getMostActiveUsers(
-  limit: number = 10,
-  startDate?: Date,
-  endDate?: Date
-) {
+export async function getMostActiveUsers(limit: number = 10, startDate?: Date, endDate?: Date) {
   const where: any = {};
 
   if (startDate || endDate) {
@@ -201,7 +193,7 @@ export async function getMostActiveUsers(
   }
 
   const userActivity = await prisma.userActivity.groupBy({
-    by: ["userId"],
+    by: ['userId'],
     where: {
       ...where,
       userId: { not: null },
@@ -211,18 +203,16 @@ export async function getMostActiveUsers(
     },
     orderBy: {
       _count: {
-        userId: "desc",
+        userId: 'desc',
       },
     },
     take: limit,
   });
 
   // Fetch user details
-  const userIds = userActivity
-    .map((item) => item.userId)
-    .filter((id): id is string => id !== null);
+  const userIds = userActivity.map((item) => item.userId).filter((id): id is string => id !== null);
 
-  const users = await safeList("[getMostActiveUsers:users]", () =>
+  const users = await safeList('[getMostActiveUsers:users]', () =>
     prisma.user.findMany({
       where: {
         id: { in: userIds },
@@ -233,7 +223,7 @@ export async function getMostActiveUsers(
         email: true,
         avatarUrl: true,
       },
-    }),
+    })
   );
 
   const userMap = new Map(users.map((user) => [user.id, user]));
@@ -248,13 +238,13 @@ export async function getMostActiveUsers(
 
 export async function searchUserActivities(
   searchTerm: string,
-  filters?: Omit<UserActivityFilters, "limit" | "offset">,
+  filters?: Omit<UserActivityFilters, 'limit' | 'offset'>,
   limit: number = 50
 ) {
   const where: any = {
     OR: [
-      { entityId: { contains: searchTerm, mode: "insensitive" } },
-      { entityType: { contains: searchTerm, mode: "insensitive" } },
+      { entityId: { contains: searchTerm, mode: 'insensitive' } },
+      { entityType: { contains: searchTerm, mode: 'insensitive' } },
     ],
   };
 
@@ -269,7 +259,7 @@ export async function searchUserActivities(
     if (filters.endDate) where.createdAt.lte = filters.endDate;
   }
 
-  return safeList("[searchUserActivities]", () =>
+  return safeList('[searchUserActivities]', () =>
     prisma.userActivity.findMany({
       where,
       include: {
@@ -282,10 +272,10 @@ export async function searchUserActivities(
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       take: limit,
-    }),
+    })
   );
 }
 

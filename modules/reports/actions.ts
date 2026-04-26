@@ -1,21 +1,16 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { requireSession, assertAdmin } from "@/modules/auth/session";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import {
-  REPORT_STATUS,
-  REPORT_CATEGORY_LABELS,
-} from "@/lib/config/constants";
-import {
-  createReportSchema,
-  updateReportStatusSchema,
-  resolveReportSchema,
-} from "./schemas";
-import { createNotification } from "@/modules/notifications/repository";
-import { logAction } from "@/modules/audit/repository";
-import type { ReportCategory } from "@prisma/client";
+import { logger } from '@/lib/infrastructure/logger';
+
+import { prisma } from '@/lib/infrastructure/prisma';
+import { requireSession, assertAdmin } from '@/modules/auth/session';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
+import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
+import { createNotification } from '@/modules/notifications/repository';
+import { logAction } from '@/modules/audit/repository';
+import type { ReportCategory } from '@prisma/client';
 
 const reportFiltersSchema = z.object({
   status: z.string().optional(),
@@ -34,7 +29,7 @@ export async function createReport(data: {
 }) {
   const validation = createReportSchema.safeParse(data);
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -47,7 +42,7 @@ export async function createReport(data: {
     });
 
     if (existingReport) {
-      return { data: null, error: "You have already reported this message" };
+      return { data: null, error: 'You have already reported this message' };
     }
 
     const message = await prisma.message.findUnique({
@@ -60,11 +55,11 @@ export async function createReport(data: {
     });
 
     if (!message) {
-      return { data: null, error: "Message not found" };
+      return { data: null, error: 'Message not found' };
     }
 
     if (message.senderId === session.user.id) {
-      return { data: null, error: "You cannot report your own message" };
+      return { data: null, error: 'You cannot report your own message' };
     }
     const report = await prisma.report.create({
       data: {
@@ -77,8 +72,8 @@ export async function createReport(data: {
     });
 
     await logAction({
-      action: "REPORT_CREATED",
-      entityType: "Report",
+      action: 'REPORT_CREATED',
+      entityType: 'Report',
       entityId: report.id,
       userId: session.user.id,
       details: {
@@ -87,8 +82,8 @@ export async function createReport(data: {
       },
     });
 
-    revalidatePath("/dashboard/admin/reports");
-    revalidatePath("/dashboard/admin/moderation");
+    revalidatePath('/dashboard/admin/reports');
+    revalidatePath('/dashboard/admin/moderation');
 
     return {
       data: {
@@ -98,26 +93,22 @@ export async function createReport(data: {
       error: null,
     };
   } catch (error) {
-    console.error("[createReport]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[createReport]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
-export async function getReports(filters?: {
-  status?: string;
-  limit?: number;
-  offset?: number;
-}) {
+export async function getReports(filters?: { status?: string; limit?: number; offset?: number }) {
   const parsed = reportFiltersSchema.safeParse(filters ?? {});
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const session = await requireSession();
 
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return { data: null, error: "Something went wrong" };
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
+      return { data: null, error: 'Something went wrong' };
     }
 
     const limit = Math.min(parsed.data.limit || 50, 100);
@@ -161,15 +152,15 @@ export async function getReports(filters?: {
           },
         },
       },
-      orderBy: [{ createdAt: "desc" }],
+      orderBy: [{ createdAt: 'desc' }],
       take: limit,
       skip: offset,
     });
 
     return { data: reports, error: null };
   } catch (error) {
-    console.error("[getReports]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[getReports]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -177,8 +168,8 @@ export async function getReportStats() {
   try {
     const session = await requireSession();
 
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return { data: null, error: "Something went wrong" };
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
+      return { data: null, error: 'Something went wrong' };
     }
 
     const today = new Date();
@@ -186,10 +177,10 @@ export async function getReportStats() {
 
     const [total, pending, resolvedToday] = await Promise.all([
       prisma.report.count(),
-      prisma.report.count({ where: { status: "PENDING" } }),
+      prisma.report.count({ where: { status: 'PENDING' } }),
       prisma.report.count({
         where: {
-          status: { in: ["RESOLVED", "DISMISSED"] },
+          status: { in: ['RESOLVED', 'DISMISSED'] },
           updatedAt: { gte: today },
         },
       }),
@@ -209,15 +200,15 @@ export async function getReportStats() {
       error: null,
     };
   } catch (error) {
-    console.error("[getReportStats]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[getReportStats]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
 export async function getReportWithContext(reportId: string) {
   const parsed = reportIdSchema.safeParse({ reportId });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
@@ -259,93 +250,81 @@ export async function getReportWithContext(reportId: string) {
             reputationPoints: true,
           },
         },
-
       },
     });
 
     if (!report) {
-      return { data: null, error: "Report not found" };
+      return { data: null, error: 'Report not found' };
     }
 
-    const [
-      surroundingMessages,
-      violationHistory,
-      similarReports,
-      userBanCount,
-      userReportCount,
-    ] = await Promise.all([
-      prisma.message.findMany({
-        where: {
-          sectionId: report.message.section.id,
-          createdAt: {
-            gte: new Date(report.message.createdAt.getTime() - 5 * 60 * 1000), // 5 min before
-            lte: new Date(report.message.createdAt.getTime() + 5 * 60 * 1000), // 5 min after
+    const [surroundingMessages, violationHistory, similarReports, userBanCount, userReportCount] =
+      await Promise.all([
+        prisma.message.findMany({
+          where: {
+            sectionId: report.message.section.id,
+            createdAt: {
+              gte: new Date(report.message.createdAt.getTime() - 5 * 60 * 1000), // 5 min before
+              lte: new Date(report.message.createdAt.getTime() + 5 * 60 * 1000), // 5 min after
+            },
+            deletedAt: null,
           },
-          deletedAt: null,
-        },
-        include: {
-          sender: {
-            select: { id: true, name: true },
+          include: {
+            sender: {
+              select: { id: true, name: true },
+            },
           },
-        },
-        orderBy: { createdAt: "asc" },
-        take: 10,
-      }),
-      prisma.userBan.findMany({
-        where: { userId: report.message.senderId },
-        select: {
-          id: true,
-          reason: true,
-          createdAt: true,
-          isActive: true,
-          expiresAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      }),
-      prisma.report.findMany({
-        where: {
-          messageId: report.messageId,
-          id: { not: parsed.data.reportId },
-        },
-        select: {
-          id: true,
-          category: true,
-          status: true,
-          createdAt: true,
-        },
-      }),
-      prisma.userBan.count({
-        where: { userId: report.message.senderId },
-      }),
-      prisma.report.count({
-        where: {
-          message: { senderId: report.message.senderId },
-          status: "RESOLVED",
-        },
-      }),
-    ]);
+          orderBy: { createdAt: 'asc' },
+          take: 10,
+        }),
+        prisma.userBan.findMany({
+          where: { userId: report.message.senderId },
+          select: {
+            id: true,
+            reason: true,
+            createdAt: true,
+            isActive: true,
+            expiresAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+        prisma.report.findMany({
+          where: {
+            messageId: report.messageId,
+            id: { not: parsed.data.reportId },
+          },
+          select: {
+            id: true,
+            category: true,
+            status: true,
+            createdAt: true,
+          },
+        }),
+        prisma.userBan.count({
+          where: { userId: report.message.senderId },
+        }),
+        prisma.report.count({
+          where: {
+            message: { senderId: report.message.senderId },
+            status: 'RESOLVED',
+          },
+        }),
+      ]);
 
     const accountAgeDays = Math.floor(
-      (Date.now() - new Date(report.message.sender.createdAt).getTime()) /
-        (1000 * 60 * 60 * 24)
+      (Date.now() - new Date(report.message.sender.createdAt).getTime()) / (1000 * 60 * 60 * 24)
     );
 
     const trustScore = Math.max(
       0,
-      Math.min(
-        100,
-        50 + accountAgeDays * 0.5 - userBanCount * 20 - userReportCount * 5
-      )
+      Math.min(100, 50 + accountAgeDays * 0.5 - userBanCount * 20 - userReportCount * 5)
     );
 
     return {
       data: {
         ...report,
         categoryLabel:
-          REPORT_CATEGORY_LABELS[
-            report.category as keyof typeof REPORT_CATEGORY_LABELS
-          ],
+          REPORT_CATEGORY_LABELS[report.category as keyof typeof REPORT_CATEGORY_LABELS],
         threadContext: {
           threadTitle: report.message.section.name,
           threadSlug: report.message.section.slug,
@@ -369,7 +348,7 @@ export async function getReportWithContext(reportId: string) {
           trustScore: Math.round(trustScore),
           violationHistory: violationHistory.map((v) => ({
             id: v.id,
-            action: v.isActive ? "Active Ban" : "Past Ban",
+            action: v.isActive ? 'Active Ban' : 'Past Ban',
             reason: v.reason,
             createdAt: v.createdAt,
           })),
@@ -380,44 +359,38 @@ export async function getReportWithContext(reportId: string) {
       error: null,
     };
   } catch (error) {
-    console.error("[getReportWithContext]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[getReportWithContext]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
-export async function updateReportStatusAction(
-  reportId: string,
-  status: "RESOLVED" | "DISMISSED",
-) {
+export async function updateReportStatusAction(reportId: string, status: 'RESOLVED' | 'DISMISSED') {
   const validation = updateReportStatusSchema.safeParse({ reportId, status });
   if (!validation.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const session = await requireSession();
 
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return { data: null, error: "Something went wrong" };
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
+      return { data: null, error: 'Something went wrong' };
     }
 
     await prisma.report.update({
       where: { id: validation.data.reportId },
       data: {
-        status: validation.data.status as "RESOLVED" | "DISMISSED",
-        resolvedBy:
-          status === "RESOLVED" || status === "DISMISSED"
-            ? session.user.id
-            : null,
+        status: validation.data.status as 'RESOLVED' | 'DISMISSED',
+        resolvedBy: status === 'RESOLVED' || status === 'DISMISSED' ? session.user.id : null,
       },
     });
 
-    revalidatePath("/dashboard/admin/reports");
-    revalidatePath("/dashboard/admin/moderation");
+    revalidatePath('/dashboard/admin/reports');
+    revalidatePath('/dashboard/admin/moderation');
     return { data: null, error: null };
   } catch (error) {
-    console.error("[updateReportStatusAction]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[updateReportStatusAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -437,17 +410,14 @@ export async function getMyReports() {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       take: 20,
     });
 
     const data = reports.map((r) => ({
       id: r.id,
       category: r.category,
-      categoryLabel:
-        REPORT_CATEGORY_LABELS[
-          r.category as keyof typeof REPORT_CATEGORY_LABELS
-        ],
+      categoryLabel: REPORT_CATEGORY_LABELS[r.category as keyof typeof REPORT_CATEGORY_LABELS],
       status: r.status,
       createdAt: r.createdAt,
       resolvedBy: r.resolvedBy,
@@ -456,8 +426,8 @@ export async function getMyReports() {
     }));
     return { data, error: null };
   } catch (error) {
-    console.error("[getMyReports]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[getMyReports]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }
 
@@ -466,26 +436,21 @@ export async function getMyReports() {
  */
 export async function resolveReport(data: {
   reportId: string;
-  action:
-    | "DISMISS"
-    | "REMOVE_MESSAGE"
-    | "WARN_USER"
-    | "SUSPEND_USER"
-    | "BAN_USER";
+  action: 'DISMISS' | 'REMOVE_MESSAGE' | 'WARN_USER' | 'SUSPEND_USER' | 'BAN_USER';
   note: string;
   notifyReporter: boolean;
   duration?: string;
 }) {
   const parsed = resolveReportSchema.safeParse(data);
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const session = await requireSession();
 
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return { data: null, error: "Something went wrong" };
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
+      return { data: null, error: 'Something went wrong' };
     }
 
     const report = await prisma.report.findUnique({
@@ -502,12 +467,11 @@ export async function resolveReport(data: {
     });
 
     if (!report) {
-      return { data: null, error: "Report not found" };
+      return { data: null, error: 'Report not found' };
     }
 
     // Update report status
-    const newStatus =
-      parsed.data.action === "DISMISS" ? "DISMISSED" : "RESOLVED";
+    const newStatus = parsed.data.action === 'DISMISS' ? 'DISMISSED' : 'RESOLVED';
 
     await prisma.report.update({
       where: { id: parsed.data.reportId },
@@ -520,10 +484,10 @@ export async function resolveReport(data: {
 
     // Execute action based on type
     if (
-      parsed.data.action === "REMOVE_MESSAGE" ||
-      parsed.data.action === "WARN_USER" ||
-      parsed.data.action === "SUSPEND_USER" ||
-      parsed.data.action === "BAN_USER"
+      parsed.data.action === 'REMOVE_MESSAGE' ||
+      parsed.data.action === 'WARN_USER' ||
+      parsed.data.action === 'SUSPEND_USER' ||
+      parsed.data.action === 'BAN_USER'
     ) {
       // Soft delete the message
       await prisma.message.update({
@@ -532,12 +496,12 @@ export async function resolveReport(data: {
       });
     }
 
-    if (parsed.data.action === "WARN_USER") {
+    if (parsed.data.action === 'WARN_USER') {
       // Create a warning notification
       await createNotification({
         userId: report.message.senderId,
-        type: "SYSTEM",
-        title: "Official Warning",
+        type: 'SYSTEM',
+        title: 'Official Warning',
         message: `Your message has been removed for violating community guidelines. Reason: ${parsed.data.note}`,
         data: {
           reportId: parsed.data.reportId,
@@ -546,25 +510,21 @@ export async function resolveReport(data: {
       });
     }
 
-    if (
-      parsed.data.action === "SUSPEND_USER" ||
-      parsed.data.action === "BAN_USER"
-    ) {
+    if (parsed.data.action === 'SUSPEND_USER' || parsed.data.action === 'BAN_USER') {
       // Calculate ban expiry
       let expiresAt: Date | null = null;
-      if (parsed.data.action === "SUSPEND_USER" && parsed.data.duration) {
+      if (parsed.data.action === 'SUSPEND_USER' && parsed.data.duration) {
         const now = new Date();
         const durationMap: Record<string, number> = {
-          "1h": 60 * 60 * 1000,
-          "6h": 6 * 60 * 60 * 1000,
-          "24h": 24 * 60 * 60 * 1000,
-          "3d": 3 * 24 * 60 * 60 * 1000,
-          "7d": 7 * 24 * 60 * 60 * 1000,
-          "30d": 30 * 24 * 60 * 60 * 1000,
+          '1h': 60 * 60 * 1000,
+          '6h': 6 * 60 * 60 * 1000,
+          '24h': 24 * 60 * 60 * 1000,
+          '3d': 3 * 24 * 60 * 60 * 1000,
+          '7d': 7 * 24 * 60 * 60 * 1000,
+          '30d': 30 * 24 * 60 * 60 * 1000,
         };
         expiresAt = new Date(
-          now.getTime() +
-            (durationMap[parsed.data.duration] || 24 * 60 * 60 * 1000),
+          now.getTime() + (durationMap[parsed.data.duration] || 24 * 60 * 60 * 1000)
         );
       }
 
@@ -583,20 +543,17 @@ export async function resolveReport(data: {
       await prisma.user.update({
         where: { id: report.message.senderId },
         data: {
-          status: parsed.data.action === "BAN_USER" ? "BANNED" : "SUSPENDED",
+          status: parsed.data.action === 'BAN_USER' ? 'BANNED' : 'SUSPENDED',
         },
       });
 
       // Notify banned user
       await createNotification({
         userId: report.message.senderId,
-        type: "SYSTEM",
-        title:
-          parsed.data.action === "BAN_USER"
-            ? "Account Banned"
-            : "Account Suspended",
+        type: 'SYSTEM',
+        title: parsed.data.action === 'BAN_USER' ? 'Account Banned' : 'Account Suspended',
         message:
-          parsed.data.action === "BAN_USER"
+          parsed.data.action === 'BAN_USER'
             ? `Your account has been permanently banned. Reason: ${parsed.data.note}`
             : `Your account has been suspended until ${expiresAt?.toLocaleDateString()}. Reason: ${
                 parsed.data.note
@@ -609,20 +566,20 @@ export async function resolveReport(data: {
     if (parsed.data.notifyReporter) {
       await createNotification({
         userId: report.reporterId,
-        type: "SYSTEM",
-        title: "Report Updated",
+        type: 'SYSTEM',
+        title: 'Report Updated',
         message:
-          parsed.data.action === "DISMISS"
-            ? "Your report has been reviewed. No violation was found."
-            : "Thank you for your report. Action has been taken.",
+          parsed.data.action === 'DISMISS'
+            ? 'Your report has been reviewed. No violation was found.'
+            : 'Thank you for your report. Action has been taken.',
         data: { reportId: parsed.data.reportId },
       });
     }
 
     // Log the action
     await logAction({
-      action: "REPORT_RESOLVED",
-      entityType: "Report",
+      action: 'REPORT_RESOLVED',
+      entityType: 'Report',
       entityId: parsed.data.reportId,
       userId: report.message.senderId,
       details: {
@@ -632,19 +589,19 @@ export async function resolveReport(data: {
       },
     });
 
-    revalidatePath("/dashboard/admin/reports");
-    revalidatePath("/dashboard/admin/moderation");
+    revalidatePath('/dashboard/admin/reports');
+    revalidatePath('/dashboard/admin/moderation');
 
     return {
       data: {
         message: `Report ${
-          parsed.data.action === "DISMISS" ? "dismissed" : "resolved"
+          parsed.data.action === 'DISMISS' ? 'dismissed' : 'resolved'
         } successfully`,
       },
       error: null,
     };
   } catch (error) {
-    console.error("[resolveReport]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[resolveReport]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

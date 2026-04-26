@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 type UserPreview = {
   id: string;
@@ -7,11 +7,7 @@ type UserPreview = {
   image: string | null;
 };
 
-export async function addReaction(
-  messageId: string,
-  userId: string,
-  emoji: string
-) {
+export async function addReaction(messageId: string, userId: string, emoji: string) {
   return prisma.reaction.create({
     data: {
       messageId,
@@ -30,11 +26,7 @@ export async function addReaction(
   });
 }
 
-export async function removeReaction(
-  messageId: string,
-  userId: string,
-  emoji: string
-) {
+export async function removeReaction(messageId: string, userId: string, emoji: string) {
   return prisma.reaction.deleteMany({
     where: {
       messageId,
@@ -58,7 +50,7 @@ export async function getMessageReactions(messageId: string) {
         },
       },
       orderBy: {
-        createdAt: "asc",
+        createdAt: 'asc',
       },
     });
 
@@ -79,21 +71,17 @@ export async function getMessageReactions(messageId: string) {
       {} as Record<
         string,
         { emoji: string; count: number; users: UserPreview[]; hasReacted: boolean }
-      >,
+      >
     );
 
     return Object.values(grouped);
   } catch (error) {
-    logger.error("[getMessageReactions]", error);
+    logger.error('[getMessageReactions]', error);
     return [];
   }
 }
 
-export async function getUserReaction(
-  messageId: string,
-  userId: string,
-  emoji: string
-) {
+export async function getUserReaction(messageId: string, userId: string, emoji: string) {
   return prisma.reaction.findFirst({
     where: {
       messageId,

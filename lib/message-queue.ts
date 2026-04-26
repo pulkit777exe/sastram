@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/infrastructure/prisma";
+import { prisma } from '@/lib/infrastructure/prisma';
 
 /**
  * Queue a message for a user who is offline
@@ -41,10 +41,7 @@ export async function getQueuedMessages(userId: string, sectionId: string) {
 /**
  * Mark messages as delivered
  */
-export async function markMessagesAsDelivered(
-  userId: string,
-  messageIds: string[]
-): Promise<void> {
+export async function markMessagesAsDelivered(userId: string, messageIds: string[]): Promise<void> {
   // TODO: Implement message queue when MessageQueue model is added
   // await prisma.messageQueue.updateMany({
   //   where: {

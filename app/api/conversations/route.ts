@@ -1,21 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { auth } from "@/lib/services/auth";
-import { logger } from "@/lib/infrastructure/logger";
-import { buildThreadSlug } from "@/modules/threads/service";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { auth } from '@/lib/services/auth';
+import { logger } from '@/lib/infrastructure/logger';
+import { buildThreadSlug } from '@/lib/utils/slug';
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
 
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const sections = await prisma.section.findMany({
       include: {
         messages: {
-          orderBy: { createdAt: "desc" },
+          orderBy: { createdAt: 'desc' },
           take: 1,
           include: {
             sender: {
@@ -30,32 +30,29 @@ export async function GET(req: NextRequest) {
           select: { messages: true },
         },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { updatedAt: 'desc' },
     });
 
-     const conversations = sections.map((section) => {
-       const lastMessage = section.messages[0];
-       return {
-         id: section.id,
-         name: section.name,
-         avatar: "",
-         lastMessage: lastMessage
-           ? `${lastMessage.sender.name}: ${lastMessage.content.substring(0, 50)}...`
-           : "No messages yet",
-         timestamp: lastMessage ? new Date(lastMessage.createdAt).toISOString() : "",
-         unread: 0, // Implement unread count logic if needed
-         online: false,
-         type: "channel" as const,
-       };
-     });
+    const conversations = sections.map((section) => {
+      const lastMessage = section.messages[0];
+      return {
+        id: section.id,
+        name: section.name,
+        avatar: '',
+        lastMessage: lastMessage
+          ? `${lastMessage.sender.name}: ${lastMessage.content.substring(0, 50)}...`
+          : 'No messages yet',
+        timestamp: lastMessage ? new Date(lastMessage.createdAt).toISOString() : '',
+        unread: 0, // Implement unread count logic if needed
+        online: false,
+        type: 'channel' as const,
+      };
+    });
 
     return NextResponse.json(conversations);
   } catch (error) {
-    logger.error("Error fetching conversations:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch conversations" },
-      { status: 500 }
-    );
+    logger.error('Error fetching conversations:', error);
+    return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 });
   }
 }
 
@@ -64,7 +61,7 @@ export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: req.headers });
 
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -72,20 +69,14 @@ export async function POST(req: NextRequest) {
       select: { role: true },
     });
 
-    if (user?.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Only admins can create sections" },
-        { status: 403 }
-      );
+    if (user?.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Only admins can create sections' }, { status: 403 });
     }
 
     const { name } = await req.json();
 
     if (!name) {
-      return NextResponse.json(
-        { error: "Section name is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Section name is required' }, { status: 400 });
     }
 
     const section = await prisma.section.create({
@@ -96,21 +87,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
-     return NextResponse.json({
-       id: section.id,
-       name: section.name,
-       avatar: "",
-       lastMessage: "No messages yet",
-       timestamp: "",
-       unread: 0,
-       online: false,
-       type: "channel" as const,
-     });
+    return NextResponse.json({
+      id: section.id,
+      name: section.name,
+      avatar: '',
+      lastMessage: 'No messages yet',
+      timestamp: '',
+      unread: 0,
+      online: false,
+      type: 'channel' as const,
+    });
   } catch (error) {
-    logger.error("Error creating section:", error);
-    return NextResponse.json(
-      { error: "Failed to create section" },
-      { status: 500 }
-    );
+    logger.error('Error creating section:', error);
+    return NextResponse.json({ error: 'Failed to create section' }, { status: 500 });
   }
 }

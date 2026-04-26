@@ -1,42 +1,36 @@
-import { assertAdmin } from "@/modules/auth/session";
-import { getSession } from "@/modules/auth/session";
-import { listCommunities } from "@/modules/communities/repository";
-import { listThreads } from "@/modules/threads/repository";
-import { createCommunityAction } from "@/modules/communities/actions";
-import {
-  createThreadAction,
-  deleteThreadAction,
-} from "@/modules/threads/actions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Flag } from "lucide-react";
+import { assertAdmin } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth/session';
+import { listCommunities } from '@/modules/communities/repository';
+import { listThreads } from '@/modules/threads/repository';
+import { createCommunityAction } from '@/modules/communities/actions';
+import { createThreadAction, deleteThreadAction } from '@/modules/threads/actions';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Flag } from 'lucide-react';
 
 export default async function AdminDashboardPage() {
   const session = await getSession();
   if (!session) return null;
   assertAdmin(session.user);
 
-  const [communities, { threads }] = await Promise.all([
-    listCommunities(),
-    listThreads(),
-  ]);
+  const [communities, { threads }] = await Promise.all([listCommunities(), listThreads()]);
 
   const handleCreateCommunity = async (formData: FormData) => {
-    "use server";
+    'use server';
     await createCommunityAction(formData);
   };
 
   const handleCreateThread = async (formData: FormData) => {
-    "use server";
+    'use server';
     await createThreadAction(formData);
   };
 
   const handleDeleteThread = async (threadId: string) => {
-    "use server";
+    'use server';
     await deleteThreadAction(threadId);
   };
 
@@ -45,14 +39,11 @@ export default async function AdminDashboardPage() {
       <header className="rounded-4xl border border-slate-800 bg-[radial-gradient(circle_at_top,#101322,#050507)] p-8 text-white shadow-xl">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs uppercase tracking-widest text-slate-400">
-              Admin Workspace
-            </p>
+            <p className="text-xs uppercase tracking-widest text-slate-400">Admin Workspace</p>
             <h1 className="mt-3 text-3xl font-semibold">Create and moderate</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Launch new communities, spin up curated threads, and keep
-              conversations clean. All actions sync instantly with TanStack
-              Query powered widgets.
+              Launch new communities, spin up curated threads, and keep conversations clean. All
+              actions sync instantly with TanStack Query powered widgets.
             </p>
           </div>
           <div className="flex gap-3">
@@ -63,10 +54,7 @@ export default async function AdminDashboardPage() {
               </Button>
             </Link>
             <Link href="/dashboard/admin/moderation">
-              <Button
-                variant="outline"
-                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-              >
+              <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
                 <Flag className="w-4 h-4 mr-2" />
                 Moderation
               </Button>
@@ -162,9 +150,7 @@ export default async function AdminDashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Threads</h2>
-            <p className="text-sm text-slate-500">
-              Click slug to open the live view.
-            </p>
+            <p className="text-sm text-slate-500">Click slug to open the live view.</p>
           </div>
         </div>
         <div className="mt-6 overflow-x-auto">
@@ -184,26 +170,16 @@ export default async function AdminDashboardPage() {
                 return (
                   <tr key={thread.id} className="text-slate-700">
                     <td className="py-3 font-medium">{thread.name}</td>
-                    <td className="py-3 text-slate-500">
-                      {thread.community?.title ?? "—"}
-                    </td>
-                    <td className="py-3 text-slate-500">
-                      {thread.messageCount}
-                    </td>
+                    <td className="py-3 text-slate-500">{thread.community?.title ?? '—'}</td>
+                    <td className="py-3 text-slate-500">{thread.messageCount}</td>
                     <td className="py-3">
-                      <a
-                        href={`/thread/${thread.slug}`}
-                        className="text-slate-900 underline"
-                      >
+                      <a href={`/thread/${thread.slug}`} className="text-slate-900 underline">
                         {thread.slug}
                       </a>
                     </td>
                     <td className="py-3 text-right">
                       <form action={deleteAction}>
-                        <Button
-                          variant="ghost"
-                          className="text-red-500 hover:text-red-600"
-                        >
+                        <Button variant="ghost" className="text-red-500 hover:text-red-600">
                           Delete
                         </Button>
                       </form>
@@ -214,9 +190,7 @@ export default async function AdminDashboardPage() {
             </tbody>
           </table>
           {threads.length === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">
-              No threads yet.
-            </p>
+            <p className="py-6 text-center text-sm text-slate-500">No threads yet.</p>
           )}
         </div>
       </section>

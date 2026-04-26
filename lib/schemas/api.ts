@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * File upload validation schemas
@@ -9,31 +9,30 @@ export const fileUploadSchema = z.object({
       z.instanceof(File).refine(
         (file) => {
           const allowedTypes = [
-            "image/jpeg",
-            "image/jpg",
-            "image/png",
-            "image/webp",
-            "image/gif",
-            "video/mp4",
-            "video/webm",
-            "video/quicktime",
-            "application/pdf",
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/webp',
+            'image/gif',
+            'video/mp4',
+            'video/webm',
+            'video/quicktime',
+            'application/pdf',
           ];
           return allowedTypes.includes(file.type);
         },
         {
-          message:
-            "Invalid file type. Allowed: images, GIFs, videos (MP4/WebM), and PDFs.",
+          message: 'Invalid file type. Allowed: images, GIFs, videos (MP4/WebM), and PDFs.',
         }
       )
     )
-    .min(1, "At least one file is required")
-    .max(10, "Maximum 10 files allowed"),
+    .min(1, 'At least one file is required')
+    .max(10, 'Maximum 10 files allowed'),
 });
 
 export const uploadedFileSchema = z.object({
   url: z.string().url(),
-  type: z.enum(["IMAGE", "GIF", "FILE", "VIDEO"]),
+  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
   name: z.string(),
   size: z.number().int().positive(),
 });
@@ -48,18 +47,14 @@ export const uploadResponseSchema = z.object({
 export const createThreadRequestSchema = z.object({
   title: z
     .string()
-    .min(3, "Title must be at least 3 characters")
-    .max(100, "Title must be less than 100 characters"),
+    .min(3, 'Title must be at least 3 characters')
+    .max(100, 'Title must be less than 100 characters'),
   description: z
     .string()
-    .max(480, "Description must be less than 480 characters")
+    .max(480, 'Description must be less than 480 characters')
     .optional()
-    .or(z.literal("")),
-  communityId: z
-    .string()
-    .cuid("Invalid community ID")
-    .optional()
-    .or(z.literal("")),
+    .or(z.literal('')),
+  communityId: z.string().cuid('Invalid community ID').optional().or(z.literal('')),
 });
 
 export const threadSummarySchema = z.object({
@@ -101,13 +96,13 @@ export const threadDetailSchema = threadSummarySchema.extend({
 export const createCommunityRequestSchema = z.object({
   title: z
     .string()
-    .min(3, "Title must be at least 3 characters")
-    .max(100, "Title must be less than 100 characters"),
+    .min(3, 'Title must be at least 3 characters')
+    .max(100, 'Title must be less than 100 characters'),
   description: z
     .string()
-    .max(280, "Description must be less than 280 characters")
+    .max(280, 'Description must be less than 280 characters')
     .optional()
-    .or(z.literal("")),
+    .or(z.literal('')),
 });
 
 export const communitySummarySchema = z.object({
@@ -129,7 +124,7 @@ export const conversationSchema = z.object({
   timestamp: z.string(),
   unread: z.number().int().nonnegative(),
   online: z.boolean(),
-  type: z.enum(["channel", "dm"]),
+  type: z.enum(['channel', 'dm']),
 });
 
 /**
@@ -151,9 +146,7 @@ export const apiErrorSchema = z.object({
 /**
  * Standardized API success response
  */
-export function createSuccessResponseSchema<T extends z.ZodTypeAny>(
-  dataSchema: T
-) {
+export function createSuccessResponseSchema<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     success: z.literal(true),
     data: dataSchema,
@@ -163,9 +156,7 @@ export function createSuccessResponseSchema<T extends z.ZodTypeAny>(
 /**
  * Generic action response schema
  */
-export function createActionResponseSchema<T extends z.ZodTypeAny>(
-  dataSchema: T
-) {
+export function createActionResponseSchema<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     data: dataSchema.nullable(),
     error: z.string().nullable(),
@@ -180,9 +171,7 @@ export const paginationParamsSchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
-export const paginatedResponseSchema = <T extends z.ZodTypeAny>(
-  itemSchema: T
-) =>
+export const paginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
   z.object({
     items: z.array(itemSchema),
     total: z.number().int().nonnegative(),
@@ -200,9 +189,7 @@ export type UploadResponse = z.infer<typeof uploadResponseSchema>;
 export type CreateThreadRequest = z.infer<typeof createThreadRequestSchema>;
 export type ThreadSummary = z.infer<typeof threadSummarySchema>;
 export type ThreadDetail = z.infer<typeof threadDetailSchema>;
-export type CreateCommunityRequest = z.infer<
-  typeof createCommunityRequestSchema
->;
+export type CreateCommunityRequest = z.infer<typeof createCommunityRequestSchema>;
 export type CommunitySummary = z.infer<typeof communitySummarySchema>;
 export type Conversation = z.infer<typeof conversationSchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;

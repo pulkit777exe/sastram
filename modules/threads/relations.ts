@@ -1,6 +1,7 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { Prisma } from "@prisma/client";
-import { aiService } from "@/lib/services/ai";
+import { logger } from '@/lib/infrastructure/logger';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { Prisma } from '@prisma/client';
+import { aiService } from '@/lib/services/ai';
 
 // Threshold for considering threads semantically similar (0-1)
 const SIMILARITY_THRESHOLD = 0.7;
@@ -17,7 +18,7 @@ function calculateThreadSimilarity(dna1: any, dna2: any): number {
   // Calculate topic similarity (Jaccard index)
   const topics1 = new Set(dna1.topics || []);
   const topics2 = new Set(dna2.topics || []);
-  const intersection = new Set([...topics1].filter(x => topics2.has(x)));
+  const intersection = new Set([...topics1].filter((x) => topics2.has(x)));
   const union = new Set([...topics1, ...topics2]);
   const topicSimilarity = union.size === 0 ? 0 : intersection.size / union.size;
 
@@ -25,12 +26,13 @@ function calculateThreadSimilarity(dna1: any, dna2: any): number {
   const questionTypeSimilarity = dna1.questionType === dna2.questionType ? 1 : 0.3;
 
   // Calculate expertise level similarity
-  const expertiseLevels = ["beginner", "intermediate", "advanced", "expert"];
+  const expertiseLevels = ['beginner', 'intermediate', 'advanced', 'expert'];
   const level1 = expertiseLevels.indexOf(dna1.expertiseLevel);
   const level2 = expertiseLevels.indexOf(dna2.expertiseLevel);
-  const expertiseSimilarity = level1 !== -1 && level2 !== -1 
-    ? 1 - Math.abs(level1 - level2) / (expertiseLevels.length - 1) 
-    : 0.5;
+  const expertiseSimilarity =
+    level1 !== -1 && level2 !== -1
+      ? 1 - Math.abs(level1 - level2) / (expertiseLevels.length - 1)
+      : 0.5;
 
   // Weighted average of similarities
   const total = topicSimilarity * 0.5 + questionTypeSimilarity * 0.3 + expertiseSimilarity * 0.2;
@@ -40,13 +42,15 @@ function calculateThreadSimilarity(dna1: any, dna2: any): number {
 /**
  * Finds semantically related threads for a given thread
  */
-export async function findRelatedThreads(threadId: string): Promise<Array<{
-  id: string;
-  name: string;
-  slug: string;
-  similarity: number;
-  threadDna: any;
-}>> {
+export async function findRelatedThreads(threadId: string): Promise<
+  Array<{
+    id: string;
+    name: string;
+    slug: string;
+    similarity: number;
+    threadDna: any;
+  }>
+> {
   try {
     const thread = await prisma.section.findUnique({
       where: { id: threadId },
@@ -75,49 +79,51 @@ export async function findRelatedThreads(threadId: string): Promise<Array<{
 
     // Calculate similarity for each thread
     const relatedThreads = otherThreads
-      .map(other => {
+      .map((other) => {
         const similarity = calculateThreadSimilarity(thread.threadDna, other.threadDna);
         return {
           ...other,
           similarity,
         };
       })
-      .filter(t => t.similarity >= SIMILARITY_THRESHOLD)
+      .filter((t) => t.similarity >= SIMILARITY_THRESHOLD)
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, MAX_RELATED_THREADS);
 
     // Create ThreadRelation records for the found related threads
-    await Promise.all(relatedThreads.map(async (related) => {
-      // Check if relation already exists
-      const existing = await prisma.threadRelation.findUnique({
-        where: {
-          sourceThreadId_targetThreadId: {
-            sourceThreadId: threadId,
-            targetThreadId: related.id,
+    await Promise.all(
+      relatedThreads.map(async (related) => {
+        // Check if relation already exists
+        const existing = await prisma.threadRelation.findUnique({
+          where: {
+            sourceThreadId_targetThreadId: {
+              sourceThreadId: threadId,
+              targetThreadId: related.id,
+            },
           },
-        },
-      });
+        });
 
-      if (!existing) {
-        await prisma.threadRelation.create({
-          data: {
-            sourceThreadId: threadId,
-            targetThreadId: related.id,
-            similarity: related.similarity,
-          },
-        });
-      } else if (existing.similarity !== related.similarity) {
-        // Update similarity if it has changed
-        await prisma.threadRelation.update({
-          where: { id: existing.id },
-          data: { similarity: related.similarity },
-        });
-      }
-    }));
+        if (!existing) {
+          await prisma.threadRelation.create({
+            data: {
+              sourceThreadId: threadId,
+              targetThreadId: related.id,
+              similarity: related.similarity,
+            },
+          });
+        } else if (existing.similarity !== related.similarity) {
+          // Update similarity if it has changed
+          await prisma.threadRelation.update({
+            where: { id: existing.id },
+            data: { similarity: related.similarity },
+          });
+        }
+      })
+    );
 
     return relatedThreads;
   } catch (error) {
-    console.error(`Failed to find related threads for ${threadId}:`, error);
+    logger.error(`Failed to find related threads for ${threadId}:`, error);
     return [];
   }
 }
@@ -125,13 +131,15 @@ export async function findRelatedThreads(threadId: string): Promise<Array<{
 /**
  * Gets related threads for a given thread from the database
  */
-export async function getRelatedThreads(threadId: string): Promise<Array<{
-  id: string;
-  name: string;
-  slug: string;
-  similarity: number;
-  threadDna: any;
-}>> {
+export async function getRelatedThreads(threadId: string): Promise<
+  Array<{
+    id: string;
+    name: string;
+    slug: string;
+    similarity: number;
+    threadDna: any;
+  }>
+> {
   const relations = await prisma.threadRelation.findMany({
     where: { sourceThreadId: threadId },
     include: {
@@ -144,11 +152,11 @@ export async function getRelatedThreads(threadId: string): Promise<Array<{
         },
       },
     },
-    orderBy: { similarity: "desc" },
+    orderBy: { similarity: 'desc' },
     take: MAX_RELATED_THREADS,
   });
 
-  return relations.map(relation => ({
+  return relations.map((relation) => ({
     id: relation.target.id,
     name: relation.target.name,
     slug: relation.target.slug,
@@ -190,12 +198,12 @@ export async function updateAllThreadRelations(): Promise<{
         const related = await findRelatedThreads(thread.id);
         stats.updated += related.length;
       } catch (error) {
-        console.error(`Failed to update relations for thread ${thread.id}:`, error);
+        logger.error(`Failed to update relations for thread ${thread.id}:`, error);
         stats.errors++;
       }
     }
   } catch (error) {
-    console.error("Failed to update all thread relations:", error);
+    logger.error('Failed to update all thread relations:', error);
     stats.errors++;
   }
 
@@ -217,7 +225,7 @@ export async function cleanupOldThreadRelations(): Promise<{ deleted: number }> 
 
     return { deleted: result.count };
   } catch (error) {
-    console.error("Failed to cleanup old thread relations:", error);
+    logger.error('Failed to cleanup old thread relations:', error);
     return { deleted: 0 };
   }
 }

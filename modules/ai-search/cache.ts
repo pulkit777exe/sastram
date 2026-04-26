@@ -2,10 +2,10 @@
 // AI Search — Prisma-backed Query Cache
 // ─────────────────────────────────────────────────────────────
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { Prisma } from "@prisma/client";
-import crypto from "crypto";
-import type { AISearchResponse } from "./types";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { Prisma } from '@prisma/client';
+import crypto from 'crypto';
+import type { AISearchResponse } from './types';
 
 /**
  * Normalize a query string for consistent hashing.
@@ -14,26 +14,21 @@ function normalizeQuery(query: string): string {
   return query
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ");
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ');
 }
 
 /**
  * SHA-256 hash of a normalized query.
  */
 function hashQuery(query: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(normalizeQuery(query))
-    .digest("hex");
+  return crypto.createHash('sha256').update(normalizeQuery(query)).digest('hex');
 }
 
 /**
  * Retrieve a cached result if it exists and hasn't expired.
  */
-export async function getCachedResult(
-  query: string,
-): Promise<AISearchResponse | null> {
+export async function getCachedResult(query: string): Promise<AISearchResponse | null> {
   const hash = hashQuery(query);
 
   try {
@@ -65,46 +60,43 @@ export async function getCachedResult(
 export async function cacheResult(
   query: string,
   result: AISearchResponse,
-  queryType: string,
+  queryType: string
 ): Promise<void> {
   const hash = hashQuery(query);
 
   // TTL: 6 hours for technical, 1 hour for opinion/news
-  const ttlSeconds =
-    queryType === "technical" || queryType === "factual"
-      ? 6 * 60 * 60
-      : 60 * 60;
+  const ttlSeconds = queryType === 'technical' || queryType === 'factual' ? 6 * 60 * 60 : 60 * 60;
 
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   try {
     // Get or create a single anonymous session for all cache entries
     let anonymousSession = await prisma.aiSearchSession.findFirst({
-      where: { userId: "anonymous" },
+      where: { userId: 'anonymous' },
     });
 
     if (!anonymousSession) {
       anonymousSession = await prisma.aiSearchSession.create({
         data: {
-          userId: "anonymous",
-          query: "", // placeholder query
-          queryHash: hashQuery(""), // hash of empty string
+          userId: 'anonymous',
+          query: '', // placeholder query
+          queryHash: hashQuery(''), // hash of empty string
         },
       });
     }
 
-     await prisma.aiSearchResult.create({
-       data: {
-         sessionId: anonymousSession.id,
-         queryHash: hash,
-         synthesis: JSON.stringify(result),
-         expiresAt,
-         sourceCount: result.sources?.length || 0,
-         conflictFound: false,
-         confidence: Math.round(result.synthesis.confidence ?? 0),
-         sources: (result.sources ?? []) as unknown as Prisma.InputJsonValue,
-       },
-     });
+    await prisma.aiSearchResult.create({
+      data: {
+        sessionId: anonymousSession.id,
+        queryHash: hash,
+        synthesis: JSON.stringify(result),
+        expiresAt,
+        sourceCount: result.sources?.length || 0,
+        conflictFound: false,
+        confidence: Math.round(result.synthesis.confidence ?? 0),
+        sources: (result.sources ?? []) as unknown as Prisma.InputJsonValue,
+      },
+    });
   } catch {
     // Caching is non-critical, don't crash the request
   }

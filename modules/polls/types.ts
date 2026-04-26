@@ -37,4 +37,3 @@ export interface PollResults {
     percentage: number;
   }>;
 }
-

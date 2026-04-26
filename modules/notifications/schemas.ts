@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * Notification validation schemas
@@ -11,5 +11,5 @@ export const getNotificationsSchema = z.object({
 });
 
 export const markNotificationReadSchema = z.object({
-  notificationId: z.string().cuid("Invalid notification ID"),
+  notificationId: z.string().cuid('Invalid notification ID'),
 });

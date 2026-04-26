@@ -1,4 +1,4 @@
-import type { ThreadWithFullContext } from "@/modules/threads/queries";
+import type { ThreadWithFullContext } from '@/modules/threads/queries';
 
 interface ThreadInfoCardProps {
   thread: ThreadWithFullContext;
@@ -41,4 +41,3 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
     </section>
   );
 }
-
