@@ -15,6 +15,8 @@ import { createPollSchema, voteOnPollSchema } from './schemas';
 import { z } from 'zod';
 import { getMemberRole } from '@/modules/members/repository';
 import { logger } from '@/lib/infrastructure/logger';
+import { createServerAction } from '@/lib/utils/server-action';
+import { withValidation } from '@/lib/utils/server-action';
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -33,179 +35,194 @@ function isPrismaUniqueConstraintError(err: unknown): boolean {
 
 // ── CREATE POLL ────────────────────────────────────────────────────────────
 
-export async function createPollAction(
-  threadId: string,
-  question: string,
-  options: string[],
-  expiresAt?: Date
-) {
-  const parsed = createPollSchema.safeParse({ threadId, question, options, expiresAt });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+export const createPollAction = withValidation(
+  createPollSchema,
+  'createPoll',
+  async ({ threadId, question, options, expiresAt }) => {
+    try {
+      // requireSession enforces auth — session.user.id available for audit if needed
+      const session = await requireSession();
+
+      const poll = await createPollRepo(
+        threadId,
+        question,
+        options,
+        expiresAt
+      );
+
+      logger.info('[createPoll] Poll created', {
+        pollId: poll.id,
+        threadId,
+        createdBy: session.user.id,
+      });
+
+      revalidatePath(`/dashboard/threads/thread/${threadId}`);
+      return { data: poll, error: null };
+    } catch (err) {
+      logger.error('[createPoll]', { error: err });
+      return { data: null, error: 'Something went wrong' };
+    }
   }
-
-  try {
-    // requireSession enforces auth — session.user.id available for audit if needed
-    const session = await requireSession();
-
-    const poll = await createPollRepo(
-      parsed.data.threadId,
-      parsed.data.question,
-      parsed.data.options,
-      parsed.data.expiresAt
-    );
-
-    logger.info('[createPollAction] Poll created', {
-      pollId: poll.id,
-      threadId: parsed.data.threadId,
-      createdBy: session.user.id,
-    });
-
-    revalidatePath(`/dashboard/threads/thread/${parsed.data.threadId}`);
-    return { data: poll, error: null };
-  } catch (err) {
-    logger.error('[createPollAction]', { error: err });
-    return { data: null, error: 'Something went wrong' };
-  }
-}
+);
 
 // ── VOTE ON POLL ───────────────────────────────────────────────────────────
 
-export async function voteOnPollAction(pollId: string, optionIndex: number) {
-  const parsed = voteOnPollSchema.safeParse({ pollId, optionIndex });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+export const voteOnPollAction = withValidation(
+  voteOnPollSchema,
+  'voteOnPoll',
+  async ({ pollId, optionIndex }) => {
+    try {
+      const session = await requireSession();
+
+      const poll = await getPollByIdRepo(pollId);
+      if (!poll) {
+        return { data: null, error: 'Poll not found' };
+      }
+      if (!poll.isActive) {
+        return { data: null, error: 'Voting is closed for this poll' };
+      }
+      if (poll.expiresAt && poll.expiresAt.getTime() < Date.now()) {
+        return { data: null, error: 'Voting is closed for this poll' };
+      }
+
+      // No pre-check for existing vote here — the DB unique constraint handles it.
+      // voteOnPollRepo will throw a Prisma P2002 error if already voted.
+      await voteOnPollRepo(pollId, session.user.id, optionIndex);
+
+      if (poll.thread?.slug) {
+        revalidatePath(`/dashboard/threads/thread/${poll.thread.slug}`);
+      }
+
+      return { data: null, error: null };
+    } catch (err) {
+      if (isPrismaUniqueConstraintError(err)) {
+        return { data: null, error: 'You have already voted on this poll' };
+      }
+      logger.error('[voteOnPoll]', { error: err });
+      return { data: null, error: 'Something went wrong' };
+    }
   }
+);
 
-  try {
-    const session = await requireSession();
+// ── CLOSE POLL ────────────────────────────────────────────────────────────
 
-    const poll = await getPollByIdRepo(parsed.data.pollId);
-    if (!poll) {
-      return { data: null, error: 'Poll not found' };
-    }
-    if (!poll.isActive) {
-      return { data: null, error: 'Voting is closed for this poll' };
-    }
-    if (poll.expiresAt && poll.expiresAt.getTime() < Date.now()) {
-      return { data: null, error: 'Voting is closed for this poll' };
-    }
+export const closePollAction = createServerAction(
+  {
+    schema: pollIdSchema,
+    actionName: 'closePoll',
+    requireAuth: true,
+  },
+  async ({ pollId }) => {
+    try {
+      const session = await requireSession();
 
-    // No pre-check for existing vote here — the DB unique constraint handles it.
-    // voteOnPollRepo will throw a Prisma P2002 error if already voted.
-    await voteOnPollRepo(parsed.data.pollId, session.user.id, parsed.data.optionIndex);
+      const poll = await getPollByIdRepo(pollId);
+      if (!poll) {
+        return { data: null, error: 'Poll not found' };
+      }
 
-    if (poll.thread?.slug) {
-      revalidatePath(`/dashboard/threads/thread/${poll.thread.slug}`);
-    }
+      // Check if user has permission to close poll
+      const memberRole = await getMemberRole(poll.threadId, session.user.id);
+      if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
+        if (session.user.role !== 'ADMIN') {
+          return { data: null, error: 'Insufficient permissions' };
+        }
+      }
 
-    return { data: null, error: null };
-  } catch (err) {
-    // Unique constraint = already voted
-    if (isPrismaUniqueConstraintError(err)) {
-      return { data: null, error: 'You have already voted on this poll' };
+      await closePollRepo(pollId);
+
+      if (poll.thread?.slug) {
+        revalidatePath(`/dashboard/threads/thread/${poll.thread.slug}`);
+      }
+
+      return { data: null, error: null };
+    } catch (error) {
+      logger.error('[closePoll]', error);
+      return { data: null, error: 'Something went wrong' };
     }
-    logger.error('[voteOnPollAction]', { error: err });
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
 // ── GET POLL RESULTS ───────────────────────────────────────────────────────
 
-export async function getPollResultsAction(pollId: string) {
-  const parsed = pollIdSchema.safeParse({ pollId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const results = await getPollResultsRepo(parsed.data.pollId);
-    if (!results) {
-      return { data: null, error: 'Poll not found' };
+export const getPollResultsAction = createServerAction(
+  {
+    schema: pollIdSchema,
+    actionName: 'getPollResults',
+    requireAuth: true,
+  },
+  async ({ pollId }) => {
+    try {
+      const poll = await getPollResultsRepo(pollId);
+      if (!poll) {
+        return { data: null, error: 'Poll not found' };
+      }
+      return { data: poll, error: null };
+    } catch (error) {
+      logger.error('[getPollResults]', error);
+      return { data: null, error: 'Something went wrong' };
     }
-    return { data: results, error: null };
-  } catch (err) {
-    logger.error('[getPollResultsAction]', { error: err });
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
 
 // ── GET USER VOTE ──────────────────────────────────────────────────────────
 
-export async function getUserVoteAction(pollId: string) {
-  const parsed = pollIdSchema.safeParse({ pollId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const session = await requireSession();
-    const vote = await getUserVoteRepo(parsed.data.pollId, session.user.id);
-    return { data: vote, error: null };
-  } catch (err) {
-    logger.error('[getUserVoteAction]', { error: err });
-    return { data: null, error: 'Something went wrong' };
-  }
-}
-
-// ── GET POLL BY THREAD ─────────────────────────────────────────────────────
-
-export async function getPollByThreadAction(threadId: string) {
-  const parsed = threadIdSchema.safeParse({ threadId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const poll = await getPollByThreadIdRepo(parsed.data.threadId);
-    return { data: poll, error: null };
-  } catch (err) {
-    logger.error('[getPollByThreadAction]', { error: err });
-    return { data: null, error: 'Something went wrong' };
-  }
-}
-
-// ── CLOSE POLL ─────────────────────────────────────────────────────────────
-
-export async function closePollAction(pollId: string) {
-  const parsed = pollIdSchema.safeParse({ pollId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const session = await requireSession();
-
-    // getPollById already includes thread.createdBy (fixed in repository.ts)
-    // so we only need one query to get everything we need for auth
-    const poll = await getPollByIdRepo(parsed.data.pollId);
-    if (!poll) {
-      return { data: null, error: 'Poll not found' };
+export const getUserVoteAction = createServerAction(
+  {
+    schema: pollIdSchema,
+    actionName: 'getUserVote',
+    requireAuth: true,
+  },
+  async ({ pollId }) => {
+    try {
+      const session = await requireSession();
+      const vote = await getUserVoteRepo(pollId, session.user.id);
+      return { data: vote, error: null };
+    } catch (error) {
+      logger.error('[getUserVote]', error);
+      return { data: null, error: 'Something went wrong' };
     }
-
-    // Check thread creator first (no extra DB query needed)
-    const isThreadCreator = poll.thread?.createdBy === session.user.id;
-
-    // Check member role only if not thread creator
-    let hasModeratorRole = false;
-    if (!isThreadCreator && poll.threadId) {
-      const memberRole = await getMemberRole(poll.threadId, session.user.id);
-      hasModeratorRole = !!memberRole && ['OWNER', 'MODERATOR'].includes(memberRole.role);
-    }
-
-    if (!isThreadCreator && !hasModeratorRole) {
-      return { data: null, error: 'Insufficient permissions' };
-    }
-
-    await closePollRepo(parsed.data.pollId);
-
-    if (poll.thread?.slug) {
-      revalidatePath(`/dashboard/threads/thread/${poll.thread.slug}`);
-    }
-
-    return { data: null, error: null };
-  } catch (err) {
-    logger.error('[closePollAction]', { error: err });
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);
+
+// ── GET POLL BY ID ────────────────────────────────────────────────────────
+
+export const getPollByIdAction = createServerAction(
+  {
+    schema: pollIdSchema,
+    actionName: 'getPollById',
+  },
+  async ({ pollId }) => {
+    try {
+      const poll = await getPollByIdRepo(pollId);
+      if (!poll) {
+        return { data: null, error: 'Poll not found' };
+      }
+      return { data: poll, error: null };
+    } catch (error) {
+      logger.error('[getPollById]', error);
+      return { data: null, error: 'Something went wrong' };
+    }
+  }
+);
+
+// ── GET POLL BY THREAD ────────────────────────────────────────────────────
+
+export const getPollByThreadAction = createServerAction(
+  {
+    schema: threadIdSchema,
+    actionName: 'getPollByThread',
+  },
+  async ({ threadId }) => {
+    try {
+      const poll = await getPollByThreadIdRepo(threadId);
+      if (!poll) {
+        return { data: null, error: 'Poll not found' };
+      }
+      return { data: poll, error: null };
+    } catch (error) {
+      logger.error('[getPollByThread]', error);
+      return { data: null, error: 'Something went wrong' };
+    }
+  }
+);

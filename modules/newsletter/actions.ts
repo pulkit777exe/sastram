@@ -8,6 +8,7 @@ import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { subscribeToThreadNewsletter, scheduleThreadDigest } from './repository';
 import { z } from 'zod';
+import { withValidation } from '@/lib/utils/server-action';
 
 const threadIdSchema = z.object({
   threadId: z.string().cuid(),
@@ -23,78 +24,67 @@ const updateSubscriptionFrequencySchema = z.object({
   frequency: z.enum(['DAILY', 'WEEKLY', 'NEVER']),
 });
 
-export async function unsubscribeFromThread(threadId: string) {
-  const parsed = threadIdSchema.safeParse({ threadId });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
+export const unsubscribeFromThread = withValidation(
+  threadIdSchema,
+  'unsubscribeFromThread',
+  async ({ threadId }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
 
-  try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+      if (!session?.user) {
+        return { data: null, error: 'Something went wrong' };
+      }
 
-    if (!session?.user) {
-      return { data: null, error: 'Something went wrong' };
-    }
-
-    await prisma.threadSubscription.deleteMany({
-      where: {
-        threadId: parsed.data.threadId,
-        userId: session.user.id,
-      },
-    });
-
-    revalidatePath('/dashboard/settings');
-    return { data: null, error: null };
-  } catch (error) {
-    logger.error('[unsubscribeFromThread]', error);
-    return { data: null, error: 'Something went wrong' };
-  }
-}
-
-export async function updateSubscriptionFrequencyAction({
-  threadId,
-  frequency,
-}: {
-  threadId: string;
-  frequency: string;
-}) {
-  const parsed = updateSubscriptionFrequencySchema.safeParse({
-    threadId,
-    frequency,
-  });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: null, error: 'Something went wrong' };
-    }
-
-    await prisma.threadSubscription.update({
-      where: {
-        threadId_userId: {
-          threadId: parsed.data.threadId,
+      await prisma.threadSubscription.deleteMany({
+        where: {
+          threadId,
           userId: session.user.id,
         },
-      },
-      data: {
-        frequency: parsed.data.frequency,
-      },
-    });
+      });
 
-    return { data: null, error: null };
-  } catch (error) {
-    logger.error('[updateSubscriptionFrequencyAction]', error);
-    return { data: null, error: 'Something went wrong' };
+      revalidatePath('/dashboard/settings');
+      return { data: null, error: null };
+    } catch (error) {
+      logger.error('[unsubscribeFromThread]', error);
+      return { data: null, error: 'Something went wrong' };
+    }
   }
-}
+);
+
+export const updateSubscriptionFrequencyAction = withValidation(
+  updateSubscriptionFrequencySchema,
+  'updateSubscriptionFrequency',
+  async ({ threadId, frequency }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session?.user) {
+        return { data: null, error: 'Something went wrong' };
+      }
+
+      await prisma.threadSubscription.update({
+        where: {
+          threadId_userId: {
+            threadId,
+            userId: session.user.id,
+          },
+        },
+        data: {
+          frequency,
+        },
+      });
+
+      return { data: null, error: null };
+    } catch (error) {
+      logger.error('[updateSubscriptionFrequency]', error);
+      return { data: null, error: 'Something went wrong' };
+    }
+  }
+);
 
 export async function getUserNewsletterSubscriptions() {
   try {
@@ -107,64 +97,49 @@ export async function getUserNewsletterSubscriptions() {
     }
 
     const subscriptions = await prisma.threadSubscription.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      include: {
-        thread: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            description: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { userId: session.user.id },
+      include: { thread: { select: { title: true, slug: true, description: true } } },
     });
 
-    return { data: subscriptions, error: null };
+    return {
+      data: subscriptions.map((sub) => ({
+        ...sub.thread,
+        frequency: sub.frequency,
+      })),
+      error: null,
+    };
   } catch (error) {
     logger.error('[getUserNewsletterSubscriptions]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: [], error: 'Something went wrong' };
   }
 }
 
-export async function subscribeToThreadAction({
-  threadId,
-  slug,
-}: {
-  threadId: string;
-  slug: string;
-}) {
-  const parsed = subscribeSchema.safeParse({ threadId, slug });
-  if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
-  }
+export const subscribeToThreadAction = withValidation(
+  subscribeSchema,
+  'subscribeToThread',
+  async ({ threadId, slug }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
 
-  try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+      if (!session?.user) {
+        return { data: null, error: 'Something went wrong' };
+      }
 
-    if (!session?.user) {
+      const email = session.user.email;
+      await subscribeToThreadNewsletter({
+        threadId,
+        userId: session.user.id,
+        email,
+      });
+
+      await scheduleThreadDigest(threadId);
+      revalidatePath(`/dashboard/threads/thread/${slug}`);
+      return { data: null, error: null };
+    } catch (error) {
+      logger.error('[subscribeToThread]', error);
       return { data: null, error: 'Something went wrong' };
     }
-
-    const email = session.user.email;
-    await subscribeToThreadNewsletter({
-      threadId: parsed.data.threadId,
-      userId: session.user.id,
-      email,
-    });
-
-    await scheduleThreadDigest(parsed.data.threadId);
-    revalidatePath(`/dashboard/threads/thread/${parsed.data.slug}`);
-    return { data: null, error: null };
-  } catch (error) {
-    logger.error('[subscribeToThreadAction]', error);
-    return { data: null, error: 'Something went wrong' };
   }
-}
+);

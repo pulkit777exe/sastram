@@ -2,11 +2,6 @@
 
 import { logger } from '@/lib/infrastructure/logger';
 
-/**
- * Admin module actions
- * Administrative actions that require admin privileges
- */
-
 import { requireSession, assertAdmin } from '@/modules/auth/session';
 import { listCommunities } from '@/modules/communities/repository';
 import { listThreads } from '@/modules/threads/repository';
