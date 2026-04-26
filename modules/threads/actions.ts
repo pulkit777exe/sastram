@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession, assertAdmin } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
-import { buildThreadSlug } from '@/modules/threads/service';
+import { buildThreadSlug } from '@/lib/utils/slug';
 import {
   createThread,
   deleteThread,

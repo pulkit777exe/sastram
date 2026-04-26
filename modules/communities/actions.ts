@@ -1,19 +1,12 @@
 'use server';
 
 import { logger } from '@/lib/infrastructure/logger';
+import { buildCommunitySlug } from '@/lib/utils/slug';
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireSession, assertAdmin } from '@/modules/auth/session';
 import { createCommunity } from './repository';
-
-// Helper to build slug (duplicated for now, should be in shared utils)
-function buildSlug(title: string): string {
-  return `${title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '')}-${crypto.randomUUID()}`;
-}
 
 const communitySchema = z.object({
   title: z.string().min(3),
@@ -34,7 +27,7 @@ export async function createCommunityAction(formData: FormData) {
     const session = await requireSession();
     assertAdmin(session.user);
 
-    const slug = buildSlug(parsed.data.title);
+    const slug = buildCommunitySlug(parsed.data.title);
     await createCommunity({
       title: parsed.data.title,
       description: parsed.data.description,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { auth } from '@/lib/services/auth';
 import { logger } from '@/lib/infrastructure/logger';
-import { buildThreadSlug } from '@/modules/threads/service';
+import { buildThreadSlug } from '@/lib/utils/slug';
 
 export async function GET(req: NextRequest) {
   try {

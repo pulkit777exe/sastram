@@ -6,7 +6,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { auth } from '@/lib/services/auth';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { buildThreadSlug } from '@/modules/threads/service';
+import { buildThreadSlug } from '@/lib/utils/slug';
 import { createTag, addTagToThread } from '@/modules/tags/repository';
 import { createServerAction } from '@/lib/utils/server-action';
 

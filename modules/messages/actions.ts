@@ -1,10 +1,8 @@
 'use server';
 
-import { logger } from '@/lib/infrastructure/logger';
-
+import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { auth } from '@/lib/services/auth';
-import { requireSession } from '@/modules/auth/session';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { filterBadLanguage } from '@/lib/services/content-safety';
@@ -26,15 +24,17 @@ import {
   getMessageEditHistorySchema,
   searchMentionUsersSchema,
 } from './schemas';
-
 import { parseMentions, resolveUserMentions } from '@/lib/utils/mention-parser';
 import { sendMentionNotification } from '@/lib/services/email';
 import { recordActivity } from '@/modules/activity/repository';
 import { consumeAiInlineQuota } from '@/lib/services/ai-inline-rate-limit';
 import { getAiInlineQueue } from '@/lib/infrastructure/bullmq';
+import { createServerAction } from '@/lib/utils/server-action';
+import { sectionIdSchema, messageIdSchema } from '@/lib/utils/validation-common';
+import { requireSession } from '@/modules/auth/session';
 
 function handleActionError(actionName: string, error: unknown) {
-  logger.error(`[${actionName}]`, error);
+  console.error(`[${actionName}]`, error);
   return { data: null, error: 'Something went wrong' };
 }
 
@@ -61,16 +61,12 @@ export async function postMessage(formData: FormData) {
   if (mentionsRaw) {
     try {
       const explicitMentions = JSON.parse(mentionsRaw) as string[];
-      // Resolve usernames from parsed mentions to user IDs
       const resolvedMentions = await resolveUserMentions(parsedMentions.usernames, prisma);
-      // Combine explicit mentions (already user IDs) with resolved mentions
       mentions = Array.from(new Set([...explicitMentions, ...resolvedMentions]));
     } catch {
-      // If explicit mentions fail, try to resolve parsed mentions
       mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
     }
   } else {
-    // Only parse mentions from content
     mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
   }
 
@@ -200,7 +196,6 @@ export async function postMessage(formData: FormData) {
         })),
       });
 
-      // Create notifications for mentions (emails sent outside transaction)
       for (const userId of mentions) {
         await prisma.notification.create({
           data: {
@@ -230,7 +225,7 @@ export async function postMessage(formData: FormData) {
       }
     }
 
-    // Send email notifications for mentions (outside transaction)
+    // Send email notifications for mentions
     if (mentions && mentions.length > 0) {
       const thread = await prisma.section.findUnique({
         where: { id: sectionId },
@@ -254,14 +249,13 @@ export async function postMessage(formData: FormData) {
               safeContent.substring(0, 200),
               threadUrl
             ).catch((error) => {
-              logger.error('Failed to send mention email:', error);
+              console.error('Failed to send mention email:', error);
             });
           }
         }
       }
     }
 
-    // Emit WebSocket event (outside transaction)
     const payload = {
       id: message.id,
       content: message.content,
@@ -315,7 +309,6 @@ export async function postMessage(formData: FormData) {
     }
     revalidatePath('/dashboard');
 
-    // Record activity for message posted
     await recordActivity({
       userId: session.user.id,
       type: 'MESSAGE_POSTED',
@@ -341,302 +334,268 @@ export async function postMessage(formData: FormData) {
   }
 }
 
-export async function editMessage(messageId: string, content: string) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return { data: null, error: 'Something went wrong' };
-  }
-
-  const validation = editMessageSchema.safeParse({ messageId, content });
-  if (!validation.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    // Check if user owns the message
-    const message = await prisma.message.findUnique({
-      where: { id: messageId },
-      select: { senderId: true, content: true, sectionId: true },
+export const editMessage = createServerAction(
+  { schema: editMessageSchema, actionName: 'editMessage', requireAuth: true },
+  async ({ messageId, content }) => {
+    const session = await auth.api.getSession({
+      headers: await headers(),
     });
 
-    if (!message) {
-      return { data: null, error: 'Message not found' };
+    if (!session?.user) {
+      return { data: null, error: 'Something went wrong' };
     }
 
-    if (message.senderId !== session.user.id) {
-      return { data: null, error: 'You can only edit your own messages' };
-    }
+    try {
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        select: { senderId: true, content: true, sectionId: true },
+      });
 
-    // Save edit history
-    await prisma.messageEdit.create({
-      data: {
-        messageId,
-        content: message.content,
-      },
-    });
+      if (!message) {
+        return { data: null, error: 'Message not found' };
+      }
 
-    // Update message
-    const safeContent = filterBadLanguage(content);
-    await prisma.message.update({
-      where: { id: messageId },
-      data: {
-        content: safeContent,
-        isEdited: true,
-      },
-    });
+      if (message.senderId !== session.user.id) {
+        return { data: null, error: 'You can only edit your own messages' };
+      }
 
-    revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
-  } catch (error) {
-    return handleActionError('editMessage', error);
-  }
-}
-
-export async function pinMessage(messageId: string) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return { data: null, error: 'Something went wrong' };
-  }
-
-  const validation = pinMessageSchema.safeParse({ messageId });
-  if (!validation.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
-    const message = await prisma.message.findUnique({
-      where: { id: messageId },
-      select: {
-        isPinned: true,
-        sectionId: true,
-        section: {
-          select: { slug: true },
+      await prisma.messageEdit.create({
+        data: {
+          messageId,
+          content: message.content,
         },
-      },
+      });
+
+      const safeContent = filterBadLanguage(content);
+      await prisma.message.update({
+        where: { id: messageId },
+        data: {
+          content: safeContent,
+          isEdited: true,
+        },
+      });
+
+      revalidatePath('/dashboard/threads');
+      return { data: null, error: null };
+    } catch (error) {
+      return handleActionError('editMessage', error);
+    }
+  }
+);
+
+export const pinMessage = createServerAction(
+  { schema: pinMessageSchema, actionName: 'pinMessage', requireAuth: true },
+  async ({ messageId }) => {
+    const session = await auth.api.getSession({
+      headers: await headers(),
     });
 
-    if (!message) {
-      return { data: null, error: 'Message not found' };
+    if (!session?.user) {
+      return { data: null, error: 'Something went wrong' };
     }
 
-    // Check if user has permission (moderator or owner)
-    const memberRole = await getMemberRole(message.sectionId, session.user.id);
-
-    if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-      return {
-        data: null,
-        error: 'Insufficient permissions. Only moderators and owners can pin messages.',
-      };
-    }
-
-    const shouldPin = !message.isPinned;
-
-    const previouslyPinned = shouldPin
-      ? await prisma.message.findFirst({
-          where: {
-            sectionId: message.sectionId,
-            isPinned: true,
-            id: { not: messageId },
+    try {
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        select: {
+          isPinned: true,
+          sectionId: true,
+          section: {
+            select: { slug: true },
           },
-          select: { id: true },
-        })
-      : null;
+        },
+      });
 
-    await prisma.$transaction(async (tx) => {
-      if (shouldPin) {
-        await tx.message.updateMany({
-          where: { sectionId: message.sectionId, isPinned: true },
-          data: { isPinned: false },
+      if (!message) {
+        return { data: null, error: 'Message not found' };
+      }
+
+      const memberRole = await getMemberRole(message.sectionId, session.user.id);
+      if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
+        return {
+          data: null,
+          error: 'Insufficient permissions. Only moderators and owners can pin messages.',
+        };
+      }
+
+      const shouldPin = !message.isPinned;
+
+      const previouslyPinned = shouldPin
+        ? await prisma.message.findFirst({
+            where: {
+              sectionId: message.sectionId,
+              isPinned: true,
+              id: { not: messageId },
+            },
+            select: { id: true },
+          })
+        : null;
+
+      await prisma.$transaction(async (tx) => {
+        if (shouldPin) {
+          await tx.message.updateMany({
+            where: { sectionId: message.sectionId, isPinned: true },
+            data: { isPinned: false },
+          });
+        }
+
+        await tx.message.update({
+          where: { id: messageId },
+          data: { isPinned: shouldPin },
+        });
+      });
+
+      await logAction({
+        action: message.isPinned ? 'MESSAGE_UPDATED' : 'MESSAGE_UPDATED',
+        entityType: 'Message',
+        entityId: messageId,
+        userId: session.user.id,
+      });
+
+      emitPinUpdate(message.sectionId, { messageId, isPinned: shouldPin });
+
+      if (previouslyPinned?.id) {
+        emitPinUpdate(message.sectionId, {
+          messageId: previouslyPinned.id,
+          isPinned: false,
         });
       }
 
-      await tx.message.update({
-        where: { id: messageId },
-        data: { isPinned: shouldPin },
-      });
-    });
-
-    await logAction({
-      action: message.isPinned ? 'MESSAGE_UPDATED' : 'MESSAGE_UPDATED',
-      entityType: 'Message',
-      entityId: messageId,
-      userId: session.user.id,
-    });
-
-    emitPinUpdate(message.sectionId, { messageId, isPinned: shouldPin });
-
-    if (previouslyPinned?.id) {
-      emitPinUpdate(message.sectionId, {
-        messageId: previouslyPinned.id,
-        isPinned: false,
-      });
+      revalidatePath(`/dashboard/threads/thread/${message.section?.slug}`);
+      return { data: null, error: null };
+    } catch (error) {
+      return handleActionError('pinMessage', error);
     }
-
-    revalidatePath(`/dashboard/threads/thread/${message.section?.slug}`);
-    return { data: null, error: null };
-  } catch (error) {
-    return handleActionError('pinMessage', error);
   }
-}
+);
 
-export async function getMessageEditHistory(messageId: string) {
-  const validation = getMessageEditHistorySchema.safeParse({ messageId });
-  if (!validation.success) {
-    return { data: null, error: 'Invalid input' };
+export const getMessageEditHistory = createServerAction(
+  { schema: getMessageEditHistorySchema, actionName: 'getMessageEditHistory' },
+  async ({ messageId }) => {
+    try {
+      const edits = await prisma.messageEdit.findMany({
+        where: { messageId },
+        orderBy: { editedAt: 'desc' },
+      });
+
+      return { data: edits ?? [], error: null };
+    } catch (error) {
+      return handleActionError('getMessageEditHistory', error);
+    }
   }
+);
 
-  try {
-    const edits = await prisma.messageEdit.findMany({
-      where: { messageId: validation.data.messageId },
-      orderBy: {
-        editedAt: 'desc',
-      },
-    });
-
-    return { data: edits ?? [], error: null };
-  } catch (error) {
-    return handleActionError('getMessageEditHistory', error);
-  }
-}
-
-export async function deleteMessage(messageId: string) {
-  const validation = deleteMessageSchema.safeParse({ messageId });
-  if (!validation.success) {
-    return { data: null, error: 'Invalid input' };
-  }
-
-  try {
+export const deleteMessage = createServerAction(
+  { schema: deleteMessageSchema, actionName: 'deleteMessage', requireAuth: true },
+  async ({ messageId }) => {
     const session = await requireSession();
 
-    // Check ownership or moderator role
-    const message = await prisma.message.findUnique({
-      where: { id: messageId },
-      include: { section: true },
-    });
+    try {
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        include: { section: true },
+      });
 
-    if (!message) {
-      return { data: null, error: 'Message not found' };
-    }
+      if (!message) {
+        return { data: null, error: 'Message not found' };
+      }
 
-    let canDelete = message.senderId === session.user.id;
-    if (!canDelete) {
-      if (message.sectionId) {
-        const memberRole = await getMemberRole(message.sectionId, session.user.id);
-        if (memberRole && ['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-          canDelete = true;
+      let canDelete = message.senderId === session.user.id;
+      if (!canDelete) {
+        if (message.sectionId) {
+          const memberRole = await getMemberRole(message.sectionId, session.user.id);
+          if (memberRole && ['OWNER', 'MODERATOR'].includes(memberRole.role)) {
+            canDelete = true;
+          }
         }
       }
-    }
 
-    if (!canDelete) {
-      return { data: null, error: 'Insufficient permissions to delete this message' };
-    }
-
-    await prisma.message.update({
-      where: { id: messageId },
-      data: { deletedAt: new Date() },
-    });
-
-    await logAction({
-      action: 'MESSAGE_DELETED',
-      entityType: 'Message',
-      entityId: messageId,
-      userId: session.user.id,
-    });
-
-    if (message.section?.slug) {
-      revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
-    }
-
-    // Also emit websocket event for live updates
-    try {
-      if (message.sectionId) {
-        emitMessageDeleted(message.sectionId, messageId, session.user.id);
+      if (!canDelete) {
+        return { data: null, error: 'Insufficient permissions to delete this message' };
       }
-    } catch (e) {
-      /* ignore ws errors */
+
+      await prisma.message.update({
+        where: { id: messageId },
+        data: { deletedAt: new Date() },
+      });
+
+      await logAction({
+        action: 'MESSAGE_DELETED',
+        entityType: 'Message',
+        entityId: messageId,
+        userId: session.user.id,
+      });
+
+      if (message.section?.slug) {
+        revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
+      }
+
+      try {
+        if (message.sectionId) {
+          emitMessageDeleted(message.sectionId, messageId, session.user.id);
+        }
+      } catch (e) {
+        /* ignore ws errors */
+      }
+
+      return { data: null, error: null };
+    } catch (error) {
+      return handleActionError('deleteMessage', error);
     }
-
-    return { data: null, error: null };
-  } catch (error) {
-    return handleActionError('deleteMessage', error);
   }
-}
+);
 
-export async function searchMentionUsers(sectionId: string, query: string) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return { data: [], error: 'Something went wrong' };
-  }
-
-  const validation = searchMentionUsersSchema.safeParse({
-    sectionId,
-    query,
-  });
-  if (!validation.success) {
-    return { data: [], error: 'Invalid input' };
-  }
-
-  try {
-    const users = await prisma.user.findMany({
-      where: {
-        id: { not: session.user.id },
-        memberships: {
-          some: { sectionId: validation.data.sectionId },
-        },
-        OR: [
-          {
-            name: {
-              contains: validation.data.query,
-              mode: 'insensitive',
-            },
-          },
-          {
-            email: {
-              contains: validation.data.query,
-              mode: 'insensitive',
-            },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-      },
-      orderBy: {
-        reputationPoints: 'desc',
-      },
-      take: 5,
+export const searchMentionUsers = createServerAction(
+  { schema: searchMentionUsersSchema, actionName: 'searchMentionUsers', requireAuth: true },
+  async ({ sectionId, query }) => {
+    const session = await auth.api.getSession({
+      headers: await headers(),
     });
 
-    return {
-      data: users.map((user) => {
-        const base = (user.name || user.email.split('@')[0] || 'user')
-          .toLowerCase()
-          .replace(/[^a-z0-9.-]/g, '');
+    if (!session?.user) {
+      return { data: [], error: 'Something went wrong' };
+    }
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          handle: base || 'user',
-        };
-      }),
-      error: null,
-    };
-  } catch (error) {
-    return handleActionError('searchMentionUsers', error);
+    try {
+      const users = await prisma.user.findMany({
+        where: {
+          id: { not: session.user.id },
+          memberships: {
+            some: { sectionId },
+          },
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+        orderBy: { reputationPoints: 'desc' },
+        take: 5,
+      });
+
+      return {
+        data: users.map((user) => {
+          const base = (user.name || user.email.split('@')[0] || 'user')
+            .toLowerCase()
+            .replace(/[^a-z0-9.-]/g, '');
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            image: user.image,
+            handle: base || 'user',
+          };
+        }),
+        error: null,
+      };
+    } catch (error) {
+      return handleActionError('searchMentionUsers', error);
+    }
   }
-}
+);

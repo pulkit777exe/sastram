@@ -1,5 +1,4 @@
-import { randomUUID } from 'crypto';
-import type { Community, UserStatus } from '@prisma/client';
+import { type Community, type UserStatus } from '@prisma/client';
 import type {
   ThreadDetail,
   ThreadRecord,
@@ -7,20 +6,6 @@ import type {
   CommunitySummary,
   ThreadDNA,
 } from './types';
-
-export function slugifyTitle(title: string) {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-export function buildThreadSlug(title: string, existingId?: string) {
-  const base = slugifyTitle(title);
-  const suffix = existingId ?? randomUUID();
-  return `${base}-${suffix}`;
-}
 
 export function buildThreadDTO(
   thread: ThreadRecord,

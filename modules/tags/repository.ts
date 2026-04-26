@@ -1,11 +1,9 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { slugify } from '@/lib/utils/slug';
 
 export async function createTag(name: string, color: string = '#3b82f6') {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  const slug = slugify(name);
 
   return prisma.threadTag.upsert({
     where: { slug },

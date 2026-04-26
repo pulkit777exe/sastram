@@ -6,7 +6,7 @@ import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/infrastructure/logger';
 import type { ActionResponse, Conversation, ChatMessage, AttachmentInput } from '@/lib/types/index';
-import { buildThreadSlug } from '@/modules/threads/service';
+import { buildThreadSlug } from '@/lib/utils/slug';
 import { emitThreadMessage } from '@/modules/ws/publisher';
 import { z } from 'zod';
 import { attachmentInputSchema } from '@/lib/schemas/database';
