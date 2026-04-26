@@ -37,6 +37,13 @@ export const paginatedListSchema = z.object({
   pageSize: z.number().int().positive().max(100).optional(),
 });
 
+// Activity-specific query schema
+export const activityQuerySchema = z.object({
+  userId: z.string().cuid().optional(),
+  limit: z.number().int().positive().max(100).optional(),
+  offset: z.number().int().nonnegative().optional(),
+});
+
 // Action result helper
 export function createActionResult<T>(
   data: T | null,

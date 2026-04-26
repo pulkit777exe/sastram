@@ -9,7 +9,6 @@ import { getThreadWithFullContext } from '@/modules/threads';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ThreadManagementControls } from '@/components/thread/thread-management-controls';
-import ResolutionScoreCard from '@/components/panels/ResolutionScoreCard';
 import ThreadDnaCard from '@/components/panels/ThreadDnaCard';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
@@ -115,7 +114,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
-        <header className="flex h-[72px] items-center justify-between px-6 border-b border-border/60 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 z-10">
+        <header className="flex h-18 items-center justify-between px-6 border-b border-border/60 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 z-10">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 rounded-xl flex items-center justify-center shadow-sm">
               <Hash size={20} strokeWidth={2.5} />
@@ -209,8 +208,6 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
 
         <div className="p-6 space-y-6">
           <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
-
-          <ResolutionScoreCard score={thread.resolutionScore} />
 
           {threadDna && <ThreadDnaCard dna={threadDna} />}
 

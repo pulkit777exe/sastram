@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { getSession } from '@/modules/auth/session';
 import { getThreadWithFullContext } from '@/modules/threads';
 import ThreadHeader from '@/components/thread/ThreadHeader';
-import MessageTree from '@/components/thread/MessageTree';
+import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
 import ReplyBox from '@/components/thread/ReplyBox';
 import RightPanel from '@/components/panels/RightPanel';
 import AcceptedAnswerBanner from '@/components/thread/AcceptedAnswerBanner';
@@ -36,10 +36,19 @@ export default async function ThreadPage({ params }: ThreadPageParams) {
 
           <div className="mt-2 flex-1 rounded-[10px] bg-(--surface) p-5">
             <AcceptedAnswerBanner answer={null} />
-            <MessageTree
+            <ThreadLiveWrapper
               threadId={thread.id}
-              initialMessages={thread.messages}
-              currentUserId={session.user.id}
+              messages={thread.messages as unknown as Parameters<typeof ThreadLiveWrapper>[0]['messages']}
+              initialUnreadCount={0}
+              initialFirstUnreadMessageId={null}
+              poll={null}
+              canManagePoll={false}
+              currentUser={{
+                id: session.user.id,
+                name: session.user.name ?? '',
+                image: session.user.image ?? null,
+                role: session.user.role,
+              }}
             />
           </div>
 

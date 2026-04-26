@@ -55,8 +55,8 @@ async function main() {
     where: { email: 'test@example.com' },
     update: {},
     create: {
-      email: 'test@example.com',
-      name: 'Test User',
+      email: 'admin@sastram.com',
+      name: 'Sastram',
       image: 'https://github.com/shadcn.png',
       role: 'ADMIN',
     },

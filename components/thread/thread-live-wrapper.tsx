@@ -179,6 +179,7 @@ export function ThreadLiveWrapper({
   // Called by WebSocket hook when isComplete:true arrives on an AI message
   const handleAiComplete = useCallback(
     (parentMessageId: string) => {
+      console.log('[ThreadLiveWrapper] handleAiComplete:', parentMessageId);
       clearAiStatus(parentMessageId);
     },
     [clearAiStatus]

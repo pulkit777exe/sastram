@@ -56,14 +56,29 @@ export function useThreadWebSocket({
 
   useEffect(() => {
     const ws = createThreadSocket(threadId);
-    if (!ws) return;
+    if (!ws) {
+      console.log('[WS] No WebSocket created (possibly missing /ws endpoint)');
+      return;
+    }
     wsRef.current = ws;
 
+    ws.onopen = () => {
+      console.log('[WS] Connected to', ws.url);
+    };
+
+    ws.onerror = (error) => {
+      console.log('[WS] Error:', error);
+    };
+
     ws.onmessage = (event) => {
+      console.log('[WS] Raw message received:', event.data.slice(0, 200));
       try {
         const raw = JSON.parse(event.data as string);
         const validation = validateWebSocketMessage(raw);
-        if (!validation.success) return;
+        if (!validation.success) {
+          console.log('[WS] Validation failed:', validation.error);
+          return;
+        }
 
         const msg = validation.data;
 
@@ -73,6 +88,13 @@ export function useThreadWebSocket({
             const senderId = payload.senderId as string;
             const isAiResponse = Boolean(payload.isAiResponse);
             const isComplete = Boolean(payload.isComplete);
+
+            console.log('[WS] NEW_MESSAGE:', { 
+              isAiResponse, 
+              isComplete, 
+              parentId: payload.parentId,
+              content: (payload.content as string)?.slice(0, 50)
+            });
 
             // Don't echo own non-AI messages back (already in state)
             if (senderId === currentUserId && !isAiResponse) return;

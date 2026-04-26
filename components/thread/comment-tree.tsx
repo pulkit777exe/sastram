@@ -601,7 +601,11 @@ function CommentNode({
               )}
 
               {aiStatus === 'pending' && !node.isAiResponse && (
-                <p className="text-[11px] text-blue-600 mt-1">AI is thinking...</p>
+                <div className="mt-2 space-y-2 animate-pulse">
+                  <div className="h-3 w-full bg-blue-500/20 rounded" />
+                  <div className="h-3 w-5/6 bg-blue-500/20 rounded" />
+                  <div className="h-3 w-4/5 bg-blue-500/20 rounded" />
+                </div>
               )}
               {aiStatus === 'failed' && !node.isAiResponse && (
                 <p className="text-[11px] text-amber-600 mt-1">

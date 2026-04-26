@@ -24,6 +24,7 @@ export enum AIJobType {
   DETECT_CONFLICTS = 'detect-conflicts',
   GENERATE_DAILY_DIGEST = 'generate-daily-digest',
   SEND_AI_INSIGHT_NOTIFICATIONS = 'send-ai-insight-notifications',
+  GENERATE_AI_INLINE = 'generate-ai-inline',
 }
 
 export interface AIConflictResult {
@@ -103,6 +104,10 @@ export interface AIInlineJobData {
   sectionId: string;
   query: string;
   userId: string;
+}
+
+export async function enqueueInlineJob(data: AIInlineJobData) {
+  await getAiInlineQueue().add(AIJobType.GENERATE_AI_INLINE, data, DEFAULT_JOB_OPTIONS);
 }
 
 export interface StalenessCheckJobData {
@@ -514,6 +519,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
     likeCount: 0,
     replyCount: 0,
     isAiResponse: true,
+    isComplete: false,
     reactions: [],
     attachments: [],
   });
@@ -568,6 +574,11 @@ ${context}`,
     });
 
     // Emit a final completion event so clients can clear pending state immediately.
+    console.log('[AI inline] Emitting final message:', { 
+      id: aiMessage.id, 
+      content: fullContent.slice(0, 50), 
+      isComplete: true 
+    });
     emitThreadMessage(sectionId, {
       id: aiMessage.id,
       content: fullContent.slice(0, 2000),

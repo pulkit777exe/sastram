@@ -1,4 +1,5 @@
 import { logger } from '@/lib/infrastructure/logger';
+import { z } from 'zod';
 import { serverError } from './validation-common';
 
 /**
@@ -10,38 +11,29 @@ export interface ActionResult<T = unknown> {
 }
 
 /**
- * Wrap a server action handler with validation, error handling, and optionally auth checks
- *
- * Features:
- * - Automatic Zod schema validation (supports FormData or direct object args)
- * - Consistent error logging
- * - Optional authentication/admin checks
- *
- * Usage:
- *   export const getUserAction = createServerAction(
- *     { schema: userIdSchema, actionName: 'getUser', requireAuth: true },
- *     async ({ userId }) => {
- *       const user = await getUser(userId);
- *       return { data: user, error: null };
- *     }
- *   );
+ * Options for createServerAction
  */
-export function createServerAction<Schema extends z.ZodSchema<any>>(
-  options: {
-    schema: Schema;
-    actionName: string;
-    requireAuth?: boolean;
-    requireAdmin?: boolean;
-    requireRole?: string[];
-    getSession?: () => Promise<{ user: { id: string; role?: string } } | null>;
-  },
-  handler: (args: z.infer<Schema>) => Promise<ActionResult>
-) {
+export interface ServerActionOptions<In, Out = unknown> {
+  schema: z.ZodSchema<In>;
+  actionName: string;
+  requireAuth?: boolean;
+  requireAdmin?: boolean;
+  requireRole?: string[];
+  getSession?: () => Promise<{ user: { id: string; role?: string } } | null>;
+}
+
+/**
+ * Wrap a server action handler with validation, error handling, and optionally auth checks
+ */
+export function createServerAction<In, Out = unknown>(
+  options: ServerActionOptions<In, Out>,
+  handler: (args: In) => Promise<ActionResult<Out>>
+): (...args: unknown[]) => Promise<ActionResult<Out>> {
   const { schema, actionName, requireAuth, requireAdmin, requireRole, getSession } = options;
 
-  return async (...handlerArgs: unknown[]): Promise<ActionResult> => {
+  return async (...handlerArgs: unknown[]): Promise<ActionResult<Out>> => {
     // Validate input
-    let validatedArgs: z.infer<Schema>;
+    let validatedArgs: In;
     try {
       if (handlerArgs.length === 1 && handlerArgs[0] instanceof FormData) {
         const formData = handlerArgs[0] as FormData;
@@ -97,10 +89,10 @@ export function createServerAction<Schema extends z.ZodSchema<any>>(
 /**
  * Simple variant: only validation + error handling
  */
-export function withValidation<Schema extends z.ZodSchema<any>>(
-  schema: Schema,
+export function withValidation<In, Out = unknown>(
+  schema: z.ZodSchema<In>,
   actionName: string,
-  handler: (args: z.infer<Schema>) => Promise<ActionResult>
+  handler: (args: In) => Promise<ActionResult<Out>>
 ) {
-  return createServerAction({ schema, actionName }, handler);
+  return createServerAction<In, Out>({ schema, actionName }, handler);
 }
