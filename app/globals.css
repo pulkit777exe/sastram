@@ -206,3 +206,25 @@
     transform: scale(1.4);
   }
 }
+
+/* Landing page marquee strip */
+@keyframes landing-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.landing-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+
+.landing-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: landing-marquee 30s linear infinite;
+}
+
+.landing-marquee-track:hover {
+  animation-play-state: paused;
+}
