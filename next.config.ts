@@ -67,12 +67,7 @@ const sentryConfig = {
   wideOrientation: true,
   widenClientFileUpload: true,
   tunnelRoute: '/monitoring',
-  webpack: {
-    automaticVercelMonitors: true,
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
+  automaticVercelMonitors: true,
 };
 
 export default withSentryConfig(nextConfig, sentryConfig);
