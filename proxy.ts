@@ -4,6 +4,9 @@ import { env } from '@/lib/config/env';
 import { rateLimit } from '@/lib/services/rate-limit';
 
 const PUBLIC_PATHS = [
+  '/',
+  '/pricing',
+  '/terms',
   '/login',
   '/api/auth',
   '/api/email-otp',
