@@ -30,7 +30,7 @@ export function useSendMessage(conversationId: string) {
       if (!result.data) {
         throw new Error('Message could not be sent');
       }
-      return result.data as Message;
+      return result.data as unknown as Message;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });

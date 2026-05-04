@@ -98,13 +98,16 @@ export async function getUserNewsletterSubscriptions() {
 
     const subscriptions = await prisma.threadSubscription.findMany({
       where: { userId: session.user.id },
-      include: { thread: { select: { title: true, slug: true, description: true } } },
+      include: { thread: { select: { id: true, name: true, slug: true, description: true } } },
     });
 
     return {
       data: subscriptions.map((sub) => ({
-        ...sub.thread,
+        id: sub.id,
+        threadId: sub.threadId,
+        thread: sub.thread,
         frequency: sub.frequency,
+        createdAt: sub.createdAt,
       })),
       error: null,
     };

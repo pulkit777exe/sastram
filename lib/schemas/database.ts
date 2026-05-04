@@ -7,7 +7,9 @@ export const createMessageSchema = z.object({
   content: z
     .string()
     .min(1, 'Message cannot be empty')
-    .max(1000, 'Message must be less than 1000 characters'),
+    .max(1000, 'Message must be less than 1000 characters')
+    .refine((val) => val.trim().length > 0, 'Message cannot be only whitespace')
+    .refine((val) => !val.includes('\x00'), 'Message cannot contain null bytes'),
   sectionId: z.string().cuid('Invalid section ID'),
   parentId: z.string().cuid('Invalid parent message ID').optional(),
   mentions: z.array(z.string().cuid('Invalid user ID')).optional(),
@@ -17,7 +19,17 @@ export const createMessageSchema = z.object({
  * Attachment input schema
  */
 export const attachmentInputSchema = z.object({
-  url: z.string().url('Invalid attachment URL'),
+  url: z
+    .string()
+    .url('Invalid attachment URL')
+    .refine(
+      (val) => !val.includes('..') && !val.includes('\\'),
+      'Invalid path in URL'
+    )
+    .refine(
+      (val) => /^(https?|data:)/.test(val),
+      'URL must start with https:// or data:'
+    ),
   type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
   name: z.string().nullable(),
   size: z.number().int().positive('File size must be positive').nullable(),
@@ -37,10 +49,15 @@ export const createThreadSchema = z.object({
   name: z
     .string()
     .min(3, 'Name must be at least 3 characters')
-    .max(100, 'Name must be less than 100 characters'),
+    .max(100, 'Name must be less than 100 characters')
+    .refine((val) => /[a-zA-Z]/.test(val), 'Name must contain at least one letter'),
   slug: z
     .string()
-    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must contain only lowercase letters, numbers, and hyphens')
+    .min(3, 'Slug must be at least 3 characters')
+    .refine((val) => !val.startsWith('-'), 'Slug cannot start with a hyphen')
+    .refine((val) => !val.endsWith('-'), 'Slug cannot end with a hyphen')
+    .refine((val) => !val.includes('--'), 'Slug cannot have consecutive hyphens'),
   description: z.string().max(480, 'Description must be less than 480 characters').optional(),
   summary: z.string().max(2000, 'Summary must be less than 2000 characters').optional(),
   icon: z.string().emoji('Icon must be a valid emoji').optional(),
@@ -65,10 +82,14 @@ export const createCommunitySchema = z.object({
   title: z
     .string()
     .min(3, 'Title must be at least 3 characters')
-    .max(100, 'Title must be less than 100 characters'),
+    .max(100, 'Title must be less than 100 characters')
+    .refine((val) => val.trim() === val, 'Title cannot have leading or trailing whitespace'),
   slug: z
     .string()
-    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must contain only lowercase letters, numbers, and hyphens')
+    .refine((val) => !val.startsWith('-'), 'Slug cannot start with a hyphen')
+    .refine((val) => !val.endsWith('-'), 'Slug cannot end with a hyphen')
+    .refine((val) => !val.includes('--'), 'Slug cannot have consecutive hyphens'),
   description: z.string().max(280, 'Description must be less than 280 characters').optional(),
   createdBy: z.string().cuid('Invalid user ID'),
 });

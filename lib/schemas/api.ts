@@ -38,7 +38,10 @@ export const uploadedFileSchema = z.object({
 });
 
 export const uploadResponseSchema = z.object({
-  files: z.array(uploadedFileSchema),
+  files: z
+    .array(uploadedFileSchema)
+    .min(1, 'At least one file is required')
+    .max(10, 'Maximum 10 files allowed'),
 });
 
 /**
@@ -48,7 +51,11 @@ export const createThreadRequestSchema = z.object({
   title: z
     .string()
     .min(3, 'Title must be at least 3 characters')
-    .max(100, 'Title must be less than 100 characters'),
+    .max(100, 'Title must be less than 100 characters')
+    .refine((val) => /[a-zA-Z]/.test(val), 'Title must contain at least one letter')
+    .refine((val) => !val.includes('\n'), 'Title cannot contain newlines')
+    .refine((val) => !val.includes('\t'), 'Title cannot contain tabs')
+    .refine((val) => val.trim() === val, 'Title cannot have leading or trailing whitespace'),
   description: z
     .string()
     .max(480, 'Description must be less than 480 characters')
@@ -97,7 +104,8 @@ export const createCommunityRequestSchema = z.object({
   title: z
     .string()
     .min(3, 'Title must be at least 3 characters')
-    .max(100, 'Title must be less than 100 characters'),
+    .max(100, 'Title must be less than 100 characters')
+    .refine((val) => val.trim() === val, 'Title cannot have leading or trailing whitespace'),
   description: z
     .string()
     .max(280, 'Description must be less than 280 characters')
