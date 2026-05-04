@@ -1,4 +1,4 @@
-const BAD_WORDS = ["spam", "scam", "malware", "virus", "phishing"];
+const BAD_WORDS = ['spam', 'scam', 'malware', 'virus', 'phishing'];
 
 export function containsBadLanguage(content: string): boolean {
   const lowerContent = content.toLowerCase();
@@ -8,8 +8,8 @@ export function containsBadLanguage(content: string): boolean {
 export function filterBadLanguage(content: string): string {
   let filteredContent = content;
   BAD_WORDS.forEach((word) => {
-    const regex = new RegExp(word, "gi");
-    filteredContent = filteredContent.replace(regex, "*".repeat(word.length));
+    const regex = new RegExp(word, 'gi');
+    filteredContent = filteredContent.replace(regex, '*'.repeat(word.length));
   });
   return filteredContent;
 }
@@ -21,28 +21,22 @@ export interface FileValidationResult {
 
 export function validateFile(file: File): FileValidationResult {
   const MAX_SIZE = 4.5 * 1024 * 1024; // vercel blob limit
-  const ALLOWED_TYPES = [
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "application/pdf",
-  ];
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
 
   if (file.size > MAX_SIZE) {
-    return { isValid: false, error: "File size exceeds 5MB limit." };
+    return { isValid: false, error: 'File size exceeds 5MB limit.' };
   }
 
   if (!ALLOWED_TYPES.includes(file.type)) {
     return {
       isValid: false,
-      error: "Invalid file type. Only Images and PDFs are allowed.",
+      error: 'Invalid file type. Only Images and PDFs are allowed.',
     };
   }
 
-  if (file.name.toLowerCase().includes("virus")) {
-    return { isValid: false, error: "Malware detected." };
+  if (file.name.toLowerCase().includes('virus')) {
+    return { isValid: false, error: 'Malware detected.' };
   }
 
   return { isValid: true };
 }
-

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { X } from "lucide-react";
-import { cn } from "@/lib/utils/cn";
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { X } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 interface TagChipProps {
   tag: {
@@ -22,9 +22,9 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-        "transition-colors",
-        clickable && !onRemove && "hover:opacity-80"
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+        'transition-colors',
+        clickable && !onRemove && 'hover:opacity-80'
       )}
       style={{
         backgroundColor: `${tag.color}20`,
@@ -48,13 +48,8 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
   );
 
   if (clickable && !onRemove) {
-    return (
-      <Link href={`/dashboard/tags/${tag.slug}`}>
-        {content}
-      </Link>
-    );
+    return <Link href={`/dashboard/tags/${tag.slug}`}>{content}</Link>;
   }
 
   return content;
 }
-

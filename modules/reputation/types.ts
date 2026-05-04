@@ -9,4 +9,3 @@ export interface UserReputation {
   level: number;
   updatedAt: Date;
 }
-

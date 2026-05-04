@@ -18,7 +18,7 @@ export function ok<T>(data: T, requestId?: string): ApiResponse<T> {
     data,
     metadata: {
       timestamp: new Date().toISOString(),
-      requestId: requestId ?? "",
+      requestId: requestId ?? '',
     },
   };
 }
@@ -38,8 +38,7 @@ export function fail(
     },
     metadata: {
       timestamp: new Date().toISOString(),
-      requestId: requestId ?? "",
+      requestId: requestId ?? '',
     },
   };
 }
-

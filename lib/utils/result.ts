@@ -3,9 +3,7 @@
  * Provides type-safe error handling without exceptions
  */
 
-export type Result<T, E = Error> =
-  | { success: true; data: T }
-  | { success: false; error: E };
+export type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
 
 export function ok<T>(data: T): Result<T, never> {
   return { success: true, data };
@@ -34,4 +32,3 @@ export function unwrapOr<T, E>(result: Result<T, E>, defaultValue: T): T {
   }
   return defaultValue;
 }
-

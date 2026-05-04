@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toasts } from "@/lib/utils/toast";
+import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toasts } from '@/lib/utils/toast';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -17,9 +17,9 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/forget-password/email-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/forget-password/email-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
@@ -32,11 +32,9 @@ export default function ForgotPasswordPage() {
       }
 
       toasts.sent();
-      router.push(
-        `/forgot-password/verify?email=${encodeURIComponent(email)}`,
-      );
+      router.push(`/forgot-password/verify?email=${encodeURIComponent(email)}`);
     } catch (error) {
-      console.error("[forgot-password:request]", error);
+      console.error('[forgot-password:request]', error);
       toasts.networkError();
       setIsSubmitting(false);
     }
@@ -69,7 +67,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting || !email}>
-          {isSubmitting ? "Sending..." : "Send Reset Code"}
+          {isSubmitting ? 'Sending...' : 'Send Reset Code'}
         </Button>
       </form>
     </div>

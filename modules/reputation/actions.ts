@@ -1,13 +1,16 @@
-"use server";
+'use server';
 
-import { requireSession } from "@/modules/auth/session";
-import { revalidatePath } from "next/cache";
+import { logger } from '@/lib/infrastructure/logger';
+
+import { requireSession } from '@/modules/auth/session';
+import { revalidatePath } from 'next/cache';
 import {
   getUserReputation as getUserReputationRepo,
   awardReputation as awardReputationRepo,
   syncReputationPoints as syncReputationPointsRepo,
-} from "./repository";
-import { z } from "zod";
+} from './repository';
+import { z } from 'zod';
+import { withValidation } from '@/lib/utils/server-action';
 
 const userIdSchema = z.object({
   userId: z.string().cuid(),
@@ -21,88 +24,68 @@ const awardSchema = z.object({
 
 const awardActionSchema = z.object({
   userId: z.string().cuid(),
-  action: z.enum([
-    "thread_created",
-    "message_posted",
-    "reaction_received",
-    "follower_gained",
-  ]),
+  action: z.enum(['thread_created', 'message_posted', 'reaction_received', 'follower_gained']),
 });
 
-export async function getUserReputationAction(userId: string) {
-  const parsed = userIdSchema.safeParse({ userId });
-  if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
-  }
-
-  try {
-    const reputation = await getUserReputationRepo(parsed.data.userId);
-    return { data: reputation, error: null };
-  } catch (error) {
-    console.error("[getUserReputationAction]", error);
-    return { data: null, error: "Something went wrong" };
-  }
-}
-
-export async function awardReputationAction(
-  userId: string,
-  points: number,
-  reason: string,
-) {
-  const parsed = awardSchema.safeParse({ userId, points, reason });
-  if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
-  }
-
-  try {
-    const session = await requireSession();
-
-    // Only admins can manually award reputation
-    if (session.user.role !== "ADMIN") {
-      return { data: null, error: "Something went wrong" };
+export const getUserReputationAction = withValidation(
+  userIdSchema,
+  'getUserReputation',
+  async ({ userId }) => {
+    try {
+      const reputation = await getUserReputationRepo(userId);
+      return { data: reputation, error: null };
+    } catch (error) {
+      logger.error('[getUserReputation]', error);
+      return { data: null, error: 'Something went wrong' };
     }
-
-    await awardReputationRepo(
-      parsed.data.userId,
-      parsed.data.points,
-      parsed.data.reason,
-    );
-    revalidatePath(`/user/${parsed.data.userId}`);
-    return { data: null, error: null };
-  } catch (error) {
-    console.error("[awardReputationAction]", error);
-    return { data: null, error: "Something went wrong" };
   }
-}
+);
 
-export async function syncReputationPointsAction(userId: string) {
-  const parsed = userIdSchema.safeParse({ userId });
-  if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
-  }
+export const awardReputationAction = withValidation(
+  awardSchema,
+  'awardReputation',
+  async ({ userId, points, reason }) => {
+    try {
+      const session = await requireSession();
 
-  try {
-    await syncReputationPointsRepo(parsed.data.userId);
-    revalidatePath(`/user/${parsed.data.userId}`);
-    return { data: null, error: null };
-  } catch (error) {
-    console.error("[syncReputationPointsAction]", error);
-    return { data: null, error: "Something went wrong" };
+      // Only admins can manually award reputation
+      if (session.user.role !== 'ADMIN') {
+        return { data: null, error: 'Something went wrong' };
+      }
+
+      await awardReputationRepo(userId, points, reason);
+      revalidatePath(`/user/${userId}`);
+      return { data: null, error: null };
+    } catch (error) {
+      logger.error('[awardReputation]', error);
+      return { data: null, error: 'Something went wrong' };
+    }
   }
-}
+);
+
+export const syncReputationPointsAction = withValidation(
+  userIdSchema,
+  'syncReputationPoints',
+  async ({ userId }) => {
+    try {
+      await syncReputationPointsRepo(userId);
+      revalidatePath(`/user/${userId}`);
+      return { data: null, error: null };
+    } catch (error) {
+      logger.error('[syncReputationPoints]', error);
+      return { data: null, error: 'Something went wrong' };
+    }
+  }
+);
 
 // Helper function to award reputation for common actions
 export async function awardReputationForAction(
   userId: string,
-  action:
-    | "thread_created"
-    | "message_posted"
-    | "reaction_received"
-    | "follower_gained",
+  action: 'thread_created' | 'message_posted' | 'reaction_received' | 'follower_gained'
 ) {
   const parsed = awardActionSchema.safeParse({ userId, action });
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   const pointsMap = {
@@ -113,13 +96,12 @@ export async function awardReputationForAction(
   };
 
   const points = pointsMap[parsed.data.action];
+
   try {
-    if (points) {
-      await awardReputationRepo(parsed.data.userId, points, parsed.data.action);
-    }
+    await awardReputationRepo(userId, points, parsed.data.action);
     return { data: null, error: null };
   } catch (error) {
-    console.error("[awardReputationForAction]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[awardReputationForAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

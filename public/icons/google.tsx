@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import type { Transition, Variants } from "motion/react";
-import { motion, useAnimation } from "motion/react";
-import type { HTMLAttributes } from "react";
-import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
+import type { Transition, Variants } from 'motion/react';
+import { motion, useAnimation } from 'motion/react';
+import type { HTMLAttributes } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
 
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 export interface ChromeIconHandle {
   startAnimation: () => void;
@@ -45,8 +45,8 @@ const ChromeIcon = forwardRef<ChromeIconHandle, ChromeIconProps>(
       isControlledRef.current = true;
 
       return {
-        startAnimation: () => controls.start("animate"),
-        stopAnimation: () => controls.start("normal"),
+        startAnimation: () => controls.start('animate'),
+        stopAnimation: () => controls.start('normal'),
       };
     });
 
@@ -55,7 +55,7 @@ const ChromeIcon = forwardRef<ChromeIconHandle, ChromeIconProps>(
         if (isControlledRef.current) {
           onMouseEnter?.(e);
         } else {
-          controls.start("animate");
+          controls.start('animate');
         }
       },
       [controls, onMouseEnter]
@@ -66,7 +66,7 @@ const ChromeIcon = forwardRef<ChromeIconHandle, ChromeIconProps>(
         if (isControlledRef.current) {
           onMouseLeave?.(e);
         } else {
-          controls.start("normal");
+          controls.start('normal');
         }
       },
       [controls, onMouseLeave]
@@ -91,14 +91,7 @@ const ChromeIcon = forwardRef<ChromeIconHandle, ChromeIconProps>(
           xmlns="http://www.w3.org/2000/svg"
         >
           <circle cx="12" cy="12" r="10" />
-          <motion.circle
-            animate={controls}
-            custom={0}
-            cx="12"
-            cy="12"
-            r="4"
-            variants={VARIANTS}
-          />
+          <motion.circle animate={controls} custom={0} cx="12" cy="12" r="4" variants={VARIANTS} />
           <motion.line
             animate={controls}
             custom={3}
@@ -132,6 +125,6 @@ const ChromeIcon = forwardRef<ChromeIconHandle, ChromeIconProps>(
   }
 );
 
-ChromeIcon.displayName = "ChromeIcon";
+ChromeIcon.displayName = 'ChromeIcon';
 
 export { ChromeIcon };

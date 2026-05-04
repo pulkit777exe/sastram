@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,19 +8,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   CheckCircle,
   XCircle,
@@ -29,22 +29,22 @@ import {
   Ban,
   AlertTriangle,
   Loader2,
-} from "lucide-react";
-import { cn } from "@/lib/utils/cn";
+} from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 export type ModerationActionType =
-  | "DISMISS"
-  | "REMOVE_MESSAGE"
-  | "WARN_USER"
-  | "SUSPEND_USER"
-  | "BAN_USER";
+  | 'DISMISS'
+  | 'REMOVE_MESSAGE'
+  | 'WARN_USER'
+  | 'SUSPEND_USER'
+  | 'BAN_USER';
 
 interface ActionConfig {
   key: ModerationActionType;
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  variant: "default" | "destructive" | "outline";
+  variant: 'default' | 'destructive' | 'outline';
   requiresNote: boolean;
   showDuration?: boolean;
   userNotification: string;
@@ -52,70 +52,66 @@ interface ActionConfig {
 
 const actionConfigs: Record<ModerationActionType, ActionConfig> = {
   DISMISS: {
-    key: "DISMISS",
-    label: "Dismiss Report",
+    key: 'DISMISS',
+    label: 'Dismiss Report',
     description:
-      "Mark this report as invalid or false positive. No action will be taken against the user.",
+      'Mark this report as invalid or false positive. No action will be taken against the user.',
     icon: CheckCircle,
-    variant: "outline",
+    variant: 'outline',
     requiresNote: false,
     userNotification:
-      "The reporter will be notified that the report was reviewed and no violation was found.",
+      'The reporter will be notified that the report was reviewed and no violation was found.',
   },
   REMOVE_MESSAGE: {
-    key: "REMOVE_MESSAGE",
-    label: "Remove Message",
+    key: 'REMOVE_MESSAGE',
+    label: 'Remove Message',
     description:
-      "Hide this message from the thread. The user will not receive any warning or penalty.",
+      'Hide this message from the thread. The user will not receive any warning or penalty.',
     icon: XCircle,
-    variant: "outline",
+    variant: 'outline',
     requiresNote: true,
-    userNotification:
-      "The message author will be notified that their message was removed.",
+    userNotification: 'The message author will be notified that their message was removed.',
   },
   WARN_USER: {
-    key: "WARN_USER",
-    label: "Warn User",
+    key: 'WARN_USER',
+    label: 'Warn User',
     description:
-      "Remove the message and issue an official warning to the user. This will be added to their violation history.",
+      'Remove the message and issue an official warning to the user. This will be added to their violation history.',
     icon: AlertCircle,
-    variant: "outline",
+    variant: 'outline',
     requiresNote: true,
-    userNotification:
-      "The user will receive a warning notification with your message.",
+    userNotification: 'The user will receive a warning notification with your message.',
   },
   SUSPEND_USER: {
-    key: "SUSPEND_USER",
-    label: "Suspend User",
-    description:
-      "Temporarily suspend the user from posting. Choose the duration below.",
+    key: 'SUSPEND_USER',
+    label: 'Suspend User',
+    description: 'Temporarily suspend the user from posting. Choose the duration below.',
     icon: Clock,
-    variant: "outline",
+    variant: 'outline',
     requiresNote: true,
     showDuration: true,
-    userNotification:
-      "The user will be suspended and notified of the duration and reason.",
+    userNotification: 'The user will be suspended and notified of the duration and reason.',
   },
   BAN_USER: {
-    key: "BAN_USER",
-    label: "Permanently Ban User",
+    key: 'BAN_USER',
+    label: 'Permanently Ban User',
     description:
-      "Permanently ban this user from the platform. This action should be reserved for serious violations.",
+      'Permanently ban this user from the platform. This action should be reserved for serious violations.',
     icon: Ban,
-    variant: "destructive",
+    variant: 'destructive',
     requiresNote: true,
     userNotification:
-      "The user will be permanently banned and notified. They will be able to appeal this decision.",
+      'The user will be permanently banned and notified. They will be able to appeal this decision.',
   },
 };
 
 const suspensionDurations = [
-  { value: "1h", label: "1 hour" },
-  { value: "6h", label: "6 hours" },
-  { value: "24h", label: "24 hours" },
-  { value: "3d", label: "3 days" },
-  { value: "7d", label: "7 days" },
-  { value: "30d", label: "30 days" },
+  { value: '1h', label: '1 hour' },
+  { value: '6h', label: '6 hours' },
+  { value: '24h', label: '24 hours' },
+  { value: '3d', label: '3 days' },
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
 ];
 
 interface ActionModalProps {
@@ -142,9 +138,9 @@ export function ActionModal({
   userName,
   onConfirm,
 }: ActionModalProps) {
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState('');
   const [notifyReporter, setNotifyReporter] = useState(true);
-  const [duration, setDuration] = useState("24h");
+  const [duration, setDuration] = useState('24h');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const config = actionConfigs[action];
@@ -165,9 +161,9 @@ export function ActionModal({
       });
       onOpenChange(false);
       // Reset form
-      setNote("");
+      setNote('');
       setNotifyReporter(true);
-      setDuration("24h");
+      setDuration('24h');
     } finally {
       setIsSubmitting(false);
     }
@@ -180,10 +176,8 @@ export function ActionModal({
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Icon
               className={cn(
-                "w-5 h-5",
-                config.variant === "destructive"
-                  ? "text-destructive"
-                  : "text-foreground"
+                'w-5 h-5',
+                config.variant === 'destructive' ? 'text-destructive' : 'text-foreground'
               )}
             />
             {config.label}
@@ -195,16 +189,13 @@ export function ActionModal({
 
         <div className="space-y-4 py-4">
           {/* Warning for destructive actions */}
-          {config.variant === "destructive" && (
+          {config.variant === 'destructive' && (
             <div className="flex items-start gap-3 bg-destructive/10 border border-destructive/30 rounded-lg p-3">
               <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-destructive">
-                  This action is irreversible
-                </p>
+                <p className="font-medium text-destructive">This action is irreversible</p>
                 <p className="text-muted-foreground mt-1">
-                  Please ensure you have reviewed the full context before
-                  proceeding.
+                  Please ensure you have reviewed the full context before proceeding.
                 </p>
               </div>
             </div>
@@ -218,9 +209,7 @@ export function ActionModal({
                 Report #{reportId.slice(-6).toUpperCase()}
               </Badge>
             </div>
-            <p className="text-sm font-medium text-foreground">
-              {userName || "Unknown User"}
-            </p>
+            <p className="text-sm font-medium text-foreground">{userName || 'Unknown User'}</p>
             {messagePreview && (
               <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
                 &ldquo;{messagePreview}&rdquo;
@@ -251,14 +240,9 @@ export function ActionModal({
           <div className="space-y-2">
             <Label htmlFor="note" className="flex items-center justify-between">
               <span>
-                Moderator Note{" "}
-                {config.requiresNote && (
-                  <span className="text-destructive">*</span>
-                )}
+                Moderator Note {config.requiresNote && <span className="text-destructive">*</span>}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {note.length}/500
-              </span>
+              <span className="text-xs text-muted-foreground">{note.length}/500</span>
             </Label>
             <Textarea
               id="note"
@@ -266,16 +250,14 @@ export function ActionModal({
               onChange={(e) => setNote(e.target.value)}
               placeholder={
                 config.requiresNote
-                  ? "Explain the reason for this action (required)..."
-                  : "Optional notes for internal reference..."
+                  ? 'Explain the reason for this action (required)...'
+                  : 'Optional notes for internal reference...'
               }
               className="min-h-[100px] bg-muted border-border resize-none"
               maxLength={500}
             />
             {config.requiresNote && note.length < 10 && note.length > 0 && (
-              <p className="text-xs text-destructive">
-                Please provide at least 10 characters
-              </p>
+              <p className="text-xs text-destructive">Please provide at least 10 characters</p>
             )}
           </div>
 
@@ -291,7 +273,7 @@ export function ActionModal({
             <Checkbox
               id="notify-reporter"
               checked={notifyReporter}
-              onCheckedChange={(checked: boolean | "indeterminate") =>
+              onCheckedChange={(checked: boolean | 'indeterminate') =>
                 setNotifyReporter(checked === true)
               }
             />
@@ -315,13 +297,9 @@ export function ActionModal({
           </Button>
           <Button
             type="button"
-            variant={
-              config.variant === "destructive" ? "destructive" : "default"
-            }
+            variant={config.variant === 'destructive' ? 'destructive' : 'default'}
             onClick={handleSubmit}
-            disabled={
-              isSubmitting || (config.requiresNote && note.trim().length < 10)
-            }
+            disabled={isSubmitting || (config.requiresNote && note.trim().length < 10)}
           >
             {isSubmitting ? (
               <>

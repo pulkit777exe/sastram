@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -13,10 +13,10 @@
   --text-primary-hover: #27272a;
   --text-secondary-hover: #476ab3;
   --radius: 0.625rem;
-  
+
   /* Brand Color */
   --brand: #3736fc;
-  
+
   /* Light Mode - Pure White Background */
   --background: oklch(1 0 0);
   --foreground: oklch(0 0 0);
@@ -143,25 +143,27 @@
   * {
     @apply border-border outline-ring/50;
   }
-  
+
   html {
     @apply antialiased;
   }
-  
+
   body {
     @apply bg-background text-foreground;
-    transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
-                color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+      background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+      color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   *,
   *::before,
   *::after {
-    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+    transition-property:
+      background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 0.3s;
   }
-  
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -205,4 +207,24 @@
   }
 }
 
+/* Landing page marquee strip */
+@keyframes landing-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
 
+.landing-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+
+.landing-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: landing-marquee 30s linear infinite;
+}
+
+.landing-marquee-track:hover {
+  animation-play-state: paused;
+}

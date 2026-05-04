@@ -1,36 +1,37 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { executeAISearch } from "@/modules/ai-search/service";
-import type { SearchConfig } from "@/modules/ai-search/types";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { executeAISearch } from '@/modules/ai-search/service';
+import { logger } from '@/lib/infrastructure/logger';
+import type { SearchConfig } from '@/modules/ai-search/types';
 
 // Follow-up query patterns based on query type
 const FOLLOW_UP_PATTERNS = {
   technical: [
-    "How to implement this",
-    "Common mistakes to avoid",
-    "Best practices",
-    "Troubleshooting tips",
-    "Performance optimization",
+    'How to implement this',
+    'Common mistakes to avoid',
+    'Best practices',
+    'Troubleshooting tips',
+    'Performance optimization',
   ],
   factual: [
-    "What are the alternatives",
-    "How does this compare to",
-    "Is this still relevant in",
-    "What are the pros and cons",
-    "How to verify this information",
+    'What are the alternatives',
+    'How does this compare to',
+    'Is this still relevant in',
+    'What are the pros and cons',
+    'How to verify this information',
   ],
   opinion: [
-    "What do others think",
-    "Expert opinions on",
-    "Community consensus",
-    "Potential biases",
-    "Counterarguments to consider",
+    'What do others think',
+    'Expert opinions on',
+    'Community consensus',
+    'Potential biases',
+    'Counterarguments to consider',
   ],
   comparison: [
-    "Which one is better for",
-    "Performance comparison",
-    "Ease of use comparison",
-    "Cost comparison",
-    "Future trends",
+    'Which one is better for',
+    'Performance comparison',
+    'Ease of use comparison',
+    'Cost comparison',
+    'Future trends',
   ],
 };
 
@@ -45,12 +46,14 @@ const PREWARM_CONFIG = {
 /**
  * Generates follow-up query suggestions based on original query and type
  */
-function generateFollowUpQueries(originalQuery: string, queryType: string = "technical"): string[] {
-  const patterns = FOLLOW_UP_PATTERNS[queryType as keyof typeof FOLLOW_UP_PATTERNS] || FOLLOW_UP_PATTERNS.technical;
-  
-  return patterns.slice(0, PREWARM_CONFIG.maxFollowUpQueries).map(pattern => 
-    `${pattern} ${originalQuery}`
-  );
+function generateFollowUpQueries(originalQuery: string, queryType: string = 'technical'): string[] {
+  const patterns =
+    FOLLOW_UP_PATTERNS[queryType as keyof typeof FOLLOW_UP_PATTERNS] ||
+    FOLLOW_UP_PATTERNS.technical;
+
+  return patterns
+    .slice(0, PREWARM_CONFIG.maxFollowUpQueries)
+    .map((pattern) => `${pattern} ${originalQuery}`);
 }
 
 /**
@@ -62,7 +65,7 @@ export async function prewarmFollowUpQueries(): Promise<{
   errors: number;
 }> {
   const stats = { processed: 0, prewarmed: 0, errors: 0 };
-  
+
   try {
     // Get recent search sessions that haven't been pre-warmed yet
     const recentSearches = await prisma.aiSearchSession.findMany({
@@ -81,34 +84,34 @@ export async function prewarmFollowUpQueries(): Promise<{
     });
 
     // Filter by query length
-    const filteredSearches = recentSearches.filter(search => 
-      search.query.length >= PREWARM_CONFIG.minQueryLength
+    const filteredSearches = recentSearches.filter(
+      (search) => search.query.length >= PREWARM_CONFIG.minQueryLength
     );
 
     stats.processed = filteredSearches.length;
-    
+
     // Pre-warm follow-up queries for each recent search
     for (const search of filteredSearches) {
       try {
         const followUpQueries = generateFollowUpQueries(
           search.query,
-          search.queryType || "technical"
+          search.queryType || 'technical'
         );
 
         // Execute follow-up searches
         for (const followUpQuery of followUpQueries) {
           const config: SearchConfig = {
-            searchMode: "standard",
-            exaMode: "instant",
-            tavilyMode: "search",
-            sourceFilter: "all",
+            searchMode: 'standard',
+            exaMode: 'instant',
+            tavilyMode: 'search',
+            sourceFilter: 'all',
           };
 
           // Get API keys from environment (fallback to dummy values if not available)
           const keys = {
-            exa: process.env.EXA_API_KEY || "",
-            tavily: process.env.TAVILY_API_KEY || "",
-            gemini: process.env.GEMINI_API_KEY || "",
+            exa: process.env.EXA_API_KEY || '',
+            tavily: process.env.TAVILY_API_KEY || '',
+            gemini: process.env.GEMINI_API_KEY || '',
           };
 
           // Only execute if we have all necessary keys
@@ -124,12 +127,12 @@ export async function prewarmFollowUpQueries(): Promise<{
           data: { lastPrewarmedAt: new Date() },
         });
       } catch (error) {
-        console.error(`Failed to pre-warm queries for search ${search.id}:`, error);
+        logger.error(`Failed to pre-warm queries for search ${search.id}:`, error);
         stats.errors++;
       }
     }
   } catch (error) {
-    console.error("Failed to pre-warm follow-up queries:", error);
+    logger.error('Failed to pre-warm follow-up queries:', error);
     stats.errors++;
   }
 
@@ -145,7 +148,7 @@ export async function prewarmQueriesForThread(threadId: string): Promise<{
   errors: number;
 }> {
   const stats = { processed: 0, prewarmed: 0, errors: 0 };
-  
+
   try {
     // Get thread information
     const thread = await prisma.section.findUnique({
@@ -163,28 +166,28 @@ export async function prewarmQueriesForThread(threadId: string): Promise<{
     // Extract keywords from thread name and messages
     const keywords = new Set<string>();
     keywords.add(thread.name);
-    thread.messages.slice(0, 5).forEach(msg => {
-      const words = msg.content.split(/\s+/).filter(word => word.length > 3);
-      words.slice(0, 10).forEach(word => keywords.add(word));
+    thread.messages.slice(0, 5).forEach((msg) => {
+      const words = msg.content.split(/\s+/).filter((word) => word.length > 3);
+      words.slice(0, 10).forEach((word) => keywords.add(word));
     });
 
     // Generate queries from keywords
-    const queries = Array.from(keywords).slice(0, 5).map(keyword => 
-      `How to ${keyword}`
-    );
+    const queries = Array.from(keywords)
+      .slice(0, 5)
+      .map((keyword) => `How to ${keyword}`);
 
     // Execute queries
     const config: SearchConfig = {
-      searchMode: "standard",
-      exaMode: "instant",
-      tavilyMode: "search",
-      sourceFilter: "all",
+      searchMode: 'standard',
+      exaMode: 'instant',
+      tavilyMode: 'search',
+      sourceFilter: 'all',
     };
 
     const keys = {
-      exa: process.env.EXA_API_KEY || "",
-      tavily: process.env.TAVILY_API_KEY || "",
-      gemini: process.env.GEMINI_API_KEY || "",
+      exa: process.env.EXA_API_KEY || '',
+      tavily: process.env.TAVILY_API_KEY || '',
+      gemini: process.env.GEMINI_API_KEY || '',
     };
 
     if (keys.exa && keys.tavily && keys.gemini) {
@@ -193,14 +196,14 @@ export async function prewarmQueriesForThread(threadId: string): Promise<{
           await executeAISearch(query, config, keys);
           stats.prewarmed++;
         } catch (error) {
-          console.error(`Failed to pre-warm query "${query}":`, error);
+          logger.error(`Failed to pre-warm query "${query}":`, error);
           stats.errors++;
         }
         stats.processed++;
       }
     }
   } catch (error) {
-    console.error(`Failed to pre-warm queries for thread ${threadId}:`, error);
+    logger.error(`Failed to pre-warm queries for thread ${threadId}:`, error);
     stats.errors++;
   }
 
@@ -213,7 +216,7 @@ export async function prewarmQueriesForThread(threadId: string): Promise<{
 export async function isQueryPrewarmed(query: string): Promise<boolean> {
   // Check if there's a recent search session for this query
   const normalizedQuery = query.trim().toLowerCase();
-  
+
   const search = await prisma.aiSearchSession.findFirst({
     where: {
       queryHash: normalizedQuery,

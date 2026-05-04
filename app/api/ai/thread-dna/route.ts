@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/modules/auth/session";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { aiService } from "@/lib/services/ai";
-import { z } from "zod";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireSession } from '@/modules/auth/session';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { aiService } from '@/lib/services/ai';
+import { rateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/infrastructure/logger';
+import { z } from 'zod';
 
 const dnaRequestSchema = z.object({
   threadId: z.string(),
@@ -12,7 +14,16 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireSession();
     if (!session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+    const rateLimitResult = await rateLimit(ip);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
     }
 
     const body = await req.json();
@@ -23,27 +34,29 @@ export async function POST(req: NextRequest) {
       where: { id: threadId },
       include: {
         messages: {
-          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || "50", 10), // Limit to configured number of messages for DNA analysis
-          orderBy: { createdAt: "desc" },
+          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10), // Limit to configured number of messages for DNA analysis
+          orderBy: { createdAt: 'desc' },
           include: { sender: true },
         },
       },
     });
 
     if (!thread) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
     }
 
     // Reverse to chronological order for AI
     const messages = thread.messages.reverse();
 
     if (messages.length === 0) {
-      return NextResponse.json({ dna: {
-        questionType: "other",
-        expertiseLevel: "intermediate",
-        topics: ["general discussion"],
-        readTimeMinutes: 1,
-      } });
+      return NextResponse.json({
+        dna: {
+          questionType: 'other',
+          expertiseLevel: 'intermediate',
+          topics: ['general discussion'],
+          readTimeMinutes: 1,
+        },
+      });
     }
 
     // Generate thread DNA
@@ -57,10 +70,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ dna: threadDNA });
   } catch (error) {
-    console.error("Error generating thread DNA:", error);
-    return NextResponse.json(
-      { error: "Failed to generate thread DNA" },
-      { status: 500 },
-    );
+    logger.error('Error generating thread DNA:', error);
+    return NextResponse.json({ error: 'Failed to generate thread DNA' }, { status: 500 });
   }
 }

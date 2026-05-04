@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function getUserBadges(userId: string) {
   try {
@@ -9,13 +9,13 @@ export async function getUserBadges(userId: string) {
         badge: true,
       },
       orderBy: {
-        earnedAt: "desc",
+        earnedAt: 'desc',
       },
     });
 
     return (earnedBadges ?? []).map((eb) => eb.badge);
   } catch (error) {
-    logger.error("[getUserBadges]", error);
+    logger.error('[getUserBadges]', error);
     return [];
   }
 }
@@ -52,21 +52,21 @@ export async function checkAndAwardBadges(userId: string) {
       let shouldAward = false;
 
       // Check criteria based on badge type
-      if (criteria.type === "first_thread") {
+      if (criteria.type === 'first_thread') {
         const threadCount = await prisma.section.count({
           where: {
             createdBy: userId,
           },
         });
         shouldAward = threadCount >= 1;
-      } else if (criteria.type === "thread_milestone") {
+      } else if (criteria.type === 'thread_milestone') {
         const threadCount = await prisma.section.count({
           where: {
             createdBy: userId,
           },
         });
         shouldAward = threadCount >= (criteria.count || 10);
-      } else if (criteria.type === "message_milestone") {
+      } else if (criteria.type === 'message_milestone') {
         const messageCount = await prisma.message.count({
           where: {
             senderId: userId,
@@ -74,14 +74,14 @@ export async function checkAndAwardBadges(userId: string) {
           },
         });
         shouldAward = messageCount >= (criteria.count || 100);
-      } else if (criteria.type === "follower_milestone") {
+      } else if (criteria.type === 'follower_milestone') {
         const followerCount = await prisma.userFollow.count({
           where: {
             followingId: userId,
           },
         });
         shouldAward = followerCount >= (criteria.count || 50);
-      } else if (criteria.type === "reputation_milestone") {
+      } else if (criteria.type === 'reputation_milestone') {
         const reputation = await prisma.userReputation.findUnique({
           where: { userId },
         });
@@ -108,7 +108,7 @@ export async function checkAndAwardBadges(userId: string) {
 
     return awardedBadges;
   } catch (error) {
-    logger.error("[checkAndAwardBadges]", error);
+    logger.error('[checkAndAwardBadges]', error);
     return [];
   }
 }
@@ -118,12 +118,12 @@ export async function getAllBadges() {
     return (
       (await prisma.userBadge.findMany({
         orderBy: {
-          createdAt: "asc",
+          createdAt: 'asc',
         },
       })) ?? []
     );
   } catch (error) {
-    logger.error("[getAllBadges]", error);
+    logger.error('[getAllBadges]', error);
     return [];
   }
 }

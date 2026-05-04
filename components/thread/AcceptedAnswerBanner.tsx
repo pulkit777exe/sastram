@@ -1,12 +1,10 @@
-import type { ThreadMessage } from "@/modules/threads/queries";
+import type { ThreadMessage } from '@/modules/threads/queries';
 
 interface AcceptedAnswerBannerProps {
   answer: ThreadMessage | null;
 }
 
-export default function AcceptedAnswerBanner({
-  answer,
-}: AcceptedAnswerBannerProps) {
+export default function AcceptedAnswerBanner({ answer }: AcceptedAnswerBannerProps) {
   if (!answer) return null;
 
   return (
@@ -24,4 +22,3 @@ export default function AcceptedAnswerBanner({
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 // ── SCHEMA ─────────────────────────────────────────────────────────────────
 // Parse poll.options from Prisma Json field safely.
@@ -12,9 +12,7 @@ const optionsSchema = z.array(z.string());
 function parsePollOptions(raw: Prisma.JsonValue): string[] {
   const result = optionsSchema.safeParse(raw);
   if (!result.success) {
-    throw new Error(
-      `[Poll] options field has unexpected shape: ${result.error.message}`,
-    );
+    throw new Error(`[Poll] options field has unexpected shape: ${result.error.message}`);
   }
   return result.data;
 }
@@ -25,7 +23,7 @@ export async function createPoll(
   threadId: string,
   question: string,
   options: string[],
-  expiresAt?: Date,
+  expiresAt?: Date
 ) {
   return prisma.poll.create({
     data: {
@@ -43,11 +41,7 @@ export async function createPoll(
 // We do NOT pre-check for an existing vote here — that would be an extra
 // round trip for every vote. Instead the action catches the constraint error.
 
-export async function voteOnPoll(
-  pollId: string,
-  userId: string,
-  optionIndex: number,
-) {
+export async function voteOnPoll(pollId: string, userId: string, optionIndex: number) {
   return prisma.pollVote.create({
     data: { pollId, userId, optionIndex },
   });
@@ -103,7 +97,7 @@ export async function getPollResults(pollId: string) {
       },
     }),
     prisma.pollVote.groupBy({
-      by: ["optionIndex"],
+      by: ['optionIndex'],
       where: { pollId },
       _count: { optionIndex: true },
     }),
@@ -117,7 +111,7 @@ export async function getPollResults(pollId: string) {
 
   // Build a lookup map: optionIndex → count
   const countByIndex = new Map<number, number>(
-    voteCounts.map((row) => [row.optionIndex, row._count.optionIndex]),
+    voteCounts.map((row) => [row.optionIndex, row._count.optionIndex])
   );
 
   return {

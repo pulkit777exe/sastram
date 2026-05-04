@@ -7,4 +7,3 @@ export interface SearchResults<T> {
   total: number;
   hasMore: boolean;
 }
-

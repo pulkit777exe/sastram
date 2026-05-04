@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,27 +17,24 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Trash2, Shield, Crown } from "lucide-react";
-import { toast } from "sonner";
-import { TimeAgo } from "@/components/ui/TimeAgo";
-import {
-  getThreadMembersAction,
-  manageThreadMemberAction,
-} from "@/modules/threads/actions";
-import type { ThreadMember } from "@/modules/threads/types";
-import { SectionRole } from "@prisma/client";
+} from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Loader2, Trash2, Shield, Crown } from 'lucide-react';
+import { toast } from 'sonner';
+import { TimeAgo } from '@/components/ui/TimeAgo';
+import { getThreadMembersAction, manageThreadMemberAction } from '@/modules/threads/actions';
+import type { ThreadMember } from '@/modules/threads/types';
+import { SectionRole } from '@prisma/client';
 
 interface ThreadAccessModalProps {
   threadId: string;
@@ -47,7 +44,7 @@ interface ThreadAccessModalProps {
 }
 
 type ConfirmActionState = {
-  type: "update_role" | "remove";
+  type: 'update_role' | 'remove';
   userId: string;
   userName: string;
   role?: SectionRole;
@@ -75,18 +72,14 @@ export function ThreadAccessModal({
           }
           setMembers(result?.data ?? []);
         })
-        .catch(() => toast.error("Failed to load members"))
+        .catch(() => toast.error('Failed to load members'))
         .finally(() => setLoading(false));
     }
   }, [isOpen, threadId]);
 
-  const handleRoleChangeRequest = (
-    userId: string,
-    userName: string,
-    newRole: SectionRole,
-  ) => {
+  const handleRoleChangeRequest = (userId: string, userName: string, newRole: SectionRole) => {
     setConfirmAction({
-      type: "update_role",
+      type: 'update_role',
       userId,
       userName,
       role: newRole,
@@ -95,7 +88,7 @@ export function ThreadAccessModal({
 
   const handleRemoveRequest = (userId: string, userName: string) => {
     setConfirmAction({
-      type: "remove",
+      type: 'remove',
       userId,
       userName,
     });
@@ -105,12 +98,12 @@ export function ThreadAccessModal({
     if (!confirmAction) return;
 
     try {
-      if (confirmAction.type === "update_role") {
+      if (confirmAction.type === 'update_role') {
         if (!confirmAction.role) return;
         const result = await manageThreadMemberAction({
           threadId,
           userId: confirmAction.userId,
-          action: "update_role",
+          action: 'update_role',
           role: confirmAction.role,
         });
         if (result?.error) {
@@ -120,30 +113,24 @@ export function ThreadAccessModal({
         toast.success(`Role updated for ${confirmAction.userName}`);
         setMembers((prev) =>
           prev.map((m) =>
-            m.userId === confirmAction.userId
-              ? { ...m, role: confirmAction.role! }
-              : m,
-          ),
+            m.userId === confirmAction.userId ? { ...m, role: confirmAction.role! } : m
+          )
         );
-      } else if (confirmAction.type === "remove") {
+      } else if (confirmAction.type === 'remove') {
         const result = await manageThreadMemberAction({
           threadId,
           userId: confirmAction.userId,
-          action: "remove",
+          action: 'remove',
         });
         if (result?.error) {
           toast.error(result.error);
           return;
         }
         toast.success(`${confirmAction.userName} removed from thread`);
-        setMembers((prev) =>
-          prev.filter((m) => m.userId !== confirmAction.userId),
-        );
+        setMembers((prev) => prev.filter((m) => m.userId !== confirmAction.userId));
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to execute action",
-      );
+      toast.error(error instanceof Error ? error.message : 'Failed to execute action');
     } finally {
       setConfirmAction(null);
     }
@@ -155,9 +142,7 @@ export function ThreadAccessModal({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Access</DialogTitle>
-            <DialogDescription>
-              Control who has access to this thread.
-            </DialogDescription>
+            <DialogDescription>Control who has access to this thread.</DialogDescription>
           </DialogHeader>
           <div className="mt-4">
             {loading ? (
@@ -173,27 +158,20 @@ export function ThreadAccessModal({
                 <div className="space-y-4 pr-4">
                   {members.map((member) => {
                     const isCreator = member.userId === creatorId;
-                    const userName = member.user.name || "Anonymous";
+                    const userName = member.user.name || 'Anonymous';
 
                     return (
-                      <div
-                        key={member.id}
-                        className="flex items-center justify-between group"
-                      >
+                      <div key={member.id} className="flex items-center justify-between group">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9 border">
-                            <AvatarImage
-                              src={member.user.avatarUrl || undefined}
-                            />
+                            <AvatarImage src={member.user.avatarUrl || undefined} />
                             <AvatarFallback>
-                              {member.user.name?.[0]?.toUpperCase() || "?"}
+                              {member.user.name?.[0]?.toUpperCase() || '?'}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium leading-none">
-                                {userName}
-                              </p>
+                              <p className="text-sm font-medium leading-none">{userName}</p>
                               {isCreator && (
                                 <Badge
                                   variant="secondary"
@@ -217,7 +195,7 @@ export function ThreadAccessModal({
                                   handleRoleChangeRequest(
                                     member.userId,
                                     userName,
-                                    val as SectionRole,
+                                    val as SectionRole
                                   )
                                 }
                               >
@@ -226,28 +204,21 @@ export function ThreadAccessModal({
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="MEMBER">Member</SelectItem>
-                                  <SelectItem value="MODERATOR">
-                                    Moderator
-                                  </SelectItem>
+                                  <SelectItem value="MODERATOR">Moderator</SelectItem>
                                 </SelectContent>
                               </Select>
                               <Button
                                 size="icon"
                                 variant="ghost"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() =>
-                                  handleRemoveRequest(member.userId, userName)
-                                }
+                                onClick={() => handleRemoveRequest(member.userId, userName)}
                               >
                                 <Trash2 size={14} />
                               </Button>
                             </>
                           ) : (
                             <div className="pr-2">
-                              <Shield
-                                size={14}
-                                className="text-muted-foreground/50"
-                              />
+                              <Shield size={14} className="text-muted-foreground/50" />
                             </div>
                           )}
                         </div>
@@ -261,15 +232,12 @@ export function ThreadAccessModal({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={!!confirmAction}
-        onOpenChange={(open) => !open && setConfirmAction(null)}
-      >
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction?.type === "remove"
+              {confirmAction?.type === 'remove'
                 ? `You are about to remove ${confirmAction.userName} from this thread. They will lose access immediately.`
                 : `You are about to change ${confirmAction?.userName}'s role to ${confirmAction?.role}.`}
             </AlertDialogDescription>
@@ -279,14 +247,10 @@ export function ThreadAccessModal({
             <AlertDialogAction
               onClick={executeAction}
               className={
-                confirmAction?.type === "remove"
-                  ? "bg-destructive hover:bg-destructive/90"
-                  : ""
+                confirmAction?.type === 'remove' ? 'bg-destructive hover:bg-destructive/90' : ''
               }
             >
-              {confirmAction?.type === "remove"
-                ? "Remove Member"
-                : "Update Role"}
+              {confirmAction?.type === 'remove' ? 'Remove Member' : 'Update Role'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

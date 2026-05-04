@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Bookmark, BookmarkCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toggleBookmark, checkBookmarkStatus } from "@/modules/bookmarks/actions";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils/cn";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Bookmark, BookmarkCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toggleBookmark, checkBookmarkStatus } from '@/modules/bookmarks/actions';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils/cn';
+import { AnimatedIcon } from '@/components/ui/animated-icon';
 
 interface BookmarkButtonProps {
   threadId: string;
@@ -35,12 +35,10 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
         toast.error(result.error);
       } else if (result?.data?.isBookmarked !== undefined) {
         setIsBookmarked(result.data.isBookmarked || false);
-        toast.success(
-          result.data.isBookmarked ? "Bookmarked" : "Removed from bookmarks"
-        );
+        toast.success(result.data.isBookmarked ? 'Bookmarked' : 'Removed from bookmarks');
       }
     } catch {
-      toast.error("Something went wrong");
+      toast.error('Something went wrong');
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +51,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
         disabled={isLoading}
         variant="ghost"
         size="sm"
-        className={cn("gap-2", className)}
+        className={cn('gap-2', className)}
       >
         {isBookmarked ? (
           <>

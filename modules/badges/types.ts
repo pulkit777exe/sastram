@@ -18,4 +18,3 @@ export interface UserBadgeEarned {
   badgeId: string;
   earnedAt: Date;
 }
-

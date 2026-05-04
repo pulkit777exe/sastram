@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ModerationQueue } from "./moderation-queue";
-import { ReportReviewPanel } from "./report-review-panel";
-import { AuditLogTable } from "./audit-log-table";
-import { getReportWithContext } from "@/modules/reports/actions";
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ModerationQueue } from './moderation-queue';
+import { ReportReviewPanel } from './report-review-panel';
+import { AuditLogTable } from './audit-log-table';
+import { getReportWithContext } from '@/modules/reports/actions';
 import type {
   ReportStats,
   ReportQueueItem,
   ReportWithContext,
   Report,
-} from "@/modules/reports/types";
-import { toast } from "sonner";
+} from '@/modules/reports/types';
+import { toast } from 'sonner';
 
 interface AuditLogEntry {
   id: string;
@@ -42,8 +42,7 @@ export function ModerationDashboard({
   moderator,
 }: ModerationDashboardProps) {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const [selectedReport, setSelectedReport] =
-    useState<ReportWithContext | null>(null);
+  const [selectedReport, setSelectedReport] = useState<ReportWithContext | null>(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
 
   const queueItems: ReportQueueItem[] = initialReports.map((r) => ({
@@ -86,9 +85,7 @@ export function ModerationDashboard({
     async (action: string) => {
       if (!selectedReportId) return;
 
-      toast.info(
-        `Action "${action}" selected. Confirmation modal coming soon.`
-      );
+      toast.info(`Action "${action}" selected. Confirmation modal coming soon.`);
     },
     [selectedReportId]
   );
@@ -100,11 +97,11 @@ export function ModerationDashboard({
 
       const key = e.key;
       const actions: Record<string, string> = {
-        "1": "DISMISS",
-        "2": "REMOVE_MESSAGE",
-        "3": "WARN_USER",
-        "4": "SUSPEND_USER",
-        "5": "BAN_USER",
+        '1': 'DISMISS',
+        '2': 'REMOVE_MESSAGE',
+        '3': 'WARN_USER',
+        '4': 'SUSPEND_USER',
+        '5': 'BAN_USER',
       };
 
       if (actions[key]) {
@@ -113,8 +110,8 @@ export function ModerationDashboard({
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedReport, handleAction]);
 
   return (
@@ -124,22 +121,16 @@ export function ModerationDashboard({
           <div className="flex items-center gap-4">
             <Avatar className="w-12 h-12">
               <AvatarImage src={moderator.image} />
-              <AvatarFallback>
-                {moderator.name?.charAt(0) || "M"}
-              </AvatarFallback>
+              <AvatarFallback>{moderator.name?.charAt(0) || 'M'}</AvatarFallback>
             </Avatar>
             <div>
               <p className="text-xs text-muted-foreground">Moderator</p>
-              <h1 className="text-xl font-semibold text-foreground">
-                {moderator.name}
-              </h1>
+              <h1 className="text-xl font-semibold text-foreground">{moderator.name}</h1>
               <p className="text-xs text-muted-foreground">{moderator.email}</p>
             </div>
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-foreground">
-              Moderation Queue
-            </h2>
+            <h2 className="text-2xl font-bold text-foreground">Moderation Queue</h2>
           </div>
         </div>
       </header>
@@ -171,9 +162,7 @@ export function ModerationDashboard({
           ) : (
             <Card className="bg-card border-border h-full min-h-[400px] flex items-center justify-center">
               <CardContent className="text-center">
-                <p className="text-muted-foreground">
-                  Select a report from the queue to review
-                </p>
+                <p className="text-muted-foreground">Select a report from the queue to review</p>
               </CardContent>
             </Card>
           )}
@@ -181,9 +170,7 @@ export function ModerationDashboard({
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold text-foreground mb-4">
-          Recent Audit Log
-        </h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Recent Audit Log</h2>
         <AuditLogTable entries={auditLog} />
       </section>
     </div>

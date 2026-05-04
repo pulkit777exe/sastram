@@ -1,11 +1,15 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/modules/auth";
+import { redirect } from 'next/navigation';
+import { getSession } from '@/modules/auth';
+import { LandingPage } from '@/components/landing/LandingPage';
+import type { SessionUser } from '@/modules/auth';
 
 export default async function Home() {
   const session = await getSession();
+  
   if (session) {
-    redirect("/dashboard");
+    redirect('/dashboard');
+    return null;
   }
 
-  redirect("/login");
+  return <LandingPage user={null} />;
 }

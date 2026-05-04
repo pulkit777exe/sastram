@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   Home,
@@ -18,15 +18,17 @@ import {
   Shield,
   Bookmark,
   Activity,
-} from "lucide-react";
-import { cn } from "@/lib/utils/cn";
-import { usePathname, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import Link from "next/link";
-import { LucideIcon } from "lucide-react";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { useBootstrap } from "@/components/bootstrap-provider";
+  LogOut,
+} from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
+import { usePathname, useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
+import Link from 'next/link';
+import { LucideIcon } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { AnimatedIcon } from '@/components/ui/animated-icon';
+import { useBootstrap } from '@/components/bootstrap-provider';
+import { signOut } from '@/lib/services/auth-client';
 
 export function Sidebar({
   name,
@@ -42,9 +44,9 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("sidebarCollapsed");
-      return saved === "true";
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      return saved === 'true';
     }
     return false;
   });
@@ -55,7 +57,7 @@ export function Sidebar({
   const hideTimeout = useRef<number | null>(null);
 
   const clearHideTimeout = () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     if (hideTimeout.current) {
       window.clearTimeout(hideTimeout.current);
       hideTimeout.current = null;
@@ -71,64 +73,76 @@ export function Sidebar({
 
   const handleMouseLeave = () => {
     clearHideTimeout();
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     hideTimeout.current = window.setTimeout(() => {
       setShowProfileMenu(false);
       hideTimeout.current = null;
     }, 500);
   };
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const toggleCollapse = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("sidebarCollapsed", String(newState));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarCollapsed', String(newState));
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(
-        `/dashboard/threads?q=${encodeURIComponent(searchQuery.trim())}`,
-      );
+      router.push(`/dashboard/threads?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/login?reason=logged_out');
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   };
 
   const navItems = [
-    { icon: Home, label: "Home", href: "/dashboard" },
-    { icon: FileText, label: "Threads", href: "/dashboard/threads" },
-    { icon: Bookmark, label: "Bookmarks", href: "/dashboard/bookmarks" },
-    { icon: Search, label: "Search", href: "/dashboard/search" },
-    { icon: Sparkles, label: "Sastram AI", href: "/dashboard/ai-search" },
-    { icon: Activity, label: "Activity", href: "/dashboard/activity" },
-    { icon: Bell, label: "Notifications", href: "/dashboard/notifications", badge: unreadCount > 0 ? unreadCount : undefined },
-    { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+    { icon: Home, label: 'Home', href: '/dashboard' },
+    { icon: FileText, label: 'Threads', href: '/dashboard/threads' },
+    { icon: Bookmark, label: 'Bookmarks', href: '/dashboard/bookmarks' },
+    { icon: Search, label: 'Search', href: '/dashboard/search' },
+    { icon: Sparkles, label: 'Sastram AI', href: '/dashboard/ai-search' },
+    { icon: Activity, label: 'Activity', href: '/dashboard/activity' },
+    {
+      icon: Bell,
+      label: 'Notifications',
+      href: '/dashboard/notifications',
+      badge: unreadCount > 0 ? unreadCount : undefined,
+    },
+    { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
   ];
 
-  if (role === "ADMIN") {
+  if (role === 'ADMIN') {
     navItems.push(
       {
         icon: Flag,
-        label: "Reports",
-        href: "/dashboard/admin/reports",
+        label: 'Reports',
+        href: '/dashboard/admin/reports',
       },
       {
         icon: Shield,
-        label: "Moderation",
-        href: "/dashboard/admin/moderation",
-      },
+        label: 'Moderation',
+        href: '/dashboard/admin/moderation',
+      }
     );
   }
 
   return (
     <aside
       className={cn(
-        "bg-card rounded-2xl border border-border flex flex-col h-full transition-all duration-300 overflow-hidden",
-        isCollapsed ? "w-16" : "w-64",
+        'bg-card rounded-2xl border border-border flex flex-col h-full transition-all duration-300 overflow-hidden',
+        isCollapsed ? 'w-16' : 'w-64'
       )}
     >
       <div className="p-4 flex items-center justify-between">
@@ -197,7 +211,7 @@ export function Sidebar({
                 href={item.href}
                 active={
                   pathname === item.href ||
-                  (item.href !== "/dashboard" && pathname.startsWith(item.href))
+                  (item.href !== '/dashboard' && pathname.startsWith(item.href))
                 }
                 collapsed={false}
                 badge={item.badge}
@@ -205,27 +219,16 @@ export function Sidebar({
             ))}
 
             <div className="mt-6 mb-2 px-3">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase">
-                Other
-              </p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Other</p>
             </div>
 
-            <NavItem
-              icon={UserPlus}
-              label="Refer a Friend"
-              href="#"
-              collapsed={false}
-            ></NavItem>
+            <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false}></NavItem>
           </nav>
 
           {isPro ? (
             <div className="m-3 p-4 bg-linear-to-br from-brand/10 to-purple-500/10 border border-brand/20 rounded-xl">
               <div className="flex items-center gap-2 text-foreground">
-                <AnimatedIcon
-                  icon={Sparkles}
-                  size={14}
-                  className="text-brand"
-                />
+                <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
                 <p className="text-sm font-semibold">Pro Member</p>
               </div>
               <p className="text-[11px] text-muted-foreground mt-1">
@@ -235,11 +238,7 @@ export function Sidebar({
           ) : (
             <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
               <div className="flex items-center gap-2 mb-1 text-foreground">
-                <AnimatedIcon
-                  icon={Sparkles}
-                  size={14}
-                  className="text-brand"
-                />
+                <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
                 <p className="text-sm font-semibold">Boost with AI</p>
               </div>
               <p className="text-[11px] text-muted-foreground mb-4">
@@ -266,7 +265,7 @@ export function Sidebar({
               href={item.href}
               active={
                 pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href))
+                (item.href !== '/dashboard' && pathname.startsWith(item.href))
               }
               collapsed={true}
             />
@@ -286,12 +285,8 @@ export function Sidebar({
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-foreground">
-                  {name}
-                </span>
-                <span className="text-xs text-muted-foreground truncate w-24">
-                  {email}
-                </span>
+                <span className="text-xs font-semibold text-foreground">{name}</span>
+                <span className="text-xs text-muted-foreground truncate w-24">{email}</span>
               </div>
             )}
           </div>
@@ -325,6 +320,13 @@ export function Sidebar({
               <AnimatedIcon icon={Mail} size={14} />
               <span>Newsletters</span>
             </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-800/20 transition-colors w-full"
+            >
+              <AnimatedIcon icon={LogOut} size={14} className="text-red-500" />
+              <span className="font-medium">Log out</span>
+            </button>
           </div>
         )}
       </div>
@@ -341,21 +343,14 @@ interface NavItemProps {
   badge?: number;
 }
 
-function NavItem({
-  icon: Icon,
-  label,
-  href,
-  active = false,
-  collapsed,
-  badge,
-}: NavItemProps) {
-  if (href === "#") {
+function NavItem({ icon: Icon, label, href, active = false, collapsed, badge }: NavItemProps) {
+  if (href === '#') {
     return (
       <div
         className={cn(
-          "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
-          "text-muted-foreground hover:text-foreground hover:bg-accent",
-          collapsed && "justify-center",
+          'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
+          'text-muted-foreground hover:text-foreground hover:bg-accent',
+          collapsed && 'justify-center'
         )}
         title={collapsed ? label : undefined}
       >
@@ -374,11 +369,11 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
+        'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
         active
-          ? "bg-brand/5 text-brand shadow-sm border-r-2 border-brand"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent",
-        collapsed && "justify-center",
+          ? 'bg-brand/5 text-brand shadow-sm border-r-2 border-brand'
+          : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+        collapsed && 'justify-center'
       )}
       title={collapsed ? label : undefined}
     >
@@ -386,21 +381,21 @@ function NavItem({
         icon={Icon}
         size={18}
         className={cn(
-          "transition-colors shrink-0",
-          active
-            ? "text-brand"
-            : "text-muted-foreground group-hover:text-foreground",
+          'transition-colors shrink-0',
+          active ? 'text-brand' : 'text-muted-foreground group-hover:text-foreground'
         )}
         animateOnHover
       />
       {!collapsed && <span className="text-sm font-medium">{label}</span>}
 
       {badge != null && badge > 0 && (
-        <span className={cn(
-          "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1",
-          collapsed && "absolute -top-1 -right-1 h-4 min-w-4 text-[9px]"
-        )}>
-          {badge > 99 ? "99+" : badge}
+        <span
+          className={cn(
+            'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1',
+            collapsed && 'absolute -top-1 -right-1 h-4 min-w-4 text-[9px]'
+          )}
+        >
+          {badge > 99 ? '99+' : badge}
         </span>
       )}
 

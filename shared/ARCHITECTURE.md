@@ -41,26 +41,27 @@ accumulates knowledge. More users = better answers for the next user.
 ---
 
 ## System Architecture
-
 ```
+
 Browser Client
-  │
-  ├── HTTP / Server Actions → Next.js App Router
-  │                               │
-  │                               ├── modules/ (domain logic)
-  │                               │       │
-  │                               │       ├── Prisma → PostgreSQL (Neon)
-  │                               │       ├── Upstash Redis (cache + rate limit)
-  │                               │       ├── BullMQ (AI job queue)
-  │                               │       ├── Vercel Blob (file storage)
-  │                               │       ├── Gemini / Exa / Tavily (AI)
-  │                               │       └── Resend (email)
-  │                               │
-  │                               └── API Routes (REST endpoints)
-  │
-  └── WebSocket → lib/infrastructure/websocket/server.ts
-                      │
-                      └── modules/ (same domain layer)
+│
+├── HTTP / Server Actions → Next.js App Router
+│ │
+│ ├── modules/ (domain logic)
+│ │ │
+│ │ ├── Prisma → PostgreSQL (Neon)
+│ │ ├── Upstash Redis (cache + rate limit)
+│ │ ├── BullMQ (AI job queue)
+│ │ ├── Vercel Blob (file storage)
+│ │ ├── Gemini / Exa / Tavily (AI)
+│ │ └── Resend (email)
+│ │
+│ └── API Routes (REST endpoints)
+│
+└── WebSocket → lib/infrastructure/websocket/server.ts
+│
+└── modules/ (same domain layer)
+
 ```
 
 ---
@@ -68,106 +69,108 @@ Browser Client
 ## Directory Structure
 
 ```
+
 ├── app/
-│   ├── (public)/               # Login, signup
-│   ├── (protected)/            # Auth-gated routes
-│   │   └── dashboard/          # Main app UI
-│   │       ├── threads/        # Thread list + detail
-│   │       ├── search/         # Local + AI search
-│   │       ├── admin/          # Admin dashboard
-│   │       ├── settings/       # User settings
-│   │       └── notifications/  # Notifications page
-│   └── api/
-│       ├── ai/
-│       │   ├── thread-summary/ # Generate thread AI summary
-│       │   ├── forum-search/   # AI search pipeline (Exa+Tavily+Gemini)
-│       │   └── jobs/           # Job status + cancel
-│       ├── bootstrap/          # Single login round-trip endpoint
-│       ├── cron/
-│       │   ├── update-threads/ # Daily AI metadata refresh
-│       │   └── daily-digest/   # Email digest trigger
-│       ├── auth/               # Better Auth handlers
-│       ├── newsletter/         # Newsletter endpoints
-│       ├── threads/            # Thread REST endpoints
-│       ├── upload/             # File upload
-│       └── v1/moderation/      # Moderation API
+│ ├── (public)/ # Login, signup
+│ ├── (protected)/ # Auth-gated routes
+│ │ └── dashboard/ # Main app UI
+│ │ ├── threads/ # Thread list + detail
+│ │ ├── search/ # Local + AI search
+│ │ ├── admin/ # Admin dashboard
+│ │ ├── settings/ # User settings
+│ │ └── notifications/ # Notifications page
+│ └── api/
+│ ├── ai/
+│ │ ├── thread-summary/ # Generate thread AI summary
+│ │ ├── forum-search/ # AI search pipeline (Exa+Tavily+Gemini)
+│ │ └── jobs/ # Job status + cancel
+│ ├── bootstrap/ # Single login round-trip endpoint
+│ ├── cron/
+│ │ ├── update-threads/ # Daily AI metadata refresh
+│ │ └── daily-digest/ # Email digest trigger
+│ ├── auth/ # Better Auth handlers
+│ ├── newsletter/ # Newsletter endpoints
+│ ├── threads/ # Thread REST endpoints
+│ ├── upload/ # File upload
+│ └── v1/moderation/ # Moderation API
 │
 ├── components/
-│   ├── ai-search/              # AI search page components
-│   │   ├── SearchBox.tsx       # Query input + mode toggles + dropdowns
-│   │   ├── Sidebar.tsx         # Collapsible sidebar + past searches
-│   │   ├── PhaseTracker.tsx    # Pipeline progress (classify→done)
-│   │   ├── SynthesisCard.tsx   # Streamed AI synthesis output
-│   │   ├── SourceCard.tsx      # Individual source with tier + confidence
-│   │   ├── TableView.tsx       # Comparison table mode
-│   │   └── ApiKeysModal.tsx    # User-supplied API keys (localStorage only)
-│   ├── thread/
-│   │   ├── comment-tree.tsx    # Reddit-style nested reply tree ✅
-│   │   ├── RightPanel.tsx      # Resolution score + DNA + AI summary
-│   │   └── ...
-│   ├── dashboard/
-│   ├── admin/
-│   ├── user/
-│   └── ui/
-│       └── TimeAgo.tsx         # Client-only relative time (no hydration issues)
+│ ├── ai-search/ # AI search page components
+│ │ ├── SearchBox.tsx # Query input + mode toggles + dropdowns
+│ │ ├── Sidebar.tsx # Collapsible sidebar + past searches
+│ │ ├── PhaseTracker.tsx # Pipeline progress (classify→done)
+│ │ ├── SynthesisCard.tsx # Streamed AI synthesis output
+│ │ ├── SourceCard.tsx # Individual source with tier + confidence
+│ │ ├── TableView.tsx # Comparison table mode
+│ │ └── ApiKeysModal.tsx # User-supplied API keys (localStorage only)
+│ ├── thread/
+│ │ ├── comment-tree.tsx # Reddit-style nested reply tree ✅
+│ │ ├── RightPanel.tsx # Resolution score + DNA + AI summary
+│ │ └── ...
+│ ├── dashboard/
+│ ├── admin/
+│ ├── user/
+│ └── ui/
+│ └── TimeAgo.tsx # Client-only relative time (no hydration issues)
 │
-├── modules/                    # Domain logic (actions + repository + service + types)
-│   ├── auth/
-│   ├── users/
-│   ├── threads/
-│   ├── messages/
-│   ├── ai-search/              # Exa + Tavily + Gemini pipeline
-│   ├── moderation/
-│   ├── reports/
-│   ├── appeals/
-│   ├── newsletter/
-│   ├── follows/
-│   ├── bookmarks/
-│   ├── tags/
-│   ├── activity/
-│   ├── reputation/
-│   ├── badges/
-│   ├── polls/
-│   ├── invitations/
-│   ├── notifications/
-│   └── search/
+├── modules/ # Domain logic (actions + repository + service + types)
+│ ├── auth/
+│ ├── users/
+│ ├── threads/
+│ ├── messages/
+│ ├── ai-search/ # Exa + Tavily + Gemini pipeline
+│ ├── moderation/
+│ ├── reports/
+│ ├── appeals/
+│ ├── newsletter/
+│ ├── follows/
+│ ├── bookmarks/
+│ ├── tags/
+│ ├── activity/
+│ ├── reputation/
+│ ├── badges/
+│ ├── polls/
+│ ├── invitations/
+│ ├── notifications/
+│ └── search/
 │
 ├── lib/
-│   ├── config/
-│   ├── db/
-│   ├── http/
-│   ├── infrastructure/
-│   │   ├── websocket/
-│   │   │   ├── server.ts       # WebSocket server with auth ✅
-│   │   │   └── client.ts       # WebSocket client ✅
-│   │   ├── bullmq.ts           # All BullMQ job handlers ✅
-│   │   └── logger.ts
-│   ├── schemas/
-│   │   └── prisma-json.ts      # Zod parsers for all Json Prisma fields
-│   ├── security/
-│   ├── services/
-│   │   ├── auth.ts             # Better Auth config ✅
-│   │   ├── ai.ts               # Gemini client
-│   │   ├── exa.ts              # Exa client
-│   │   ├── tavily.ts           # Tavily client
-│   │   ├── email.ts            # Resend client
-│   │   └── storage.ts          # Vercel Blob client
-│   ├── types/                  # Shared domain types (single source of truth)
-│   │   ├── thread.ts
-│   │   ├── message.ts
-│   │   ├── user.ts
-│   │   ├── ai.ts
-│   │   ├── jobs.ts
-│   │   └── api.ts              # ApiResponse<T> envelope
-│   └── utils/
-│       ├── dedupe.ts           # In-flight request deduplication
-│       └── retry.ts            # withRetry() for external API calls
+│ ├── config/
+│ ├── db/
+│ ├── http/
+│ ├── infrastructure/
+│ │ ├── websocket/
+│ │ │ ├── server.ts # WebSocket server with auth ✅
+│ │ │ └── client.ts # WebSocket client ✅
+│ │ ├── bullmq.ts # All BullMQ job handlers ✅
+│ │ └── logger.ts
+│ ├── schemas/
+│ │ └── prisma-json.ts # Zod parsers for all Json Prisma fields
+│ ├── security/
+│ ├── services/
+│ │ ├── auth.ts # Better Auth config ✅
+│ │ ├── ai.ts # Gemini client
+│ │ ├── exa.ts # Exa client
+│ │ ├── tavily.ts # Tavily client
+│ │ ├── email.ts # Resend client
+│ │ └── storage.ts # Vercel Blob client
+│ ├── types/ # Shared domain types (single source of truth)
+│ │ ├── thread.ts
+│ │ ├── message.ts
+│ │ ├── user.ts
+│ │ ├── ai.ts
+│ │ ├── jobs.ts
+│ │ └── api.ts # ApiResponse<T> envelope
+│ └── utils/
+│ ├── dedupe.ts # In-flight request deduplication
+│ └── retry.ts # withRetry() for external API calls
 │
-├── stores/                     # TanStack Query + React context
+├── stores/ # TanStack Query + React context
 ├── prisma/
-│   └── schema.prisma
+│ └── schema.prisma
 └── shared/
-    └── ARCHITECTURE.md         # This file
+└── ARCHITECTURE.md # This file
+
 ```
 
 ---
@@ -177,14 +180,16 @@ Browser Client
 Every module follows this structure without exception:
 
 ```
+
 modules/{feature}/
-  actions.ts     — Server Actions (called from UI)
-                   Always returns: { data: T | null, error: string | null }
-                   Never throws. Always wraps in try/catch.
-  repository.ts  — DB queries via Prisma. Typed returns, never any.
-  service.ts     — Business logic, AI calls, cross-module orchestration
-  types.ts       — Module-specific types (imports from lib/types/ for shared)
-  index.ts       — Public exports
+actions.ts — Server Actions (called from UI)
+Always returns: { data: T | null, error: string | null }
+Never throws. Always wraps in try/catch.
+repository.ts — DB queries via Prisma. Typed returns, never any.
+service.ts — Business logic, AI calls, cross-module orchestration
+types.ts — Module-specific types (imports from lib/types/ for shared)
+index.ts — Public exports
+
 ```
 
 ---
@@ -229,32 +234,34 @@ The central entity. Stores AI metadata directly:
 ### AI Search (User-facing)
 
 ```
+
 User query (with own API keys from localStorage)
-    ↓
+↓
 POST /api/ai/forum-search
-    ↓
+↓
 Phase 1: Query classification (Gemini Flash)
-  → type: factual | opinion | technical | comparison
-  → suggestedSources, searchTerms[3], isControversial
-    ↓
+→ type: factual | opinion | technical | comparison
+→ suggestedSources, searchTerms[3], isControversial
+↓
 Phase 2: Parallel search (Promise.allSettled)
-  → Exa: neural search for forum/technical content
-  → Tavily: general web + news
-    ↓
+→ Exa: neural search for forum/technical content
+→ Tavily: general web + news
+↓
 Phase 3: Cross-reference + conflict detection (Gemini Flash)
-  → Tier assignment (T1=official docs, T2=SO/HN, T3=Reddit, T4=blogs)
-  → Freshness check (isOutdated if >2 years)
-  → Conflict detection prompt
-    ↓
+→ Tier assignment (T1=official docs, T2=SO/HN, T3=Reddit, T4=blogs)
+→ Freshness check (isOutdated if >2 years)
+→ Conflict detection prompt
+↓
 Phase 4: Synthesis (Gemini Pro)
-  → Max 400 words, cite tier inline [official] [community]
-  → Confidence score (0-100, factors: tier mix, agreement, freshness)
-    ↓
+→ Max 400 words, cite tier inline [official] [community]
+→ Confidence score (0-100, factors: tier mix, agreement, freshness)
+↓
 Phase 5: Cache result (pgvector embedding + PostgreSQL)
-  → TTL: technical=6h, opinion=1h, news=15min
-    ↓
+→ TTL: technical=6h, opinion=1h, news=15min
+↓
 Stream response to client via ReadableStream
-```
+
+````
 
 **Semantic cache:** Before Phase 1, embed query and cosine-check
 pgvector. Similarity > 0.92 → serve cache instantly, skip all API calls.
@@ -300,7 +307,7 @@ type WebSocketEvent =
   | { type: 'ai_response_ready';        payload: MessageNode }
   | { type: 'resolution_score_updated'; payload: { threadId: string; score: number } }
   | { type: 'notification_created';     payload: { count: number } }
-```
+````
 
 **Rule:** WebSocket events carry complete payloads.
 They never trigger a refetch. If payload is incomplete, fix the payload.
@@ -310,6 +317,7 @@ They never trigger a refetch. If payload is incomplete, fix the payload.
 ## Performance Architecture
 
 ### Query Budget Per Page Load
+
 ```
 Dashboard initial load:    ≤ 2 DB queries
 Thread page load:          ≤ 1 DB query (full JOIN)
@@ -320,7 +328,9 @@ AI search cache miss:      1 embed + 2 parallel calls + 1 write
 ```
 
 ### Bootstrap Endpoint
+
 `GET /api/bootstrap` — called once on login, result in React context:
+
 ```typescript
 {
   user: { id, name, avatarUrl, role, reputationPoints, isPro },
@@ -330,9 +340,11 @@ AI search cache miss:      1 embed + 2 parallel calls + 1 write
   joinedCommunities: Community[]
 }
 ```
+
 Invalidated only when: badge earned, reputation changes >10pts, profile updated.
 
 ### Caching Hierarchy
+
 ```
 Middleware (Redis session check, ~1ms)
   → Bootstrap context (zero DB reads on navigation)
@@ -377,6 +389,7 @@ All layers (DB, API, UI) import from here — never redefine.
 ## Feature Status
 
 ### ✅ Implemented and Working
+
 - Auth (email OTP + Google + GitHub + protected routes)
 - Nested reply tree (Reddit-style, depth 4)
 - Thread bookmarking
@@ -390,6 +403,7 @@ All layers (DB, API, UI) import from here — never redefine.
 - WebSocket server + client (exist, partially wired)
 
 ### 🟡 Partial (backend exists, UI not wired)
+
 - RightPanel (resolution score + DNA + AI summary — data not connected)
 - Rich text + attachments (backend exists, UI incomplete)
 - Thread invitations (backend exists, UI missing)
@@ -400,6 +414,7 @@ All layers (DB, API, UI) import from here — never redefine.
 - WebSocket thread delivery (server exists, not wired to message list)
 
 ### ❌ Not Yet Built
+
 - Message editing with history
 - Message pinning
 - Soft delete with placeholder
@@ -434,4 +449,7 @@ All layers (DB, API, UI) import from here — never redefine.
 - **Redis:** Upstash (serverless)
 - **Storage:** Vercel Blob
 - **CI/CD:** GitHub Actions → auto-deploy on main
+
+```
+
 ```

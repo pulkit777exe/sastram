@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { dedupe } from "@/lib/dedupe";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { dedupe } from '@/lib/dedupe';
 
 export async function getUserReputation(userId: string) {
   return dedupe(`reputation:user:${userId}`, async () => {
@@ -22,11 +22,7 @@ export async function getUserReputation(userId: string) {
   });
 }
 
-export async function awardReputation(
-  userId: string,
-  points: number,
-  reason: string
-) {
+export async function awardReputation(userId: string, points: number, reason: string) {
   const reputation = await getUserReputation(userId);
   const newPoints = reputation.points + points;
   const newLevel = calculateLevel(newPoints);
@@ -68,7 +64,7 @@ export async function calculateReputationPoints(userId: string) {
             followingId: userId,
           },
         }),
-      ]),
+      ])
   );
 
   // Calculate points:
@@ -76,8 +72,7 @@ export async function calculateReputationPoints(userId: string) {
   // - 1 point per message
   // - 5 points per reaction received
   // - 2 points per follower
-  const points =
-    threadCount * 10 + messageCount * 1 + reactionCount * 5 + followerCount * 2;
+  const points = threadCount * 10 + messageCount * 1 + reactionCount * 5 + followerCount * 2;
 
   return points;
 }

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * Environment variable validation schema
@@ -6,24 +6,20 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   // Node environment
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
   // Server configuration
-  PORT: z.string().default("3000").transform(Number),
+  PORT: z.string().default('3000').transform(Number),
 
   // Database
-  DATABASE_URL: z.url("DATABASE_URL must be a valid URL"),
+  DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
 
   // Redis (rate limiting, queues, caching)
-  REDIS_URL: z.url("REDIS_URL must be a valid URL").optional(),
+  REDIS_URL: z.url('REDIS_URL must be a valid URL').optional(),
 
   // Better Auth
-  BETTER_AUTH_SECRET: z
-    .string()
-    .min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
-  BETTER_AUTH_URL: z.string().url("BETTER_AUTH_URL must be a valid URL"),
+  BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
+  BETTER_AUTH_URL: z.string().url('BETTER_AUTH_URL must be a valid URL'),
 
   // OAuth - GitHub
   GITHUB_CLIENT_ID: z.string().optional(),
@@ -39,22 +35,20 @@ const envSchema = z.object({
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
 
   // Public URLs
-  NEXT_PUBLIC_APP_URL: z
-    .string()
-    .url("NEXT_PUBLIC_APP_URL must be a valid URL"),
+  NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL'),
   NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
 
   // Email (SMTP / Nodemailer)
-  SMTP_HOST: z.string().default("smtp.gmail.com"),
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().int().default(587),
   SMTP_SECURE: z.coerce.boolean().default(false),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().default("Sastram <noreply@sastram.com>"),
+  SMTP_FROM: z.string().default('Sastram <noreply@sastram.com>'),
 
   // AI Providers
   GEMINI_API_KEY: z.string().optional(),
-  AI_PROVIDER: z.enum(["gemini", "openai"]).default("gemini"),
+  AI_PROVIDER: z.enum(['gemini', 'openai']).default('gemini'),
 
   // AWS S3 (optional, for alternative file storage)
   AWS_REGION: z.string().optional(),
@@ -63,20 +57,18 @@ const envSchema = z.object({
   AWS_S3_BUCKET: z.string().optional(),
 
   // Realtime / WebSocket
-  WEBSOCKET_URL: z.string().url("WEBSOCKET_URL must be a valid URL").optional(),
+  WEBSOCKET_URL: z.string().url('WEBSOCKET_URL must be a valid URL').optional(),
 
   // Security / sessions
-  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
-  SESSION_SECRET: z
-    .string()
-    .min(32, "SESSION_SECRET must be at least 32 characters"),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
 
   // Feature flags
   RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
   CONTENT_MODERATION_ENABLED: z.coerce.boolean().default(false),
 
   // Logging
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
   // Limits
   MAX_FILE_UPLOAD_MB: z.coerce.number().int().positive().default(10),
@@ -109,13 +101,13 @@ export function getEnv(): Env {
 
   if (!result.success) {
     const errors = result.error.issues.map((err) => {
-      return `  - ${err.path.join(".")}: ${err.message}`;
+      return `  - ${err.path.join('.')}: ${err.message}`;
     });
 
     throw new Error(
       `Environment validation failed:\n${errors.join(
-        "\n",
-      )}\n\nPlease check your .env file and ensure all required variables are set.`,
+        '\n'
+      )}\n\nPlease check your .env file and ensure all required variables are set.`
     );
   }
 

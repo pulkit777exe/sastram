@@ -18,4 +18,3 @@ export interface UserProfile {
   status: string;
   createdAt: Date;
 }
-

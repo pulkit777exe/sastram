@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { Sparkles, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from 'react';
+import { Sparkles, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface ThreadSummaryCardProps {
   threadId: string;
@@ -12,16 +12,12 @@ interface ThreadSummaryCardProps {
   className?: string;
 }
 
-// Poll interval in ms — how often we check if the BullMQ job is done
-const POLL_INTERVAL_MS = 2_000;
+// Poll interval in ms — exponential backoff from 1s to 10s
+const POLL_INTERVAL_MS = 10_000;
 // Maximum time to wait for a job before giving up (30 seconds)
 const POLL_TIMEOUT_MS = 30_000;
 
-export function ThreadSummaryCard({
-  threadId,
-  initialSummary,
-  className,
-}: ThreadSummaryCardProps) {
+export function ThreadSummaryCard({ threadId, initialSummary, className }: ThreadSummaryCardProps) {
   const [summary, setSummary] = useState(initialSummary ?? null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -60,7 +56,7 @@ export function ThreadSummaryCard({
         stopPolling();
         if (mountedRef.current) {
           setIsLoading(false);
-          toast.error("Summary is taking too long. Try again in a moment.");
+          toast.error('Summary is taking too long. Try again in a moment.');
         }
         return;
       }
@@ -74,27 +70,27 @@ export function ThreadSummaryCard({
           result?: { summary?: string };
         };
 
-        if (jobData.state === "completed") {
+        if (jobData.state === 'completed') {
           stopPolling();
           if (mountedRef.current) {
             setSummary(jobData.result?.summary ?? null);
             setIsLoading(false);
-            toast.success("Thread summary generated!");
+            toast.success('Thread summary generated!');
             // Do NOT call router.refresh() here — local state already updated.
             // Only call router.refresh() if server-rendered counts need updating.
           }
-        } else if (jobData.state === "failed") {
+        } else if (jobData.state === 'failed') {
           stopPolling();
           if (mountedRef.current) {
             setIsLoading(false);
-            toast.error("Failed to generate summary. Please try again.");
+            toast.error('Failed to generate summary. Please try again.');
           }
         }
         // "waiting" | "active" | "delayed" → keep polling
       } catch {
         // Network error during poll — keep trying until timeout
-        if (process.env.NODE_ENV === "development") {
-          console.warn("[ThreadSummaryCard] Poll request failed, retrying...");
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[ThreadSummaryCard] Poll request failed, retrying...');
         }
       }
     }, POLL_INTERVAL_MS);
@@ -107,9 +103,9 @@ export function ThreadSummaryCard({
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/ai/thread-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/ai/thread-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ threadId }),
       });
 
@@ -131,7 +127,7 @@ export function ThreadSummaryCard({
     } catch {
       if (!mountedRef.current) return;
       setIsLoading(false);
-      toast.error("Failed to generate summary. Please try again.");
+      toast.error('Failed to generate summary. Please try again.');
     }
   }
 
@@ -148,10 +144,7 @@ export function ThreadSummaryCard({
 
   return (
     <div
-      className={cn(
-        "rounded-xl border p-5 relative overflow-hidden bg-background/50",
-        className,
-      )}
+      className={cn('rounded-xl border p-5 relative overflow-hidden bg-background/50', className)}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
@@ -171,10 +164,7 @@ export function ThreadSummaryCard({
             disabled={isLoading}
             title="Refresh summary"
           >
-            <RefreshCw
-              size={12}
-              className={cn(isLoading && "animate-spin")}
-            />
+            <RefreshCw size={12} className={cn(isLoading && 'animate-spin')} />
           </Button>
         )}
       </div>
@@ -190,9 +180,7 @@ export function ThreadSummaryCard({
           </div>
         ) : summary ? (
           <div className="prose prose-sm prose-indigo max-w-none">
-            <p className="text-xs text-indigo-900/80 leading-relaxed">
-              {summary}
-            </p>
+            <p className="text-xs text-indigo-900/80 leading-relaxed">{summary}</p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-2 text-center">

@@ -1,5 +1,5 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
 // In-memory fallback when Upstash env vars are not available
 const inMemoryStore = new Map<string, { count: number; resetAt: number }>();
@@ -42,22 +42,18 @@ function getUpstashRateLimiter() {
   const redis = Redis.fromEnv();
   return new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(10, "60 s"),
+    limiter: Ratelimit.slidingWindow(10, '60 s'),
     analytics: true,
-    prefix: "sastram:ai-search",
+    prefix: 'sastram:ai-search',
   });
 }
 
-let rateLimiter: ReturnType<typeof getInMemoryRateLimiter> | Ratelimit | null =
-  null;
+let rateLimiter: ReturnType<typeof getInMemoryRateLimiter> | Ratelimit | null = null;
 
 function getRateLimiter() {
   if (rateLimiter) return rateLimiter;
 
-  if (
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     rateLimiter = getUpstashRateLimiter();
   } else {
     rateLimiter = getInMemoryRateLimiter();
