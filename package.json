@@ -14,7 +14,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
-    "test": "node --import tsx --import tsconfig-paths/register --import ./test/setup.ts ./node_modules/mocha/bin/mocha.js test/**/*.test.mts",
+    "test": "node --import tsx --import tsconfig-paths/register --import ./test/setup.ts ./node_modules/mocha/bin/mocha.js 'test/**/*.test.{mts,js}'",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -38,17 +38,38 @@
     "@hono/node-server@<1.19.13": "1.19.13"
   },
   "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "chai": "^6.2.2",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.2.4",
     "global-jsdom": "^29.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "mocha": "^11.7.5",
+    "node-fetch": "^3.3.2",
     "postcss": "^8.5.10",
     "prisma": "^7.8.0",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.21.0",
+    "ws": "^8.20.0"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^0.9.5",
+    "@prisma/adapter-neon": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "@sentry/nextjs": "^10",
+    "@upstash/redis": "^1.34.0",
+    "dotenv": "^17.4.2",
+    "ioredis": "^5.6.0",
+    "next": "16.2.4",
+    "postcss": "^8.5.10",
+    "ws": "^8.20.0",
     "zustand": "^5.0.12"
   }
 }
