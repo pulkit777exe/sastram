@@ -45,7 +45,7 @@ export default async function PricingPage() {
               Pricing
             </h1>
             <p className="text-muted-foreground">
-              Free to start. $9/mo when you need more. That's it.
+              Free to start. $9/mo when you need more. That{`'`}s it.
             </p>
           </div>
 
