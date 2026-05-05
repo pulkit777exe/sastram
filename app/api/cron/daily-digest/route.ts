@@ -4,12 +4,12 @@ import { aiService } from '@/lib/services/ai';
 import { sendEmail } from '@/lib/services/email';
 import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay } from 'date-fns';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
 export async function GET(req: NextRequest) {
-  // Verify Cron Secret (optional but recommended for production)
-  const authHeader = req.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authError = verifyCronAuth(req);
+  if (authError) {
+    return authError;
   }
 
   try {

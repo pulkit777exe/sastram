@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processPendingDigests } from '@/modules/newsletter/service';
 import { logger } from '@/lib/infrastructure/logger';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authError = verifyCronAuth(req);
+  if (authError) {
+    return authError;
   }
 
   try {

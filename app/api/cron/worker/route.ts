@@ -22,6 +22,7 @@ import {
   type ThreadDnaJobData,
   type ThreadSummaryJobData,
 } from '@/lib/infrastructure/bullmq';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
 export const maxDuration = 300;
 
@@ -69,9 +70,9 @@ async function processQueue(queueName: string, handler: (job: any) => Promise<un
 }
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authError = verifyCronAuth(req);
+  if (authError) {
+    return authError;
   }
 
   const url = new URL(req.url);

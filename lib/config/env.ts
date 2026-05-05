@@ -62,6 +62,7 @@ const envSchema = z.object({
   // Security / sessions
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
+  CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters').optional(),
 
   // Feature flags
   RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),

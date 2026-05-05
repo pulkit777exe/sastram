@@ -15,6 +15,15 @@ const PUBLIC_PATHS = [
   '/api/cron',
 ];
 
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some((path) => {
+    if (path === '/') {
+      return pathname === '/';
+    }
+    return pathname === path || pathname.startsWith(`${path}/`);
+  });
+}
+
 const SECURITY_HEADERS = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
@@ -64,7 +73,7 @@ export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
 
-  const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const isPublic = isPublicPath(pathname);
   const sessionCookie = request.cookies.get('better-auth.session_token');
 
   if (!sessionCookie && !isPublic) {

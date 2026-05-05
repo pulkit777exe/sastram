@@ -12,11 +12,12 @@ import {
 } from '@/lib/infrastructure/bullmq';
 import { updateAllThreadRelations } from '@/modules/threads/relations';
 import { prewarmFollowUpQueries } from '@/modules/ai-search/query-warming';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authError = verifyCronAuth(req);
+  if (authError) {
+    return authError;
   }
 
   try {
