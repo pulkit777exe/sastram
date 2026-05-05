@@ -7,6 +7,7 @@ import { logAction } from '@/modules/audit/repository';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { withValidation } from '@/lib/utils/server-action';
 import { getBannedUsersSchema } from '@/modules/moderation/schemas';
+import { requireModerationRole } from '@/modules/policy';
 
 const createAppealSchema = z.object({
   reason: z.string().min(10, 'Reason must be at least 10 characters long'),
@@ -76,10 +77,7 @@ export const getAppeals = withValidation(
   z.object({}),
   'getAppeals',
   async () => {
-    const session = await requireSession();
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
-      return { data: null, error: 'Something went wrong' };
-    }
+    await requireModerationRole();
 
     const appeals = await prisma.report.findMany({
       where: { status: 'PENDING', category: 'OTHER', details: { startsWith: 'APPEAL:' } },
@@ -111,10 +109,7 @@ export const resolveAppeal = withValidation(
   resolveAppealSchema,
   'resolveAppeal',
   async ({ appealId, approved }) => {
-    const session = await requireSession();
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
-      return { data: null, error: 'Something went wrong' };
-    }
+    const session = await requireModerationRole();
 
     const appeal = await prisma.report.findUnique({
       where: { id: appealId },
@@ -168,10 +163,7 @@ export const getBannedUsers = withValidation(
   getBannedUsersSchema,
   'getBannedUsers',
   async (filters) => {
-    const session = await requireSession();
-    if (!['ADMIN', 'MODERATOR'].includes(session.user.role || '')) {
-      return { data: null, error: 'Something went wrong' };
-    }
+    await requireModerationRole();
 
     const limit = Math.min(filters.limit || 50, 100);
     const offset = filters.offset || 0;

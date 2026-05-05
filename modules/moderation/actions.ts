@@ -4,11 +4,14 @@ import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { revalidatePath } from 'next/cache';
-import { requireSession, assertAdmin } from '@/modules/auth/session';
-import { emitMessageDeleted } from '@/modules/ws/publisher';
-import { logAction } from '@/modules/audit/repository';
-import { rateLimit } from '@/lib/services/rate-limit';
 import { createNotification } from '@/modules/notifications/repository';
+import {
+  applyModerationRateLimit,
+  requireModerationSession,
+  validateEntityForDeletion,
+  validateModerationTarget,
+} from './policy';
+import { executeMessageDeletionEffects, executeModerationAuditAndRevalidate } from './executors';
 import {
   banUserSchema,
   deleteMessageSchema,
@@ -38,107 +41,10 @@ const deleteThreadSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-async function applyModerationRateLimit(userId: string) {
-  try {
-    const result = await rateLimit({ key: userId, type: 'api' });
-    if (!result.success) {
-      throw new Error('Rate limit exceeded. Please slow down.');
-    }
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Rate limit exceeded. Please slow down.');
-  }
-}
-
-async function validateModerationTarget(
-  targetUserId: string,
-  moderatorId: string,
-  moderatorRole: string
-) {
-  if (targetUserId === moderatorId) {
-    throw new Error('Cannot perform moderation actions on yourself');
-  }
-
-  const targetUser = await prisma.user.findUnique({
-    where: { id: targetUserId },
-    select: {
-      id: true,
-      role: true,
-      status: true,
-      name: true,
-      email: true,
-    },
-  });
-
-  if (!targetUser) {
-    throw new Error('Target user not found');
-  }
-
-  if (targetUser.role === 'ADMIN' && moderatorRole !== 'SUPER_ADMIN') {
-    throw new Error('Cannot moderate administrator accounts');
-  }
-
-  return targetUser;
-}
-
-async function validateEntityForDeletion(
-  entityType: 'message' | 'section' | 'community',
-  entityId: string
-) {
-  let entity;
-
-  switch (entityType) {
-    case 'message':
-      entity = await prisma.message.findUnique({
-        where: { id: entityId },
-        select: {
-          id: true,
-          sectionId: true,
-          senderId: true,
-          section: {
-            select: { name: true, slug: true },
-          },
-        },
-      });
-      break;
-    case 'section':
-      entity = await prisma.section.findUnique({
-        where: { id: entityId },
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          messageCount: true,
-          memberCount: true,
-        },
-      });
-      break;
-    case 'community':
-      entity = await prisma.community.findUnique({
-        where: { id: entityId },
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-        },
-      });
-      break;
-  }
-
-  if (!entity) {
-    throw new Error(`${entityType} not found`);
-  }
-
-  return entity;
-}
-
 export const deleteMessageAction = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessageAction', requireAuth: true },
   async ({ messageId, sectionSlug, reason }) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
 
     await applyModerationRateLimit(session.user.id);
 
@@ -173,18 +79,14 @@ export const deleteMessageAction = createServerAction(
       });
     });
 
-    await logAction({
-      action: 'MESSAGE_DELETED',
-      entityType: 'Message',
-      entityId: messageId,
-      userId: session.user.id,
-      details: { reason, sectionSlug, originalAuthor: message.senderId },
+    await executeMessageDeletionEffects({
+      messageId,
+      sectionId: message.sectionId,
+      sectionSlug,
+      moderatorId: session.user.id,
+      reason,
+      originalAuthor: message.senderId,
     });
-
-    emitMessageDeleted(message.sectionId, messageId);
-
-    revalidatePath(`/dashboard/threads/thread/${sectionSlug}`);
-    revalidatePath('/dashboard/admin/moderation');
 
     return { data: null, error: null };
   }
@@ -193,8 +95,7 @@ export const deleteMessageAction = createServerAction(
 export const bulkDeleteMessages = createServerAction(
   { schema: bulkDeleteSchema, actionName: 'bulkDeleteMessages', requireAuth: true },
   async ({ messageIds, reason }) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
     await applyModerationRateLimit(session.user.id);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -244,15 +145,14 @@ export const bulkDeleteMessages = createServerAction(
       return { deletedCount: messages.length };
     });
 
-    await logAction({
+    await executeModerationAuditAndRevalidate({
       action: 'MESSAGE_DELETED',
       entityType: 'Message',
       entityId: 'bulk',
       userId: session.user.id,
       details: { messageIds, reason, count: result.deletedCount, bulk: true },
+      paths: ['/dashboard/admin/moderation'],
     });
-
-    revalidatePath('/dashboard/admin/moderation');
 
     return { data: { deletedCount: result.deletedCount }, error: null };
   }
@@ -264,8 +164,7 @@ export const banUser = createServerAction(
     actionName: 'banUser',
   },
   async ({ userId, reason, customReason, threadId, expiresAt }) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
     await applyModerationRateLimit(session.user.id);
 
     const targetUser = await validateModerationTarget(
@@ -347,16 +246,20 @@ export const banUser = createServerAction(
       return newBan;
     });
 
-    await logAction({
+    await executeModerationAuditAndRevalidate({
       action: 'USER_BANNED',
       entityType: 'User',
       entityId: userId,
       userId: session.user.id,
-      details: { reason, threadId, expiresAt, targetUserEmail: targetUser.email, targetUserName: targetUser.name },
+      details: {
+        reason,
+        threadId,
+        expiresAt: expiresAt?.toISOString(),
+        targetUserEmail: targetUser.email,
+        targetUserName: targetUser.name,
+      },
+      paths: ['/dashboard/admin/moderation', '/dashboard'],
     });
-
-    revalidatePath('/dashboard/admin/moderation');
-    revalidatePath('/dashboard');
 
     return { data: { banId: ban.id, expiresAt: ban.expiresAt }, error: null };
   }
@@ -365,8 +268,7 @@ export const banUser = createServerAction(
 export const unbanUser = createServerAction(
   { schema: unbanSchema, actionName: 'unbanUser', requireAuth: true },
   async ({ banId }) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
     await applyModerationRateLimit(session.user.id);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -416,15 +318,19 @@ export const unbanUser = createServerAction(
       return ban;
     });
 
-    await logAction({
+    await executeModerationAuditAndRevalidate({
       action: 'USER_UNBANNED',
       entityType: 'User',
       entityId: result.userId,
       userId: session.user.id,
-      details: { banId, wasGlobalBan: !result.threadId, targetUserEmail: result.user.email, targetUserName: result.user.name },
+      details: {
+        banId,
+        wasGlobalBan: !result.threadId,
+        targetUserEmail: result.user.email,
+        targetUserName: result.user.name,
+      },
+      paths: ['/dashboard/admin/moderation'],
     });
-
-    revalidatePath('/dashboard/admin/moderation');
 
     return { data: null, error: null };
   }
@@ -433,8 +339,7 @@ export const unbanUser = createServerAction(
 export const getBannedUsers = createServerAction(
   { schema: getBannedUsersSchema, actionName: 'getBannedUsers', requireAuth: true },
   async (filters) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
 
     const limit = Math.min(filters.limit || 50, 100);
     const offset = filters.offset || 0;
@@ -476,8 +381,7 @@ export const getBannedUsers = createServerAction(
 export const deleteCommunity = createServerAction(
   { schema: deleteCommunitySchema, actionName: 'deleteCommunity' },
   async ({ communityId, reason }) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
     await applyModerationRateLimit(session.user.id);
 
     const community = await validateEntityForDeletion('community', communityId) as {
@@ -492,16 +396,19 @@ export const deleteCommunity = createServerAction(
 
     await prisma.community.delete({ where: { id: communityId } });
 
-    await logAction({
+    await executeModerationAuditAndRevalidate({
       action: 'SECTION_DELETED',
       entityType: 'Community',
       entityId: communityId,
       userId: session.user.id,
-      details: { reason, communityTitle: community.title, communitySlug: community.slug, affectedSections: sectionCount },
+      details: {
+        reason,
+        communityTitle: community.title,
+        communitySlug: community.slug,
+        affectedSections: sectionCount,
+      },
+      paths: ['/dashboard', '/dashboard/admin/moderation'],
     });
-
-    revalidatePath('/dashboard');
-    revalidatePath('/dashboard/admin/moderation');
 
     return { data: { affectedSections: sectionCount }, error: null };
   }
@@ -510,8 +417,7 @@ export const deleteCommunity = createServerAction(
 export const deleteThread = createServerAction(
   { schema: deleteThreadSchema, actionName: 'deleteThread' },
   async ({ threadId, reason }) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
     await applyModerationRateLimit(session.user.id);
 
     const thread = await validateEntityForDeletion('section', threadId) as {
@@ -545,17 +451,21 @@ export const deleteThread = createServerAction(
       }
     });
 
-    await logAction({
+    await executeModerationAuditAndRevalidate({
       action: 'SECTION_DELETED',
       entityType: 'Section',
       entityId: threadId,
       userId: session.user.id,
-      details: { reason, threadName: thread.name, threadSlug: thread.slug, messageCount: thread.messageCount, memberCount: thread.memberCount, notifiedMembers: members.length },
+      details: {
+        reason,
+        threadName: thread.name,
+        threadSlug: thread.slug,
+        messageCount: thread.messageCount,
+        memberCount: thread.memberCount,
+        notifiedMembers: members.length,
+      },
+      paths: ['/dashboard', '/dashboard/threads', '/dashboard/admin/moderation'],
     });
-
-    revalidatePath('/dashboard');
-    revalidatePath('/dashboard/threads');
-    revalidatePath('/dashboard/admin/moderation');
 
     return { data: { notifiedMembers: members.length }, error: null };
   }
@@ -564,8 +474,7 @@ export const deleteThread = createServerAction(
 export const getMessageDetails = createServerAction(
   { schema: getMessageDetailsSchema, actionName: 'getMessageDetails', requireAuth: true },
   async ({ messageId }) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
 
     const message = await prisma.message.findUnique({
       where: { id: messageId },
@@ -607,8 +516,7 @@ export const getMessageDetails = createServerAction(
 export const getModerationQueue = createServerAction(
   { schema: getModerationQueueSchema, actionName: 'getModerationQueue' },
   async (filters) => {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    const session = await requireModerationSession();
 
     const limit = Math.min(filters.limit || 20, 100);
     const offset = filters.offset || 0;

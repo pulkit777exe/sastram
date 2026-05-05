@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommentTree } from '@/components/thread/comment-tree';
-import { PostMessageForm } from '@/modules/chat/components/post-message-form';
+import { PostMessageForm } from '@/components/chat/post-message-form';
 import { useThreadWebSocket, type TypingUser } from '@/hooks/useThreadWebSocket';
 import type { Message } from '@/lib/types/index';
 import TimeAgo from '@/components/ui/TimeAgo';

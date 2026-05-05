@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { createThreadSocket } from '@/lib/infrastructure/websocket/client';
+import { createThreadSocket } from '@/lib/services/thread-socket';
 import { validateWebSocketMessage } from '@/lib/schemas/websocket';
 import type { Message } from '@/lib/types/index';
 

@@ -3,13 +3,14 @@
 import { logger } from '@/lib/infrastructure/logger';
 
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession, assertAdmin } from '@/modules/auth/session';
-import { revalidatePath } from 'next/cache';
+import { requireSession } from '@/modules/auth/session';
 import { z } from 'zod';
 import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
 import { createNotification } from '@/modules/notifications/repository';
-import { logAction } from '@/modules/audit/repository';
+import { requireRole } from '@/modules/policy';
+import { requireReportsModeratorSession, assertCanReportOwnMessage } from './policy';
+import { executeReportAuditAndRefresh } from './executors';
 import type { ReportCategory } from '@prisma/client';
 
 const reportFiltersSchema = z.object({
@@ -58,8 +59,13 @@ export async function createReport(data: {
       return { data: null, error: 'Message not found' };
     }
 
-    if (message.senderId === session.user.id) {
-      return { data: null, error: 'You cannot report your own message' };
+    try {
+      assertCanReportOwnMessage(session.user.id, message.senderId);
+    } catch (error) {
+      if (error instanceof Error) {
+        return { data: null, error: error.message };
+      }
+      return { data: null, error: 'Something went wrong' };
     }
     const report = await prisma.report.create({
       data: {
@@ -71,7 +77,7 @@ export async function createReport(data: {
       },
     });
 
-    await logAction({
+    await executeReportAuditAndRefresh({
       action: 'REPORT_CREATED',
       entityType: 'Report',
       entityId: report.id,
@@ -81,9 +87,6 @@ export async function createReport(data: {
         category: validation.data.category,
       },
     });
-
-    revalidatePath('/dashboard/admin/reports');
-    revalidatePath('/dashboard/admin/moderation');
 
     return {
       data: {
@@ -105,11 +108,7 @@ export async function getReports(filters?: { status?: string; limit?: number; of
   }
 
   try {
-    const session = await requireSession();
-
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
-      return { data: null, error: 'Something went wrong' };
-    }
+    await requireReportsModeratorSession();
 
     const limit = Math.min(parsed.data.limit || 50, 100);
     const offset = parsed.data.offset || 0;
@@ -166,11 +165,7 @@ export async function getReports(filters?: { status?: string; limit?: number; of
 
 export async function getReportStats() {
   try {
-    const session = await requireSession();
-
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
-      return { data: null, error: 'Something went wrong' };
-    }
+    await requireReportsModeratorSession();
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -212,8 +207,7 @@ export async function getReportWithContext(reportId: string) {
   }
 
   try {
-    const session = await requireSession();
-    await assertAdmin(session.user);
+    await requireRole(['ADMIN']);
 
     const report = await prisma.report.findUnique({
       where: { id: parsed.data.reportId },
@@ -371,11 +365,7 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
   }
 
   try {
-    const session = await requireSession();
-
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
-      return { data: null, error: 'Something went wrong' };
-    }
+    const session = await requireReportsModeratorSession();
 
     await prisma.report.update({
       where: { id: validation.data.reportId },
@@ -385,8 +375,13 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
       },
     });
 
-    revalidatePath('/dashboard/admin/reports');
-    revalidatePath('/dashboard/admin/moderation');
+    await executeReportAuditAndRefresh({
+      action: 'REPORT_STATUS_UPDATED',
+      entityType: 'Report',
+      entityId: validation.data.reportId,
+      userId: session.user.id,
+      details: { status: validation.data.status },
+    });
     return { data: null, error: null };
   } catch (error) {
     logger.error('[updateReportStatusAction]', error);
@@ -447,11 +442,7 @@ export async function resolveReport(data: {
   }
 
   try {
-    const session = await requireSession();
-
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
-      return { data: null, error: 'Something went wrong' };
-    }
+    const session = await requireReportsModeratorSession();
 
     const report = await prisma.report.findUnique({
       where: { id: parsed.data.reportId },
@@ -576,21 +567,17 @@ export async function resolveReport(data: {
       });
     }
 
-    // Log the action
-    await logAction({
+    await executeReportAuditAndRefresh({
       action: 'REPORT_RESOLVED',
       entityType: 'Report',
       entityId: parsed.data.reportId,
-      userId: report.message.senderId,
+      userId: session.user.id,
       details: {
         action: parsed.data.action,
         note: parsed.data.note,
         duration: parsed.data.duration,
       },
     });
-
-    revalidatePath('/dashboard/admin/reports');
-    revalidatePath('/dashboard/admin/moderation');
 
     return {
       data: {

@@ -1,8 +1,12 @@
 export { createThreadAction, deleteThreadAction, getDashboardThreads } from './actions';
 
-export { listThreads, getThreadBySlug, createThread, deleteThread } from './repository';
-
-export { getThreadWithFullContext } from './queries';
+export {
+  listThreads,
+  getThreadBySlug,
+  createThread,
+  deleteThread,
+  getThreadWithFullContext,
+} from './repository';
 
 export { buildThreadDTO, buildThreadDetailDTO } from './service';
 export { buildThreadSlug } from '@/lib/utils/slug';

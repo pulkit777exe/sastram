@@ -2,7 +2,7 @@
 
 import { logger } from '@/lib/infrastructure/logger';
 
-import { requireSession, assertAdmin } from '@/modules/auth/session';
+import { requireRole } from '@/modules/policy';
 import { listCommunities } from '@/modules/communities/repository';
 import { listThreads } from '@/modules/threads/repository';
 // Note: createCommunityAction and createThreadAction should be implemented in their respective modules
@@ -10,8 +10,7 @@ import { deleteCommunity, deleteThread } from '@/modules/moderation/actions';
 
 export async function getAdminDashboardData() {
   try {
-    const session = await requireSession();
-    assertAdmin(session.user);
+    await requireRole(['ADMIN']);
 
     const [communities, threads] = await Promise.all([listCommunities(), listThreads()]);
 

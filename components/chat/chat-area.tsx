@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { MessageList } from './message-list';
 import { PostMessageForm } from './post-message-form';
 import { TypingIndicatorComponent } from './typing-indicator';
-import { useThreadWebSocket } from '../hooks/use-websocket';
-import { logger } from '@/lib/infrastructure/logger';
+import { useThreadWebSocket } from '@/hooks/chat/use-websocket';
+import { logger } from '@/lib/services/logger';
 import type { Message } from '@/lib/types/index';
 
 interface ChatAreaProps {

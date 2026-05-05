@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { logger } from '@/lib/infrastructure/logger';
-import { createThreadSocket } from '@/lib/infrastructure/websocket/client';
+import { logger } from '@/lib/services/logger';
+import { createThreadSocket } from '@/lib/services/thread-socket';
 import type { TypingIndicator, WebSocketEventType } from '@/lib/types/index';
 
 interface WebSocketEvent {

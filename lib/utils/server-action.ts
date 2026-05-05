@@ -1,6 +1,7 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 import { serverError } from './validation-common';
+import { actionFailure, type ActionErrorCode } from '@/lib/actions/result';
 
 /**
  * Server action result type
@@ -8,6 +9,8 @@ import { serverError } from './validation-common';
 export interface ActionResult<T = unknown> {
   data: T | null;
   error: string | null;
+  ok?: boolean;
+  errorCode?: ActionErrorCode | null;
 }
 
 /**
@@ -48,10 +51,10 @@ export function createServerAction<In, Out = unknown>(
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return { data: null, error: 'Invalid input' };
+        return actionFailure('VALIDATION_ERROR', 'Invalid input');
       }
       logger.error(`[${actionName}] validation`, error);
-      return { data: null, error: 'Invalid input' };
+      return actionFailure('VALIDATION_ERROR', 'Invalid input');
     }
 
     // Authentication checks
@@ -62,17 +65,17 @@ export function createServerAction<In, Out = unknown>(
       try {
         const session = await getSession();
         if (!session?.user) {
-          return { data: null, error: 'Authentication required' };
+          return actionFailure('AUTH_REQUIRED', 'Authentication required');
         }
         if (requireAdmin && !['ADMIN', 'MODERATOR'].includes(session.user.role || '')) {
-          return { data: null, error: 'Insufficient permissions' };
+          return actionFailure('FORBIDDEN', 'Insufficient permissions');
         }
         if (requireRole && session.user.role && !requireRole.includes(session.user.role)) {
-          return { data: null, error: 'Insufficient permissions' };
+          return actionFailure('FORBIDDEN', 'Insufficient permissions');
         }
       } catch (error) {
         logger.error(`[${actionName}] auth`, error);
-        return { data: null, error: 'Authentication required' };
+        return actionFailure('AUTH_REQUIRED', 'Authentication required');
       }
     }
 
