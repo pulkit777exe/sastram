@@ -54,7 +54,7 @@ const featureCards = [
     cardBg: 'from-blue-500/10 to-indigo-500/5',
     iconBg: 'bg-blue-500',
     illustration: (
-      <div className="relative h-36 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-500/10 to-blue-900/5 flex items-end p-4 gap-2">
+      <div className="relative h-36 rounded-2xl overflow-hidden bg-linear-to-br from-blue-500/10 to-blue-900/5 flex items-end p-4 gap-2">
         {['Community A', 'Dev Hub', 'Design'].map((c, i) => (
           <div key={i} className="flex-1 bg-blue-500/20 border border-blue-500/20 rounded-xl p-2 text-[10px] text-blue-500 font-medium truncate">{c}</div>
         ))}
@@ -69,7 +69,7 @@ const featureCards = [
     cardBg: 'from-purple-500/10 to-violet-500/5',
     iconBg: 'bg-purple-500',
     illustration: (
-      <div className="relative h-36 rounded-2xl overflow-hidden bg-gradient-to-br from-purple-500/10 to-purple-900/5 flex flex-col justify-end p-4 gap-2">
+      <div className="relative h-36 rounded-2xl overflow-hidden bg-linear-to-br from-purple-500/10 to-purple-900/5 flex flex-col justify-end p-4 gap-2">
         {[
           { side: 'left', msg: 'Has anyone tried the new AI search?' },
           { side: 'right', msg: 'Yes! It&apos;s incredible 🔥' },
@@ -91,7 +91,7 @@ const featureCards = [
     cardBg: 'from-green-500/10 to-emerald-500/5',
     iconBg: 'bg-green-500',
     illustration: (
-      <div className="relative h-36 rounded-2xl overflow-hidden bg-gradient-to-br from-green-500/10 to-green-900/5 flex flex-col justify-center p-4 gap-3">
+      <div className="relative h-36 rounded-2xl overflow-hidden bg-linear-to-br from-green-500/10 to-green-900/5 flex flex-col justify-center p-4 gap-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-none">
             <Bot size={12} className="text-white" />
@@ -114,7 +114,7 @@ const featureCards = [
     cardBg: 'from-amber-500/10 to-yellow-500/5',
     iconBg: 'bg-amber-500',
     illustration: (
-      <div className="relative h-36 rounded-2xl overflow-hidden bg-gradient-to-br from-amber-500/10 to-amber-900/5 flex flex-col justify-center p-4 gap-2">
+      <div className="relative h-36 rounded-2xl overflow-hidden bg-linear-to-br from-amber-500/10 to-amber-900/5 flex flex-col justify-center p-4 gap-2">
         <div className="flex items-center gap-2 bg-amber-500/15 border border-amber-500/20 rounded-xl px-3 py-2">
           <Search size={12} className="text-amber-500" />
           <span className="text-[11px] text-amber-700 dark:text-amber-300">AI search across forums...</span>
@@ -136,7 +136,7 @@ const featureCards = [
     cardBg: 'from-rose-500/10 to-pink-500/5',
     iconBg: 'bg-rose-500',
     illustration: (
-      <div className="relative h-36 rounded-2xl overflow-hidden bg-gradient-to-br from-rose-500/10 to-rose-900/5 flex flex-col justify-center p-4 gap-2">
+      <div className="relative h-36 rounded-2xl overflow-hidden bg-linear-to-br from-rose-500/10 to-rose-900/5 flex flex-col justify-center p-4 gap-2">
         {[
           { label: 'Spam report', status: 'Reviewed', color: 'text-green-500' },
           { label: 'Rule violation', status: 'Pending', color: 'text-amber-500' },
@@ -158,7 +158,7 @@ const featureCards = [
     cardBg: 'from-cyan-500/10 to-sky-500/5',
     iconBg: 'bg-cyan-500',
     illustration: (
-      <div className="relative h-36 rounded-2xl overflow-hidden bg-gradient-to-br from-cyan-500/10 to-cyan-900/5 flex flex-col justify-center p-4 gap-2">
+      <div className="relative h-36 rounded-2xl overflow-hidden bg-linear-to-br from-cyan-500/10 to-cyan-900/5 flex flex-col justify-center p-4 gap-2">
         <div className="flex items-center gap-2 mb-1">
           <BookOpen size={14} className="text-cyan-500" />
           <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-300">Daily Digest</span>
@@ -257,7 +257,7 @@ export function LandingPage({ user }: LandingPageProps) {
             <h1 className="text-5xl md:text-[72px] font-bold text-foreground mb-6 leading-[1.08] tracking-tight">
               Discuss anything.
               <br />
-              <span className="bg-gradient-to-r from-brand via-purple-500 to-pink-500 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-brand via-purple-500 to-pink-500 bg-clip-text text-transparent">
                 Powered by AI.
               </span>
             </h1>
@@ -326,7 +326,7 @@ export function LandingPage({ user }: LandingPageProps) {
               <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-5 leading-tight tracking-tight">
                 Build communities.{' '}
                 <br className="hidden sm:block" />
-                <em className="not-italic bg-gradient-to-r from-brand to-purple-500 bg-clip-text text-transparent">
+                <em className="not-italic bg-linear-to-r from-brand to-purple-500 bg-clip-text text-transparent">
                   Talk about everything.
                 </em>
               </h2>
@@ -383,7 +383,7 @@ export function LandingPage({ user }: LandingPageProps) {
             <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight tracking-tight">
               Ready to start your
               <br />
-              <span className="bg-gradient-to-r from-brand via-purple-500 to-pink-500 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-brand via-purple-500 to-pink-500 bg-clip-text text-transparent">
                 community?
               </span>
             </h2>
