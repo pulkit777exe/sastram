@@ -44,14 +44,13 @@ export async function getConversations(): Promise<ActionResponse<Conversation[]>
     }
 
     const sections = await prisma.section.findMany({
-      orderBy: {
-        updatedAt: 'desc',
+      where: {
+        members: { some: { userId: session.user.id } },
       },
+      orderBy: { updatedAt: 'desc' },
       include: {
         messages: {
-          orderBy: {
-            createdAt: 'desc',
-          },
+          orderBy: { createdAt: 'desc' },
           take: 1,
         },
       },
@@ -135,6 +134,16 @@ export const getMessages = withValidation(
         return { data: [], error: 'Something went wrong' };
       }
 
+      const member = await prisma.sectionMember.findUnique({
+        where: {
+          sectionId_userId: { sectionId: conversationId, userId: session.user.id },
+        },
+      });
+
+      if (!member) {
+        return { data: [], error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
+      }
+
       const messages = await prisma.message.findMany({
         where: {
           sectionId: conversationId,
@@ -176,6 +185,16 @@ export const sendMessage = withValidation(
 
       if (!session) {
         return { data: null, error: 'Something went wrong' };
+      }
+
+      const member = await prisma.sectionMember.findUnique({
+        where: {
+          sectionId_userId: { sectionId: conversationId, userId: session.user.id },
+        },
+      });
+
+      if (!member) {
+        return { data: null, error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
       }
 
       const message = await prisma.message.create({
