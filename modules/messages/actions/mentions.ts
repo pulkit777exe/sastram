@@ -97,7 +97,7 @@ export async function createMentionsForMessage(args: {
 }
 
 export const searchMentionUsers = createServerAction(
-  { schema: searchMentionUsersSchema, actionName: 'searchMentionUsers', requireAuth: true },
+  { schema: searchMentionUsersSchema, actionName: 'searchMentionUsers' },
   async ({ sectionId, query }) => {
     const session = await auth.api.getSession({
       headers: await headers(),

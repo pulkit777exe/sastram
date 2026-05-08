@@ -45,7 +45,7 @@ const getSectionMembersSchema = z.object({
 });
 
 export const joinSection = createServerAction(
-  { schema: joinSectionSchema, actionName: 'joinSection', requireAuth: true },
+  { schema: joinSectionSchema, actionName: 'joinSection' },
   async ({ sectionId }) => {
     const session = await requireSession();
     const existing = await getMemberRole(sectionId, session.user.id);
@@ -66,7 +66,7 @@ export const joinSection = createServerAction(
 );
 
 export const leaveSection = createServerAction(
-  { schema: leaveSectionSchema, actionName: 'leaveSection', requireAuth: true },
+  { schema: leaveSectionSchema, actionName: 'leaveSection' },
   async ({ sectionId }) => {
     const session = await requireSession();
     await removeMember(sectionId, session.user.id);

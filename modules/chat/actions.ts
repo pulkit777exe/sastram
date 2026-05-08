@@ -10,7 +10,6 @@ import { buildThreadSlug } from '@/lib/utils/slug';
 import { emitThreadMessage } from '@/modules/ws/publisher';
 import { z } from 'zod';
 import { attachmentInputSchema } from '@/lib/schemas/database';
-import { safeAction } from '@/lib/utils/action-wrapper';
 import { withValidation } from '@/lib/utils/server-action';
 
 const createConversationSchema = z.object({
@@ -35,13 +34,13 @@ const sendMessageSchema = z
   });
 
 export async function getConversations(): Promise<ActionResponse<Conversation[]>> {
-  const result = await safeAction(async () => {
+  try {
     const session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session) {
-      throw new Error('Something went wrong');
+      return { data: [], error: 'Something went wrong' };
     }
 
     const sections = await prisma.section.findMany({
@@ -61,23 +60,19 @@ export async function getConversations(): Promise<ActionResponse<Conversation[]>
     const conversations = sections.map((section) => ({
       id: section.id,
       name: section.name,
-      avatar: '', // TODO: Add section icon support
+      avatar: '',
       lastMessage: section.messages[0]?.content || 'No messages yet',
       timestamp: section.messages[0]?.createdAt.toISOString() || section.updatedAt.toISOString(),
-      unread: 0, // TODO: Implement unread count
+      unread: 0,
       online: true,
       type: 'channel' as const,
     }));
 
-    return conversations;
-  });
-
-  if (result.error) {
-    logger.error('[GET_CONVERSATIONS]', result.error);
+    return { data: conversations, error: null };
+  } catch (error) {
+    logger.error('[GET_CONVERSATIONS]', error);
     return { data: [], error: 'Something went wrong' };
   }
-
-  return { data: result.data ?? [], error: null };
 }
 
 export const createConversation = withValidation(
@@ -131,13 +126,13 @@ export const getMessages = withValidation(
   conversationIdSchema,
   'getMessages',
   async ({ conversationId }) => {
-    const result = await safeAction(async () => {
+    try {
       const session = await auth.api.getSession({
         headers: await headers(),
       });
 
       if (!session) {
-        throw new Error('Something went wrong');
+        return { data: [], error: 'Something went wrong' };
       }
 
       const messages = await prisma.message.findMany({
@@ -162,15 +157,11 @@ export const getMessages = withValidation(
         status: 'read' as const,
       }));
 
-      return formattedMessages;
-    });
-
-    if (result.error) {
-      logger.error('[GET_MESSAGES]', result.error);
+      return { data: formattedMessages, error: null };
+    } catch (error) {
+      logger.error('[GET_MESSAGES]', error);
       return { data: [], error: 'Something went wrong' };
     }
-
-    return { data: result.data ?? [], error: null };
   }
 );
 

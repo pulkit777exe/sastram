@@ -42,7 +42,7 @@ const deleteThreadSchema = z.object({
 });
 
 export const deleteMessageAction = createServerAction(
-  { schema: deleteMessageSchema, actionName: 'deleteMessageAction', requireAuth: true },
+  { schema: deleteMessageSchema, actionName: 'deleteMessageAction' },
   async ({ messageId, sectionSlug, reason }) => {
     const session = await requireModerationSession();
 
@@ -93,7 +93,7 @@ export const deleteMessageAction = createServerAction(
 );
 
 export const bulkDeleteMessages = createServerAction(
-  { schema: bulkDeleteSchema, actionName: 'bulkDeleteMessages', requireAuth: true },
+  { schema: bulkDeleteSchema, actionName: 'bulkDeleteMessages' },
   async ({ messageIds, reason }) => {
     const session = await requireModerationSession();
     await applyModerationRateLimit(session.user.id);
@@ -266,7 +266,7 @@ export const banUser = createServerAction(
 );
 
 export const unbanUser = createServerAction(
-  { schema: unbanSchema, actionName: 'unbanUser', requireAuth: true },
+  { schema: unbanSchema, actionName: 'unbanUser' },
   async ({ banId }) => {
     const session = await requireModerationSession();
     await applyModerationRateLimit(session.user.id);
@@ -337,7 +337,7 @@ export const unbanUser = createServerAction(
 );
 
 export const getBannedUsers = createServerAction(
-  { schema: getBannedUsersSchema, actionName: 'getBannedUsers', requireAuth: true },
+  { schema: getBannedUsersSchema, actionName: 'getBannedUsers' },
   async (filters) => {
     const session = await requireModerationSession();
 
@@ -472,7 +472,7 @@ export const deleteThread = createServerAction(
 );
 
 export const getMessageDetails = createServerAction(
-  { schema: getMessageDetailsSchema, actionName: 'getMessageDetails', requireAuth: true },
+  { schema: getMessageDetailsSchema, actionName: 'getMessageDetails' },
   async ({ messageId }) => {
     const session = await requireModerationSession();
 

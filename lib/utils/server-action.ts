@@ -19,23 +19,18 @@ export interface ActionResult<T = unknown> {
 export interface ServerActionOptions<In, Out = unknown> {
   schema: z.ZodSchema<In>;
   actionName: string;
-  requireAuth?: boolean;
-  requireAdmin?: boolean;
-  requireRole?: string[];
-  getSession?: () => Promise<{ user: { id: string; role?: string } } | null>;
 }
 
 /**
- * Wrap a server action handler with validation, error handling, and optionally auth checks
+ * Wrap a server action handler with validation and error handling
  */
 export function createServerAction<In, Out = unknown>(
   options: ServerActionOptions<In, Out>,
   handler: (args: In) => Promise<ActionResult<Out>>
 ): (...args: unknown[]) => Promise<ActionResult<Out>> {
-  const { schema, actionName, requireAuth, requireAdmin, requireRole, getSession } = options;
+  const { schema, actionName } = options;
 
   return async (...handlerArgs: unknown[]): Promise<ActionResult<Out>> => {
-    // Validate input
     let validatedArgs: In;
     try {
       if (handlerArgs.length === 1 && handlerArgs[0] instanceof FormData) {
@@ -57,29 +52,6 @@ export function createServerAction<In, Out = unknown>(
       return actionFailure('VALIDATION_ERROR', 'Invalid input');
     }
 
-    // Authentication checks
-    if (requireAuth || requireAdmin || requireRole) {
-      if (!getSession) {
-        throw new Error(`getSession is required for auth checks in ${actionName}`);
-      }
-      try {
-        const session = await getSession();
-        if (!session?.user) {
-          return actionFailure('AUTH_REQUIRED', 'Authentication required');
-        }
-        if (requireAdmin && !['ADMIN', 'MODERATOR'].includes(session.user.role || '')) {
-          return actionFailure('FORBIDDEN', 'Insufficient permissions');
-        }
-        if (requireRole && session.user.role && !requireRole.includes(session.user.role)) {
-          return actionFailure('FORBIDDEN', 'Insufficient permissions');
-        }
-      } catch (error) {
-        logger.error(`[${actionName}] auth`, error);
-        return actionFailure('AUTH_REQUIRED', 'Authentication required');
-      }
-    }
-
-    // Execute handler
     try {
       return await handler(validatedArgs);
     } catch (error) {

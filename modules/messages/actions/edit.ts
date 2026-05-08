@@ -17,7 +17,7 @@ import {
 } from '@/modules/messages/schemas';
 
 export const editMessage = createServerAction(
-  { schema: editMessageSchema, actionName: 'editMessage', requireAuth: true },
+  { schema: editMessageSchema, actionName: 'editMessage' },
   async ({ messageId, content }) => {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -72,7 +72,7 @@ export const editMessage = createServerAction(
 );
 
 export const pinMessage = createServerAction(
-  { schema: pinMessageSchema, actionName: 'pinMessage', requireAuth: true },
+  { schema: pinMessageSchema, actionName: 'pinMessage' },
   async ({ messageId }) => {
     const session = await auth.api.getSession({
       headers: await headers(),

@@ -11,7 +11,7 @@ import { deleteMessageSchema } from '@/modules/messages/schemas';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 
 export const deleteMessage = createServerAction(
-  { schema: deleteMessageSchema, actionName: 'deleteMessage', requireAuth: true },
+  { schema: deleteMessageSchema, actionName: 'deleteMessage' },
   async ({ messageId }) => {
     const session = await requireSession();
 

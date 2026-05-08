@@ -110,7 +110,6 @@ export const closePollAction = createServerAction(
   {
     schema: pollIdSchema,
     actionName: 'closePoll',
-    requireAuth: true,
   },
   async ({ pollId }) => {
     try {
@@ -149,7 +148,6 @@ export const getPollResultsAction = createServerAction(
   {
     schema: pollIdSchema,
     actionName: 'getPollResults',
-    requireAuth: true,
   },
   async ({ pollId }) => {
     try {
@@ -171,7 +169,6 @@ export const getUserVoteAction = createServerAction(
   {
     schema: pollIdSchema,
     actionName: 'getUserVote',
-    requireAuth: true,
   },
   async ({ pollId }) => {
     try {

@@ -20,7 +20,7 @@ const getReactionSummarySchema = z.object({
 });
 
 export const toggleReaction = createServerAction(
-  { schema: toggleReactionSchema, actionName: 'toggleReaction', requireAuth: true },
+  { schema: toggleReactionSchema, actionName: 'toggleReaction' },
   async ({ messageId, emoji }) => {
     const session = await requireSession();
 

@@ -93,23 +93,18 @@ pnpm db:studio   # Prisma studio
 - `/api/cron/*` - Scheduled jobs
 - `/api/v1/moderation/*` - Moderation tools
 
-## Known Issues
-
-### TypeScript Errors (need fixing)
-
-1. `app/page.tsx:11` - 'user' type error on 'never'
-2. `hooks/useMessages.ts:33` - Type conversion issue
-3. `modules/newsletter/actions.ts:101,106` - Prisma relation type error
-
-### Lint Errors
-
-1. `app/(public)/pricing/page.tsx:48` - Unescaped entity `'` → use `&apos;` or `&#39;`
-
-### Test Coverage
+## Test Coverage
 
 - **Current**: 30 tests in 3 files
 - **Missing**: Integration tests, API endpoint tests, WebSocket tests
 - **Dependencies needed**: Add @types/mocha
+
+## Architecture Notes
+
+- Server actions use `withValidation` / `createServerAction` from `lib/utils/server-action.ts`
+- `lib/actions/result.ts` provides `actionSuccess` / `actionFailure` helpers for action return values
+- All auth handled manually inside action handlers via `requireSession()`
+- WebSocket state is in-memory (see `shared/ARCHITECTURE.md` for scaling limitations)
 
 ## Environment Variables
 
@@ -137,7 +132,6 @@ Optional:
 ## Notes
 
 - Uses `zod` for schema validation
-- Custom Result type in `lib/utils/result.ts`
 - Server Actions in module files
 - Prisma adapter: `@prisma/adapter-neon`
 - WebSocket uses `ws` library

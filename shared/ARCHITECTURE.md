@@ -450,6 +450,47 @@ All layers (DB, API, UI) import from here — never redefine.
 - **Storage:** Vercel Blob
 - **CI/CD:** GitHub Actions → auto-deploy on main
 
+## Known Scaling Limitations
+
+### WebSocket In-Memory State
+
+The WebSocket server (`lib/infrastructure/websocket/server.ts`) stores all connection state in-memory:
+
+```typescript
+const threadChannels = new Map<string, ThreadChannel>();        // thread → subscribers
+const connectionsByUserId = new Map<string, Set<WebSocket>>();   // userId → connections
+const typingIndicators = new Map<string, Map<string, TypingIndicator>>();
+```
+
+**Impact:** With multiple Next.js server instances (e.g., Vercel auto-scales to multiple instances), WebSocket messages will only reach subscribers on the same process instance. A user connected to instance A will not receive messages sent by a user on instance B.
+
+**Workaround for 10x scale:** Replace in-memory Maps with a Redis pub/sub adapter. All instances subscribe to Redis channels; messages are broadcast to local WebSocket clients from Redis events. See `lib/infrastructure/redis-pubsub.ts` for existing Redis setup.
+
+**Current acceptable scope:** Single-instance deployment or <1,000 concurrent WebSocket connections where a single process can handle all routing.
+
+```
+  ┌─────────────────┐     ┌─────────────────┐
+  │  Instance A     │     │  Instance B     │
+  │  WS connected   │     │  WS connected   │
+  │  user-1         │     │  user-2         │
+  │                 │     │                 │
+  │  threadChannels │     │  threadChannels │
+  │  (local only)   │     │  (local only)   │
+  └────────┬────────┘     └────────┬────────┘
+           │                       │
+           ✗ No cross-instance     │
+           │ communication         │
+           ▼                       ▼
+       ┌─────────────────────────────┐
+       │  Redis (Upstash)            │
+       │  (pub/sub - not used for WS)│
+       └─────────────────────────────┘
+```
+
+### Database Connection Pooling (Neon Serverless)
+
+Neon serverless drivers use HTTP-based connections for cold starts. Under high concurrency, connection pool exhaustion can cause latency spikes. Ensure `prisma` connection pool is configured with appropriate `connection_limit` and `pool_timeout` values for the expected load.
+
 ```
 
 ```

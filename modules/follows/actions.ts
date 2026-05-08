@@ -33,7 +33,7 @@ const getFollowingSchema = z.object({
 });
 
 export const followUser = createServerAction(
-  { schema: followUserSchema, actionName: 'followUser', requireAuth: true },
+  { schema: followUserSchema, actionName: 'followUser' },
   async ({ userId }) => {
     const session = await requireSession();
 
@@ -71,7 +71,7 @@ export const followUser = createServerAction(
 );
 
 export const unfollowUser = createServerAction(
-  { schema: followUserSchema, actionName: 'unfollowUser', requireAuth: true },
+  { schema: followUserSchema, actionName: 'unfollowUser' },
   async ({ userId }) => {
     const session = await requireSession();
     await unfollowUserRepo(session.user.id, userId);
@@ -100,7 +100,7 @@ export const getFollowing = createServerAction(
 );
 
 export const checkFollowingStatus = createServerAction(
-  { schema: followUserSchema, actionName: 'checkFollowingStatus', requireAuth: true },
+  { schema: followUserSchema, actionName: 'checkFollowingStatus' },
   async ({ userId }) => {
     const session = await requireSession();
     const isFollowing = await isFollowingRepo(session.user.id, userId);
