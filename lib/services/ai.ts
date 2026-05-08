@@ -87,14 +87,14 @@ function parseThreadDNA(text: string): ThreadDNA {
   try {
     const parsed = threadDNASchema.safeParse(JSON.parse(cleanJsonText(text)));
     if (!parsed.success) {
-      logger.warn('[parseThreadDNA] Zod validation failed', {
+      logger.error('[parseThreadDNA] Zod validation failed', {
         error: parsed.error.flatten(),
       });
       return DEFAULT_THREAD_DNA;
     }
     return parsed.data;
   } catch (err) {
-    logger.warn('[parseThreadDNA] JSON parse failed', { error: err });
+    logger.error('[parseThreadDNA] JSON parse failed', { error: err });
     return DEFAULT_THREAD_DNA;
   }
 }
@@ -103,14 +103,14 @@ function parseConflict(text: string): ConflictResult {
   try {
     const parsed = conflictSchema.safeParse(JSON.parse(cleanJsonText(text)));
     if (!parsed.success) {
-      logger.warn('[parseConflict] Zod validation failed', {
+      logger.error('[parseConflict] Zod validation failed', {
         error: parsed.error.flatten(),
       });
       return DEFAULT_CONFLICT;
     }
     return parsed.data;
   } catch (err) {
-    logger.warn('[parseConflict] JSON parse failed', { error: err });
+    logger.error('[parseConflict] JSON parse failed', { error: err });
     return DEFAULT_CONFLICT;
   }
 }
@@ -189,8 +189,7 @@ export class GeminiService implements AIService {
       );
       return result.response.text();
     } catch (error) {
-      logger.error('[GeminiService.generateSummary]', { error });
-      // Summary is non-critical — return fallback, do not throw
+      logger.warn('[GeminiService.generateSummary] AI failed, returning fallback', { error });
       return 'Summary unavailable.';
     } finally {
       clear();
@@ -424,7 +423,7 @@ export class OpenAIService implements AIService {
         500
       );
     } catch (error) {
-      logger.error('[OpenAIService.generateSummary]', { error });
+      logger.warn('[OpenAIService.generateSummary] AI failed, returning fallback', { error });
       return 'Summary unavailable.';
     }
   }

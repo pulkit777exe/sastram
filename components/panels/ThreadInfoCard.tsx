@@ -24,6 +24,23 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
             {thread._count.members}
           </span>
         </div>
+
+        {thread.resolutionScore !== null && (
+          <div className="mt-[4px] flex items-center justify-between">
+            <span className="text-[12px]">Resolution</span>
+            <div className="flex items-center gap-[6px]">
+              <div className="h-[4px] w-[60px] overflow-hidden rounded-full bg-(--bg)">
+                <div
+                  className="h-full rounded-full bg-(--green)"
+                  style={{ width: `${thread.resolutionScore}%` }}
+                />
+              </div>
+              <span className="font-['Syne'] text-[12px] font-bold text-(--text)">
+                {thread.resolutionScore}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {thread.tags.length > 0 && (
