@@ -13,6 +13,9 @@ export async function GET(req: NextRequest) {
     }
 
     const sections = await prisma.section.findMany({
+      where: {
+        members: { some: { userId: session.user.id } },
+      },
       include: {
         messages: {
           orderBy: { createdAt: 'desc' },
