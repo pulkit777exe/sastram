@@ -18,6 +18,13 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: threadId, userId: session.user.id } },
+    });
+    if (!isMember) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Find the latest message with @ai mention in this thread
     const parentMessage = await prisma.message.findFirst({
       where: {

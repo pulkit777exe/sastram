@@ -60,6 +60,18 @@ export async function postMessage(formData: FormData) {
     };
   }
 
+  const isMember = await prisma.sectionMember.findUnique({
+    where: { sectionId_userId: { sectionId, userId: session.user.id } },
+  });
+  if (!isMember) {
+    return {
+      data: null,
+      error: 'You are not a member of this section',
+      errorCode: 'FORBIDDEN',
+      ok: false,
+    };
+  }
+
   try {
     await messageLimiter.check(session.user.id);
   } catch {

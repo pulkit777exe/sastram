@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       where: { id: threadId },
       include: {
         messages: {
-          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10), // Limit to configured number of messages for DNA analysis
+          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
           orderBy: { createdAt: 'desc' },
           include: { sender: true },
         },
@@ -43,6 +43,13 @@ export async function POST(req: NextRequest) {
 
     if (!thread) {
       return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+    }
+
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: threadId, userId: session.user.id } },
+    });
+    if (!isMember) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Reverse to chronological order for AI
