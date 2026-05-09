@@ -3,6 +3,7 @@ import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { enqueueInlineJob } from '@/lib/infrastructure/bullmq';
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function POST(
   request: NextRequest,
@@ -46,7 +47,7 @@ export async function POST(
       return NextResponse.json({ error: 'No question found after @ai' }, { status: 400 });
     }
 
-    console.log('[ai-reply] Queuing job:', { threadId, messageId: parentMessage.id, query });
+    logger.info('[ai-reply] Queuing job:', { threadId, messageId: parentMessage.id, query });
 
     // Enqueue the AI inline job
     await enqueueInlineJob({
@@ -59,7 +60,7 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[ai-reply API]', error);
+    logger.error('[ai-reply API]', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to queue AI job' },
       { status: 500 }

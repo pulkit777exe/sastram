@@ -41,7 +41,9 @@ export async function POST(request: NextRequest) {
 
     const newRule = await prisma.moderationRule.create({
       data: {
-        ...body,
+        pattern: body.pattern,
+        action: body.action,
+        category: body.category,
         severity: body.severity || 'MEDIUM',
       },
     });
@@ -81,7 +83,10 @@ export async function PUT(request: NextRequest) {
     const updatedRule = await prisma.moderationRule.update({
       where: { id: body.id },
       data: {
-        ...body,
+        pattern: body.pattern,
+        action: body.action,
+        category: body.category,
+        severity: body.severity,
         updatedAt: new Date(),
       },
     });
