@@ -575,7 +575,7 @@ ${context}`,
     });
 
     // Emit a final completion event so clients can clear pending state immediately.
-    console.log('[AI inline] Emitting final message:', { 
+    logger.info('[AI inline] Emitting final message:', { 
       id: aiMessage.id, 
       content: fullContent.slice(0, 50), 
       isComplete: true 

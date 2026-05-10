@@ -77,7 +77,17 @@ export async function inviteFriendToThread(formData: FormData) {
       },
     });
 
-    // TODO: Send email notification here
+    const { sendEmail } = await import('@/lib/services/email');
+
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}?invite=${invitation.id}`;
+    await sendEmail({
+      to: invitation.email,
+      subject: `${session.user.name || 'Someone'} invited you to "${thread.name}"`,
+      html: `
+        <p>You've been invited to join the discussion on "${thread.name}".</p>
+        <p><a href="${inviteUrl}">Click here to join</a></p>
+      `,
+    }).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
 
     revalidatePath(`/dashboard/threads/thread/${thread.slug}`);
     return { data: invitation, error: null };

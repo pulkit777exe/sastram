@@ -36,7 +36,8 @@ export async function consumeAiInlineQuota(params: {
 }): Promise<{ allowed: boolean; used: number }> {
   const r = getRedis();
   if (!r) {
-    return { allowed: true, used: 0 };
+    logger.warn('[consumeAiInlineQuota] Redis unavailable, denying quota (fail-closed)');
+    return { allowed: false, used: 0 };
   }
 
   const date = new Date().toISOString().slice(0, 10);

@@ -115,7 +115,7 @@ export async function updateSubscriptionFrequency({
  * Schedules a digest for a thread (placeholder implementation)
  */
 export async function scheduleThreadDigest(threadId: string) {
-  console.log(`Scheduling digest for thread ${threadId}`);
+  logger.info(`Scheduling digest for thread ${threadId}`);
   return Promise.resolve();
 }
 
@@ -127,17 +127,14 @@ export async function getDueDigests() {
 }
 
 /**
- * Marks a digest as processing (placeholder implementation)
+ * Marks a digest as processing (placeholder — ThreadDigest model not yet added)
  */
 export async function markDigestProcessing(digestId: string) {
-  console.log(`Marking digest ${digestId} as processing`);
+  logger.info(`Marking digest ${digestId} as processing (stub)`);
   return Promise.resolve();
 }
 
-/**
- * Completes a digest (placeholder implementation)
- */
 export async function completeDigest(digestId: string, summary: string, emailCount: number) {
-  console.log(`Completing digest ${digestId} with ${emailCount} emails sent`);
+  logger.info(`Completing digest ${digestId} with ${emailCount} emails sent`);
   return Promise.resolve();
 }

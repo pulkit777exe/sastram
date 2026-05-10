@@ -1,6 +1,7 @@
 import { auth } from '@/lib/services/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error('[forget-password:email-otp]', error);
+    logger.error('[forget-password:email-otp]', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to send reset code' },
       { status: 400 }
