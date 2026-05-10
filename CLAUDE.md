@@ -150,4 +150,3 @@ Optional:
 
 1. WebSocket state is in-memory — does not work across multiple server instances
 2. BullMQ Redis URL parsing only supports `REDIS_URL` / `UPSTASH_REDIS_REST_URL` — standalone `REDIS_HOST`/`REDIS_PORT` fallback lacks TLS support for Upstash
-3. `modules/newsletter/actions.ts:101,106` - Prisma relation type error (known)
