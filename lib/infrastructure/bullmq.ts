@@ -438,7 +438,8 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   });
 
   if (!parentMessage) {
-    throw new Error(`Parent message ${messageId} not found`);
+    logger.error('[handleAIInlineJob] Parent message not found:', { messageId, jobId: job.id });
+    return { queued: false, handled: false, error: 'Parent message not found' };
   }
 
   const recentMessages = await prisma.message.findMany({

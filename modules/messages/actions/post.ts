@@ -111,7 +111,7 @@ export async function postMessage(formData: FormData) {
       };
     }
 
-    const message = await prisma.message.findUniqueOrThrow({
+    const message = await prisma.message.findUnique({
       where: { id: moderationResult.messageId! },
       include: {
         section: {
@@ -131,6 +131,15 @@ export async function postMessage(formData: FormData) {
         attachments: true,
       },
     });
+
+    if (!message) {
+      return {
+        data: null,
+        error: 'Message not found after creation',
+        errorCode: 'NOT_FOUND',
+        ok: false,
+      };
+    }
 
     await createMentionsForMessage({
       messageId: message.id,
