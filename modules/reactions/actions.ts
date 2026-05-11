@@ -24,13 +24,24 @@ export const toggleReaction = createServerAction(
   async ({ messageId, emoji }) => {
     const session = await requireSession();
 
-    // Check if user already reacted with this emoji
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      select: { sectionId: true },
+    });
+
+    if (!message) {
+      return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+    }
+
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: message.sectionId, userId: session.user.id } },
+    });
+    if (!isMember) {
+      return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
+    }
+
     const existing = await prisma.reaction.findFirst({
-      where: {
-        messageId,
-        userId: session.user.id,
-        emoji,
-      },
+      where: { messageId, userId: session.user.id, emoji },
     });
 
     if (existing) {
@@ -39,26 +50,18 @@ export const toggleReaction = createServerAction(
       await addReaction(messageId, session.user.id, emoji);
     }
 
-    const [message, reactionCounts] = await Promise.all([
-      prisma.message.findUnique({
-        where: { id: messageId },
-        select: { sectionId: true },
-      }),
-      prisma.reaction.groupBy({
-        by: ['emoji'],
-        where: { messageId },
-        _count: { _all: true },
-      }),
-    ]);
+    const reactionCounts = await prisma.reaction.groupBy({
+      by: ['emoji'],
+      where: { messageId },
+      _count: { _all: true },
+    });
 
-    if (message?.sectionId) {
-      const match = reactionCounts.find((r) => r.emoji === emoji);
-      emitReactionUpdate(message.sectionId, {
-        messageId,
-        reactionType: emoji,
-        count: match?._count._all ?? 0,
-      });
-    }
+    const match = reactionCounts.find((r) => r.emoji === emoji);
+    emitReactionUpdate(message.sectionId, {
+      messageId,
+      reactionType: emoji,
+      count: match?._count._all ?? 0,
+    });
 
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
@@ -68,6 +71,24 @@ export const toggleReaction = createServerAction(
 export const getReactionSummary = createServerAction(
   { schema: getReactionSummarySchema, actionName: 'getReactionSummary' },
   async ({ messageId }) => {
+    const session = await requireSession();
+
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      select: { sectionId: true },
+    });
+
+    if (!message) {
+      return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+    }
+
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: message.sectionId, userId: session.user.id } },
+    });
+    if (!isMember) {
+      return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
+    }
+
     const reactions = await getMessageReactions(messageId);
     return { data: reactions, error: null };
   }
