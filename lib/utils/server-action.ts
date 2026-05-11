@@ -56,7 +56,12 @@ export function createServerAction<In, Out = unknown>(
       return await handler(validatedArgs);
     } catch (error) {
       logger.error(`[${actionName}]`, error);
-      return serverError();
+      return {
+        ok: false,
+        data: null,
+        error: 'Something went wrong',
+        errorCode: 'INTERNAL_ERROR',
+      };
     }
   };
 }
