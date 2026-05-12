@@ -62,8 +62,9 @@ export const createThreadRequestSchema = z.object({
     .optional()
     .or(z.literal('')),
   communityId: z.string().cuid('Invalid community ID').optional().or(z.literal('')),
-  // Optional poll fields — pollOptions accepts a newline-separated string from
-// the admin form textarea; the thread action transforms it into an array.
+// Optional poll fields
+  // pollOptions accepts a newline-separated string from the admin form textarea;
+  // the thread action transforms it into an array.
   pollQuestion: z.string().min(1).max(500).optional(),
   pollOptions: z.string().optional(),
   pollExpiresAt: z.coerce.date().optional(),

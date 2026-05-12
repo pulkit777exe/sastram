@@ -17,6 +17,9 @@ interface InlinePollProps {
   onToggle: (isOpen: boolean) => void;
 }
 
+const MAX_OPTIONS = 6;
+const MIN_OPTIONS = 2;
+
 export function InlinePoll({ threadId, canManagePoll, onPollCreated, isOpen, onToggle }: InlinePollProps) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
@@ -28,7 +31,7 @@ export function InlinePoll({ threadId, canManagePoll, onPollCreated, isOpen, onT
   };
 
   const handleRemoveOption = (index: number) => {
-    if (options.length <= 2) return;
+    if (options.length <= MIN_OPTIONS) return;
     const newOptions = [...options];
     newOptions.splice(index, 1);
     setOptions(newOptions);
@@ -46,17 +49,17 @@ export function InlinePoll({ threadId, canManagePoll, onPollCreated, isOpen, onT
       return;
     }
     
-    const validOptions = options.filter(option => option.trim().length > 0);
-    if (validOptions.length < 2) {
-      toasts.error('Please add at least 2 options to your poll');
+const validOptions = options.filter(option => option.trim().length > 0);
+    if (validOptions.length < MIN_OPTIONS) {
+      toasts.error(`Please add at least ${MIN_OPTIONS} options to your poll`);
       return;
     }
-    
-    if (validOptions.length > 6) {
-      toasts.error('You can add up to 6 options only');
+
+    if (validOptions.length > MAX_OPTIONS) {
+      toasts.error(`You can add up to ${MAX_OPTIONS} options only`);
       return;
     }
-    
+
     setIsSaving(true);
     
     try {
@@ -134,7 +137,7 @@ export function InlinePoll({ threadId, canManagePoll, onPollCreated, isOpen, onT
           <Button 
             type="button" 
             onClick={handleAddOption}
-            disabled={options.length >= 6}
+            disabled={options.length >= MAX_OPTIONS}
             variant="outline"
             size="sm"
           >

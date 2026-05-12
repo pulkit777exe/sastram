@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { createThread, deleteThread, listThreads, getThreadMembers, updateThreadMemberRole, removeThreadMember, updateThreadDNA, updateResolutionScore, updateThreadStaleness } from './repository';
 import { createPoll } from '@/modules/polls/repository';
+import { SectionRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 
@@ -93,9 +94,6 @@ export const deleteThreadAction = createServerAction(
   }
 );
 
-/**
- * List threads with pagination and sorting.
- */
 /**
  * List threads with pagination and sorting.
  */
