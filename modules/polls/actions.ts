@@ -43,6 +43,12 @@ export const createPollAction = withValidation(
       // requireSession enforces auth — session.user.id available for audit if needed
       const session = await requireSession();
 
+      // Check if user has permission to create a poll in this thread
+      const memberRole = await getMemberRole(threadId, session.user.id);
+      if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
+        return { data: null, error: 'Insufficient permissions to create poll' };
+      }
+
       const poll = await createPollRepo(
         threadId,
         question,

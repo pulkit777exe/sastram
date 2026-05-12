@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -28,14 +28,6 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   // Prevents setState after unmount
   const mountedRef = useRef(true);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      stopPolling();
-    };
-  }, []);
-
   // ── POLLING ───────────────────────────────────────────────────────────────
 
   function stopPolling() {
@@ -45,15 +37,19 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
     }
   }
 
-  function startPolling(jobId: string) {
+  const startPolling = useCallback(function startPolling(jobId: string) {
     // Clear any existing interval before starting a new one
     stopPolling();
     pollStartRef.current = Date.now();
 
-    pollIntervalRef.current = setInterval(async () => {
+    const pollInterval = setInterval(async () => {
       // Timeout guard — stop polling after POLL_TIMEOUT_MS
       if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
         stopPolling();
+        if (pollIntervalRef.current !== null) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
         if (mountedRef.current) {
           setIsLoading(false);
           toast.error('Summary is taking too long. Try again in a moment.');
@@ -75,7 +71,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
           if (mountedRef.current) {
             setSummary(jobData.result?.summary ?? null);
             setIsLoading(false);
-            toast.success('Thread summary generated!');
+            toast.success('Thread summary generated!'); 
             // Do NOT call router.refresh() here — local state already updated.
             // Only call router.refresh() if server-rendered counts need updating.
           }
@@ -94,11 +90,22 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         }
       }
     }, POLL_INTERVAL_MS);
-  }
+    
+    pollIntervalRef.current = pollInterval;
+    return pollInterval;
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stopPolling();
+    };
+  }, []);
 
   // ── FETCH SUMMARY ─────────────────────────────────────────────────────────
 
-  async function requestSummary() {
+  const requestSummary = useCallback(async function () {
     if (isLoading) return;
     setIsLoading(true);
 
@@ -129,16 +136,20 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
       setIsLoading(false);
       toast.error('Failed to generate summary. Please try again.');
     }
-  }
+  }, [isLoading, threadId, startPolling]);
 
-  // Auto-request summary on mount only if none was provided by the server
+// Auto-request summary on mount only if none was provided by the server
   useEffect(() => {
     if (!initialSummary) {
-      void requestSummary();
+      let cancelled = false;
+      (async () => {
+        await requestSummary();
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
-    // Only run on mount — requestSummary intentionally excluded from deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialSummary, threadId, requestSummary]);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
 

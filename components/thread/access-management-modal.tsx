@@ -61,20 +61,31 @@ export function ThreadAccessModal({
   const [confirmAction, setConfirmAction] = useState<ConfirmActionState>(null);
 
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+    let cancelled = false;
+    (async () => {
       setLoading(true);
-      getThreadMembersAction(threadId)
-        .then((result) => {
-          if (result?.error) {
-            toast.error(result.error);
-            setMembers([]);
-            return;
-          }
+      try {
+        const result = await getThreadMembersAction(threadId);
+        if (cancelled) return;
+        if (result?.error) {
+          toast.error(result.error);
+          setMembers([]);
+        } else {
           setMembers(result?.data ?? []);
-        })
-        .catch(() => toast.error('Failed to load members'))
-        .finally(() => setLoading(false));
-    }
+        }
+      } catch {
+        if (cancelled) return;
+        toast.error('Failed to load members');
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, threadId]);
 
   const handleRoleChangeRequest = (userId: string, userName: string, newRole: SectionRole) => {

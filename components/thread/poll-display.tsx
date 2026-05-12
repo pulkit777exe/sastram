@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { voteOnPollAction, getUserVoteAction, getPollResultsAction } from '@/modules/polls/actions';
@@ -98,7 +98,13 @@ export function PollDisplay({ poll }: PollDisplayProps) {
   // loadPollData is now stable (useCallback with [poll.id])
   // so this effect only runs once per poll.id change
   useEffect(() => {
-    void loadPollData();
+    let cancelled = false;
+    (async () => {
+      await loadPollData();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadPollData]);
 
   // ── VOTE HANDLER ─────────────────────────────────────────────────────────
@@ -130,12 +136,16 @@ export function PollDisplay({ poll }: PollDisplayProps) {
 
   // ── RENDER ────────────────────────────────────────────────────────────────
 
+  const isExpired = useMemo(
+    // eslint-disable-next-line react-hooks/purity
+    () => !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now(),
+    [poll.expiresAt]
+  );
+  const showResults = hasVoted || !poll.isActive || isExpired;
+
   if (isLoading) {
     return <PollSkeleton optionCount={poll.options.length} />;
   }
-
-  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now();
-  const showResults = hasVoted || !poll.isActive || isExpired;
 
   return (
     <motion.div

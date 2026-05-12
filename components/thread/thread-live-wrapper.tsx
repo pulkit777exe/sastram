@@ -9,6 +9,7 @@ import TimeAgo from '@/components/ui/TimeAgo';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
 import { toasts } from '@/lib/utils/toast';
+import { InlinePoll } from '@/components/thread/inline-poll';
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
@@ -45,6 +46,8 @@ export function ThreadLiveWrapper({
   const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed'>>({});
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(initialFirstUnreadMessageId);
+  const [showPoll, setShowPoll] = useState(false);
+  const [currentPoll, setCurrentPoll] = useState(poll);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -277,23 +280,36 @@ export function ThreadLiveWrapper({
           }, 250);
         }}
       >
-        <div className="max-w-4xl mx-auto p-6 md:p-8">
-          <PollPanel threadId={threadId} initialPoll={poll} canManagePoll={canManagePoll} />
-
-          {unreadCount > 0 && (
-            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold text-blue-700">
-                  {unreadCount} unread {unreadCount === 1 ? 'message' : 'messages'}
-                </p>
-                <button
-                  type="button"
-                  className="text-xs font-medium text-blue-700 underline hover:text-blue-900"
-                  onClick={scrollToFirstUnread}
-                >
-                  Scroll to first unread
-                </button>
-              </div>
+<div className="max-w-4xl mx-auto p-6 md:p-8">
+          <div className="mb-4">
+            <InlinePoll 
+              threadId={threadId} 
+              canManagePoll={canManagePoll} 
+              isOpen={showPoll} 
+              onToggle={setShowPoll}
+              onPollCreated={(newPoll) => {
+                // Update the poll state when a new poll is created
+                setCurrentPoll(newPoll);
+              }}
+            />
+          </div>
+          {currentPoll && (
+            <div className="mb-4">
+              <PollPanel threadId={threadId} initialPoll={currentPoll} canManagePoll={canManagePoll} />
+            </div>
+          )}
+        </div>
+          {currentPoll && (
+            <div className="mb-4">
+              <PollPanel threadId={threadId} initialPoll={currentPoll} canManagePoll={canManagePoll} />
+            </div>
+          )}
+          </div>
+        </div>
+          <div className="mb-4">
+            <PollPanel threadId={threadId} initialPoll={poll} canManagePoll={canManagePoll} />
+          </div>
+        </div>
             </div>
           )}
 
@@ -387,6 +403,17 @@ export function ThreadLiveWrapper({
             onMessagePosted={handleMessagePosted}
             onTypingStart={emitTypingStart}
             onTypingStop={emitTypingStop}
+            canManagePoll={canManagePoll}
+            onPollCreated={(newPoll) => {
+              // Update the poll state when a new poll is created
+              setPoll({
+                id: newPoll.id,
+                question: newPoll.question,
+                options: newPoll.options,
+                isActive: newPoll.isActive,
+                expiresAt: newPoll.expiresAt,
+              });
+            }}
           />
         </div>
       </div>

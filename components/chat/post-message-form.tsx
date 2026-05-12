@@ -13,11 +13,13 @@ import {
   FileIcon,
   X,
   MessageSquare,
+  BarChart2,
 } from 'lucide-react';
 import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
 import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
 import type { Message } from '@/lib/types/index';
+import { InlinePollButton } from '@/components/thread/inline-poll-button';
 
 interface PostMessageFormProps {
   sectionId: string;
@@ -29,6 +31,8 @@ interface PostMessageFormProps {
   onCancelReply?: () => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
+  canManagePoll?: boolean;
+  onPollCreated?: (poll: any) => void;
 }
 
 type MentionCandidate = {
@@ -46,6 +50,8 @@ export function PostMessageForm({
   onCancelReply,
   onTypingStart,
   onTypingStop,
+  canManagePoll,
+  onPollCreated,
 }: PostMessageFormProps) {
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -55,6 +61,7 @@ export function PostMessageForm({
   const [mentionOpen, setMentionOpen] = useState(false);
   const [activeMentionIndex, setActiveMentionIndex] = useState(0);
   const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
+  const [showPoll, setShowPoll] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -341,7 +348,7 @@ export function PostMessageForm({
           onBlur={() => onTypingStop?.()}
         />
 
-        <div className="flex items-center gap-1 shrink-0">
+<div className="flex items-center gap-1 shrink-0">
           <Button
             type="button"
             variant="ghost"
@@ -366,6 +373,9 @@ export function PostMessageForm({
           >
             <Smile className="h-6 w-6" />
           </Button>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <InlinePollButton onClick={() => setShowPoll(true)} disabled={!canManagePoll} />
         </div>
       </div>
 

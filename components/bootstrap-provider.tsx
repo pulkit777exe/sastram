@@ -105,81 +105,88 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    fetchBootstrap();
+    let cancelled = false;
+    (async () => {
+      await fetchBootstrap();
+    })();
     return () => {
+      cancelled = true;
       mountedRef.current = false;
     };
   }, [fetchBootstrap]);
 
-  const connectWebSocket = useCallback(
-    (userId: string) => {
-      if (typeof window === 'undefined') return;
-      if (!shouldReconnectRef.current) return;
-      if (reconnectAttemptRef.current >= WS_MAX_ATTEMPTS) {
-        return;
-      }
+  const connectWebSocketRef = useRef<((userId: string) => void) | null>(null);
 
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+  const connectWebSocket = useCallback((userId: string) => {
+    if (typeof window === 'undefined') return;
+    if (!shouldReconnectRef.current) return;
+    if (reconnectAttemptRef.current >= WS_MAX_ATTEMPTS) {
+      return;
+    }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const url = `${protocol}://${window.location.host}/api/ws/notifications?userId=${userId}`;
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
 
-      let ws: WebSocket;
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const url = `${protocol}://${window.location.host}/api/ws/notifications?userId=${userId}`;
+
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(url);
+    } catch {
+      return;
+    }
+
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      reconnectAttemptRef.current = 0;
+    };
+
+    ws.onmessage = (event: MessageEvent) => {
       try {
-        ws = new WebSocket(url);
-      } catch {
-        return;
-      }
-
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        reconnectAttemptRef.current = 0;
-      };
-
-      ws.onmessage = (event: MessageEvent) => {
-        try {
-          const message = JSON.parse(event.data as string) as {
-            type: string;
-            payload: { unreadCount: number };
-          };
-          if (message.type === 'NOTIFICATION_COUNT_UPDATE') {
-            setData((prev) =>
-              prev ? { ...prev, unreadNotificationCount: message.payload.unreadCount } : prev
-            );
-          }
-        } catch {
-          // ignore
+        const message = JSON.parse(event.data as string) as {
+          type: string;
+          payload: { unreadCount: number };
+        };
+        if (message.type === 'NOTIFICATION_COUNT_UPDATE') {
+          setData((prev) =>
+            prev ? { ...prev, unreadNotificationCount: message.payload.unreadCount } : prev
+          );
         }
-      };
+      } catch {
+        // ignore
+      }
+    };
 
-      ws.onerror = () => {
-        // handled in onclose
-      };
+    ws.onerror = () => {
+      // handled in onclose
+    };
 
-      ws.onclose = (event: CloseEvent) => {
-        if (event.code === 1000 || event.code === 1001) return;
-        if (!shouldReconnectRef.current) return;
-        if (!mountedRef.current) return;
+    ws.onclose = (event: CloseEvent) => {
+      if (event.code === 1000 || event.code === 1001) return;
+      if (!shouldReconnectRef.current) return;
+      if (!mountedRef.current) return;
 
-        reconnectAttemptRef.current += 1;
-        const delay = Math.min(
-          WS_INITIAL_DELAY_MS * Math.pow(2, reconnectAttemptRef.current - 1),
-          WS_MAX_DELAY_MS
-        );
+      reconnectAttemptRef.current += 1;
+      const delay = Math.min(
+        WS_INITIAL_DELAY_MS * Math.pow(2, reconnectAttemptRef.current - 1),
+        WS_MAX_DELAY_MS
+      );
 
-        reconnectTimerRef.current = setTimeout(() => {
-          if (mountedRef.current && shouldReconnectRef.current) {
-            connectWebSocket(userId);
-          }
-        }, delay);
-      };
-    },
-    []
-  );
+      reconnectTimerRef.current = setTimeout(() => {
+        if (mountedRef.current && shouldReconnectRef.current) {
+          connectWebSocketRef.current?.(userId);
+        }
+      }, delay);
+    };
+  }, []);
+
+  useEffect(() => {
+    connectWebSocketRef.current = connectWebSocket;
+  }, [connectWebSocket]);
 
   useEffect(() => {
     if (!data?.user.id) return;
