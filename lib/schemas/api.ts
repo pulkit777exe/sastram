@@ -62,6 +62,10 @@ export const createThreadRequestSchema = z.object({
     .optional()
     .or(z.literal('')),
   communityId: z.string().cuid('Invalid community ID').optional().or(z.literal('')),
+  // Optional poll fields
+  pollQuestion: z.string().min(1).max(500).optional(),
+  pollOptions: z.array(z.string().min(1).max(200)).min(2).max(10).optional(),
+  pollExpiresAt: z.coerce.date().optional(),
 });
 
 export const threadSummarySchema = z.object({

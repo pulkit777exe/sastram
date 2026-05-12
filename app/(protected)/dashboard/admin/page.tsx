@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Flag } from 'lucide-react';
+import { Flag, PlusCircle } from 'lucide-react';
 
 export default async function AdminDashboardPage() {
   const session = await getSession();
@@ -97,53 +97,92 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-slate-100">
-          <CardHeader>
-            <CardTitle>Create a thread</CardTitle>
-            <p className="text-sm text-slate-500">
-              Threads inherit permissions from their parent community.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form action={handleCreateThread} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="thread-title">Title</Label>
-                <Input
-                  id="thread-title"
-                  name="title"
-                  placeholder="Photon propulsion L2 sync"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="thread-description">Description</Label>
-                <Textarea
-                  id="thread-description"
-                  name="description"
-                  placeholder="Gather specs, blockers, open questions."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="thread-community">Community</Label>
-                <select
-                  id="thread-community"
-                  name="communityId"
-                  className="w-full rounded-2xl border border-slate-200 bg-white p-2 text-sm text-slate-700 focus:border-slate-500 focus:outline-none"
-                >
-                  <option value="">No parent community</option>
-                  {communities.map((community) => (
-                    <option key={community.id} value={community.id}>
-                      {community.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button type="submit" className="w-full rounded-2xl">
-                Publish thread
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+<Card className="rounded-3xl border-slate-100">
+            <CardHeader>
+              <CardTitle>Create a thread</CardTitle>
+              <p className="text-sm text-slate-500">
+                Threads inherit permissions from their parent community.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <form action={handleCreateThread} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="thread-title">Title</Label>
+                  <Input
+                    id="thread-title"
+                    name="title"
+                    placeholder="Photon propulsion L2 sync"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="thread-description">Description</Label>
+                  <Textarea
+                    id="thread-description"
+                    name="description"
+                    placeholder="Gather specs, blockers, open questions."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="thread-community">Community</Label>
+                  <select
+                    id="thread-community"
+                    name="communityId"
+                    className="w-full rounded-2xl border border-slate-200 bg-white p-2 text-sm text-slate-700 focus:border-slate-500 focus:outline-none"
+                  >
+                    <option value="">No parent community</option>
+                    {communities.map((community) => (
+                      <option key={community.id} value={community.id}>
+                        {community.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Poll section */}
+                <div className="border rounded-2xl p-4 space-y-3 bg-slate-50/50">
+                  <div className="flex items-center gap-2">
+                    <PlusCircle className="h-4 w-4 text-slate-400" />
+                    <Label className="text-sm font-medium text-slate-700">
+                      Add a poll (optional)
+                    </Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="poll-question">Poll Question</Label>
+                    <Input
+                      id="poll-question"
+                      name="pollQuestion"
+                      placeholder="What is your preferred approach?"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Options (one per line, at least 2)</Label>
+                    <Textarea
+                      id="poll-options"
+                      name="pollOptions"
+                      placeholder="Option A\nOption B\nOption C"
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-xs text-slate-400">
+                      Separate each option with a new line.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="poll-expires">Expires at (optional)</Label>
+                    <Input
+                      id="poll-expires"
+                      name="pollExpiresAt"
+                      type="datetime-local"
+                    />
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full rounded-2xl">
+                  Publish thread
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
       </section>
 
       <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">

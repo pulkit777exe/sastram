@@ -5,7 +5,7 @@ describe('Polls', () => {
   describe('Poll Actions', () => {
     it('should create a poll successfully', async () => {
       // Test implementation would go here
-      expect(true).to.be.true;
+      void expect(true).to.be.true;
     });
   });
 });

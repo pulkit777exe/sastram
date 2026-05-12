@@ -6,27 +6,25 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession, assertAdmin } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
-import {
-  createThread,
-  deleteThread,
-  listThreads,
-  getThreadMembers,
-  updateThreadMemberRole,
-  removeThreadMember,
-  updateThreadDNA,
-  updateResolutionScore,
-  updateThreadStaleness,
-} from './repository';
+import { createThread, deleteThread, listThreads, getThreadMembers, updateThreadMemberRole, removeThreadMember, updateThreadDNA, updateResolutionScore, updateThreadStaleness } from './repository';
+import { createPoll } from '@/modules/polls/repository';
 import { SectionRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 
-const threadSchema = z.object({
-  title: z.string().min(3),
-  description: z.string().max(480).optional().or(z.literal('')),
-  communityId: z.string().cuid().optional().or(z.literal('')),
-  initialMessage: z.string().optional(),
-});
+const pollOptionsFromString = z.string().transform((val) =>
+   val.split('\n').map((s: string) => s.trim()).filter(Boolean)
+ );
+
+ const threadSchema = z.object({
+   title: z.string().min(3),
+   description: z.string().max(480).optional().or(z.literal('')),
+   communityId: z.string().cuid().optional().or(z.literal('')),
+   initialMessage: z.string().optional(),
+   pollQuestion: z.string().min(1).max(500).optional(),
+   pollOptions: pollOptionsFromString.optional(),
+   pollExpiresAt: z.coerce.date().optional(),
+ });
 
 const manageMemberSchema = z.object({
   threadId: z.string().cuid(),
@@ -36,30 +34,47 @@ const manageMemberSchema = z.object({
 });
 
 export const createThreadAction = createServerAction(
-  { schema: threadSchema, actionName: 'createThreadAction' },
-  async ({ title, description, communityId, initialMessage }) => {
-    try {
-      const session = await requireSession();
-      assertAdmin(session.user);
+   { schema: threadSchema, actionName: 'createThreadAction' },
+   async ({ title, description, communityId, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
+     try {
+       const session = await requireSession();
+       assertAdmin(session.user);
 
-      const slug = buildThreadSlug(title);
-      await createThread({
-        name: title,
-        description,
-        communityId: communityId || null,
-        slug,
-        createdBy: session.user.id,
-        initialMessage,
-      });
+       const slug = buildThreadSlug(title);
+       const thread = await createThread({
+         name: title,
+         description,
+         communityId: communityId || null,
+         slug,
+         createdBy: session.user.id,
+         initialMessage,
+       });
 
-      revalidatePath('/dashboard');
-      return { data: null, error: null };
-    } catch (error) {
-      logger.error('[createThreadAction]', error);
-      return { data: null, error: 'Something went wrong' };
-    }
-  }
-);
+       // Create poll alongside thread if poll data is provided
+       if (pollQuestion && pollOptions) {
+         // pollOptions may be a newline-separated string from textarea
+         const optionsArray = typeof pollOptions === 'string'
+           ? pollOptions.split('\n').map((o: string) => o.trim()).filter(Boolean)
+           : pollOptions;
+
+         if (optionsArray.length >= 2) {
+           await createPoll(
+             thread.id,
+             pollQuestion,
+             optionsArray,
+             pollExpiresAt
+           );
+         }
+       }
+
+       revalidatePath('/dashboard');
+       return { data: null, error: null };
+     } catch (error) {
+       logger.error('[createThreadAction]', error);
+       return { data: null, error: 'Something went wrong' };
+     }
+   }
+ );
 
 export const deleteThreadAction = createServerAction(
   { schema: threadIdSchema, actionName: 'deleteThreadAction' },
