@@ -12,19 +12,24 @@ import { SectionRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 
-const pollOptionsFromString = z.string().transform((val) =>
-   val.split('\n').map((s: string) => s.trim()).filter(Boolean)
- );
+/**
+ * Parse a newline-separated string of poll options into a trimmed string array.
+ */
+function parsePollOptions(raw: string): string[] {
+  return raw.split('\n').map((s) => s.trim()).filter(Boolean);
+}
 
- const threadSchema = z.object({
-   title: z.string().min(3),
-   description: z.string().max(480).optional().or(z.literal('')),
-   communityId: z.string().cuid().optional().or(z.literal('')),
-   initialMessage: z.string().optional(),
-   pollQuestion: z.string().min(1).max(500).optional(),
-   pollOptions: pollOptionsFromString.optional(),
-   pollExpiresAt: z.coerce.date().optional(),
- });
+const pollOptionsFromString = z.string().transform(parsePollOptions);
+
+const threadSchema = z.object({
+  title: z.string().min(3),
+  description: z.string().max(480).optional().or(z.literal('')),
+  communityId: z.string().cuid().optional().or(z.literal('')),
+  initialMessage: z.string().optional(),
+  pollQuestion: z.string().min(1).max(500).optional(),
+  pollOptions: pollOptionsFromString.optional(),
+  pollExpiresAt: z.coerce.date().optional(),
+});
 
 const manageMemberSchema = z.object({
   threadId: z.string().cuid(),
@@ -33,49 +38,45 @@ const manageMemberSchema = z.object({
   role: z.nativeEnum(SectionRole).optional(),
 });
 
+/**
+ * Create a new thread with an optional poll.
+ * Requires admin privileges.
+ */
 export const createThreadAction = createServerAction(
-   { schema: threadSchema, actionName: 'createThreadAction' },
-   async ({ title, description, communityId, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
-     try {
-       const session = await requireSession();
-       assertAdmin(session.user);
+  { schema: threadSchema, actionName: 'createThreadAction' },
+  async ({ title, description, communityId, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
+    try {
+      const session = await requireSession();
+      assertAdmin(session.user);
 
-       const slug = buildThreadSlug(title);
-       const thread = await createThread({
-         name: title,
-         description,
-         communityId: communityId || null,
-         slug,
-         createdBy: session.user.id,
-         initialMessage,
-       });
+      const slug = buildThreadSlug(title);
+      const thread = await createThread({
+        name: title,
+        description,
+        communityId: communityId || null,
+        slug,
+        createdBy: session.user.id,
+        initialMessage,
+      });
 
-       // Create poll alongside thread if poll data is provided
-       if (pollQuestion && pollOptions) {
-         // pollOptions may be a newline-separated string from textarea
-         const optionsArray = typeof pollOptions === 'string'
-           ? pollOptions.split('\n').map((o: string) => o.trim()).filter(Boolean)
-           : pollOptions;
+      // Create poll alongside thread if poll data is provided
+      if (pollQuestion && pollOptions && pollOptions.length >= 2) {
+        await createPoll(thread.id, pollQuestion, pollOptions, pollExpiresAt);
+      }
 
-         if (optionsArray.length >= 2) {
-           await createPoll(
-             thread.id,
-             pollQuestion,
-             optionsArray,
-             pollExpiresAt
-           );
-         }
-       }
+      revalidatePath('/dashboard');
+      return { data: null, error: null };
+    } catch (error) {
+      logger.error('[createThreadAction]', error);
+      return { data: null, error: 'Something went wrong' };
+    }
+  }
+);
 
-       revalidatePath('/dashboard');
-       return { data: null, error: null };
-     } catch (error) {
-       logger.error('[createThreadAction]', error);
-       return { data: null, error: 'Something went wrong' };
-     }
-   }
- );
-
+/**
+ * Delete a thread by ID.
+ * Requires admin privileges.
+ */
 export const deleteThreadAction = createServerAction(
   { schema: threadIdSchema, actionName: 'deleteThreadAction' },
   async ({ threadId }) => {
@@ -93,6 +94,12 @@ export const deleteThreadAction = createServerAction(
   }
 );
 
+/**
+ * List threads with pagination and sorting.
+ */
+/**
+ * List threads with pagination and sorting.
+ */
 export const getDashboardThreads = createServerAction(
   {
     schema: z.object({
@@ -113,6 +120,9 @@ export const getDashboardThreads = createServerAction(
   }
 );
 
+/**
+ * Get members of a thread.
+ */
 export const getThreadMembersAction = createServerAction(
   { schema: threadIdSchema, actionName: 'getThreadMembersAction' },
   async ({ threadId }) => {
@@ -127,6 +137,10 @@ export const getThreadMembersAction = createServerAction(
   }
 );
 
+/**
+ * Update a thread member's role or remove them.
+ * Only the thread creator or an admin can manage members.
+ */
 export const manageThreadMemberAction = createServerAction(
   { schema: manageMemberSchema, actionName: 'manageThreadMemberAction' },
   async ({ threadId, userId, action, role }) => {

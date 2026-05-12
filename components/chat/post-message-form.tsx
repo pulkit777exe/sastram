@@ -346,9 +346,9 @@ export function PostMessageForm({
             }
           }}
           onBlur={() => onTypingStop?.()}
-        />
+/>
 
-<div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <Button
             type="button"
             variant="ghost"
