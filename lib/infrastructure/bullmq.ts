@@ -3,6 +3,23 @@ import { logger } from '@/lib/infrastructure/logger';
 
 const DEFAULT_REDIS_PORT = 6379;
 
+export interface JobMessageData {
+  id: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+  senderId: string;
+  sectionId: string;
+  parentId: string | null;
+  depth: number;
+  isAiResponse: boolean;
+  sender: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  } | null;
+}
+
 export const QUEUE_NAMES = {
   THREAD_SUMMARY: 'thread-summary',
   RESOLUTION_SCORE: 'resolution-score',
@@ -35,21 +52,21 @@ export interface AIConflictResult {
 
 export interface ThreadSummaryJobData {
   threadId: string;
-  messages: any[];
+  messages: JobMessageData[];
   userId?: string;
   cronJob?: boolean;
 }
 
 export interface ThreadDnaJobData {
   threadId: string;
-  messages: any[];
+  messages: JobMessageData[];
   userId?: string;
   cronJob?: boolean;
 }
 
 export interface ResolutionScoreJobData {
   threadId: string;
-  messages: any[];
+  messages: JobMessageData[];
   subscriberIds?: string[];
   threadName?: string;
   oldScore?: number | null;
@@ -60,7 +77,7 @@ export interface ResolutionScoreJobData {
 
 export interface ConflictDetectionJobData {
   threadId: string;
-  messages: any[];
+  messages: JobMessageData[];
   subscriberIds?: string[];
   threadName?: string;
   oldScore?: number | null;
@@ -69,7 +86,7 @@ export interface ConflictDetectionJobData {
 }
 
 export interface DailyDigestJobData {
-  messages: any[];
+  messages: JobMessageData[];
   subscriberIds: string[];
   threadId?: string;
   userId?: string;
@@ -642,7 +659,7 @@ export async function handleStalenessCheckJob(job: Job<StalenessCheckJobData>) {
   return { queued: true, handled: false };
 }
 
-async function handleGenerateThreadSummary(threadId: string, messages: any[]) {
+async function handleGenerateThreadSummary(threadId: string, messages: JobMessageData[]) {
   const { prisma } = await import('@/lib/infrastructure/prisma');
   const { aiService } = await import('@/lib/services/ai');
 
@@ -657,7 +674,7 @@ async function handleGenerateThreadSummary(threadId: string, messages: any[]) {
   return { summary };
 }
 
-async function handleGenerateThreadDNA(threadId: string, messages: any[]) {
+async function handleGenerateThreadDNA(threadId: string, messages: JobMessageData[]) {
   const { prisma } = await import('@/lib/infrastructure/prisma');
   const { aiService } = await import('@/lib/services/ai');
 
@@ -672,7 +689,7 @@ async function handleGenerateThreadDNA(threadId: string, messages: any[]) {
   return { threadDNA };
 }
 
-async function handleCalculateResolutionScore(threadId: string, messages: any[]) {
+async function handleCalculateResolutionScore(threadId: string, messages: JobMessageData[]) {
   const { prisma } = await import('@/lib/infrastructure/prisma');
   const { aiService } = await import('@/lib/services/ai');
 
@@ -687,7 +704,7 @@ async function handleCalculateResolutionScore(threadId: string, messages: any[])
   return score;
 }
 
-async function handleDetectConflicts(threadId: string, messages: any[]) {
+async function handleDetectConflicts(threadId: string, messages: JobMessageData[]) {
   const { prisma } = await import('@/lib/infrastructure/prisma');
   const { aiService } = await import('@/lib/services/ai');
 
@@ -707,7 +724,7 @@ async function handleDetectConflicts(threadId: string, messages: any[]) {
   return { conflictResult };
 }
 
-async function handleGenerateDailyDigest(messages: any[], subscriberIds: string[]) {
+async function handleGenerateDailyDigest(messages: JobMessageData[], subscriberIds: string[]) {
   const { notifyMultipleUsers } = await import('@/modules/notifications/repository');
   const { NotificationType } = await import('@prisma/client');
   const { aiService } = await import('@/lib/services/ai');

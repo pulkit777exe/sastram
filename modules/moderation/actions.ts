@@ -21,6 +21,7 @@ import {
   getModerationQueueSchema,
 } from './schemas';
 import { createServerAction } from '@/lib/utils/server-action';
+import type { Prisma } from '@prisma/client';
 
 const bulkDeleteSchema = z.object({
   messageIds: z.array(z.string().cuid()).min(1).max(100),

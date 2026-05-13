@@ -1,3 +1,5 @@
+import sanitizeHtml from 'sanitize-html';
+
 const BAD_WORDS = ['spam', 'scam', 'malware', 'virus', 'phishing'];
 
 export function containsBadLanguage(content: string): boolean {
@@ -12,6 +14,65 @@ export function filterBadLanguage(content: string): string {
     filteredContent = filteredContent.replace(regex, '*'.repeat(word.length));
   });
   return filteredContent;
+}
+
+export interface XssSanitizeResult {
+  sanitized: string;
+  hadDangerousContent: boolean;
+}
+
+const XSS_ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'u', 'a', 'code', 'pre', 'br', 'p', 'ul', 'ol', 'li', 'blockquote'];
+const XSS_ALLOWED_ATTR = ['href', 'class'];
+
+export function sanitizeUserContent(content: string): XssSanitizeResult {
+  const dangerousPatterns = [
+    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+    /javascript:/gi,
+    /on\w+\s*=/gi,
+    /<iframe/gi,
+    /<object/gi,
+    /<embed/gi,
+    /<svg[^>]*on/gi,
+    /data:/gi,
+  ];
+
+  const hadDangerousContent = dangerousPatterns.some((pattern) => pattern.test(content));
+
+  const sanitized = sanitizeHtml(content, {
+    allowedTags: XSS_ALLOWED_TAGS,
+    allowedAttributes: {
+      a: ['href', 'class', 'target'],
+      code: ['class'],
+      pre: ['class'],
+      li: ['class'],
+      p: ['class'],
+      blockquote: ['class'],
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    transformTags: {
+      a: (tagName, attribs) => {
+        if (attribs.href && attribs.href.toLowerCase().startsWith('javascript:')) {
+          return { tagName: 'span', attribs: {} };
+        }
+        if (attribs.href && attribs.href.toLowerCase().startsWith('data:')) {
+          return { tagName: 'span', attribs: {} };
+        }
+        return { tagName, attribs };
+      },
+    },
+  });
+
+  return { sanitized, hadDangerousContent };
+}
+
+export function sanitizeHtmlContent(html: string): string {
+  return sanitizeHtml(html, {
+    allowedTags: XSS_ALLOWED_TAGS,
+    allowedAttributes: {
+      a: ['href', 'class', 'target'],
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+  });
 }
 
 export interface FileValidationResult {
