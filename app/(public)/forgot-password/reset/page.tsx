@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toasts } from "@/lib/utils/toast";
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toasts } from '@/lib/utils/toast';
 
 function hasNumber(value: string) {
   return /\d/.test(value);
@@ -18,22 +18,22 @@ function hasSpecial(value: string) {
 export default function ForgotPasswordResetPage() {
   const router = useRouter();
   const [email] = useState(() =>
-    typeof window !== "undefined"
-      ? window.sessionStorage.getItem("forgot_password_email") ?? ""
-      : "",
+    typeof window !== 'undefined'
+      ? (window.sessionStorage.getItem('forgot_password_email') ?? '')
+      : ''
   );
   const [otp] = useState(() =>
-    typeof window !== "undefined"
-      ? window.sessionStorage.getItem("forgot_password_otp") ?? ""
-      : "",
+    typeof window !== 'undefined'
+      ? (window.sessionStorage.getItem('forgot_password_otp') ?? '')
+      : ''
   );
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!email || !otp) {
-      router.replace("/forgot-password");
+      router.replace('/forgot-password');
     }
   }, [email, otp, router]);
 
@@ -56,40 +56,40 @@ export default function ForgotPasswordResetPage() {
     event.preventDefault();
 
     if (!validation.valid) {
-      toasts.error("Please fix password validation issues.");
+      toasts.error('Please fix password validation issues.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/email-otp/reset-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/email-otp/reset-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp, password }),
       });
 
       const result = await response.json();
 
       if (!response.ok || result?.error) {
-        const message = result?.error?.message || result?.error || "Password reset failed";
+        const message = result?.error?.message || result?.error || 'Password reset failed';
         if (/expired/i.test(message)) {
           toasts.otpExpired();
         } else {
-          toasts.error("Failed to reset password.", message);
+          toasts.error('Failed to reset password.', message);
         }
 
         setIsSubmitting(false);
         return;
       }
 
-      window.sessionStorage.removeItem("forgot_password_email");
-      window.sessionStorage.removeItem("forgot_password_otp");
+      window.sessionStorage.removeItem('forgot_password_email');
+      window.sessionStorage.removeItem('forgot_password_otp');
 
-      toasts.success("Password updated. Please sign in.");
-      router.replace("/login");
+      toasts.success('Password updated. Please sign in.');
+      router.replace('/login');
     } catch (error) {
-      console.error("[forgot-password:reset]", error);
+      console.error('[forgot-password:reset]', error);
       toasts.networkError();
       setIsSubmitting(false);
     }
@@ -104,7 +104,7 @@ export default function ForgotPasswordResetPage() {
         <div className="space-y-1">
           <h1 className="text-xl font-semibold">Set New Password</h1>
           <p className="text-sm text-muted-foreground">
-            Choose a strong password for {email || "your account"}.
+            Choose a strong password for {email || 'your account'}.
           </p>
         </div>
 
@@ -133,22 +133,16 @@ export default function ForgotPasswordResetPage() {
         </div>
 
         <div className="rounded-md border border-border p-3 text-xs space-y-1 text-muted-foreground">
-          <p className={validation.minLength ? "text-emerald-500" : ""}>
-            Minimum 8 characters
-          </p>
-          <p className={validation.includesNumber ? "text-emerald-500" : ""}>
-            At least one number
-          </p>
-          <p className={validation.includesSpecial ? "text-emerald-500" : ""}>
+          <p className={validation.minLength ? 'text-emerald-500' : ''}>Minimum 8 characters</p>
+          <p className={validation.includesNumber ? 'text-emerald-500' : ''}>At least one number</p>
+          <p className={validation.includesSpecial ? 'text-emerald-500' : ''}>
             At least one special character
           </p>
-          <p className={validation.matches ? "text-emerald-500" : ""}>
-            Passwords match
-          </p>
+          <p className={validation.matches ? 'text-emerald-500' : ''}>Passwords match</p>
         </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting || !validation.valid}>
-          {isSubmitting ? "Updating..." : "Update Password"}
+          {isSubmitting ? 'Updating...' : 'Update Password'}
         </Button>
       </form>
     </div>

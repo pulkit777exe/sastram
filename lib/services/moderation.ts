@@ -1,8 +1,9 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { env } from "@/lib/config/env";
-import { containsBadLanguage } from "@/lib/services/content-safety";
-import { aiService } from "@/lib/services/ai";
-import type { ReportCategory } from "@prisma/client";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { env } from '@/lib/config/env';
+import { containsBadLanguage } from '@/lib/services/content-safety';
+import { aiService } from '@/lib/services/ai';
+import { logger } from '@/lib/infrastructure/logger';
+import type { ReportCategory } from '@prisma/client';
 
 export type MessageLike = {
   id?: string;
@@ -29,8 +30,8 @@ export type ConversationContext = {
 
 export type ModerationResult = {
   success: boolean;
-  action: "ALLOW" | "BLOCK" | "REVIEW" | "FLAG";
-  severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  action: 'ALLOW' | 'BLOCK' | 'REVIEW' | 'FLAG';
+  severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   reason?: string;
   confidence?: number;
   messageId?: string;
@@ -38,13 +39,10 @@ export type ModerationResult = {
 };
 
 export class RateLimitFilter {
-  async check(
-    _message: MessageLike,
-    _context: ConversationContext,
-  ): Promise<ModerationResult> {
+  async check(_message: MessageLike, _context: ConversationContext): Promise<ModerationResult> {
     return {
       success: true,
-      action: "ALLOW",
+      action: 'ALLOW',
     };
   }
 }
@@ -57,9 +55,9 @@ export class RegexFilter {
     if (containsBadLanguage(message.content)) {
       return {
         success: false,
-        action: "BLOCK",
-        severity: "MEDIUM",
-        reason: "Matched default bad language filter",
+        action: 'BLOCK',
+        severity: 'MEDIUM',
+        reason: 'Matched default bad language filter',
       };
     }
 
@@ -72,24 +70,24 @@ export class RegexFilter {
 
     for (const rule of rules) {
       try {
-        const regex = new RegExp(rule.pattern, "i");
+        const regex = new RegExp(rule.pattern, 'i');
         if (regex.test(message.content)) {
           return {
             success: false,
-            action: rule.action as "BLOCK" | "REVIEW" | "FLAG",
-            severity: rule.severity as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+            action: rule.action as 'BLOCK' | 'REVIEW' | 'FLAG',
+            severity: rule.severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
             reason: `Matched rule: ${rule.category}`,
           };
         }
       } catch (error) {
-        console.warn(`Invalid regex pattern for rule ${rule.id}:`, error);
+        logger.warn(`Invalid regex pattern for rule ${rule.id}:`, error);
         continue;
       }
     }
 
     return {
       success: true,
-      action: "ALLOW",
+      action: 'ALLOW',
     };
   }
 
@@ -114,17 +112,17 @@ export class RegexFilter {
 export class MLClassifier {
   async analyze(
     message: MessageLike,
-    context: ConversationContext,
+    context: ConversationContext
   ): Promise<{
-    action: "ALLOW" | "BLOCK" | "REVIEW" | "FLAG";
-    severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    action: 'ALLOW' | 'BLOCK' | 'REVIEW' | 'FLAG';
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     confidence: number;
     categories: string[];
   }> {
     if (!env.CONTENT_MODERATION_ENABLED || !env.GEMINI_API_KEY) {
       return {
-        action: "ALLOW",
-        severity: "LOW",
+        action: 'ALLOW',
+        severity: 'LOW',
         confidence: 0,
         categories: [],
       };
@@ -135,25 +133,22 @@ export class MLClassifier {
         context.recentHistory
           .slice(-10)
           .map((m) => `User ${m.senderId}: ${m.content}`)
-          .join("\n") + `\nNew message: ${message.content}`;
+          .join('\n') + `\nNew message: ${message.content}`;
 
       let toxicity = 0;
 
-      if (
-        "analyzeContent" in aiService &&
-        typeof aiService.analyzeContent === "function"
-      ) {
+      if ('analyzeContent' in aiService && typeof aiService.analyzeContent === 'function') {
         const analysis = await aiService.analyzeContent(threadText);
         toxicity = analysis.toxicity || 0;
       } else {
         try {
           const summary = await aiService.generateSummary(
-            `Analyze this conversation for toxic content. Rate toxicity 0-1:\n${threadText}`,
+            `Analyze this conversation for toxic content. Rate toxicity 0-1:\n${threadText}`
           );
           const match = summary.match(/toxicity[:\s]+([0-9.]+)/i);
           toxicity = match ? parseFloat(match[1]) : 0;
         } catch (error) {
-          console.warn("Could not analyze content, defaulting to safe:", error);
+          logger.warn('Could not analyze content, defaulting to safe:', error);
           toxicity = 0;
         }
       }
@@ -161,22 +156,22 @@ export class MLClassifier {
       const confidence = Math.min(1, Math.max(0, toxicity));
       const threshold = env.MODERATION_CONFIDENCE_THRESHOLD || 0.7;
 
-      let action: "ALLOW" | "BLOCK" | "REVIEW" | "FLAG" = "ALLOW";
-      let severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" = "LOW";
+      let action: 'ALLOW' | 'BLOCK' | 'REVIEW' | 'FLAG' = 'ALLOW';
+      let severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
       const categories: string[] = [];
 
       if (confidence >= 0.9) {
-        action = "BLOCK";
-        severity = "HIGH";
-        categories.push("toxicity", "harmful");
+        action = 'BLOCK';
+        severity = 'HIGH';
+        categories.push('toxicity', 'harmful');
       } else if (confidence >= threshold) {
-        action = "REVIEW";
-        severity = "MEDIUM";
-        categories.push("potential-violation");
+        action = 'REVIEW';
+        severity = 'MEDIUM';
+        categories.push('potential-violation');
       } else if (confidence >= 0.5) {
-        action = "FLAG";
-        severity = "LOW";
-        categories.push("review-suggested");
+        action = 'FLAG';
+        severity = 'LOW';
+        categories.push('review-suggested');
       }
 
       return {
@@ -186,12 +181,12 @@ export class MLClassifier {
         categories,
       };
     } catch (error) {
-      console.error("ML classifier error:", error);
+      logger.error('ML classifier error:', error);
       return {
-        action: "REVIEW",
-        severity: "LOW",
+        action: 'REVIEW',
+        severity: 'LOW',
         confidence: 0,
-        categories: ["ml-error"],
+        categories: ['ml-error'],
       };
     }
   }
@@ -200,20 +195,19 @@ export class MLClassifier {
 export class ContextualAnalyzer {
   async analyze(
     message: MessageLike,
-    context: ConversationContext,
+    context: ConversationContext
   ): Promise<{ shouldEscalate: boolean; reason?: string }> {
     try {
       const recentMessages = context.recentHistory.slice(-5);
 
       const hasExcessiveCaps =
-        (message.content.match(/[A-Z]/g) || []).length >
-          message.content.length * 0.6 && message.content.length > 10;
+        (message.content.match(/[A-Z]/g) || []).length > message.content.length * 0.6 &&
+        message.content.length > 10;
 
       let escalatingTone = false;
       if (recentMessages.length > 2) {
         const avgLength =
-          recentMessages.reduce((sum, m) => sum + m.content.length, 0) /
-          recentMessages.length;
+          recentMessages.reduce((sum, m) => sum + m.content.length, 0) / recentMessages.length;
         if (message.content.length > avgLength * 1.5) {
           escalatingTone = true;
         }
@@ -224,13 +218,13 @@ export class ContextualAnalyzer {
       return {
         shouldEscalate,
         reason: hasExcessiveCaps
-          ? "excessive-caps"
+          ? 'excessive-caps'
           : escalatingTone
-            ? "escalating-tone"
+            ? 'escalating-tone'
             : undefined,
       };
     } catch (error) {
-      console.error("Contextual analyzer error:", error);
+      logger.error('Contextual analyzer error:', error);
       return { shouldEscalate: false };
     }
   }
@@ -242,17 +236,14 @@ export class MessageModerationPipeline {
   private mlClassifier = new MLClassifier();
   private contextualAnalyzer = new ContextualAnalyzer();
 
-  async process(
-    message: MessageLike,
-    context: ConversationContext,
-  ): Promise<ModerationResult> {
+  async process(message: MessageLike, context: ConversationContext): Promise<ModerationResult> {
     const rateResult = await this.rateLimitFilter.check(message, context);
-    if (!rateResult.success && rateResult.action === "BLOCK") {
+    if (!rateResult.success && rateResult.action === 'BLOCK') {
       return rateResult;
     }
 
     const regexResult = await this.regexFilter.check(message);
-    if (!regexResult.success && regexResult.action === "BLOCK") {
+    if (!regexResult.success && regexResult.action === 'BLOCK') {
       return regexResult;
     }
 
@@ -260,33 +251,30 @@ export class MessageModerationPipeline {
 
     const ctxResult = await this.contextualAnalyzer.analyze(message, context);
 
-    let finalAction: "ALLOW" | "BLOCK" | "REVIEW" | "FLAG" = regexResult.action;
-    let severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" = regexResult.severity || "LOW";
+    let finalAction: 'ALLOW' | 'BLOCK' | 'REVIEW' | 'FLAG' = regexResult.action;
+    let severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = regexResult.severity || 'LOW';
     const confidence: number = mlResult.confidence;
     let reason = regexResult.reason;
 
-    if (
-      mlResult.action === "BLOCK" ||
-      (mlResult.action === "REVIEW" && finalAction !== "BLOCK")
-    ) {
+    if (mlResult.action === 'BLOCK' || (mlResult.action === 'REVIEW' && finalAction !== 'BLOCK')) {
       finalAction = mlResult.action;
       severity = mlResult.severity;
-      reason = `ML analysis: ${mlResult.categories.join(", ")}`;
+      reason = `ML analysis: ${mlResult.categories.join(', ')}`;
     }
 
-    if (ctxResult.shouldEscalate && finalAction === "ALLOW") {
-      finalAction = "REVIEW";
-      severity = "MEDIUM";
+    if (ctxResult.shouldEscalate && finalAction === 'ALLOW') {
+      finalAction = 'REVIEW';
+      severity = 'MEDIUM';
       reason = `Contextual escalation: ${ctxResult.reason}`;
     }
 
     return {
-      success: finalAction === "ALLOW",
+      success: finalAction === 'ALLOW',
       action: finalAction,
       severity,
       confidence,
       reason,
-      pendingModeration: finalAction !== "ALLOW",
+      pendingModeration: finalAction !== 'ALLOW',
     };
   }
 }
@@ -296,7 +284,7 @@ export class MessageService {
 
   async processMessage(
     message: MessageLike,
-    context: ConversationContext,
+    context: ConversationContext
   ): Promise<ModerationResult> {
     const result = await this.pipeline.process(message, context);
 
@@ -336,18 +324,18 @@ export class MessageService {
       dbMessageId = created.id;
 
       // If moderation action is needed, create a report
-      if (result.action !== "ALLOW") {
+      if (result.action !== 'ALLOW') {
         // Check if system user exists, create if necessary
         let systemUser = await prisma.user.findFirst({
-          where: { email: "system@example.com" },
+          where: { email: 'system@example.com' },
         });
 
         if (!systemUser) {
           systemUser = await prisma.user.create({
             data: {
-              email: "system@example.com",
-              name: "System",
-              role: "ADMIN",
+              email: 'system@example.com',
+              name: 'System',
+              role: 'ADMIN',
             },
           });
         }
@@ -356,16 +344,16 @@ export class MessageService {
           data: {
             messageId: created.id,
             reporterId: systemUser.id,
-            category: "OTHER" as ReportCategory,
+            category: 'OTHER' as ReportCategory,
             details: result.reason || undefined,
-            status: "PENDING",
+            status: 'PENDING',
           },
         });
       }
     } catch (error) {
-      console.error("Message processing error:", error);
+      logger.error('Message processing error:', error);
       throw new Error(
-        `Failed to process message: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
 
@@ -379,7 +367,7 @@ export class MessageService {
 export class ModerationDashboard {
   async getQueue(params?: { status?: string }) {
     const whereClause: Record<string, unknown> = {
-      status: params?.status || "PENDING",
+      status: params?.status || 'PENDING',
     };
 
     return prisma.report.findMany({
@@ -403,38 +391,36 @@ export class ModerationDashboard {
           },
         },
       },
-      orderBy: [
-        { createdAt: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }],
       take: 50,
     });
   }
 
-  async resolveCase(reportId: string, action: "BLOCK" | "ALLOW" | "FLAG", reason: string) {
+  async resolveCase(reportId: string, action: 'BLOCK' | 'ALLOW' | 'FLAG', reason: string) {
     const report = await prisma.report.findUnique({
       where: { id: reportId },
       include: { message: true },
     });
 
     if (!report) {
-      throw new Error("Report not found");
+      throw new Error('Report not found');
     }
 
     await prisma.report.update({
       where: { id: reportId },
       data: {
-        status: action === "ALLOW" ? "DISMISSED" : "RESOLVED",
-        resolvedBy: action === "ALLOW" ? null : report.reporterId,
+        status: action === 'ALLOW' ? 'DISMISSED' : 'RESOLVED',
+        resolvedBy: action === 'ALLOW' ? null : report.reporterId,
         resolution: reason,
       },
     });
 
     // If action is BLOCK, create a ban
-    if (action === "BLOCK") {
+    if (action === 'BLOCK') {
       await prisma.userBan.create({
         data: {
           userId: report.message.senderId,
-          bannedBy: "system",
+          bannedBy: 'system',
           reason,
           threadId: report.message.sectionId,
         },

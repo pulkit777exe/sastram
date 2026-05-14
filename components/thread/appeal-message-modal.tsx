@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface AppealMessageModalProps {
   messageId: string;
@@ -12,38 +12,34 @@ interface AppealMessageModalProps {
   onClose: () => void;
 }
 
-export function AppealMessageModal({
-  messageId,
-  isOpen,
-  onClose,
-}: AppealMessageModalProps) {
-  const [reason, setReason] = useState("");
+export function AppealMessageModal({ messageId, isOpen, onClose }: AppealMessageModalProps) {
+  const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!reason.trim()) {
-      toast.error("Please provide a reason for your appeal");
+      toast.error('Please provide a reason for your appeal');
       return;
     }
 
     try {
       setLoading(true);
-      const response = await fetch("/api/v1/moderation/appeals/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/v1/moderation/appeals/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messageId, reason }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to submit appeal");
+        throw new Error('Failed to submit appeal');
       }
 
-      toast.success("Appeal submitted successfully");
-      setReason("");
+      toast.success('Appeal submitted successfully');
+      setReason('');
       onClose();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to submit appeal");
+      toast.error('Failed to submit appeal');
     } finally {
       setLoading(false);
     }
@@ -71,7 +67,7 @@ export function AppealMessageModal({
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? "Submitting..." : "Submit appeal"}
+              {loading ? 'Submitting...' : 'Submit appeal'}
             </Button>
           </div>
         </div>
@@ -79,4 +75,3 @@ export function AppealMessageModal({
     </Dialog>
   );
 }
-

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore } from 'react';
 
 type ThreadViewState = {
   selectedThreadSlug: string | null;
@@ -29,17 +29,14 @@ function getState() {
   return state;
 }
 
-export function useThreadViewStore<T>(
-  selector: (state: ThreadViewState & ThreadViewActions) => T,
-) {
+export function useThreadViewStore<T>(selector: (state: ThreadViewState & ThreadViewActions) => T) {
   return useSyncExternalStore(
     subscribe,
     () => selector({ ...getState(), selectThread }),
-    () => selector({ ...getState(), selectThread }),
+    () => selector({ ...getState(), selectThread })
   );
 }
 
 export function selectThread(slug: string) {
   setState({ selectedThreadSlug: slug });
 }
-

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
+import { useEffect } from 'react';
 
 export default function GlobalError({
   error,
@@ -10,7 +10,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       console.error(error);
     }
   }, [error]);
@@ -19,9 +19,7 @@ export default function GlobalError({
     <html lang="en">
       <body className="bg-background">
         <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-          <p className="text-muted-foreground text-sm">
-            Something went wrong loading this page.
-          </p>
+          <p className="text-muted-foreground text-sm">Something went wrong loading this page.</p>
           <button
             type="button"
             onClick={reset}

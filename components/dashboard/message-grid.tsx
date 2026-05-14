@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import TimeAgo from "@/components/ui/TimeAgo";
-import { MessageSquare, ArrowRight } from "lucide-react";
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import TimeAgo from '@/components/ui/TimeAgo';
+import { MessageSquare, ArrowRight } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -40,20 +40,13 @@ export function MessageGrid({ messages }: MessageGridProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-lg font-semibold text-foreground">No messages yet</p>
-        <p className="text-muted-foreground">
-          You haven&apos;t posted any messages yet.
-        </p>
+        <p className="text-muted-foreground">You haven&apos;t posted any messages yet.</p>
       </div>
     );
   }
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="grid gap-4"
-    >
+    <motion.div variants={container} initial="hidden" animate="show" className="grid gap-4">
       {messages.map((message) => (
         <motion.div key={message.id} variants={item}>
           <Link href={`/dashboard/threads/thread/${message.section.slug}`}>
@@ -64,10 +57,7 @@ export function MessageGrid({ messages }: MessageGridProps) {
                     <MessageSquare className="h-4 w-4" />
                   </div>
                   <span>
-                    Posted in{" "}
-                    <span className="text-indigo-500">
-                      {message.section.name}
-                    </span>
+                    Posted in <span className="text-indigo-500">{message.section.name}</span>
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground">

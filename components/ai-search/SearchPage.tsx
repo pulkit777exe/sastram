@@ -1,37 +1,33 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useMemo } from "react";
-import { v4 as uuidv4 } from "uuid";
-import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, KeyRound } from "lucide-react";
-import { SearchBox } from "./SearchBox";
-import { PhaseTracker } from "./PhaseTracker";
-import { SynthesisCard } from "./SynthesisCard";
-import { SourceCard } from "./SourceCard";
-import { TableView } from "./TableView";
-import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from "./ApiKeysModal";
-import { TimeAgo } from "@/components/ui/TimeAgo";
-import type {
-  SearchConfig,
-  AISearchResponse,
-  PastSearch,
-} from "@/modules/ai-search/types";
+import { useState, useCallback, useMemo } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, KeyRound } from 'lucide-react';
+import { SearchBox } from './SearchBox';
+import { PhaseTracker } from './PhaseTracker';
+import { SynthesisCard } from './SynthesisCard';
+import { SourceCard } from './SourceCard';
+import { TableView } from './TableView';
+import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from './ApiKeysModal';
+import { TimeAgo } from '@/components/ui/TimeAgo';
+import type { SearchConfig, AISearchResponse, PastSearch } from '@/modules/ai-search/types';
 
-type AppState = "idle" | "loading" | "results" | "error";
-type Phase = "classify" | "search" | "crossref" | "synthesize" | "done";
+type AppState = 'idle' | 'loading' | 'results' | 'error';
+type Phase = 'classify' | 'search' | 'crossref' | 'synthesize' | 'done';
 
 const DEFAULT_CONFIG: SearchConfig = {
-  exaMode: "agentic",
-  tavilyMode: "search",
-  sourceFilter: "all",
-  searchMode: "standard",
+  exaMode: 'agentic',
+  tavilyMode: 'search',
+  sourceFilter: 'all',
+  searchMode: 'standard',
 };
 
 function loadPastSearches(): PastSearch[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === 'undefined') return [];
   try {
-    const saved = localStorage.getItem("sastram_past_searches");
+    const saved = localStorage.getItem('sastram_past_searches');
     return saved ? JSON.parse(saved) : [];
   } catch {
     return [];
@@ -39,18 +35,17 @@ function loadPastSearches(): PastSearch[] {
 }
 
 export function SearchPage() {
-  const [appState, setAppState] = useState<AppState>("idle");
-  const [phase, setPhase] = useState<Phase>("classify");
+  const [appState, setAppState] = useState<AppState>('idle');
+  const [phase, setPhase] = useState<Phase>('classify');
   const [searchStartTime, setSearchStartTime] = useState(0);
   const [result, setResult] = useState<AISearchResponse | null>(null);
   const [lastConfig, setLastConfig] = useState<SearchConfig>(DEFAULT_CONFIG);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const [pastSearches, setPastSearches] =
-    useState<PastSearch[]>(loadPastSearches);
+  const [pastSearches, setPastSearches] = useState<PastSearch[]>(loadPastSearches);
   const [showApiKeys, setShowApiKeys] = useState(false);
   const [hasKeys, setHasKeys] = useState(() =>
-    typeof window !== "undefined" ? hasAllApiKeys() : false,
+    typeof window !== 'undefined' ? hasAllApiKeys() : false
   );
 
   const addPastSearch = useCallback(
@@ -61,21 +56,15 @@ export function SearchPage() {
         timestamp: Date.now(),
         resultCount,
       };
-      const updated = [
-        newSearch,
-        ...pastSearches.filter((s) => s.query !== query),
-      ].slice(0, 10);
+      const updated = [newSearch, ...pastSearches.filter((s) => s.query !== query)].slice(0, 10);
       setPastSearches(updated);
       try {
-        if (typeof window !== "undefined") {
-          localStorage.setItem(
-            "sastram_past_searches",
-            JSON.stringify(updated),
-          );
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sastram_past_searches', JSON.stringify(updated));
         }
       } catch {}
     },
-    [pastSearches],
+    [pastSearches]
   );
 
   const handleSearch = useCallback(
@@ -83,39 +72,39 @@ export function SearchPage() {
       // Validate query
       const trimmed = query.trim();
       if (!trimmed || trimmed.length < 3) {
-        toast.error("Query too short", {
-          description: "Please enter at least 3 characters.",
+        toast.error('Query too short', {
+          description: 'Please enter at least 3 characters.',
         });
         return;
       }
       if (trimmed.length > 500) {
-        toast.error("Query too long", {
-          description: "Please keep your query under 500 characters.",
+        toast.error('Query too long', {
+          description: 'Please keep your query under 500 characters.',
         });
         return;
       }
 
       const keys = getStoredApiKeys();
       if (!keys.exa || !keys.tavily || !keys.gemini) {
-        toast.error("Please configure your API keys first", {
-          description: "Click the API Keys button to get started.",
+        toast.error('Please configure your API keys first', {
+          description: 'Click the API Keys button to get started.',
         });
         setShowApiKeys(true);
         return;
       }
 
-      setAppState("loading");
-      setPhase("classify");
+      setAppState('loading');
+      setPhase('classify');
       setSearchStartTime(Date.now());
       setResult(null);
-      setErrorMessage("");
+      setErrorMessage('');
       setLastConfig(config);
 
       // Simulate phase progression
       const phaseTimers = [
-        setTimeout(() => setPhase("search"), 800),
-        setTimeout(() => setPhase("crossref"), 3000),
-        setTimeout(() => setPhase("synthesize"), 5000),
+        setTimeout(() => setPhase('search'), 800),
+        setTimeout(() => setPhase('crossref'), 3000),
+        setTimeout(() => setPhase('synthesize'), 5000),
       ];
 
       // AbortController for client-side timeout
@@ -123,13 +112,13 @@ export function SearchPage() {
       const clientTimeout = setTimeout(() => controller.abort(), 28_000);
 
       try {
-        const response = await fetch("/api/ai/forum-search", {
-          method: "POST",
+        const response = await fetch('/api/ai/forum-search', {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            "x-exa-key": keys.exa,
-            "x-tavily-key": keys.tavily,
-            "x-gemini-key": keys.gemini,
+            'Content-Type': 'application/json',
+            'x-exa-key': keys.exa,
+            'x-tavily-key': keys.tavily,
+            'x-gemini-key': keys.gemini,
           },
           body: JSON.stringify({ query: trimmed, config }),
           signal: controller.signal,
@@ -139,23 +128,21 @@ export function SearchPage() {
         clearTimeout(clientTimeout);
 
         if (response.status === 429) {
-          const retryAfter = response.headers.get("Retry-After");
-          toast.error("Rate limit exceeded", {
+          const retryAfter = response.headers.get('Retry-After');
+          toast.error('Rate limit exceeded', {
             description: retryAfter
               ? `Please wait ${retryAfter} seconds.`
-              : "Please wait a moment before searching again.",
+              : 'Please wait a moment before searching again.',
           });
-          setAppState("idle");
+          setAppState('idle');
           return;
         }
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
-          const msg =
-            data.error ||
-            `Search failed (${response.status}). Please try again.`;
+          const msg = data.error || `Search failed (${response.status}). Please try again.`;
           setErrorMessage(msg);
-          setAppState("error");
+          setAppState('error');
           toast.error(msg);
           return;
         }
@@ -164,46 +151,39 @@ export function SearchPage() {
 
         // Validate response shape
         if (!data.synthesis || !Array.isArray(data.sources)) {
-          setErrorMessage("Received unexpected response format.");
-          setAppState("error");
+          setErrorMessage('Received unexpected response format.');
+          setAppState('error');
           return;
         }
 
         setResult(data);
-        setPhase("done");
-        setAppState("results");
+        setPhase('done');
+        setAppState('results');
         addPastSearch(trimmed, data.sources.length);
       } catch (error) {
         phaseTimers.forEach(clearTimeout);
         clearTimeout(clientTimeout);
 
-        if (error instanceof DOMException && error.name === "AbortError") {
-          setErrorMessage(
-            "Request timed out. Please try again with a simpler query.",
-          );
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          setErrorMessage('Request timed out. Please try again with a simpler query.');
         } else {
-          setErrorMessage(
-            "Network error. Please check your connection and try again.",
-          );
+          setErrorMessage('Network error. Please check your connection and try again.');
         }
-        setAppState("error");
-        toast.error("Search failed");
+        setAppState('error');
+        toast.error('Search failed');
       }
     },
-    [addPastSearch],
+    [addPastSearch]
   );
 
   const handleNewSearch = useCallback(() => {
-    setAppState("idle");
+    setAppState('idle');
     setResult(null);
-    setPhase("classify");
-    setErrorMessage("");
+    setPhase('classify');
+    setErrorMessage('');
   }, []);
 
-  const recentSearchPills = useMemo(
-    () => pastSearches.slice(0, 5),
-    [pastSearches],
-  );
+  const recentSearchPills = useMemo(() => pastSearches.slice(0, 5), [pastSearches]);
 
   return (
     <div className="space-y-10">
@@ -216,12 +196,12 @@ export function SearchPage() {
           </div>
           <h1 className="text-4xl font-bold tracking-tight">AI Search</h1>
           <p className="text-zinc-500 max-w-md">
-            Search across Reddit, Hacker News, ArchWiki, Stack Overflow & more —
-            powered by Exa, Tavily, and Gemini.
+            Search across Reddit, Hacker News, ArchWiki, Stack Overflow & more — powered by Exa,
+            Tavily, and Gemini.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {appState === "results" && (
+          {appState === 'results' && (
             <button
               onClick={handleNewSearch}
               className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
@@ -244,7 +224,7 @@ export function SearchPage() {
 
       {/* Search area */}
       <AnimatePresence mode="wait">
-        {appState === "idle" && (
+        {appState === 'idle' && (
           <motion.div
             key="idle"
             initial={{ opacity: 0, y: 20 }}
@@ -257,16 +237,11 @@ export function SearchPage() {
                 What do you want to search?
               </h2>
               <p className="text-sm text-zinc-500">
-                AI synthesizes answers from multiple sources with confidence
-                scoring.
+                AI synthesizes answers from multiple sources with confidence scoring.
               </p>
             </div>
 
-            <SearchBox
-              onSearch={handleSearch}
-              isLoading={false}
-              compact={false}
-            />
+            <SearchBox onSearch={handleSearch} isLoading={false} compact={false} />
 
             {/* Recent searches as pills */}
             {recentSearchPills.length > 0 && (
@@ -285,7 +260,7 @@ export function SearchPage() {
           </motion.div>
         )}
 
-        {(appState === "loading" || appState === "results") && (
+        {(appState === 'loading' || appState === 'results') && (
           <motion.div
             key="active"
             initial={{ opacity: 0 }}
@@ -293,11 +268,7 @@ export function SearchPage() {
             className="space-y-6"
           >
             {/* Compact search box */}
-            <SearchBox
-              onSearch={handleSearch}
-              isLoading={appState === "loading"}
-              compact={true}
-            />
+            <SearchBox onSearch={handleSearch} isLoading={appState === 'loading'} compact={true} />
 
             {/* Phase tracker */}
             <div className="flex justify-center">
@@ -305,7 +276,7 @@ export function SearchPage() {
             </div>
 
             {/* Results */}
-            {appState === "results" && result && (
+            {appState === 'results' && result && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -320,7 +291,7 @@ export function SearchPage() {
                   queryType={result.synthesis.queryType}
                 />
 
-                {lastConfig.searchMode === "table" ? (
+                {lastConfig.searchMode === 'table' ? (
                   <TableView sources={result.sources} />
                 ) : (
                   <div className="space-y-3">
@@ -349,15 +320,14 @@ export function SearchPage() {
 
                 {result.synthesis.cachedAt && (
                   <p className="text-center text-[11px] text-muted-foreground/60 pt-2">
-                    Cached result from{" "}
-                    <TimeAgo date={result.synthesis.cachedAt} />
+                    Cached result from <TimeAgo date={result.synthesis.cachedAt} />
                   </p>
                 )}
               </motion.div>
             )}
 
             {/* Loading skeleton */}
-            {appState === "loading" && (
+            {appState === 'loading' && (
               <div className="max-w-3xl mx-auto space-y-4 animate-pulse">
                 <div className="bg-muted rounded-2xl h-40" />
                 <div className="bg-muted rounded-xl h-24" />
@@ -368,7 +338,7 @@ export function SearchPage() {
           </motion.div>
         )}
 
-        {appState === "error" && (
+        {appState === 'error' && (
           <motion.div
             key="error"
             initial={{ opacity: 0, y: 20 }}
@@ -379,9 +349,7 @@ export function SearchPage() {
               <span className="text-destructive text-xl">!</span>
             </div>
             <h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
-            <p className="text-sm text-muted-foreground max-w-md mb-6">
-              {errorMessage}
-            </p>
+            <p className="text-sm text-muted-foreground max-w-md mb-6">{errorMessage}</p>
             <button
               onClick={handleNewSearch}
               className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-xl hover:opacity-90 transition-opacity"

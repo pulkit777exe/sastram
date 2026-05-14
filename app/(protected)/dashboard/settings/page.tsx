@@ -1,10 +1,10 @@
-import { SettingsForm } from "@/components/dashboard/settings-form";
-import { NewsletterManagement } from "@/components/dashboard/newsletter-management";
-import { PreferencesForm } from "@/components/dashboard/preferences-form";
-import { getUserNewsletterSubscriptions } from "@/modules/newsletter/actions";
-import { SettingsTabs } from "@/components/dashboard/settings-tabs";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { getSession } from "@/modules/auth";
+import { SettingsForm } from '@/components/dashboard/settings-form';
+import { NewsletterManagement } from '@/components/dashboard/newsletter-management';
+import { PreferencesForm } from '@/components/dashboard/preferences-form';
+import { getUserNewsletterSubscriptions } from '@/modules/newsletter/actions';
+import { SettingsTabs } from '@/components/dashboard/settings-tabs';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { getSession } from '@/modules/auth';
 
 export default async function SettingsPage({
   searchParams,
@@ -15,17 +15,15 @@ export default async function SettingsPage({
 
   if (!session?.user) {
     return (
-      <div className="flex h-1/2 items-center justify-center">
-        Please log in to view settings.
-      </div>
+      <div className="flex h-1/2 items-center justify-center">Please log in to view settings.</div>
     );
   }
 
-  const tab = (await searchParams).tab || "profile";
+  const tab = (await searchParams).tab || 'profile';
   const subscriptionsResult = await getUserNewsletterSubscriptions();
   const subscriptions = subscriptionsResult.data ?? [];
 
-   const user = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
       id: true,
@@ -49,17 +47,14 @@ export default async function SettingsPage({
       <div>
         <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
         <p className="mt-2">
-          Manage your account settings, notifications, and appearance
-          preferences.
+          Manage your account settings, notifications, and appearance preferences.
         </p>
       </div>
 
       <SettingsTabs activeTab={tab} />
-      {tab === "profile" && user && <SettingsForm user={user} />}
-      {tab === "newsletters" && (
-        <NewsletterManagement subscriptions={subscriptions} />
-      )}
-      {tab === "preferences" && user && <PreferencesForm user={user} />}
+      {tab === 'profile' && user && <SettingsForm user={user} />}
+      {tab === 'newsletters' && <NewsletterManagement subscriptions={subscriptions} />}
+      {tab === 'preferences' && user && <PreferencesForm user={user} />}
     </div>
   );
 }

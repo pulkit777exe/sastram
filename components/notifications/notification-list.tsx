@@ -1,27 +1,18 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  MessageSquare,
-  AtSign,
-  Heart,
-  Bell,
-  Reply,
-  Pin,
-  CheckCheck,
-  Inbox,
-} from "lucide-react";
-import TimeAgo from "@/components/ui/TimeAgo";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { MessageSquare, AtSign, Heart, Bell, Reply, Pin, CheckCheck, Inbox } from 'lucide-react';
+import TimeAgo from '@/components/ui/TimeAgo';
 import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-} from "@/modules/notifications/actions";
-import { useBootstrap } from "@/components/bootstrap-provider";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils/cn";
-import { toasts } from "@/lib/utils/toast";
+} from '@/modules/notifications/actions';
+import { useBootstrap } from '@/components/bootstrap-provider';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils/cn';
+import { toasts } from '@/lib/utils/toast';
 
 interface NotificationItem {
   id: string;
@@ -60,9 +51,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
       const result = await markNotificationRead(notification.id);
       if (!result.error) {
         setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === notification.id ? { ...n, isRead: true } : n,
-          ),
+          prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
         );
         decrementNotificationCount();
       } else {
@@ -101,7 +90,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     setIsLoadingMore(false);
 
     if (result.error || !Array.isArray(result.data)) {
-      toasts.error("Failed to load notifications.", "Try refreshing.");
+      toasts.error('Failed to load notifications.', 'Try refreshing.');
       return;
     }
     const data = result.data;
@@ -116,7 +105,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
         .map((notification) => {
           const data =
             notification.data &&
-            typeof notification.data === "object" &&
+            typeof notification.data === 'object' &&
             !Array.isArray(notification.data)
               ? (notification.data as Record<string, unknown>)
               : {};
@@ -125,7 +114,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
             id: notification.id,
             type: notification.type,
             title: notification.title,
-            message: notification.message ?? "",
+            message: notification.message ?? '',
             isRead: notification.isRead,
             createdAt: notification.createdAt,
             linkUrl: (data.linkUrl as string) ?? null,
@@ -149,7 +138,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
           void loadMore();
         }
       },
-      { rootMargin: "240px" },
+      { rootMargin: '240px' }
     );
     observer.observe(element);
 
@@ -183,24 +172,20 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     const groups: Record<string, NotificationItem[]> = {
       Today: [],
       Yesterday: [],
-      "This Week": [],
+      'This Week': [],
       Older: [],
     };
 
     for (const notification of notifications) {
       const created = new Date(notification.createdAt);
-      const createdDay = new Date(
-        created.getFullYear(),
-        created.getMonth(),
-        created.getDate(),
-      );
+      const createdDay = new Date(created.getFullYear(), created.getMonth(), created.getDate());
 
       if (createdDay.getTime() === today.getTime()) {
         groups.Today.push(notification);
       } else if (createdDay.getTime() === yesterday.getTime()) {
         groups.Yesterday.push(notification);
       } else if (createdDay >= weekAgo) {
-        groups["This Week"].push(notification);
+        groups['This Week'].push(notification);
       } else {
         groups.Older.push(notification);
       }
@@ -217,9 +202,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
         <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
           <Inbox size={24} className="text-muted-foreground" />
         </div>
-        <p className="text-lg font-semibold text-foreground">
-          You&apos;re all caught up
-        </p>
+        <p className="text-lg font-semibold text-foreground">You&apos;re all caught up</p>
       </div>
     );
   }
@@ -228,9 +211,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     <div className="space-y-4">
       {unreadCount > 0 && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            {unreadCount} unread
-          </span>
+          <span className="text-sm text-muted-foreground">{unreadCount} unread</span>
           <Button
             variant="ghost"
             size="sm"
@@ -263,17 +244,16 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                       key={notification.id}
                       onClick={() => void handleClick(notification)}
                       className={cn(
-                        "w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all hover:bg-muted/50",
-                        !notification.isRead &&
-                          "bg-indigo-500/5 border border-indigo-500/10",
+                        'w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all hover:bg-muted/50',
+                        !notification.isRead && 'bg-indigo-500/5 border border-indigo-500/10'
                       )}
                     >
                       <div
                         className={cn(
-                          "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                          'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
                           !notification.isRead
-                            ? "bg-indigo-500/10 text-indigo-500"
-                            : "bg-muted text-muted-foreground",
+                            ? 'bg-indigo-500/10 text-indigo-500'
+                            : 'bg-muted text-muted-foreground'
                         )}
                       >
                         <Icon size={14} />
@@ -282,10 +262,10 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                         <div className="flex items-center justify-between gap-2">
                           <p
                             className={cn(
-                              "text-sm truncate",
+                              'text-sm truncate',
                               !notification.isRead
-                                ? "font-semibold text-foreground"
-                                : "text-foreground/80",
+                                ? 'font-semibold text-foreground'
+                                : 'text-foreground/80'
                             )}
                           >
                             {notification.title}
@@ -312,16 +292,12 @@ export function NotificationList({ notifications: initial }: NotificationListPro
 
       {hasMore && (
         <div ref={sentinelRef} className="h-8 flex items-center justify-center">
-          {isLoadingMore && (
-            <span className="text-xs text-muted-foreground">Loading more...</span>
-          )}
+          {isLoadingMore && <span className="text-xs text-muted-foreground">Loading more...</span>}
         </div>
       )}
 
       {!hasMore && notifications.length > 20 && (
-        <div className="text-center text-xs text-muted-foreground py-2">
-          No more notifications
-        </div>
+        <div className="text-center text-xs text-muted-foreground py-2">No more notifications</div>
       )}
     </div>
   );

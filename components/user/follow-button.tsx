@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { followUser, unfollowUser } from "@/modules/follows/actions";
-import { toast } from "sonner";
-import { UserPlus, UserMinus, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { followUser, unfollowUser } from '@/modules/follows/actions';
+import { toast } from 'sonner';
+import { UserPlus, UserMinus, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { AnimatedIcon } from '@/components/ui/animated-icon';
 
 interface FollowButtonProps {
   userId: string;
@@ -28,7 +28,7 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
           toast.error(result.error);
         } else {
           setIsFollowing(false);
-          toast.success("Unfollowed successfully");
+          toast.success('Unfollowed successfully');
           router.refresh();
         }
       } else {
@@ -37,26 +37,23 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
           toast.error(result.error);
         } else {
           setIsFollowing(true);
-          toast.success("Following successfully");
+          toast.success('Following successfully');
           router.refresh();
         }
       }
     } catch (error) {
-      toast.error("Something went wrong");
+      toast.error('Something went wrong');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-    >
+    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
       <Button
         onClick={handleToggle}
         disabled={isLoading}
-        variant={isFollowing ? "outline" : "default"}
+        variant={isFollowing ? 'outline' : 'default'}
         className="min-w-[120px]"
       >
         {isLoading ? (

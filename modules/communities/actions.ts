@@ -1,38 +1,33 @@
-"use server";
+'use server';
 
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { requireSession, assertAdmin } from "@/modules/auth/session";
-import { createCommunity } from "./repository";
+import { logger } from '@/lib/infrastructure/logger';
+import { buildCommunitySlug } from '@/lib/utils/slug';
 
-// Helper to build slug (duplicated for now, should be in shared utils)
-function buildSlug(title: string): string {
-  return `${title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "")}-${crypto.randomUUID()}`;
-}
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { requireSession, assertAdmin } from '@/modules/auth/session';
+import { createCommunity } from './repository';
 
 const communitySchema = z.object({
   title: z.string().min(3),
-  description: z.string().max(280).optional().or(z.literal("")),
+  description: z.string().max(280).optional().or(z.literal('')),
 });
 
 export async function createCommunityAction(formData: FormData) {
   const parsed = communitySchema.safeParse({
-    title: formData.get("title"),
-    description: formData.get("description"),
+    title: formData.get('title'),
+    description: formData.get('description'),
   });
 
   if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
+    return { data: null, error: 'Invalid input' };
   }
 
   try {
     const session = await requireSession();
     assertAdmin(session.user);
 
-    const slug = buildSlug(parsed.data.title);
+    const slug = buildCommunitySlug(parsed.data.title);
     await createCommunity({
       title: parsed.data.title,
       description: parsed.data.description,
@@ -40,10 +35,10 @@ export async function createCommunityAction(formData: FormData) {
       createdBy: session.user.id,
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath('/dashboard');
     return { data: null, error: null };
   } catch (error) {
-    console.error("[createCommunityAction]", error);
-    return { data: null, error: "Something went wrong" };
+    logger.error('[createCommunityAction]', error);
+    return { data: null, error: 'Something went wrong' };
   }
 }

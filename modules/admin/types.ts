@@ -28,4 +28,3 @@ export interface AdminDashboardData {
     activeUsers: number;
   }>;
 }
-

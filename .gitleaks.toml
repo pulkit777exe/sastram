@@ -1,0 +1,69 @@
+[allowlist]
+  description = "Allowlisted secrets for testing only"
+  files = [".env", ".env.sample"]
+
+[[rules]]
+  id = "neon-database-url"
+  description = "Neon PostgreSQL connection URL"
+  regex = '''postgresql://[^\s]+'''
+  path = '''\.env'''
+  tags = ["secret", "database"]
+
+[[rules]]
+  id = "google-oauth-client-secret"
+  description = "Google OAuth client secret"
+  regex = '''GOCSPX-[a-zA-Z0-9_-]{20,}'''
+  tags = ["secret", "auth"]
+
+[[rules]]
+  id = "github-oauth-secret"
+  description = "GitHub OAuth client secret"
+  regex = '''[a-f0-9]{40}'''
+  path = '''\.env'''
+  tags = ["secret", "auth"]
+
+[[rules]]
+  id = "gmail-smtp-app-password"
+  description = "Gmail SMTP app password"
+  regex = '''[a-z]{4}\s[a-z]{4}\s[a-z]{4}\s[a-z]{4}'''
+  path = '''\.env'''
+  tags = ["secret", "email"]
+
+[[rules]]
+  id = "gemini-api-key"
+  description = "Google Gemini API key"
+  regex = '''AIza[a-zA-Z0-9_-]{30,}'''
+  tags = ["secret", "ai"]
+
+[[rules]]
+  id = "generic-api-key"
+  description = "Generic API key pattern"
+  regex = '''[a-zA-Z0-9_-]{32,}'''
+  path = '''\.env'''
+  tags = ["secret"]
+
+[[rules]]
+  id = "jwt-secret"
+  description = "JWT or session secret"
+  regex = '''(JWT_SECRET|SESSION_SECRET|BETTER_AUTH_SECRET)=.+'''
+  path = '''\.env'''
+  tags = ["secret", "auth"]
+
+[[rules]]
+  id = "blob-storage-token"
+  description = "Vercel Blob storage token"
+  regex = '''(BLOB_READ_WRITE_TOKEN|vercel blob)=[^\s]+'''
+  tags = ["secret", "storage"]
+
+[[rules]]
+  id = "exa-search-key"
+  description = "Exa search API key"
+  regex = '''[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'''
+  path = '''\.env'''
+  tags = ["secret"]
+
+[[rules]]
+  id = "tavily-search-key"
+  description = "Tavily search API key"
+  regex = '''tvly-dev-[a-zA-Z0-9_-]{20,}'''
+  tags = ["secret"]

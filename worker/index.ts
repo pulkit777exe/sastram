@@ -1,5 +1,5 @@
-import { Job, Worker } from "bullmq";
-import { logger } from "../lib/infrastructure/logger";
+import { Job, Worker } from 'bullmq';
+import { logger } from '../lib/infrastructure/logger';
 import {
   QUEUE_NAMES,
   redisConnection,
@@ -21,7 +21,7 @@ import {
   type StalenessCheckJobData,
   type ThreadDnaJobData,
   type ThreadSummaryJobData,
-} from "../lib/infrastructure/bullmq";
+} from '../lib/infrastructure/bullmq';
 
 type QueueDefinition = {
   queueName: string;
@@ -35,8 +35,7 @@ const queueDefinitions: QueueDefinition[] = [
   },
   {
     queueName: QUEUE_NAMES.RESOLUTION_SCORE,
-    handler: (job) =>
-      handleResolutionScoreJob(job as Job<ResolutionScoreJobData>),
+    handler: (job) => handleResolutionScoreJob(job as Job<ResolutionScoreJobData>),
   },
   {
     queueName: QUEUE_NAMES.THREAD_DNA,
@@ -44,8 +43,7 @@ const queueDefinitions: QueueDefinition[] = [
   },
   {
     queueName: QUEUE_NAMES.CONFLICT_DETECTION,
-    handler: (job) =>
-      handleConflictDetectionJob(job as Job<ConflictDetectionJobData>),
+    handler: (job) => handleConflictDetectionJob(job as Job<ConflictDetectionJobData>),
   },
   {
     queueName: QUEUE_NAMES.DAILY_DIGEST,
@@ -53,8 +51,7 @@ const queueDefinitions: QueueDefinition[] = [
   },
   {
     queueName: QUEUE_NAMES.AI_INSIGHT_NOTIFICATIONS,
-    handler: (job) =>
-      handleAIInsightNotificationsJob(job as Job<AIInsightNotificationJobData>),
+    handler: (job) => handleAIInsightNotificationsJob(job as Job<AIInsightNotificationJobData>),
   },
   {
     queueName: QUEUE_NAMES.EMAIL,
@@ -66,8 +63,7 @@ const queueDefinitions: QueueDefinition[] = [
   },
   {
     queueName: QUEUE_NAMES.STALENESS_CHECK,
-    handler: (job) =>
-      handleStalenessCheckJob(job as Job<StalenessCheckJobData>),
+    handler: (job) => handleStalenessCheckJob(job as Job<StalenessCheckJobData>),
   },
 ];
 
@@ -81,19 +77,32 @@ const workers = queueDefinitions.map(({ queueName, handler }) => {
     },
   });
 
-  worker.on("failed", (job, err) => {
-    logger.error(`[${queueName}] job ${job?.id} failed`, {
+  worker.on('failed', async (job, err) => {
+    logger.error(`[${queueName}] job ${job?.id} failed after ${job?.attemptsMade} attempts`, {
       error: err.message,
       jobData: job?.data,
       attemptsMade: job?.attemptsMade,
     });
+
+    if (job && job.attemptsMade === job.opts.attempts) {
+      const { getFailedQueue } = await import('../lib/infrastructure/bullmq');
+      const failedQueue = getFailedQueue();
+      await failedQueue.add('dlq', {
+        originalQueue: queueName,
+        jobId: job.id,
+        jobData: job.data,
+        failedError: err.message,
+        failedAt: new Date().toISOString(),
+      });
+      logger.error(`[${queueName}] job ${job.id} moved to dead letter queue`);
+    }
   });
 
-  worker.on("error", (err) => {
+  worker.on('error', (err) => {
     logger.error(`[${queueName}] worker error`, { error: err.message });
   });
 
-  worker.on("ready", () => {
+  worker.on('ready', () => {
     logger.info(`[${queueName}] worker ready`);
   });
 
@@ -106,21 +115,21 @@ async function shutdown(signal: string) {
   await Promise.all(
     workers.map(async (worker) => {
       await worker.close();
-    }),
+    })
   );
 
-  logger.info("All BullMQ workers shut down cleanly");
+  logger.info('All BullMQ workers shut down cleanly');
   process.exit(0);
 }
 
-process.on("SIGTERM", () => {
-  void shutdown("SIGTERM");
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM');
 });
 
-process.on("SIGINT", () => {
-  void shutdown("SIGINT");
+process.on('SIGINT', () => {
+  void shutdown('SIGINT');
 });
 
-logger.info("BullMQ worker process started", {
+logger.info('BullMQ worker process started', {
   queues: queueDefinitions.map((definition) => definition.queueName),
 });

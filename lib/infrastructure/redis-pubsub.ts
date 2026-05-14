@@ -1,5 +1,5 @@
-import Redis from "ioredis";
-import { logger } from "@/lib/infrastructure/logger";
+import Redis from 'ioredis';
+import { logger } from '@/lib/infrastructure/logger';
 
 // ── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -22,11 +22,7 @@ export interface RedisThreadPayload {
 }
 
 export interface RedisThreadEvent {
-  type:
-    | "NEW_MESSAGE"
-    | "MESSAGE_DELETED"
-    | "PIN_UPDATE"
-    | "AI_RESPONSE_READY";
+  type: 'NEW_MESSAGE' | 'MESSAGE_DELETED' | 'PIN_UPDATE' | 'AI_RESPONSE_READY';
   sectionId: string;
   payload: Record<string, unknown>;
 }
@@ -42,7 +38,7 @@ export function getThreadChannel(sectionId: string): string {
 // Each needs its own dedicated connection.
 
 function createRedisClient(label: string): Redis {
-  const url = process.env.REDIS_URL;
+  const url = process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL;
   if (!url) {
     throw new Error(`[Redis ${label}] REDIS_URL is not set`);
   }
@@ -53,7 +49,7 @@ function createRedisClient(label: string): Redis {
     lazyConnect: true,
   });
 
-  client.on("error", (err) => {
+  client.on('error', (err) => {
     logger.error(`[Redis ${label}] Connection error`, { error: err.message });
   });
 
@@ -69,12 +65,12 @@ let _pub: Redis | null = null;
 let _sub: Redis | null = null;
 
 export function getRedisPub(): Redis {
-  if (!_pub) _pub = createRedisClient("pub");
+  if (!_pub) _pub = createRedisClient('pub');
   return _pub;
 }
 
 export function getRedisSub(): Redis {
-  if (!_sub) _sub = createRedisClient("sub");
+  if (!_sub) _sub = createRedisClient('sub');
   return _sub;
 }
 

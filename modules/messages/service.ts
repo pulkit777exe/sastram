@@ -1,5 +1,5 @@
-import type { Message } from "@/lib/types/index";
-import type { MessageNode } from "./types";
+import type { Message } from '@/lib/types/index';
+import type { MessageNode } from './types';
 
 const MAX_DEPTH = 4;
 
@@ -23,8 +23,7 @@ export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
         isCollapsed: node.isCollapsed ?? false,
         likeCount: (msg as MessageNode).likeCount ?? node.likeCount ?? 0,
         replyCount: (msg as MessageNode).replyCount ?? node.replyCount ?? 0,
-        isAiResponse:
-          (msg as MessageNode).isAiResponse ?? node.isAiResponse ?? false,
+        isAiResponse: (msg as MessageNode).isAiResponse ?? node.isAiResponse ?? false,
         children: node.children ?? [],
       });
     } else {
@@ -69,16 +68,11 @@ export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
 
   // Sort children by createdAt within each parent
   for (const node of nodeMap.values()) {
-    node.children.sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-    );
+    node.children.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
 
   // Sort roots by createdAt
-  roots.sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  );
+  roots.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   return roots;
 }
@@ -113,14 +107,14 @@ export function getCollapseKey(threadId: string, messageId: string): string {
  */
 export function loadCollapseStates(threadId: string): Map<string, boolean> {
   const states = new Map<string, boolean>();
-  if (typeof window === "undefined") return states;
+  if (typeof window === 'undefined') return states;
 
   const prefix = `thread-collapse:${threadId}:`;
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key && key.startsWith(prefix)) {
       const messageId = key.slice(prefix.length);
-      states.set(messageId, localStorage.getItem(key) === "true");
+      states.set(messageId, localStorage.getItem(key) === 'true');
     }
   }
   return states;
@@ -129,15 +123,11 @@ export function loadCollapseStates(threadId: string): Map<string, boolean> {
 /**
  * Save a collapse state to localStorage.
  */
-export function saveCollapseState(
-  threadId: string,
-  messageId: string,
-  collapsed: boolean,
-): void {
-  if (typeof window === "undefined") return;
+export function saveCollapseState(threadId: string, messageId: string, collapsed: boolean): void {
+  if (typeof window === 'undefined') return;
   const key = getCollapseKey(threadId, messageId);
   if (collapsed) {
-    localStorage.setItem(key, "true");
+    localStorage.setItem(key, 'true');
   } else {
     localStorage.removeItem(key);
   }

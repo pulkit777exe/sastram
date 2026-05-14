@@ -1,11 +1,9 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
+import { slugify } from '@/lib/utils/slug';
 
-export async function createTag(name: string, color: string = "#3b82f6") {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+export async function createTag(name: string, color: string = '#3b82f6') {
+  const slug = slugify(name);
 
   return prisma.threadTag.upsert({
     where: { slug },
@@ -69,7 +67,7 @@ export async function getThreadTags(threadId: string) {
 
     return (relations ?? []).map((relation) => relation.tag);
   } catch (error) {
-    logger.error("[getThreadTags]", error);
+    logger.error('[getThreadTags]', error);
     return [];
   }
 }
@@ -86,7 +84,7 @@ export async function getPopularTags(limit: number = 20) {
       },
       orderBy: {
         threads: {
-          _count: "desc",
+          _count: 'desc',
         },
       },
       take: limit,
@@ -97,7 +95,7 @@ export async function getPopularTags(limit: number = 20) {
       threadCount: tag._count.threads,
     }));
   } catch (error) {
-    logger.error("[getPopularTags]", error);
+    logger.error('[getPopularTags]', error);
     return [];
   }
 }

@@ -5,15 +5,17 @@ This document provides a quick reference to the main features and functions avai
 ## Authentication & Authorization
 
 ### User Authentication
+
 - **Purpose:** Handles user login, registration, and session management
 - **Location:** `modules/auth/`
-- **Key Files:** 
+- **Key Files:**
   - `modules/auth/session.ts` - Session management
   - `modules/users/` - User profile management
 - **API Routes:** `app/api/auth/[...all]/route.ts`
 - **UI:** `components/auth/LoginForm.tsx`, `app/(public)/login/page.tsx`
 
 ### Role-Based Access Control
+
 - **User Roles:** USER, MODERATOR, ADMIN
 - **Permissions:** `lib/config/permissions.ts`
 - **Middleware:** `app/(protected)/layout.tsx` (protected routes)
@@ -21,6 +23,7 @@ This document provides a quick reference to the main features and functions avai
 ## Core Forum Features
 
 ### Thread Management
+
 - **Purpose:** Create, view, edit, and delete forum threads
 - **Location:** `modules/threads/`
 - **Key Files:**
@@ -31,6 +34,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `app/(protected)/dashboard/threads/`, `components/dashboard/topic-grid.tsx`
 
 ### Message Handling
+
 - **Purpose:** Send, view, and manage messages within threads
 - **Location:** `modules/messages/`
 - **Key Files:**
@@ -40,6 +44,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `components/thread/comment-tree.tsx`, `components/dashboard/message-grid.tsx`
 
 ### Search Functionality
+
 - **Purpose:** Search for threads and content
 - **Location:** `modules/search/`
 - **Key Files:**
@@ -49,6 +54,7 @@ This document provides a quick reference to the main features and functions avai
 ## Community & Social Features
 
 ### User Profiles
+
 - **Purpose:** View and manage user profiles
 - **Location:** `modules/users/`
 - **Key Files:**
@@ -56,6 +62,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `app/(protected)/user/[userId]/`, `components/user/`
 
 ### Follows & Connections
+
 - **Purpose:** Follow users and manage connections
 - **Location:** `modules/follows/`
 - **Key Files:**
@@ -64,6 +71,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `components/user/follow-button.tsx`
 
 ### Bookmarks
+
 - **Purpose:** Save and manage bookmarks
 - **Location:** `modules/bookmarks/`
 - **Key Files:**
@@ -71,6 +79,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `app/(protected)/dashboard/bookmarks/`, `components/thread/bookmark-button.tsx`
 
 ### Reputation System
+
 - **Purpose:** Track user reputation and badges
 - **Location:** `modules/reputation/`, `modules/badges/`
 - **Key Files:**
@@ -80,6 +89,7 @@ This document provides a quick reference to the main features and functions avai
 ## Moderation & Safety
 
 ### Content Moderation
+
 - **Purpose:** Review and moderate content
 - **Location:** `modules/moderation/`
 - **Key Files:**
@@ -88,6 +98,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `app/(protected)/dashboard/admin/moderation/`, `components/admin/moderation-dashboard.tsx`
 
 ### Report System
+
 - **Purpose:** Report inappropriate content
 - **Location:** `modules/reports/`
 - **Key Files:**
@@ -95,6 +106,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `components/thread/report-button.tsx`, `components/admin/report-review-panel.tsx`
 
 ### Appeal Process
+
 - **Purpose:** Appeal moderation decisions
 - **Location:** `modules/appeals/`
 - **Key Files:**
@@ -103,6 +115,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `app/(protected)/dashboard/admin/appeals/`, `components/appeals/appeal-form.tsx`
 
 ### User Bans
+
 - **Purpose:** Manage user bans
 - **Location:** `modules/moderation/`
 - **UI:** `app/banned/page.tsx`, `components/admin/banned-users-list.tsx`
@@ -110,6 +123,7 @@ This document provides a quick reference to the main features and functions avai
 ## Newsletter System
 
 ### Newsletter Subscription
+
 - **Purpose:** Subscribe to thread newsletters
 - **Location:** `modules/newsletter/`
 - **Key Files:**
@@ -120,6 +134,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `components/thread/subscribe-button.tsx`, `components/dashboard/newsletter-management.tsx`
 
 ### Digest Generation
+
 - **Purpose:** Generate and send email digests
 - **Key Files:**
   - `lib/services/ai.ts` - AI summarization
@@ -128,6 +143,7 @@ This document provides a quick reference to the main features and functions avai
 ## Additional Features
 
 ### Polls
+
 - **Purpose:** Create and manage polls in threads
 - **Location:** `modules/polls/`
 - **Key Files:**
@@ -136,6 +152,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `components/thread/poll-display.tsx`
 
 ### Thread Invitations
+
 - **Purpose:** Invite users to threads
 - **Location:** `modules/invitations/`
 - **Key Files:**
@@ -143,6 +160,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `components/thread/invite-friend-button.tsx`
 
 ### Tags & Categories
+
 - **Purpose:** Organize content with tags
 - **Location:** `modules/tags/`
 - **Key Files:**
@@ -150,6 +168,7 @@ This document provides a quick reference to the main features and functions avai
 - **UI:** `components/thread/tag-chip.tsx`
 
 ### Activity Tracking
+
 - **Purpose:** Track user activity
 - **Location:** `modules/activity/`
 - **Key Files:**
@@ -158,6 +177,7 @@ This document provides a quick reference to the main features and functions avai
 ## System Components
 
 ### Real-Time Communication
+
 - **Purpose:** WebSocket-based real-time updates
 - **Location:** `lib/infrastructure/websocket/`
 - **Key Files:**
@@ -166,23 +186,27 @@ This document provides a quick reference to the main features and functions avai
 - **Server Initialization:** `server.ts`
 
 ### Database Access
+
 - **ORM:** Prisma
 - **Schema:** `prisma/schema.prisma`
 - **Client:** `lib/infrastructure/prisma.ts`
 - **Migrations:** `prisma/migrations/`
 
 ### Configuration
+
 - **Environment Variables:** `lib/config/env.ts` (validated with Zod)
 - **Constants:** `lib/config/constants.ts`
 - **Routes:** `lib/config/routes.ts`
 - **Permissions:** `lib/config/permissions.ts`
 
 ### Infrastructure
+
 - **Logger:** `lib/infrastructure/logger.ts`
 - **API Response Wrapper:** `lib/http/api-response.ts`
 - **Validation Helpers:** `lib/validation/withValidation.ts`
 
 ### External Services
+
 - **AI Integration:** `lib/services/ai.ts` (Google Gemini, OpenAI)
 - **Email:** `lib/services/auth.ts` (Resend)
 - **File Storage:** `lib/services/blob.ts` (Vercel Blob)
@@ -190,11 +214,13 @@ This document provides a quick reference to the main features and functions avai
 ## UI Components
 
 ### Common Components
+
 - **UI Library:** shadcn/ui
 - **Location:** `components/ui/`
 - **Key Components:** Button, Card, Dialog, Input, Select, etc.
 
 ### Feature-Specific Components
+
 - **Admin:** `components/admin/` - Moderation and admin interface
 - **Dashboard:** `components/dashboard/` - Dashboard and home page
 - **Thread:** `components/thread/` - Thread view and management
@@ -203,6 +229,7 @@ This document provides a quick reference to the main features and functions avai
 ## State Management
 
 ### Client-Side State
+
 - **Library:** TanStack Query (React Query)
 - **Provider:** `components/providers.tsx`
 - **Hooks:** `hooks/` (useConversations, useMessages)
@@ -216,15 +243,18 @@ This document provides a quick reference to the main features and functions avai
 ## Development & Deployment
 
 ### Development Server
+
 - **Command:** `npm run dev`
 - **Configuration:** `next.config.ts`
 
 ### Build & Deployment
+
 - **Build:** `npm run build`
 - **Start:** `npm run start`
 - **Server Configuration:** `server.ts`
 
 ### Database Management
+
 - **Generate Prisma Client:** `npm run db:generate`
 - **Push Changes:** `npm run db:push`
 - **Run Migrations:** `npm run db:migrate`

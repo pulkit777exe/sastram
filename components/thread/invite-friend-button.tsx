@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,27 +10,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { UserPlus, Mail } from "lucide-react";
-import { inviteFriendToThread } from "@/modules/invitations/actions";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { UserPlus, Mail } from 'lucide-react';
+import { inviteFriendToThread } from '@/modules/invitations/actions';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface InviteFriendButtonProps {
   threadId: string;
   threadName: string;
 }
 
-export function InviteFriendButton({
-  threadId,
-  threadName,
-}: InviteFriendButtonProps) {
+export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonProps) {
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
@@ -38,16 +35,16 @@ export function InviteFriendButton({
     e.preventDefault();
 
     if (!email.trim()) {
-      toast.error("Please enter an email address");
+      toast.error('Please enter an email address');
       return;
     }
 
     setIsSubmitting(true);
     const formData = new FormData();
-    formData.append("threadId", threadId);
-    formData.append("email", email.trim());
+    formData.append('threadId', threadId);
+    formData.append('email', email.trim());
     if (message.trim()) {
-      formData.append("message", message.trim());
+      formData.append('message', message.trim());
     }
 
     const result = await inviteFriendToThread(formData);
@@ -56,9 +53,9 @@ export function InviteFriendButton({
     if (result?.error) {
       toast.error(result.error);
     } else {
-      toast.success("Invitation sent successfully!");
-      setEmail("");
-      setMessage("");
+      toast.success('Invitation sent successfully!');
+      setEmail('');
+      setMessage('');
       setOpen(false);
       router.refresh();
     }
@@ -113,11 +110,7 @@ export function InviteFriendButton({
             </div>
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-            >
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -125,7 +118,7 @@ export function InviteFriendButton({
               disabled={isSubmitting || !email.trim()}
               className="bg-indigo-600 hover:bg-indigo-500 text-white"
             >
-              {isSubmitting ? "Sending..." : "Send Invitation"}
+              {isSubmitting ? 'Sending...' : 'Send Invitation'}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation';
 
 export default function MessagesPage() {
-  redirect("/dashboard/notifications");
+  redirect('/dashboard/notifications');
 }

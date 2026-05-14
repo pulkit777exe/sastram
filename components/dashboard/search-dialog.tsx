@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CommandDialog,
   CommandEmpty,
@@ -9,11 +9,10 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import { searchUsersAction } from "@/modules/search/actions";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2 } from "lucide-react";
-
+} from '@/components/ui/command';
+import { searchUsersAction } from '@/modules/search/actions';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Loader2 } from 'lucide-react';
 
 export function SearchDialog({
   open,
@@ -23,7 +22,7 @@ export function SearchDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [query, setQuery] = React.useState("");
+  const [query, setQuery] = React.useState('');
   const [data, setData] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(false);
 
@@ -37,7 +36,7 @@ export function SearchDialog({
       setLoading(true);
       try {
         const res = await searchUsersAction(query, 5);
-        
+
         if (res?.data) {
           setData(res.data.users);
         } else {
@@ -76,7 +75,7 @@ export function SearchDialog({
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            "No results found."
+            'No results found.'
           )}
         </CommandEmpty>
         {data.length > 0 && (
@@ -96,13 +95,9 @@ export function SearchDialog({
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm">
-                      {user.name || "Unnamed"}
-                    </span>
+                    <span className="font-medium text-sm">{user.name || 'Unnamed'}</span>
                     {user.name && (
-                      <span className="text-xs text-muted-foreground">
-                        {user.email}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{user.email}</span>
                     )}
                   </div>
                   {user.reputationPoints > 0 && (

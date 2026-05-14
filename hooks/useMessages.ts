@@ -1,12 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Message } from "@/types";
-import { getMessages, sendMessage } from "@/modules/chat/actions";
-import type { AttachmentInput } from "@/lib/types/index";
-import { toasts } from "@/lib/utils/toast";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Message } from '@/types';
+import { getMessages, sendMessage } from '@/modules/chat/actions';
+import type { AttachmentInput } from '@/lib/types/index';
+import { toasts } from '@/lib/utils/toast';
 
 export function useMessages(conversationId: string) {
   return useQuery({
-    queryKey: ["messages", conversationId],
+    queryKey: ['messages', conversationId],
     queryFn: async () => {
       const result = await getMessages(conversationId);
       if (result.error) {
@@ -28,16 +28,16 @@ export function useSendMessage(conversationId: string) {
         throw new Error(result.error);
       }
       if (!result.data) {
-        throw new Error("Message could not be sent");
+        throw new Error('Message could not be sent');
       }
-      return result.data as Message;
+      return result.data as unknown as Message;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
     onError: (error) => {
-      toasts.error(error.message || "Failed to send message");
-    }
+      toasts.error(error.message || 'Failed to send message');
+    },
   });
 }

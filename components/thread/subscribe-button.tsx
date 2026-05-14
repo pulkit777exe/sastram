@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Bell } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   subscribeToThreadAction,
   unsubscribeFromThread,
   updateSubscriptionFrequencyAction,
-} from "@/modules/newsletter/actions";
-import { toasts } from "@/lib/utils/toast";
+} from '@/modules/newsletter/actions';
+import { toasts } from '@/lib/utils/toast';
 
-type SubscriptionFrequency = "DAILY" | "WEEKLY" | "NEVER" | null;
+type SubscriptionFrequency = 'DAILY' | 'WEEKLY' | 'NEVER' | null;
 
 interface ThreadSubscribeButtonProps {
   threadName?: string;
@@ -20,30 +20,28 @@ interface ThreadSubscribeButtonProps {
 }
 
 const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
-  { label: "Not subscribed", value: null },
-  { label: "Daily", value: "DAILY" },
-  { label: "Weekly", value: "WEEKLY" },
-  { label: "Never", value: "NEVER" },
+  { label: 'Not subscribed', value: null },
+  { label: 'Daily', value: 'DAILY' },
+  { label: 'Weekly', value: 'WEEKLY' },
+  { label: 'Never', value: 'NEVER' },
 ];
 
 export function ThreadSubscribeButton({
-  threadName = "this thread",
+  threadName = 'this thread',
   threadId,
   slug,
   initialFrequency,
 }: ThreadSubscribeButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [frequency, setFrequency] = useState<SubscriptionFrequency>(
-    initialFrequency,
-  );
+  const [frequency, setFrequency] = useState<SubscriptionFrequency>(initialFrequency);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const triggerLabel = useMemo(() => {
-    if (!frequency) return "Not subscribed";
-    if (frequency === "DAILY") return "Daily";
-    if (frequency === "WEEKLY") return "Weekly";
-    return "Never";
+    if (!frequency) return 'Not subscribed';
+    if (frequency === 'DAILY') return 'Daily';
+    if (frequency === 'WEEKLY') return 'Weekly';
+    return 'Never';
   }, [frequency]);
 
   useEffect(() => {
@@ -55,8 +53,8 @@ export function ThreadSubscribeButton({
       setIsOpen(false);
     };
 
-    document.addEventListener("mousedown", onOutsideClick);
-    return () => document.removeEventListener("mousedown", onOutsideClick);
+    document.addEventListener('mousedown', onOutsideClick);
+    return () => document.removeEventListener('mousedown', onOutsideClick);
   }, []);
 
   const setSubscription = async (nextFrequency: SubscriptionFrequency) => {
@@ -71,7 +69,7 @@ export function ThreadSubscribeButton({
     setIsOpen(false);
 
     try {
-      if (nextFrequency === null || nextFrequency === "NEVER") {
+      if (nextFrequency === null || nextFrequency === 'NEVER') {
         const result = await unsubscribeFromThread(threadId);
         if (result.error) {
           setFrequency(previous);
@@ -83,7 +81,7 @@ export function ThreadSubscribeButton({
         return;
       }
 
-      if (!previous || previous === "NEVER") {
+      if (!previous || previous === 'NEVER') {
         const subscribe = await subscribeToThreadAction({ threadId, slug });
         if (subscribe.error) {
           setFrequency(previous);
@@ -121,9 +119,7 @@ export function ThreadSubscribeButton({
           <Bell className="h-4 w-4" />
           {triggerLabel}
         </span>
-        <span className="text-xs text-muted-foreground">
-          {isSaving ? "Saving..." : "Change"}
-        </span>
+        <span className="text-xs text-muted-foreground">{isSaving ? 'Saving...' : 'Change'}</span>
       </Button>
 
       {isOpen && (
@@ -137,8 +133,8 @@ export function ThreadSubscribeButton({
                 onClick={() => void setSubscription(option.value)}
                 className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
                   frequency === option.value
-                    ? "bg-indigo-50 text-indigo-700"
-                    : "hover:bg-muted text-foreground"
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'hover:bg-muted text-foreground'
                 }`}
               >
                 {option.label}

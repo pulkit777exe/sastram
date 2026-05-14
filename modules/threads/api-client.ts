@@ -1,16 +1,16 @@
-import type { ThreadSummary } from "./types";
+import type { ThreadSummary } from './types';
 
 export async function fetchThreads(): Promise<ThreadSummary[]> {
-  const response = await fetch("/api/threads", {
-    method: "GET",
+  const response = await fetch('/api/threads', {
+    method: 'GET',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
-    cache: "no-store",
+    cache: 'no-store',
   });
 
   if (!response.ok) {
-    throw new Error("Failed to load threads");
+    throw new Error('Failed to load threads');
   }
 
   const data = await response.json();

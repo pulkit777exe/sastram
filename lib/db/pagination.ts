@@ -1,5 +1,5 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/infrastructure/prisma";
+import type { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/infrastructure/prisma';
 
 export type CursorPaginationParams<TCursor> = {
   take?: number;
@@ -22,7 +22,7 @@ export async function paginateSections<TSelect extends Prisma.SectionSelect>(
 
   const items = await prisma.section.findMany({
     where: params.where,
-    orderBy: params.orderBy ?? { createdAt: "desc" },
+    orderBy: params.orderBy ?? { createdAt: 'desc' },
     take: take + 1,
     ...(params.cursor
       ? {
@@ -44,4 +44,3 @@ export async function paginateSections<TSelect extends Prisma.SectionSelect>(
     nextCursor,
   };
 }
-

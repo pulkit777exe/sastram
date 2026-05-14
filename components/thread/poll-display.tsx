@@ -1,18 +1,14 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import {
-  voteOnPollAction,
-  getUserVoteAction,
-  getPollResultsAction,
-} from "@/modules/polls/actions";
-import { toasts } from "@/lib/utils/toast";
-import { CheckCircle2, BarChart3 } from "lucide-react";
-import { cn } from "@/lib/utils/cn";
-import { TimeAgo } from "@/components/ui/TimeAgo";
-import type { PollResults } from "@/modules/polls/types";
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { voteOnPollAction, getUserVoteAction, getPollResultsAction } from '@/modules/polls/actions';
+import { toasts } from '@/lib/utils/toast';
+import { CheckCircle2, BarChart3 } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
+import { TimeAgo } from '@/components/ui/TimeAgo';
+import type { PollResults } from '@/modules/polls/types';
 
 // ── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -87,11 +83,11 @@ export function PollDisplay({ poll }: PollDisplayProps) {
       if (resultsResult?.data) {
         setResults(resultsResult.data);
       } else if (resultsResult?.error) {
-        toasts.error("Failed to load poll results.", "Try refreshing the page.");
+        toasts.error('Failed to load poll results.', 'Try refreshing the page.');
       }
     } catch {
       if (!mountedRef.current) return;
-      toasts.error("Failed to load poll results.", "Try refreshing the page.");
+      toasts.error('Failed to load poll results.', 'Try refreshing the page.');
     } finally {
       if (mountedRef.current) {
         setIsLoading(false);
@@ -102,7 +98,13 @@ export function PollDisplay({ poll }: PollDisplayProps) {
   // loadPollData is now stable (useCallback with [poll.id])
   // so this effect only runs once per poll.id change
   useEffect(() => {
-    void loadPollData();
+    let cancelled = false;
+    (async () => {
+      await loadPollData();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadPollData]);
 
   // ── VOTE HANDLER ─────────────────────────────────────────────────────────
@@ -121,7 +123,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
         setSelectedOption(optionIndex);
         setHasVoted(true);
         // "saved" is misleading for a vote action
-        toasts.success("Vote recorded!");
+        toasts.success('Vote recorded!');
         // Reload results to show updated counts
         await loadPollData();
       }
@@ -134,13 +136,16 @@ export function PollDisplay({ poll }: PollDisplayProps) {
 
   // ── RENDER ────────────────────────────────────────────────────────────────
 
+  const isExpired = useMemo(
+    // eslint-disable-next-line react-hooks/purity
+    () => !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now(),
+    [poll.expiresAt]
+  );
+  const showResults = hasVoted || !poll.isActive || isExpired;
+
   if (isLoading) {
     return <PollSkeleton optionCount={poll.options.length} />;
   }
-
-  const isExpired =
-    !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now();
-  const showResults = hasVoted || !poll.isActive || isExpired;
 
   return (
     <motion.div
@@ -149,12 +154,8 @@ export function PollDisplay({ poll }: PollDisplayProps) {
       className="rounded-lg border bg-card p-6 space-y-4"
     >
       <div className="flex items-start justify-between">
-        <h3 className="text-lg font-semibold text-foreground">
-          {poll.question}
-        </h3>
-        {showResults && (
-          <BarChart3 className="h-5 w-5 text-muted-foreground shrink-0" />
-        )}
+        <h3 className="text-lg font-semibold text-foreground">{poll.question}</h3>
+        {showResults && <BarChart3 className="h-5 w-5 text-muted-foreground shrink-0" />}
       </div>
 
       <div className="space-y-2">
@@ -175,9 +176,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2">
                       {option}
-                      {isSelected && (
-                        <CheckCircle2 className="h-4 w-4 text-primary" />
-                      )}
+                      {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
                     </span>
                     <span className="text-muted-foreground tabular-nums">
                       {result?.votes ?? 0} votes ({percentage.toFixed(1)}%)
@@ -189,10 +188,8 @@ export function PollDisplay({ poll }: PollDisplayProps) {
                       animate={{ width: `${percentage}%` }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
                       className={cn(
-                        "h-full rounded-full",
-                        isSelected
-                          ? "bg-primary"
-                          : "bg-muted-foreground/50"
+                        'h-full rounded-full',
+                        isSelected ? 'bg-primary' : 'bg-muted-foreground/50'
                       )}
                     />
                   </div>
@@ -201,7 +198,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
                 <Button
                   onClick={() => handleVote(index)}
                   disabled={isVoting || hasVoted || !poll.isActive || isExpired}
-                  variant={isSelected ? "default" : "outline"}
+                  variant={isSelected ? 'default' : 'outline'}
                   className="w-full justify-start"
                 >
                   {option}

@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function subscribeToThreadNewsletter({
   threadId,
@@ -11,7 +11,7 @@ export async function subscribeToThreadNewsletter({
   email?: string;
 }) {
   if (!userId && !email) {
-    throw new Error("Either userId or email is required for thread subscription");
+    throw new Error('Either userId or email is required for thread subscription');
   }
 
   if (!userId) {
@@ -57,12 +57,12 @@ export async function getThreadTranscript(threadId: string) {
           sender: true,
         },
         orderBy: {
-          createdAt: "asc",
+          createdAt: 'asc',
         },
       })) ?? []
     );
   } catch (error) {
-    logger.error("[getThreadTranscript]", error);
+    logger.error('[getThreadTranscript]', error);
     return [];
   }
 }
@@ -75,7 +75,7 @@ export async function listThreadSubscribers(threadId: string) {
       })) ?? []
     );
   } catch (error) {
-    logger.error("[listThreadSubscribers]", error);
+    logger.error('[listThreadSubscribers]', error);
     return [];
   }
 }
@@ -87,7 +87,7 @@ export async function isUserSubscribedToThread(threadId: string, userId: string)
   return Boolean(subscription);
 }
 
-import { DigestFrequency } from "@prisma/client";
+import { DigestFrequency } from '@prisma/client';
 
 export async function updateSubscriptionFrequency({
   threadId,
@@ -115,7 +115,7 @@ export async function updateSubscriptionFrequency({
  * Schedules a digest for a thread (placeholder implementation)
  */
 export async function scheduleThreadDigest(threadId: string) {
-  console.log(`Scheduling digest for thread ${threadId}`);
+  logger.info(`Scheduling digest for thread ${threadId}`);
   return Promise.resolve();
 }
 
@@ -127,17 +127,14 @@ export async function getDueDigests() {
 }
 
 /**
- * Marks a digest as processing (placeholder implementation)
+ * Marks a digest as processing (placeholder — ThreadDigest model not yet added)
  */
 export async function markDigestProcessing(digestId: string) {
-  console.log(`Marking digest ${digestId} as processing`);
+  logger.info(`Marking digest ${digestId} as processing (stub)`);
   return Promise.resolve();
 }
 
-/**
- * Completes a digest (placeholder implementation)
- */
 export async function completeDigest(digestId: string, summary: string, emailCount: number) {
-  console.log(`Completing digest ${digestId} with ${emailCount} emails sent`);
+  logger.info(`Completing digest ${digestId} with ${emailCount} emails sent`);
   return Promise.resolve();
 }

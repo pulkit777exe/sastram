@@ -65,15 +65,15 @@ export interface WebSocketMessage {
 }
 
 export type WebSocketEventType =
-  | "NEW_MESSAGE"
-  | "MESSAGE_DELETED"
-  | "MESSAGE_EDITED"
-  | "USER_TYPING"
-  | "USER_STOPPED_TYPING"
-  | "MESSAGE_QUEUED"
-  | "MENTION_NOTIFICATION"
-  | "REACTION_UPDATE"
-  | "PIN_UPDATE";
+  | 'NEW_MESSAGE'
+  | 'MESSAGE_DELETED'
+  | 'MESSAGE_EDITED'
+  | 'USER_TYPING'
+  | 'USER_STOPPED_TYPING'
+  | 'MESSAGE_QUEUED'
+  | 'MENTION_NOTIFICATION'
+  | 'REACTION_UPDATE'
+  | 'PIN_UPDATE';
 
 export interface TypingIndicator {
   userId: string;
@@ -100,7 +100,7 @@ export interface Conversation {
   timestamp: string;
   unread: number;
   online: boolean;
-  type: "channel" | "dm";
+  type: 'channel' | 'dm';
 }
 
 export interface ChatMessage {
@@ -110,7 +110,7 @@ export interface ChatMessage {
   timestamp: string;
   avatar: string | null;
   isOwn: boolean;
-  status: "sent" | "delivered" | "read";
+  status: 'sent' | 'delivered' | 'read';
   attachments?: Attachment[];
 }
 

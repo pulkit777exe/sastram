@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function searchThreads(query: string, limit: number = 20, offset: number = 0) {
   try {
@@ -7,9 +7,9 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
       prisma.section.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { description: { contains: query, mode: "insensitive" } },
-            { aiSummary: { contains: query, mode: "insensitive" } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
+            { aiSummary: { contains: query, mode: 'insensitive' } },
           ],
         },
         include: {
@@ -29,16 +29,16 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
             },
           },
         },
-        orderBy: [{ messageCount: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ messageCount: 'desc' }, { createdAt: 'desc' }],
         take: limit,
         skip: offset,
       }),
       prisma.section.count({
         where: {
           OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { description: { contains: query, mode: "insensitive" } },
-            { aiSummary: { contains: query, mode: "insensitive" } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
+            { aiSummary: { contains: query, mode: 'insensitive' } },
           ],
         },
       }),
@@ -52,7 +52,7 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[searchThreads]", error);
+    logger.error('[searchThreads]', error);
     return {
       threads: [],
       total: 0,
@@ -70,7 +70,7 @@ export async function searchMessages(
   try {
     const where: any = {
       deletedAt: null,
-      content: { contains: query, mode: "insensitive" },
+      content: { contains: query, mode: 'insensitive' },
     };
 
     if (threadId) {
@@ -98,7 +98,7 @@ export async function searchMessages(
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
@@ -113,7 +113,7 @@ export async function searchMessages(
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[searchMessages]", error);
+    logger.error('[searchMessages]', error);
     return {
       messages: [],
       total: 0,
@@ -127,10 +127,10 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where: {
-          status: "ACTIVE",
+          status: 'ACTIVE',
           OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { email: { contains: query, mode: "insensitive" } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
           ],
         },
         select: {
@@ -144,16 +144,16 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
           followingCount: true,
           reputationPoints: true,
         },
-        orderBy: [{ reputationPoints: "desc" }, { followerCount: "desc" }],
+        orderBy: [{ reputationPoints: 'desc' }, { followerCount: 'desc' }],
         take: limit,
         skip: offset,
       }),
       prisma.user.count({
         where: {
-          status: "ACTIVE",
+          status: 'ACTIVE',
           OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { email: { contains: query, mode: "insensitive" } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
           ],
         },
       }),
@@ -167,7 +167,7 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[searchUsers]", error);
+    logger.error('[searchUsers]', error);
     return {
       users: [],
       total: 0,

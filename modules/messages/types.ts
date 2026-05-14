@@ -2,7 +2,7 @@
  * Message domain types
  */
 
-import type { Message } from "@/lib/types/index";
+import type { Message } from '@/lib/types/index';
 
 export interface MessageWithDetails {
   id: string;

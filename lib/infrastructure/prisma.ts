@@ -1,8 +1,8 @@
-import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
-import { neonConfig } from "@neondatabase/serverless";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import ws from "ws";
+import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
+import { neonConfig } from '@neondatabase/serverless';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import ws from 'ws';
 
 neonConfig.webSocketConstructor = ws;
 
@@ -14,23 +14,19 @@ function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {
-    throw new Error("DATABASE_URL is not defined in environment variables");
+    throw new Error('DATABASE_URL is not defined in environment variables');
   }
 
   const adapter = new PrismaNeon({ connectionString });
 
   return new PrismaClient({
     adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["error", "warn", "query"]
-        : ["error"],
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn', 'query'] : ['error'],
   });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
-

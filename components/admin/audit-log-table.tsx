@@ -1,11 +1,18 @@
-"use client";
+'use client';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
-import TimeAgo from "@/components/ui/TimeAgo";
-import { cn } from "@/lib/utils/cn";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { MoreHorizontal } from 'lucide-react';
+import TimeAgo from '@/components/ui/TimeAgo';
+import { cn } from '@/lib/utils/cn';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface AuditLogEntry {
   id: string;
@@ -21,22 +28,20 @@ interface AuditLogTableProps {
 }
 
 const actionColors: Record<string, string> = {
-  MESSAGE_DELETED: "bg-red-500/20 text-red-400",
-  USER_BANNED: "bg-red-500/20 text-red-400",
-  USER_WARNED: "bg-orange-500/20 text-orange-400",
-  USER_SUSPENDED: "bg-orange-500/20 text-orange-400",
-  REPORT_RESOLVED: "bg-green-500/20 text-green-400",
-  REPORT_DISMISSED: "bg-zinc-500/20 text-zinc-400",
-  APPEAL_APPROVED: "bg-green-500/20 text-green-400",
-  APPEAL_DENIED: "bg-red-500/20 text-red-400",
+  MESSAGE_DELETED: 'bg-red-500/20 text-red-400',
+  USER_BANNED: 'bg-red-500/20 text-red-400',
+  USER_WARNED: 'bg-orange-500/20 text-orange-400',
+  USER_SUSPENDED: 'bg-orange-500/20 text-orange-400',
+  REPORT_RESOLVED: 'bg-green-500/20 text-green-400',
+  REPORT_DISMISSED: 'bg-zinc-500/20 text-zinc-400',
+  APPEAL_APPROVED: 'bg-green-500/20 text-green-400',
+  APPEAL_DENIED: 'bg-red-500/20 text-red-400',
 };
 
 export function AuditLogTable({ entries }: AuditLogTableProps) {
   if (entries.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No recent moderation actions
-      </div>
+      <div className="text-center py-8 text-muted-foreground">No recent moderation actions</div>
     );
   }
 
@@ -49,9 +54,7 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
             <TableHead className="text-muted-foreground">Action</TableHead>
             <TableHead className="text-muted-foreground">Category</TableHead>
             <TableHead className="text-muted-foreground">Target</TableHead>
-            <TableHead className="text-muted-foreground">
-              Performed By
-            </TableHead>
+            <TableHead className="text-muted-foreground">Performed By</TableHead>
             <TableHead className="text-right text-muted-foreground"></TableHead>
           </TableRow>
         </TableHeader>
@@ -64,23 +67,16 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
               <TableCell>
                 <Badge
                   className={cn(
-                    "text-xs",
-                    actionColors[entry.action] ||
-                      "bg-muted text-muted-foreground"
+                    'text-xs',
+                    actionColors[entry.action] || 'bg-muted text-muted-foreground'
                   )}
                 >
-                  {entry.action.replace(/_/g, " ")}
+                  {entry.action.replace(/_/g, ' ')}
                 </Badge>
               </TableCell>
-              <TableCell className="text-sm text-foreground">
-                {entry.category}
-              </TableCell>
-              <TableCell className="text-sm text-foreground">
-                {entry.target}
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {entry.performedBy}
-              </TableCell>
+              <TableCell className="text-sm text-foreground">{entry.category}</TableCell>
+              <TableCell className="text-sm text-foreground">{entry.target}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">{entry.performedBy}</TableCell>
               <TableCell className="text-right">
                 <Button variant="ghost" size="icon" className="h-8 w-8">
                   <MoreHorizontal className="w-4 h-4" />

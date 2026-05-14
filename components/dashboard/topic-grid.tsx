@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import { TopicCard } from "@/components/dashboard/topic-card";
+import { motion } from 'framer-motion';
+import { TopicCard } from '@/components/dashboard/topic-card';
 
 interface Topic {
   id: string;
@@ -24,14 +24,14 @@ const container = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
-    }
-  }
+      staggerChildren: 0.1,
+    },
+  },
 };
 
 const item = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
+  show: { opacity: 1, y: 0 },
 };
 
 export function TopicGrid({ topics }: TopicGridProps) {
@@ -39,15 +39,13 @@ export function TopicGrid({ topics }: TopicGridProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-lg font-semibold text-slate-900">No topics found</p>
-        <p className="text-slate-500">
-          Try adjusting your search or create a new topic.
-        </p>
+        <p className="text-slate-500">Try adjusting your search or create a new topic.</p>
       </div>
     );
   }
 
   return (
-    <motion.div 
+    <motion.div
       variants={container}
       initial="hidden"
       animate="show"

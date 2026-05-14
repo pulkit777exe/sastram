@@ -15,19 +15,20 @@ class Logger {
 
     const timestamp = new Date().toISOString();
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
+    const context = args.length > 0 ? Object.assign({}, ...args) : undefined;
 
     switch (level) {
       case 'error':
-        console.error(prefix, message, ...args);
+        console.error(prefix, message, context);
         break;
       case 'warn':
-        console.warn(prefix, message, ...args);
+        console.warn(prefix, message, context);
         break;
       case 'info':
-        console.info(prefix, message, ...args);
+        console.info(prefix, message, context);
         break;
       case 'debug':
-        console.log(prefix, message, ...args);
+        console.log(prefix, message, context);
         break;
     }
   }
@@ -50,4 +51,3 @@ class Logger {
 }
 
 export const logger = new Logger();
-

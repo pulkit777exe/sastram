@@ -1,10 +1,10 @@
-import Image from "next/image";
-import Link from "next/link";
-import { isAdmin } from "@/modules/auth/session";
-import { getSession } from "@/modules/auth/session";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings } from "lucide-react";
+import Image from 'next/image';
+import Link from 'next/link';
+import { isAdmin } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth/session';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Settings } from 'lucide-react';
 
 export default async function ProfilePage() {
   const session = await getSession();
@@ -26,7 +26,7 @@ export default async function ProfilePage() {
         <CardContent className="flex flex-col gap-6 p-0 md:flex-row md:items-center">
           <div className="flex h-20 w-20 items-center justify-center bg-secondary overflow-hidden rounded-full">
             {user.image ? (
-              <Image src={user.image} alt={user.name ?? "Avatar"} width={80} height={80} />
+              <Image src={user.image} alt={user.name ?? 'Avatar'} width={80} height={80} />
             ) : (
               <span className="text-2xl font-semibold">
                 {(user.name || user.email)[0]?.toUpperCase()}
@@ -35,9 +35,7 @@ export default async function ProfilePage() {
           </div>
           <div className="flex-1">
             <p className="text-sm uppercase tracking-widest">Profile</p>
-            <h1 className="mt-2 text-2xl font-semibold">
-              {user.name || "Unnamed"}
-            </h1>
+            <h1 className="mt-2 text-2xl font-semibold">{user.name || 'Unnamed'}</h1>
             <p className="text-zinc-500">{user.email}</p>
             <p className="mt-2 inline-flex rounded-full bg-indigo-500/10 text-indigo-400 px-3 py-1 text-xs uppercase tracking-wide border border-indigo-500/20">
               {user.role}
@@ -63,13 +61,17 @@ export default async function ProfilePage() {
         <CardContent className="space-y-4 p-0">
           <h2 className="text-lg font-semibold">Account Information</h2>
           <p className="text-sm text-zinc-500">
-            Manage your profile settings, newsletter subscriptions, and preferences from the Settings page.
+            Manage your profile settings, newsletter subscriptions, and preferences from the
+            Settings page.
           </p>
           <div className="rounded-xl border border-dashed p-6 text-center text-sm text-zinc-600">
-            <Link href="/dashboard/settings" className="text-indigo-400 hover:text-indigo-300 underline">
+            <Link
+              href="/dashboard/settings"
+              className="text-indigo-400 hover:text-indigo-300 underline"
+            >
               Go to Settings
-            </Link>
-            {" "}to update your profile, manage newsletters, and configure notifications.
+            </Link>{' '}
+            to update your profile, manage newsletters, and configure notifications.
           </div>
         </CardContent>
       </Card>

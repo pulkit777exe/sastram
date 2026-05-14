@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { dedupe } from "@/lib/dedupe";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { dedupe } from '@/lib/dedupe';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function recordActivity(data: {
   userId: string;
@@ -20,26 +20,20 @@ export async function recordActivity(data: {
   });
 }
 
-export async function getUserActivity(
-  userId: string,
-  limit: number = 20,
-  offset: number = 0
-) {
+export async function getUserActivity(userId: string, limit: number = 20, offset: number = 0) {
   try {
-    const [activities, total] = await dedupe(
-      `activity:user:${userId}:${limit}:${offset}`,
-      () =>
-        Promise.all([
-          prisma.userActivity.findMany({
-            where: { userId },
-            orderBy: { createdAt: "desc" },
-            take: limit,
-            skip: offset,
-          }),
-          prisma.userActivity.count({
-            where: { userId },
-          }),
-        ]),
+    const [activities, total] = await dedupe(`activity:user:${userId}:${limit}:${offset}`, () =>
+      Promise.all([
+        prisma.userActivity.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          skip: offset,
+        }),
+        prisma.userActivity.count({
+          where: { userId },
+        }),
+      ])
     );
 
     return {
@@ -48,7 +42,7 @@ export async function getUserActivity(
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[getUserActivity]", error);
+    logger.error('[getUserActivity]', error);
     return {
       activities: [],
       total: 0,
@@ -68,7 +62,7 @@ export async function getFollowedUsersActivity(
       prisma.userFollow.findMany({
         where: { followerId: userId },
         select: { followingId: true },
-      }),
+      })
     );
 
     const followingIds = (following ?? []).map((f) => f.followingId);
@@ -81,35 +75,33 @@ export async function getFollowedUsersActivity(
       };
     }
 
-    const [activities, total] = await dedupe(
-      `activity:followed:${userId}:${limit}:${offset}`,
-      () =>
-        Promise.all([
-          prisma.userActivity.findMany({
-            where: {
-              userId: { in: followingIds },
-            },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                  avatarUrl: true,
-                },
+    const [activities, total] = await dedupe(`activity:followed:${userId}:${limit}:${offset}`, () =>
+      Promise.all([
+        prisma.userActivity.findMany({
+          where: {
+            userId: { in: followingIds },
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                avatarUrl: true,
               },
             },
-            orderBy: { createdAt: "desc" },
-            take: limit,
-            skip: offset,
-          }),
-          prisma.userActivity.count({
-            where: {
-              userId: { in: followingIds },
-            },
-          }),
-        ]),
+          },
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          skip: offset,
+        }),
+        prisma.userActivity.count({
+          where: {
+            userId: { in: followingIds },
+          },
+        }),
+      ])
     );
 
     return {
@@ -118,7 +110,7 @@ export async function getFollowedUsersActivity(
       hasMore: offset + limit < total,
     };
   } catch (error) {
-    logger.error("[getFollowedUsersActivity]", error);
+    logger.error('[getFollowedUsersActivity]', error);
     return {
       activities: [],
       total: 0,

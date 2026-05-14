@@ -1,33 +1,33 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Sparkles } from "lucide-react";
-import type { ConflictInfo } from "@/modules/ai-search/types";
+import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Sparkles } from 'lucide-react';
+import type { ConflictInfo } from '@/modules/ai-search/types';
 
 interface SynthesisCardProps {
   content: string;
   conflictData?: ConflictInfo;
   confidence: number;
   sourceCount: number;
-  queryType: "factual" | "opinion" | "technical" | "comparison";
+  queryType: 'factual' | 'opinion' | 'technical' | 'comparison';
 }
 
 const QUERY_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   factual: {
-    label: "Factual",
-    color: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+    label: 'Factual',
+    color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
   },
   opinion: {
-    label: "Opinion",
-    color: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
+    label: 'Opinion',
+    color: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
   },
   technical: {
-    label: "Technical",
-    color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    label: 'Technical',
+    color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
   },
   comparison: {
-    label: "Comparison",
-    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+    label: 'Comparison',
+    color: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   },
 };
 
@@ -38,7 +38,7 @@ export function SynthesisCard({
   sourceCount,
   queryType,
 }: SynthesisCardProps) {
-  const [displayedContent, setDisplayedContent] = useState("");
+  const [displayedContent, setDisplayedContent] = useState('');
   const [isStreaming, setIsStreaming] = useState(Boolean(content));
   const containerRef = useRef<HTMLDivElement>(null);
   const charIndex = useRef(0);
@@ -73,8 +73,7 @@ export function SynthesisCard({
     };
   }, [content]);
 
-  const typeConfig =
-    QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
+  const typeConfig = QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
 
   // Handle empty content
   if (!content) {
@@ -98,19 +97,15 @@ export function SynthesisCard({
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-indigo-400" />
-          <span className="text-sm font-semibold text-foreground">
-            AI Synthesis
-          </span>
+          <span className="text-sm font-semibold text-foreground">AI Synthesis</span>
           <span className="text-xs text-muted-foreground">
-            · {sourceCount} source{sourceCount !== 1 ? "s" : ""}
+            · {sourceCount} source{sourceCount !== 1 ? 's' : ''}
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Query type badge */}
-          <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${typeConfig.color}`}
-          >
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${typeConfig.color}`}>
             {typeConfig.label}
           </span>
 
@@ -123,10 +118,10 @@ export function SynthesisCard({
                   width: `${confidence}%`,
                   backgroundColor:
                     confidence > 70
-                      ? "var(--color-foreground)"
+                      ? 'var(--color-foreground)'
                       : confidence > 40
-                        ? "hsl(35, 90%, 55%)"
-                        : "hsl(0, 70%, 55%)",
+                        ? 'hsl(35, 90%, 55%)'
+                        : 'hsl(0, 70%, 55%)',
                 }}
               />
             </div>
@@ -138,10 +133,7 @@ export function SynthesisCard({
       </div>
 
       {/* Content */}
-      <div
-        ref={containerRef}
-        className="px-5 pb-4 max-h-[400px] overflow-y-auto"
-      >
+      <div ref={containerRef} className="px-5 pb-4 max-h-[400px] overflow-y-auto">
         <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
           {displayedContent}
           {isStreaming && (
@@ -154,17 +146,12 @@ export function SynthesisCard({
       {conflictData?.detected && !isStreaming && (
         <div className="mx-5 mb-4 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
           <div className="flex items-start gap-2">
-            <AlertTriangle
-              size={14}
-              className="text-amber-500 mt-0.5 shrink-0"
-            />
+            <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <div className="text-xs">
               <p className="font-medium text-amber-600 dark:text-amber-400 mb-1">
                 Conflict Detected
               </p>
-              <p className="text-muted-foreground mb-1">
-                {conflictData.description}
-              </p>
+              <p className="text-muted-foreground mb-1">{conflictData.description}</p>
               {conflictData.sideA && (
                 <p className="text-foreground/70">
                   <strong>Side A:</strong> {conflictData.sideA}

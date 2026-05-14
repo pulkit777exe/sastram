@@ -1,35 +1,33 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { Search, Command, Bell } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { usePathname } from "next/navigation";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { SearchDialog } from "./search-dialog";
-import { useBootstrap } from "@/components/bootstrap-provider";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import * as React from 'react';
+import { Search, Command, Bell } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { usePathname } from 'next/navigation';
+import { AnimatedIcon } from '@/components/ui/animated-icon';
+import { SearchDialog } from './search-dialog';
+import { useBootstrap } from '@/components/bootstrap-provider';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 export function DashboardHeader() {
   const pathname = usePathname();
-  const segments = pathname.split("/").filter(Boolean);
-  const breadcrumbs = segments.map(
-    (segment) => segment.charAt(0).toUpperCase() + segment.slice(1),
-  );
+  const segments = pathname.split('/').filter(Boolean);
+  const breadcrumbs = segments.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1));
   const [open, setOpen] = React.useState(false);
   const { data: bootstrapData } = useBootstrap();
   const unreadCount = bootstrapData?.unreadNotificationCount ?? 0;
-  const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
+  const unreadLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((open) => !open);
       }
     };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
   }, []);
 
   return (
@@ -39,11 +37,7 @@ export function DashboardHeader() {
           {breadcrumbs.map((crumb, index) => (
             <div key={crumb} className="flex items-center gap-2">
               <span
-                className={
-                  index === breadcrumbs.length - 1
-                    ? "font-semibold text-foreground"
-                    : ""
-                }
+                className={index === breadcrumbs.length - 1 ? 'font-semibold text-foreground' : ''}
               >
                 {crumb}
               </span>
@@ -66,10 +60,7 @@ export function DashboardHeader() {
               </Badge>
             )}
           </Link>
-          <div
-            className="relative hidden md:block cursor-pointer"
-            onClick={() => setOpen(true)}
-          >
+          <div className="relative hidden md:block cursor-pointer" onClick={() => setOpen(true)}>
             <AnimatedIcon
               icon={Search}
               className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"

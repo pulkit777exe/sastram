@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import TimeAgo from "@/components/ui/TimeAgo";
+import TimeAgo from '@/components/ui/TimeAgo';
 
 interface TimeAgoProps {
   date: Date | string;

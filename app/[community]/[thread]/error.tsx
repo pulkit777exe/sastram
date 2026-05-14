@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 
 interface ThreadErrorProps {
   error: Error & { digest?: string };
@@ -18,7 +18,7 @@ export default function ThreadError({ error, reset }: ThreadErrorProps) {
         </h1>
         <p className="mt-[8px] text-[14px] text-muted">
           {error?.message ||
-            "Something went wrong while loading this discussion. You can try again or go back to the previous page."}
+            'Something went wrong while loading this discussion. You can try again or go back to the previous page.'}
         </p>
 
         <div className="mt-[20px] flex justify-center gap-[12px]">
@@ -41,4 +41,3 @@ export default function ThreadError({ error, reset }: ThreadErrorProps) {
     </div>
   );
 }
-

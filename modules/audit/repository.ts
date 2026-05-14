@@ -1,14 +1,15 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { logger } from "@/lib/infrastructure/logger";
+import { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 
-export type UserActivityDetails = Record<string, unknown> | null;
+export type AuditEventDetails = Prisma.InputJsonValue | null;
 
 interface LogActionParams {
   action: string;
   entityType: string;
   entityId: string;
-  userId?: string;
-  details?: UserActivityDetails;
+  userId: string;
+  details?: AuditEventDetails;
 }
 
 interface UserActivityFilters {
@@ -31,6 +32,30 @@ async function safeList<T>(label: string, query: () => Promise<T[]>): Promise<T[
   }
 }
 
+function buildCreatedAtRange(filters?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Prisma.DateTimeFilter | undefined {
+  if (!filters?.startDate && !filters?.endDate) {
+    return undefined;
+  }
+
+  return {
+    gte: filters.startDate,
+    lte: filters.endDate,
+  };
+}
+
+function buildUserActivityWhere(filters?: UserActivityFilters): Prisma.UserActivityWhereInput {
+  return {
+    type: filters?.action,
+    entityType: filters?.entityType,
+    entityId: filters?.entityId,
+    userId: filters?.userId,
+    createdAt: buildCreatedAtRange(filters),
+  };
+}
+
 export async function logAction({
   action,
   entityType,
@@ -40,34 +65,19 @@ export async function logAction({
 }: LogActionParams) {
   return prisma.userActivity.create({
     data: {
-      userId: userId!,
+      userId,
       type: action,
       entityType,
       entityId,
-      metadata: details as any,
+      metadata: details ?? Prisma.JsonNull,
     },
   });
 }
 
 export async function getUserActivities(filters?: UserActivityFilters) {
-  const where: any = {};
-
-  if (filters) {
-    if (filters.action) where.type = filters.action;
-    if (filters.entityType) where.entityType = filters.entityType;
-    if (filters.entityId) where.entityId = filters.entityId;
-    if (filters.userId) where.userId = filters.userId;
-
-    if (filters.startDate || filters.endDate) {
-      where.createdAt = {};
-      if (filters.startDate) where.createdAt.gte = filters.startDate;
-      if (filters.endDate) where.createdAt.lte = filters.endDate;
-    }
-  }
-
-  return safeList("[getUserActivities]", () =>
+  return safeList('[getUserActivities]', () =>
     prisma.userActivity.findMany({
-      where,
+      where: buildUserActivityWhere(filters),
       include: {
         user: {
           select: {
@@ -79,16 +89,16 @@ export async function getUserActivities(filters?: UserActivityFilters) {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
-      take: filters?.limit || 100,
-      skip: filters?.offset || 0,
-    }),
+      take: filters?.limit ?? 100,
+      skip: filters?.offset ?? 0,
+    })
   );
 }
 
 export async function getEntityHistory(entityType: string, entityId: string) {
-  return safeList("[getEntityHistory]", () =>
+  return safeList('[getEntityHistory]', () =>
     prisma.userActivity.findMany({
       where: {
         entityType,
@@ -105,18 +115,14 @@ export async function getEntityHistory(entityType: string, entityId: string) {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
-    }),
+    })
   );
 }
 
-export async function getUserActivity(
-  userId: string,
-  limit: number = 50,
-  offset: number = 0
-) {
-  return safeList("[getUserActivity]", () =>
+export async function getUserActivity(userId: string, limit = 50, offset = 0) {
+  return safeList('[getUserActivity]', () =>
     prisma.userActivity.findMany({
       where: {
         userId,
@@ -131,11 +137,11 @@ export async function getUserActivity(
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       take: limit,
       skip: offset,
-    }),
+    })
   );
 }
 
@@ -144,29 +150,22 @@ export async function getUserActivityStats(filters?: {
   endDate?: Date;
   entityType?: string;
 }) {
-  const where: any = {};
-
-  if (filters?.startDate || filters?.endDate) {
-    where.createdAt = {};
-    if (filters.startDate) where.createdAt.gte = filters.startDate;
-    if (filters.endDate) where.createdAt.lte = filters.endDate;
-  }
-
-  if (filters?.entityType) {
-    where.entityType = filters.entityType;
-  }
+  const where: Prisma.UserActivityWhereInput = {
+    createdAt: buildCreatedAtRange(filters),
+    entityType: filters?.entityType,
+  };
 
   const [totalCount, actionBreakdown, entityTypeBreakdown] = await Promise.all([
     prisma.userActivity.count({ where }),
     prisma.userActivity.groupBy({
-      by: ["type"],
+      by: ['type'],
       where,
       _count: {
         type: true,
       },
     }),
     prisma.userActivity.groupBy({
-      by: ["entityType"],
+      by: ['entityType'],
       where,
       _count: {
         entityType: true,
@@ -187,42 +186,26 @@ export async function getUserActivityStats(filters?: {
   };
 }
 
-export async function getMostActiveUsers(
-  limit: number = 10,
-  startDate?: Date,
-  endDate?: Date
-) {
-  const where: any = {};
-
-  if (startDate || endDate) {
-    where.createdAt = {};
-    if (startDate) where.createdAt.gte = startDate;
-    if (endDate) where.createdAt.lte = endDate;
-  }
-
+export async function getMostActiveUsers(limit = 10, startDate?: Date, endDate?: Date) {
   const userActivity = await prisma.userActivity.groupBy({
-    by: ["userId"],
+    by: ['userId'],
     where: {
-      ...where,
-      userId: { not: null },
+      createdAt: buildCreatedAtRange({ startDate, endDate }),
     },
     _count: {
       userId: true,
     },
     orderBy: {
       _count: {
-        userId: "desc",
+        userId: 'desc',
       },
     },
     take: limit,
   });
 
-  // Fetch user details
-  const userIds = userActivity
-    .map((item) => item.userId)
-    .filter((id): id is string => id !== null);
+  const userIds = userActivity.map((item) => item.userId);
 
-  const users = await safeList("[getMostActiveUsers:users]", () =>
+  const users = await safeList('[getMostActiveUsers:users]', () =>
     prisma.user.findMany({
       where: {
         id: { in: userIds },
@@ -233,43 +216,31 @@ export async function getMostActiveUsers(
         email: true,
         avatarUrl: true,
       },
-    }),
+    })
   );
 
   const userMap = new Map(users.map((user) => [user.id, user]));
 
-  return userActivity
-    .filter((item) => item.userId !== null)
-    .map((item) => ({
-      user: userMap.get(item.userId!),
-      actionCount: item._count.userId,
-    }));
+  return userActivity.map((item) => ({
+    user: userMap.get(item.userId),
+    actionCount: item._count.userId,
+  }));
 }
 
 export async function searchUserActivities(
   searchTerm: string,
-  filters?: Omit<UserActivityFilters, "limit" | "offset">,
-  limit: number = 50
+  filters?: Omit<UserActivityFilters, 'limit' | 'offset'>,
+  limit = 50
 ) {
-  const where: any = {
+  const where: Prisma.UserActivityWhereInput = {
+    ...buildUserActivityWhere(filters),
     OR: [
-      { entityId: { contains: searchTerm, mode: "insensitive" } },
-      { entityType: { contains: searchTerm, mode: "insensitive" } },
+      { entityId: { contains: searchTerm, mode: 'insensitive' } },
+      { entityType: { contains: searchTerm, mode: 'insensitive' } },
     ],
   };
 
-  // Add additional filters
-  if (filters?.action) where.type = filters.action;
-  if (filters?.entityType) where.entityType = filters.entityType;
-  if (filters?.userId) where.userId = filters.userId;
-
-  if (filters?.startDate || filters?.endDate) {
-    where.createdAt = {};
-    if (filters.startDate) where.createdAt.gte = filters.startDate;
-    if (filters.endDate) where.createdAt.lte = filters.endDate;
-  }
-
-  return safeList("[searchUserActivities]", () =>
+  return safeList('[searchUserActivities]', () =>
     prisma.userActivity.findMany({
       where,
       include: {
@@ -282,14 +253,14 @@ export async function searchUserActivities(
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       take: limit,
-    }),
+    })
   );
 }
 
-export async function cleanupOldUserActivities(daysToKeep: number = 90) {
+export async function cleanupOldUserActivities(daysToKeep = 90) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 

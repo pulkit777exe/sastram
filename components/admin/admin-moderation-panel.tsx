@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -14,51 +14,43 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Trash2, Ban, AlertTriangle, Users, MessageSquare } from "lucide-react";
-import {
-  deleteThread,
-  deleteCommunity,
-  banUser,
-} from "@/modules/moderation/actions";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import type { ThreadSummary } from "@/modules/threads/types";
-import type { CommunitySummary } from "@/modules/communities/types";
+} from '@/components/ui/select';
+import { Trash2, Ban, AlertTriangle, Users, MessageSquare } from 'lucide-react';
+import { deleteThread, deleteCommunity, banUser } from '@/modules/moderation/actions';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import type { ThreadSummary } from '@/modules/threads/types';
+import type { CommunitySummary } from '@/modules/communities/types';
 
 interface AdminModerationPanelProps {
   threads: ThreadSummary[];
   communities: CommunitySummary[];
 }
 
-export function AdminModerationPanel({
-  threads,
-  communities,
-}: AdminModerationPanelProps) {
+export function AdminModerationPanel({ threads, communities }: AdminModerationPanelProps) {
   const router = useRouter();
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [deleteThreadDialogOpen, setDeleteThreadDialogOpen] = useState(false);
-  const [deleteCommunityDialogOpen, setDeleteCommunityDialogOpen] =
-    useState(false);
-  const [selectedThread, setSelectedThread] = useState<string>("");
-  const [selectedCommunity, setSelectedCommunity] = useState<string>("");
-  const [banReason, setBanReason] = useState<string>("");
-  const [banCustomReason, setBanCustomReason] = useState<string>("");
-  const [banUserId, setBanUserId] = useState<string>("");
-  const [banThreadId, setBanThreadId] = useState<string>("");
-  const [deleteReason, setDeleteReason] = useState<string>("");
+  const [deleteCommunityDialogOpen, setDeleteCommunityDialogOpen] = useState(false);
+  const [selectedThread, setSelectedThread] = useState<string>('');
+  const [selectedCommunity, setSelectedCommunity] = useState<string>('');
+  const [banReason, setBanReason] = useState<string>('');
+  const [banCustomReason, setBanCustomReason] = useState<string>('');
+  const [banUserId, setBanUserId] = useState<string>('');
+  const [banThreadId, setBanThreadId] = useState<string>('');
+  const [deleteReason, setDeleteReason] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   async function handleBanUser() {
     if (!banUserId || !banReason) {
-      toast.error("Please fill in all required fields");
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -73,12 +65,12 @@ export function AdminModerationPanel({
     if (result?.error) {
       toast.error(result.error);
     } else {
-      toast.success("User banned successfully");
+      toast.success('User banned successfully');
       setBanDialogOpen(false);
-      setBanUserId("");
-      setBanThreadId("");
-      setBanReason("");
-      setBanCustomReason("");
+      setBanUserId('');
+      setBanThreadId('');
+      setBanReason('');
+      setBanCustomReason('');
       router.refresh();
     }
     setLoading(false);
@@ -86,23 +78,20 @@ export function AdminModerationPanel({
 
   async function handleDeleteThread() {
     if (!selectedThread) {
-      toast.error("Please select a thread");
+      toast.error('Please select a thread');
       return;
     }
 
     setLoading(true);
-    const result = await deleteThread(
-      selectedThread,
-      deleteReason || undefined
-    );
+    const result = await deleteThread(selectedThread, deleteReason || undefined);
 
     if (result?.error) {
       toast.error(result.error);
     } else {
-      toast.success("Thread deleted successfully");
+      toast.success('Thread deleted successfully');
       setDeleteThreadDialogOpen(false);
-      setSelectedThread("");
-      setDeleteReason("");
+      setSelectedThread('');
+      setDeleteReason('');
       router.refresh();
     }
     setLoading(false);
@@ -110,23 +99,20 @@ export function AdminModerationPanel({
 
   async function handleDeleteCommunity() {
     if (!selectedCommunity) {
-      toast.error("Please select a community");
+      toast.error('Please select a community');
       return;
     }
 
     setLoading(true);
-    const result = await deleteCommunity(
-      selectedCommunity,
-      deleteReason || undefined
-    );
+    const result = await deleteCommunity(selectedCommunity, deleteReason || undefined);
 
     if (result?.error) {
       toast.error(result.error);
     } else {
-      toast.success("Community deleted successfully");
+      toast.success('Community deleted successfully');
       setDeleteCommunityDialogOpen(false);
-      setSelectedCommunity("");
-      setDeleteReason("");
+      setSelectedCommunity('');
+      setDeleteReason('');
       router.refresh();
     }
     setLoading(false);
@@ -156,8 +142,8 @@ export function AdminModerationPanel({
               <DialogHeader>
                 <DialogTitle>Ban User</DialogTitle>
                 <DialogDescription>
-                  Enter user ID and select ban reason. You can ban from a
-                  specific thread or globally.
+                  Enter user ID and select ban reason. You can ban from a specific thread or
+                  globally.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -172,9 +158,7 @@ export function AdminModerationPanel({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="ban-thread">
-                    Thread (Optional - leave empty for global ban)
-                  </Label>
+                  <Label htmlFor="ban-thread">Thread (Optional - leave empty for global ban)</Label>
                   <Select value={banThreadId} onValueChange={setBanThreadId}>
                     <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select thread (optional)" />
@@ -199,12 +183,8 @@ export function AdminModerationPanel({
                       <SelectItem value="SPAM">Spam</SelectItem>
                       <SelectItem value="HARASSMENT">Harassment</SelectItem>
                       <SelectItem value="HATE_SPEECH">Hate Speech</SelectItem>
-                      <SelectItem value="ILLEGAL_CONTENT">
-                        Illegal Content
-                      </SelectItem>
-                      <SelectItem value="IMPERSONATION">
-                        Impersonation
-                      </SelectItem>
+                      <SelectItem value="ILLEGAL_CONTENT">Illegal Content</SelectItem>
+                      <SelectItem value="IMPERSONATION">Impersonation</SelectItem>
                       <SelectItem value="THREATS">Threats</SelectItem>
                       <SelectItem value="DOXXING">Doxxing</SelectItem>
                       <SelectItem value="OTHER">Other</SelectItem>
@@ -212,9 +192,7 @@ export function AdminModerationPanel({
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="ban-custom-reason">
-                    Custom Reason (Optional)
-                  </Label>
+                  <Label htmlFor="ban-custom-reason">Custom Reason (Optional)</Label>
                   <Textarea
                     id="ban-custom-reason"
                     value={banCustomReason}
@@ -226,10 +204,7 @@ export function AdminModerationPanel({
                 </div>
               </div>
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setBanDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setBanDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button
@@ -237,7 +212,7 @@ export function AdminModerationPanel({
                   onClick={handleBanUser}
                   disabled={loading || !banUserId || !banReason}
                 >
-                  {loading ? "Banning..." : "Ban User"}
+                  {loading ? 'Banning...' : 'Ban User'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -256,10 +231,7 @@ export function AdminModerationPanel({
           <p className="text-sm text-muted-foreground mb-4">
             Permanently delete a thread and all its messages.
           </p>
-          <Dialog
-            open={deleteThreadDialogOpen}
-            onOpenChange={setDeleteThreadDialogOpen}
-          >
+          <Dialog open={deleteThreadDialogOpen} onOpenChange={setDeleteThreadDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="destructive" className="w-full">
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -270,17 +242,13 @@ export function AdminModerationPanel({
               <DialogHeader>
                 <DialogTitle>Delete Thread</DialogTitle>
                 <DialogDescription>
-                  This action cannot be undone. All messages in this thread will
-                  be deleted.
+                  This action cannot be undone. All messages in this thread will be deleted.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="delete-thread">Select Thread</Label>
-                  <Select
-                    value={selectedThread}
-                    onValueChange={setSelectedThread}
-                  >
+                  <Select value={selectedThread} onValueChange={setSelectedThread}>
                     <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select thread to delete" />
                     </SelectTrigger>
@@ -294,9 +262,7 @@ export function AdminModerationPanel({
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="delete-thread-reason">
-                    Reason (Optional)
-                  </Label>
+                  <Label htmlFor="delete-thread-reason">Reason (Optional)</Label>
                   <Textarea
                     id="delete-thread-reason"
                     value={deleteReason}
@@ -308,10 +274,7 @@ export function AdminModerationPanel({
                 </div>
               </div>
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setDeleteThreadDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setDeleteThreadDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button
@@ -319,7 +282,7 @@ export function AdminModerationPanel({
                   onClick={handleDeleteThread}
                   disabled={loading || !selectedThread}
                 >
-                  {loading ? "Deleting..." : "Delete Thread"}
+                  {loading ? 'Deleting...' : 'Delete Thread'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -338,10 +301,7 @@ export function AdminModerationPanel({
           <p className="text-sm text-muted-foreground mb-4">
             Permanently delete a community and all its threads.
           </p>
-          <Dialog
-            open={deleteCommunityDialogOpen}
-            onOpenChange={setDeleteCommunityDialogOpen}
-          >
+          <Dialog open={deleteCommunityDialogOpen} onOpenChange={setDeleteCommunityDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="destructive" className="w-full">
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -352,17 +312,13 @@ export function AdminModerationPanel({
               <DialogHeader>
                 <DialogTitle>Delete Community</DialogTitle>
                 <DialogDescription>
-                  This action cannot be undone. All threads in this community
-                  will be deleted.
+                  This action cannot be undone. All threads in this community will be deleted.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="delete-community">Select Community</Label>
-                  <Select
-                    value={selectedCommunity}
-                    onValueChange={setSelectedCommunity}
-                  >
+                  <Select value={selectedCommunity} onValueChange={setSelectedCommunity}>
                     <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select community to delete" />
                     </SelectTrigger>
@@ -376,9 +332,7 @@ export function AdminModerationPanel({
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="delete-community-reason">
-                    Reason (Optional)
-                  </Label>
+                  <Label htmlFor="delete-community-reason">Reason (Optional)</Label>
                   <Textarea
                     id="delete-community-reason"
                     value={deleteReason}
@@ -390,10 +344,7 @@ export function AdminModerationPanel({
                 </div>
               </div>
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setDeleteCommunityDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setDeleteCommunityDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button
@@ -401,7 +352,7 @@ export function AdminModerationPanel({
                   onClick={handleDeleteCommunity}
                   disabled={loading || !selectedCommunity}
                 >
-                  {loading ? "Deleting..." : "Delete Community"}
+                  {loading ? 'Deleting...' : 'Delete Community'}
                 </Button>
               </DialogFooter>
             </DialogContent>

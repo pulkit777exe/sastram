@@ -11,4 +11,3 @@ export interface UserActivity {
   metadata: any;
   createdAt: Date;
 }
-

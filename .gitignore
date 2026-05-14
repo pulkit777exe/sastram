@@ -32,12 +32,17 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env
+.env.local
+.env.*.local
 
 # vercel
 .vercel
+.gstack/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 skills
 /lib/generated/prisma
+# Sentry Config File
+.env.sentry-build-plugin

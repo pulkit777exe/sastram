@@ -37,19 +37,19 @@ export async function resolveUserMentions(
   if (usernames.length === 0) return [];
 
   // Separate emails from usernames
-  const emails = usernames.filter((u) => u.includes("@"));
-  const names = usernames.filter((u) => !u.includes("@"));
+  const emails = usernames.filter((u) => u.includes('@'));
+  const names = usernames.filter((u) => !u.includes('@'));
 
   const where: any = {
     OR: [],
   };
 
   if (names.length > 0) {
-    where.OR.push({ name: { in: names, mode: "insensitive" } });
+    where.OR.push({ name: { in: names, mode: 'insensitive' } });
   }
 
   if (emails.length > 0) {
-    where.OR.push({ email: { in: emails, mode: "insensitive" } });
+    where.OR.push({ email: { in: emails, mode: 'insensitive' } });
   }
 
   if (where.OR.length === 0) return [];
@@ -85,7 +85,7 @@ export function extractReplyContext(content: string): {
   if (match && match[1]) {
     return {
       parentId: match[1],
-      cleanContent: content.replace(replyRegex, "").trim(),
+      cleanContent: content.replace(replyRegex, '').trim(),
     };
   }
 
@@ -94,4 +94,3 @@ export function extractReplyContext(content: string): {
     cleanContent: content,
   };
 }
-

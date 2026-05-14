@@ -1,82 +1,95 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/infrastructure/prisma";
-import { requireSession } from "@/modules/auth/session";
-import { revalidatePath } from "next/cache";
-import {
-  addReaction,
-  removeReaction,
-  getMessageReactions,
-} from "@/modules/reactions/repository";
-import { emitReactionUpdate } from "@/modules/ws/publisher";
-import { toggleReactionSchema, getReactionSummarySchema } from "./schemas";
+import { z } from 'zod';
+import { logger } from '@/lib/infrastructure/logger';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { requireSession } from '@/modules/auth/session';
+import { revalidatePath } from 'next/cache';
+import { addReaction, removeReaction, getMessageReactions } from '@/modules/reactions/repository';
+import { emitReactionUpdate } from '@/modules/ws/publisher';
+import { createServerAction } from '@/lib/utils/server-action';
+import { messageIdSchema, threadIdSchema } from '@/lib/utils/validation-common';
 
-export async function toggleReaction(messageId: string, emoji: string) {
-  const parsed = toggleReactionSchema.safeParse({ messageId, emoji });
-  if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
-  }
+const toggleReactionSchema = z.object({
+  messageId: z.string().cuid(),
+  emoji: z.string().min(1),
+});
 
-  try {
+const getReactionSummarySchema = z.object({
+  messageId: z.string().cuid(),
+});
+
+export const toggleReaction = createServerAction(
+  { schema: toggleReactionSchema, actionName: 'toggleReaction' },
+  async ({ messageId, emoji }) => {
     const session = await requireSession();
 
-    // Check if user already reacted with this emoji
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      select: { sectionId: true },
+    });
+
+    if (!message) {
+      return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+    }
+
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: message.sectionId, userId: session.user.id } },
+    });
+    if (!isMember) {
+      return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
+    }
+
     const existing = await prisma.reaction.findFirst({
-      where: {
-        messageId: parsed.data.messageId,
-        userId: session.user.id,
-        emoji: parsed.data.emoji,
-      },
+      where: { messageId, userId: session.user.id, emoji },
     });
 
     if (existing) {
-      // Remove reaction
-      await removeReaction(parsed.data.messageId, session.user.id, parsed.data.emoji);
+      await removeReaction(messageId, session.user.id, emoji);
     } else {
-      // Add reaction
-      await addReaction(parsed.data.messageId, session.user.id, parsed.data.emoji);
+      await addReaction(messageId, session.user.id, emoji);
     }
 
-    const [message, reactionCounts] = await Promise.all([
-      prisma.message.findUnique({
-        where: { id: parsed.data.messageId },
-        select: { sectionId: true },
-      }),
-      prisma.reaction.groupBy({
-        by: ["emoji"],
-        where: { messageId: parsed.data.messageId },
-        _count: { _all: true },
-      }),
-    ]);
+    const reactionCounts = await prisma.reaction.groupBy({
+      by: ['emoji'],
+      where: { messageId },
+      _count: { _all: true },
+    });
 
-    if (message?.sectionId) {
-      const match = reactionCounts.find((r) => r.emoji === parsed.data.emoji);
-      emitReactionUpdate(message.sectionId, {
-        messageId: parsed.data.messageId,
-        reactionType: parsed.data.emoji,
-        count: match?._count._all ?? 0,
-      });
-    }
+    const match = reactionCounts.find((r) => r.emoji === emoji);
+    emitReactionUpdate(message.sectionId, {
+      messageId,
+      reactionType: emoji,
+      count: match?._count._all ?? 0,
+    });
 
-    revalidatePath("/dashboard/threads");
+    revalidatePath('/dashboard/threads');
     return { data: null, error: null };
-  } catch (error) {
-    console.error("[toggleReaction]", error);
-    return { data: null, error: "Something went wrong" };
   }
-}
+);
 
-export async function getReactionSummary(messageId: string) {
-  const parsed = getReactionSummarySchema.safeParse({ messageId });
-  if (!parsed.success) {
-    return { data: null, error: "Invalid input" };
-  }
+export const getReactionSummary = createServerAction(
+  { schema: getReactionSummarySchema, actionName: 'getReactionSummary' },
+  async ({ messageId }) => {
+    const session = await requireSession();
 
-  try {
-    const reactions = await getMessageReactions(parsed.data.messageId);
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      select: { sectionId: true },
+    });
+
+    if (!message) {
+      return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+    }
+
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: message.sectionId, userId: session.user.id } },
+    });
+    if (!isMember) {
+      return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
+    }
+
+    const reactions = await getMessageReactions(messageId);
     return { data: reactions, error: null };
-  } catch (error) {
-    console.error("[getReactionSummary]", error);
-    return { data: null, error: "Something went wrong" };
   }
-}
+);

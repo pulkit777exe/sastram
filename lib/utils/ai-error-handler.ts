@@ -1,23 +1,23 @@
-import { logger } from "@/lib/infrastructure/logger";
+import { logger } from '@/lib/infrastructure/logger';
 
-export type AIProvider = "exa" | "tavily" | "gemini";
+export type AIProvider = 'exa' | 'tavily' | 'gemini';
 
 export type AIToastKey =
-  | "exaRateLimited"
-  | "tavilyError"
-  | "geminiDown"
-  | "aiUnavailable"
-  | "aiTimeout"
-  | "networkError"
-  | "partialResults";
+  | 'exaRateLimited'
+  | 'tavilyError'
+  | 'geminiDown'
+  | 'aiUnavailable'
+  | 'aiTimeout'
+  | 'networkError'
+  | 'partialResults';
 
 export type AIProviderStatus =
-  | "success"
-  | "rate_limited"
-  | "unavailable"
-  | "timeout"
-  | "network_error"
-  | "error";
+  | 'success'
+  | 'rate_limited'
+  | 'unavailable'
+  | 'timeout'
+  | 'network_error'
+  | 'error';
 
 export interface AIProviderResult<T> {
   provider: AIProvider;
@@ -34,26 +34,23 @@ export interface MultiProviderResult<T> {
   toastKey?: AIToastKey;
 }
 
-function toastKeyForStatus(
-  provider: AIProvider,
-  status: AIProviderStatus,
-): AIToastKey | undefined {
-  if (status === "rate_limited") {
-    return provider === "exa" ? "exaRateLimited" : "aiUnavailable";
+function toastKeyForStatus(provider: AIProvider, status: AIProviderStatus): AIToastKey | undefined {
+  if (status === 'rate_limited') {
+    return provider === 'exa' ? 'exaRateLimited' : 'aiUnavailable';
   }
 
-  if (status === "unavailable") {
-    if (provider === "gemini") return "geminiDown";
-    if (provider === "tavily") return "tavilyError";
-    return "aiUnavailable";
+  if (status === 'unavailable') {
+    if (provider === 'gemini') return 'geminiDown';
+    if (provider === 'tavily') return 'tavilyError';
+    return 'aiUnavailable';
   }
 
-  if (status === "timeout") {
-    return "aiTimeout";
+  if (status === 'timeout') {
+    return 'aiTimeout';
   }
 
-  if (status === "network_error") {
-    return "networkError";
+  if (status === 'network_error') {
+    return 'networkError';
   }
 
   return undefined;
@@ -61,72 +58,71 @@ function toastKeyForStatus(
 
 function normalizeError(
   provider: AIProvider,
-  error: unknown,
+  error: unknown
 ): { status: AIProviderStatus; message: string; toastKey?: AIToastKey } {
-  const message = error instanceof Error ? error.message : "Unknown error";
+  const message = error instanceof Error ? error.message : 'Unknown error';
 
   const axiosLikeStatus =
-    typeof error === "object" &&
+    typeof error === 'object' &&
     error !== null &&
-    "response" in error &&
-    typeof (error as { response?: { status?: unknown } }).response?.status ===
-      "number"
+    'response' in error &&
+    typeof (error as { response?: { status?: unknown } }).response?.status === 'number'
       ? Number((error as { response: { status: number } }).response.status)
       : null;
 
   const statusCode =
     axiosLikeStatus ??
-    (typeof error === "object" &&
+    (typeof error === 'object' &&
     error !== null &&
-    "status" in error &&
-    typeof (error as { status?: unknown }).status === "number"
+    'status' in error &&
+    typeof (error as { status?: unknown }).status === 'number'
       ? Number((error as { status: number }).status)
       : null);
 
   if (statusCode === 429) {
     return {
-      status: "rate_limited",
+      status: 'rate_limited',
       message,
-      toastKey: toastKeyForStatus(provider, "rate_limited"),
+      toastKey: toastKeyForStatus(provider, 'rate_limited'),
     };
   }
 
   if (statusCode === 503) {
     return {
-      status: "unavailable",
+      status: 'unavailable',
       message,
-      toastKey: toastKeyForStatus(provider, "unavailable"),
+      toastKey: toastKeyForStatus(provider, 'unavailable'),
     };
   }
 
-  if (error instanceof DOMException && error.name === "AbortError") {
+  if (error instanceof DOMException && error.name === 'AbortError') {
     return {
-      status: "timeout",
+      status: 'timeout',
       message,
-      toastKey: toastKeyForStatus(provider, "timeout"),
+      toastKey: toastKeyForStatus(provider, 'timeout'),
     };
   }
 
   if (/timeout/i.test(message)) {
     return {
-      status: "timeout",
+      status: 'timeout',
       message,
-      toastKey: toastKeyForStatus(provider, "timeout"),
+      toastKey: toastKeyForStatus(provider, 'timeout'),
     };
   }
 
   if (/network|failed to fetch|enotfound|econnreset|econnrefused/i.test(message)) {
     return {
-      status: "network_error",
+      status: 'network_error',
       message,
-      toastKey: toastKeyForStatus(provider, "network_error"),
+      toastKey: toastKeyForStatus(provider, 'network_error'),
     };
   }
 
   return {
-    status: "error",
+    status: 'error',
     message,
-    toastKey: toastKeyForStatus(provider, "error"),
+    toastKey: toastKeyForStatus(provider, 'error'),
   };
 }
 
@@ -144,7 +140,7 @@ export async function runAIProviderCall<T>(args: {
 
     return {
       provider,
-      status: "success",
+      status: 'success',
       data,
       error: null,
     };
@@ -173,17 +169,15 @@ export async function runAIProviderSet<T>(
     provider: AIProvider;
     call: (signal: AbortSignal) => Promise<T>;
     timeoutMs?: number;
-  }>,
+  }>
 ): Promise<MultiProviderResult<T>> {
-  const settled = await Promise.all(
-    calls.map((entry) => runAIProviderCall(entry)),
-  );
+  const settled = await Promise.all(calls.map((entry) => runAIProviderCall(entry)));
 
   const results: Partial<Record<AIProvider, T>> = {};
   const errors: Partial<Record<AIProvider, string>> = {};
 
   for (const entry of settled) {
-    if (entry.status === "success" && entry.data !== null) {
+    if (entry.status === 'success' && entry.data !== null) {
       results[entry.provider] = entry.data;
       continue;
     }
@@ -206,7 +200,7 @@ export async function runAIProviderSet<T>(
       results,
       errors,
       partial: true,
-      toastKey: "partialResults",
+      toastKey: 'partialResults',
     };
   }
 
@@ -214,6 +208,6 @@ export async function runAIProviderSet<T>(
     results,
     errors,
     partial: false,
-    toastKey: failureCount > 0 ? "aiUnavailable" : undefined,
+    toastKey: failureCount > 0 ? 'aiUnavailable' : undefined,
   };
 }

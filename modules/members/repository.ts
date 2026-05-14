@@ -1,19 +1,15 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { SectionRole, MemberStatus } from "@prisma/client";
-import { dedupe } from "@/lib/dedupe";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { SectionRole, MemberStatus } from '@prisma/client';
+import { dedupe } from '@/lib/dedupe';
+import { logger } from '@/lib/infrastructure/logger';
 
-export async function addMember(
-  sectionId: string,
-  userId: string,
-  role: SectionRole = "MEMBER"
-) {
+export async function addMember(sectionId: string, userId: string, role: SectionRole = 'MEMBER') {
   return prisma.sectionMember.create({
     data: {
       sectionId,
       userId,
       role,
-      status: "ACTIVE",
+      status: 'ACTIVE',
     },
     include: {
       user: {
@@ -35,16 +31,12 @@ export async function removeMember(sectionId: string, userId: string) {
       userId,
     },
     data: {
-      status: "LEFT",
+      status: 'LEFT',
     },
   });
 }
 
-export async function updateMemberRole(
-  sectionId: string,
-  userId: string,
-  role: SectionRole
-) {
+export async function updateMemberRole(sectionId: string, userId: string, role: SectionRole) {
   return prisma.sectionMember.updateMany({
     where: {
       sectionId,
@@ -63,7 +55,7 @@ export async function getSectionMembers(sectionId: string) {
         prisma.sectionMember.findMany({
           where: {
             sectionId,
-            status: "ACTIVE",
+            status: 'ACTIVE',
           },
           include: {
             user: {
@@ -77,14 +69,14 @@ export async function getSectionMembers(sectionId: string) {
             },
           },
           orderBy: [
-            { role: "asc" }, // OWNER first, then MODERATOR, then MEMBER
-            { joinedAt: "asc" },
+            { role: 'asc' }, // OWNER first, then MODERATOR, then MEMBER
+            { joinedAt: 'asc' },
           ],
-        }),
+        })
       )) ?? []
     );
   } catch (error) {
-    logger.error("[getSectionMembers]", error);
+    logger.error('[getSectionMembers]', error);
     return [];
   }
 }
@@ -96,7 +88,7 @@ export async function getUserMemberships(userId: string) {
         prisma.sectionMember.findMany({
           where: {
             userId,
-            status: "ACTIVE",
+            status: 'ACTIVE',
           },
           include: {
             section: {
@@ -108,13 +100,13 @@ export async function getUserMemberships(userId: string) {
             },
           },
           orderBy: {
-            joinedAt: "desc",
+            joinedAt: 'desc',
           },
-        }),
+        })
       )) ?? []
     );
   } catch (error) {
-    logger.error("[getUserMemberships]", error);
+    logger.error('[getUserMemberships]', error);
     return [];
   }
 }
@@ -132,7 +124,7 @@ export async function getMemberRole(sectionId: string, userId: string) {
         role: true,
         status: true,
       },
-    }),
+    })
   );
 
   return member;
@@ -140,5 +132,5 @@ export async function getMemberRole(sectionId: string, userId: string) {
 
 export async function isMember(sectionId: string, userId: string) {
   const member = await getMemberRole(sectionId, userId);
-  return member?.status === "ACTIVE";
+  return member?.status === 'ACTIVE';
 }

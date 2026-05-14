@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { Prisma } from "@prisma/client";
-import type { CommunitySummary } from "./types";
-import { dedupe } from "@/lib/dedupe";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { Prisma } from '@prisma/client';
+import type { CommunitySummary } from './types';
+import { dedupe } from '@/lib/dedupe';
+import { logger } from '@/lib/infrastructure/logger';
 
 // Prisma return type for query with _count
 // Using @ts-expect-error where Prisma's TypeScript has limitations
@@ -32,7 +32,7 @@ export function buildCommunityDTO(
 
 export async function listCommunities(): Promise<CommunitySummary[]> {
   try {
-    const communities = await dedupe("communities:list", () =>
+    const communities = await dedupe('communities:list', () =>
       prisma.community.findMany({
         include: {
           _count: {
@@ -42,16 +42,16 @@ export async function listCommunities(): Promise<CommunitySummary[]> {
           },
         },
         orderBy: {
-          title: "asc",
+          title: 'asc',
         },
-      }),
+      })
     );
 
     return (communities ?? []).map((community: CommunityWithCount) =>
       buildCommunityDTO(community, community._count.sections)
     );
   } catch (error) {
-    logger.error("[listCommunities]", error);
+    logger.error('[listCommunities]', error);
     return [];
   }
 }
@@ -66,19 +66,19 @@ export async function getJoinedCommunities(userId: string) {
               members: {
                 some: {
                   userId,
-                  status: "ACTIVE",
+                  status: 'ACTIVE',
                 },
               },
             },
           },
         },
-        orderBy: { title: "asc" },
-      }),
+        orderBy: { title: 'asc' },
+      })
     );
 
     return communities ?? [];
   } catch (error) {
-    logger.error("[getJoinedCommunities]", error);
+    logger.error('[getJoinedCommunities]', error);
     return [];
   }
 }

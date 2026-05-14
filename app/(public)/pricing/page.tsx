@@ -1,23 +1,13 @@
-import {
-  Check,
-  Sparkles,
-  Zap,
-  MessageSquare,
-  Shield,
-  Crown,
-} from "lucide-react";
-import Link from "next/link";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Check } from 'lucide-react';
+import Link from 'next/link';
+import { getSession } from '@/modules/auth/session';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const features = [
-  { icon: Sparkles, text: "AI-powered replies & suggestions" },
-  { icon: Zap, text: "Priority message delivery" },
-  { icon: MessageSquare, text: "Unlimited thread creation" },
-  { icon: Shield, text: "Advanced moderation tools" },
-  { icon: Crown, text: "Exclusive Pro badge" },
-];
+export default async function PricingPage() {
+  const session = await getSession();
+  const userInitial = session?.user?.name?.[0] || session?.user?.email?.[0] || 'U';
 
-export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -27,105 +17,119 @@ export default function PricingPage() {
           </Link>
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Link
-              href="/login"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign in
-            </Link>
+            {session ? (
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <Avatar className="h-8 w-8 border-2 border-border">
+                  <AvatarImage src={session.user.image || undefined} />
+                  <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                    {userInitial}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
       <main className="pt-32 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand/10 text-brand text-sm font-medium mb-6">
-            <Sparkles size={16} />
-            <span>Upgrade to Pro</span>
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-12">
+            <h1 className="text-3xl font-bold text-foreground mb-3">
+              Pricing
+            </h1>
+            <p className="text-muted-foreground">
+              Free to start. $9/mo when you need more. That{`'`}s it.
+            </p>
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
-            Unlock the full power of{" "}
-            <span className="bg-linear-to-r from-brand via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              Sastram
-            </span>
-          </h1>
-
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12">
-            Get access to AI-powered features, priority support, and exclusive
-            tools designed to supercharge your discussions.
-          </p>
-
-          <div className="max-w-md mx-auto">
-            <div className="relative bg-card border border-border rounded-3xl p-8 shadow-2xl shadow-brand/5 overflow-hidden">
-              <div className="absolute -top-20 -right-20 w-40 h-40 bg-brand/20 rounded-full blur-3xl" />
-              <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl" />
-
-              <div className="relative">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-linear-to-r from-brand to-purple-500 text-white text-xs font-semibold mb-6">
-                  <Crown size={12} />
-                  Most Popular
+          <div className="space-y-4">
+            {/* Free Plan */}
+            <div className="p-6 rounded-xl border border-border bg-card">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Free</h2>
+                  <p className="text-muted-foreground text-sm">For trying things out</p>
                 </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">
-                  Pro Plan
-                </h2>
-                <p className="text-muted-foreground text-sm mb-6">
-                  Everything you need for power users
-                </p>
-
-                <div className="flex items-baseline gap-2 mb-8">
-                  <span className="text-5xl font-bold text-foreground">$9</span>
-                  <span className="text-muted-foreground">/month</span>
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-foreground">$0</span>
+                  <p className="text-muted-foreground text-xs">forever</p>
                 </div>
-                <ul className="space-y-4 mb-8 text-left">
-                  {features.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-3">
-                      <div className="shrink-0 w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center">
-                        <feature.icon size={16} className="text-brand" />
-                      </div>
-                      <span className="text-foreground text-sm">
-                        {feature.text}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <button className="w-full py-4 px-6 bg-linear-to-r from-brand to-purple-500 hover:from-brand/90 hover:to-purple-500/90 text-white font-semibold rounded-xl transition-all shadow-lg shadow-brand/25 hover:shadow-xl hover:shadow-brand/30 hover:-translate-y-0.5">
-                  Get Started with Pro
-                </button>
-
-                <p className="text-xs text-muted-foreground mt-4">
-                  Cancel anytime. No questions asked.
-                </p>
               </div>
-            </div>
-          </div>
-
-          <div className="mt-16 max-w-md mx-auto">
-            <div className="bg-muted/50 border border-border rounded-2xl p-6">
-              <h3 className="font-semibold text-foreground mb-4">Free Plan</h3>
-              <ul className="space-y-3 text-left text-sm text-muted-foreground">
-                <li className="flex items-center gap-3">
-                  <Check size={16} className="text-green-500" />
-                  <span>Basic thread participation</span>
+              <ul className="space-y-2 mb-4">
+                <li className="flex items-center gap-2 text-sm text-foreground">
+                  <Check size={14} className="text-green-500" />
+                  <span>Up to 3 communities</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check size={16} className="text-green-500" />
-                  <span>Up to 3 threads created</span>
+                <li className="flex items-center gap-2 text-sm text-foreground">
+                  <Check size={14} className="text-green-500" />
+                  <span>Standard search</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check size={16} className="text-green-500" />
-                  <span>Standard support</span>
+                <li className="flex items-center gap-2 text-sm text-foreground">
+                  <Check size={14} className="text-green-500" />
+                  <span>Basic moderation tools</span>
                 </li>
               </ul>
               <Link
                 href="/dashboard"
-                className="block mt-6 w-full py-3 px-6 bg-secondary hover:bg-secondary/80 text-foreground font-medium rounded-xl text-center transition-colors"
+                className="block w-full py-2 px-4 rounded-lg bg-secondary text-center text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors"
               >
-                Continue with Free
+                Start Free
+              </Link>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="p-6 rounded-xl border-2 border-brand bg-card">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Pro</h2>
+                  <p className="text-muted-foreground text-sm">For people who use it daily</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-foreground">$9</span>
+                  <p className="text-muted-foreground text-xs">per month</p>
+                </div>
+              </div>
+              <ul className="space-y-2 mb-4">
+                <li className="flex items-center gap-2 text-sm text-foreground">
+                  <Check size={14} className="text-brand" />
+                  <span>Unlimited communities</span>
+                </li>
+                <li className="flex items-center gap-2 text-sm text-foreground">
+                  <Check size={14} className="text-brand" />
+                  <span>AI search & suggestions</span>
+                </li>
+                <li className="flex items-center gap-2 text-sm text-foreground">
+                  <Check size={14} className="text-brand" />
+                  <span>Advanced moderation</span>
+                </li>
+                <li className="flex items-center gap-2 text-sm text-foreground">
+                  <Check size={14} className="text-brand" />
+                  <span>Priority support</span>
+                </li>
+                <li className="flex items-center gap-2 text-sm text-foreground">
+                  <Check size={14} className="text-brand" />
+                  <span>Custom analytics</span>
+                </li>
+              </ul>
+              <Link
+                href="/dashboard"
+                className="block w-full py-2 px-4 rounded-lg bg-brand text-center text-sm font-medium text-white hover:bg-brand/90 transition-colors"
+              >
+                Upgrade to Pro
               </Link>
             </div>
           </div>
+
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            Cancel anytime. No questions asked.
+          </p>
         </div>
       </main>
 

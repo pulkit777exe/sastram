@@ -1,11 +1,5 @@
-export {
-  createCommunityAction,
-} from "./actions";
+export { createCommunityAction } from './actions';
 
-export {
-  listCommunities,
-  createCommunity,
-  buildCommunityDTO,
-} from "./repository";
+export { listCommunities, createCommunity, buildCommunityDTO } from './repository';
 
-export type { CommunitySummary } from "./types";
+export type { CommunitySummary } from './types';

@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { User, Bell, Upload, Image as ImageIcon, X } from "lucide-react";
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { User, Bell, Upload, Image as ImageIcon, X } from 'lucide-react';
 import {
   updateUserProfile,
   uploadAvatar,
   uploadBanner,
   updateProfilePrivacyAction,
   updateUserPreferencesAction,
-} from "@/modules/users/actions";
-import { useFormStatus } from "react-dom";
-import { toasts } from "@/lib/utils/toast";
-import { useState, useRef } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Image from "next/image";
-import { parseUserPreferences } from "@/lib/schemas/user-preferences";
+} from '@/modules/users/actions';
+import { useFormStatus } from 'react-dom';
+import { toasts } from '@/lib/utils/toast';
+import { useState, useRef } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Image from 'next/image';
+import { parseUserPreferences } from '@/lib/schemas/user-preferences';
 
 interface SettingsFormProps {
   user: {
@@ -62,32 +62,30 @@ function SubmitButton() {
       disabled={pending}
       className="h-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-500/30 transition-all hover:shadow-indigo-500/40 disabled:opacity-50"
     >
-      {pending ? "Saving..." : "Save Changes"}
+      {pending ? 'Saving...' : 'Save Changes'}
     </Button>
   );
 }
 
 export function SettingsForm({ user }: SettingsFormProps) {
-  const [name, setName] = useState(user.name || "");
-  const [bio, setBio] = useState(user.bio || "");
-  const [location, setLocation] = useState(user.location || "");
-  const [website, setWebsite] = useState(user.website || "");
-  const [twitter, setTwitter] = useState(user.twitter || "");
-  const [github, setGithub] = useState(user.github || "");
-  const [linkedin, setLinkedin] = useState(user.linkedin || "");
-  const [avatarUrl, setAvatarUrl] = useState(
-    user.avatarUrl || user.image || ""
-  );
-  const [bannerUrl, setBannerUrl] = useState(user.bannerUrl || "");
+  const [name, setName] = useState(user.name || '');
+  const [bio, setBio] = useState(user.bio || '');
+  const [location, setLocation] = useState(user.location || '');
+  const [website, setWebsite] = useState(user.website || '');
+  const [twitter, setTwitter] = useState(user.twitter || '');
+  const [github, setGithub] = useState(user.github || '');
+  const [linkedin, setLinkedin] = useState(user.linkedin || '');
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || user.image || '');
+  const [bannerUrl, setBannerUrl] = useState(user.bannerUrl || '');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
-  const [profilePrivacy, setProfilePrivacy] = useState(user.profilePrivacy || "PUBLIC");
+  const [profilePrivacy, setProfilePrivacy] = useState(user.profilePrivacy || 'PUBLIC');
   const preferences = parseUserPreferences(user.preferences);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const [emailNotifs, setEmailNotifs] = useState(() => {
-    return preferences.emailDigest !== "never";
+    return preferences.emailDigest !== 'never';
   });
   const [pushNotifs, setPushNotifs] = useState(() => {
     return preferences.pushEnabled;
@@ -97,7 +95,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
     const previous = emailNotifs;
     setEmailNotifs(enabled);
     const result = await updateUserPreferencesAction({
-      emailDigest: enabled ? "daily" : "never",
+      emailDigest: enabled ? 'daily' : 'never',
     });
     if (result?.error) {
       setEmailNotifs(previous);
@@ -148,7 +146,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
     setUploadingAvatar(true);
     const formData = new FormData();
-    formData.append("avatar", file);
+    formData.append('avatar', file);
 
     const result = await uploadAvatar(formData);
     if (result?.error) {
@@ -159,7 +157,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
     }
     setUploadingAvatar(false);
     if (avatarInputRef.current) {
-      avatarInputRef.current.value = "";
+      avatarInputRef.current.value = '';
     }
   }
 
@@ -169,7 +167,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
     setUploadingBanner(true);
     const formData = new FormData();
-    formData.append("banner", file);
+    formData.append('banner', file);
 
     const result = await uploadBanner(formData);
     if (result?.error) {
@@ -180,32 +178,20 @@ export function SettingsForm({ user }: SettingsFormProps) {
     }
     setUploadingBanner(false);
     if (bannerInputRef.current) {
-      bannerInputRef.current.value = "";
+      bannerInputRef.current.value = '';
     }
   }
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="grid gap-6"
-    >
-      <motion.div
-        variants={item}
-        className="rounded-xl border border-border bg-card p-6 shadow-sm"
-      >
+    <motion.div variants={container} initial="hidden" animate="show" className="grid gap-6">
+      <motion.div variants={item} className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
             <User className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">
-              Profile Information
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Update your public profile details.
-            </p>
+            <h2 className="text-lg font-bold text-foreground">Profile Information</h2>
+            <p className="text-sm text-muted-foreground">Update your public profile details.</p>
           </div>
         </div>
 
@@ -239,7 +225,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   className="border-border text-foreground hover:bg-muted"
                 >
                   {uploadingAvatar ? (
-                    "Uploading..."
+                    'Uploading...'
                   ) : (
                     <>
                       <Upload size={14} className="mr-2" />
@@ -247,9 +233,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  JPG, PNG, GIF or WebP. Max 4.5MB
-                </p>
+                <p className="text-xs text-muted-foreground">JPG, PNG, GIF or WebP. Max 4.5MB</p>
               </div>
             </div>
           </div>
@@ -269,7 +253,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   />
                   <button
                     type="button"
-                    onClick={() => setBannerUrl("")}
+                    onClick={() => setBannerUrl('')}
                     className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors"
                   >
                     <X size={14} />
@@ -279,9 +263,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                 <div className="h-32 w-full rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
                   <div className="text-center">
                     <ImageIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      No banner image
-                    </p>
+                    <p className="text-sm text-muted-foreground">No banner image</p>
                   </div>
                 </div>
               )}
@@ -303,11 +285,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
                 className="mt-2 border-border text-foreground hover:bg-muted"
               >
                 {uploadingBanner ? (
-                  "Uploading..."
+                  'Uploading...'
                 ) : (
                   <>
                     <Upload size={14} className="mr-2" />
-                    {bannerUrl ? "Change Banner" : "Upload Banner"}
+                    {bannerUrl ? 'Change Banner' : 'Upload Banner'}
                   </>
                 )}
               </Button>
@@ -423,66 +405,44 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </form>
       </motion.div>
 
-      <motion.div
-        variants={item}
-        className="rounded-xl border border-border bg-card p-6 shadow-sm"
-      >
+      <motion.div variants={item} className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
             <Bell className="h-5 w-5" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-foreground">Notifications</h2>
-            <p className="text-sm text-muted-foreground">
-              Configure how you receive alerts.
-            </p>
+            <p className="text-sm text-muted-foreground">Configure how you receive alerts.</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label
-                htmlFor="email-notifs"
-                className="text-base font-medium text-foreground"
-              >
+              <Label htmlFor="email-notifs" className="text-base font-medium text-foreground">
                 Email Notifications
               </Label>
               <p className="text-sm text-muted-foreground">
                 Receive daily summaries of your subscribed topics.
               </p>
             </div>
-            <Switch 
-              id="email-notifs" 
-              checked={emailNotifs}
-              onCheckedChange={handleToggleEmail}
-            />
+            <Switch id="email-notifs" checked={emailNotifs} onCheckedChange={handleToggleEmail} />
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label
-                htmlFor="push-notifs"
-                className="text-base font-medium text-foreground"
-              >
+              <Label htmlFor="push-notifs" className="text-base font-medium text-foreground">
                 Push Notifications
               </Label>
               <p className="text-sm text-muted-foreground">
                 Receive real-time alerts for mentions.
               </p>
             </div>
-            <Switch 
-              id="push-notifs" 
-              checked={pushNotifs}
-              onCheckedChange={handleTogglePush}
-            />
+            <Switch id="push-notifs" checked={pushNotifs} onCheckedChange={handleTogglePush} />
           </div>
         </div>
       </motion.div>
 
-      <motion.div
-        variants={item}
-        className="rounded-xl border border-border bg-card p-6 shadow-sm"
-      >
+      <motion.div variants={item} className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 text-green-500">
             <User className="h-5 w-5" />
@@ -497,14 +457,12 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
         <div className="space-y-6">
           <div className="grid gap-3">
-            <Label className="text-base font-medium text-foreground">
-              Privacy Level
-            </Label>
+            <Label className="text-base font-medium text-foreground">Privacy Level</Label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {[
-                { value: "PUBLIC", label: "Public" },
-                { value: "FOLLOWERS_ONLY", label: "Followers Only" },
-                { value: "PRIVATE", label: "Private" },
+                { value: 'PUBLIC', label: 'Public' },
+                { value: 'FOLLOWERS_ONLY', label: 'Followers Only' },
+                { value: 'PRIVATE', label: 'Private' },
               ].map((option) => (
                 <button
                   key={option.value}
@@ -512,8 +470,8 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   onClick={() => void handleUpdatePrivacy(option.value)}
                   className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
                     profilePrivacy === option.value
-                      ? "border-indigo-500 bg-indigo-500/10 text-indigo-600"
-                      : "border-border bg-background hover:bg-muted"
+                      ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600'
+                      : 'border-border bg-background hover:bg-muted'
                   }`}
                 >
                   {option.label}
@@ -521,9 +479,9 @@ export function SettingsForm({ user }: SettingsFormProps) {
               ))}
             </div>
             <p className="text-sm text-muted-foreground">
-              {profilePrivacy === "PUBLIC" && "Your profile is visible to everyone."}
-              {profilePrivacy === "PRIVATE" && "Only you can view your profile."}
-              {profilePrivacy === "FOLLOWERS_ONLY" && "Only your followers can view your profile."}
+              {profilePrivacy === 'PUBLIC' && 'Your profile is visible to everyone.'}
+              {profilePrivacy === 'PRIVATE' && 'Only you can view your profile.'}
+              {profilePrivacy === 'FOLLOWERS_ONLY' && 'Only your followers can view your profile.'}
             </p>
           </div>
         </div>

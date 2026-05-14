@@ -1,7 +1,4 @@
-import type {
-  ReportCategory,
-  ReportStatus,
-} from "@/lib/config/constants";
+import type { ReportCategory, ReportStatus } from '@/lib/config/constants';
 
 /**
  * Report domain types

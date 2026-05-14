@@ -1,7 +1,7 @@
-import Image from "next/image";
-import type { ThreadWithFullContext } from "@/modules/threads/queries";
-import TimeAgo from "./TimeAgo";
-import { BookmarkButton } from "./bookmark-button";
+import Image from 'next/image';
+import type { ThreadWithFullContext } from '@/modules/threads/queries';
+import TimeAgo from './TimeAgo';
+import { BookmarkButton } from './bookmark-button';
 
 interface ThreadHeaderProps {
   thread: ThreadWithFullContext;
@@ -12,35 +12,32 @@ interface ThreadHeaderProps {
 function getResolutionState(score: number | null) {
   if (score === null || score === undefined) {
     return {
-      label: "Open",
-      colorClass: "bg-(--red)",
+      label: 'Open',
+      colorClass: 'bg-(--red)',
     };
   }
 
   if (score >= 70) {
     return {
-      label: "Resolved",
-      colorClass: "bg-(--green)",
+      label: 'Resolved',
+      colorClass: 'bg-(--green)',
     };
   }
 
   if (score >= 40) {
     return {
-      label: "In Progress",
-      colorClass: "bg-(--amber)",
+      label: 'In Progress',
+      colorClass: 'bg-(--amber)',
     };
   }
 
   return {
-    label: "Open",
-    colorClass: "bg-(--red)",
+    label: 'Open',
+    colorClass: 'bg-(--red)',
   };
 }
 
-export default function ThreadHeader({
-  thread,
-  isBookmarked,
-}: ThreadHeaderProps) {
+export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps) {
   const resolution = getResolutionState(thread.resolutionScore);
 
   return (
@@ -75,7 +72,7 @@ export default function ThreadHeader({
               <div className="h-[32px] w-[32px] overflow-hidden rounded-full bg-(--blue-light)" />
               <div className="flex flex-col">
                 <span className="font-(--font-dm-sans) text-[13px] text-(--text)">
-                  {thread.author.name ?? "Unknown"}
+                  {thread.author.name ?? 'Unknown'}
                 </span>
                 <TimeAgo date={thread.createdAt} />
               </div>
@@ -93,9 +90,7 @@ export default function ThreadHeader({
 
         <div className="flex flex-col items-end gap-[12px]">
           <div className="inline-flex items-center gap-[8px] rounded-[999px] border border-border bg-(--bg) px-[10px] py-[4px]">
-            <span
-              className={`h-[8px] w-[8px] rounded-full ${resolution.colorClass}`}
-            />
+            <span className={`h-[8px] w-[8px] rounded-full ${resolution.colorClass}`} />
             <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted">
               {resolution.label}
             </span>
@@ -110,4 +105,3 @@ export default function ThreadHeader({
     </header>
   );
 }
-

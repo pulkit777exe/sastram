@@ -1,26 +1,14 @@
-export {
-  createThreadAction,
-  deleteThreadAction,
-  getDashboardThreads,
-} from "./actions";
+export { createThreadAction, deleteThreadAction, getDashboardThreads } from './actions';
 
 export {
   listThreads,
   getThreadBySlug,
   createThread,
   deleteThread,
-} from "./repository";
+  getThreadWithFullContext,
+} from './repository';
 
-export { getThreadWithFullContext } from "./queries";
+export { buildThreadDTO, buildThreadDetailDTO } from './service';
+export { buildThreadSlug } from '@/lib/utils/slug';
 
-export {
-  buildThreadSlug,
-  buildThreadDTO,
-  buildThreadDetailDTO,
-} from "./service";
-
-export type {
-  ThreadRecord,
-  ThreadSummary,
-  ThreadDetail,
-} from "./types";
+export type { ThreadRecord, ThreadSummary, ThreadDetail } from './types';

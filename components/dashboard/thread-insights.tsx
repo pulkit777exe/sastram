@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { fetchThreads } from "@/modules/threads/api-client";
-import type { ThreadSummary } from "@/modules/threads/types";
-import { useThreadViewStore, selectThread } from "@/stores/thread-view-store";
-import { Flame, ArrowUpRight, Activity } from "lucide-react";
-import { cn } from "@/lib/utils/cn";
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchThreads } from '@/modules/threads/api-client';
+import type { ThreadSummary } from '@/modules/threads/types';
+import { useThreadViewStore, selectThread } from '@/stores/thread-view-store';
+import { Flame, ArrowUpRight, Activity } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 interface ThreadInsightsProps {
   initialThreads: ThreadSummary[];
@@ -16,7 +16,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
   const selectedSlug = useThreadViewStore((state) => state.selectedThreadSlug);
 
   const { data = [], isFetching } = useQuery<ThreadSummary[]>({
-    queryKey: ["dashboard-threads"],
+    queryKey: ['dashboard-threads'],
     queryFn: async () => {
       const result = await fetchThreads();
 
@@ -28,7 +28,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
       }
 
       // Envelope shape: { data: ThreadSummary[], error: string | null }
-      if (result && typeof result === "object" && "data" in result) {
+      if (result && typeof result === 'object' && 'data' in result) {
         const envelope = result as { data: ThreadSummary[] | null; error: string | null };
         if (envelope.error) {
           throw new Error(envelope.error);
@@ -47,9 +47,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
     // Defensive: guarantee data is an array before spreading
     // This guards against any future shape regressions
     const threads = Array.isArray(data) ? data : [];
-    return [...threads]
-      .sort((a, b) => b.messageCount - a.messageCount)
-      .slice(0, 3);
+    return [...threads].sort((a, b) => b.messageCount - a.messageCount).slice(0, 3);
   }, [data]);
 
   return (
@@ -68,14 +66,12 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
         <div className="flex items-center gap-1.5">
           <div
             className={cn(
-              "h-1.5 w-1.5 rounded-full bg-emerald-500",
-              isFetching
-                ? "animate-pulse"
-                : "shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+              'h-1.5 w-1.5 rounded-full bg-emerald-500',
+              isFetching ? 'animate-pulse' : 'shadow-[0_0_8px_rgba(16,185,129,0.4)]'
             )}
           />
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            {isFetching ? "Syncing" : "Realtime"}
+            {isFetching ? 'Syncing' : 'Realtime'}
           </span>
         </div>
       </div>
@@ -90,25 +86,23 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
               tabIndex={0}
               onClick={() => selectThread(thread.slug)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+                if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   selectThread(thread.slug);
                 }
               }}
               className={cn(
-                "group/item flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-200 cursor-pointer border",
+                'group/item flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-200 cursor-pointer border',
                 isActive
-                  ? "bg-indigo-600 border-indigo-500 shadow-[0_8px_20px_rgba(79,70,229,0.2)]"
-                  : "bg-muted/30 border-border hover:border-border/80 hover:bg-muted/80"
+                  ? 'bg-indigo-600 border-indigo-500 shadow-[0_8px_20px_rgba(79,70,229,0.2)]'
+                  : 'bg-muted/30 border-border hover:border-border/80 hover:bg-muted/80'
               )}
             >
               <div className="flex flex-col gap-0.5">
                 <span
                   className={cn(
-                    "text-sm font-bold tracking-tight transition-colors",
-                    isActive
-                      ? "text-white"
-                      : "text-foreground group-hover/item:text-foreground"
+                    'text-sm font-bold tracking-tight transition-colors',
+                    isActive ? 'text-white' : 'text-foreground group-hover/item:text-foreground'
                   )}
                 >
                   {thread.name}
@@ -116,14 +110,12 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
                 <div className="flex items-center gap-2">
                   <Activity
                     size={10}
-                    className={
-                      isActive ? "text-indigo-200" : "text-muted-foreground"
-                    }
+                    className={isActive ? 'text-indigo-200' : 'text-muted-foreground'}
                   />
                   <span
                     className={cn(
-                      "text-[10px] font-bold uppercase tracking-tight",
-                      isActive ? "text-indigo-100/70" : "text-muted-foreground"
+                      'text-[10px] font-bold uppercase tracking-tight',
+                      isActive ? 'text-indigo-100/70' : 'text-muted-foreground'
                     )}
                   >
                     {thread.messageCount} messages
@@ -143,7 +135,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
         {busiest.length === 0 && (
           <div className="rounded-xl border border-dashed border-border py-8 text-center">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {isFetching ? "Loading threads..." : "Cooling Down..."}
+              {isFetching ? 'Loading threads...' : 'Cooling Down...'}
             </p>
           </div>
         )}

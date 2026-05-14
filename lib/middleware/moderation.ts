@@ -1,7 +1,9 @@
-import { auth } from "@/lib/services/auth";
-import { prisma } from "@/lib/infrastructure/prisma";
-import { Role } from "@prisma/client";
-import { headers } from "next/headers";
+'use server';
+
+import { auth } from '@/lib/services/auth';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { Role } from '@prisma/client';
+import { headers } from 'next/headers';
 
 export async function requireModerator() {
   const session = await auth.api.getSession({
@@ -9,7 +11,7 @@ export async function requireModerator() {
   });
 
   if (!session?.user) {
-    throw new Error("Unauthorized");
+    throw new Error('Unauthorized');
   }
 
   const user = await prisma.user.findUnique({
@@ -18,7 +20,7 @@ export async function requireModerator() {
   });
 
   if (!user || (user.role !== Role.MODERATOR && user.role !== Role.ADMIN)) {
-    throw new Error("Moderator access required");
+    throw new Error('Moderator access required');
   }
 
   return session;
@@ -30,7 +32,7 @@ export async function requireAdmin() {
   });
 
   if (!session?.user) {
-    throw new Error("Unauthorized");
+    throw new Error('Unauthorized');
   }
 
   const user = await prisma.user.findUnique({
@@ -39,7 +41,7 @@ export async function requireAdmin() {
   });
 
   if (!user || user.role !== Role.ADMIN) {
-    throw new Error("Admin access required");
+    throw new Error('Admin access required');
   }
 
   return session;

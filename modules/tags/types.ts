@@ -13,4 +13,3 @@ export interface ThreadTag {
 export interface TagWithCount extends ThreadTag {
   threadCount: number;
 }
-

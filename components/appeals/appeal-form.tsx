@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { submitAppeal } from "@/modules/appeals/actions";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { submitAppeal } from '@/modules/appeals/actions';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 export function AppealForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,7 +18,7 @@ export function AppealForm() {
     if (result?.error) {
       toast.error(result.error);
     } else {
-      toast.success("Appeal submitted successfully");
+      toast.success('Appeal submitted successfully');
       router.refresh();
     }
   }
@@ -38,7 +38,7 @@ export function AppealForm() {
         />
       </div>
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Submitting..." : "Submit Appeal"}
+        {isSubmitting ? 'Submitting...' : 'Submit Appeal'}
       </Button>
     </form>
   );

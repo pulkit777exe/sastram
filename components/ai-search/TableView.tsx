@@ -1,22 +1,22 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { ArrowUpDown, Download, ExternalLink } from "lucide-react";
-import type { Source } from "@/modules/ai-search/types";
-import { TimeAgo } from "@/components/ui/TimeAgo";
+import { useState } from 'react';
+import { ArrowUpDown, Download, ExternalLink } from 'lucide-react';
+import type { Source } from '@/modules/ai-search/types';
+import { TimeAgo } from '@/components/ui/TimeAgo';
 
 interface TableViewProps {
   sources: Source[];
 }
 
-type SortKey = "confidence" | "tier" | "publishedDate";
-type SortDir = "asc" | "desc";
+type SortKey = 'confidence' | 'tier' | 'publishedDate';
+type SortDir = 'asc' | 'desc';
 
 const TIER_LABELS: Record<number, string> = {
-  1: "Official",
-  2: "Trusted",
-  3: "Community",
-  4: "Blog",
+  1: 'Official',
+  2: 'Trusted',
+  3: 'Community',
+  4: 'Blog',
 };
 
 function SortHeader({
@@ -38,30 +38,30 @@ function SortHeader({
       {label}
       <ArrowUpDown
         size={10}
-        className={sortKey === sortKeyVal ? "text-foreground" : "opacity-30"}
+        className={sortKey === sortKeyVal ? 'text-foreground' : 'opacity-30'}
       />
     </button>
   );
 }
 
 export function TableView({ sources }: TableViewProps) {
-  const [sortKey, setSortKey] = useState<SortKey>("confidence");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>('confidence');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     } else {
       setSortKey(key);
-      setSortDir("desc");
+      setSortDir('desc');
     }
   };
 
   const sorted = [...sources].sort((a, b) => {
-    const dir = sortDir === "asc" ? 1 : -1;
-    if (sortKey === "confidence") return (a.confidence - b.confidence) * dir;
-    if (sortKey === "tier") return (a.tier - b.tier) * dir;
-    if (sortKey === "publishedDate") {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    if (sortKey === 'confidence') return (a.confidence - b.confidence) * dir;
+    if (sortKey === 'tier') return (a.tier - b.tier) * dir;
+    if (sortKey === 'publishedDate') {
       const da = a.publishedDate ? new Date(a.publishedDate).getTime() : 0;
       const db = b.publishedDate ? new Date(b.publishedDate).getTime() : 0;
       return (da - db) * dir;
@@ -70,31 +70,23 @@ export function TableView({ sources }: TableViewProps) {
   });
 
   const exportCSV = () => {
-    const headers = [
-      "Source",
-      "Title",
-      "URL",
-      "Confidence",
-      "Tier",
-      "Published",
-      "Provider",
-    ];
+    const headers = ['Source', 'Title', 'URL', 'Confidence', 'Tier', 'Published', 'Provider'];
     const rows = sorted.map((s) => [
       s.domain,
       `"${s.title.replace(/"/g, '""')}"`,
       s.url,
       String(s.confidence),
       TIER_LABELS[s.tier],
-      s.publishedDate || "N/A",
+      s.publishedDate || 'N/A',
       s.provider,
     ]);
 
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = "ai-search-results.csv";
+    a.download = 'ai-search-results.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -103,9 +95,7 @@ export function TableView({ sources }: TableViewProps) {
     <div className="bg-card border border-border rounded-2xl overflow-hidden max-w-full">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-medium text-foreground">
-          {sources.length} Results
-        </span>
+        <span className="text-sm font-medium text-foreground">{sources.length} Results</span>
         <button
           onClick={exportCSV}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-foreground/5 hover:bg-foreground/10 rounded-lg transition-colors"
@@ -161,9 +151,7 @@ export function TableView({ sources }: TableViewProps) {
                 key={s.id}
                 className="border-b border-border/50 hover:bg-foreground/2 transition-colors"
               >
-                <td className="px-4 py-2.5 text-muted-foreground truncate">
-                  {s.domain}
-                </td>
+                <td className="px-4 py-2.5 text-muted-foreground truncate">{s.domain}</td>
                 <td className="px-4 py-2.5">
                   <a
                     href={s.url}
@@ -182,26 +170,20 @@ export function TableView({ sources }: TableViewProps) {
                         className="h-full rounded-full"
                         style={{
                           width: `${s.confidence}%`,
-                          backgroundColor: "var(--color-foreground)",
+                          backgroundColor: 'var(--color-foreground)',
                         }}
                       />
                     </div>
-                    <span className="tabular-nums text-muted-foreground">
-                      {s.confidence}%
-                    </span>
+                    <span className="tabular-nums text-muted-foreground">{s.confidence}%</span>
                   </div>
                 </td>
                 <td className="px-4 py-2.5 text-center">
-                  <span className="text-muted-foreground">
-                    {TIER_LABELS[s.tier]}
-                  </span>
+                  <span className="text-muted-foreground">{TIER_LABELS[s.tier]}</span>
                 </td>
                 <td className="px-4 py-2.5 text-center text-muted-foreground">
-                  {s.publishedDate ? <TimeAgo date={s.publishedDate} /> : "—"}
+                  {s.publishedDate ? <TimeAgo date={s.publishedDate} /> : '—'}
                 </td>
-                <td className="px-4 py-2.5 text-muted-foreground capitalize">
-                  {s.provider}
-                </td>
+                <td className="px-4 py-2.5 text-muted-foreground capitalize">{s.provider}</td>
               </tr>
             ))}
           </tbody>

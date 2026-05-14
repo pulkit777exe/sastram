@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
-import { Separator } from "@/components/ui/separator";
+import { Separator } from '@/components/ui/separator';
 import {
   User,
   Calendar,
@@ -18,10 +18,10 @@ import {
   AlertCircle,
   Ban,
   Eye,
-} from "lucide-react";
-import TimeAgo from "@/components/ui/TimeAgo";
-import { cn } from "@/lib/utils/cn";
-import type { ReportWithContext } from "@/modules/reports/types";
+} from 'lucide-react';
+import TimeAgo from '@/components/ui/TimeAgo';
+import { cn } from '@/lib/utils/cn';
+import type { ReportWithContext } from '@/modules/reports/types';
 
 interface ReportReviewPanelProps {
   report: ReportWithContext;
@@ -31,52 +31,48 @@ interface ReportReviewPanelProps {
 
 const actionButtons = [
   {
-    key: "DISMISS",
-    label: "Allow & Dismiss",
-    shortcut: "1",
+    key: 'DISMISS',
+    label: 'Allow & Dismiss',
+    shortcut: '1',
     icon: CheckCircle,
-    variant: "outline" as const,
-    description: "Mark as false positive",
+    variant: 'outline' as const,
+    description: 'Mark as false positive',
   },
   {
-    key: "REMOVE_MESSAGE",
-    label: "Remove Message",
-    shortcut: "2",
+    key: 'REMOVE_MESSAGE',
+    label: 'Remove Message',
+    shortcut: '2',
     icon: XCircle,
-    variant: "outline" as const,
-    description: "Hide from thread",
+    variant: 'outline' as const,
+    description: 'Hide from thread',
   },
   {
-    key: "WARN_USER",
-    label: "Remove + Warn",
-    shortcut: "3",
+    key: 'WARN_USER',
+    label: 'Remove + Warn',
+    shortcut: '3',
     icon: AlertCircle,
-    variant: "outline" as const,
-    description: "Send official warning",
+    variant: 'outline' as const,
+    description: 'Send official warning',
   },
   {
-    key: "SUSPEND_USER",
-    label: "Remove + Suspend",
-    shortcut: "4",
+    key: 'SUSPEND_USER',
+    label: 'Remove + Suspend',
+    shortcut: '4',
     icon: Clock,
-    variant: "outline" as const,
-    description: "Temporary suspension",
+    variant: 'outline' as const,
+    description: 'Temporary suspension',
   },
   {
-    key: "BAN_USER",
-    label: "Permanent Ban",
-    shortcut: "5",
+    key: 'BAN_USER',
+    label: 'Permanent Ban',
+    shortcut: '5',
     icon: Ban,
-    variant: "destructive" as const,
-    description: "Ban user permanently",
+    variant: 'destructive' as const,
+    description: 'Ban user permanently',
   },
 ];
 
-export function ReportReviewPanel({
-  report,
-  onAction,
-  isLoading,
-}: ReportReviewPanelProps) {
+export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewPanelProps) {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 
   const userProfile = report.reportedUserProfile;
@@ -90,41 +86,32 @@ export function ReportReviewPanel({
             <MessageSquare className="w-4 h-4" />
             Thread Context
           </CardTitle>
-          <div className="text-xs text-muted-foreground">
-            {threadContext.threadTitle}
-          </div>
+          <div className="text-xs text-muted-foreground">{threadContext.threadTitle}</div>
         </CardHeader>
         <CardContent className="space-y-3">
           {threadContext.surroundingMessages.map((msg) => (
             <div
               key={msg.id}
               className={cn(
-                "p-3 rounded-lg text-sm",
-                msg.isReported
-                  ? "bg-red-500/10 border border-red-500/30"
-                  : "bg-muted"
+                'p-3 rounded-lg text-sm',
+                msg.isReported ? 'bg-red-500/10 border border-red-500/30' : 'bg-muted'
               )}
             >
               <div className="flex items-center gap-2 mb-1">
                 <span
                   className={cn(
-                    "font-medium text-xs",
-                    msg.isReported ? "text-red-400" : "text-foreground"
+                    'font-medium text-xs',
+                    msg.isReported ? 'text-red-400' : 'text-foreground'
                   )}
                 >
-                  {msg.senderName || "Unknown"}
+                  {msg.senderName || 'Unknown'}
                 </span>
                 {msg.isReported && (
-                  <Badge className="text-[10px] bg-red-500/20 text-red-400">
-                    Reported
-                  </Badge>
+                  <Badge className="text-[10px] bg-red-500/20 text-red-400">Reported</Badge>
                 )}
               </div>
               <p
-                className={cn(
-                  "text-xs",
-                  msg.isReported ? "text-red-300" : "text-muted-foreground"
-                )}
+                className={cn('text-xs', msg.isReported ? 'text-red-300' : 'text-muted-foreground')}
               >
                 {msg.content}
               </p>
@@ -145,17 +132,13 @@ export function ReportReviewPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-2">
-              Report Reasons
-            </h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">Report Reasons</h4>
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="border-border">
                 {report.categoryLabel}
               </Badge>
               {report.reportCount > 1 && (
-                <Badge variant="secondary">
-                  +{report.reportCount - 1} more reports
-                </Badge>
+                <Badge variant="secondary">+{report.reportCount - 1} more reports</Badge>
               )}
             </div>
           </div>
@@ -168,17 +151,15 @@ export function ReportReviewPanel({
               </h4>
               <div className="bg-muted rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    Toxicity
-                  </span>
+                  <span className="text-xs text-muted-foreground">Toxicity</span>
                   <Badge
                     className={cn(
-                      "text-xs",
+                      'text-xs',
                       report.aiAnalysis.toxicityScore > 0.8
-                        ? "bg-red-500/20 text-red-400"
+                        ? 'bg-red-500/20 text-red-400'
                         : report.aiAnalysis.toxicityScore > 0.5
-                        ? "bg-orange-500/20 text-orange-400"
-                        : "bg-green-500/20 text-green-400"
+                          ? 'bg-orange-500/20 text-orange-400'
+                          : 'bg-green-500/20 text-green-400'
                     )}
                   >
                     {(report.aiAnalysis.toxicityScore * 100).toFixed(0)}%
@@ -186,11 +167,7 @@ export function ReportReviewPanel({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {report.aiAnalysis.categories.map((cat) => (
-                    <Badge
-                      key={cat}
-                      variant="outline"
-                      className="text-[10px] border-border"
-                    >
+                    <Badge key={cat} variant="outline" className="text-[10px] border-border">
                       {cat}
                     </Badge>
                   ))}
@@ -201,9 +178,7 @@ export function ReportReviewPanel({
 
           {report.similarReports.length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-2">
-                Similar Cases
-              </h4>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">Similar Cases</h4>
               <div className="space-y-2">
                 {report.similarReports.slice(0, 3).map((similar) => (
                   <div
@@ -215,10 +190,9 @@ export function ReportReviewPanel({
                     <Badge
                       variant="outline"
                       className={cn(
-                        "text-[10px]",
-                        similar.status === "RESOLVED" &&
-                          "border-green-500/30 text-green-400",
-                        similar.status === "DISMISSED" && "border-zinc-500/30"
+                        'text-[10px]',
+                        similar.status === 'RESOLVED' && 'border-green-500/30 text-green-400',
+                        similar.status === 'DISMISSED' && 'border-zinc-500/30'
                       )}
                     >
                       {similar.status}
@@ -235,7 +209,7 @@ export function ReportReviewPanel({
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <User className="w-4 h-4" />
-            User Profile: {userProfile.name || "Unknown"}
+            User Profile: {userProfile.name || 'Unknown'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -256,12 +230,12 @@ export function ReportReviewPanel({
               </div>
               <p
                 className={cn(
-                  "text-sm font-medium",
+                  'text-sm font-medium',
                   userProfile.trustScore > 70
-                    ? "text-green-400"
+                    ? 'text-green-400'
                     : userProfile.trustScore > 40
-                    ? "text-yellow-400"
-                    : "text-red-400"
+                      ? 'text-yellow-400'
+                      : 'text-red-400'
                 )}
               >
                 {userProfile.trustScore}/100
@@ -273,8 +247,7 @@ export function ReportReviewPanel({
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
-                Violation History ({userProfile.violationHistory.length}{" "}
-                previous)
+                Violation History ({userProfile.violationHistory.length} previous)
               </h4>
               <div className="space-y-2">
                 {userProfile.violationHistory.slice(0, 3).map((violation) => (
@@ -283,16 +256,12 @@ export function ReportReviewPanel({
                     className="bg-red-500/5 border border-red-500/20 rounded-lg p-2"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-red-400">
-                        {violation.action}
-                      </span>
+                      <span className="text-xs text-red-400">{violation.action}</span>
                       <span className="text-[10px] text-muted-foreground">
                         <TimeAgo date={violation.createdAt} />
                       </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {violation.reason}
-                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{violation.reason}</p>
                   </div>
                 ))}
               </div>
@@ -310,8 +279,8 @@ export function ReportReviewPanel({
                   variant={action.variant}
                   size="sm"
                   className={cn(
-                    "w-full justify-start text-xs",
-                    selectedAction === action.key && "ring-2 ring-brand"
+                    'w-full justify-start text-xs',
+                    selectedAction === action.key && 'ring-2 ring-brand'
                   )}
                   onClick={() => {
                     setSelectedAction(action.key);

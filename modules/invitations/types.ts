@@ -22,4 +22,3 @@ export interface ThreadInvitation {
     email: string;
   };
 }
-

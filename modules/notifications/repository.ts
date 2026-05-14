@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/infrastructure/prisma";
-import { NotificationType, Prisma } from "@prisma/client";
-import { dedupe } from "@/lib/dedupe";
-import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from '@/lib/infrastructure/prisma';
+import { NotificationType, Prisma } from '@prisma/client';
+import { dedupe } from '@/lib/dedupe';
+import { logger } from '@/lib/infrastructure/logger';
 
 export type NotificationData = Record<string, unknown> | null;
 
@@ -23,7 +23,7 @@ interface NotificationFilters {
   offset?: number;
 }
 
-import { publishUserEvent } from "@/lib/infrastructure/websocket";
+import { publishUserEvent } from '@/lib/infrastructure/websocket';
 
 export async function createNotification({
   userId,
@@ -47,16 +47,14 @@ export async function createNotification({
 
   // Publish notification count update to user's WebSocket connections
   publishUserEvent(userId, {
-    type: "NOTIFICATION_COUNT_UPDATE",
+    type: 'NOTIFICATION_COUNT_UPDATE',
     payload: { unreadCount },
   });
 
   return notification;
 }
 
-export async function createBulkNotifications(
-  notifications: CreateNotificationParams[]
-) {
+export async function createBulkNotifications(notifications: CreateNotificationParams[]) {
   return prisma.notification.createMany({
     data: notifications.map((notif) => ({
       userId: notif.userId,
@@ -89,21 +87,19 @@ export async function getUserNotifications(filters: NotificationFilters) {
 
   try {
     return (
-      (await dedupe(
-        `notifications:list:${JSON.stringify(filters)}`,
-        () =>
-          prisma.notification.findMany({
-            where,
-            orderBy: {
-              createdAt: "desc",
-            },
-            take: filters.limit || 50,
-            skip: filters.offset || 0,
-          }),
+      (await dedupe(`notifications:list:${JSON.stringify(filters)}`, () =>
+        prisma.notification.findMany({
+          where,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: filters.limit || 50,
+          skip: filters.offset || 0,
+        })
       )) ?? []
     );
   } catch (error) {
-    logger.error("[getUserNotifications]", error);
+    logger.error('[getUserNotifications]', error);
     return [];
   }
 }
@@ -112,7 +108,7 @@ export async function getNotificationById(notificationId: string) {
   return dedupe(`notifications:byId:${notificationId}`, () =>
     prisma.notification.findUnique({
       where: { id: notificationId },
-    }),
+    })
   );
 }
 
@@ -127,7 +123,7 @@ export async function markAsRead(notificationId: string, userId?: string) {
     });
 
     if (!notification || notification.userId !== userId) {
-      throw new Error("Notification not found or unauthorized");
+      throw new Error('Notification not found or unauthorized');
     }
   }
 
@@ -149,7 +145,7 @@ export async function markAsUnread(notificationId: string, userId?: string) {
     });
 
     if (!notification || notification.userId !== userId) {
-      throw new Error("Notification not found or unauthorized");
+      throw new Error('Notification not found or unauthorized');
     }
   }
 
@@ -173,7 +169,7 @@ export async function markAllAsRead(userId: string, type?: NotificationType) {
 
   return prisma.notification.updateMany({
     where,
-     data: {
+    data: {
       isRead: true,
     },
   });
@@ -185,7 +181,7 @@ export async function markMultipleAsRead(notificationIds: string[], userId: stri
       id: { in: notificationIds },
       userId, // Security check
     },
-     data: {
+    data: {
       isRead: true,
     },
   });
@@ -201,15 +197,15 @@ export async function getUnreadCount(userId: string, type?: NotificationType) {
     where.type = type;
   }
 
-  return dedupe(`notifications:unread:${userId}:${type ?? "all"}`, () =>
-    prisma.notification.count({ where }),
+  return dedupe(`notifications:unread:${userId}:${type ?? 'all'}`, () =>
+    prisma.notification.count({ where })
   );
 }
 
 export async function getUnreadCountByType(userId: string) {
   const notifications = await dedupe(`notifications:unreadByType:${userId}`, () =>
     prisma.notification.groupBy({
-      by: ["type"],
+      by: ['type'],
       where: {
         userId,
         isRead: false,
@@ -217,7 +213,7 @@ export async function getUnreadCountByType(userId: string) {
       _count: {
         type: true,
       },
-    }),
+    })
   );
 
   return (notifications ?? []).reduce(
@@ -237,7 +233,7 @@ export async function deleteNotification(notificationId: string, userId?: string
     });
 
     if (!notification || notification.userId !== userId) {
-      throw new Error("Notification not found or unauthorized");
+      throw new Error('Notification not found or unauthorized');
     }
   }
 
@@ -257,39 +253,37 @@ export async function deleteAllNotifications(userId: string, type?: Notification
 }
 
 export async function deleteReadNotifications(userId: string, olderThanDays?: number) {
-   const where: Prisma.NotificationWhereInput = {
-     userId,
-     isRead: true,
-   };
+  const where: Prisma.NotificationWhereInput = {
+    userId,
+    isRead: true,
+  };
 
-   if (olderThanDays) {
-     const cutoffDate = new Date();
-     cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
-     where.createdAt = { lt: cutoffDate };
-   }
+  if (olderThanDays) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+    where.createdAt = { lt: cutoffDate };
+  }
 
-   return prisma.notification.deleteMany({ where });
+  return prisma.notification.deleteMany({ where });
 }
 
 export async function getNotificationStats(userId: string) {
-  const [total, unread, byType] = await dedupe(
-    `notifications:stats:${userId}`,
-    () =>
-      Promise.all([
-        prisma.notification.count({
-          where: { userId },
-        }),
-        prisma.notification.count({
-          where: { userId, isRead: false },
-        }),
-        prisma.notification.groupBy({
-          by: ["type"],
-          where: { userId },
-          _count: {
-            type: true,
-          },
-        }),
-      ]),
+  const [total, unread, byType] = await dedupe(`notifications:stats:${userId}`, () =>
+    Promise.all([
+      prisma.notification.count({
+        where: { userId },
+      }),
+      prisma.notification.count({
+        where: { userId, isRead: false },
+      }),
+      prisma.notification.groupBy({
+        by: ['type'],
+        where: { userId },
+        _count: {
+          type: true,
+        },
+      }),
+    ])
   );
 
   return {
@@ -303,24 +297,21 @@ export async function getNotificationStats(userId: string) {
   };
 }
 
-export async function getRecentNotifications(
-  userId: string,
-  limit: number = 10
-) {
+export async function getRecentNotifications(userId: string, limit: number = 10) {
   try {
     return (
       (await dedupe(`notifications:recent:${userId}:${limit}`, () =>
         prisma.notification.findMany({
           where: { userId },
           orderBy: {
-            createdAt: "desc",
+            createdAt: 'desc',
           },
           take: limit,
-        }),
+        })
       )) ?? []
     );
   } catch (error) {
-    logger.error("[getRecentNotifications]", error);
+    logger.error('[getRecentNotifications]', error);
     return [];
   }
 }
@@ -349,7 +340,7 @@ export async function cleanupOldNotifications(daysToKeep: number = 90) {
 
   const deleted = await prisma.notification.deleteMany({
     where: {
-      isRead: true
+      isRead: true,
     },
   });
 

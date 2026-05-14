@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/infrastructure/prisma";
+import { logger } from '@/lib/infrastructure/logger';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/infrastructure/prisma';
 import {
   AIJobType,
   DEFAULT_JOB_OPTIONS,
@@ -8,17 +9,15 @@ import {
   getDailyDigestQueue,
   getResolutionScoreQueue,
   getThreadDnaQueue,
-} from "@/lib/infrastructure/bullmq";
-import { updateAllThreadRelations } from "@/modules/threads/relations";
-import { prewarmFollowUpQueries } from "@/modules/ai-search/query-warming";
+} from '@/lib/infrastructure/bullmq';
+import { updateAllThreadRelations } from '@/modules/threads/relations';
+import { prewarmFollowUpQueries } from '@/modules/ai-search/query-warming';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (
-    process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authError = verifyCronAuth(req);
+  if (authError) {
+    return authError;
   }
 
   try {
@@ -32,8 +31,8 @@ export async function GET(req: NextRequest) {
       },
       include: {
         messages: {
-          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || "50", 10),
-          orderBy: { createdAt: "desc" },
+          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
+          orderBy: { createdAt: 'desc' },
           include: { sender: true },
         },
         subscriptions: true,
@@ -68,7 +67,7 @@ export async function GET(req: NextRequest) {
           {
             ...DEFAULT_JOB_OPTIONS,
             jobId: `generate-dna-${thread.id}-${Date.now()}`,
-          },
+          }
         )
       );
 
@@ -88,8 +87,8 @@ export async function GET(req: NextRequest) {
           {
             ...DEFAULT_JOB_OPTIONS,
             jobId: `resolution-score-${thread.id}-${Date.now()}`,
-          },
-        ),
+          }
+        )
       );
 
       jobPromises.push(
@@ -106,8 +105,8 @@ export async function GET(req: NextRequest) {
           {
             ...DEFAULT_JOB_OPTIONS,
             jobId: `conflict-detection-${thread.id}-${Date.now()}`,
-          },
-        ),
+          }
+        )
       );
 
       if (subscriberIds.length > 0) {
@@ -118,7 +117,7 @@ export async function GET(req: NextRequest) {
             {
               ...DEFAULT_JOB_OPTIONS,
               jobId: `generate-digest-${thread.id}-${Date.now()}`,
-            },
+            }
           )
         );
       }
@@ -127,18 +126,18 @@ export async function GET(req: NextRequest) {
         jobPromises.push(
           aiInsightNotificationsQueue.add(
             AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
-            { 
-              subscriberIds, 
-              threadId: thread.id, 
+            {
+              subscriberIds,
+              threadId: thread.id,
               threadName: thread.name,
               oldScore: oldScore ?? undefined,
               isOutdated,
-              cronJob: true
+              cronJob: true,
             },
             {
               ...DEFAULT_JOB_OPTIONS,
               jobId: `send-notifications-${thread.id}-${Date.now()}`,
-            },
+            }
           )
         );
       }
@@ -163,10 +162,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Update threads cron error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 },
-    );
+    logger.error('Update threads cron error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

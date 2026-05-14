@@ -1,22 +1,15 @@
-import { getUserThreads, getUserMessages } from "@/modules/users/repository";
-import { getSession } from "@/modules/auth/session";
-import { redirect } from "next/navigation";
-import { Card } from "@/components/ui/card";
-import {
-  Activity,
-  MessageSquare,
-  FileText,
-  Users,
-  Calendar,
-  Reply,
-} from "lucide-react";
-import Link from "next/link";
-import TimeAgo from "@/components/ui/TimeAgo";
+import { getUserThreads, getUserMessages } from '@/modules/users/repository';
+import { getSession } from '@/modules/auth/session';
+import { redirect } from 'next/navigation';
+import { Card } from '@/components/ui/card';
+import { Activity, MessageSquare, FileText, Users, Calendar, Reply } from 'lucide-react';
+import Link from 'next/link';
+import TimeAgo from '@/components/ui/TimeAgo';
 
 export default async function ActivityPage() {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect('/login');
   }
 
   const [threadsResult, messagesResult] = await Promise.all([
@@ -39,9 +32,7 @@ export default async function ActivityPage() {
           <div className="flex items-center gap-2 mb-4">
             <FileText className="h-5 w-5 text-muted-foreground" />
             <h2 className="text-lg font-semibold">Threads Created</h2>
-            <span className="text-sm text-muted-foreground">
-              ({threadsResult.total})
-            </span>
+            <span className="text-sm text-muted-foreground">({threadsResult.total})</span>
           </div>
 
           {threads.length === 0 ? (
@@ -58,14 +49,9 @@ export default async function ActivityPage() {
           ) : (
             <div className="space-y-3">
               {threads.map((thread) => (
-                <Link
-                  key={thread.id}
-                  href={`/dashboard/threads/thread/${thread.slug}`}
-                >
+                <Link key={thread.id} href={`/dashboard/threads/thread/${thread.slug}`}>
                   <Card className="p-4 hover:bg-accent transition-colors">
-                    <h3 className="font-semibold text-foreground mb-1">
-                      {thread.name}
-                    </h3>
+                    <h3 className="font-semibold text-foreground mb-1">{thread.name}</h3>
                     {thread.description && (
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
                         {thread.description}
@@ -104,9 +90,7 @@ export default async function ActivityPage() {
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className="h-5 w-5 text-muted-foreground" />
             <h2 className="text-lg font-semibold">Your Comments</h2>
-            <span className="text-sm text-muted-foreground">
-              ({messagesResult.total})
-            </span>
+            <span className="text-sm text-muted-foreground">({messagesResult.total})</span>
           </div>
 
           {messages.length === 0 ? (
@@ -120,31 +104,24 @@ export default async function ActivityPage() {
           ) : (
             <div className="space-y-3">
               {messages.map((message) => (
-                <Link
-                  key={message.id}
-                  href={`/dashboard/threads/thread/${message.section.slug}`}
-                >
+                <Link key={message.id} href={`/dashboard/threads/thread/${message.section.slug}`}>
                   <Card className="p-4 hover:bg-accent transition-colors">
                     {message.parent && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 pb-2 border-b border-border">
                         <Reply className="h-3 w-3" />
                         <span>
-                          Replying to{" "}
+                          Replying to{' '}
                           <span className="font-medium">
-                            {message.parent.sender?.name || "Unknown"}
+                            {message.parent.sender?.name || 'Unknown'}
                           </span>
                         </span>
                       </div>
                     )}
 
-                    <p className="text-sm text-foreground line-clamp-2 mb-2">
-                      {message.content}
-                    </p>
+                    <p className="text-sm text-foreground line-clamp-2 mb-2">{message.content}</p>
 
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="font-medium text-brand">
-                        {message.section.name}
-                      </span>
+                      <span className="font-medium text-brand">{message.section.name}</span>
                       <span>
                         <TimeAgo date={message.createdAt} />
                       </span>

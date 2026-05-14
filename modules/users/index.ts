@@ -2,7 +2,6 @@
  * Users module barrel export
  */
 
-export * from "./actions";
-export * from "./schemas";
-export * from "./types";
-
+export * from './actions';
+export * from './schemas';
+export * from './types';

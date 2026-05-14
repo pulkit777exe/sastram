@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import type { Variants } from "motion/react";
-import { motion, useAnimation } from "motion/react";
-import type { HTMLAttributes } from "react";
-import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
+import type { Variants } from 'motion/react';
+import { motion, useAnimation } from 'motion/react';
+import type { HTMLAttributes } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
 
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 export interface GithubIconHandle {
   startAnimation: () => void;
@@ -55,7 +55,7 @@ const TAIL_VARIANTS: Variants = {
     rotate: [0, -15, 15, -10, 10, -5, 5],
     transition: {
       duration: 2.5,
-      ease: "easeInOut",
+      ease: 'easeInOut',
       repeat: Number.POSITIVE_INFINITY,
     },
   },
@@ -72,13 +72,13 @@ const GithubIcon = forwardRef<GithubIconHandle, GithubIconProps>(
 
       return {
         startAnimation: async () => {
-          bodyControls.start("animate");
-          await tailControls.start("draw");
-          tailControls.start("wag");
+          bodyControls.start('animate');
+          await tailControls.start('draw');
+          tailControls.start('wag');
         },
         stopAnimation: () => {
-          bodyControls.start("normal");
-          tailControls.start("normal");
+          bodyControls.start('normal');
+          tailControls.start('normal');
         },
       };
     });
@@ -88,9 +88,9 @@ const GithubIcon = forwardRef<GithubIconHandle, GithubIconProps>(
         if (isControlledRef.current) {
           onMouseEnter?.(e);
         } else {
-          bodyControls.start("animate");
-          await tailControls.start("draw");
-          tailControls.start("wag");
+          bodyControls.start('animate');
+          await tailControls.start('draw');
+          tailControls.start('wag');
         }
       },
       [bodyControls, onMouseEnter, tailControls]
@@ -101,8 +101,8 @@ const GithubIcon = forwardRef<GithubIconHandle, GithubIconProps>(
         if (isControlledRef.current) {
           onMouseLeave?.(e);
         } else {
-          bodyControls.start("normal");
-          tailControls.start("normal");
+          bodyControls.start('normal');
+          tailControls.start('normal');
         }
       },
       [bodyControls, tailControls, onMouseLeave]
@@ -144,6 +144,6 @@ const GithubIcon = forwardRef<GithubIconHandle, GithubIconProps>(
   }
 );
 
-GithubIcon.displayName = "GithubIcon";
+GithubIcon.displayName = 'GithubIcon';
 
 export { GithubIcon };
