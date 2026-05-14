@@ -1,0 +1,65 @@
+'use server';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { AppError, handleError } from './errors';
+import { logger } from '@/lib/infrastructure/logger';
+
+export type ApiHandler = (
+  request: NextRequest,
+  context?: { params: Promise<Record<string, string>> }
+) => Promise<NextResponse>;
+
+export interface ApiResponse<T = unknown> {
+  data?: T;
+  error?: string;
+  code?: string;
+}
+
+export function withErrorHandling(handler: ApiHandler): ApiHandler {
+  return async (request, context) => {
+    try {
+      return await handler(request, context);
+    } catch (error) {
+      const { message, code, statusCode } = handleError(error);
+
+      logger.error(`API Error: ${code}`, { error: error instanceof Error ? error.message : String(error), path: request.nextUrl.pathname });
+
+      return NextResponse.json(
+        { error: message, code },
+        { status: statusCode }
+      );
+    }
+  };
+}
+
+export function successResponse<T>(data: T, status = 200): NextResponse {
+  return NextResponse.json({ data }, { status });
+}
+
+export function errorResponse(message: string, status = 400): NextResponse {
+  return NextResponse.json({ error: message }, { status });
+}
+
+export function validationErrorResponse(issues: string[]): NextResponse {
+  return NextResponse.json({ error: 'Validation failed', details: issues }, { status: 400 });
+}
+
+export function unauthorizedResponse(message = 'Unauthorized'): NextResponse {
+  return NextResponse.json({ error: message, code: 'UNAUTHORIZED' }, { status: 401 });
+}
+
+export function forbiddenResponse(message = 'Forbidden'): NextResponse {
+  return NextResponse.json({ error: message, code: 'FORBIDDEN' }, { status: 403 });
+}
+
+export function notFoundResponse(resource = 'Resource'): NextResponse {
+  return NextResponse.json({ error: `${resource} not found`, code: 'NOT_FOUND' }, { status: 404 });
+}
+
+export function rateLimitResponse(message = 'Rate limit exceeded'): NextResponse {
+  return NextResponse.json({ error: message, code: 'RATE_LIMIT' }, { status: 429 });
+}
+
+export function serverErrorResponse(message = 'Internal server error'): NextResponse {
+  return NextResponse.json({ error: message, code: 'INTERNAL_ERROR' }, { status: 500 });
+}

@@ -1,11 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { postMessage } from '@/modules/messages/actions';
 import { requireSession } from '@/modules/auth/session';
+import { withErrorHandling, successResponse, unauthorizedResponse, errorResponse, validationErrorResponse } from '@/lib/utils/api-response';
 
-export async function POST(request: NextRequest) {
+interface PostMessageResult {
+  id: string;
+  content: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string | null;
+  createdAt: Date;
+  sectionId: string;
+}
+
+export const POST = withErrorHandling(async (request: NextRequest) => {
   const session = await requireSession();
   if (!session.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return unauthorizedResponse();
   }
 
   const formData = await request.formData();
@@ -14,16 +25,14 @@ export async function POST(request: NextRequest) {
   const body = formData.get('body') as string;
 
   if (!threadId) {
-    return NextResponse.json({ error: 'Missing threadId' }, { status: 400 });
+    return validationErrorResponse(['Missing threadId']);
   }
 
-  // If there's no body, check if there are files
   const files = formData.getAll('files') as File[];
   if (!body?.trim() && files.length === 0) {
-    return NextResponse.json({ error: 'Missing body or files' }, { status: 400 });
+    return validationErrorResponse(['Missing body or files']);
   }
 
-  // Reformat FormData to match postMessage expectations
   const postFormData = new FormData();
   if (body) postFormData.append('content', body);
   postFormData.append('sectionId', threadId);
@@ -31,7 +40,6 @@ export async function POST(request: NextRequest) {
   if (parentId) {
     postFormData.append('parentId', parentId);
   }
-  // Append files
   for (const file of files) {
     postFormData.append('files', file);
   }
@@ -39,15 +47,9 @@ export async function POST(request: NextRequest) {
   const result = await postMessage(postFormData);
 
   if (!result || ('error' in result && result.error)) {
-    const errorMessage = result?.error || 'Failed to post message';
-    return NextResponse.json({ error: errorMessage }, { status: 400 });
+    return errorResponse(result?.error || 'Failed to post message');
   }
 
-  const typedResult = result as { data: any };
-  return NextResponse.json(
-    {
-      message: typedResult.data,
-    },
-    { status: 200 }
-  );
-}
+  const typedResult = result as { data: PostMessageResult };
+  return successResponse({ message: typedResult.data });
+});
