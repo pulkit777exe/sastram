@@ -345,7 +345,7 @@ export const getBannedUsers = createServerAction(
     const limit = Math.min(filters.limit || 50, 100);
     const offset = filters.offset || 0;
 
-    const whereClause: any = {};
+    const whereClause: Prisma.UserBanWhereInput = {};
     if (filters.isActive !== undefined) whereClause.isActive = filters.isActive;
     if (filters.threadId) whereClause.threadId = filters.threadId;
 
@@ -522,8 +522,8 @@ export const getModerationQueue = createServerAction(
     const limit = Math.min(filters.limit || 20, 100);
     const offset = filters.offset || 0;
 
-    const whereClause: any = {
-      status: filters.status || { in: ['PENDING', 'REVIEWING'] },
+    const whereClause: Prisma.ReportWhereInput = {
+      status: filters.status || { in: ['PENDING', 'REVIEWING'] as const },
     };
 
     const [reports, totalCount] = await Promise.all([
