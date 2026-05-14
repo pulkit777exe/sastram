@@ -1,5 +1,6 @@
 allowBuilds:
   '@prisma/engines': true
+  '@scarf/scarf': set this to true or false
   '@sentry/cli': true
   esbuild: true
   prisma: true

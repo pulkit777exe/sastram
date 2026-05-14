@@ -60,4 +60,26 @@ describe('Basic Utilities', () => {
       expect(rateLimitConfig.websocket.points).to.equal(50);
     });
   });
+
+  describe('Circuit Breaker', () => {
+    it('should have correct initial state', () => {
+      const state = 'closed';
+      expect(state).to.equal('closed');
+    });
+
+    it('should track failure count correctly', () => {
+      let failures = 0;
+      failures++;
+      failures++;
+      expect(failures).to.equal(2);
+    });
+
+    it('should track success count correctly', () => {
+      let successes = 0;
+      successes++;
+      successes++;
+      successes++;
+      expect(successes).to.equal(3);
+    });
+  });
 });

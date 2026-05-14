@@ -1,0 +1,202 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sastram API",
+    "description": "Forum application API with real-time messaging, AI features, and moderation",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Sastram Support"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Development server"
+    }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Authentication endpoints" },
+    { "name": "Messages", "description": "Message posting and retrieval" },
+    { "name": "Threads", "description": "Thread management" },
+    { "name": "AI", "description": "AI-powered features" },
+    { "name": "Moderation", "description": "Moderation tools" }
+  ],
+  "paths": {
+    "/api/auth/sign-in/email-otp": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Sign in with email OTP",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP sent successfully" },
+          "400": { "description": "Invalid request" },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+    "/api/messages": {
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Post a new message",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["threadId", "body"],
+                "properties": {
+                  "threadId": { "type": "string" },
+                  "body": { "type": "string" },
+                  "parentId": { "type": "string" },
+                  "files": { "type": "array", "items": { "type": "string", "format": "binary" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Message posted successfully" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/threads": {
+      "get": {
+        "tags": ["Threads"],
+        "summary": "List threads",
+        "parameters": [
+          { "name": "communityId", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "cursor", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Threads retrieved successfully" }
+        }
+      },
+      "post": {
+        "tags": ["Threads"],
+        "summary": "Create a new thread",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "communityId"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 3, "maxLength": 200 },
+                  "description": { "type": "string", "maxLength": 1000 },
+                  "communityId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Thread created successfully" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/ai/thread-summary": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "Generate thread summary",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["threadId"],
+                "properties": {
+                  "threadId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Summary generated successfully" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "AI service error" }
+        }
+      }
+    },
+    "/api/ai/forum-search": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "Search forum using AI",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["query"],
+                "properties": {
+                  "query": { "type": "string", "minLength": 3, "maxLength": 500 },
+                  "limit": { "type": "integer", "default": 10 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Search results returned" },
+          "400": { "description": "Invalid query" },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+    "/api/v1/moderation/rules": {
+      "get": {
+        "tags": ["Moderation"],
+        "summary": "Get moderation rules",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Rules retrieved successfully" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - moderator only" }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check endpoint",
+        "responses": {
+          "200": { "description": "Service is healthy" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
