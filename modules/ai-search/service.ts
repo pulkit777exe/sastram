@@ -13,7 +13,7 @@ import type {
   AISearchResponse,
 } from './types';
 
-// ── Domain Tiers ────────────────────────────────────────────
+
 const TIER_1_DOMAINS = [
   'wiki.archlinux.org',
   'developer.mozilla.org',
@@ -49,7 +49,7 @@ const TIER_2_DOMAINS = [
 
 const TIER_3_DOMAINS = ['reddit.com', 'quora.com', 'lobste.rs'];
 
-// ── Source Filters ──────────────────────────────────────────
+
 function getIncludeDomains(filter: SearchConfig['sourceFilter']): string[] | undefined {
   switch (filter) {
     case 'technical':
@@ -101,7 +101,6 @@ function isOutdated(publishedDate?: string): boolean {
   return new Date(publishedDate) < twoYearsAgo;
 }
 
-// ── Phase 1: Query Classification ───────────────────────────
 async function classifyQuery(query: string, geminiKey: string): Promise<QueryClassification> {
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
@@ -143,7 +142,7 @@ Schema: { "type": string, "primaryDomain": string, "suggestedSources": string[],
   }
 }
 
-// ── Phase 2: Parallel Search ────────────────────────────────
+
 async function searchWithExa(
   query: string,
   classification: QueryClassification,
@@ -308,7 +307,7 @@ async function searchSources(
   };
 }
 
-// ── Phase 3: Cross-Reference & Conflict Detection ──────────
+
 async function crossReference(
   rawResults: RawSearchResults,
   query: string,
@@ -375,7 +374,7 @@ No markdown, valid JSON only.`;
   return { rankedSources: ranked, conflictData };
 }
 
-// ── Phase 4: Synthesis ──────────────────────────────────────
+
 async function synthesize(
   query: string,
   sources: Source[],
@@ -465,7 +464,7 @@ Return plain text with light markdown (bold, bullets only). No headers with #.`;
   }
 }
 
-// ── Main Pipeline ───────────────────────────────────────────
+
 export async function executeAISearch(
   query: string,
   config: SearchConfig,

@@ -192,7 +192,6 @@ export function PollPanel({ threadId, initialPoll, canManagePoll }: PollPanelPro
           >
             <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
               {poll ? (
-                // ── Existing poll ──
                 <div className="space-y-3">
                   <PollDisplay poll={poll} />
                   {canManagePoll && poll.isActive && (

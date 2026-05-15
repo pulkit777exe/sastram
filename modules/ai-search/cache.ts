@@ -1,15 +1,8 @@
-// ─────────────────────────────────────────────────────────────
-// AI Search — Prisma-backed Query Cache
-// ─────────────────────────────────────────────────────────────
-
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import type { AISearchResponse } from './types';
 
-/**
- * Normalize a query string for consistent hashing.
- */
 function normalizeQuery(query: string): string {
   return query
     .toLowerCase()
@@ -18,16 +11,10 @@ function normalizeQuery(query: string): string {
     .replace(/\s+/g, ' ');
 }
 
-/**
- * SHA-256 hash of a normalized query.
- */
 function hashQuery(query: string): string {
   return crypto.createHash('sha256').update(normalizeQuery(query)).digest('hex');
 }
 
-/**
- * Retrieve a cached result if it exists and hasn't expired.
- */
 export async function getCachedResult(query: string): Promise<AISearchResponse | null> {
   const hash = hashQuery(query);
 

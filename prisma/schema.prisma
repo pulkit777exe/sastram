@@ -6,8 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-// ── ENUMS ──────────────────────────────────────────────
-
 enum Role {
   USER
   MODERATOR
@@ -57,7 +55,7 @@ enum NotificationType {
   REACTION
   INVITATION
   SYSTEM
-  AI_INSIGHT // new: AI flagged something relevant to user
+  AI_INSIGHT
 }
 
 enum ReportStatus {
@@ -100,8 +98,6 @@ enum AttachmentType {
   FILE
 }
 
-// ── CORE USERS ─────────────────────────────────────────
-
 model User {
   id            String  @id @default(cuid())
   email         String  @unique
@@ -132,7 +128,6 @@ model User {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  // Relations
   accounts      Account[]
   sessions      Session[]
   communities   Community[]          @relation("CommunityCreator")
@@ -157,7 +152,6 @@ model User {
   appeals       Appeal[]             @relation("AppealSubmitter")
   moderatedAppeals Appeal[]         @relation("AppealModerator")
 
-  // AI features
   aiSearchSessions AiSearchSession[]
   expertiseAreas   UserExpertise[]
 
@@ -216,8 +210,6 @@ model Verification {
   @@map("verifications")
 }
 
-// ── COMMUNITY & SECTIONS ───────────────────────────────
-
 model Community {
   id          String              @id @default(cuid())
   title       String
@@ -251,16 +243,10 @@ model Section {
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
-  // AI fields
-  // resolutionScore: 0-100, how well resolved this thread is
   resolutionScore Int?
-  // lastVerifiedAt: when AI last checked if content is still accurate
   lastVerifiedAt  DateTime?
-  // isOutdated: AI flagged that newer info contradicts this thread
   isOutdated      Boolean   @default(false)
-  // aiSummary: cached AI summary of the thread
   aiSummary       String?   @db.Text
-  // threadDna: { questionType, expertiseLevel, topics[], readTimeMinutes }
   threadDna       Json?
 
   creator       User                 @relation("SectionCreator", fields: [createdBy], references: [id])
@@ -301,8 +287,6 @@ model SectionMember {
   @@index([userId])
   @@map("section_members")
 }
-
-// ── MESSAGES (with tree threading) ────────────────────
 
 model Message {
   id           String    @id @default(cuid())
@@ -416,8 +400,6 @@ model ReadReceipt {
   @@map("read_receipts")
 }
 
-// ── SOCIAL ─────────────────────────────────────────────
-
 model UserFollow {
   id          String   @id @default(cuid())
   followerId  String
@@ -447,8 +429,6 @@ model UserBookmark {
   @@map("user_bookmarks")
 }
 
-// ── NOTIFICATIONS ──────────────────────────────────────
-
 model Notification {
   id        String           @id @default(cuid())
   userId    String
@@ -465,8 +445,6 @@ model Notification {
   @@index([createdAt])
   @@map("notifications")
 }
-
-// ── SUBSCRIPTIONS (replaces NewsletterSubscription + ThreadDigest) ──
 
 model ThreadSubscription {
   id        String          @id @default(cuid())
@@ -565,8 +543,6 @@ model UserBan {
   @@map("user_bans")
 }
 
-// ── TAGS ───────────────────────────────────────────────
-
 model ThreadTag {
   id        String   @id @default(cuid())
   name      String
@@ -591,8 +567,6 @@ model ThreadTagRelation {
   @@index([tagId])
   @@map("thread_tag_relations")
 }
-
-// ── POLLS ──────────────────────────────────────────────
 
 model Poll {
   id        String    @id @default(cuid())
@@ -623,8 +597,6 @@ model PollVote {
   @@index([pollId])
   @@map("poll_votes")
 }
-
-// ── REPUTATION & BADGES ────────────────────────────────
 
 model UserReputation {
   id        String   @id @default(cuid())
@@ -683,8 +655,6 @@ model UserActivity {
   @@map("user_activities")
 }
 
-// ── INVITATIONS ────────────────────────────────────────
-
 model ThreadInvitation {
   id        String           @id @default(cuid())
   threadId  String
@@ -702,8 +672,6 @@ model ThreadInvitation {
   @@index([token])
   @@map("thread_invitations")
 }
-
-// ── AI SEARCH ──────────────────────────────────────────
 
 // Groups a user's search session (one query = one session)
 model AiSearchSession {
@@ -747,8 +715,6 @@ model AiSearchResult {
   @@index([expiresAt])
   @@map("ai_search_results")
 }
-
-// ── AI FEATURES ────────────────────────────────────────
 
 // Cross-thread semantic relationships (powers "Related Resolutions")
 model ThreadRelation {

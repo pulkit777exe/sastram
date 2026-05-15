@@ -21,14 +21,9 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   const [summary, setSummary] = useState(initialSummary ?? null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Single shared ref for the active polling interval — prevents leaks
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Tracks total time spent polling so we can time out
   const pollStartRef = useRef<number>(0);
-  // Prevents setState after unmount
   const mountedRef = useRef(true);
-
-  // ── POLLING ───────────────────────────────────────────────────────────────
 
   function stopPolling() {
     if (pollIntervalRef.current !== null) {
@@ -150,8 +145,6 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
       };
     }
   }, [initialSummary, threadId, requestSummary]);
-
-  // ── RENDER ────────────────────────────────────────────────────────────────
 
   return (
     <div

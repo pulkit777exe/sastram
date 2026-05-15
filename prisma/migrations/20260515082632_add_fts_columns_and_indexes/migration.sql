@@ -1,4 +1,26 @@
--- Add generated tsvector columns and GIN indexes for full-text search performance
+-- Normalize: rename summary → aiSummary if needed (schema drift from early migration)
+-- Then add generated fts_vector columns + GIN indexes for full-text search
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'sections' AND column_name = 'summary'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'sections' AND column_name = 'aiSummary'
+    ) THEN
+        ALTER TABLE "sections" RENAME COLUMN "summary" TO "aiSummary";
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'sections' AND column_name = 'aiSummary'
+    ) THEN
+        ALTER TABLE "sections" ADD COLUMN "aiSummary" TEXT;
+    END IF;
+END $$;
+
 DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns

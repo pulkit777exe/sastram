@@ -4,7 +4,7 @@ Personal project, open sourced. Built with Next.js, Prisma, WebSockets, and AI.
 
 ## Overview
 
-Next.js 14+ forum application with TypeScript, Prisma ORM, PostgreSQL (Neon), WebSocket real-time chat, Better Auth authentication, and AI integration.
+Next.js 16+ forum application with TypeScript, Prisma ORM, PostgreSQL (Neon), WebSocket real-time chat, Better Auth authentication, and AI integration.
 
 ## Tech Stack
 
@@ -54,7 +54,6 @@ pnpm db:studio   # Prisma studio
 - `prisma/` - Database schema
 - `test/` - Mocha unit tests
 - `stores/` - Zustand stores
-- `worker/` - BullMQ background job processor
 
 ### Database Models
 
@@ -152,12 +151,3 @@ Optional:
 
 1. WebSocket state is in-memory — does not work across multiple server instances
 2. BullMQ Redis URL parsing only supports `REDIS_URL` / `UPSTASH_REDIS_REST_URL` — standalone `REDIS_HOST`/`REDIS_PORT` fallback lacks TLS support for Upstash
-
-## FTS Search & Generated Columns
-
-Full-text search on `sections` (name, description, aiSummary) and `messages` (content) uses generated `fts_vector` columns with GIN indexes — see `prisma/migrations/20260515082632_add_fts_columns_and_indexes/`.
-
-- Generated columns are **not** in `schema.prisma` — Prisma doesn't support `GENERATED ALWAYS AS` columns. They're managed purely via raw SQL migrations.
-- `$queryRaw` queries in `modules/search/repository.ts` reference `"fts_vector"` directly.
-- Running `prisma db pull` will detect `fts_vector` as untracked columns — this is expected. Don't commit the pulled schema without adding `@@ignore`.
-- If results seem stale after schema changes, the generated column recomputes automatically on write. To backfill existing rows: `UPDATE "sections" SET name = name WHERE fts_vector IS NULL` (or any write that triggers the generated column).

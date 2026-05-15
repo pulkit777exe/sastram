@@ -1,8 +1,6 @@
 import Redis from 'ioredis';
 import { logger } from '@/lib/infrastructure/logger';
 
-// ── TYPES ──────────────────────────────────────────────────────────────────
-
 export interface RedisThreadPayload {
   id: string;
   content: string;
@@ -27,15 +25,11 @@ export interface RedisThreadEvent {
   payload: Record<string, unknown>;
 }
 
-// ── CHANNEL HELPERS ────────────────────────────────────────────────────────
-
 export function getThreadChannel(sectionId: string): string {
   return `thread:${sectionId}`;
 }
 
-// ── CONNECTION FACTORY ────────────────────────────────────────────────────
-// pub/sub clients CANNOT be reused for regular Redis commands.
-// Each needs its own dedicated connection.
+// pub/sub clients need dedicated connections; cannot be reused for regular commands.
 
 function createRedisClient(label: string): Redis {
   const url = process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL;
@@ -56,10 +50,7 @@ function createRedisClient(label: string): Redis {
   return client;
 }
 
-// ── SINGLETON CLIENTS ─────────────────────────────────────────────────────
-// Lazy-initialized — only created when first used.
-// Publisher used by worker process.
-// Subscriber used by Next.js WebSocket server.
+// Lazy-initialized — created when first used.
 
 let _pub: Redis | null = null;
 let _sub: Redis | null = null;
@@ -73,8 +64,6 @@ export function getRedisSub(): Redis {
   if (!_sub) _sub = createRedisClient('sub');
   return _sub;
 }
-
-// ── PUBLISH ────────────────────────────────────────────────────────────────
 
 export async function publishThreadEvent(
   sectionId: string,

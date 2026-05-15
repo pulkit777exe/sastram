@@ -10,8 +10,6 @@ import { cn } from '@/lib/utils/cn';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import type { PollResults } from '@/modules/polls/types';
 
-// ── TYPES ──────────────────────────────────────────────────────────────────
-
 interface PollDisplayProps {
   poll: {
     id: string;
@@ -22,9 +20,6 @@ interface PollDisplayProps {
     expiresAt: Date | null;
   };
 }
-
-// ── SKELETON ───────────────────────────────────────────────────────────────
-// Matches the height of a typical 2-option poll to prevent layout shift.
 
 function PollSkeleton({ optionCount }: { optionCount: number }) {
   return (
@@ -42,8 +37,6 @@ function PollSkeleton({ optionCount }: { optionCount: number }) {
   );
 }
 
-// ── COMPONENT ──────────────────────────────────────────────────────────────
-
 export function PollDisplay({ poll }: PollDisplayProps) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
@@ -51,7 +44,6 @@ export function PollDisplay({ poll }: PollDisplayProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
 
-  // Prevents setState on unmounted component
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -134,10 +126,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     }
   };
 
-  // ── RENDER ────────────────────────────────────────────────────────────────
-
   const isExpired = useMemo(
-    // eslint-disable-next-line react-hooks/purity
     () => !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now(),
     [poll.expiresAt]
   );

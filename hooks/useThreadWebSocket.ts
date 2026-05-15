@@ -17,7 +17,6 @@ interface UseThreadWebSocketOptions {
   onMessageDeleted?: (messageId: string) => void;
   onPinUpdate?: (messageId: string, isPinned: boolean) => void;
   onTypingUpdate?: (typers: TypingUser[]) => void;
-  // NEW: called when AI stream emits isComplete:true — clears "pending" indicator
   onAiComplete?: (parentMessageId: string) => void;
 }
 

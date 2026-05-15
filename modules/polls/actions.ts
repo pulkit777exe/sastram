@@ -18,12 +18,9 @@ import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { withValidation } from '@/lib/utils/server-action';
 
-// ── HELPERS ────────────────────────────────────────────────────────────────
-
 const pollIdSchema = z.object({ pollId: z.string().cuid() });
 const threadIdSchema = z.object({ threadId: z.string().cuid() });
 
-// Detects Prisma unique constraint violation (P2002)
 function isPrismaUniqueConstraintError(err: unknown): boolean {
   return (
     typeof err === 'object' &&
@@ -33,17 +30,12 @@ function isPrismaUniqueConstraintError(err: unknown): boolean {
   );
 }
 
-// ── CREATE POLL ────────────────────────────────────────────────────────────
-
 export const createPollAction = withValidation(
   createPollSchema,
   'createPoll',
   async ({ threadId, question, options, expiresAt }) => {
     try {
-      // requireSession enforces auth — session.user.id available for audit if needed
       const session = await requireSession();
-
-      // Check if user has permission to create a poll in this thread
       const memberRole = await getMemberRole(threadId, session.user.id);
       if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
         return { data: null, error: 'Insufficient permissions to create poll' };
@@ -71,8 +63,6 @@ export const createPollAction = withValidation(
   }
 );
 
-// ── VOTE ON POLL ───────────────────────────────────────────────────────────
-
 export const voteOnPollAction = withValidation(
   voteOnPollSchema,
   'voteOnPoll',
@@ -91,8 +81,6 @@ export const voteOnPollAction = withValidation(
         return { data: null, error: 'Voting is closed for this poll' };
       }
 
-      // No pre-check for existing vote here — the DB unique constraint handles it.
-      // voteOnPollRepo will throw a Prisma P2002 error if already voted.
       await voteOnPollRepo(pollId, session.user.id, optionIndex);
 
       if (poll.thread?.slug) {
@@ -109,8 +97,6 @@ export const voteOnPollAction = withValidation(
     }
   }
 );
-
-// ── CLOSE POLL ────────────────────────────────────────────────────────────
 
 export const closePollAction = createServerAction(
   {
@@ -148,8 +134,6 @@ export const closePollAction = createServerAction(
   }
 );
 
-// ── GET POLL RESULTS ───────────────────────────────────────────────────────
-
 export const getPollResultsAction = createServerAction(
   {
     schema: pollIdSchema,
@@ -169,8 +153,6 @@ export const getPollResultsAction = createServerAction(
   }
 );
 
-// ── GET USER VOTE ──────────────────────────────────────────────────────────
-
 export const getUserVoteAction = createServerAction(
   {
     schema: pollIdSchema,
@@ -187,8 +169,6 @@ export const getUserVoteAction = createServerAction(
     }
   }
 );
-
-// ── GET POLL BY ID ────────────────────────────────────────────────────────
 
 export const getPollByIdAction = createServerAction(
   {
@@ -208,8 +188,6 @@ export const getPollByIdAction = createServerAction(
     }
   }
 );
-
-// ── GET POLL BY THREAD ────────────────────────────────────────────────────
 
 export const getPollByThreadAction = createServerAction(
   {

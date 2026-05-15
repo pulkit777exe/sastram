@@ -296,10 +296,7 @@ export class GeminiService implements AIService {
   }
 }
 
-// ── OPENAI SERVICE ─────────────────────────────────────────────────────────
-
 export class OpenAIService implements AIService {
-  // Note: OPENAI_API_KEY — no NEXT_PUBLIC_ prefix. Server-only secret.
   private readonly baseUrl = 'https://api.openai.com/v1/chat/completions';
   private readonly headers: Record<string, string>;
 
@@ -493,8 +490,6 @@ export class OpenAIService implements AIService {
   }
 }
 
-// ── FACTORY ────────────────────────────────────────────────────────────────
-
 class AIServiceFactory {
   static create(provider: 'gemini' | 'openai', apiKey: string): AIService {
     if (provider === 'gemini') return new GeminiService(apiKey);
@@ -526,8 +521,6 @@ class NoOpAIService implements AIService {
     onChunk("(AI not configured)");
   }
 }
-
-// ── SINGLETON EXPORT ───────────────────────────────────────────────────────
 
 function createAiService(): AIService {
   const provider = (process.env.AI_PROVIDER as 'gemini' | 'openai' | undefined) ?? 'gemini';

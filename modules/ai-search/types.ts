@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────
-// AI Search — Type Definitions
-// ─────────────────────────────────────────────────────────────
-
 export interface SearchConfig {
   exaMode: 'agentic' | 'instant' | 'websets';
   tavilyMode: 'search' | 'extract' | 'crawl' | 'research';
