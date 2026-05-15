@@ -290,8 +290,7 @@ export function initWebSocketServer(server: HTTPServer) {
         // Basic websocket rate limiting per user / IP
         const identifier =
           ws.userId ??
-          //@ts-expect-error underlying socket has remoteAddress
-          (ws._socket?.remoteAddress as string | undefined) ??
+          ((ws as { _socket?: { remoteAddress?: string } })._socket?.remoteAddress) ??
           'anonymous';
         const limitKey = `ws:${threadId}:${identifier}`;
         const result = await rateLimit({ key: limitKey, type: 'websocket' });

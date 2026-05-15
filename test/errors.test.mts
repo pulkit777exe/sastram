@@ -8,6 +8,8 @@ import {
   NotFoundError,
   RateLimitError,
   handleError,
+  prismaErrorMessage,
+  isPrismaUniqueConstraintError,
 } from '../lib/utils/errors';
 
 describe('Error Handling', () => {
@@ -104,6 +106,66 @@ describe('Error Handling', () => {
       const result = handleError(null);
       expect(result.message).to.equal('An unexpected error occurred');
       expect(result.statusCode).to.equal(500);
+    });
+
+    it('should translate Prisma unique constraint error', () => {
+      const err = { code: 'P2002', meta: { modelName: 'User' } };
+      const result = handleError(err);
+      expect(result.message).to.equal('This record already exists');
+      expect(result.statusCode).to.equal(409);
+    });
+
+    it('should translate Prisma record not found error', () => {
+      const err = { code: 'P2025', meta: { modelName: 'Message' } };
+      const result = handleError(err);
+      expect(result.message).to.equal('Record not found');
+      expect(result.statusCode).to.equal(409);
+    });
+
+    it('should translate Prisma foreign key error', () => {
+      const err = { code: 'P2003', meta: { modelName: 'Message' } };
+      const result = handleError(err);
+      expect(result.message).to.equal('Related record not found');
+      expect(result.statusCode).to.equal(409);
+    });
+  });
+
+  describe('prismaErrorMessage', () => {
+    it('should return message for P2002', () => {
+      expect(prismaErrorMessage({ code: 'P2002' })).to.equal('This record already exists');
+    });
+
+    it('should return message for P2025', () => {
+      expect(prismaErrorMessage({ code: 'P2025' })).to.equal('Record not found');
+    });
+
+    it('should return message for P2003', () => {
+      expect(prismaErrorMessage({ code: 'P2003' })).to.equal('Related record not found');
+    });
+
+    it('should return null for unknown error codes', () => {
+      expect(prismaErrorMessage({ code: 'P9999' })).to.be.null;
+    });
+
+    it('should return null for non-Prisma errors', () => {
+      expect(prismaErrorMessage(new Error('db error'))).to.be.null;
+    });
+
+    it('should return null for null/undefined', () => {
+      expect(prismaErrorMessage(null)).to.be.null;
+      expect(prismaErrorMessage(undefined)).to.be.null;
+    });
+  });
+
+  describe('isPrismaUniqueConstraintError', () => {
+    it('should return true for P2002', () => {
+      expect(isPrismaUniqueConstraintError({ code: 'P2002' })).to.be.true;
+    });
+
+    it('should return false for other errors', () => {
+      expect(isPrismaUniqueConstraintError({ code: 'P2025' })).to.be.false;
+      expect(isPrismaUniqueConstraintError(new Error('fail'))).to.be.false;
+      expect(isPrismaUniqueConstraintError(null)).to.be.false;
     });
   });
 });
