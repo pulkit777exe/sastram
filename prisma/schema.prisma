@@ -153,7 +153,6 @@ model User {
   moderatedAppeals Appeal[]         @relation("AppealModerator")
 
   aiSearchSessions AiSearchSession[]
-  expertiseAreas   UserExpertise[]
 
   @@index([email])
   @@index([status])
@@ -732,20 +731,4 @@ model ThreadRelation {
   @@map("thread_relations")
 }
 
-// Expert Passport — per-domain expertise tracking
-model UserExpertise {
-  id           String   @id @default(cuid())
-  userId       String
-  domain       String // 'react', 'kubernetes', 'security', etc.
-  score        Int      @default(0) // 0-100
-  helpfulCount Int      @default(0) // answers marked helpful in this domain
-  totalCount   Int      @default(0) // total answers in this domain
-  updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, domain])
-  @@index([userId])
-  @@index([domain, score])
-  @@map("user_expertise")
-}
