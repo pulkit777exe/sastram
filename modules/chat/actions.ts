@@ -5,7 +5,7 @@ import { auth } from '@/lib/services/auth';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/infrastructure/logger';
-import type { Conversation, ChatMessage, AttachmentInput } from '@/lib/types/index';
+import type { Conversation } from '@/lib/types/index';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { emitThreadMessage } from '@/modules/ws/publisher';
 import { z } from 'zod';

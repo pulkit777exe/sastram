@@ -146,17 +146,5 @@ export const mentionDataSchema = z.object({
   parentId: z.string().cuid('Invalid parent message ID').optional(),
 });
 
-/**
- * Type exports
- */
-export type CreateMessage = z.infer<typeof createMessageSchema>;
-export type AttachmentInput = z.infer<typeof attachmentInputSchema>;
-export type CreateMessageWithAttachments = z.infer<typeof createMessageWithAttachmentsSchema>;
-export type CreateThread = z.infer<typeof createThreadSchema>;
-export type UpdateThread = z.infer<typeof updateThreadSchema>;
-export type CreateCommunity = z.infer<typeof createCommunitySchema>;
-export type UpdateCommunity = z.infer<typeof updateCommunitySchema>;
-export type UpdateUserProfile = z.infer<typeof updateUserProfileSchema>;
 export type NewsletterSubscription = z.infer<typeof newsletterSubscriptionSchema>;
-export type MessageQueue = z.infer<typeof messageQueueSchema>;
 export type MentionData = z.infer<typeof mentionDataSchema>;

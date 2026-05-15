@@ -82,16 +82,6 @@ export interface TypingIndicator {
   timestamp?: number;
 }
 
-export interface MentionData {
-  messageId: string;
-  mentionedUserId: string;
-  mentionedBy: string;
-  mentionedByName: string;
-  sectionId: string;
-  content: string;
-  parentId?: string;
-}
-
 export interface Conversation {
   id: string;
   name: string;
@@ -101,17 +91,6 @@ export interface Conversation {
   unread: number;
   online: boolean;
   type: 'channel' | 'dm';
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: string;
-  content: string;
-  timestamp: string;
-  avatar: string | null;
-  isOwn: boolean;
-  status: 'sent' | 'delivered' | 'read';
-  attachments?: Attachment[];
 }
 
 export interface AttachmentInput {
