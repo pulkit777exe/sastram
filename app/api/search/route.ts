@@ -4,10 +4,10 @@ import { auth } from '@/lib/services/auth';
 import { withErrorHandling, successResponse, validationErrorResponse, unauthorizedResponse } from '@/lib/utils/api-response';
 import { searchThreads, searchMessages, searchUsers } from '@/modules/search/repository';
 
-export const GET = withErrorHandling(async (request: NextRequest) => {
+const _getHandler = await withErrorHandling(async (request: NextRequest) => {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
-    return unauthorizedResponse();
+    return await unauthorizedResponse();
   }
 
   const { searchParams } = new URL(request.url);
@@ -44,3 +44,5 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       ]);
   }
 });
+
+export const GET = _getHandler;

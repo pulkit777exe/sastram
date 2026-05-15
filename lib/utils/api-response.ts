@@ -16,7 +16,7 @@ export interface ApiResponse<T = unknown> {
   requestId?: string;
 }
 
-export function withErrorHandling(handler: ApiHandler): ApiHandler {
+export async function withErrorHandling(handler: ApiHandler): Promise<ApiHandler> {
   return async (request, context) => {
     const requestId = generateRequestId();
 
@@ -41,34 +41,34 @@ export function withErrorHandling(handler: ApiHandler): ApiHandler {
   };
 }
 
-export function successResponse<T>(data: T, status = 200): NextResponse {
+export async function successResponse<T>(data: T, status = 200): Promise<NextResponse> {
   return NextResponse.json({ data }, { status });
 }
 
-export function errorResponse(message: string, status = 400): NextResponse {
+export async function errorResponse(message: string, status = 400): Promise<NextResponse> {
   return NextResponse.json({ error: message }, { status });
 }
 
-export function validationErrorResponse(issues: string[]): NextResponse {
+export async function validationErrorResponse(issues: string[]): Promise<NextResponse> {
   return NextResponse.json({ error: 'Validation failed', details: issues }, { status: 400 });
 }
 
-export function unauthorizedResponse(message = 'Unauthorized'): NextResponse {
+export async function unauthorizedResponse(message = 'Unauthorized'): Promise<NextResponse> {
   return NextResponse.json({ error: message, code: 'UNAUTHORIZED' }, { status: 401 });
 }
 
-export function forbiddenResponse(message = 'Forbidden'): NextResponse {
+export async function forbiddenResponse(message = 'Forbidden'): Promise<NextResponse> {
   return NextResponse.json({ error: message, code: 'FORBIDDEN' }, { status: 403 });
 }
 
-export function notFoundResponse(resource = 'Resource'): NextResponse {
+export async function notFoundResponse(resource = 'Resource'): Promise<NextResponse> {
   return NextResponse.json({ error: `${resource} not found`, code: 'NOT_FOUND' }, { status: 404 });
 }
 
-export function rateLimitResponse(message = 'Rate limit exceeded'): NextResponse {
+export async function rateLimitResponse(message = 'Rate limit exceeded'): Promise<NextResponse> {
   return NextResponse.json({ error: message, code: 'RATE_LIMIT' }, { status: 429 });
 }
 
-export function serverErrorResponse(message = 'Internal server error'): NextResponse {
+export async function serverErrorResponse(message = 'Internal server error'): Promise<NextResponse> {
   return NextResponse.json({ error: message, code: 'INTERNAL_ERROR' }, { status: 500 });
 }

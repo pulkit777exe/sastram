@@ -14,7 +14,7 @@ import {
 describe('API Response Helpers', () => {
   describe('successResponse', () => {
     it('should return 200 with data', async () => {
-      const res = successResponse({ id: '1' });
+      const res = await successResponse({ id: '1' });
       expect(res.status).to.equal(200);
       const body = await res.json();
       expect(body.data).to.deep.equal({ id: '1' });
@@ -23,7 +23,7 @@ describe('API Response Helpers', () => {
 
   describe('errorResponse', () => {
     it('should return 400 with error message', async () => {
-      const res = errorResponse('Bad request');
+      const res = await errorResponse('Bad request');
       expect(res.status).to.equal(400);
       const body = await res.json();
       expect(body.error).to.equal('Bad request');
@@ -32,7 +32,7 @@ describe('API Response Helpers', () => {
 
   describe('unauthorizedResponse', () => {
     it('should return 401 with UNAUTHORIZED code', async () => {
-      const res = unauthorizedResponse();
+      const res = await unauthorizedResponse();
       expect(res.status).to.equal(401);
       const body = await res.json();
       expect(body.error).to.equal('Unauthorized');
@@ -42,7 +42,7 @@ describe('API Response Helpers', () => {
 
   describe('forbiddenResponse', () => {
     it('should return 403 with FORBIDDEN code', async () => {
-      const res = forbiddenResponse();
+      const res = await forbiddenResponse();
       expect(res.status).to.equal(403);
       const body = await res.json();
       expect(body.error).to.equal('Forbidden');
@@ -52,7 +52,7 @@ describe('API Response Helpers', () => {
 
   describe('notFoundResponse', () => {
     it('should return 404 with resource name', async () => {
-      const res = notFoundResponse('Thread');
+      const res = await notFoundResponse('Thread');
       expect(res.status).to.equal(404);
       const body = await res.json();
       expect(body.error).to.equal('Thread not found');
@@ -62,7 +62,7 @@ describe('API Response Helpers', () => {
 
   describe('rateLimitResponse', () => {
     it('should return 429 with RATE_LIMIT code', async () => {
-      const res = rateLimitResponse();
+      const res = await rateLimitResponse();
       expect(res.status).to.equal(429);
       const body = await res.json();
       expect(body.error).to.equal('Rate limit exceeded');
@@ -72,7 +72,7 @@ describe('API Response Helpers', () => {
 
   describe('serverErrorResponse', () => {
     it('should return 500 with INTERNAL_ERROR code', async () => {
-      const res = serverErrorResponse();
+      const res = await serverErrorResponse();
       expect(res.status).to.equal(500);
       const body = await res.json();
       expect(body.error).to.equal('Internal server error');
@@ -82,7 +82,7 @@ describe('API Response Helpers', () => {
 
   describe('validationErrorResponse', () => {
     it('should return 400 with details array', async () => {
-      const res = validationErrorResponse(['email is required', 'name too short']);
+      const res = await validationErrorResponse(['email is required', 'name too short']);
       expect(res.status).to.equal(400);
       const body = await res.json();
       expect(body.error).to.equal('Validation failed');

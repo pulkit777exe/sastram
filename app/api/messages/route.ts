@@ -13,7 +13,7 @@ interface PostMessageResult {
   sectionId: string;
 }
 
-export const POST = withErrorHandling(async (request: NextRequest) => {
+const _postHandler = await withErrorHandling(async (request: NextRequest) => {
   const session = await requireSession();
   if (!session.user) {
     return unauthorizedResponse();
@@ -52,3 +52,5 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
   return successResponse({ message: (result as unknown as { data: PostMessageResult }).data });
 });
+
+export const POST = _postHandler;
