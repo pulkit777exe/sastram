@@ -1,6 +1,6 @@
 import { logger } from '@/lib/infrastructure/logger';
 
-export function logModerationEvent(event: {
+function logModerationEvent(event: {
   type: string;
   messageId?: string;
   decision?: string;

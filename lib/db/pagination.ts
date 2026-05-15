@@ -11,7 +11,7 @@ export type CursorPaginationResult<TItem, TCursor> = {
   nextCursor: TCursor | null;
 };
 
-export async function paginateSections<TSelect extends Prisma.SectionSelect>(
+async function paginateSections<TSelect extends Prisma.SectionSelect>(
   params: {
     where?: Prisma.SectionWhereInput;
     orderBy?: Prisma.SectionOrderByWithRelationInput;

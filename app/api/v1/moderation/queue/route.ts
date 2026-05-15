@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(fail('AUTH_REQUIRED', 'Moderator access required'), { status: 403 });
   }
 
-  const status = request.nextUrl.searchParams.get('status') as any;
+  const status = request.nextUrl.searchParams.get('status') ?? undefined;
 
   try {
     const queue = await dashboard.getQueue({ status });

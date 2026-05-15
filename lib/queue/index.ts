@@ -29,7 +29,6 @@ export {
 
 export {
   getThreadSummaryQueue,
-  getThreadSummaryQueueEvents,
   getResolutionScoreQueue,
   getThreadDnaQueue,
   getConflictDetectionQueue,
@@ -39,18 +38,14 @@ export {
   getAiInlineQueue,
   getStalenessCheckQueue,
   getAiJobQueue,
-  getAiJobQueueEvents,
   getAiPipelineQueues,
   getQueueForAIJobType,
   getFailedQueue,
   enqueueInlineJob,
-  addJob,
-  closeAllQueues,
 } from './queue';
 
 export {
   startAllWorkers,
-  stopAllWorkers,
   workerDefinitions,
 } from './workers';
 

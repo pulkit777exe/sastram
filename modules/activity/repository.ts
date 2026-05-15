@@ -1,13 +1,14 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
+import { Prisma } from '@prisma/client';
 
 export async function recordActivity(data: {
   userId: string;
   type: string;
   entityType: string;
   entityId: string;
-  metadata?: any;
+  metadata?: unknown;
 }) {
   return prisma.userActivity.create({
     data: {
@@ -15,7 +16,7 @@ export async function recordActivity(data: {
       type: data.type,
       entityType: data.entityType,
       entityId: data.entityId,
-      metadata: data.metadata as any,
+      metadata: data.metadata as Prisma.InputJsonValue,
     },
   });
 }

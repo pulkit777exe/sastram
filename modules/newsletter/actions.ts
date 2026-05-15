@@ -3,8 +3,7 @@
 import { logger } from '@/lib/infrastructure/logger';
 
 import { prisma } from '@/lib/infrastructure/prisma';
-import { auth } from '@/lib/services/auth';
-import { headers } from 'next/headers';
+import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { subscribeToThreadNewsletter, scheduleThreadDigest } from './repository';
 import { z } from 'zod';
@@ -29,13 +28,7 @@ export const unsubscribeFromThread = withValidation(
   'unsubscribeFromThread',
   async ({ threadId }) => {
     try {
-      const session = await auth.api.getSession({
-        headers: await headers(),
-      });
-
-      if (!session?.user) {
-        return { data: null, error: 'Something went wrong' };
-      }
+      const session = await requireSession(false);
 
       await prisma.threadSubscription.deleteMany({
         where: {
@@ -58,13 +51,7 @@ export const updateSubscriptionFrequencyAction = withValidation(
   'updateSubscriptionFrequency',
   async ({ threadId, frequency }) => {
     try {
-      const session = await auth.api.getSession({
-        headers: await headers(),
-      });
-
-      if (!session?.user) {
-        return { data: null, error: 'Something went wrong' };
-      }
+      const session = await requireSession(false);
 
       await prisma.threadSubscription.update({
         where: {
@@ -88,13 +75,7 @@ export const updateSubscriptionFrequencyAction = withValidation(
 
 export async function getUserNewsletterSubscriptions() {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: [], error: null };
-    }
+    const session = await requireSession(false);
 
     const subscriptions = await prisma.threadSubscription.findMany({
       where: { userId: session.user.id },
@@ -122,13 +103,7 @@ export const subscribeToThreadAction = withValidation(
   'subscribeToThread',
   async ({ threadId, slug }) => {
     try {
-      const session = await auth.api.getSession({
-        headers: await headers(),
-      });
-
-      if (!session?.user) {
-        return { data: null, error: 'Something went wrong' };
-      }
+      const session = await requireSession(false);
 
       const email = session.user.email;
       await subscribeToThreadNewsletter({

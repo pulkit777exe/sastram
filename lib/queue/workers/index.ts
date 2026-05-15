@@ -99,7 +99,7 @@ export function startAllWorkers(): Worker[] {
   return workers;
 }
 
-export async function stopAllWorkers(): Promise<void> {
+async function stopAllWorkers(): Promise<void> {
   if (workers.length === 0) return;
 
   logger.info('[worker] Shutting down all workers...');

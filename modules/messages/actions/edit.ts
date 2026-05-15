@@ -1,7 +1,6 @@
 'use server';
 
-import { auth } from '@/lib/services/auth';
-import { headers } from 'next/headers';
+import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
@@ -19,13 +18,7 @@ import {
 export const editMessage = createServerAction(
   { schema: editMessageSchema, actionName: 'editMessage' },
   async ({ messageId, content }) => {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: null, error: 'Authentication required', errorCode: 'AUTH_REQUIRED', ok: false };
-    }
+    const session = await requireSession(false);
 
     try {
       const message = await prisma.message.findUnique({
@@ -74,13 +67,7 @@ export const editMessage = createServerAction(
 export const pinMessage = createServerAction(
   { schema: pinMessageSchema, actionName: 'pinMessage' },
   async ({ messageId }) => {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: null, error: 'Authentication required', errorCode: 'AUTH_REQUIRED', ok: false };
-    }
+    const session = await requireSession(false);
 
     try {
       const message = await prisma.message.findUnique({

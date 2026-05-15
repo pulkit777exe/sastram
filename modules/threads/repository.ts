@@ -37,9 +37,8 @@ export {
   findRelatedThreads,
   getRelatedThreads,
   updateAllThreadRelations,
-  cleanupOldThreadRelations,
 } from './threads-relations/repository';
 
 // Naming adapter: the storage entity is still `section`, but the domain term is `thread`.
-export const THREAD_DOMAIN_TERM = 'thread' as const;
+const THREAD_DOMAIN_TERM = 'thread' as const;
 export type ThreadDomainTerm = typeof THREAD_DOMAIN_TERM;

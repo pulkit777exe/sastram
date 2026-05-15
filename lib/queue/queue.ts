@@ -55,7 +55,7 @@ export function getFailedQueue(): Queue {
   return _failedQueue;
 }
 
-export async function addJob(
+async function addJob(
   queueName: QueueName,
   jobName: string,
   data: Record<string, unknown>,
@@ -71,7 +71,7 @@ export function getThreadSummaryQueue(): Queue {
   return getQueue(QUEUE_NAMES.THREAD_SUMMARY);
 }
 
-export function getThreadSummaryQueueEvents(): QueueEvents {
+function getThreadSummaryQueueEvents(): QueueEvents {
   return getQueueEvents(QUEUE_NAMES.THREAD_SUMMARY);
 }
 
@@ -130,7 +130,7 @@ export function getAiJobQueue(): Queue {
   return getThreadSummaryQueue();
 }
 
-export function getAiJobQueueEvents(): QueueEvents {
+function getAiJobQueueEvents(): QueueEvents {
   return getThreadSummaryQueueEvents();
 }
 
@@ -153,7 +153,7 @@ export function getQueueForAIJobType(jobType: AIJobType): Queue {
   }
 }
 
-export async function closeAllQueues(): Promise<void> {
+async function closeAllQueues(): Promise<void> {
   const closePromises: Promise<void>[] = [];
   for (const [, queue] of queueCache) {
     closePromises.push(queue.close());

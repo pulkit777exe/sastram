@@ -213,7 +213,7 @@ export async function updateAllThreadRelations(): Promise<{
 /**
  * Deletes old thread relations that are no longer relevant
  */
-export async function cleanupOldThreadRelations(): Promise<{ deleted: number }> {
+async function cleanupOldThreadRelations(): Promise<{ deleted: number }> {
   try {
     const cutoffDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days old
     const result = await prisma.threadRelation.deleteMany({

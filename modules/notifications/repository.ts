@@ -157,7 +157,7 @@ export async function markAsRead(notificationId: string, userId?: string) {
   });
 }
 
-export async function markAsUnread(notificationId: string, userId?: string) {
+async function markAsUnread(notificationId: string, userId?: string) {
   const where: Prisma.NotificationWhereUniqueInput = { id: notificationId };
 
   if (userId) {
@@ -197,7 +197,7 @@ export async function markAllAsRead(userId: string, type?: NotificationType) {
   });
 }
 
-export async function markMultipleAsRead(notificationIds: string[], userId: string) {
+async function markMultipleAsRead(notificationIds: string[], userId: string) {
   return prisma.notification.updateMany({
     where: {
       id: { in: notificationIds },
@@ -224,7 +224,7 @@ export async function getUnreadCount(userId: string, type?: NotificationType) {
   );
 }
 
-export async function getUnreadCountByType(userId: string) {
+async function getUnreadCountByType(userId: string) {
   const notifications = await dedupe(`notifications:unreadByType:${userId}`, () =>
     prisma.notification.groupBy({
       by: ['type'],
@@ -289,7 +289,7 @@ export async function deleteReadNotifications(userId: string, olderThanDays?: nu
   return prisma.notification.deleteMany({ where });
 }
 
-export async function getNotificationStats(userId: string) {
+async function getNotificationStats(userId: string) {
   const [total, unread, byType] = await dedupe(`notifications:stats:${userId}`, () =>
     Promise.all([
       prisma.notification.count({
@@ -367,7 +367,7 @@ export async function notifyMultipleUsers(
   });
 }
 
-export async function cleanupOldNotifications(daysToKeep: number = 90) {
+async function cleanupOldNotifications(daysToKeep: number = 90) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 

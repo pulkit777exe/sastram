@@ -195,7 +195,7 @@ export async function isFollowing(followerId: string, followingId: string): Prom
   return !!follow;
 }
 
-export async function getMutualFollows(userId1: string, userId2: string) {
+async function getMutualFollows(userId1: string, userId2: string) {
   try {
     // Get users that both userId1 and userId2 follow
     const user1Following = await prisma.userFollow.findMany({

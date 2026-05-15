@@ -97,7 +97,7 @@ export async function getUserActivities(filters?: UserActivityFilters) {
   );
 }
 
-export async function getEntityHistory(entityType: string, entityId: string) {
+async function getEntityHistory(entityType: string, entityId: string) {
   return safeList('[getEntityHistory]', () =>
     prisma.userActivity.findMany({
       where: {
@@ -121,7 +121,7 @@ export async function getEntityHistory(entityType: string, entityId: string) {
   );
 }
 
-export async function getUserActivity(userId: string, limit = 50, offset = 0) {
+async function getUserActivity(userId: string, limit = 50, offset = 0) {
   return safeList('[getUserActivity]', () =>
     prisma.userActivity.findMany({
       where: {
@@ -186,7 +186,7 @@ export async function getUserActivityStats(filters?: {
   };
 }
 
-export async function getMostActiveUsers(limit = 10, startDate?: Date, endDate?: Date) {
+async function getMostActiveUsers(limit = 10, startDate?: Date, endDate?: Date) {
   const userActivity = await prisma.userActivity.groupBy({
     by: ['userId'],
     where: {
@@ -227,7 +227,7 @@ export async function getMostActiveUsers(limit = 10, startDate?: Date, endDate?:
   }));
 }
 
-export async function searchUserActivities(
+async function searchUserActivities(
   searchTerm: string,
   filters?: Omit<UserActivityFilters, 'limit' | 'offset'>,
   limit = 50
@@ -260,7 +260,7 @@ export async function searchUserActivities(
   );
 }
 
-export async function cleanupOldUserActivities(daysToKeep = 90) {
+async function cleanupOldUserActivities(daysToKeep = 90) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 

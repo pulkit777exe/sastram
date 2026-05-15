@@ -34,7 +34,6 @@ export {
 
 export {
   getThreadSummaryQueue,
-  getThreadSummaryQueueEvents,
   getResolutionScoreQueue,
   getThreadDnaQueue,
   getConflictDetectionQueue,
@@ -44,13 +43,10 @@ export {
   getAiInlineQueue,
   getStalenessCheckQueue,
   getAiJobQueue,
-  getAiJobQueueEvents,
   getAiPipelineQueues,
   getQueueForAIJobType,
   getFailedQueue,
   enqueueInlineJob,
-  addJob,
-  closeAllQueues,
 } from '@/lib/queue/queue';
 
 export {

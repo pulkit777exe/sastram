@@ -1,7 +1,6 @@
 'use server';
 
-import { auth } from '@/lib/services/auth';
-import { headers } from 'next/headers';
+import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
@@ -47,18 +46,7 @@ export async function postMessage(formData: FormData) {
     return { data: null, error: 'Invalid input', errorCode: 'VALIDATION_ERROR', ok: false };
   }
 
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return {
-      data: null,
-      error: 'Authentication required',
-      errorCode: 'AUTH_REQUIRED',
-      ok: false,
-    };
-  }
+  const session = await requireSession(false);
 
   const isMember = await prisma.sectionMember.findUnique({
     where: { sectionId_userId: { sectionId, userId: session.user.id } },

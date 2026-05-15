@@ -17,7 +17,7 @@ const DEFAULT_ALLOWED_TYPES = [
   'video/webm',
 ];
 
-export async function uploadFile(
+async function uploadFile(
   file: File,
   options: UploadOptions = {}
 ): Promise<{ url: string; error?: string }> {
@@ -55,7 +55,7 @@ export async function uploadFile(
   }
 }
 
-export async function deleteFile(url: string): Promise<{ success: boolean; error?: string }> {
+async function deleteFile(url: string): Promise<{ success: boolean; error?: string }> {
   try {
     await del(url);
     return { success: true };
@@ -68,7 +68,7 @@ export async function deleteFile(url: string): Promise<{ success: boolean; error
   }
 }
 
-export function validateImageFile(file: File): { valid: boolean; error?: string } {
+function validateImageFile(file: File): { valid: boolean; error?: string } {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const maxSize = 5 * 1024 * 1024; // 5MB for images
 

@@ -3,8 +3,7 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { auth } from '@/lib/services/auth';
-import { headers } from 'next/headers';
+import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { createTag, addTagToThread } from '@/modules/tags/repository';
@@ -20,13 +19,7 @@ const createTopicSchema = z.object({
 export const createTopic = createServerAction(
   { schema: createTopicSchema, actionName: 'createTopic' },
   async ({ title, description, icon, tags }) => {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: null, error: 'Something went wrong' };
-    }
+    const session = await requireSession(false);
 
     const section = await prisma.section.create({
       data: {

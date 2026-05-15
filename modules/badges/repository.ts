@@ -1,5 +1,12 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { Prisma } from '@prisma/client';
+
+interface BadgeCriteria {
+  type: string;
+  count?: number;
+  points?: number;
+}
 
 export async function getUserBadges(userId: string) {
   try {
@@ -62,7 +69,7 @@ export async function checkAndAwardBadges(userId: string) {
     const awardedBadges: string[] = [];
 
     for (const badge of badges ?? []) {
-      const criteria = badge.criteria as any;
+      const criteria = badge.criteria as unknown as BadgeCriteria;
       let shouldAward = false;
 
       switch (criteria.type) {
@@ -116,7 +123,7 @@ export async function createBadge(
   description: string,
   icon: string | null,
   color: string,
-  criteria: any
+  criteria: Prisma.InputJsonValue
 ) {
   return prisma.userBadge.create({
     data: {
@@ -124,7 +131,7 @@ export async function createBadge(
       description,
       icon,
       color,
-      criteria: criteria as any,
+      criteria,
     },
   });
 }

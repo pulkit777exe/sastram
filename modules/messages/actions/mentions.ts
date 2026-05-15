@@ -1,7 +1,6 @@
 'use server';
 
-import { auth } from '@/lib/services/auth';
-import { headers } from 'next/headers';
+import { requireSession } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
@@ -93,13 +92,7 @@ export async function createMentionsForMessage(args: {
 export const searchMentionUsers = createServerAction(
   { schema: searchMentionUsersSchema, actionName: 'searchMentionUsers' },
   async ({ sectionId, query }) => {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: [], error: 'Something went wrong', errorCode: 'AUTH_REQUIRED', ok: false };
-    }
+    const session = await requireSession(false);
 
     try {
       const users = await prisma.user.findMany({
