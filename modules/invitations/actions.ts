@@ -92,6 +92,14 @@ export async function inviteFriendToThread(formData: FormData) {
     revalidatePath(`/dashboard/threads/${thread.slug}`);
     return { data: invitation, error: null };
   } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code: string }).code === 'P2002'
+    ) {
+      return { data: null, error: 'You have already invited this friend to this thread' };
+    }
     logger.error('[inviteFriendToThread]', error);
     return { data: null, error: 'Something went wrong' };
   }

@@ -1,6 +1,5 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
-import { serverError } from './validation-common';
 import { actionFailure, type ActionErrorCode } from '@/lib/actions/result';
 
 /**

@@ -49,9 +49,9 @@ Domain modules implementing business logic, organized by feature. Each module ty
 // modules/[feature]/actions.ts
 'use server'
 import { prisma } from '@/lib/infrastructure/prisma'
-import { action } from '@/lib/utils/action-wrapper'
+import { createServerAction } from '@/lib/utils/server-action'
 
-export const actionName = action(...)
+export const actionName = createServerAction(...)
 ```
 
 ### Repository Pattern

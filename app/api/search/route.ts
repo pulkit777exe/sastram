@@ -5,6 +5,11 @@ import { withErrorHandling, successResponse, validationErrorResponse, unauthoriz
 import { searchThreads, searchMessages, searchUsers } from '@/modules/search/repository';
 
 export const GET = withErrorHandling(async (request: NextRequest) => {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return unauthorizedResponse();
+  }
+
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q');
   const type = searchParams.get('type') || 'threads';

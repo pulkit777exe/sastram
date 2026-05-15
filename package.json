@@ -3,7 +3,7 @@
   "description": "discussion and research platform with real-time chat, AI-powered search, and newsletters",
   "version": "0.1.0",
   "license": "MIT",
-  "author": "Sastram Contributors",
+  "author": "github.com/pulkit777exe",
   "private": true,
   "scripts": {
     "dev": "next dev",

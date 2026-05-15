@@ -5,7 +5,7 @@ import { auth } from '@/lib/services/auth';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/infrastructure/logger';
-import type { ActionResponse, Conversation, ChatMessage, AttachmentInput } from '@/lib/types/index';
+import type { Conversation, ChatMessage, AttachmentInput } from '@/lib/types/index';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { emitThreadMessage } from '@/modules/ws/publisher';
 import { z } from 'zod';
@@ -33,7 +33,7 @@ const sendMessageSchema = z
     message: 'Missing content or attachments',
   });
 
-export async function getConversations(): Promise<ActionResponse<Conversation[]>> {
+export async function getConversations(): Promise<{ data: Conversation[] | null; error: string | null }> {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),

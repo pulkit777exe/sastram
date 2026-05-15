@@ -8,12 +8,14 @@ const MAX_FILE_SIZES = {
   FILE: 4.5 * 1024 * 1024,
 };
 
-const ALLOWED_MIME_TYPES = {
+export const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   IMAGE: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
   GIF: ['image/gif'],
   VIDEO: ['video/mp4', 'video/webm', 'video/quicktime'],
   PDF: ['application/pdf'],
 };
+
+export const ALLOWED_MIME_TYPE_LIST: string[] = Object.values(ALLOWED_MIME_TYPES).flat();
 
 export type FileCategory = 'IMAGE' | 'GIF' | 'VIDEO' | 'PDF' | 'FILE';
 

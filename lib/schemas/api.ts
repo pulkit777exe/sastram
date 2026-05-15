@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ALLOWED_MIME_TYPE_LIST } from '@/lib/utils/file-upload';
 
 /**
  * File upload validation schemas
@@ -7,20 +8,7 @@ export const fileUploadSchema = z.object({
   files: z
     .array(
       z.instanceof(File).refine(
-        (file) => {
-          const allowedTypes = [
-            'image/jpeg',
-            'image/jpg',
-            'image/png',
-            'image/webp',
-            'image/gif',
-            'video/mp4',
-            'video/webm',
-            'video/quicktime',
-            'application/pdf',
-          ];
-          return allowedTypes.includes(file.type);
-        },
+        (file) => ALLOWED_MIME_TYPE_LIST.includes(file.type),
         {
           message: 'Invalid file type. Allowed: images, GIFs, videos (MP4/WebM), and PDFs.',
         }

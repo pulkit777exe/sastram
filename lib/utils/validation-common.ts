@@ -1,6 +1,4 @@
 import { z } from 'zod';
-import { SectionRole } from '@prisma/client';
-import { actionFailure, actionSuccess, type ActionEnvelope } from '@/lib/actions/result';
 
 /**
  * Commonly used validation schemas across server actions
@@ -44,32 +42,6 @@ export const activityQuerySchema = z.object({
   limit: z.number().int().positive().max(100).optional(),
   offset: z.number().int().nonnegative().optional(),
 });
-
-// Action result helper
-export function createActionResult<T>(
-  data: T | null,
-  error: string | null,
-  errorCode: ActionEnvelope<T>['errorCode'] = null
-): ActionEnvelope<T> {
-  if (error) {
-    return {
-      ok: false,
-      data: null,
-      error,
-      errorCode: errorCode ?? 'INTERNAL_ERROR',
-    };
-  }
-
-  return actionSuccess(data as T);
-}
-
-export function validationError(): ActionEnvelope<null> {
-  return actionFailure('VALIDATION_ERROR', 'Invalid input');
-}
-
-export function serverError(): ActionEnvelope<null> {
-  return actionFailure('INTERNAL_ERROR', 'Something went wrong');
-}
 
 // Permission check helpers
 export function hasRole(

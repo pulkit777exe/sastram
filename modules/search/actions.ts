@@ -16,6 +16,13 @@ const searchSchema = z.object({
   offset: z.number().int().nonnegative().optional().default(0),
 });
 
+const searchMessagesSchema = z.object({
+  query: z.string().min(1).max(200),
+  threadId: z.string().optional(),
+  limit: z.number().int().positive().max(100).optional().default(20),
+  offset: z.number().int().nonnegative().optional().default(0),
+});
+
 export const searchThreadsAction = withValidation(
   searchSchema,
   'searchThreads',
@@ -31,9 +38,9 @@ export const searchThreadsAction = withValidation(
 );
 
 export const searchMessagesAction = withValidation(
-  searchSchema,
+  searchMessagesSchema,
   'searchMessages',
-  async ({ query, limit, offset }, threadId?: string) => {
+  async ({ query, threadId, limit, offset }) => {
     try {
       const result = await searchMessagesRepo(query, threadId, limit, offset);
       return { data: result, error: null };

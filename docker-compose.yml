@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: sastram
+      POSTGRES_PASSWORD: sastram_dev
+      POSTGRES_DB: sastram
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sastram"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      DATABASE_URL: postgresql://sastram:sastram_dev@db:5432/sastram
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      BETTER_AUTH_SECRET: dev-secret-key-min-32-chars-long!!
+      BETTER_AUTH_URL: http://localhost:3001
+      NEXT_PUBLIC_APP_URL: http://localhost:3001
+      CRON_SECRET: cron-secret-min-32-chars-long!!!!!!
+      QUEUE_WORKERS_ENABLED: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:

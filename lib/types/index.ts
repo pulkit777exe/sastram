@@ -136,7 +136,3 @@ export interface ReadReceipt {
   readAt: Date;
 }
 
-export type ActionResponse<T = unknown> = {
-  data: T | null;
-  error: string | null;
-};
