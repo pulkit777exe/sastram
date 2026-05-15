@@ -7,22 +7,19 @@ export async function followUser(followerId: string, followingId: string) {
     throw new Error('Cannot follow yourself');
   }
 
-  // Check if already following
-  const existing = await prisma.userFollow.findUnique({
-    where: {
-      followerId_followingId: {
-        followerId,
-        followingId,
-      },
-    },
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  // Create follow relationship and update counts in transaction
   return await prisma.$transaction(async (tx) => {
+    const existing = await tx.userFollow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId,
+          followingId,
+        },
+      },
+    });
+
+    if (existing) {
+      return existing;
+    }
     const follow = await tx.userFollow.create({
       data: {
         followerId,
@@ -55,21 +52,20 @@ export async function followUser(followerId: string, followingId: string) {
 }
 
 export async function unfollowUser(followerId: string, followingId: string) {
-  const follow = await prisma.userFollow.findUnique({
-    where: {
-      followerId_followingId: {
-        followerId,
-        followingId,
-      },
-    },
-  });
-
-  if (!follow) {
-    return null;
-  }
-
-  // Delete follow relationship and update counts in transaction
   return await prisma.$transaction(async (tx) => {
+    const follow = await tx.userFollow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId,
+          followingId,
+        },
+      },
+    });
+
+    if (!follow) {
+      return null;
+    }
+
     await tx.userFollow.delete({
       where: {
         id: follow.id,

@@ -127,21 +127,26 @@ export const bulkDeleteMessages = createServerAction(
       }
 
       const uniqueSenders = [...new Set(messages.map((m) => m.senderId))];
-
-      for (const senderId of uniqueSenders) {
-        const userMessageCount = messages.filter((m) => m.senderId === senderId).length;
-
-        await tx.notification.create({
-          data: {
-            userId: senderId,
-            type: 'SYSTEM',
-            title: 'Messages Deleted',
-            message: reason
-              ? `${userMessageCount} of your messages were deleted by a moderator. Reason: ${reason}`
-              : `${userMessageCount} of your messages were deleted by a moderator.`,
+      const senderMessageCounts = Object.entries(
+        messages.reduce(
+          (acc, m) => {
+            acc[m.senderId] = (acc[m.senderId] || 0) + 1;
+            return acc;
           },
-        });
-      }
+          {} as Record<string, number>,
+        )
+      );
+
+      await tx.notification.createMany({
+        data: senderMessageCounts.map(([senderId, count]) => ({
+          userId: senderId,
+          type: 'SYSTEM',
+          title: 'Messages Deleted',
+          message: reason
+            ? `${count} of your messages were deleted by a moderator. Reason: ${reason}`
+            : `${count} of your messages were deleted by a moderator.`,
+        })),
+      });
 
       return { deletedCount: messages.length };
     });

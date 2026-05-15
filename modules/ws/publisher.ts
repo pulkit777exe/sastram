@@ -159,7 +159,7 @@ export function emitReactionUpdate(
   if (!validateAndLog('REACTION_UPDATE', payload)) return;
 
   void publishThreadEvent(sectionId, {
-    type: 'REACTION_UPDATE' as never,
+    type: 'REACTION_UPDATE',
     sectionId,
     payload: { ...payload },
   }).catch((err) => {
@@ -176,7 +176,7 @@ export function emitTypingIndicator(
   isTyping: boolean
 ): void {
   void publishThreadEvent(sectionId, {
-    type: isTyping ? ('USER_TYPING' as never) : ('USER_STOPPED_TYPING' as never),
+    type: isTyping ? 'USER_TYPING' : 'USER_STOPPED_TYPING',
     sectionId,
     payload: { userId, userName, sectionId },
   }).catch((err) => {
@@ -198,7 +198,7 @@ export function emitMentionNotification(
   if (!validateAndLog('MENTION_NOTIFICATION', normalizedPayload)) return;
 
   void publishThreadEvent(sectionId, {
-    type: 'MENTION_NOTIFICATION' as never,
+    type: 'MENTION_NOTIFICATION',
     sectionId,
     payload: normalizedPayload,
   }).catch((err) => {

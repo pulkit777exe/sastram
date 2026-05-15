@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
-import { addReaction, removeReaction, getMessageReactions } from '@/modules/reactions/repository';
+import { getMessageReactions } from '@/modules/reactions/repository';
 import { emitReactionUpdate } from '@/modules/ws/publisher';
 import { createServerAction } from '@/lib/utils/server-action';
 import { messageIdSchema, threadIdSchema } from '@/lib/utils/validation-common';
@@ -40,15 +40,21 @@ export const toggleReaction = createServerAction(
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }
 
-    const existing = await prisma.reaction.findFirst({
-      where: { messageId, userId: session.user.id, emoji },
-    });
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.reaction.findFirst({
+        where: { messageId, userId: session.user.id, emoji },
+      });
 
-    if (existing) {
-      await removeReaction(messageId, session.user.id, emoji);
-    } else {
-      await addReaction(messageId, session.user.id, emoji);
-    }
+      if (existing) {
+        await tx.reaction.deleteMany({
+          where: { messageId, userId: session.user.id, emoji },
+        });
+      } else {
+        await tx.reaction.create({
+          data: { messageId, userId: session.user.id, emoji },
+        });
+      }
+    });
 
     const reactionCounts = await prisma.reaction.groupBy({
       by: ['emoji'],

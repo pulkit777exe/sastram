@@ -20,7 +20,15 @@ export interface RedisThreadPayload {
 }
 
 export interface RedisThreadEvent {
-  type: 'NEW_MESSAGE' | 'MESSAGE_DELETED' | 'PIN_UPDATE' | 'AI_RESPONSE_READY';
+  type:
+    | 'NEW_MESSAGE'
+    | 'MESSAGE_DELETED'
+    | 'PIN_UPDATE'
+    | 'AI_RESPONSE_READY'
+    | 'REACTION_UPDATE'
+    | 'USER_TYPING'
+    | 'USER_STOPPED_TYPING'
+    | 'MENTION_NOTIFICATION';
   sectionId: string;
   payload: Record<string, unknown>;
 }

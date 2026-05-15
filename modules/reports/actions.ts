@@ -461,34 +461,68 @@ export async function resolveReport(data: {
       return { data: null, error: 'Report not found' };
     }
 
-    // Update report status
+    // Core data operations in a single transaction
     const newStatus = parsed.data.action === 'DISMISS' ? 'DISMISSED' : 'RESOLVED';
+    let banExpiresAt: Date | null = null;
 
-    await prisma.report.update({
-      where: { id: parsed.data.reportId },
-      data: {
-        status: newStatus,
-        resolution: parsed.data.note,
-        resolvedBy: session.user.id,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.report.update({
+        where: { id: parsed.data.reportId },
+        data: {
+          status: newStatus,
+          resolution: parsed.data.note,
+          resolvedBy: session.user.id,
+        },
+      });
+
+      if (
+        parsed.data.action === 'REMOVE_MESSAGE' ||
+        parsed.data.action === 'WARN_USER' ||
+        parsed.data.action === 'SUSPEND_USER' ||
+        parsed.data.action === 'BAN_USER'
+      ) {
+        await tx.message.update({
+          where: { id: report.messageId },
+          data: { deletedAt: new Date() },
+        });
+      }
+
+      if (parsed.data.action === 'SUSPEND_USER' || parsed.data.action === 'BAN_USER') {
+        if (parsed.data.action === 'SUSPEND_USER' && parsed.data.duration) {
+          const now = new Date();
+          const durationMap: Record<string, number> = {
+            '1h': 60 * 60 * 1000,
+            '6h': 6 * 60 * 60 * 1000,
+            '24h': 24 * 60 * 60 * 1000,
+            '3d': 3 * 24 * 60 * 60 * 1000,
+            '7d': 7 * 24 * 60 * 60 * 1000,
+            '30d': 30 * 24 * 60 * 60 * 1000,
+          };
+          banExpiresAt = new Date(
+            now.getTime() + (durationMap[parsed.data.duration] || 24 * 60 * 60 * 1000)
+          );
+        }
+
+        await tx.userBan.create({
+          data: {
+            userId: report.message.senderId,
+            bannedBy: session.user.id,
+            reason: parsed.data.note,
+            isActive: true,
+            expiresAt: banExpiresAt,
+          },
+        });
+
+        await tx.user.update({
+          where: { id: report.message.senderId },
+          data: {
+            status: parsed.data.action === 'BAN_USER' ? 'BANNED' : 'SUSPENDED',
+          },
+        });
+      }
     });
 
-    // Execute action based on type
-    if (
-      parsed.data.action === 'REMOVE_MESSAGE' ||
-      parsed.data.action === 'WARN_USER' ||
-      parsed.data.action === 'SUSPEND_USER' ||
-      parsed.data.action === 'BAN_USER'
-    ) {
-      // Soft delete the message
-      await prisma.message.update({
-        where: { id: report.messageId },
-        data: { deletedAt: new Date() },
-      });
-    }
-
     if (parsed.data.action === 'WARN_USER') {
-      // Create a warning notification
       await createNotification({
         userId: report.message.senderId,
         type: 'SYSTEM',
@@ -501,44 +535,7 @@ export async function resolveReport(data: {
       });
     }
 
-    if (parsed.data.action === 'SUSPEND_USER' || parsed.data.action === 'BAN_USER') {
-      // Calculate ban expiry
-      let expiresAt: Date | null = null;
-      if (parsed.data.action === 'SUSPEND_USER' && parsed.data.duration) {
-        const now = new Date();
-        const durationMap: Record<string, number> = {
-          '1h': 60 * 60 * 1000,
-          '6h': 6 * 60 * 60 * 1000,
-          '24h': 24 * 60 * 60 * 1000,
-          '3d': 3 * 24 * 60 * 60 * 1000,
-          '7d': 7 * 24 * 60 * 60 * 1000,
-          '30d': 30 * 24 * 60 * 60 * 1000,
-        };
-        expiresAt = new Date(
-          now.getTime() + (durationMap[parsed.data.duration] || 24 * 60 * 60 * 1000)
-        );
-      }
-
-      // Create ban record
-      await prisma.userBan.create({
-        data: {
-          userId: report.message.senderId,
-          bannedBy: session.user.id,
-          reason: parsed.data.note,
-          isActive: true,
-          expiresAt,
-        },
-      });
-
-      // Update user status
-      await prisma.user.update({
-        where: { id: report.message.senderId },
-        data: {
-          status: parsed.data.action === 'BAN_USER' ? 'BANNED' : 'SUSPENDED',
-        },
-      });
-
-      // Notify banned user
+    if (parsed.data.action === 'BAN_USER' || parsed.data.action === 'SUSPEND_USER') {
       await createNotification({
         userId: report.message.senderId,
         type: 'SYSTEM',
@@ -546,7 +543,7 @@ export async function resolveReport(data: {
         message:
           parsed.data.action === 'BAN_USER'
             ? `Your account has been permanently banned. Reason: ${parsed.data.note}`
-            : `Your account has been suspended until ${expiresAt?.toLocaleDateString()}. Reason: ${
+            : `Your account has been suspended until ${(banExpiresAt as Date | null)?.toLocaleDateString() ?? 'indefinitely'}. Reason: ${
                 parsed.data.note
               }`,
         data: { reportId: parsed.data.reportId, duration: parsed.data.duration },

@@ -2,47 +2,26 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 
 export async function bookmarkThread(userId: string, threadId: string) {
-  // Check if already bookmarked
-  const existing = await prisma.userBookmark.findUnique({
+  return prisma.userBookmark.upsert({
     where: {
-      userId_threadId: {
-        userId,
-        threadId,
-      },
+      userId_threadId: { userId, threadId },
     },
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  return prisma.userBookmark.create({
-    data: {
-      userId,
-      threadId,
-    },
+    update: {},
+    create: { userId, threadId },
   });
 }
 
 export async function unbookmarkThread(userId: string, threadId: string) {
-  const bookmark = await prisma.userBookmark.findUnique({
-    where: {
-      userId_threadId: {
-        userId,
-        threadId,
+  try {
+    await prisma.userBookmark.delete({
+      where: {
+        userId_threadId: { userId, threadId },
       },
-    },
-  });
-
-  if (!bookmark) {
+    });
+    return { id: '' };
+  } catch {
     return null;
   }
-
-  return prisma.userBookmark.delete({
-    where: {
-      id: bookmark.id,
-    },
-  });
 }
 
 export async function getUserBookmarks(userId: string, limit: number = 20, offset: number = 0) {

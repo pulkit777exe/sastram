@@ -33,23 +33,21 @@ export async function createMentionsForMessage(args: {
     })),
   });
 
-  for (const userId of args.mentions) {
-    await prisma.notification.create({
-      data: {
-        userId,
-        type: 'MENTION',
-        title: 'You were mentioned',
-        message: `${args.mentionedBy.name || args.mentionedBy.email} mentioned you in a message`,
-        data: {
-          messageId: args.messageId,
-          sectionId: args.sectionId,
-          linkUrl: args.sectionSlug
-            ? `/dashboard/threads/thread/${args.sectionSlug}?focus=${args.messageId}`
-            : null,
-        },
-      },
-    });
+  const linkUrl = args.sectionSlug
+    ? `/dashboard/threads/thread/${args.sectionSlug}?focus=${args.messageId}`
+    : null;
 
+  await prisma.notification.createMany({
+    data: args.mentions.map((userId) => ({
+      userId,
+      type: 'MENTION',
+      title: 'You were mentioned',
+      message: `${args.mentionedBy.name || args.mentionedBy.email} mentioned you in a message`,
+      data: { messageId: args.messageId, sectionId: args.sectionId, linkUrl },
+    })),
+  });
+
+  for (const userId of args.mentions) {
     args.sideEffects.emitMentionNotification(args.sectionId, {
       messageId: args.messageId,
       mentionedUserId: userId,
@@ -72,16 +70,12 @@ export async function createMentionsForMessage(args: {
 
   const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`;
 
-  for (const userId of args.mentions) {
-    const mentionedUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
+  const mentionedUsers = await prisma.user.findMany({
+    where: { id: { in: args.mentions } },
+    select: { email: true },
+  });
 
-    if (!mentionedUser) {
-      continue;
-    }
-
+  for (const mentionedUser of mentionedUsers) {
     args.sideEffects
       .sendMentionEmail({
         toEmail: mentionedUser.email,

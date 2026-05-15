@@ -6,7 +6,7 @@ import { auth } from '@/lib/services/auth';
 import type { TypingIndicator } from '@/lib/types/index';
 import { validateWebSocketMessage } from '@/lib/schemas/websocket';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { getRedisSub, getThreadChannel } from '@/lib/infrastructure/redis-pubsub';
+import { getRedisSub, getThreadChannel, publishThreadEvent as redisPublish } from '@/lib/infrastructure/redis-pubsub';
 
 type ThreadChannel = Set<WebSocket>;
 
@@ -374,27 +374,28 @@ export function publishUserEvent(userId: string, payload: unknown) {
   });
 }
 
-export function publishThreadEvent(threadId: string, payload: unknown) {
+export async function publishThreadEvent(threadId: string, payload: unknown) {
   const channel = threadChannels.get(threadId);
-  if (!channel) return;
-
   const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
-  // Broadcast to local clients
-  channel.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-    }
-  });
+  if (channel) {
+    channel.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
 
-  // Publish to Redis so other instances receive it
-  import('@/lib/infrastructure/redis-pubsub')
-    .then((mod) => mod.publishThreadEvent(threadId, {
+  try {
+    await redisPublish(threadId, {
       type: 'NEW_MESSAGE',
       sectionId: threadId,
       payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
-    } as never))
-    .catch(() => {
-      // Redis pub/sub unavailable — single-instance mode
     });
+  } catch (err) {
+    logger.error('[publishThreadEvent] Redis publish failed', {
+      error: err instanceof Error ? err.message : String(err),
+      threadId,
+    });
+  }
 }

@@ -40,7 +40,7 @@ export async function getConversations(): Promise<ActionResponse<Conversation[]>
     });
 
     if (!session) {
-      return { data: [], error: 'Something went wrong' };
+      return { data: [], error: 'Authentication required' };
     }
 
     const sections = await prisma.section.findMany({
@@ -84,7 +84,7 @@ export const createConversation = withValidation(
       });
 
       if (!session) {
-        return { data: null, error: 'Something went wrong' };
+        return { data: null, error: 'Authentication required' };
       }
 
       if (type === 'channel') {
@@ -131,7 +131,7 @@ export const getMessages = withValidation(
       });
 
       if (!session) {
-        return { data: [], error: 'Something went wrong' };
+        return { data: [], error: 'Authentication required' };
       }
 
       const member = await prisma.sectionMember.findUnique({
@@ -149,7 +149,9 @@ export const getMessages = withValidation(
           sectionId: conversationId,
         },
         include: {
-          sender: true,
+          sender: {
+            select: { id: true, name: true, email: true, image: true },
+          },
         },
         orderBy: {
           createdAt: 'asc',
@@ -184,7 +186,7 @@ export const sendMessage = withValidation(
       });
 
       if (!session) {
-        return { data: null, error: 'Something went wrong' };
+        return { data: null, error: 'Authentication required' };
       }
 
       const member = await prisma.sectionMember.findUnique({
@@ -213,7 +215,9 @@ export const sendMessage = withValidation(
           },
         },
         include: {
-          sender: true,
+          sender: {
+            select: { id: true, name: true, email: true, image: true },
+          },
           attachments: true,
         },
       });

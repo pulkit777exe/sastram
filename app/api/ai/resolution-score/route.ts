@@ -29,6 +29,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { threadId } = scoreRequestSchema.parse(body);
 
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: threadId, userId: session.user.id } },
+    });
+    if (!isMember) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Fetch thread and messages
     const thread = await prisma.section.findUnique({
       where: { id: threadId },
@@ -43,13 +50,6 @@ export async function POST(req: NextRequest) {
 
     if (!thread) {
       return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
-    }
-
-    const isMember = await prisma.sectionMember.findUnique({
-      where: { sectionId_userId: { sectionId: threadId, userId: session.user.id } },
-    });
-    if (!isMember) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Reverse to chronological order for AI

@@ -33,27 +33,16 @@ export async function addTagToThread(threadId: string, tagId: string) {
 }
 
 export async function removeTagFromThread(threadId: string, tagId: string) {
-  const relation = await prisma.threadTagRelation.findUnique({
-    where: {
-      threadId_tagId: {
-        threadId,
-        tagId,
+  try {
+    await prisma.threadTagRelation.delete({
+      where: {
+        threadId_tagId: { threadId, tagId },
       },
-    },
-  });
-
-  if (!relation) {
+    });
+    return { id: '' };
+  } catch {
     return null;
   }
-
-  return prisma.threadTagRelation.delete({
-    where: {
-      threadId_tagId: {
-        threadId: relation.threadId,
-        tagId: relation.tagId,
-      },
-    },
-  });
 }
 
 export async function getThreadTags(threadId: string) {

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
+import { logger } from '@/lib/infrastructure/logger';
 import type { AISearchResponse } from './types';
 
 function normalizeQuery(query: string): string {
@@ -31,12 +32,20 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
         where: { id: cached.id },
         data: { hitCount: { increment: 1 } },
       })
-      .catch(() => {});
+      .catch((err) => {
+        logger.error('[getCachedResult] failed to increment hit count', {
+          error: err instanceof Error ? err.message : String(err),
+          cacheId: cached.id,
+        });
+      });
 
     const result = JSON.parse(cached.synthesis) as unknown as AISearchResponse;
     result.synthesis.cachedAt = cached.createdAt.toISOString();
     return result;
-  } catch {
+  } catch (err) {
+    logger.error('[getCachedResult] cache lookup failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }
@@ -84,8 +93,10 @@ export async function cacheResult(
         sources: (result.sources ?? []) as unknown as Prisma.InputJsonValue,
       },
     });
-  } catch {
-    // Caching is non-critical, don't crash the request
+  } catch (err) {
+    logger.error('[cacheResult] cache write failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 

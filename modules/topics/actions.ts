@@ -42,10 +42,12 @@ export const createTopic = createServerAction(
     ).slice(0, 5);
 
     if (uniqueTags.length > 0) {
-      for (const tagName of uniqueTags) {
-        const tag = await createTag(tagName);
-        await addTagToThread(section.id, tag.id);
-      }
+      await Promise.all(
+        uniqueTags.map(async (tagName) => {
+          const tag = await createTag(tagName);
+          await addTagToThread(section.id, tag.id);
+        })
+      );
     }
 
     revalidatePath('/dashboard');

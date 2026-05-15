@@ -90,6 +90,17 @@ export async function getUserNotifications(filters: NotificationFilters) {
       (await dedupe(`notifications:list:${JSON.stringify(filters)}`, () =>
         prisma.notification.findMany({
           where,
+          select: {
+            id: true,
+            userId: true,
+            type: true,
+            title: true,
+            message: true,
+            data: true,
+            isRead: true,
+            createdAt: true,
+            updatedAt: true,
+          },
           orderBy: {
             createdAt: 'desc',
           },
@@ -108,6 +119,17 @@ export async function getNotificationById(notificationId: string) {
   return dedupe(`notifications:byId:${notificationId}`, () =>
     prisma.notification.findUnique({
       where: { id: notificationId },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        title: true,
+        message: true,
+        data: true,
+        isRead: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     })
   );
 }
@@ -303,6 +325,17 @@ export async function getRecentNotifications(userId: string, limit: number = 10)
       (await dedupe(`notifications:recent:${userId}:${limit}`, () =>
         prisma.notification.findMany({
           where: { userId },
+          select: {
+            id: true,
+            userId: true,
+            type: true,
+            title: true,
+            message: true,
+            data: true,
+            isRead: true,
+            createdAt: true,
+            updatedAt: true,
+          },
           orderBy: {
             createdAt: 'desc',
           },

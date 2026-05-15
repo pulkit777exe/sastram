@@ -1,5 +1,10 @@
 import type { Job } from 'bullmq';
 import { logger } from '@/lib/infrastructure/logger';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { aiService } from '@/lib/services/ai';
+import { NotificationType } from '@prisma/client';
+import { notifyMultipleUsers } from '@/modules/notifications/repository';
+import { emitThreadMessage } from '@/modules/ws/publisher';
 import { getAiInsightNotificationsQueue } from '../queue';
 import { DEFAULT_JOB_OPTIONS, AIJobType } from '../config';
 import type {
@@ -145,8 +150,6 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
 }
 
 async function generateThreadSummary(threadId: string, messages: JobMessageData[]) {
-  const { prisma } = await import('@/lib/infrastructure/prisma');
-  const { aiService } = await import('@/lib/services/ai');
   logger.info(`Generating thread summary for thread: ${threadId}`);
   const summary = await aiService.generateThreadSummary(messages);
   await prisma.section.update({
@@ -157,8 +160,6 @@ async function generateThreadSummary(threadId: string, messages: JobMessageData[
 }
 
 async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
-  const { prisma } = await import('@/lib/infrastructure/prisma');
-  const { aiService } = await import('@/lib/services/ai');
   logger.info(`Generating thread DNA for thread: ${threadId}`);
   const threadDNA = await aiService.generateThreadDNA(messages);
   await prisma.section.update({
@@ -169,8 +170,6 @@ async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
 }
 
 async function calculateResolutionScore(threadId: string, messages: JobMessageData[]) {
-  const { prisma } = await import('@/lib/infrastructure/prisma');
-  const { aiService } = await import('@/lib/services/ai');
   logger.info(`Calculating resolution score for thread: ${threadId}`);
   const score = await aiService.calculateResolutionScore(messages);
   await prisma.section.update({
@@ -181,8 +180,6 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
 }
 
 async function detectConflicts(threadId: string, messages: JobMessageData[]) {
-  const { prisma } = await import('@/lib/infrastructure/prisma');
-  const { aiService } = await import('@/lib/services/ai');
   logger.info(`Detecting conflicts for thread: ${threadId}`);
   const conflictResult = await aiService.detectConflicts(messages);
   if (conflictResult.hasConflict) {
@@ -198,9 +195,6 @@ async function detectConflicts(threadId: string, messages: JobMessageData[]) {
 }
 
 async function generateDailyDigest(messages: JobMessageData[], subscriberIds: string[]) {
-  const { notifyMultipleUsers } = await import('@/modules/notifications/repository');
-  const { NotificationType } = await import('@prisma/client');
-  const { aiService } = await import('@/lib/services/ai');
   logger.info(`Generating daily digest for ${subscriberIds.length} subscribers`);
   const digest = await aiService.generateDailyDigest(messages);
   await notifyMultipleUsers(subscriberIds, NotificationType.AI_INSIGHT, 'Daily Digest', digest, {
@@ -218,8 +212,6 @@ async function sendAIInsightNotifications(
   isOutdated?: boolean,
   conflictResult?: AIConflictResult,
 ) {
-  const { notifyMultipleUsers } = await import('@/modules/notifications/repository');
-  const { NotificationType } = await import('@prisma/client');
   logger.info(`Sending AI insight notifications for thread: ${threadId}`);
 
   const notifications: Array<{
@@ -284,9 +276,6 @@ async function generateAIInlineResponse(
   sectionId: string,
   query: string,
 ) {
-  const { prisma } = await import('@/lib/infrastructure/prisma');
-  const { aiService } = await import('@/lib/services/ai');
-  const { emitThreadMessage } = await import('@/modules/ws/publisher');
 
   const parentMessage = await prisma.message.findUnique({
     where: { id: messageId },

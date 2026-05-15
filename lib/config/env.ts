@@ -21,12 +21,7 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GOOGLE_ADMIN_ID: z.string().optional(),
-  GOOGLE_ADMIN_SECRET: z.string().optional(),
-
-  BLOB_READ_WRITE_TOKEN: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL'),
-  NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
 
   SMTP_HOST: z.string().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().int().default(587),
@@ -46,30 +41,16 @@ const envSchema = z.object({
   EXA_API_KEY: z.string().optional(),
   TAVILY_API_KEY: z.string().optional(),
 
-  AWS_REGION: z.string().optional(),
-  AWS_ACCESS_KEY_ID: z.string().optional(),
-  AWS_SECRET_ACCESS_KEY: z.string().optional(),
-  AWS_S3_BUCKET: z.string().optional(),
-
-  WEBSOCKET_URL: z.string().url('WEBSOCKET_URL must be a valid URL').optional(),
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
-  SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
   CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters').optional(),
 
   RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
   CONTENT_MODERATION_ENABLED: z.coerce.boolean().default(false),
-
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  MAX_FILE_UPLOAD_MB: z.coerce.number().int().positive().default(10),
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
 
   MODERATION_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
-  MAX_MESSAGES_PER_MINUTE: z.coerce.number().int().positive().default(20),
-  MAX_MESSAGES_PER_HOUR: z.coerce.number().int().positive().default(200),
-  MODERATION_WEBHOOK_URL: z.url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
