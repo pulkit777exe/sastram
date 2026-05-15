@@ -4,7 +4,6 @@ import type { CommunitySummary } from './types';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 
-// Prisma return type for query with _count
 // Using @ts-expect-error where Prisma's TypeScript has limitations
 type CommunityWithCount = Prisma.CommunityGetPayload<{
   include: {

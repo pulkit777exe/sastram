@@ -141,12 +141,10 @@ export interface AIService {
 }
 
 export class GeminiService implements AIService {
-  // Model instantiated once in constructor — not per call
   private flashModel: GenerativeModel;
   private proModel: GenerativeModel;
 
   constructor(apiKey: string) {
-    // Dynamic import at construction time, not per method call
     const genAI = new GoogleGenerativeAI(apiKey);
     this.flashModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     this.proModel = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
@@ -400,7 +398,6 @@ export class OpenAIService implements AIService {
             const delta = parsed.choices[0]?.delta?.content;
             if (delta) onChunk(delta);
           } catch {
-            // Incomplete JSON chunk — will be combined in next read
           }
         }
       }

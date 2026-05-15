@@ -301,7 +301,6 @@ export interface ReportInfo {
   };
 }
 
-// Analytics/Stats types
 export interface ThreadStats {
   messageCount: number;
   memberCount: number;

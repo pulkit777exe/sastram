@@ -78,7 +78,6 @@ export const syncReputationPointsAction = withValidation(
   }
 );
 
-// Helper function to award reputation for common actions
 export async function awardReputationForAction(
   userId: string,
   action: 'thread_created' | 'message_posted' | 'reaction_received' | 'follower_gained'
