@@ -11,6 +11,7 @@ import { createPoll } from '@/modules/polls/repository';
 import { SectionRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
+import { prismaErrorMessage } from '@/lib/utils/errors';
 
 /**
  * Parse a newline-separated string of poll options into a trimmed string array.
@@ -68,6 +69,8 @@ export const createThreadAction = createServerAction(
       return { data: null, error: null };
     } catch (error) {
       logger.error('[createThreadAction]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }
@@ -89,6 +92,8 @@ export const deleteThreadAction = createServerAction(
       return { data: null, error: null };
     } catch (error) {
       logger.error('[deleteThreadAction]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }
@@ -112,6 +117,8 @@ export const getDashboardThreads = createServerAction(
       return { data: result, error: null };
     } catch (error) {
       logger.error('[getDashboardThreads]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }
@@ -129,6 +136,8 @@ export const getThreadMembersAction = createServerAction(
       return { data: members, error: null };
     } catch (error) {
       logger.error('[getThreadMembersAction]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }
@@ -158,7 +167,9 @@ export const manageThreadMemberAction = createServerAction(
       if (!isCreator) {
         try {
           assertAdmin(session.user);
-        } catch {
+        } catch (error) {
+          const prismaMsg = prismaErrorMessage(error);
+          if (prismaMsg) return { data: null, error: prismaMsg };
           return { data: null, error: 'Something went wrong' };
         }
       }
@@ -180,6 +191,8 @@ export const manageThreadMemberAction = createServerAction(
       return { data: null, error: null };
     } catch (error) {
       logger.error('[manageThreadMemberAction]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }

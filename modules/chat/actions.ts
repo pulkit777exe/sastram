@@ -11,6 +11,7 @@ import { emitThreadMessage } from '@/modules/ws/publisher';
 import { z } from 'zod';
 import { attachmentInputSchema } from '@/lib/schemas/database';
 import { withValidation } from '@/lib/utils/server-action';
+import { prismaErrorMessage } from '@/lib/utils/errors';
 
 const createConversationSchema = z.object({
   name: z.string().min(1),
@@ -70,6 +71,8 @@ export async function getConversations(): Promise<{ data: Conversation[] | null;
     return { data: conversations, error: null };
   } catch (error) {
     logger.error('[GET_CONVERSATIONS]', error);
+    const prismaMsg = prismaErrorMessage(error);
+    if (prismaMsg) return { data: [], error: prismaMsg };
     return { data: [], error: 'Something went wrong' };
   }
 }
@@ -116,6 +119,8 @@ export const createConversation = withValidation(
       return { data: null, error: 'Something went wrong' };
     } catch (error) {
       logger.error('[CREATE_CONVERSATION]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }
@@ -171,6 +176,8 @@ export const getMessages = withValidation(
       return { data: formattedMessages, error: null };
     } catch (error) {
       logger.error('[GET_MESSAGES]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: [], error: prismaMsg };
       return { data: [], error: 'Something went wrong' };
     }
   }
@@ -267,6 +274,8 @@ export const sendMessage = withValidation(
       };
     } catch (error) {
       logger.error('[SEND_MESSAGE]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }

@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { subscribeToThreadNewsletter, scheduleThreadDigest } from './repository';
 import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
+import { prismaErrorMessage } from '@/lib/utils/errors';
 
 const threadIdSchema = z.object({
   threadId: z.string().cuid(),
@@ -41,6 +42,8 @@ export const unsubscribeFromThread = withValidation(
       return { data: null, error: null };
     } catch (error) {
       logger.error('[unsubscribeFromThread]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }
@@ -68,6 +71,8 @@ export const updateSubscriptionFrequencyAction = withValidation(
       return { data: null, error: null };
     } catch (error) {
       logger.error('[updateSubscriptionFrequency]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }
@@ -94,6 +99,8 @@ export async function getUserNewsletterSubscriptions() {
     };
   } catch (error) {
     logger.error('[getUserNewsletterSubscriptions]', error);
+    const prismaMsg = prismaErrorMessage(error);
+    if (prismaMsg) return { data: [], error: prismaMsg };
     return { data: [], error: 'Something went wrong' };
   }
 }
@@ -117,6 +124,8 @@ export const subscribeToThreadAction = withValidation(
       return { data: null, error: null };
     } catch (error) {
       logger.error('[subscribeToThread]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg };
       return { data: null, error: 'Something went wrong' };
     }
   }

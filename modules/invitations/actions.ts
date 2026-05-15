@@ -1,11 +1,11 @@
 'use server';
 
 import { logger } from '@/lib/infrastructure/logger';
-
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { inviteFriendSchema } from './schemas';
+import { prismaErrorMessage } from '@/lib/utils/errors';
 
 export async function inviteFriendToThread(formData: FormData) {
   const threadId = formData.get('threadId') as string;
@@ -85,14 +85,8 @@ export async function inviteFriendToThread(formData: FormData) {
     revalidatePath(`/dashboard/threads/${thread.slug}`);
     return { data: invitation, error: null };
   } catch (error) {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      (error as { code: string }).code === 'P2002'
-    ) {
-      return { data: null, error: 'You have already invited this friend to this thread' };
-    }
+    const prismaMsg = prismaErrorMessage(error);
+    if (prismaMsg) return { data: null, error: prismaMsg };
     logger.error('[inviteFriendToThread]', error);
     return { data: null, error: 'Something went wrong' };
   }

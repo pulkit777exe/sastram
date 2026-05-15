@@ -6,6 +6,7 @@ import { buildCommunitySlug } from '@/lib/utils/slug';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireSession, assertAdmin } from '@/modules/auth/session';
+import { prismaErrorMessage } from '@/lib/utils/errors';
 import { createCommunity } from './repository';
 
 const communitySchema = z.object({
@@ -39,6 +40,8 @@ export async function createCommunityAction(formData: FormData) {
     return { data: null, error: null };
   } catch (error) {
     logger.error('[createCommunityAction]', error);
+    const prismaMsg = prismaErrorMessage(error);
+    if (prismaMsg) return { data: null, error: prismaMsg };
     return { data: null, error: 'Something went wrong' };
   }
 }

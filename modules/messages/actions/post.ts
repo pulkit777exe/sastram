@@ -13,6 +13,7 @@ import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';
+import { prismaErrorMessage } from '@/lib/utils/errors';
 
 export async function postMessage(formData: FormData) {
   const content = formData.get('content') as string;
@@ -206,6 +207,8 @@ export async function postMessage(formData: FormData) {
     };
   } catch (error) {
     logger.error('[postMessage]', error);
+    const prismaMsg = prismaErrorMessage(error);
+    if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
     return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
   }
 }

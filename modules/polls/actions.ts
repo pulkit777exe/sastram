@@ -15,20 +15,11 @@ import { createPollSchema, voteOnPollSchema } from './schemas';
 import { z } from 'zod';
 import { getMemberRole } from '@/modules/members/repository';
 import { logger } from '@/lib/infrastructure/logger';
-import { createServerAction } from '@/lib/utils/server-action';
-import { withValidation } from '@/lib/utils/server-action';
+import { createServerAction, withValidation } from '@/lib/utils/server-action';
+import { isPrismaUniqueConstraintError } from '@/lib/utils/errors';
 
 const pollIdSchema = z.object({ pollId: z.string().cuid() });
 const threadIdSchema = z.object({ threadId: z.string().cuid() });
-
-function isPrismaUniqueConstraintError(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: string }).code === 'P2002'
-  );
-}
 
 export const createPollAction = withValidation(
   createPollSchema,

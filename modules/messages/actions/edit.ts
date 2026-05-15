@@ -9,6 +9,7 @@ import { createServerAction } from '@/lib/utils/server-action';
 import { getMemberRole } from '@/modules/members/repository';
 import { logAction } from '@/modules/audit/repository';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
+import { prismaErrorMessage } from '@/lib/utils/errors';
 import {
   editMessageSchema,
   pinMessageSchema,
@@ -59,6 +60,8 @@ export const editMessage = createServerAction(
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[editMessage]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
     }
   }
@@ -142,6 +145,8 @@ export const pinMessage = createServerAction(
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[pinMessage]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
     }
   }
@@ -159,6 +164,8 @@ export const getMessageEditHistory = createServerAction(
       return { data: edits ?? [], error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[getMessageEditHistory]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
       return {
         data: null,
         error: 'Something went wrong',

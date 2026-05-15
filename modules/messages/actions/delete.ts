@@ -9,6 +9,7 @@ import { getMemberRole } from '@/modules/members/repository';
 import { logAction } from '@/modules/audit/repository';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
+import { prismaErrorMessage } from '@/lib/utils/errors';
 
 export const deleteMessage = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessage' },
@@ -65,6 +66,8 @@ export const deleteMessage = createServerAction(
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[deleteMessage]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
     }
   }
