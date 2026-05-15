@@ -13,18 +13,16 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
         SELECT id, name, slug, description, "aiSummary" as "aiSummary",
                "createdAt", "updatedAt", "createdBy",
                "messageCount", "memberCount",
-               ts_rank(to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'')), plainto_tsquery('english', ${sanitized})) AS rank
-        FROM "Section"
-        WHERE to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'') || ' ' || coalesce("aiSummary",''))
-              @@ plainto_tsquery('english', ${sanitized})
+                ts_rank("fts_vector", plainto_tsquery('english', ${sanitized})) AS rank
+        FROM "sections"
+        WHERE "fts_vector" @@ plainto_tsquery('english', ${sanitized})
         ORDER BY rank DESC, "messageCount" DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
       prisma.$queryRaw`
         SELECT count(*)::int AS total
-        FROM "Section"
-        WHERE to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'') || ' ' || coalesce("aiSummary",''))
-              @@ plainto_tsquery('english', ${sanitized})
+        FROM "sections"
+        WHERE "fts_vector" @@ plainto_tsquery('english', ${sanitized})
       `,
     ]);
 
@@ -75,21 +73,21 @@ export async function searchMessages(
                m."isAiResponse", m."likeCount", m."replyCount",
                s.name as "sectionName", s.slug as "sectionSlug",
                u.name as "senderName", u.email as "senderEmail", u.image as "senderImage", u."avatarUrl" as "senderAvatarUrl",
-               ts_rank(to_tsvector('english', coalesce(m.content,'')), plainto_tsquery('english', ${sanitized})) AS rank
-        FROM "Message" m
-        JOIN "Section" s ON s.id = m."sectionId"
-        JOIN "User" u ON u.id = m."senderId"
+               ts_rank(m."fts_vector", plainto_tsquery('english', ${sanitized})) AS rank
+        FROM "messages" m
+        JOIN "sections" s ON s.id = m."sectionId"
+        JOIN "users" u ON u.id = m."senderId"
         WHERE m."deletedAt" IS NULL
-          AND to_tsvector('english', coalesce(m.content,'')) @@ plainto_tsquery('english', ${sanitized})
+          AND m."fts_vector" @@ plainto_tsquery('english', ${sanitized})
           ${threadFilter}
         ORDER BY rank DESC, m."createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
       prisma.$queryRaw`
         SELECT count(*)::int AS total
-        FROM "Message" m
+        FROM "messages" m
         WHERE m."deletedAt" IS NULL
-          AND to_tsvector('english', coalesce(m.content,'')) @@ plainto_tsquery('english', ${sanitized})
+          AND m."fts_vector" @@ plainto_tsquery('english', ${sanitized})
           ${threadFilter}
       `,
     ]);
