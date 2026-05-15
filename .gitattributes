@@ -1,0 +1,23 @@
+# Auto-detect text files and normalize line endings
+* text=auto eol=lf
+
+# Lockfile — use a custom merge driver so PR diffs are readable
+pnpm-lock.yaml -diff linguist-generated=true
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.avif binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+
+# Generated output
+.next/ linguist-generated=true
+out/ linguist-generated=true
+build/ linguist-generated=true

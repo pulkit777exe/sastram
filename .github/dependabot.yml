@@ -1,0 +1,41 @@
+version: 2
+updates:
+  - package-ecosystem: 'pnpm'
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+    groups:
+      nextjs:
+        patterns:
+          - 'next'
+          - 'eslint-config-next'
+          - '@sentry/nextjs'
+      radix-ui:
+        patterns:
+          - '@radix-ui/*'
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+      typescript:
+        patterns:
+          - 'typescript'
+          - 'tsx'
+          - '@types/*'
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: monthly
+    labels:
+      - ci
