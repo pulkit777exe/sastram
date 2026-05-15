@@ -33,7 +33,7 @@ export async function subscribeToThread({ threadId, slug }: { threadId: string; 
   });
 
   await scheduleThreadDigest(threadId);
-  revalidatePath(`/dashboard/threads/thread/${slug}`);
+  revalidatePath(`/dashboard/threads/${slug}`);
 }
 
 export async function processPendingDigests() {
@@ -76,7 +76,7 @@ export async function processPendingDigests() {
       continue;
     }
 
-    const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`;
+    const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}`;
 
     const { sendNewsletterDigest } = await import('@/lib/services/email');
     const BATCH_SIZE = 5;

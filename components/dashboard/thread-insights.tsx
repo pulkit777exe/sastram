@@ -143,7 +143,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
 
       {selectedSlug && (
         <a
-          href={`/dashboard/threads/thread/${selectedSlug}`}
+          href={`/dashboard/threads/${selectedSlug}`}
           className="mt-4 flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-muted hover:bg-muted/80 text-[10px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-widest transition-all"
         >
           View Full Context

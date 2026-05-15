@@ -107,7 +107,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                         Subscribed <TimeAgo date={subscription.createdAt} />
                       </span>
                       <Link
-                        href={`/dashboard/threads/thread/${subscription.thread.slug}`}
+                        href={`/dashboard/threads/${subscription.thread.slug}`}
                         className="text-indigo-500 hover:text-indigo-600 underline"
                       >
                         View Thread

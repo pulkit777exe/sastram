@@ -37,7 +37,7 @@ export function TopicCard({
           )}
         </div>
 
-        <Link href={`/dashboard/threads/thread/${slug}`}>
+        <Link href={`/dashboard/threads/${slug}`}>
           <h3 className="mb-2 text-lg font-bold text-foreground hover:text-indigo-500 transition-colors">
             {title}
           </h3>
@@ -76,7 +76,7 @@ export function TopicCard({
             <span>{messagesCount} msgs</span>
           </div>
         </div>
-        <Link href={`/dashboard/threads/thread/${slug}`} className="inline-flex items-center">
+        <Link href={`/dashboard/threads/${slug}`} className="inline-flex items-center">
           <ArrowRight
             size={14}
             className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-indigo-500"

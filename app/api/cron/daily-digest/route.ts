@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
               </div>
               <p style="margin-top: 20px; font-size: 12px; color: #666;">
                 You are receiving this because you subscribed to this thread.
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}">View Thread</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}">View Thread</a>
               </p>
             </div>
           `,

@@ -31,7 +31,7 @@ export const toggleBookmark = createServerAction(
     }
 
     revalidatePath('/dashboard/bookmarks');
-    revalidatePath(`/dashboard/threads/thread/${threadId}`);
+    revalidatePath(`/dashboard/threads/${threadId}`);
 
     return { data: { isBookmarked: !isBookmarked }, error: null };
   }

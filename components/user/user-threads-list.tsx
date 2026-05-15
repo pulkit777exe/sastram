@@ -41,7 +41,7 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
           transition={{ delay: index * 0.05, duration: 0.3 }}
         >
           <Link
-            href={`/dashboard/threads/thread/${thread.slug}`}
+            href={`/dashboard/threads/${thread.slug}`}
             className="block rounded-lg border bg-card p-4 hover:bg-accent transition-colors"
           >
             <h3 className="font-semibold text-foreground mb-2">{thread.name}</h3>

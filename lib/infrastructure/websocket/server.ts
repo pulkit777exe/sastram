@@ -6,7 +6,8 @@ import { auth } from '@/lib/services/auth';
 import type { TypingIndicator } from '@/lib/types/index';
 import { validateWebSocketMessage } from '@/lib/schemas/websocket';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { getRedisSub, getThreadChannel, publishThreadEvent as redisPublish } from '@/lib/infrastructure/redis-pubsub';
+import { getRedisSub, publishThreadEvent as redisPublish, publishUserEvent as redisUserPublish } from '@/lib/infrastructure/redis-pubsub';
+import crypto from 'crypto';
 
 type ThreadChannel = Set<WebSocket>;
 
@@ -17,6 +18,7 @@ interface AuthenticatedWebSocket extends WebSocket {
   isAlive?: boolean;
 }
 
+const INSTANCE_ID = crypto.randomUUID();
 let wss: WebSocketServer | null = null;
 const threadChannels = new Map<string, ThreadChannel>();
 const connectionsByUserId = new Map<string, Set<AuthenticatedWebSocket>>();
@@ -69,6 +71,36 @@ async function authenticateConnection(
   }
 }
 
+function unregisterSocket(socket: AuthenticatedWebSocket) {
+  if (socket.threadId) {
+    const channel = threadChannels.get(socket.threadId);
+    if (channel) {
+      channel.delete(socket);
+      if (channel.size === 0) {
+        threadChannels.delete(socket.threadId);
+      }
+    }
+
+    const threadTyping = typingIndicators.get(socket.threadId);
+    if (threadTyping && socket.userId) {
+      threadTyping.delete(socket.userId);
+      if (threadTyping.size === 0) {
+        typingIndicators.delete(socket.threadId);
+      }
+    }
+  }
+
+  if (socket.userId) {
+    const userConns = connectionsByUserId.get(socket.userId);
+    if (userConns) {
+      userConns.delete(socket);
+      if (userConns.size === 0) {
+        connectionsByUserId.delete(socket.userId);
+      }
+    }
+  }
+}
+
 function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
   const channel = threadChannels.get(threadId) ?? new Set();
   channel.add(socket);
@@ -80,32 +112,7 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
     connectionsByUserId.set(socket.userId, userConns);
   }
 
-  socket.on('close', () => {
-    channel.delete(socket);
-    if (channel.size === 0) {
-      threadChannels.delete(threadId);
-    }
-
-    if (socket.userId) {
-      const userConns = connectionsByUserId.get(socket.userId);
-      if (userConns) {
-        userConns.delete(socket);
-        if (userConns.size === 0) {
-          connectionsByUserId.delete(socket.userId);
-        }
-      }
-    }
-
-    if (socket.userId) {
-      const threadTyping = typingIndicators.get(threadId);
-      if (threadTyping) {
-        threadTyping.delete(socket.userId);
-        if (threadTyping.size === 0) {
-          typingIndicators.delete(threadId);
-        }
-      }
-    }
-  });
+  socket.on('close', () => unregisterSocket(socket));
 
   socket.on('error', (error) => {
     logger.error('WebSocket error:', error);
@@ -191,20 +198,7 @@ export function initWebSocketServer(server: HTTPServer) {
 
     if (isNotifications) {
       logger.debug('Client connected to notifications channel');
-
-      // Handle notifications route
-      ws.on('close', () => {
-        if (ws.userId) {
-          const userConns = connectionsByUserId.get(ws.userId);
-          if (userConns) {
-            userConns.delete(ws);
-            if (userConns.size === 0) {
-              connectionsByUserId.delete(ws.userId);
-            }
-          }
-        }
-      });
-
+      ws.on('close', () => unregisterSocket(ws));
       return;
     }
 
@@ -342,16 +336,43 @@ export function initWebSocketServer(server: HTTPServer) {
       logger.info('[ws] Redis subscribed to thread:* for cross-instance events');
     });
 
-    redisSubscriber.on('pmessage', (_pattern, channel, message) => {
-      const sectionId = channel.replace('thread:', '');
-      const localSockets = threadChannels.get(sectionId);
-      if (!localSockets || localSockets.size === 0) return;
+    redisSubscriber.psubscribe('user:*', (err) => {
+      if (err) {
+        logger.error('[ws] Redis psubscribe user:* failed', { error: err.message });
+        return;
+      }
+      logger.info('[ws] Redis subscribed to user:* for cross-instance notifications');
+    });
 
-      localSockets.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
-        }
-      });
+    redisSubscriber.on('pmessage', (pattern, channel, message) => {
+      try {
+        const parsed = JSON.parse(message) as { sourceInstance?: string };
+        if (parsed.sourceInstance === INSTANCE_ID) return;
+      } catch {
+        return;
+      }
+
+      if (pattern === 'thread:*') {
+        const sectionId = channel.replace('thread:', '');
+        const localSockets = threadChannels.get(sectionId);
+        if (!localSockets || localSockets.size === 0) return;
+
+        localSockets.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+          }
+        });
+      } else if (pattern === 'user:*') {
+        const userId = channel.replace('user:', '');
+        const userConns = connectionsByUserId.get(userId);
+        if (!userConns || userConns.size === 0) return;
+
+        userConns.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+          }
+        });
+      }
     });
   } catch (err) {
     logger.warn('[ws] Redis subscriber not available — cross-instance events disabled', {
@@ -362,16 +383,31 @@ export function initWebSocketServer(server: HTTPServer) {
   return wss;
 }
 
-export function publishUserEvent(userId: string, payload: unknown) {
+export async function publishUserEvent(userId: string, payload: unknown) {
   const userConns = connectionsByUserId.get(userId);
-  if (!userConns) return;
-
   const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
-  userConns.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-    }
-  });
+
+  if (userConns) {
+    userConns.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
+
+  try {
+    await redisUserPublish(userId, {
+      type: 'NOTIFICATION_COUNT_UPDATE',
+      sectionId: userId,
+      payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
+      sourceInstance: INSTANCE_ID,
+    });
+  } catch (err) {
+    logger.error('[publishUserEvent] Redis publish failed', {
+      error: err instanceof Error ? err.message : String(err),
+      userId,
+    });
+  }
 }
 
 export async function publishThreadEvent(threadId: string, payload: unknown) {
@@ -387,10 +423,12 @@ export async function publishThreadEvent(threadId: string, payload: unknown) {
   }
 
   try {
+    const parsedPayload = typeof payload === 'string' ? JSON.parse(payload) : payload;
     await redisPublish(threadId, {
       type: 'NEW_MESSAGE',
       sectionId: threadId,
-      payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
+      payload: parsedPayload,
+      sourceInstance: INSTANCE_ID,
     });
   } catch (err) {
     logger.error('[publishThreadEvent] Redis publish failed', {

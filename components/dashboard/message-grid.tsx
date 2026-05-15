@@ -49,7 +49,7 @@ export function MessageGrid({ messages }: MessageGridProps) {
     <motion.div variants={container} initial="hidden" animate="show" className="grid gap-4">
       {messages.map((message) => (
         <motion.div key={message.id} variants={item}>
-          <Link href={`/dashboard/threads/thread/${message.section.slug}`}>
+          <Link href={`/dashboard/threads/${message.section.slug}`}>
             <div className="group flex flex-col gap-2 rounded-xl bg-card border border-border p-5 shadow-sm transition-all hover:shadow-md hover:border-indigo-500/20 hover:bg-muted/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">

@@ -34,7 +34,7 @@ export async function createMentionsForMessage(args: {
   });
 
   const linkUrl = args.sectionSlug
-    ? `/dashboard/threads/thread/${args.sectionSlug}?focus=${args.messageId}`
+    ? `/dashboard/threads/${args.sectionSlug}?focus=${args.messageId}`
     : null;
 
   await prisma.notification.createMany({
@@ -68,7 +68,7 @@ export async function createMentionsForMessage(args: {
     return;
   }
 
-  const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`;
+  const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}`;
 
   const mentionedUsers = await prisma.user.findMany({
     where: { id: { in: args.mentions } },

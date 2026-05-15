@@ -138,7 +138,7 @@ export const subscribeToThreadAction = withValidation(
       });
 
       await scheduleThreadDigest(threadId);
-      revalidatePath(`/dashboard/threads/thread/${slug}`);
+      revalidatePath(`/dashboard/threads/${slug}`);
       return { data: null, error: null };
     } catch (error) {
       logger.error('[subscribeToThread]', error);

@@ -47,7 +47,7 @@ export default async function BookmarksPage() {
       ) : (
         <div className="grid gap-4">
           {bookmarks.map((thread) => (
-            <Link key={thread.id} href={`/dashboard/threads/thread/${thread.slug}`}>
+            <Link key={thread.id} href={`/dashboard/threads/${thread.slug}`}>
               <Card className="p-4 hover:bg-accent transition-colors">
                 <h3 className="font-semibold text-foreground mb-2">{thread.name}</h3>
                 {thread.description && (

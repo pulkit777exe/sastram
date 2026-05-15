@@ -11,7 +11,7 @@ export const ROUTES = {
   ADMIN_REPORTS: '/dashboard/admin/reports',
   ADMIN_MODERATION: '/dashboard/admin/moderation',
 
-  THREAD: (slug: string) => `/dashboard/threads/thread/${slug}`,
+  THREAD: (slug: string) => `/dashboard/threads/${slug}`,
   THREAD_BY_SLUG: (slug: string) => `/thread/${slug}`,
 
   API: {

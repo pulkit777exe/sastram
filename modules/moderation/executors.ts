@@ -25,7 +25,7 @@ export async function executeMessageDeletionEffects(args: {
 
   emitMessageDeleted(args.sectionId, args.messageId);
 
-  revalidatePath(`/dashboard/threads/thread/${args.sectionSlug}`);
+  revalidatePath(`/dashboard/threads/${args.sectionSlug}`);
   revalidatePath('/dashboard/admin/moderation');
 }
 

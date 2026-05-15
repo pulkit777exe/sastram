@@ -176,7 +176,7 @@ export const manageThreadMemberAction = createServerAction(
         await removeThreadMember(threadId, userId);
       }
 
-      revalidatePath(`/dashboard/threads/thread/${thread.slug}`);
+      revalidatePath(`/dashboard/threads/${thread.slug}`);
       return { data: null, error: null };
     } catch (error) {
       logger.error('[manageThreadMemberAction]', error);

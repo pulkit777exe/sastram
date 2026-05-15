@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-export default function DashboardThreadsSlugError({
+export default function DashboardThreadError({
   error,
   reset,
 }: {

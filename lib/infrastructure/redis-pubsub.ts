@@ -28,13 +28,19 @@ export interface RedisThreadEvent {
     | 'REACTION_UPDATE'
     | 'USER_TYPING'
     | 'USER_STOPPED_TYPING'
-    | 'MENTION_NOTIFICATION';
+    | 'MENTION_NOTIFICATION'
+    | 'NOTIFICATION_COUNT_UPDATE';
   sectionId: string;
   payload: Record<string, unknown>;
+  sourceInstance?: string;
 }
 
 export function getThreadChannel(sectionId: string): string {
   return `thread:${sectionId}`;
+}
+
+export function getUserChannel(userId: string): string {
+  return `user:${userId}`;
 }
 
 // pub/sub clients need dedicated connections; cannot be reused for regular commands.
@@ -79,4 +85,12 @@ export async function publishThreadEvent(
 ): Promise<void> {
   const pub = getRedisPub();
   await pub.publish(getThreadChannel(sectionId), JSON.stringify(event));
+}
+
+export async function publishUserEvent(
+  userId: string,
+  event: RedisThreadEvent
+): Promise<void> {
+  const pub = getRedisPub();
+  await pub.publish(getUserChannel(userId), JSON.stringify(event));
 }

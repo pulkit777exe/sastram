@@ -101,7 +101,7 @@ export default function SearchPage() {
                 </h2>
                 <div className="grid gap-4">
                   {results.threads.threads?.map((thread: any) => (
-                    <Link key={thread.id} href={`/dashboard/threads/thread/${thread.slug}`}>
+                    <Link key={thread.id} href={`/dashboard/threads/${thread.slug}`}>
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <h3 className="font-semibold">{thread.name}</h3>
                         {thread.description && (
@@ -124,7 +124,7 @@ export default function SearchPage() {
                   {results.messages.messages?.map((message: any) => (
                     <Link
                       key={message.id}
-                      href={`/dashboard/threads/thread/${message.section.slug}`}
+                      href={`/dashboard/threads/${message.section.slug}`}
                     >
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <p className="text-sm">{message.content}</p>

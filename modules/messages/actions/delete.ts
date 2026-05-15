@@ -55,7 +55,7 @@ export const deleteMessage = createServerAction(
       });
 
       if (message.section?.slug) {
-        revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
+        revalidatePath(`/dashboard/threads/${message.section.slug}`);
       }
 
       if (message.sectionId) {

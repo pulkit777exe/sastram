@@ -37,7 +37,7 @@ export const addTagToThreadAction = createServerAction(
   async ({ threadId, tagId }) => {
     await requireSession();
     await addTagToThreadRepo(threadId, tagId);
-    revalidatePath(`/dashboard/threads/thread/${threadId}`);
+    revalidatePath(`/dashboard/threads/${threadId}`);
     return { data: null, error: null };
   }
 );
@@ -47,7 +47,7 @@ export const removeTagFromThreadAction = createServerAction(
   async ({ threadId, tagId }) => {
     await requireSession();
     await removeTagFromThreadRepo(threadId, tagId);
-    revalidatePath(`/dashboard/threads/thread/${threadId}`);
+    revalidatePath(`/dashboard/threads/${threadId}`);
     return { data: null, error: null };
   }
 );
