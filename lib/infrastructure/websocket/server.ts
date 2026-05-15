@@ -168,15 +168,6 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
   }
 
   socket.on('close', () => unregisterSocket(socket));
-
-  socket.on('error', (error) => {
-    logger.error('WebSocket error:', error);
-  });
-
-  socket.isAlive = true;
-  socket.on('pong', () => {
-    socket.isAlive = true;
-  });
 }
 
 function cleanupTypingIndicators() {
@@ -242,6 +233,10 @@ export function initWebSocketServer(server: HTTPServer) {
   });
 
   wss.on('connection', (ws: AuthenticatedWebSocket) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+    ws.on('error', (error) => logger.error('WebSocket error:', error));
+
     const threadId = ws.threadId;
     const isNotifications = !threadId;
 
