@@ -390,7 +390,7 @@ return (
               onTypingStop={emitTypingStop}
               canManagePoll={canManagePoll}
               onPollCreated={(newPoll) => {
-                setPoll({
+                setCurrentPoll({
                   id: newPoll.id,
                   question: newPoll.question,
                   options: newPoll.options,

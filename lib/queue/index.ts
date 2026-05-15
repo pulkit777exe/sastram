@@ -61,7 +61,8 @@ export {
   handleConflictDetectionJob,
   handleDailyDigestJob,
   handleAIInsightNotificationsJob,
-  handleEmailJob,
   handleAIInlineJob,
   handleStalenessCheckJob,
 } from './workers/ai.worker';
+
+export { handleEmailJob } from './workers/email.worker';

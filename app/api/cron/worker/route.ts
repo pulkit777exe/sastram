@@ -55,7 +55,7 @@ async function processQueue(queueName: string, handler: (job: any) => Promise<un
     processed++;
   });
 
-  worker.on('failed', (_, error) => {
+  worker.on('failed', (_job, error) => {
     logger.error(`[${queueName}] Job failed:`, error);
     failed++;
   });

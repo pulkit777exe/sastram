@@ -50,6 +50,5 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return errorResponse(result?.error || 'Failed to post message');
   }
 
-  const typedResult = result as { data: PostMessageResult };
-  return successResponse({ message: typedResult.data });
+  return successResponse({ message: (result as unknown as { data: PostMessageResult }).data });
 });

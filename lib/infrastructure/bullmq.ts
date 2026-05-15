@@ -60,13 +60,16 @@ export {
   handleConflictDetectionJob,
   handleDailyDigestJob,
   handleAIInsightNotificationsJob,
-  handleEmailJob,
   handleAIInlineJob,
   handleStalenessCheckJob,
 } from '@/lib/queue/workers/ai.worker';
+
+export { handleEmailJob } from '@/lib/queue/workers/email.worker';
+
+import { getRedisConnection as _getRedisConn } from '@/lib/queue/connection';
 
 /**
  * Backward-compatible Redis connection object.
  * Previously returned a plain config object; now returns the live IORedis instance.
  */
-export const redisConnection = getRedisConnection();
+export const redisConnection = _getRedisConn();

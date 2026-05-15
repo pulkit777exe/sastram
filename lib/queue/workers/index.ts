@@ -38,8 +38,8 @@ const definitions: WorkerDefinition[] = [
 
 function createWorker({ queueName, handler }: WorkerDefinition): Worker {
   const worker = new Worker(queueName, handler, {
-    connection: getRedisConnection(),
     ...DEFAULT_WORKER_OPTIONS,
+    connection: getRedisConnection(),
   });
 
   worker.on('completed', (job) => {

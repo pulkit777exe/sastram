@@ -3,6 +3,7 @@ allowBuilds:
   '@scarf/scarf': set this to true or false
   '@sentry/cli': true
   esbuild: true
+  msgpackr-extract: set this to true or false
   prisma: true
   sharp: true
   unrs-resolver: true

@@ -24,7 +24,7 @@ export const DEFAULT_JOB_OPTIONS: JobsOptions = {
   removeOnFail: { count: 500 },
 };
 
-export const DEFAULT_WORKER_OPTIONS: WorkerOptions = {
+export const DEFAULT_WORKER_OPTIONS: Omit<WorkerOptions, 'connection'> = {
   concurrency: 5,
   limiter: {
     max: 10,
