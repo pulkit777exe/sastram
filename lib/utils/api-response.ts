@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError, handleError } from './errors';
-import { logger } from '@/lib/infrastructure/logger';
+import { logger, generateRequestId } from '@/lib/infrastructure/logger';
 
 export type ApiHandler = (
   request: NextRequest,
@@ -13,20 +13,29 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   code?: string;
+  requestId?: string;
 }
 
 export function withErrorHandling(handler: ApiHandler): ApiHandler {
   return async (request, context) => {
+    const requestId = generateRequestId();
+
     try {
-      return await handler(request, context);
+      const response = await handler(request, context);
+      response.headers.set('x-request-id', requestId);
+      return response;
     } catch (error) {
       const { message, code, statusCode } = handleError(error);
 
-      logger.error(`API Error: ${code}`, { error: error instanceof Error ? error.message : String(error), path: request.nextUrl.pathname });
+      logger.error(`API Error: ${code}`, {
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+        path: request.nextUrl.pathname,
+      });
 
       return NextResponse.json(
-        { error: message, code },
-        { status: statusCode }
+        { error: message, code, requestId },
+        { status: statusCode, headers: { 'x-request-id': requestId } }
       );
     }
   };

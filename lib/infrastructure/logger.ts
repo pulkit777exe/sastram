@@ -1,11 +1,12 @@
-/**
- * Centralized logging utility
- * Provides consistent logging across the application with environment-aware behavior
- */
+import crypto from 'crypto';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
+
+export function generateRequestId(): string {
+  return `req_${crypto.randomBytes(12).toString('base64url')}`;
+}
 
 class Logger {
   private log(level: LogLevel, message: string, ...args: unknown[]) {
@@ -14,8 +15,9 @@ class Logger {
     }
 
     const timestamp = new Date().toISOString();
+    const context = args.length > 0 ? Object.assign({}, ...args) : {};
+
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-    const context = args.length > 0 ? Object.assign({}, ...args) : undefined;
 
     switch (level) {
       case 'error':
