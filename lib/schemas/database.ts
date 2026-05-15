@@ -146,5 +146,4 @@ export const mentionDataSchema = z.object({
   parentId: z.string().cuid('Invalid parent message ID').optional(),
 });
 
-export type NewsletterSubscription = z.infer<typeof newsletterSubscriptionSchema>;
-export type MentionData = z.infer<typeof mentionDataSchema>;
+
