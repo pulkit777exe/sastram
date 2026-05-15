@@ -6,7 +6,7 @@ import { auth } from '@/lib/services/auth';
 import type { TypingIndicator } from '@/lib/types/index';
 import { validateWebSocketMessage } from '@/lib/schemas/websocket';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { getRedisSub, publishThreadEvent as redisPublish, publishUserEvent as redisUserPublish } from '@/lib/infrastructure/redis-pubsub';
+import { getRedisSub, getThreadChannel, getUserChannel, publishThreadEvent as redisPublish, publishUserEvent as redisUserPublish } from '@/lib/infrastructure/redis-pubsub';
 import crypto from 'crypto';
 
 type ThreadChannel = Set<WebSocket>;
@@ -71,6 +71,50 @@ async function authenticateConnection(
   }
 }
 
+let redisSubscriber: ReturnType<typeof getRedisSub> | null = null;
+const threadSubCounts = new Map<string, number>();
+const userSubCounts = new Map<string, number>();
+
+function subscribeToThread(threadId: string) {
+  const count = threadSubCounts.get(threadId) ?? 0;
+  threadSubCounts.set(threadId, count + 1);
+  if (count === 0 && redisSubscriber) {
+    redisSubscriber.subscribe(getThreadChannel(threadId));
+  }
+}
+
+function unsubscribeFromThread(threadId: string) {
+  const count = threadSubCounts.get(threadId);
+  if (!count || count <= 1) {
+    threadSubCounts.delete(threadId);
+    if (redisSubscriber) {
+      redisSubscriber.unsubscribe(getThreadChannel(threadId));
+    }
+  } else {
+    threadSubCounts.set(threadId, count - 1);
+  }
+}
+
+function subscribeToUser(userId: string) {
+  const count = userSubCounts.get(userId) ?? 0;
+  userSubCounts.set(userId, count + 1);
+  if (count === 0 && redisSubscriber) {
+    redisSubscriber.subscribe(getUserChannel(userId));
+  }
+}
+
+function unsubscribeFromUser(userId: string) {
+  const count = userSubCounts.get(userId);
+  if (!count || count <= 1) {
+    userSubCounts.delete(userId);
+    if (redisSubscriber) {
+      redisSubscriber.unsubscribe(getUserChannel(userId));
+    }
+  } else {
+    userSubCounts.set(userId, count - 1);
+  }
+}
+
 function unregisterSocket(socket: AuthenticatedWebSocket) {
   if (socket.threadId) {
     const channel = threadChannels.get(socket.threadId);
@@ -78,6 +122,7 @@ function unregisterSocket(socket: AuthenticatedWebSocket) {
       channel.delete(socket);
       if (channel.size === 0) {
         threadChannels.delete(socket.threadId);
+        unsubscribeFromThread(socket.threadId);
       }
     }
 
@@ -96,20 +141,30 @@ function unregisterSocket(socket: AuthenticatedWebSocket) {
       userConns.delete(socket);
       if (userConns.size === 0) {
         connectionsByUserId.delete(socket.userId);
+        unsubscribeFromUser(socket.userId);
       }
     }
   }
 }
 
 function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
+  const wasEmpty = !threadChannels.has(threadId);
   const channel = threadChannels.get(threadId) ?? new Set();
   channel.add(socket);
   threadChannels.set(threadId, channel);
 
+  if (wasEmpty) {
+    subscribeToThread(threadId);
+  }
+
   if (socket.userId) {
+    const wasUserEmpty = !connectionsByUserId.has(socket.userId);
     const userConns = connectionsByUserId.get(socket.userId) ?? new Set();
     userConns.add(socket);
     connectionsByUserId.set(socket.userId, userConns);
+    if (wasUserEmpty) {
+      subscribeToUser(socket.userId);
+    }
   }
 
   socket.on('close', () => unregisterSocket(socket));
@@ -178,14 +233,8 @@ export function initWebSocketServer(server: HTTPServer) {
         authWs.userName = authResult.userName;
       }
 
-      // Register socket
       if (threadId) {
         registerSocket(threadId, authWs);
-      } else if (authResult) {
-        // For notifications route, just register user connection
-        const userConns = connectionsByUserId.get(authResult.userId) ?? new Set();
-        userConns.add(authWs);
-        connectionsByUserId.set(authResult.userId, userConns);
       }
 
       wss?.emit('connection', authWs, request);
@@ -198,6 +247,15 @@ export function initWebSocketServer(server: HTTPServer) {
 
     if (isNotifications) {
       logger.debug('Client connected to notifications channel');
+      if (ws.userId) {
+        const wasEmpty = !connectionsByUserId.has(ws.userId);
+        const userConns = connectionsByUserId.get(ws.userId) ?? new Set();
+        userConns.add(ws);
+        connectionsByUserId.set(ws.userId, userConns);
+        if (wasEmpty) {
+          subscribeToUser(ws.userId);
+        }
+      }
       ws.on('close', () => unregisterSocket(ws));
       return;
     }
@@ -323,28 +381,10 @@ export function initWebSocketServer(server: HTTPServer) {
     clearInterval(heartbeatInterval);
   });
 
-  let redisSubscriber: ReturnType<typeof getRedisSub> | null = null;
-
   try {
     redisSubscriber = getRedisSub();
 
-    redisSubscriber.psubscribe('thread:*', (err) => {
-      if (err) {
-        logger.error('[ws] Redis psubscribe failed', { error: err.message });
-        return;
-      }
-      logger.info('[ws] Redis subscribed to thread:* for cross-instance events');
-    });
-
-    redisSubscriber.psubscribe('user:*', (err) => {
-      if (err) {
-        logger.error('[ws] Redis psubscribe user:* failed', { error: err.message });
-        return;
-      }
-      logger.info('[ws] Redis subscribed to user:* for cross-instance notifications');
-    });
-
-    redisSubscriber.on('pmessage', (pattern, channel, message) => {
+    redisSubscriber.on('message', (channel, message) => {
       try {
         const parsed = JSON.parse(message) as { sourceInstance?: string };
         if (parsed.sourceInstance === INSTANCE_ID) return;
@@ -352,7 +392,7 @@ export function initWebSocketServer(server: HTTPServer) {
         return;
       }
 
-      if (pattern === 'thread:*') {
+      if (channel.startsWith('thread:')) {
         const sectionId = channel.replace('thread:', '');
         const localSockets = threadChannels.get(sectionId);
         if (!localSockets || localSockets.size === 0) return;
@@ -362,7 +402,7 @@ export function initWebSocketServer(server: HTTPServer) {
             client.send(message);
           }
         });
-      } else if (pattern === 'user:*') {
+      } else if (channel.startsWith('user:')) {
         const userId = channel.replace('user:', '');
         const userConns = connectionsByUserId.get(userId);
         if (!userConns || userConns.size === 0) return;
@@ -374,6 +414,8 @@ export function initWebSocketServer(server: HTTPServer) {
         });
       }
     });
+
+    logger.info('[ws] Redis subscriber initialized — channels subscribed on-demand');
   } catch (err) {
     logger.warn('[ws] Redis subscriber not available — cross-instance events disabled', {
       error: String(err),

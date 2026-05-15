@@ -36,11 +36,11 @@ export async function paginateSections<TSelect extends Prisma.SectionSelect>(
   let nextCursor: { id: string } | null = null;
   if (items.length > take) {
     const nextItem = items.pop()!;
-    nextCursor = { id: (nextItem as any).id };
+    nextCursor = { id: (nextItem as { id: string }).id };
   }
 
   return {
-    items: items as any,
+    items,
     nextCursor,
   };
 }

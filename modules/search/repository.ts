@@ -26,7 +26,7 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
       `,
     ]);
 
-    const rows = threads as any[];
+    const rows = threads as Array<Record<string, unknown>>;
     const [{ total: count }] = total as [{ total: number }];
 
     return {
@@ -92,7 +92,7 @@ export async function searchMessages(
       `,
     ]);
 
-    const rows = messages as any[];
+    const rows = messages as Array<Record<string, unknown>>;
     const [{ total: count }] = total as [{ total: number }];
 
     return {
