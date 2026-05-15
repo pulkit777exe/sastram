@@ -15,7 +15,17 @@ const envSchema = z.object({
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
 
   // Redis (rate limiting, queues, caching)
-  REDIS_URL: z.url('REDIS_URL must be a valid URL').optional(),
+  REDIS_URL: z.string().optional(),
+  REDIS_HOST: z.string().default('127.0.0.1'),
+  REDIS_PORT: z.coerce.number().int().default(6379),
+  REDIS_PASSWORD: z.string().optional(),
+  REDIS_USERNAME: z.string().optional(),
+  REDIS_TLS: z.coerce.boolean().default(false),
+  UPSTASH_REDIS_REST_URL: z.string().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
+  // Queue workers (instrumentation hook)
+  QUEUE_WORKERS_ENABLED: z.coerce.boolean().default(true),
 
   // Better Auth
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
@@ -48,7 +58,16 @@ const envSchema = z.object({
 
   // AI Providers
   GEMINI_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
   AI_PROVIDER: z.enum(['gemini', 'openai']).default('gemini'),
+  AI_ANALYSIS_MESSAGE_LIMIT: z.coerce.number().int().positive().default(50),
+
+  // AI Search provider keys (user-facing search)
+  SASTRAM_EXA_KEY: z.string().optional(),
+  SASTRAM_TAVILY_KEY: z.string().optional(),
+  SASTRAM_GEMINI_KEY: z.string().optional(),
+  EXA_API_KEY: z.string().optional(),
+  TAVILY_API_KEY: z.string().optional(),
 
   // AWS S3 (optional, for alternative file storage)
   AWS_REGION: z.string().optional(),
@@ -73,6 +92,12 @@ const envSchema = z.object({
 
   // Limits
   MAX_FILE_UPLOAD_MB: z.coerce.number().int().positive().default(10),
+
+  // Sentry
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+  SENTRY_ORG: z.string().optional(),
+  SENTRY_PROJECT: z.string().optional(),
+  SENTRY_DSN: z.string().optional(),
 
   // Moderation-specific
   MODERATION_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),

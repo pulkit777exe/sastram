@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
       '@typescript-eslint/no-unused-vars': 'off',
     },
   },
+
   {
     files: ['modules/**/*.{ts,tsx}'],
     rules: {
