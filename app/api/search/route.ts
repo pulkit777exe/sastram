@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withErrorHandling, successResponse, validationErrorResponse } from '@/lib/utils/api-response';
+import { headers } from 'next/headers';
+import { auth } from '@/lib/services/auth';
+import { withErrorHandling, successResponse, validationErrorResponse, unauthorizedResponse } from '@/lib/utils/api-response';
 import { searchThreads, searchMessages, searchUsers } from '@/modules/search/repository';
 
 export const GET = withErrorHandling(async (request: NextRequest) => {

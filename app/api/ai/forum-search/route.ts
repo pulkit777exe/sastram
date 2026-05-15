@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { headers } from 'next/headers';
+import { auth } from '@/lib/services/auth';
 import { sanitizeSearchQuery, validateApiKeys } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/infrastructure/logger';
@@ -38,7 +40,13 @@ export async function POST(request: NextRequest) {
       return errorResponse('Content-Type must be application/json', 415);
     }
 
-    // 2. Rate limiting by IP
+    // 2. Authentication
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) {
+      return errorResponse('Authentication required', 401);
+    }
+
+    // 3. Rate limiting by IP
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||

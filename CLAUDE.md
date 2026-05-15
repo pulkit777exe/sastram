@@ -30,7 +30,7 @@ pnpm build           # Prisma generate + Next build
 pnpm start           # Production server
 
 # Testing & Linting
-pnpm test            # Mocha tests (50 passing)
+pnpm test            # Mocha tests (60 passing)
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
 pnpm lint:fix      # ESLint fix
@@ -57,7 +57,7 @@ pnpm db:studio   # Prisma studio
 
 ### Database Models
 
-28 models in `prisma/schema.prisma`:
+27 models in `prisma/schema.prisma`:
 - User, Account, Session, Verification
 - Community, Section, SectionMember
 - Message, MessageEdit, MessageMention, Attachment
@@ -72,7 +72,7 @@ pnpm db:studio   # Prisma studio
 - UserActivity
 - ThreadInvitation
 - AiSearchSession, AiSearchResult
-- ThreadRelation, UserExpertise
+- ThreadRelation
 
 ### Key Services
 
@@ -118,8 +118,8 @@ pnpm db:studio   # Prisma studio
 
 ## Test Coverage
 
-- **Current**: 50 tests in 8 files (api-response, content-safety, error-handling, logger, queue-config, search-fts, simple, utils)
-- **Missing**: API endpoint tests, WebSocket tests, BullMQ job tests
+- **Current**: 60 tests in 9 files (api-response, content-safety, error-handling, logger, queue-config, search-fts, simple, utils, websocket)
+- **Missing**: API endpoint tests, BullMQ job tests
 
 ## Architecture Notes
 
@@ -145,7 +145,10 @@ Optional:
 - `GITHUB_CLIENT_ID/SECRET` - GitHub OAuth
 - `GOOGLE_CLIENT_ID/SECRET` - Google OAuth
 - `SMTP_*` - Email configuration
-- `SASTRAM_EXA_KEY`, `SASTRAM_TAVILY_KEY`, `SASTRAM_GEMINI_KEY` - AI search API keys
+
+## CI
+
+GitHub Actions workflow in `.github/workflows/ci.yml` — runs typecheck, lint, and tests with a PostgreSQL service container.
 
 ## Known Issues
 

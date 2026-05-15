@@ -37,6 +37,7 @@ export interface ListThreadsParams {
   page?: number;
   pageSize?: number;
   sortBy?: 'recent' | 'popular' | 'trending' | 'oldest';
+  memberUserId?: string;
 }
 
 export interface PaginatedThreads {
@@ -52,14 +53,19 @@ export interface PaginatedThreads {
 }
 
 export async function listThreads(params: ListThreadsParams = {}): Promise<PaginatedThreads> {
-  const { page = 1, pageSize = 10, sortBy = 'recent' } = params;
+  const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId } = params;
   const skip = (page - 1) * pageSize;
 
+  const where = memberUserId
+    ? { members: { some: { userId: memberUserId } } }
+    : {};
+
   try {
-    const [totalItems, threadRows] = await dedupe(`threads:list:${page}:${pageSize}:${sortBy}`, () =>
+    const [totalItems, threadRows] = await dedupe(`threads:list:${page}:${pageSize}:${sortBy}:${memberUserId ?? ''}`, () =>
       Promise.all([
-        prisma.section.count(),
+        prisma.section.count({ where }),
         prisma.section.findMany({
+          where,
           include: {
             community: true,
             messages: {

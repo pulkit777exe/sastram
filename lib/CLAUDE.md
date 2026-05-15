@@ -32,7 +32,8 @@ Utility functions.
 - `result.ts` - Result type for error handling
 - `action-wrapper.ts` - Server action wrapper
 - `slug.ts` - Slug generation
-- `validation.ts` - Zod validation helpers
+- `api-response.ts` - API response helpers
+- `toast.ts` - User-facing toast notifications
 
 ### `lib/schemas/`
 Zod validation schemas.

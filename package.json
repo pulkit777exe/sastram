@@ -1,6 +1,6 @@
 {
   "name": "sastram",
-  "description": "Forum application with real-time chat, AI-powered search, and newsletters",
+  "description": "discussion and research platform with real-time chat, AI-powered search, and newsletters",
   "version": "0.1.0",
   "license": "MIT",
   "author": "Sastram Contributors",

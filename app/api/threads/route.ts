@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const threads = await listThreads();
+    const threads = await listThreads({ memberUserId: session.user.id });
     return NextResponse.json(ok({ threads }, requestId));
   } catch (error) {
     return NextResponse.json(
