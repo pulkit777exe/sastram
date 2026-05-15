@@ -6,6 +6,7 @@ import { auth } from '@/lib/services/auth';
 import type { TypingIndicator } from '@/lib/types/index';
 import { validateWebSocketMessage } from '@/lib/schemas/websocket';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { getRedisSub, getThreadChannel } from '@/lib/infrastructure/redis-pubsub';
 
 type ThreadChannel = Set<WebSocket>;
 
@@ -328,6 +329,39 @@ export function initWebSocketServer(server: HTTPServer) {
     clearInterval(heartbeatInterval);
   });
 
+  // ── REDIS PUB/SUB SUBSCRIBER ──────────────────────────────────────────────
+  // Listens for thread events published by other server instances and forwards
+  // them to local WebSocket clients. This enables horizontal scaling.
+  let redisSubscriber: ReturnType<typeof getRedisSub> | null = null;
+
+  try {
+    redisSubscriber = getRedisSub();
+
+    redisSubscriber.psubscribe('thread:*', (err) => {
+      if (err) {
+        logger.error('[ws] Redis psubscribe failed', { error: err.message });
+        return;
+      }
+      logger.info('[ws] Redis subscribed to thread:* for cross-instance events');
+    });
+
+    redisSubscriber.on('pmessage', (_pattern, channel, message) => {
+      const sectionId = channel.replace('thread:', '');
+      const localSockets = threadChannels.get(sectionId);
+      if (!localSockets || localSockets.size === 0) return;
+
+      localSockets.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(message);
+        }
+      });
+    });
+  } catch (err) {
+    logger.warn('[ws] Redis subscriber not available — cross-instance events disabled', {
+      error: String(err),
+    });
+  }
+
   return wss;
 }
 
@@ -348,9 +382,22 @@ export function publishThreadEvent(threadId: string, payload: unknown) {
   if (!channel) return;
 
   const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+  // Broadcast to local clients
   channel.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
     }
   });
+
+  // Publish to Redis so other instances receive it
+  import('@/lib/infrastructure/redis-pubsub')
+    .then((mod) => mod.publishThreadEvent(threadId, {
+      type: 'NEW_MESSAGE',
+      sectionId: threadId,
+      payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
+    } as never))
+    .catch(() => {
+      // Redis pub/sub unavailable — single-instance mode
+    });
 }
