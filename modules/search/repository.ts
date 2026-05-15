@@ -3,61 +3,53 @@ import { logger } from '@/lib/infrastructure/logger';
 
 export async function searchThreads(query: string, limit: number = 20, offset: number = 0) {
   try {
+    const sanitized = query.replace(/[^\w\s]/g, '').trim();
+    if (!sanitized) {
+      return { threads: [], total: 0, hasMore: false };
+    }
+
     const [threads, total] = await Promise.all([
-      prisma.section.findMany({
-        where: {
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-            { aiSummary: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        include: {
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              avatarUrl: true,
-            },
-          },
-          _count: {
-            select: {
-              messages: true,
-              members: true,
-            },
-          },
-        },
-        orderBy: [{ messageCount: 'desc' }, { createdAt: 'desc' }],
-        take: limit,
-        skip: offset,
-      }),
-      prisma.section.count({
-        where: {
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-            { aiSummary: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-      }),
+      prisma.$queryRaw`
+        SELECT id, name, slug, description, "aiSummary" as "aiSummary",
+               "createdAt", "updatedAt", "createdBy",
+               "messageCount", "memberCount",
+               ts_rank(to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'')), plainto_tsquery('english', ${sanitized})) AS rank
+        FROM "Section"
+        WHERE to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'') || ' ' || coalesce("aiSummary",''))
+              @@ plainto_tsquery('english', ${sanitized})
+        ORDER BY rank DESC, "messageCount" DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `,
+      prisma.$queryRaw`
+        SELECT count(*)::int AS total
+        FROM "Section"
+        WHERE to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'') || ' ' || coalesce("aiSummary",''))
+              @@ plainto_tsquery('english', ${sanitized})
+      `,
     ]);
 
-    const safeThreads = threads ?? [];
+    const rows = threads as any[];
+    const [{ total: count }] = total as [{ total: number }];
 
     return {
-      threads: safeThreads,
-      total,
-      hasMore: offset + limit < total,
+      threads: rows.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+        description: t.description,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        createdBy: t.createdBy,
+        aiSummary: t.aiSummary,
+        messageCount: t.messageCount,
+        memberCount: t.memberCount,
+      })),
+      total: count,
+      hasMore: offset + limit < count,
     };
   } catch (error) {
     logger.error('[searchThreads]', error);
-    return {
-      threads: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { threads: [], total: 0, hasMore: false };
   }
 }
 
@@ -68,57 +60,74 @@ export async function searchMessages(
   offset: number = 0
 ) {
   try {
-    const where: any = {
-      deletedAt: null,
-      content: { contains: query, mode: 'insensitive' },
-    };
-
-    if (threadId) {
-      where.sectionId = threadId;
+    const sanitized = query.replace(/[^\w\s]/g, '').trim();
+    if (!sanitized) {
+      return { messages: [], total: 0, hasMore: false };
     }
 
+    const threadFilter = threadId
+      ? prisma.$queryRaw`AND m."sectionId" = ${threadId}::text`
+      : prisma.$queryRaw``;
+
     const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where,
-        include: {
-          sender: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              avatarUrl: true,
-            },
-          },
-          section: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.message.count({ where }),
+      prisma.$queryRaw`
+        SELECT m.id, m.content, m."sectionId", m."senderId", m."createdAt", m."parentId", m.depth,
+               m."isAiResponse", m."likeCount", m."replyCount",
+               s.name as "sectionName", s.slug as "sectionSlug",
+               u.name as "senderName", u.email as "senderEmail", u.image as "senderImage", u."avatarUrl" as "senderAvatarUrl",
+               ts_rank(to_tsvector('english', coalesce(m.content,'')), plainto_tsquery('english', ${sanitized})) AS rank
+        FROM "Message" m
+        JOIN "Section" s ON s.id = m."sectionId"
+        JOIN "User" u ON u.id = m."senderId"
+        WHERE m."deletedAt" IS NULL
+          AND to_tsvector('english', coalesce(m.content,'')) @@ plainto_tsquery('english', ${sanitized})
+          ${threadFilter}
+        ORDER BY rank DESC, m."createdAt" DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `,
+      prisma.$queryRaw`
+        SELECT count(*)::int AS total
+        FROM "Message" m
+        WHERE m."deletedAt" IS NULL
+          AND to_tsvector('english', coalesce(m.content,'')) @@ plainto_tsquery('english', ${sanitized})
+          ${threadFilter}
+      `,
     ]);
 
-    const safeMessages = messages ?? [];
+    const rows = messages as any[];
+    const [{ total: count }] = total as [{ total: number }];
 
     return {
-      messages: safeMessages,
-      total,
-      hasMore: offset + limit < total,
+      messages: rows.map((m: any) => ({
+        id: m.id,
+        content: m.content,
+        sectionId: m.sectionId,
+        senderId: m.senderId,
+        createdAt: m.createdAt,
+        parentId: m.parentId,
+        depth: m.depth,
+        isAiResponse: m.isAiResponse,
+        likeCount: m.likeCount,
+        replyCount: m.replyCount,
+        sender: {
+          id: m.senderId,
+          name: m.senderName,
+          email: m.senderEmail,
+          image: m.senderImage,
+          avatarUrl: m.senderAvatarUrl,
+        },
+        section: {
+          id: m.sectionId,
+          name: m.sectionName,
+          slug: m.sectionSlug,
+        },
+      })),
+      total: count,
+      hasMore: offset + limit < count,
     };
   } catch (error) {
     logger.error('[searchMessages]', error);
-    return {
-      messages: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { messages: [], total: 0, hasMore: false };
   }
 }
 
@@ -159,19 +168,13 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
       }),
     ]);
 
-    const safeUsers = users ?? [];
-
     return {
-      users: safeUsers,
+      users: users ?? [],
       total,
       hasMore: offset + limit < total,
     };
   } catch (error) {
     logger.error('[searchUsers]', error);
-    return {
-      users: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { users: [], total: 0, hasMore: false };
   }
 }
