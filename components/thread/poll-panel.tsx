@@ -207,7 +207,6 @@ export function PollPanel({ threadId, initialPoll, canManagePoll }: PollPanelPro
                   )}
                 </div>
               ) : showCreateForm ? (
-                // ── Create form ──
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="poll-question" className="text-xs">
@@ -311,7 +310,6 @@ export function PollPanel({ threadId, initialPoll, canManagePoll }: PollPanelPro
                   </div>
                 </div>
               ) : (
-                // ── Empty state ──
                 <div className="flex flex-col items-center py-4 gap-3 text-center">
                   <p className="text-xs text-muted-foreground">
                     No poll has been added to this thread yet.

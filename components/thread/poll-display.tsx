@@ -52,8 +52,6 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     };
   }, []);
 
-  // ── DATA LOADING ─────────────────────────────────────────────────────────
-
   const loadPollData = useCallback(async () => {
     if (!mountedRef.current) return;
     setIsLoading(true);
@@ -98,8 +96,6 @@ export function PollDisplay({ poll }: PollDisplayProps) {
       cancelled = true;
     };
   }, [loadPollData]);
-
-  // ── VOTE HANDLER ─────────────────────────────────────────────────────────
 
   const handleVote = async (optionIndex: number) => {
     if (hasVoted || isVoting) return;

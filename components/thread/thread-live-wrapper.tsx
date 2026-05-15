@@ -55,10 +55,6 @@ export function ThreadLiveWrapper({
   const ownPendingIds = useRef<Set<string>>(new Set());
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // ── REFS for markThreadAsRead ─────────────────────────────────────────
-  // Avoids stale closure AND prevents "setState inside setState" React warning.
-  // markThreadAsRead reads from these refs rather than from state directly.
-
   const liveMessagesRef = useRef<Message[]>(messages);
   useEffect(() => {
     liveMessagesRef.current = liveMessages;
@@ -69,8 +65,6 @@ export function ThreadLiveWrapper({
     unreadCountRef.current = unreadCount;
   }, [unreadCount]);
 
-  // ── DERIVED ───────────────────────────────────────────────────────────
-
   const pinnedMessage = useMemo(() => liveMessages.find((m) => m.isPinned) ?? null, [liveMessages]);
 
   const hasAiMention = useCallback((content: string) => /\B@ai\b/i.test(content), []);
@@ -80,8 +74,6 @@ export function ThreadLiveWrapper({
     if (!el) return true;
     return el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
   }, []);
-
-  // ── @AI STATUS ────────────────────────────────────────────────────────
 
   const setAiPending = useCallback((messageId: string) => {
     setAiInlineStatus((prev) => ({ ...prev, [messageId]: 'pending' }));
@@ -112,11 +104,6 @@ export function ThreadLiveWrapper({
     }
   }, []);
 
-  // ── MARK AS READ ──────────────────────────────────────────────────────
-  // Reads from refs — NOT from state or inside a setState updater.
-  // Previous version had setState calls inside setLiveMessages updater
-  // which caused "Cannot update component while rendering" React error.
-
   const markThreadAsRead = useCallback(
     async (force: boolean = false) => {
       if (unreadCountRef.current <= 0) return;
@@ -139,8 +126,6 @@ export function ThreadLiveWrapper({
     },
     [isAtBottom, threadId]
   );
-
-  // ── WEBSOCKET HANDLERS ────────────────────────────────────────────────
 
   const handleWsNewMessage = useCallback(
     (newMessage: Message) => {
@@ -217,8 +202,6 @@ export function ThreadLiveWrapper({
     onAiComplete: handleAiComplete, // ← clears "pending" when stream ends
   });
 
-  // ── POST HANDLER ──────────────────────────────────────────────────────
-
   const handleMessagePosted = useCallback(
     (newMessage: Message) => {
       ownPendingIds.current.add(newMessage.id);
@@ -231,8 +214,6 @@ export function ThreadLiveWrapper({
     [emitTypingStop, hasAiMention, setAiPending]
   );
 
-  // ── SCROLL TO FIRST UNREAD ────────────────────────────────────────────
-
   const scrollToFirstUnread = useCallback(() => {
     if (firstUnreadMessageId) {
       document
@@ -243,8 +224,6 @@ export function ThreadLiveWrapper({
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [firstUnreadMessageId]);
 
-  // ── AUTO READ TIMER ───────────────────────────────────────────────────
-
   useEffect(() => {
     if (unreadCount <= 0) return;
     const timer = setTimeout(() => {
@@ -252,8 +231,6 @@ export function ThreadLiveWrapper({
     }, 30_000);
     return () => clearTimeout(timer);
   }, [unreadCount, markThreadAsRead]);
-
-  // ── CLEANUP ───────────────────────────────────────────────────────────
 
   useEffect(() => {
     const timers = aiInlineTimerRef.current;
@@ -265,8 +242,6 @@ export function ThreadLiveWrapper({
       timers.clear();
     };
   }, []);
-
-  // ── RENDER ────────────────────────────────────────────────────────────
 
 return (
       <>

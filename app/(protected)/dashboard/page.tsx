@@ -1,12 +1,3 @@
-// ════════════════════════════════════════════════════════
-// dashboard/page.tsx
-// ════════════════════════════════════════════════════════
-// ReadReceipt actual shape (confirmed from TS errors):
-//   { id, threadId, userId, lastReadMessageId, readAt, createdAt, updatedAt }
-// Key field: threadId (NOT sectionId)
-// Timestamp: readAt (NOT lastReadAt)
-//
-// Fix: use prisma.readReceipt.findMany with correct field names.
 
 import type { ReactNode } from 'react';
 import { Users, MessageSquare, Star, ChevronDown, TrendingUp } from 'lucide-react';
@@ -68,8 +59,6 @@ export default async function DashboardPage({
     }),
   ]);
 
-  // ReadReceipt uses `threadId` to reference the section (despite the name)
-  // and `readAt` as the timestamp field — confirmed from Prisma-generated types
   const sectionIds = topicSections.map((s) => s.id);
 
   const readReceiptRows =

@@ -43,19 +43,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
   const canManagePoll =
     thread.createdBy === session.user.id || ['ADMIN', 'MODERATOR'].includes(session.user.role);
 
-  // ── MESSAGE MAPPING ──────────────────────────────────────────────────
-  // ThreadMessage shape from getThreadWithFullContext:
-  //   { id, content (or body), senderId, parentId, depth, isEdited,
-  //     isPinned, likeCount, replyCount, createdAt, deletedAt,
-  //     attachments, author? / sender? }
-  //
-  // TypeScript errors showed:
-  //   - sender doesn't exist → use senderId + look up name from thread members
-  //     OR the DTO uses `author` — check getThreadWithFullContext return type
-  //   - isAiResponse doesn't exist on ThreadMessage → access safely
-
   const allMessages: Message[] = thread.messages.map((m) => {
-    // The DTO may expose author as `author` not `sender` — access both
     const raw = m as any;
     const senderName: string = raw.sender?.name ?? raw.author?.name ?? 'Anonymous';
     const senderImage: string | null = raw.sender?.image ?? raw.author?.image ?? null;
@@ -96,11 +84,6 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
       },
     };
   });
-
-  // ── UNREAD CALCULATION ────────────────────────────────────────────────
-  // ReadReceipt actual shape (from TS error):
-  //   { id, threadId, userId, lastReadMessageId, readAt, createdAt, updatedAt }
-  // Field is `readAt` (not `lastReadAt`) and key is `threadId` (not `sectionId`)
 
   const unreadMessages = thread.messages.filter((message) => {
     if (message.senderId === session.user.id) return false;

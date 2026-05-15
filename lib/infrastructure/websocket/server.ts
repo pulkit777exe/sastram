@@ -329,9 +329,6 @@ export function initWebSocketServer(server: HTTPServer) {
     clearInterval(heartbeatInterval);
   });
 
-  // ── REDIS PUB/SUB SUBSCRIBER ──────────────────────────────────────────────
-  // Listens for thread events published by other server instances and forwards
-  // them to local WebSocket clients. This enables horizontal scaling.
   let redisSubscriber: ReturnType<typeof getRedisSub> | null = null;
 
   try {

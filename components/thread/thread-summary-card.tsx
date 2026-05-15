@@ -98,8 +98,6 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
     };
   }, []);
 
-  // ── FETCH SUMMARY ─────────────────────────────────────────────────────────
-
   const requestSummary = useCallback(async function () {
     if (isLoading) return;
     setIsLoading(true);
