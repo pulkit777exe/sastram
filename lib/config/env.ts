@@ -35,11 +35,7 @@ const envSchema = z.object({
   AI_PROVIDER: z.enum(['gemini', 'openai']).default('gemini'),
   AI_ANALYSIS_MESSAGE_LIMIT: z.coerce.number().int().positive().default(50),
 
-  SASTRAM_EXA_KEY: z.string().optional(),
-  SASTRAM_TAVILY_KEY: z.string().optional(),
-  SASTRAM_GEMINI_KEY: z.string().optional(),
-  EXA_API_KEY: z.string().optional(),
-  TAVILY_API_KEY: z.string().optional(),
+
 
   CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters').optional(),
 

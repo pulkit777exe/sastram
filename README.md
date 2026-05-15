@@ -35,4 +35,5 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup and [CLAUDE.md](./CLAUDE
 - `/components` — shadcn/ui primitives + feature components
 - `/worker` — Standalone BullMQ worker
 
-MIT &mdash; see [LICENSE](./LICENSE).
+MIT &mdash; see [LICENSE](./LICENSE).<br>
+Contributions welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md).
