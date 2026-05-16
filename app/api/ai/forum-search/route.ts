@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/services/auth';
 import { sanitizeSearchQuery, validateApiKeys } from '@/lib/sanitize';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimit } from '@/lib/services/rate-limit';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch } from '@/modules/ai-search/service';
 import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
+import { consumeAiSearchQuota } from '@/lib/services/ai-search-quota';
 
 export const maxDuration = 30;
 
@@ -60,7 +61,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. Extract and validate API keys from headers
+    // 4. Per-user daily AI search quota
+    const quota = await consumeAiSearchQuota(session.user.id);
+    if (!quota.allowed) {
+      return errorResponse(
+        `Daily AI search limit reached (${quota.remaining} remaining). Resets at UTC midnight.`,
+        429
+      );
+    }
+
+    // 5. Extract and validate API keys from headers
     const exaKey = request.headers.get('x-exa-key') || process.env.SASTRAM_EXA_KEY || '';
     const tavilyKey = request.headers.get('x-tavily-key') || process.env.SASTRAM_TAVILY_KEY || '';
     const geminiKey = request.headers.get('x-gemini-key') || process.env.SASTRAM_GEMINI_KEY || '';
@@ -92,7 +102,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Parse and validate request body
+    // 6. Parse and validate request body
     let body: unknown;
     try {
       body = await request.json();
@@ -116,7 +126,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Check cache
+    // 7. Check cache
     try {
       const cached = await getCachedResult(query);
       if (cached) {
@@ -131,19 +141,19 @@ export async function POST(request: NextRequest) {
       // Cache miss is non-critical, continue
     }
 
-    // 6. Execute the search pipeline
+    // 8. Execute the search pipeline
     const result = await executeAISearch(query, config, {
       exa: exaKey,
       tavily: tavilyKey,
       gemini: geminiKey,
     });
 
-    // 7. Validate result shape
+    // 9. Validate result shape
     if (!result.synthesis || !Array.isArray(result.sources)) {
       return errorResponse('Search produced an unexpected result. Please try again.', 500);
     }
 
-    // 8. Cache the result (async, non-blocking)
+    // 10. Cache the result (async, non-blocking)
     cacheResult(query, result, result.synthesis.queryType).catch(() => {});
 
     return NextResponse.json(result, {

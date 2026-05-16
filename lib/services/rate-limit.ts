@@ -14,9 +14,14 @@ export const rateLimitConfig = {
 
 export type RateLimitBucket = keyof typeof rateLimitConfig;
 
-// Type for rate limiter
+type RateLimitResult = {
+  success: boolean;
+  remaining: number;
+  reset: number;
+};
+
 type RateLimiter = {
-  check: (identifier: string) => Promise<{ success: boolean }>;
+  check: (identifier: string) => Promise<RateLimitResult>;
 };
 
 let redis: Redis | null = null;
@@ -43,20 +48,24 @@ class InMemoryRateLimiter implements RateLimiter {
     this.duration = duration;
   }
 
-  async check(identifier: string): Promise<{ success: boolean }> {
+  async check(identifier: string): Promise<RateLimitResult> {
     const now = Date.now();
     const requests = this.requests.get(identifier) || [];
+    const windowMs = this.duration * 1000;
 
-    const filtered = requests.filter((timestamp) => now - timestamp < this.duration * 1000);
+    const filtered = requests.filter((timestamp) => now - timestamp < windowMs);
+
+    const remaining = Math.max(0, this.maxPoints - filtered.length - 1);
+    const reset = now + windowMs;
 
     if (filtered.length >= this.maxPoints) {
-      return { success: false };
+      return { success: false, remaining: 0, reset };
     }
 
     filtered.push(now);
     this.requests.set(identifier, filtered);
 
-    return { success: true };
+    return { success: true, remaining, reset };
   }
 }
 
@@ -69,7 +78,7 @@ const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
 
   if (!r || !env.RATE_LIMIT_ENABLED) {
     return {
-      check: async () => ({ success: true }),
+      check: async () => ({ success: true, remaining: config.points, reset: Date.now() + config.duration * 1000 }),
     };
   }
 
@@ -83,7 +92,7 @@ const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
     check: async (identifier: string) => {
       try {
         const result = await ratelimit.limit(identifier);
-        return { success: result.success };
+        return { success: result.success, remaining: result.remaining, reset: result.reset };
       } catch (error) {
         logger.error(`Redis rate limit check failed for ${bucket}, falling back to in-memory:`, error);
         const memLimit = new InMemoryRateLimiter(config.points, config.duration);
@@ -93,12 +102,20 @@ const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
   };
 };
 
+export async function rateLimit(identifier: string): Promise<RateLimitResult>;
 export async function rateLimit(params: {
   key: string;
   type: RateLimitBucket;
-}): Promise<{ success: boolean }> {
-  const limiter = createRateLimiter(params.type);
-  return limiter.check(params.key);
+}): Promise<RateLimitResult>;
+export async function rateLimit(
+  arg: string | { key: string; type: RateLimitBucket }
+): Promise<RateLimitResult> {
+  if (typeof arg === 'string') {
+    const limiter = createRateLimiter('api');
+    return limiter.check(arg);
+  }
+  const limiter = createRateLimiter(arg.type);
+  return limiter.check(arg.key);
 }
 
 export const authLimiter: RateLimiter = createRateLimiter('auth');
