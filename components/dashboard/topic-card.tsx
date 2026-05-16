@@ -1,5 +1,6 @@
 import { MessageSquare, TrendingUp, Users, ArrowRight, Hash } from 'lucide-react';
 import Link from 'next/link';
+import { ROUTES } from '@/lib/config/routes';
 
 interface TopicCardProps {
   id: string;
@@ -37,7 +38,7 @@ export function TopicCard({
           )}
         </div>
 
-        <Link href={`/dashboard/threads/${slug}`}>
+        <Link href={ROUTES.THREAD(slug)}>
           <h3 className="mb-2 text-lg font-bold text-foreground hover:text-indigo-500 transition-colors">
             {title}
           </h3>
@@ -76,7 +77,7 @@ export function TopicCard({
             <span>{messagesCount} msgs</span>
           </div>
         </div>
-        <Link href={`/dashboard/threads/${slug}`} className="inline-flex items-center">
+        <Link href={ROUTES.THREAD(slug)} className="inline-flex items-center">
           <ArrowRight
             size={14}
             className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-indigo-500"

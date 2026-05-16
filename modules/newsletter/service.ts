@@ -6,6 +6,7 @@ import { headers } from 'next/headers';
 import { aiService } from '@/lib/services/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { ROUTES } from '@/lib/config/routes';
 import {
   completeDigest,
   getDueDigests,
@@ -33,7 +34,7 @@ export async function subscribeToThread({ threadId, slug }: { threadId: string; 
   });
 
   await scheduleThreadDigest(threadId);
-  revalidatePath(`/dashboard/threads/${slug}`);
+  revalidatePath(ROUTES.THREAD(slug));
 }
 
 export async function processPendingDigests() {
@@ -76,7 +77,7 @@ export async function processPendingDigests() {
       continue;
     }
 
-    const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}`;
+    const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}`;
 
     const { sendNewsletterDigest } = await import('@/lib/services/email');
     const BATCH_SIZE = 5;

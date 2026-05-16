@@ -6,6 +6,7 @@ import { Bookmark, MessageSquare, Users, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import type { BookmarkedThreadsResponse } from '@/modules/bookmarks/types';
+import { ROUTES } from '@/lib/config/routes';
 
 export default async function BookmarksPage() {
   const session = await getSession();
@@ -47,7 +48,7 @@ export default async function BookmarksPage() {
       ) : (
         <div className="grid gap-4">
           {bookmarks.map((thread) => (
-            <Link key={thread.id} href={`/dashboard/threads/${thread.slug}`}>
+            <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
               <Card className="p-4 hover:bg-accent transition-colors">
                 <h3 className="font-semibold text-foreground mb-2">{thread.name}</h3>
                 {thread.description && (

@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { emitMessageDeleted } from '@/modules/ws/publisher';
 import { logAction } from '@/modules/audit/repository';
 import { Prisma } from '@prisma/client';
+import { ROUTES } from '@/lib/config/routes';
 
 export async function executeMessageDeletionEffects(args: {
   messageId: string;
@@ -25,7 +26,7 @@ export async function executeMessageDeletionEffects(args: {
 
   emitMessageDeleted(args.sectionId, args.messageId);
 
-  revalidatePath(`/dashboard/threads/${args.sectionSlug}`);
+  revalidatePath(ROUTES.THREAD(args.sectionSlug));
   revalidatePath('/dashboard/admin/moderation');
 }
 

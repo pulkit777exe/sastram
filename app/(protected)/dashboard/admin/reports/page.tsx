@@ -4,11 +4,12 @@ import { getReports } from '@/modules/reports/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Flag, CheckCircle, Eye } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ReportActions } from '@/components/admin/report-actions';
 import { Report } from '@/modules/reports';
-import { cn } from '@/lib/utils/cn';
+import { ROUTES } from '@/lib/config/routes';
 
 export default async function ReportsPage() {
   const session = await getSession();
@@ -146,7 +147,7 @@ function ReportCard({ report }: { report: Report }) {
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Thread:</span>
                 <Link
-                  href={`/dashboard/threads/${report.message.section.slug}`}
+                  href={ROUTES.THREAD(report.message.section.slug)}
                   className="text-indigo-500 hover:text-indigo-600 underline"
                 >
                   {report.message.section.name}

@@ -8,6 +8,7 @@ import { requireSession } from '@/modules/auth/session';
 import { getMemberRole } from '@/modules/members/repository';
 import { logAction } from '@/modules/audit/repository';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
+import { ROUTES } from '@/lib/config/routes';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 
@@ -56,7 +57,7 @@ export const deleteMessage = createServerAction(
       });
 
       if (message.section?.slug) {
-        revalidatePath(`/dashboard/threads/${message.section.slug}`);
+        revalidatePath(ROUTES.THREAD(message.section.slug));
       }
 
       if (message.sectionId) {

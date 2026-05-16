@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Activity, MessageSquare, FileText, Users, Calendar, Reply } from 'lucide-react';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
+import { ROUTES } from '@/lib/config/routes';
 
 export default async function ActivityPage() {
   const session = await getSession();
@@ -49,7 +50,7 @@ export default async function ActivityPage() {
           ) : (
             <div className="space-y-3">
               {threads.map((thread) => (
-                <Link key={thread.id} href={`/dashboard/threads/${thread.slug}`}>
+                <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
                   <Card className="p-4 hover:bg-accent transition-colors">
                     <h3 className="font-semibold text-foreground mb-1">{thread.name}</h3>
                     {thread.description && (
@@ -104,7 +105,7 @@ export default async function ActivityPage() {
           ) : (
             <div className="space-y-3">
               {messages.map((message) => (
-                <Link key={message.id} href={`/dashboard/threads/${message.section.slug}`}>
+                <Link key={message.id} href={ROUTES.THREAD(message.section.slug)}>
                   <Card className="p-4 hover:bg-accent transition-colors">
                     {message.parent && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 pb-2 border-b border-border">

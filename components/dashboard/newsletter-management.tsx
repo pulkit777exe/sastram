@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { TimeAgo } from '@/components/ui/TimeAgo';
+import { ROUTES } from '@/lib/config/routes';
 
 interface NewsletterSubscription {
   id: string;
@@ -107,7 +108,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                         Subscribed <TimeAgo date={subscription.createdAt} />
                       </span>
                       <Link
-                        href={`/dashboard/threads/${subscription.thread.slug}`}
+                        href={ROUTES.THREAD(subscription.thread.slug)}
                         className="text-indigo-500 hover:text-indigo-600 underline"
                       >
                         View Thread

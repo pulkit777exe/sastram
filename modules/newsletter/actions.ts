@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { subscribeToThreadNewsletter, scheduleThreadDigest } from './repository';
 import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
+import { ROUTES } from '@/lib/config/routes';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 
 const threadIdSchema = z.object({
@@ -120,7 +121,7 @@ export const subscribeToThreadAction = withValidation(
       });
 
       await scheduleThreadDigest(threadId);
-      revalidatePath(`/dashboard/threads/${slug}`);
+      revalidatePath(ROUTES.THREAD(slug));
       return { data: null, error: null };
     } catch (error) {
       logger.error('[subscribeToThread]', error);

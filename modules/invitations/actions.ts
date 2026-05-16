@@ -6,6 +6,7 @@ import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { inviteFriendSchema } from './schemas';
 import { prismaErrorMessage } from '@/lib/utils/errors';
+import { ROUTES } from '@/lib/config/routes';
 
 export async function inviteFriendToThread(formData: FormData) {
   const threadId = formData.get('threadId') as string;
@@ -72,7 +73,7 @@ export async function inviteFriendToThread(formData: FormData) {
 
     const { sendEmail } = await import('@/lib/services/email');
 
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}?invite=${invitation.id}`;
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}?invite=${invitation.id}`;
     await sendEmail({
       to: invitation.email,
       subject: `${session.user.name || 'Someone'} invited you to "${thread.name}"`,
@@ -82,7 +83,7 @@ export async function inviteFriendToThread(formData: FormData) {
       `,
     }).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
 
-    revalidatePath(`/dashboard/threads/${thread.slug}`);
+    revalidatePath(ROUTES.THREAD(thread.slug));
     return { data: invitation, error: null };
   } catch (error) {
     const prismaMsg = prismaErrorMessage(error);

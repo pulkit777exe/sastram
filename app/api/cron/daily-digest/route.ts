@@ -5,6 +5,7 @@ import { sendEmail } from '@/lib/services/email';
 import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { ROUTES } from '@/lib/config/routes';
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
@@ -96,7 +97,7 @@ export async function GET(req: NextRequest) {
               </div>
               <p style="margin-top: 20px; font-size: 12px; color: #666;">
                 You are receiving this because you subscribed to this thread.
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}">View Thread</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}">View Thread</a>
               </p>
             </div>
           `,

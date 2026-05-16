@@ -5,6 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
+import { ROUTES } from '@/lib/config/routes';
 import {
   bookmarkThread as bookmarkThreadRepo,
   unbookmarkThread as unbookmarkThreadRepo,
@@ -31,7 +32,7 @@ export const toggleBookmark = createServerAction(
     }
 
     revalidatePath('/dashboard/bookmarks');
-    revalidatePath(`/dashboard/threads/${threadId}`);
+    revalidatePath(ROUTES.THREAD(threadId));
 
     return { data: { isBookmarked: !isBookmarked }, error: null };
   }

@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { createThread, deleteThread, listThreads, getThreadMembers, updateThreadMemberRole, removeThreadMember, updateThreadDNA, updateResolutionScore, updateThreadStaleness } from './repository';
 import { createPoll } from '@/modules/polls/repository';
+import { ROUTES } from '@/lib/config/routes';
 import { SectionRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
@@ -187,7 +188,7 @@ export const manageThreadMemberAction = createServerAction(
         await removeThreadMember(threadId, userId);
       }
 
-      revalidatePath(`/dashboard/threads/${thread.slug}`);
+      revalidatePath(ROUTES.THREAD(thread.slug));
       return { data: null, error: null };
     } catch (error) {
       logger.error('[manageThreadMemberAction]', error);

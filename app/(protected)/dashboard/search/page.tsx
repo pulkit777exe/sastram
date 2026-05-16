@@ -6,6 +6,7 @@ import { Search, MessageSquare, Users, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/lib/config/routes';
 import {
   searchThreadsAction,
   searchMessagesAction,
@@ -101,7 +102,7 @@ export default function SearchPage() {
                 </h2>
                 <div className="grid gap-4">
                   {results.threads.threads?.map((thread: any) => (
-                    <Link key={thread.id} href={`/dashboard/threads/${thread.slug}`}>
+                    <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <h3 className="font-semibold">{thread.name}</h3>
                         {thread.description && (
@@ -124,7 +125,7 @@ export default function SearchPage() {
                   {results.messages.messages?.map((message: any) => (
                     <Link
                       key={message.id}
-                      href={`/dashboard/threads/${message.section.slug}`}
+                      href={ROUTES.THREAD(message.section.slug)}
                     >
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <p className="text-sm">{message.content}</p>

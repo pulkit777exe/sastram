@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
+import { ROUTES } from '@/lib/config/routes';
 import {
   createTag as createTagRepo,
   addTagToThread as addTagToThreadRepo,
@@ -37,7 +38,7 @@ export const addTagToThreadAction = createServerAction(
   async ({ threadId, tagId }) => {
     await requireSession();
     await addTagToThreadRepo(threadId, tagId);
-    revalidatePath(`/dashboard/threads/${threadId}`);
+    revalidatePath(ROUTES.THREAD(threadId));
     return { data: null, error: null };
   }
 );
@@ -47,7 +48,7 @@ export const removeTagFromThreadAction = createServerAction(
   async ({ threadId, tagId }) => {
     await requireSession();
     await removeTagFromThreadRepo(threadId, tagId);
-    revalidatePath(`/dashboard/threads/${threadId}`);
+    revalidatePath(ROUTES.THREAD(threadId));
     return { data: null, error: null };
   }
 );

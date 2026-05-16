@@ -6,6 +6,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { searchMentionUsersSchema } from '@/modules/messages/schemas';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
+import { ROUTES } from '@/lib/config/routes';
 
 export async function createMentionsForMessage(args: {
   messageId: string;
@@ -33,7 +34,7 @@ export async function createMentionsForMessage(args: {
   });
 
   const linkUrl = args.sectionSlug
-    ? `/dashboard/threads/${args.sectionSlug}?focus=${args.messageId}`
+    ? `${ROUTES.THREAD(args.sectionSlug)}?focus=${args.messageId}`
     : null;
 
   await prisma.notification.createMany({
@@ -67,7 +68,7 @@ export async function createMentionsForMessage(args: {
     return;
   }
 
-  const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}`;
+  const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}`;
 
   const mentionedUsers = await prisma.user.findMany({
     where: { id: { in: args.mentions } },

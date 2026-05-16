@@ -10,6 +10,7 @@ import { getMemberRole } from '@/modules/members/repository';
 import { logAction } from '@/modules/audit/repository';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { prismaErrorMessage } from '@/lib/utils/errors';
+import { ROUTES } from '@/lib/config/routes';
 import {
   editMessageSchema,
   pinMessageSchema,
@@ -141,7 +142,7 @@ export const pinMessage = createServerAction(
         });
       }
 
-      revalidatePath(`/dashboard/threads/${message.section?.slug}`);
+      revalidatePath(ROUTES.THREAD(message.section?.slug ?? ''));
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[pinMessage]', error);

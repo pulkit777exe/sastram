@@ -8,6 +8,7 @@ import { filterBadLanguage } from '@/lib/services/content-safety';
 import { createMessageWithAttachmentsSchema } from '@/lib/schemas/database';
 import { messageLimiter } from '@/lib/services/rate-limit';
 import { parseMentions, resolveUserMentions } from '@/lib/utils/mention-parser';
+import { ROUTES } from '@/lib/config/routes';
 import { recordActivity } from '@/modules/activity/repository';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { moderateIncomingMessage } from './moderation-hooks';
@@ -179,7 +180,7 @@ export async function postMessage(formData: FormData) {
     });
 
     if (message.section?.slug) {
-      revalidatePath(`/dashboard/threads/${message.section.slug}`);
+      revalidatePath(ROUTES.THREAD(message.section.slug));
     }
     revalidatePath('/dashboard');
 

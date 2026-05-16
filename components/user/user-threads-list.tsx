@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MessageSquare, Calendar, Users } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { cn } from '@/lib/utils/cn';
+import { ROUTES } from '@/lib/config/routes';
 
 interface Thread {
   id: string;
@@ -41,7 +42,7 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
           transition={{ delay: index * 0.05, duration: 0.3 }}
         >
           <Link
-            href={`/dashboard/threads/${thread.slug}`}
+            href={ROUTES.THREAD(thread.slug)}
             className="block rounded-lg border bg-card p-4 hover:bg-accent transition-colors"
           >
             <h3 className="font-semibold text-foreground mb-2">{thread.name}</h3>

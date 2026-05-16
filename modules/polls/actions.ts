@@ -13,6 +13,7 @@ import {
 } from './repository';
 import { createPollSchema, voteOnPollSchema } from './schemas';
 import { z } from 'zod';
+import { ROUTES } from '@/lib/config/routes';
 import { getMemberRole } from '@/modules/members/repository';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
@@ -45,7 +46,7 @@ export const createPollAction = withValidation(
         createdBy: session.user.id,
       });
 
-      revalidatePath(`/dashboard/threads/${threadId}`);
+      revalidatePath(ROUTES.THREAD(threadId));
       return { data: poll, error: null };
     } catch (err) {
       logger.error('[createPoll]', { error: err });
@@ -75,7 +76,7 @@ export const voteOnPollAction = withValidation(
       await voteOnPollRepo(pollId, session.user.id, optionIndex);
 
       if (poll.thread?.slug) {
-        revalidatePath(`/dashboard/threads/${poll.thread.slug}`);
+        revalidatePath(ROUTES.THREAD(poll.thread.slug));
       }
 
       return { data: null, error: null };
@@ -114,7 +115,7 @@ export const closePollAction = createServerAction(
       await closePollRepo(pollId);
 
       if (poll.thread?.slug) {
-        revalidatePath(`/dashboard/threads/${poll.thread.slug}`);
+        revalidatePath(ROUTES.THREAD(poll.thread.slug));
       }
 
       return { data: null, error: null };
