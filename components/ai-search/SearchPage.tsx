@@ -62,7 +62,7 @@ export function SearchPage() {
         if (typeof window !== 'undefined') {
           localStorage.setItem('sastram_past_searches', JSON.stringify(updated));
         }
-      } catch {}
+      } catch { /* localStorage may throw in private browsing */ }
     },
     [pastSearches]
   );
