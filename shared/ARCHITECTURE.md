@@ -217,11 +217,6 @@ The central entity. Stores AI metadata directly:
 - Result stores synthesis shared across users via queryHash
 - Semantic dedup via pgvector before hitting Exa/Tavily
 
-### UserExpertise
-- Per-domain expertise score (react, kubernetes, security, etc.)
-- Auto-calculated from helpfulCount / totalCount ratio
-- Displayed contextually — only when posting in matching domain
-
 ### ThreadRelation
 - Semantic similarity between threads (0.0–1.0)
 - Powers "Related Resolutions" sidebar

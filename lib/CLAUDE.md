@@ -44,9 +44,6 @@ Zod validation schemas.
 ### `lib/middleware/`
 - `moderation.ts` - Request content moderation
 
-### `lib/http/`
-- `api-response.ts` - Standardized API responses
-
 ### `lib/db/`
 - `pagination.ts` - Cursor-based pagination
 

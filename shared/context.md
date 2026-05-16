@@ -202,8 +202,8 @@ This document provides a quick reference to the main features and functions avai
 ### Infrastructure
 
 - **Logger:** `lib/infrastructure/logger.ts`
-- **API Response Wrapper:** `lib/http/api-response.ts`
-- **Validation Helpers:** `lib/validation/withValidation.ts`
+- **API Response Helpers:** `lib/utils/api-response.ts`
+- **Server Action Wrapper:** `lib/utils/server-action.ts`
 
 ### External Services
 

@@ -44,33 +44,33 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
     thread.createdBy === session.user.id || ['ADMIN', 'MODERATOR'].includes(session.user.role);
 
   const allMessages: Message[] = thread.messages.map((m) => {
-    const raw = m as any;
+    const raw = m as { sender?: { name?: string; image?: string }; author?: { name?: string; image?: string }; content?: string; body?: string; isAiResponse?: boolean; isAI?: boolean; id: string; createdAt: Date; senderId: string; parentId?: string | null; depth?: number; isEdited?: boolean; isPinned?: boolean; likeCount?: number; replyCount?: number; deletedAt?: Date | null; attachments?: Array<{ id: string; name?: string | null; url: string; type: string; size?: number | null }> };
     const senderName: string = raw.sender?.name ?? raw.author?.name ?? 'Anonymous';
     const senderImage: string | null = raw.sender?.image ?? raw.author?.image ?? null;
     const messageContent: string = raw.content ?? raw.body ?? '';
     const isAiResponse: boolean = raw.isAiResponse ?? raw.isAI ?? false;
 
     return {
-      id: m.id,
+      id: raw.id,
       content: messageContent,
-      createdAt: m.createdAt,
-      senderId: m.senderId,
-      parentId: m.parentId ?? null,
+      createdAt: raw.createdAt,
+      senderId: raw.senderId,
+      parentId: raw.parentId ?? null,
       sectionId: thread.id,
-      depth: m.depth ?? 0,
-      isEdited: m.isEdited ?? false,
-      isPinned: m.isPinned ?? false,
-      likeCount: m.likeCount ?? 0,
-      replyCount: m.replyCount ?? 0,
+      depth: raw.depth ?? 0,
+      isEdited: raw.isEdited ?? false,
+      isPinned: raw.isPinned ?? false,
+      likeCount: raw.likeCount ?? 0,
+      replyCount: raw.replyCount ?? 0,
       isAiResponse,
-      updatedAt: m.createdAt,
-      deletedAt: m.deletedAt ?? null,
+      updatedAt: raw.createdAt,
+      deletedAt: raw.deletedAt ?? null,
       sender: {
-        id: m.senderId,
+        id: raw.senderId,
         name: senderName,
         image: senderImage,
       },
-      attachments: (m.attachments ?? []).map((att) => ({
+      attachments: (raw.attachments ?? []).map((att) => ({
         id: att.id,
         name: att.name ?? null,
         url: att.url,
