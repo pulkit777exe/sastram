@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSession } from '@/modules/auth/session';
-import { ok, fail } from '@/lib/http/api-response';
+import { ok, fail } from '@/lib/utils/api-response';
 import { submitAppeal } from '@/modules/appeals/actions';
 
 export async function POST(request: NextRequest) {

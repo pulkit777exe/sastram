@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireModerator } from '@/lib/middleware/moderation';
-import { ok, fail } from '@/lib/http/api-response';
+import { ok, fail } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 

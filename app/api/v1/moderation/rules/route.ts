@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireModerator, requireAdmin } from '@/lib/middleware/moderation';
-import { ok, fail } from '@/lib/http/api-response';
+import { ok, fail } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 
 export async function GET() {

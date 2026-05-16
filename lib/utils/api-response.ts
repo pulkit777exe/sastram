@@ -9,13 +9,6 @@ export type ApiHandler = (
   context?: { params: Promise<Record<string, string>> }
 ) => Promise<NextResponse>;
 
-export interface ApiResponse<T = unknown> {
-  data?: T;
-  error?: string;
-  code?: string;
-  requestId?: string;
-}
-
 export async function withErrorHandling(handler: ApiHandler): Promise<ApiHandler> {
   return async (request, context) => {
     const requestId = generateRequestId();
@@ -71,4 +64,49 @@ export async function rateLimitResponse(message = 'Rate limit exceeded'): Promis
 
 export async function serverErrorResponse(message = 'Internal server error'): Promise<NextResponse> {
   return NextResponse.json({ error: message, code: 'INTERNAL_ERROR' }, { status: 500 });
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+  metadata?: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
+export function ok<T>(data: T, requestId?: string): ApiResponse<T> {
+  return {
+    success: true,
+    data,
+    metadata: {
+      timestamp: new Date().toISOString(),
+      requestId: requestId ?? '',
+    },
+  };
+}
+
+export function fail(
+  code: string,
+  message: string,
+  details?: unknown,
+  requestId?: string
+): ApiResponse<null> {
+  return {
+    success: false,
+    error: {
+      code,
+      message,
+      details,
+    },
+    metadata: {
+      timestamp: new Date().toISOString(),
+      requestId: requestId ?? '',
+    },
+  };
 }

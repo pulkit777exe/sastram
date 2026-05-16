@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/moderation';
 import { getWsStats } from '@/lib/infrastructure/websocket/server';
-import { ok, fail } from '@/lib/http/api-response';
+import { ok, fail } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic';
 

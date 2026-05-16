@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/services/auth';
 import { listThreads } from '@/modules/threads/repository';
-import { ok, fail } from '@/lib/http/api-response';
+import { ok, fail } from '@/lib/utils/api-response';
 
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({

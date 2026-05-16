@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireModerator } from '@/lib/middleware/moderation';
-import { ok, fail } from '@/lib/http/api-response';
+import { ok, fail } from '@/lib/utils/api-response';
 import { resolveAppeal } from '@/modules/appeals/actions';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

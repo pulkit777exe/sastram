@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ModerationDashboard } from '@/lib/services/moderation';
 import { requireModerator } from '@/lib/middleware/moderation';
-import { ok, fail } from '@/lib/http/api-response';
+import { ok, fail } from '@/lib/utils/api-response';
 
 const dashboard = new ModerationDashboard();
 
