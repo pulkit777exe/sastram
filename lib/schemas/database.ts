@@ -146,4 +146,6 @@ export const mentionDataSchema = z.object({
   parentId: z.string().cuid('Invalid parent message ID').optional(),
 });
 
+export type AttachmentInput = z.infer<typeof attachmentInputSchema>;
+
 

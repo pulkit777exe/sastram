@@ -93,13 +93,6 @@ export interface Conversation {
   type: 'channel' | 'dm';
 }
 
-export interface AttachmentInput {
-  url: string;
-  type: string;
-  name: string | null;
-  size: number | null;
-}
-
 export interface Reaction {
   id: string;
   emoji: string;
