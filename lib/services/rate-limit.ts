@@ -118,25 +118,4 @@ export async function rateLimit(
   return limiter.check(arg.key);
 }
 
-export const authLimiter: RateLimiter = createRateLimiter('auth');
-export const apiLimiter: RateLimiter = createRateLimiter('api');
-export const uploadLimiter: RateLimiter = createRateLimiter('upload');
-export const websocketLimiter: RateLimiter = createRateLimiter('websocket');
 export const messageLimiter: RateLimiter = createRateLimiter('message');
-export const newsletterLimiter: RateLimiter = createRateLimiter('newsletter');
-
-export async function checkRateLimit(userId: string, bucket: RateLimitBucket): Promise<void> {
-  const result = await rateLimit({
-    key: userId,
-    type: bucket,
-  });
-
-  if (!result.success) {
-    throw new Error(`Rate limit exceeded. Please try again in 10 sec seconds.`);
-  }
-}
-
-export function createInMemoryRateLimiter(bucket: RateLimitBucket): RateLimiter {
-  const config = rateLimitConfig[bucket];
-  return new InMemoryRateLimiter(config.points, config.duration);
-}

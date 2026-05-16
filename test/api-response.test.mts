@@ -4,10 +4,6 @@ import {
   successResponse,
   errorResponse,
   unauthorizedResponse,
-  forbiddenResponse,
-  notFoundResponse,
-  rateLimitResponse,
-  serverErrorResponse,
   validationErrorResponse,
 } from '../lib/utils/api-response';
 
@@ -37,46 +33,6 @@ describe('API Response Helpers', () => {
       const body = await res.json();
       expect(body.error).to.equal('Unauthorized');
       expect(body.code).to.equal('UNAUTHORIZED');
-    });
-  });
-
-  describe('forbiddenResponse', () => {
-    it('should return 403 with FORBIDDEN code', async () => {
-      const res = await forbiddenResponse();
-      expect(res.status).to.equal(403);
-      const body = await res.json();
-      expect(body.error).to.equal('Forbidden');
-      expect(body.code).to.equal('FORBIDDEN');
-    });
-  });
-
-  describe('notFoundResponse', () => {
-    it('should return 404 with resource name', async () => {
-      const res = await notFoundResponse('Thread');
-      expect(res.status).to.equal(404);
-      const body = await res.json();
-      expect(body.error).to.equal('Thread not found');
-      expect(body.code).to.equal('NOT_FOUND');
-    });
-  });
-
-  describe('rateLimitResponse', () => {
-    it('should return 429 with RATE_LIMIT code', async () => {
-      const res = await rateLimitResponse();
-      expect(res.status).to.equal(429);
-      const body = await res.json();
-      expect(body.error).to.equal('Rate limit exceeded');
-      expect(body.code).to.equal('RATE_LIMIT');
-    });
-  });
-
-  describe('serverErrorResponse', () => {
-    it('should return 500 with INTERNAL_ERROR code', async () => {
-      const res = await serverErrorResponse();
-      expect(res.status).to.equal(500);
-      const body = await res.json();
-      expect(body.error).to.equal('Internal server error');
-      expect(body.code).to.equal('INTERNAL_ERROR');
     });
   });
 

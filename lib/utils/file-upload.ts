@@ -1,5 +1,3 @@
-import { put } from '@vercel/blob';
-
 const MAX_FILE_SIZES = {
   IMAGE: 4.5 * 1024 * 1024,
   GIF: 4.5 * 1024 * 1024,
@@ -63,46 +61,6 @@ export function validateFileUpload(file: File): {
   return { valid: true };
 }
 
-export async function uploadFile(file: File): Promise<{ url: string; pathname: string }> {
-  const validation = validateFileUpload(file);
-  if (!validation.valid) {
-    throw new Error(validation.error);
-  }
 
-  const blob = await put(file.name, file, {
-    access: 'public',
-    addRandomSuffix: true,
-  });
 
-  return {
-    url: blob.url,
-    pathname: blob.pathname,
-  };
-}
 
-export function getFileIcon(mimeType: string): string {
-  const category = getFileCategory(mimeType);
-
-  switch (category) {
-    case 'IMAGE':
-      return '🖼️';
-    case 'GIF':
-      return '🎞️';
-    case 'VIDEO':
-      return '🎥';
-    case 'PDF':
-      return '📄';
-    default:
-      return '📎';
-  }
-}
-
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
-
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-}

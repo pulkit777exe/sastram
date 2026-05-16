@@ -64,33 +64,4 @@ export async function resolveUserMentions(
   return users.map((u) => u.id);
 }
 
-/**
- * Format mentions for display (highlight mentioned users)
- */
-export function formatMentionsForDisplay(content: string): string {
-  return content.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-}
 
-/**
- * Extract parent message ID from reply context
- */
-export function extractReplyContext(content: string): {
-  parentId: string | null;
-  cleanContent: string;
-} {
-  // Check for reply pattern: ">>messageId content"
-  const replyRegex = /^>>([\w-]+)\s+/;
-  const match = content.match(replyRegex);
-
-  if (match && match[1]) {
-    return {
-      parentId: match[1],
-      cleanContent: content.replace(replyRegex, '').trim(),
-    };
-  }
-
-  return {
-    parentId: null,
-    cleanContent: content,
-  };
-}

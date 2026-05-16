@@ -14,39 +14,6 @@ export class AppError extends Error {
   }
 }
 
-export class ValidationError extends AppError {
-  constructor(
-    message: string,
-    public field?: string
-  ) {
-    super(message, 'VALIDATION_ERROR', 400);
-  }
-}
-
-export class AuthenticationError extends AppError {
-  constructor(message: string = 'Authentication required') {
-    super(message, 'AUTHENTICATION_ERROR', 401);
-  }
-}
-
-export class AuthorizationError extends AppError {
-  constructor(message: string = 'Insufficient permissions') {
-    super(message, 'AUTHORIZATION_ERROR', 403);
-  }
-}
-
-export class NotFoundError extends AppError {
-  constructor(resource: string = 'Resource') {
-    super(`${resource} not found`, 'NOT_FOUND', 404);
-  }
-}
-
-export class RateLimitError extends AppError {
-  constructor(message: string = 'Rate limit exceeded') {
-    super(message, 'RATE_LIMIT_ERROR', 429);
-  }
-}
-
 const PRISMA_UNIQUE_CONSTRAINT = 'P2002';
 const PRISMA_RECORD_NOT_FOUND = 'P2025';
 const PRISMA_FOREIGN_KEY = 'P2003';
