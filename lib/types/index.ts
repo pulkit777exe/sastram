@@ -1,15 +1,8 @@
-export interface User {
-  id: string;
-  name: string | null;
-  email: string;
-  image: string | null;
-}
+import type { User as PrismaUser, Reaction as PrismaReaction } from '@prisma/client';
 
-export interface Sender {
-  id: string;
-  name: string | null;
-  image: string | null;
-}
+export type User = Pick<PrismaUser, 'id' | 'name' | 'email' | 'image'>;
+
+export type Sender = Pick<PrismaUser, 'id' | 'name' | 'image'>;
 
 export interface Attachment {
   id: string;
@@ -93,13 +86,7 @@ export interface Conversation {
   type: 'channel' | 'dm';
 }
 
-export interface Reaction {
-  id: string;
-  emoji: string;
-  messageId: string;
-  userId: string;
-  createdAt: Date;
-}
+export type Reaction = PrismaReaction;
 
 export interface ReadReceipt {
   id: string;

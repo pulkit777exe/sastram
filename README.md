@@ -19,11 +19,21 @@ next.js, typescript, prisma (postgresql/neon), better-auth, websocket, bullmq (r
 
 ## Quick start
 
+### Option A: Local setup
+
 ```bash
 pnpm install
 pnpm db:migrate
 pnpm dev
 ```
+
+### Option B: Docker (recommended)
+
+```bash
+docker compose up
+```
+
+Starts PostgreSQL, Redis, the Next.js app, WebSocket server, and BullMQ worker in one command. See [CONTRIBUTING.md](./CONTRIBUTING.md) for environment setup.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup and [CLAUDE.md](./CLAUDE.md) for architecture details.
 

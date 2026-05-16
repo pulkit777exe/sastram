@@ -19,6 +19,7 @@ import {
   Bookmark,
   Activity,
   LogOut,
+  LineChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { usePathname, useRouter } from 'next/navigation';
@@ -134,6 +135,11 @@ export function Sidebar({
         icon: Shield,
         label: 'Moderation',
         href: '/dashboard/admin/moderation',
+      },
+      {
+        icon: LineChart,
+        label: 'System Health',
+        href: '/dashboard/admin/health',
       }
     );
   }

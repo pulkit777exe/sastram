@@ -419,6 +419,20 @@ export function initWebSocketServer(server: HTTPServer) {
   return wss;
 }
 
+export function getWsStats() {
+  const typingTotal = Array.from(typingIndicators.values()).reduce(
+    (sum, threadTyping) => sum + threadTyping.size,
+    0
+  );
+
+  return {
+    totalConnections: wss?.clients.size ?? 0,
+    connectedUsers: connectionsByUserId.size,
+    activeThreadRooms: threadChannels.size,
+    activeTypingUsers: typingTotal,
+  };
+}
+
 export async function publishUserEvent(userId: string, payload: unknown) {
   const userConns = connectionsByUserId.get(userId);
   const message = typeof payload === 'string' ? payload : JSON.stringify(payload);

@@ -43,6 +43,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
   const [results, setResults] = useState<PollResults | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
+  const [now] = useState(() => Date.now());
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -122,10 +123,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     }
   };
 
-  const isExpired = useMemo(
-    () => !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now(),
-    [poll.expiresAt]
-  );
+  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= now;
   const showResults = hasVoted || !poll.isActive || isExpired;
 
   if (isLoading) {

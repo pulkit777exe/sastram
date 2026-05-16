@@ -50,6 +50,12 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    files: ['test/**/*.{mts,js}'],
+    rules: {
+      '@typescript-eslint/no-unused-expressions': 'off',
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
