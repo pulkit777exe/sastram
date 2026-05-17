@@ -1,21 +1,23 @@
-import { describe, it, before, after, beforeEach } from 'mocha';
+import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { EventEmitter } from 'events';
-
-const INSTANCE_ID = 'test-instance-uuid';
+import {
+  INSTANCE_ID,
+  shouldSkipLoopback,
+  unregisterSocketFromMaps,
+} from '@/lib/infrastructure/websocket/server';
 
 function createMaps() {
-  const threadChannels = new Map<string, Set<{ id: string; userId?: string; threadId?: string; readyState: number }>>();
-  const connectionsByUserId = new Map<string, Set<{ id: string; userId?: string; threadId?: string; readyState: number }>>();
-  const typingIndicators = new Map<string, Map<string, { userId: string; userName: string; timestamp: number }>>();
+  const threadChannels = new Map<string, Set<unknown>>();
+  const connectionsByUserId = new Map<string, Set<unknown>>();
+  const typingIndicators = new Map<string, Map<string, { userId: string }>>();
   return { threadChannels, connectionsByUserId, typingIndicators };
 }
 
 function registerSocket(
   threadId: string,
-  socket: { id: string; userId?: string; threadId?: string; readyState: number },
-  threadChannels: Map<string, Set<typeof socket>>,
-  connectionsByUserId: Map<string, Set<typeof socket>>,
+  socket: { userId?: string; threadId?: string },
+  threadChannels: Map<string, Set<unknown>>,
+  connectionsByUserId: Map<string, Set<unknown>>,
 ) {
   const channel = threadChannels.get(threadId) ?? new Set();
   channel.add(socket);
@@ -28,105 +30,61 @@ function registerSocket(
   }
 }
 
-function unregisterSocket(
-  socket: { id: string; userId?: string; threadId?: string; readyState: number },
-  threadChannels: Map<string, Set<typeof socket>>,
-  connectionsByUserId: Map<string, Set<typeof socket>>,
-  typingIndicators: Map<string, Map<string, { userId: string; userName: string; timestamp: number }>>,
-) {
-  if (socket.threadId) {
-    const channel = threadChannels.get(socket.threadId);
-    if (channel) {
-      channel.delete(socket);
-      if (channel.size === 0) {
-        threadChannels.delete(socket.threadId);
-      }
-    }
-
-    const threadTyping = typingIndicators.get(socket.threadId);
-    if (threadTyping && socket.userId) {
-      threadTyping.delete(socket.userId);
-      if (threadTyping.size === 0) {
-        typingIndicators.delete(socket.threadId);
-      }
-    }
-  }
-
-  if (socket.userId) {
-    const userConns = connectionsByUserId.get(socket.userId);
-    if (userConns) {
-      userConns.delete(socket);
-      if (userConns.size === 0) {
-        connectionsByUserId.delete(socket.userId);
-      }
-    }
-  }
-}
-
-function shouldSkipLoopback(message: string, instanceId: string): boolean {
-  try {
-    const parsed = JSON.parse(message) as { sourceInstance?: string };
-    return parsed.sourceInstance === instanceId;
-  } catch {
-    return false;
-  }
-}
-
 describe('WebSocket — Cross-Instance Delivery', () => {
-  describe('unregisterSocket', () => {
+  describe('unregisterSocketFromMaps', () => {
     it('should remove socket from threadChannels', () => {
       const { threadChannels, connectionsByUserId, typingIndicators } = createMaps();
-      const socket = { id: 's1', userId: 'u1', threadId: 't1', readyState: 1 };
+      const socket = { id: 's1', userId: 'u1', threadId: 't1' };
 
       registerSocket('t1', socket, threadChannels, connectionsByUserId);
       expect(threadChannels.get('t1')?.size).to.equal(1);
 
-      unregisterSocket(socket, threadChannels, connectionsByUserId, typingIndicators);
+      unregisterSocketFromMaps(socket, threadChannels, connectionsByUserId, typingIndicators);
       expect(threadChannels.has('t1')).to.be.false;
     });
 
     it('should delete threadChannels entry when last socket', () => {
       const { threadChannels, connectionsByUserId, typingIndicators } = createMaps();
-      const socket = { id: 's1', userId: 'u1', threadId: 't1', readyState: 1 };
+      const socket = { id: 's1', userId: 'u1', threadId: 't1' };
 
       registerSocket('t1', socket, threadChannels, connectionsByUserId);
-      unregisterSocket(socket, threadChannels, connectionsByUserId, typingIndicators);
+      unregisterSocketFromMaps(socket, threadChannels, connectionsByUserId, typingIndicators);
 
       expect(threadChannels.has('t1')).to.be.false;
     });
 
     it('should remove socket from connectionsByUserId', () => {
       const { threadChannels, connectionsByUserId, typingIndicators } = createMaps();
-      const socket = { id: 's1', userId: 'u1', threadId: 't1', readyState: 1 };
+      const socket = { id: 's1', userId: 'u1', threadId: 't1' };
 
       registerSocket('t1', socket, threadChannels, connectionsByUserId);
       expect(connectionsByUserId.get('u1')?.size).to.equal(1);
 
-      unregisterSocket(socket, threadChannels, connectionsByUserId, typingIndicators);
+      unregisterSocketFromMaps(socket, threadChannels, connectionsByUserId, typingIndicators);
       expect(connectionsByUserId.has('u1')).to.be.false;
     });
 
     it('should clean up typing indicators', () => {
       const { threadChannels, connectionsByUserId, typingIndicators } = createMaps();
-      const socket = { id: 's1', userId: 'u1', threadId: 't1', readyState: 1 };
+      const socket = { id: 's1', userId: 'u1', threadId: 't1' };
 
-      const threadTyping = new Map<string, { userId: string; userName: string; timestamp: number }>();
-      threadTyping.set('u1', { userId: 'u1', userName: 'User', timestamp: Date.now() });
+      const threadTyping = new Map<string, { userId: string }>();
+      threadTyping.set('u1', { userId: 'u1' });
       typingIndicators.set('t1', threadTyping);
 
-      unregisterSocket(socket, threadChannels, connectionsByUserId, typingIndicators);
+      unregisterSocketFromMaps(socket, threadChannels, connectionsByUserId, typingIndicators);
       expect(typingIndicators.has('t1')).to.be.false;
     });
 
     it('should handle socket without threadId (notification socket)', () => {
       const { threadChannels, connectionsByUserId, typingIndicators } = createMaps();
-      const socket = { id: 's1', userId: 'u1', readyState: 1 };
+      const socket = { id: 's1', userId: 'u1' };
 
-      const userConns = new Set<typeof socket>();
+      const userConns = new Set<unknown>();
       userConns.add(socket);
       connectionsByUserId.set('u1', userConns);
 
-      unregisterSocket(socket, threadChannels, connectionsByUserId, typingIndicators);
+      unregisterSocketFromMaps(socket, threadChannels, connectionsByUserId, typingIndicators);
       expect(connectionsByUserId.has('u1')).to.be.false;
     });
   });

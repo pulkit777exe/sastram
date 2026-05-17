@@ -9,20 +9,30 @@ import { rateLimit } from '@/lib/services/rate-limit';
 import { getRedisSub, getThreadChannel, getUserChannel, publishThreadEvent as redisPublish, publishUserEvent as redisUserPublish } from '@/lib/infrastructure/redis-pubsub';
 import crypto from 'crypto';
 
-type ThreadChannel = Set<WebSocket>;
-
-interface AuthenticatedWebSocket extends WebSocket {
+export interface AuthenticatedWebSocket extends WebSocket {
   threadId?: string;
   userId?: string;
   userName?: string;
   isAlive?: boolean;
 }
 
-const INSTANCE_ID = crypto.randomUUID();
+export const INSTANCE_ID = crypto.randomUUID();
+
+export function shouldSkipLoopback(message: string, instanceId: string): boolean {
+  try {
+    const parsed = JSON.parse(message) as { sourceInstance?: string };
+    return parsed.sourceInstance === instanceId;
+  } catch {
+    return false;
+  }
+}
+
+type ThreadChannel = Set<AuthenticatedWebSocket>;
+
 let wss: WebSocketServer | null = null;
 const threadChannels = new Map<string, ThreadChannel>();
 const connectionsByUserId = new Map<string, Set<AuthenticatedWebSocket>>();
-const typingIndicators = new Map<string, Map<string, TypingIndicator>>(); // Map<threadId, Map<userId, TypingIndicator>>
+const typingIndicators = new Map<string, Map<string, TypingIndicator>>();
 
 function getThreadId(pathname?: string | null) {
   if (!pathname) return null;
@@ -87,14 +97,18 @@ function unsubscribeFromUser(userId: string) {
   }
 }
 
-function unregisterSocket(socket: AuthenticatedWebSocket) {
+export function unregisterSocketFromMaps(
+  socket: { userId?: string; threadId?: string },
+  threadChannels: Map<string, Set<unknown>>,
+  connectionsByUserId: Map<string, Set<unknown>>,
+  typingIndicators: Map<string, Map<string, { userId: string }>>,
+) {
   if (socket.threadId) {
     const channel = threadChannels.get(socket.threadId);
     if (channel) {
       channel.delete(socket);
       if (channel.size === 0) {
         threadChannels.delete(socket.threadId);
-        unsubscribeFromThread(socket.threadId);
       }
     }
 
@@ -113,8 +127,25 @@ function unregisterSocket(socket: AuthenticatedWebSocket) {
       userConns.delete(socket);
       if (userConns.size === 0) {
         connectionsByUserId.delete(socket.userId);
-        unsubscribeFromUser(socket.userId);
       }
+    }
+  }
+}
+
+function unregisterSocket(socket: AuthenticatedWebSocket) {
+  unregisterSocketFromMaps(socket, threadChannels, connectionsByUserId, typingIndicators);
+
+  if (socket.threadId) {
+    const channel = threadChannels.get(socket.threadId);
+    if (!channel || channel.size === 0) {
+      unsubscribeFromThread(socket.threadId);
+    }
+  }
+
+  if (socket.userId) {
+    const userConns = connectionsByUserId.get(socket.userId);
+    if (!userConns || userConns.size === 0) {
+      unsubscribeFromUser(socket.userId);
     }
   }
 }
