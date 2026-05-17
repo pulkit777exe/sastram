@@ -10,6 +10,7 @@ import {
   saveCollapseState,
 } from '@/modules/messages/service';
 import { CommentNode } from './message-node';
+import { ThreadProvider } from './thread-context';
 
 function findNodeById(nodes: MessageNode[], id: string): MessageNode | null {
   const stack = [...nodes];
@@ -150,66 +151,56 @@ export function CommentTree({
 
   if (tree.length === 0) return null;
 
+  const contextValue = {
+    threadId,
+    currentUser,
+    activeReplyId,
+    collapsedIds,
+    onReply: handleReply,
+    onCancelReply: handleCancelReply,
+    onToggleCollapse: toggleCollapse,
+    onMessagePosted: handleMessagePosted,
+    onFocusBranch: handleFocusBranch,
+    onMessageUpdate: handleMessageUpdate,
+    allMessages: localMessages,
+    animateMessageId,
+    aiInlineStatus,
+    onTypingStart,
+    onTypingStop,
+  };
+
   return (
-    <div className="space-y-4">
-      {focusedNode ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 bg-background/80">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-              Focused Thread
+    <ThreadProvider value={contextValue}>
+      <div className="space-y-4">
+        {focusedNode ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 bg-background/80">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Focused Thread
+              </div>
+              <button
+                onClick={clearFocus}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
+              >
+                Back to full thread
+              </button>
             </div>
-            <button
-              onClick={clearFocus}
-              className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
-            >
-              Back to full thread
-            </button>
+            <CommentNode
+              key={focusedNode.id}
+              node={focusedNode}
+              depth={0}
+            />
           </div>
-          <CommentNode
-            key={focusedNode.id}
-            node={focusedNode}
-            depth={0}
-            threadId={threadId}
-            currentUser={currentUser}
-            activeReplyId={activeReplyId}
-            collapsedIds={collapsedIds}
-            onReply={handleReply}
-            onCancelReply={handleCancelReply}
-            onToggleCollapse={toggleCollapse}
-            onMessagePosted={handleMessagePosted}
-            onFocusBranch={handleFocusBranch}
-            onMessageUpdate={handleMessageUpdate}
-            allMessages={localMessages}
-            animateMessageId={animateMessageId}
-            aiInlineStatus={aiInlineStatus}
-            onTypingStart={onTypingStart}
-            onTypingStop={onTypingStop}
-          />
-        </div>
-      ) : (
-        tree.map((node) => (
-          <CommentNode
-            key={node.id}
-            node={node}
-            depth={0}
-            threadId={threadId}
-            currentUser={currentUser}
-            activeReplyId={activeReplyId}
-            collapsedIds={collapsedIds}
-            onReply={handleReply}
-            onCancelReply={handleCancelReply}
-            onToggleCollapse={toggleCollapse}
-            onMessagePosted={handleMessagePosted}
-            onFocusBranch={handleFocusBranch}
-            onMessageUpdate={handleMessageUpdate}
-            allMessages={localMessages}
-            animateMessageId={animateMessageId}
-            aiInlineStatus={aiInlineStatus}
-            onTypingStart={onTypingStart}
-            onTypingStop={onTypingStop}
-          />
-        ))
-      )}
-    </div>
+        ) : (
+          tree.map((node) => (
+            <CommentNode
+              key={node.id}
+              node={node}
+              depth={0}
+            />
+          ))
+        )}
+      </div>
+    </ThreadProvider>
   );
 }

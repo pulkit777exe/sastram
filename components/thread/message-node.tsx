@@ -29,6 +29,7 @@ import { DeletedMessagePlaceholder } from './deleted-message-placeholder';
 import { AttachmentItem } from './attachment-item';
 import { countDescendants } from '@/modules/messages/service';
 import { ReportButton } from './report-button';
+import { useThreadContext } from './thread-context';
 
 const MAX_VISUAL_DEPTH = 4;
 const INDENT_PX = 20;
@@ -81,47 +82,29 @@ function renderDiffLine(text: string, compareTo: string, className: string) {
 interface CommentNodeProps {
   node: MessageNode;
   depth: number;
-  threadId: string;
-  currentUser: {
-    id: string;
-    name: string | null;
-    image: string | null;
-    role?: string;
-  };
-  activeReplyId: string | null;
-  collapsedIds: Set<string>;
-  onReply: (messageId: string) => void;
-  onCancelReply: () => void;
-  onToggleCollapse: (messageId: string) => void;
-  onMessagePosted: (message: Message) => void;
-  onFocusBranch: (messageId: string) => void;
-  onMessageUpdate: (messageId: string, updates: Partial<Message>) => void;
-  allMessages: Message[];
-  animateMessageId: string | null;
-  aiInlineStatus: Record<string, 'pending' | 'failed'>;
-  onTypingStart?: () => void;
-  onTypingStop?: () => void;
 }
 
 export function CommentNode({
   node,
   depth,
-  threadId,
-  currentUser,
-  activeReplyId,
-  collapsedIds,
-  onReply,
-  onCancelReply,
-  onToggleCollapse,
-  onMessagePosted,
-  onFocusBranch,
-  onMessageUpdate,
-  allMessages,
-  animateMessageId,
-  aiInlineStatus,
-  onTypingStart,
-  onTypingStop,
 }: CommentNodeProps) {
+  const {
+    threadId,
+    currentUser,
+    activeReplyId,
+    collapsedIds,
+    onReply,
+    onCancelReply,
+    onToggleCollapse,
+    onMessagePosted,
+    onFocusBranch,
+    onMessageUpdate,
+    allMessages,
+    animateMessageId,
+    aiInlineStatus,
+    onTypingStart,
+    onTypingStop,
+  } = useThreadContext();
   const [appealOpen, setAppealOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(node.likeCount ?? 0);
@@ -537,19 +520,6 @@ export function CommentNode({
               key={child.id}
               node={child}
               depth={depth + 1}
-              threadId={threadId}
-              currentUser={currentUser}
-              activeReplyId={activeReplyId}
-              collapsedIds={collapsedIds}
-              onReply={onReply}
-              onCancelReply={onCancelReply}
-              onToggleCollapse={onToggleCollapse}
-              onMessagePosted={onMessagePosted}
-              onFocusBranch={onFocusBranch}
-              onMessageUpdate={onMessageUpdate}
-              allMessages={allMessages}
-              animateMessageId={animateMessageId}
-              aiInlineStatus={aiInlineStatus}
             />
           ))}
         </div>
