@@ -2,7 +2,7 @@
 
 import { logger } from '@/lib/infrastructure/logger';
 
-import { requireSession } from '@/modules/auth/session';
+import { assertAdmin, requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import {
   getUserReputation as getUserReputationRepo,
@@ -32,6 +32,7 @@ export const getUserReputationAction = withValidation(
   'getUserReputation',
   async ({ userId }) => {
     try {
+      await requireSession();
       const reputation = await getUserReputationRepo(userId);
       return { data: reputation, error: null };
     } catch (error) {
@@ -68,6 +69,8 @@ export const syncReputationPointsAction = withValidation(
   'syncReputationPoints',
   async ({ userId }) => {
     try {
+      const session = await requireSession();
+      assertAdmin(session.user);
       await syncReputationPointsRepo(userId);
       revalidatePath(`/user/${userId}`);
       return { data: null, error: null };

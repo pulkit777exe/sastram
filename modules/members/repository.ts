@@ -24,11 +24,12 @@ export async function addMember(sectionId: string, userId: string, role: Section
   });
 }
 
-export async function removeMember(sectionId: string, userId: string) {
+export async function removeMember(sectionId: string, userId: string): Promise<{ count: number }> {
   return prisma.sectionMember.updateMany({
     where: {
       sectionId,
       userId,
+      status: 'ACTIVE',
     },
     data: {
       status: 'LEFT',

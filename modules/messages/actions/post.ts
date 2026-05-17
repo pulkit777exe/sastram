@@ -1,6 +1,6 @@
 'use server';
 
-import { requireSession } from '@/modules/auth/session';
+import { requireSectionMembership, requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
@@ -50,10 +50,9 @@ export async function postMessage(formData: FormData) {
 
   const session = await requireSession(false);
 
-  const isMember = await prisma.sectionMember.findUnique({
-    where: { sectionId_userId: { sectionId, userId: session.user.id } },
-  });
-  if (!isMember) {
+  try {
+    await requireSectionMembership(sectionId, session.user.id);
+  } catch {
     return {
       data: null,
       error: 'You are not a member of this section',

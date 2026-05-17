@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { Role, User } from '@prisma/client';
+import { Role, SectionMember, SectionRole, User } from '@prisma/client';
 import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 
@@ -57,6 +57,61 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
   }
 
   return session;
+}
+
+/**
+ * Require that a user is a member of the given section.
+ * Returns the SectionMember record if membership exists.
+ * Throws (redirects to dashboard) if not a member.
+ *
+ * Usage in server actions:
+ *   const membership = await requireSectionMembership(sectionId, session.user.id);
+ *
+ * Usage in API routes (throws instead of redirecting):
+ *   const membership = await requireSectionMembershipOrThrow(sectionId, userId);
+ */
+export async function requireSectionMembership(
+  sectionId: string,
+  userId: string,
+  requiredRole?: SectionRole
+): Promise<SectionMember> {
+  const membership = await prisma.sectionMember.findUnique({
+    where: { sectionId_userId: { sectionId, userId } },
+  });
+
+  if (!membership) {
+    redirect('/dashboard');
+  }
+
+  if (requiredRole && membership.role !== requiredRole) {
+    redirect('/dashboard');
+  }
+
+  return membership;
+}
+
+/**
+ * API route variant — throws an error instead of redirecting.
+ * Use in API route handlers where redirect() is not available.
+ */
+export async function requireSectionMembershipOrThrow(
+  sectionId: string,
+  userId: string,
+  requiredRole?: SectionRole
+): Promise<SectionMember> {
+  const membership = await prisma.sectionMember.findUnique({
+    where: { sectionId_userId: { sectionId, userId } },
+  });
+
+  if (!membership) {
+    throw new Error('Forbidden: not a member of this section');
+  }
+
+  if (requiredRole && membership.role !== requiredRole) {
+    throw new Error('Forbidden: insufficient role');
+  }
+
+  return membership;
 }
 
 export function isAdmin(user: SessionUser | undefined | null): boolean {

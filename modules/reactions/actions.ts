@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSectionMembership, requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { getMessageReactions } from '@/modules/reactions/repository';
 import { emitReactionUpdate } from '@/modules/ws/publisher';
@@ -33,10 +33,9 @@ export const toggleReaction = createServerAction(
       return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
     }
 
-    const isMember = await prisma.sectionMember.findUnique({
-      where: { sectionId_userId: { sectionId: message.sectionId, userId: session.user.id } },
-    });
-    if (!isMember) {
+    try {
+      await requireSectionMembership(message.sectionId, session.user.id);
+    } catch {
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }
 
@@ -88,10 +87,9 @@ export const getReactionSummary = createServerAction(
       return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
     }
 
-    const isMember = await prisma.sectionMember.findUnique({
-      where: { sectionId_userId: { sectionId: message.sectionId, userId: session.user.id } },
-    });
-    if (!isMember) {
+    try {
+      await requireSectionMembership(message.sectionId, session.user.id);
+    } catch {
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }
 

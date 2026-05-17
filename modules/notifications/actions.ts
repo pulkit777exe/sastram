@@ -40,8 +40,8 @@ export const markNotificationRead = withValidation(
   markNotificationReadSchema,
   'markNotificationRead',
   async ({ notificationId }) => {
-    await requireSession();
-    await markAsRead(notificationId);
+    const session = await requireSession();
+    await markAsRead(notificationId, session.user.id);
     revalidatePath('/dashboard');
     return { data: null, error: null };
   }

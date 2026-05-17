@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Worker } from 'bullmq';
+import { Queue, type Job } from 'bullmq';
 import { logger } from '@/lib/infrastructure/logger';
 import {
   QUEUE_NAMES,
-  redisConnection,
   handleAIInlineJob,
   handleAIInsightNotificationsJob,
   handleConflictDetectionJob,
@@ -13,60 +12,50 @@ import {
   handleStalenessCheckJob,
   handleThreadDnaJob,
   handleThreadSummaryJob,
-  type AIInlineJobData,
-  type AIInsightNotificationJobData,
-  type ConflictDetectionJobData,
-  type DailyDigestJobData,
-  type ResolutionScoreJobData,
-  type StalenessCheckJobData,
-  type ThreadDnaJobData,
-  type ThreadSummaryJobData,
 } from '@/lib/infrastructure/bullmq';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { getRedisConnection } from '@/lib/queue/connection';
 
 export const maxDuration = 300;
 
-const queueHandlers: Record<string, (job: any) => Promise<unknown>> = {
-  [QUEUE_NAMES.THREAD_SUMMARY]: (job) => handleThreadSummaryJob(job),
-  [QUEUE_NAMES.RESOLUTION_SCORE]: (job) => handleResolutionScoreJob(job),
-  [QUEUE_NAMES.THREAD_DNA]: (job) => handleThreadDnaJob(job),
-  [QUEUE_NAMES.CONFLICT_DETECTION]: (job) => handleConflictDetectionJob(job),
-  [QUEUE_NAMES.DAILY_DIGEST]: (job) => handleDailyDigestJob(job),
-  [QUEUE_NAMES.AI_INSIGHT_NOTIFICATIONS]: (job) => handleAIInsightNotificationsJob(job),
-  [QUEUE_NAMES.EMAIL]: (job) => handleEmailJob(job),
-  [QUEUE_NAMES.AI_INLINE]: (job) => handleAIInlineJob(job),
-  [QUEUE_NAMES.STALENESS_CHECK]: (job) => handleStalenessCheckJob(job),
+const queueHandlers: Record<string, (job: Job) => Promise<unknown>> = {
+  [QUEUE_NAMES.THREAD_SUMMARY]: handleThreadSummaryJob,
+  [QUEUE_NAMES.RESOLUTION_SCORE]: handleResolutionScoreJob,
+  [QUEUE_NAMES.THREAD_DNA]: handleThreadDnaJob,
+  [QUEUE_NAMES.CONFLICT_DETECTION]: handleConflictDetectionJob,
+  [QUEUE_NAMES.DAILY_DIGEST]: handleDailyDigestJob,
+  [QUEUE_NAMES.AI_INSIGHT_NOTIFICATIONS]: handleAIInsightNotificationsJob,
+  [QUEUE_NAMES.EMAIL]: handleEmailJob,
+  [QUEUE_NAMES.AI_INLINE]: handleAIInlineJob,
+  [QUEUE_NAMES.STALENESS_CHECK]: handleStalenessCheckJob,
 };
 
-async function processQueue(queueName: string, handler: (job: any) => Promise<unknown>) {
-  const worker = new Worker(queueName, handler, {
-    connection: redisConnection,
-    concurrency: 2,
-    limiter: {
-      max: 10,
-      duration: 1000,
-    },
-  });
+async function drainQueue(queueName: string, handler: (job: Job) => Promise<unknown>) {
+  const queue = new Queue(queueName, { connection: getRedisConnection() });
+  const jobs = await queue.getWaiting();
+
+  if (jobs.length === 0) {
+    await queue.close();
+    return { processed: 0, failed: 0, total: 0 };
+  }
 
   let processed = 0;
   let failed = 0;
 
-  worker.on('completed', () => {
-    processed++;
-  });
+  for (const job of jobs) {
+    try {
+      await handler(job);
+      await job.moveToCompleted(undefined, 'cron-drain', false);
+      processed++;
+    } catch (error) {
+      logger.error(`[${queueName}] Job ${job.id} failed:`, error);
+      await job.moveToFailed(error as Error, 'cron-drain', false);
+      failed++;
+    }
+  }
 
-  worker.on('failed', (_job, error) => {
-    logger.error(`[${queueName}] Job failed:`, error);
-    failed++;
-  });
-
-  await worker.run();
-
-  setTimeout(async () => {
-    await worker.close();
-  }, 25000);
-
-  return { processed, failed };
+  await queue.close();
+  return { processed, failed, total: jobs.length };
 }
 
 export async function GET(req: NextRequest) {
@@ -86,13 +75,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await processQueue(queue, queueHandlers[queue]);
+    const result = await drainQueue(queue, queueHandlers[queue]);
     return NextResponse.json({
       queue,
       ...result,
     });
   } catch (error) {
     logger.error(`[Worker] ${queue} failed:`, error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process queue' }, { status: 500 });
   }
 }

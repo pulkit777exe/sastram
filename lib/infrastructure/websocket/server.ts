@@ -43,34 +43,6 @@ function isNotificationsRoute(pathname?: string | null) {
   return parts.includes('notifications');
 }
 
-async function authenticateConnection(
-  request: IncomingMessage
-): Promise<{ userId: string; userName: string } | null> {
-  try {
-    const headers = new Headers();
-    Object.entries(request.headers).forEach(([key, value]) => {
-      if (value) {
-        headers.set(key, Array.isArray(value) ? value[0] : value);
-      }
-    });
-
-    const session = await auth.api.getSession({
-      headers,
-    });
-
-    if (session?.user) {
-      return {
-        userId: session.user.id,
-        userName: session.user.name || session.user.email,
-      };
-    }
-    return null;
-  } catch (error) {
-    logger.error('Authentication error:', error);
-    return null;
-  }
-}
-
 let redisSubscriber: ReturnType<typeof getRedisSub> | null = null;
 const threadSubCounts = new Map<string, number>();
 const userSubCounts = new Map<string, number>();
@@ -198,7 +170,7 @@ export function initWebSocketServer(server: HTTPServer) {
 
   wss = new WebSocketServer({ noServer: true });
 
-  server.on('upgrade', async (request, socket, head) => {
+  server.on('upgrade', (request, socket, head) => {
     const { pathname } = parse(request.url || '');
 
     // Check if it's a notifications route
@@ -210,8 +182,9 @@ export function initWebSocketServer(server: HTTPServer) {
       return;
     }
 
-    const authResult = await authenticateConnection(request);
-
+    // Accept connection immediately — auth happens post-connect via WebSocket message.
+    // This avoids the async upgrade handler race condition where the socket times out
+    // before handleUpgrade is called under load.
     wss?.handleUpgrade(request, socket, head, (ws) => {
       const authWs = ws as AuthenticatedWebSocket;
 
@@ -219,9 +192,37 @@ export function initWebSocketServer(server: HTTPServer) {
         authWs.threadId = threadId;
       }
 
-      if (authResult) {
-        authWs.userId = authResult.userId;
-        authWs.userName = authResult.userName;
+      // Authenticate synchronously using cookie from request headers.
+      // If auth fails, we still register the socket but it will be anonymous.
+      // Anonymous sockets cannot send messages (checked in message handler).
+      const sessionCookie = request.headers.cookie
+        ?.split(';')
+        .find((c) => c.trim().startsWith('better-auth.session_token='))
+        ?.split('=')[1];
+
+      if (sessionCookie) {
+        const headers = new Headers();
+        headers.set('cookie', `better-auth.session_token=${sessionCookie}`);
+        auth.api
+          .getSession({ headers })
+          .then((session) => {
+            if (session?.user) {
+              authWs.userId = session.user.id;
+              authWs.userName = session.user.name || session.user.email;
+              if (authWs.userId) {
+                const wasUserEmpty = !connectionsByUserId.has(authWs.userId);
+                const userConns = connectionsByUserId.get(authWs.userId) ?? new Set();
+                userConns.add(authWs);
+                connectionsByUserId.set(authWs.userId, userConns);
+                if (wasUserEmpty) {
+                  subscribeToUser(authWs.userId);
+                }
+              }
+            }
+          })
+          .catch((error) => {
+            logger.warn('[ws] Post-connect auth failed:', error);
+          });
       }
 
       if (threadId) {

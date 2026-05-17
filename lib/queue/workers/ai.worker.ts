@@ -432,7 +432,7 @@ async function generateAIInlineResponse(
       reactions: [],
       attachments: [],
     });
-    return;
+    throw error; // BullMQ will retry with exponential backoff (configured 3 attempts)
   }
 
   logger.info(`[worker:ai] AI inline job complete: ${jobId}`);

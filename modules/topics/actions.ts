@@ -19,7 +19,7 @@ const createTopicSchema = z.object({
 export const createTopic = createServerAction(
   { schema: createTopicSchema, actionName: 'createTopic' },
   async ({ title, description, icon, tags }) => {
-    const session = await requireSession(false);
+    const session = await requireSession();
 
     const section = await prisma.section.create({
       data: {

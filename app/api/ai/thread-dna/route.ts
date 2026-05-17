@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSession } from '@/modules/auth/session';
+import { requireSectionMembershipOrThrow, requireSession } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -29,10 +29,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { threadId } = dnaRequestSchema.parse(body);
 
-    const isMember = await prisma.sectionMember.findUnique({
-      where: { sectionId_userId: { sectionId: threadId, userId: session.user.id } },
-    });
-    if (!isMember) {
+    try {
+      await requireSectionMembershipOrThrow(threadId, session.user.id);
+    } catch {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

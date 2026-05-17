@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const subscriptions = await prisma.threadSubscription.findMany({
       where: {
         isActive: true,
-        frequency: 'DAILY', // Currently we only support daily
+        frequency: 'DAILY',
       },
       include: {
         thread: {
@@ -49,65 +49,94 @@ export async function GET(req: NextRequest) {
       errors: 0,
     };
 
-    // Group subscriptions by thread to avoid re-generating summary for same thread
-    // formatting: Map<ThreadID, { messages: Message[], summary: Promise<string> | string }>
-    const threadSummaries = new Map();
-
+    // 2. Group subscriptions by thread
+    const subsByThread = new Map<string, typeof subscriptions>();
     for (const sub of subscriptions) {
-      const thread = sub.thread;
-      const messages = thread.messages;
-
-      if (messages.length === 0) {
+      if (sub.thread.messages.length === 0) {
         results.skipped++;
         continue;
       }
+      const existing = subsByThread.get(sub.thread.id) || [];
+      existing.push(sub);
+      subsByThread.set(sub.thread.id, existing);
+    }
 
-      // Generate or retrieve summary for this thread
-      let summaryHtml = '';
-      try {
-        if (!threadSummaries.has(thread.id)) {
-          // Store the promise immediately to handle concurrent processing if we parallelize
-          // For now it's sequential but good practice
-          const summaryPromise = aiService.generateDailyDigest(messages);
-          threadSummaries.set(thread.id, summaryPromise);
-        }
+    // 3. Generate summaries in parallel (one per unique thread)
+    const summaryPromises = new Map<string, Promise<string>>();
+    for (const [threadId, subs] of subsByThread) {
+      const thread = subs[0].thread;
+      summaryPromises.set(
+        threadId,
+        aiService.generateDailyDigest(thread.messages).catch((err) => {
+          logger.error(`Failed to generate summary for thread ${threadId}:`, err);
+          return '';
+        })
+      );
+    }
 
-        summaryHtml = await threadSummaries.get(thread.id);
-      } catch (err) {
-        logger.error(`Failed to generate summary for thread ${thread.id}:`, err);
+    // Wait for all summaries to generate
+    const summaries = await Promise.allSettled(
+      Array.from(summaryPromises.entries()).map(async ([threadId, promise]) => {
+        const html = await promise;
+        return { threadId, html };
+      })
+    );
+
+    const summaryMap = new Map<string, string>();
+    for (const result of summaries) {
+      if (result.status === 'fulfilled' && result.value.html) {
+        summaryMap.set(result.value.threadId, result.value.html);
+      }
+    }
+
+    // 4. Send emails in parallel (batch of 10 to avoid SMTP overload)
+    const emailPromises: Promise<void>[] = [];
+    for (const [threadId, subs] of subsByThread) {
+      const summaryHtml = summaryMap.get(threadId);
+      if (!summaryHtml) {
         results.errors++;
         continue;
       }
 
-      // Send Email
-      try {
+      const thread = subs[0].thread;
+
+      for (const sub of subs) {
         if (!sub.email) {
           results.skipped++;
           continue;
         }
 
-        await sendEmail({
-          to: sub.email,
-          subject: `Daily Digest: ${thread.name}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Daily Digest for ${thread.name}</h2>
-              <div style="background-color: #f4f4f5; padding: 20px; border-radius: 8px;">
-                ${summaryHtml}
+        emailPromises.push(
+          sendEmail({
+            to: sub.email,
+            subject: `Daily Digest: ${thread.name}`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Daily Digest for ${thread.name}</h2>
+                <div style="background-color: #f4f4f5; padding: 20px; border-radius: 8px;">
+                  ${summaryHtml}
+                </div>
+                <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                  You are receiving this because you subscribed to this thread.
+                  <a href="${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}">View Thread</a>
+                </p>
               </div>
-              <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                You are receiving this because you subscribed to this thread.
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}">View Thread</a>
-              </p>
-            </div>
-          `,
-        });
-        results.sent++;
-      } catch (err) {
-        logger.error(`Failed to send email to ${sub.email}:`, err);
-        results.errors++;
+            `,
+          })
+            .then(() => { results.sent++; })
+            .catch((err) => {
+              logger.error(`Failed to send email to ${sub.email}:`, err);
+              results.errors++;
+            })
+            .finally(() => { results.processed++; })
+        );
       }
-      results.processed++;
+    }
+
+    // Process emails in batches of 10 to avoid SMTP rate limits
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < emailPromises.length; i += BATCH_SIZE) {
+      await Promise.allSettled(emailPromises.slice(i, i + BATCH_SIZE));
     }
 
     return NextResponse.json({ success: true, results });

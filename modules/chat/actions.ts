@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { attachmentInputSchema } from '@/lib/schemas/database';
 import { withValidation } from '@/lib/utils/server-action';
 import { prismaErrorMessage } from '@/lib/utils/errors';
+import { requireSectionMembership } from '@/modules/auth/session';
 
 const createConversationSchema = z.object({
   name: z.string().min(1),
@@ -139,13 +140,9 @@ export const getMessages = withValidation(
         return { data: [], error: 'Authentication required' };
       }
 
-      const member = await prisma.sectionMember.findUnique({
-        where: {
-          sectionId_userId: { sectionId: conversationId, userId: session.user.id },
-        },
-      });
-
-      if (!member) {
+      try {
+        await requireSectionMembership(conversationId, session.user.id);
+      } catch {
         return { data: [], error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
       }
 
@@ -196,13 +193,9 @@ export const sendMessage = withValidation(
         return { data: null, error: 'Authentication required' };
       }
 
-      const member = await prisma.sectionMember.findUnique({
-        where: {
-          sectionId_userId: { sectionId: conversationId, userId: session.user.id },
-        },
-      });
-
-      if (!member) {
+      try {
+        await requireSectionMembership(conversationId, session.user.id);
+      } catch {
         return { data: null, error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
       }
 

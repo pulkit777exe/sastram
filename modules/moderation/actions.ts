@@ -176,7 +176,7 @@ export const banUser = createServerAction(
     const targetUser = await validateModerationTarget(
       userId,
       session.user.id,
-      session.user.role || 'ADMIN'
+      session.user.role
     );
 
     const existingBan = await prisma.userBan.findFirst({

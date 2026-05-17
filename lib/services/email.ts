@@ -17,6 +17,23 @@ const transporter = nodemailer.createTransport({
   auth: env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
 });
 
+// In-memory cache for email templates — loaded on first access.
+const _templateCache = new Map<string, string>();
+
+async function loadRawTemplate(templateName: string): Promise<string> {
+  const templatePath = path.join(process.cwd(), 'lib', 'templates', 'email', templateName);
+  return fs.readFile(templatePath, 'utf-8');
+}
+
+async function getCachedTemplate(templateName: string): Promise<string> {
+  const cached = _templateCache.get(templateName);
+  if (cached) return cached;
+
+  const html = await loadRawTemplate(templateName);
+  _templateCache.set(templateName, html);
+  return html;
+}
+
 interface EmailOptions {
   to: string | string[];
   subject: string;
@@ -267,11 +284,11 @@ async function loadTemplate(
   variables: Record<string, string>
 ): Promise<string> {
   try {
-    const templatePath = path.join(process.cwd(), 'lib', 'templates', 'email', templateName);
-    let html = await fs.readFile(templatePath, 'utf-8');
+    let html = await getCachedTemplate(templateName);
 
     for (const [key, value] of Object.entries(variables)) {
-      html = html.replace(new RegExp(`{{${key}}}`, 'g'), value);
+      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html.replace(new RegExp(`{{${escapedKey}}}`, 'g'), value);
     }
 
     return html;

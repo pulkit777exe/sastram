@@ -64,7 +64,9 @@ export class RegexFilter {
     // Check against custom moderation rules (with caching)
     let rules = this.getRulesFromCache();
     if (!rules) {
-      rules = await prisma.moderationRule.findMany();
+      rules = await prisma.moderationRule.findMany({
+        select: { id: true, pattern: true, action: true, severity: true, category: true },
+      });
       this.cacheRules(rules);
     }
 
@@ -303,29 +305,32 @@ export class MessageService {
         }
       }
 
-      // Create the message first
-      const created = await prisma.message.create({
-        data: {
-          content: message.content,
-          sectionId: message.sectionId,
-          senderId: message.authorId,
-          parentId: message.parentId ?? null,
-          depth,
-        },
+      // Create message + increment replyCount atomically
+      const created = await prisma.$transaction(async (tx) => {
+        const msg = await tx.message.create({
+          data: {
+            content: message.content,
+            sectionId: message.sectionId,
+            senderId: message.authorId,
+            parentId: message.parentId ?? null,
+            depth,
+          },
+        });
+
+        if (message.parentId) {
+          await tx.message.update({
+            where: { id: message.parentId },
+            data: { replyCount: { increment: 1 } },
+          });
+        }
+
+        return msg;
       });
 
-      // Atomically increment parent's replyCount
-      if (message.parentId) {
-        await prisma.message.update({
-          where: { id: message.parentId },
-          data: { replyCount: { increment: 1 } },
-        });
-      }
       dbMessageId = created.id;
 
-      // If moderation action is needed, create a report
+      // If moderation action is needed, create a report (outside transaction — idempotent)
       if (result.action !== 'ALLOW') {
-        // Check if system user exists, create if necessary
         let systemUser = await prisma.user.findFirst({
           where: { email: 'system@example.com' },
         });

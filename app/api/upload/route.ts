@@ -4,6 +4,7 @@ import { put } from '@vercel/blob';
 import { validateFileUpload, getFileCategory } from '@/lib/utils/file-upload';
 import { uploadResponseSchema } from '@/lib/schemas/api';
 import { logger } from '@/lib/infrastructure/logger';
+import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,8 +34,11 @@ export async function POST(req: NextRequest) {
 
     const uploadedFiles = await Promise.all(
       files.map(async (file) => {
-        const blob = await put(file.name, file, {
+        const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+        const key = ext ? `${randomUUID()}.${ext}` : randomUUID();
+        const blob = await put(key, file, {
           access: 'public',
+          addRandomSuffix: false,
         });
 
         const type = getFileCategory(file.type);

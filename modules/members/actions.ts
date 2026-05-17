@@ -69,12 +69,14 @@ export const leaveSection = createServerAction(
   { schema: leaveSectionSchema, actionName: 'leaveSection' },
   async ({ sectionId }) => {
     const session = await requireSession();
-    await removeMember(sectionId, session.user.id);
+    const result = await removeMember(sectionId, session.user.id);
 
-    await prisma.section.update({
-      where: { id: sectionId },
-      data: { memberCount: { decrement: 1 } },
-    });
+    if (result.count > 0) {
+      await prisma.section.update({
+        where: { id: sectionId },
+        data: { memberCount: { decrement: 1 } },
+      });
+    }
 
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
@@ -136,12 +138,14 @@ export const removeMemberAction = createServerAction(
       return { data: null, error: 'Insufficient permissions' };
     }
 
-    await removeMember(sectionId, userId);
+    const result = await removeMember(sectionId, userId);
 
-    await prisma.section.update({
-      where: { id: sectionId },
-      data: { memberCount: { decrement: 1 } },
-    });
+    if (result.count > 0) {
+      await prisma.section.update({
+        where: { id: sectionId },
+        data: { memberCount: { decrement: 1 } },
+      });
+    }
 
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };

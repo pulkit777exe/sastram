@@ -4,6 +4,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { enqueueInlineJob } from '@/lib/infrastructure/bullmq';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
+import { requireSectionMembershipOrThrow } from '@/modules/auth/session';
 
 export async function POST(
   request: NextRequest,
@@ -19,10 +20,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const isMember = await prisma.sectionMember.findUnique({
-      where: { sectionId_userId: { sectionId: threadId, userId: session.user.id } },
-    });
-    if (!isMember) {
+    try {
+      await requireSectionMembershipOrThrow(threadId, session.user.id);
+    } catch {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

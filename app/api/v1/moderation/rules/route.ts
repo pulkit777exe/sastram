@@ -15,6 +15,51 @@ export async function GET() {
   }
 }
 
+/**
+ * Validate regex pattern for ReDoS safety.
+ * Checks: length limit, quantifier nesting depth, backreference count.
+ */
+function validateRegexPattern(pattern: string): { valid: boolean; error?: string } {
+  if (pattern.length > 200) {
+    return { valid: false, error: 'Pattern too long (max 200 chars)' };
+  }
+
+  // Test that it compiles
+  try {
+    new RegExp(pattern);
+  } catch {
+    return { valid: false, error: 'Invalid regex syntax' };
+  }
+
+  // Count nested quantifiers — patterns like ((a+)+)+ are ReDoS risks
+  let depth = 0;
+  let maxDepth = 0;
+  for (const char of pattern) {
+    if (char === '(') {
+      depth++;
+      maxDepth = Math.max(maxDepth, depth);
+    } else if (char === ')') {
+      depth--;
+    }
+  }
+  if (maxDepth > 4) {
+    return { valid: false, error: 'Pattern has too many nested groups (max 4)' };
+  }
+
+  // Count backreferences — \1, \2 etc. can cause exponential backtracking
+  const backrefs = pattern.match(/\\[1-9]/g);
+  if (backrefs && backrefs.length > 2) {
+    return { valid: false, error: 'Too many backreferences (max 2)' };
+  }
+
+  // Reject patterns with nested quantifiers on groups: (x+)+, (x*)+, etc.
+  if (/\([^)]*[+*]\)[+*]/.test(pattern)) {
+    return { valid: false, error: 'Nested quantifiers on groups are not allowed (e.g., (x+)+)' };
+  }
+
+  return { valid: true };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAdmin();
@@ -27,16 +72,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate regex pattern to prevent ReDoS attacks
-    try {
-      new RegExp(body.pattern);
-    } catch (error) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid regex pattern'), { status: 400 });
-    }
-
-    // Limit pattern complexity (basic check for ReDoS potential)
-    if (body.pattern.length > 100 || /(.*\b.*){20,}/.test(body.pattern)) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Pattern too complex'), { status: 400 });
+    const regexValidation = validateRegexPattern(body.pattern);
+    if (!regexValidation.valid) {
+      return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: 400 });
     }
 
     const newRule = await prisma.moderationRule.create({
@@ -50,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(ok({ rule: newRule }));
   } catch (error) {
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to create rule', error), {
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to create rule'), {
       status: 500,
     });
   }
@@ -65,18 +103,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'id is required'), { status: 400 });
     }
 
-    // Validate regex pattern if provided and updated
     if (body.pattern) {
-      try {
-        new RegExp(body.pattern);
-      } catch (error) {
-        return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid regex pattern'), {
-          status: 400,
-        });
-      }
-
-      if (body.pattern.length > 100 || /(.*\b.*){20,}/.test(body.pattern)) {
-        return NextResponse.json(fail('VALIDATION_ERROR', 'Pattern too complex'), { status: 400 });
+      const regexValidation = validateRegexPattern(body.pattern);
+      if (!regexValidation.valid) {
+        return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: 400 });
       }
     }
 
@@ -96,7 +126,7 @@ export async function PUT(request: NextRequest) {
     if (error instanceof Error && error.message.includes('NotFound')) {
       return NextResponse.json(fail('NOT_FOUND', 'Rule not found'), { status: 404 });
     }
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to update rule', error), {
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to update rule'), {
       status: 500,
     });
   }
@@ -120,7 +150,7 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof Error && error.message.includes('NotFound')) {
       return NextResponse.json(fail('NOT_FOUND', 'Rule not found'), { status: 404 });
     }
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to delete rule', error), {
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to delete rule'), {
       status: 500,
     });
   }

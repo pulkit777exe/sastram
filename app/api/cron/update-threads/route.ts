@@ -14,6 +14,8 @@ import { updateAllThreadRelations } from '@/modules/threads/relations';
 import { prewarmFollowUpQueries } from '@/modules/ai-search/query-warming';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
+const BATCH_SIZE = 100;
+
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
   if (authError) {
@@ -21,142 +23,106 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Get all active threads
-    const threads = await prisma.section.findMany({
-      where: {
-        // Only process threads that have been active in the last 30 days
-        updatedAt: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        },
-      },
-      include: {
-        messages: {
-          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
-          orderBy: { createdAt: 'desc' },
-          include: { sender: true },
-        },
-        subscriptions: true,
-      },
-    });
-
-    const jobPromises = [];
     const threadDnaQueue = getThreadDnaQueue();
     const resolutionScoreQueue = getResolutionScoreQueue();
     const conflictDetectionQueue = getConflictDetectionQueue();
     const dailyDigestQueue = getDailyDigestQueue();
     const aiInsightNotificationsQueue = getAiInsightNotificationsQueue();
 
-    // Process each thread and collect data for notifications
-    for (const thread of threads) {
-      if (thread.messages.length === 0) {
-        continue;
-      }
+    let totalProcessed = 0;
+    let totalJobsAdded = 0;
+    let cursor: string | undefined;
 
-      // Reverse to chronological order for AI
-      const messages = thread.messages.reverse();
-      const subscriberIds = thread.subscriptions.map((sub: any) => sub.userId);
+    // Process threads in batches to avoid loading all into memory
+    while (true) {
+      const threads = await prisma.section.findMany({
+        where: {
+          updatedAt: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          },
+          ...(cursor ? { id: { gt: cursor } } : {}),
+        },
+        include: {
+          messages: {
+            take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
+            orderBy: { createdAt: 'desc' },
+            include: { sender: true },
+          },
+          subscriptions: true,
+        },
+        orderBy: { id: 'asc' },
+        take: BATCH_SIZE,
+      });
 
-      // Check staleness (simple heuristic for now)
-      const isOutdated = thread.updatedAt < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      if (threads.length === 0) break;
 
-      // Add jobs for each AI task
-      jobPromises.push(
-        threadDnaQueue.add(
+      for (const thread of threads) {
+        if (thread.messages.length === 0) {
+          continue;
+        }
+
+        const messages = thread.messages.reverse();
+        const subscriberIds = thread.subscriptions.map((sub: any) => sub.userId);
+        const isOutdated = thread.updatedAt < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const oldScore = thread.resolutionScore;
+
+        await threadDnaQueue.add(
           AIJobType.GENERATE_THREAD_DNA,
           { threadId: thread.id, messages, cronJob: true },
-          {
-            ...DEFAULT_JOB_OPTIONS,
-            jobId: `generate-dna-${thread.id}-${Date.now()}`,
-          }
-        )
-      );
+          { ...DEFAULT_JOB_OPTIONS, jobId: `generate-dna-${thread.id}-${Date.now()}` }
+        );
+        totalJobsAdded++;
 
-      const oldScore = thread.resolutionScore;
-      jobPromises.push(
-        resolutionScoreQueue.add(
+        await resolutionScoreQueue.add(
           AIJobType.CALCULATE_RESOLUTION_SCORE,
-          {
-            threadId: thread.id,
-            messages,
-            subscriberIds,
-            threadName: thread.name,
-            oldScore,
-            isOutdated,
-            cronJob: true,
-          },
-          {
-            ...DEFAULT_JOB_OPTIONS,
-            jobId: `resolution-score-${thread.id}-${Date.now()}`,
-          }
-        )
-      );
+          { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, isOutdated, cronJob: true },
+          { ...DEFAULT_JOB_OPTIONS, jobId: `resolution-score-${thread.id}-${Date.now()}` }
+        );
+        totalJobsAdded++;
 
-      jobPromises.push(
-        conflictDetectionQueue.add(
+        await conflictDetectionQueue.add(
           AIJobType.DETECT_CONFLICTS,
-          {
-            threadId: thread.id,
-            messages,
-            subscriberIds,
-            threadName: thread.name,
-            oldScore,
-            cronJob: true,
-          },
-          {
-            ...DEFAULT_JOB_OPTIONS,
-            jobId: `conflict-detection-${thread.id}-${Date.now()}`,
-          }
-        )
-      );
+          { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, cronJob: true },
+          { ...DEFAULT_JOB_OPTIONS, jobId: `conflict-detection-${thread.id}-${Date.now()}` }
+        );
+        totalJobsAdded++;
 
-      if (subscriberIds.length > 0) {
-        jobPromises.push(
-          dailyDigestQueue.add(
+        if (subscriberIds.length > 0) {
+          await dailyDigestQueue.add(
             AIJobType.GENERATE_DAILY_DIGEST,
             { messages, subscriberIds, cronJob: true },
-            {
-              ...DEFAULT_JOB_OPTIONS,
-              jobId: `generate-digest-${thread.id}-${Date.now()}`,
-            }
-          )
-        );
+            { ...DEFAULT_JOB_OPTIONS, jobId: `generate-digest-${thread.id}-${Date.now()}` }
+          );
+          totalJobsAdded++;
+        }
+
+        if (subscriberIds.length > 0 && isOutdated) {
+          await aiInsightNotificationsQueue.add(
+            AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
+            { subscriberIds, threadId: thread.id, threadName: thread.name, oldScore: oldScore ?? undefined, isOutdated, cronJob: true },
+            { ...DEFAULT_JOB_OPTIONS, jobId: `send-notifications-${thread.id}-${Date.now()}` }
+          );
+          totalJobsAdded++;
+        }
+
+        totalProcessed++;
       }
 
-      if (subscriberIds.length > 0 && isOutdated) {
-        jobPromises.push(
-          aiInsightNotificationsQueue.add(
-            AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
-            {
-              subscriberIds,
-              threadId: thread.id,
-              threadName: thread.name,
-              oldScore: oldScore ?? undefined,
-              isOutdated,
-              cronJob: true,
-            },
-            {
-              ...DEFAULT_JOB_OPTIONS,
-              jobId: `send-notifications-${thread.id}-${Date.now()}`,
-            }
-          )
-        );
-      }
+      // Move cursor to last processed thread
+      cursor = threads[threads.length - 1].id;
+
+      // If we got fewer than BATCH_SIZE, we've processed all threads
+      if (threads.length < BATCH_SIZE) break;
     }
 
-    // Wait for all jobs to be added
-    await Promise.all(jobPromises);
-
-    // Update thread relations
     const relationsResult = await updateAllThreadRelations();
-
-    // Pre-warm follow-up queries
     const prewarmResult = await prewarmFollowUpQueries();
 
     return NextResponse.json({
       success: true,
       results: {
-        processed: threads.length,
-        jobsAdded: jobPromises.length,
+        processed: totalProcessed,
+        jobsAdded: totalJobsAdded,
         relationsUpdated: relationsResult.updated,
         prewarmedQueries: prewarmResult.prewarmed,
       },

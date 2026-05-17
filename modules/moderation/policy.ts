@@ -23,7 +23,7 @@ export async function applyModerationRateLimit(userId: string) {
 export async function validateModerationTarget(
   targetUserId: string,
   moderatorId: string,
-  moderatorRole: string
+  moderatorRole: string | null | undefined
 ) {
   if (targetUserId === moderatorId) {
     throw new Error('Cannot perform moderation actions on yourself');
@@ -42,6 +42,10 @@ export async function validateModerationTarget(
 
   if (!targetUser) {
     throw new Error('Target user not found');
+  }
+
+  if (!moderatorRole) {
+    throw new Error('Moderator role is missing');
   }
 
   if (targetUser.role === 'ADMIN' && moderatorRole !== 'SUPER_ADMIN') {

@@ -1,7 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
 import { logger } from '@/lib/infrastructure/logger';
 import { env } from '@/lib/config/env';
+import { getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
 
 export const rateLimitConfig = {
   auth: { points: 5, duration: 900 }, // 5 requests per 15 min
@@ -23,20 +23,6 @@ type RateLimitResult = {
 type RateLimiter = {
   check: (identifier: string) => Promise<RateLimitResult>;
 };
-
-let redis: Redis | null = null;
-
-function getRedis(): Redis | null {
-  if (redis) return redis;
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return null;
-  }
-  redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-  return redis;
-}
 
 class InMemoryRateLimiter implements RateLimiter {
   private requests: Map<string, number[]> = new Map();
@@ -71,36 +57,46 @@ class InMemoryRateLimiter implements RateLimiter {
 
 const inMemoryLimiter = new InMemoryRateLimiter(100, 60);
 
-// Helper to create a rate limiter wrapper
-const createRateLimiter = (bucket: RateLimitBucket): RateLimiter => {
+// Memoized rate limiters — one instance per bucket name.
+// Prevents creating new Ratelimit objects on every check.
+const _limiters = new Map<RateLimitBucket, RateLimiter>();
+
+function getOrCreateLimiter(bucket: RateLimitBucket): RateLimiter {
+  const cached = _limiters.get(bucket);
+  if (cached) return cached;
+
   const config = rateLimitConfig[bucket];
-  const r = getRedis();
+  const r = getUpstashRedis();
+
+  let limiter: RateLimiter;
 
   if (!r || !env.RATE_LIMIT_ENABLED) {
-    return {
+    limiter = {
       check: async () => ({ success: true, remaining: config.points, reset: Date.now() + config.duration * 1000 }),
+    };
+  } else {
+    const ratelimit = new Ratelimit({
+      redis: r,
+      limiter: Ratelimit.slidingWindow(config.points, `${config.duration} s`),
+      analytics: false,
+    });
+
+    limiter = {
+      check: async (identifier: string) => {
+        try {
+          const result = await ratelimit.limit(identifier);
+          return { success: result.success, remaining: result.remaining, reset: result.reset };
+        } catch (error) {
+          logger.error(`Redis rate limit check failed for ${bucket}, falling back to in-memory:`, error);
+          return inMemoryLimiter.check(identifier);
+        }
+      },
     };
   }
 
-  const ratelimit = new Ratelimit({
-    redis: r,
-    limiter: Ratelimit.slidingWindow(config.points, `${config.duration} s`),
-    analytics: false,
-  });
-
-  return {
-    check: async (identifier: string) => {
-      try {
-        const result = await ratelimit.limit(identifier);
-        return { success: result.success, remaining: result.remaining, reset: result.reset };
-      } catch (error) {
-        logger.error(`Redis rate limit check failed for ${bucket}, falling back to in-memory:`, error);
-        const memLimit = new InMemoryRateLimiter(config.points, config.duration);
-        return memLimit.check(identifier);
-      }
-    },
-  };
-};
+  _limiters.set(bucket, limiter);
+  return limiter;
+}
 
 export async function rateLimit(identifier: string): Promise<RateLimitResult>;
 export async function rateLimit(params: {
@@ -111,11 +107,11 @@ export async function rateLimit(
   arg: string | { key: string; type: RateLimitBucket }
 ): Promise<RateLimitResult> {
   if (typeof arg === 'string') {
-    const limiter = createRateLimiter('api');
+    const limiter = getOrCreateLimiter('api');
     return limiter.check(arg);
   }
-  const limiter = createRateLimiter(arg.type);
+  const limiter = getOrCreateLimiter(arg.type);
   return limiter.check(arg.key);
 }
 
-export const messageLimiter: RateLimiter = createRateLimiter('message');
+export const messageLimiter: RateLimiter = getOrCreateLimiter('message');

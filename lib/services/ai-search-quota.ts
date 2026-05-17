@@ -1,37 +1,12 @@
-import { Redis } from '@upstash/redis';
 import { logger } from '@/lib/infrastructure/logger';
-
-let redis: Redis | null = null;
-
-function getRedis(): Redis | null {
-  if (redis) return redis;
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return null;
-  }
-  redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-  return redis;
-}
+import { getUpstashRedis, getSecondsUntilUtcMidnight, ATOMIC_INCR_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
 
 const DAILY_LIMIT = 20;
-
-export function getSecondsUntilUtcMidnight() {
-  const now = new Date();
-  const nextUtcMidnight = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate() + 1,
-    0, 0, 0
-  );
-  return Math.max(1, Math.floor((nextUtcMidnight - now.getTime()) / 1000));
-}
 
 export async function consumeAiSearchQuota(
   userId: string
 ): Promise<{ allowed: boolean; remaining: number }> {
-  const r = getRedis();
+  const r = getUpstashRedis();
   if (!r) {
     logger.warn('[consumeAiSearchQuota] Redis unavailable, allowing request (fail-open)');
     return { allowed: true, remaining: -1 };
@@ -41,10 +16,7 @@ export async function consumeAiSearchQuota(
   const key = `ai_search:${userId}:${date}`;
 
   try {
-    const used = await r.incr(key);
-    if (used === 1) {
-      await r.expire(key, getSecondsUntilUtcMidnight());
-    }
+    const used = (await r.eval(ATOMIC_INCR_EXPIRE_LUA, [key], [getSecondsUntilUtcMidnight()])) as number;
 
     return {
       allowed: used <= DAILY_LIMIT,

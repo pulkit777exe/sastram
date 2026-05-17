@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { consumeAiSearchQuota, getSecondsUntilUtcMidnight } from '@/lib/services/ai-search-quota';
+import { consumeAiSearchQuota } from '@/lib/services/ai-search-quota';
+import { getSecondsUntilUtcMidnight } from '@/lib/infrastructure/redis-upstash';
 
 describe('AI Search Quota', function () {
   this.timeout(10_000);
