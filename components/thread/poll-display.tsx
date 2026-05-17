@@ -141,7 +141,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
         {showResults && <BarChart3 className="h-5 w-5 text-muted-foreground shrink-0" />}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" role="radiogroup" aria-label={poll.question}>
         {poll.options.map((option, index) => {
           const result = results?.results.find((r) => r.index === index);
           const percentage = result?.percentage ?? 0;
@@ -182,6 +182,9 @@ export function PollDisplay({ poll }: PollDisplayProps) {
                   onClick={() => handleVote(index)}
                   disabled={isVoting || hasVoted || !poll.isActive || isExpired}
                   variant={isSelected ? 'default' : 'outline'}
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={`Vote for: ${option}`}
                   className="w-full justify-start"
                 >
                   {option}

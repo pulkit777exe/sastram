@@ -30,13 +30,17 @@ export async function executeMessageDeletionEffects(args: {
   revalidatePath('/dashboard/admin/moderation');
 }
 
-export async function executeModerationAuditAndRevalidate(args: {
+/**
+ * Shared audit logging + path revalidation.
+ * Used by both moderation and reports modules.
+ */
+export async function executeAuditAndRevalidate(args: {
   action: string;
   entityType: string;
   entityId: string;
   userId: string;
   details?: Prisma.InputJsonValue | null;
-  paths: string[];
+  paths?: string[];
 }) {
   await logAction({
     action: args.action,
@@ -46,7 +50,13 @@ export async function executeModerationAuditAndRevalidate(args: {
     details: args.details,
   });
 
-  for (const path of args.paths) {
+  const defaultPaths = ['/dashboard/admin/moderation', '/dashboard/admin/reports'];
+  for (const path of args.paths ?? defaultPaths) {
     revalidatePath(path);
   }
 }
+
+/**
+ * @deprecated Use executeAuditAndRevalidate instead
+ */
+export const executeModerationAuditAndRevalidate = executeAuditAndRevalidate;

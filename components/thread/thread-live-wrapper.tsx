@@ -10,6 +10,7 @@ import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
 import { toasts } from '@/lib/utils/toast';
 import { InlinePoll } from '@/components/thread/inline-poll';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
@@ -322,14 +323,16 @@ return (
               </p>
             </div>
           ) : (
-            <CommentTree
-              messages={liveMessages}
-              threadId={threadId}
-              currentUser={currentUser}
-              aiInlineStatus={aiInlineStatus}
-              onTypingStart={emitTypingStart}
-              onTypingStop={emitTypingStop}
-            />
+            <ErrorBoundary>
+              <CommentTree
+                messages={liveMessages}
+                threadId={threadId}
+                currentUser={currentUser}
+                aiInlineStatus={aiInlineStatus}
+                onTypingStart={emitTypingStart}
+                onTypingStop={emitTypingStop}
+              />
+            </ErrorBoundary>
           )}
         </div>
 

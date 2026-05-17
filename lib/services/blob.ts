@@ -1,12 +1,13 @@
 import { put, del } from '@vercel/blob';
 import { logger } from '@/lib/infrastructure/logger';
+import { FILE_LIMITS } from '@/lib/config/constants';
 
 export interface UploadOptions {
   maxSizeBytes?: number;
   allowedTypes?: string[];
 }
 
-const DEFAULT_MAX_SIZE = 4.5 * 1024 * 1024; // 4.5MB
+const DEFAULT_MAX_SIZE = FILE_LIMITS.MAX_SIZE_BYTES;
 const DEFAULT_ALLOWED_TYPES = [
   'image/jpeg',
   'image/png',
@@ -70,7 +71,7 @@ async function deleteFile(url: string): Promise<{ success: boolean; error?: stri
 
 function validateImageFile(file: File): { valid: boolean; error?: string } {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  const maxSize = 5 * 1024 * 1024; // 5MB for images
+  const maxSize = FILE_LIMITS.MAX_IMAGE_SIZE;
 
   if (!allowedTypes.includes(file.type)) {
     return {

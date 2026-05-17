@@ -80,12 +80,14 @@ export interface FileValidationResult {
   error?: string;
 }
 
+import { FILE_LIMITS } from '@/lib/config/constants';
+
 export function validateFile(file: File): FileValidationResult {
-  const MAX_SIZE = 4.5 * 1024 * 1024; // vercel blob limit
+  const MAX_SIZE = FILE_LIMITS.MAX_SIZE_BYTES;
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
 
   if (file.size > MAX_SIZE) {
-    return { isValid: false, error: 'File size exceeds 5MB limit.' };
+    return { isValid: false, error: 'File size exceeds 4.5MB limit.' };
   }
 
   if (!ALLOWED_TYPES.includes(file.type)) {

@@ -2,6 +2,11 @@ import { auth } from '@/lib/services/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { logger } from '@/lib/infrastructure/logger';
+import { z } from 'zod';
+
+const forgetPasswordOtpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,22 +19,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email } = await request.json();
-
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    const body = await request.json();
+    const validation = forgetPasswordOtpSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid email address' },
+        { status: 400 }
+      );
     }
 
     const data = await auth.api.forgetPasswordEmailOTP({
-      body: {
-        email,
-      },
+      body: validation.data,
     });
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     logger.error('[forget-password:email-otp]', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to send reset code' },
+      { error: 'Failed to send reset code' },
       { status: 400 }
     );
   }

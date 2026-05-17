@@ -1,6 +1,6 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { containsBadLanguage, filterBadLanguage } from '../lib/services/content-safety';
+import { containsBadLanguage, filterBadLanguage } from '@/lib/services/content-safety';
 
 describe('Content Safety', () => {
   describe('containsBadLanguage', () => {

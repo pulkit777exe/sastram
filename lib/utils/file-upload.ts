@@ -1,9 +1,11 @@
+import { FILE_LIMITS } from '@/lib/config/constants';
+
 const MAX_FILE_SIZES = {
-  IMAGE: 4.5 * 1024 * 1024,
-  GIF: 4.5 * 1024 * 1024,
-  VIDEO: 4.5 * 1024 * 1024,
-  PDF: 4.5 * 1024 * 1024,
-  FILE: 4.5 * 1024 * 1024,
+  IMAGE: FILE_LIMITS.MAX_IMAGE_SIZE,
+  GIF: FILE_LIMITS.MAX_IMAGE_SIZE,
+  VIDEO: FILE_LIMITS.MAX_VIDEO_SIZE,
+  PDF: FILE_LIMITS.MAX_PDF_SIZE,
+  FILE: FILE_LIMITS.MAX_SIZE_BYTES,
 };
 
 export const ALLOWED_MIME_TYPES: Record<string, string[]> = {
@@ -60,7 +62,3 @@ export function validateFileUpload(file: File): {
 
   return { valid: true };
 }
-
-
-
-

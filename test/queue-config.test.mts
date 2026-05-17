@@ -5,7 +5,7 @@ import {
   DEFAULT_JOB_OPTIONS,
   AIJobType,
   FAILED_QUEUE_NAME,
-} from '../lib/queue/config';
+} from '@/lib/queue/config';
 
 describe('Queue Config', () => {
   describe('QUEUE_NAMES', () => {

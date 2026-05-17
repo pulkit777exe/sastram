@@ -1,10 +1,11 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
+import { slugify } from '@/lib/utils/slug';
+import { containsBadLanguage, filterBadLanguage } from '@/lib/services/content-safety';
+import { rateLimitConfig } from '@/lib/services/rate-limit';
 
-describe('Basic Utilities', () => {
-  describe('Slugify', () => {
-    const slugify = (text: string) => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
+describe('Real Utilities', () => {
+  describe('slugify', () => {
     it('should convert to lowercase', () => {
       expect(slugify('Hello World')).to.equal('hello-world');
     });
@@ -20,45 +21,55 @@ describe('Basic Utilities', () => {
     it('should remove special characters', () => {
       expect(slugify('Hello @World!')).to.equal('hello-world');
     });
+
+    it('should handle empty strings', () => {
+      expect(slugify('')).to.equal('');
+    });
+
+    it('should handle unicode characters', () => {
+      expect(slugify('Héllo Wörld')).to.equal('h-llo-w-rld');
+    });
   });
 
   describe('Content Safety', () => {
-    const BAD_WORDS = ['spam', 'scam', 'malware'];
-    const containsBadLanguage = (content: string) => BAD_WORDS.some(w => content.toLowerCase().includes(w));
-    const filterBadLanguage = (content: string) => {
-      let filtered = content;
-      BAD_WORDS.forEach(w => { filtered = filtered.replace(new RegExp(w, 'gi'), '*'.repeat(w.length)); });
-      return filtered;
-    };
-
     it('should detect bad language', () => {
-      expect(containsBadLanguage('This is a scam message')).to.be.true;
+      expect(containsBadLanguage('This is spam')).to.be.true;
       expect(containsBadLanguage('Hello world')).to.be.false;
     });
 
+    it('should be case-insensitive', () => {
+      expect(containsBadLanguage('This is SPAM')).to.be.true;
+      expect(containsBadLanguage('This is Spam')).to.be.true;
+    });
+
     it('should filter bad language', () => {
-      expect(filterBadLanguage('This is a scam')).to.equal('This is a ****');
+      const result = filterBadLanguage('This is spam');
+      expect(result).to.not.include('spam');
+    });
+
+    it('should leave clean content unchanged', () => {
+      expect(filterBadLanguage('Hello world')).to.equal('Hello world');
     });
   });
 
   describe('Rate Limit Config', () => {
-    const rateLimitConfig = {
-      auth: { points: 5, duration: 900 },
-      message: { points: 20, duration: 60 },
-      websocket: { points: 50, duration: 60 },
-    };
+    it('should have all expected buckets', () => {
+      expect(rateLimitConfig).to.have.property('auth');
+      expect(rateLimitConfig).to.have.property('api');
+      expect(rateLimitConfig).to.have.property('upload');
+      expect(rateLimitConfig).to.have.property('websocket');
+      expect(rateLimitConfig).to.have.property('message');
+      expect(rateLimitConfig).to.have.property('newsletter');
+    });
 
-    it('should have auth bucket', () => {
+    it('should have reasonable auth limits', () => {
       expect(rateLimitConfig.auth.points).to.equal(5);
+      expect(rateLimitConfig.auth.duration).to.equal(900);
     });
 
-    it('should have message bucket', () => {
+    it('should have reasonable message limits', () => {
       expect(rateLimitConfig.message.points).to.equal(20);
-    });
-
-    it('should have websocket bucket', () => {
-      expect(rateLimitConfig.websocket.points).to.equal(50);
+      expect(rateLimitConfig.message.duration).to.equal(60);
     });
   });
-
 });

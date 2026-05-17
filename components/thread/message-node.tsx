@@ -370,7 +370,9 @@ export function CommentNode({
                       setIsLiking(false);
                     }}
                     disabled={isLiking}
-                    className={`flex items-center gap-1 transition-colors ${isLiked ? 'text-amber-500' : 'text-muted-foreground/60 hover:text-amber-500'}`}
+                    aria-label={isLiked ? 'Unlike this message' : 'Like this message'}
+                    aria-pressed={isLiked}
+                    className={`flex items-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded ${isLiked ? 'text-amber-500' : 'text-muted-foreground/60 hover:text-amber-500'}`}
                   >
                     <ThumbsUp size={13} className={isLiked ? 'fill-current' : ''} />
                     <span className="text-[11px] font-medium tabular-nums">
@@ -381,7 +383,8 @@ export function CommentNode({
                   {!beyondDepthLimit && (
                     <button
                       onClick={() => onReply(node.id)}
-                      className="flex items-center gap-1 text-muted-foreground/60 hover:text-indigo-500 transition-colors"
+                      aria-label="Reply to this message"
+                      className="flex items-center gap-1 text-muted-foreground/60 hover:text-indigo-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded"
                     >
                       <Reply size={13} />
                       <span className="text-[11px] font-medium">Reply</span>
@@ -411,7 +414,8 @@ export function CommentNode({
                     {canEdit && (
                       <button
                         onClick={() => setIsEditing(true)}
-                        className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100"
+                        aria-label="Edit message"
+                        className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         title="Edit message"
                       >
                         <Edit2 size={13} />
@@ -421,7 +425,8 @@ export function CommentNode({
                       <button
                         onClick={() => setShowDeleteConfirm((prev) => !prev)}
                         disabled={isDeleting}
-                        className="text-muted-foreground/40 hover:text-red-500 transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100"
+                        aria-label="Delete message"
+                        className="text-muted-foreground/40 hover:text-red-500 transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         title="Delete message"
                       >
                         <Trash2 size={13} />
