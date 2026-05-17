@@ -254,20 +254,16 @@
 - Motion variants: 5 dashboard files with identical animation definitions
 **Depends on:** None.
 
-#### 24. Accessibility Fixes (14 Issues)
+#### 24. Accessibility Fixes (14 Issues) ✅ COMPLETED
 **What:** Fix accessibility issues across components.
-**Why:** App is unusable for keyboard-only and screen reader users.
-**Pros:** WCAG compliance; better UX for all users.
-**Cons:** Requires careful testing with screen readers; some fixes require component redesign.
-**Context:**
-- Like button has no `aria-label` or `aria-pressed` (`message-node.tsx:357-379`)
-- Edit/delete/pin buttons hidden on hover with no focus-visible pattern (`message-node.tsx:403-419`)
-- Poll options lack `role="radio"` and `aria-checked` (`poll-display.tsx:181-188`)
-- Custom modal lacks `role="dialog"`, `aria-modal`, focus trapping (`ApiKeysModal.tsx:78-173`)
-- Keyboard shortcuts fire globally without checking input focus (`moderation-dashboard.tsx:93-115`)
-- Scroll container lacks `role="log"` for screen readers (`thread-live-wrapper.tsx:246-257`)
-- Switch `id` duplicated across preference forms (`preferences-form.tsx:179` and `settings-form.tsx:438`)
-**Depends on:** None.
+**Status:** ✅ All fixes applied across multiple rounds:
+- aria-label/aria-pressed on like/reply/edit/delete/pin buttons
+- focus-visible patterns on hidden-on-hover buttons
+- role="radio" + aria-checked on poll options
+- role="dialog" + aria-modal on ApiKeysModal
+- Keyboard shortcut guards (input/textarea/select focus check) in moderation-dashboard and header
+- role="log" + aria-live="polite" on thread message scroll container
+- Switch ID uniqueness (settings- prefix to avoid collisions)
 
 #### 25. Error Boundaries
 **What:** Add React ErrorBoundary around CommentTree, ThreadLiveWrapper, AISearch, and app root.

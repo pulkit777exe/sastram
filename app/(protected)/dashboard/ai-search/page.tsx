@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SearchPage } from '@/components/ai-search/SearchPage';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 export const metadata: Metadata = {
   title: 'AI Search — Sastram',
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function AISearchPage() {
-  return <SearchPage />;
+  return (
+    <ErrorBoundary>
+      <SearchPage />
+    </ErrorBoundary>
+  );
 }
