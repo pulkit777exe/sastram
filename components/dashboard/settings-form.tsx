@@ -426,18 +426,18 @@ export function SettingsForm({ user }: SettingsFormProps) {
                 Receive daily summaries of your subscribed topics.
               </p>
             </div>
-            <Switch id="email-notifs" checked={emailNotifs} onCheckedChange={handleToggleEmail} />
+            <Switch id="settings-email-notifs" checked={emailNotifs} onCheckedChange={handleToggleEmail} />
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="push-notifs" className="text-base font-medium text-foreground">
+              <Label htmlFor="settings-push-notifs" className="text-base font-medium text-foreground">
                 Push Notifications
               </Label>
               <p className="text-sm text-muted-foreground">
                 Receive real-time alerts for mentions.
               </p>
             </div>
-            <Switch id="push-notifs" checked={pushNotifs} onCheckedChange={handleTogglePush} />
+            <Switch id="settings-push-notifs" checked={pushNotifs} onCheckedChange={handleTogglePush} />
           </div>
         </div>
       </motion.div>

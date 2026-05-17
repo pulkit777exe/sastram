@@ -249,6 +249,9 @@ return (
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto"
+          role="log"
+          aria-live="polite"
+          aria-label="Thread messages"
           onScroll={() => {
             if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
             readDebounceRef.current = setTimeout(() => {

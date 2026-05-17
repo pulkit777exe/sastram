@@ -446,6 +446,7 @@ export function CommentNode({
                           setIsPinning(false);
                         }}
                         disabled={isPinning}
+                        aria-label={node.isPinned ? 'Unpin message' : 'Pin message'}
                         className={`transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100 ${node.isPinned ? 'text-indigo-500 opacity-100' : 'text-muted-foreground/40 hover:text-indigo-500'}`}
                         title={node.isPinned ? 'Unpin message' : 'Pin message'}
                       >
