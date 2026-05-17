@@ -264,3 +264,36 @@
 - `components/thread/thread-live-wrapper.tsx` — CommentTree wrapped in ErrorBoundary
 - `app/(protected)/dashboard/ai-search/page.tsx` — SearchPage wrapped in ErrorBoundary
 - `app/error.tsx` — Next.js global error boundary (pre-existing)
+
+#### 26. ThreadContext for Comment Tree Props ✅ COMPLETED
+**What:** Create ThreadContext to eliminate 16-level prop drilling through CommentTree → CommentNode recursion.
+**Status:** ✅ Created `components/thread/thread-context.tsx` with ThreadProvider and useThreadContext(). CommentNode now receives only `node` and `depth` props (down from 17).
+
+#### 27. ThreadLiveWrapper State Optimization
+**What:** Consolidate 6 useState calls into useReducer or Zustand store.
+**Status:** ⏸️ Deferred — 6 useState calls manage independent concerns. Converting would add boilerplate without benefit.
+
+## 📋 Pending
+
+### Infrastructure Tests
+
+#### 1. Fix Mock Tests ✅ COMPLETED
+**Status:** ✅ All 5 test files import from real codebase. `websocket.test.mts` imports `INSTANCE_ID`, `shouldSkipLoopback`, `unregisterSocketFromMaps` from real module.
+
+#### 2. API Route Integration Tests
+**What:** Add integration tests for `/api/threads`, `/api/messages`, `/api/ai`, `/api/cron`, `/api/v1/moderation`.
+**Why:** Zero API route test coverage. Auth bypass, membership gaps, and error handling bugs go undetected.
+**Context:** 31 route.ts files across 17 API groups. Critical paths: auth enforcement, membership scoping, error response shapes, rate limiting.
+**Depends on:** Requires test database container setup.
+
+#### 3. BullMQ Job Handler Tests
+**What:** Add tests for all 9 job handlers: thread-summary, thread-dna, resolution-score, conflict-detection, daily-digest, ai-inline, email, staleness-check, ai-insight.
+**Why:** Background jobs run silently — failures go unnoticed.
+**Context:** Jobs defined in `lib/queue/workers/`. Each job has specific input schema, retry config (3x exponential backoff).
+**Depends on:** Requires Redis mock or test Redis instance.
+
+#### 4. Component Tests
+**What:** Add React Testing Library tests for CommentTree, ThreadLiveWrapper, LoginForm, AISearch.
+**Why:** Zero component test coverage. Critical user flows are untested.
+**Context:** 100+ components, zero tests. Benefits from ThreadContext refactor (completed).
+**Depends on:** Requires React Testing Library setup; mocking server actions and WebSocket is complex.

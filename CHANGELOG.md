@@ -49,9 +49,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Deferred
 
-- ThreadLiveWrapper state optimization (useReducer/Zustand) — requires significant component refactor
-- ThreadContext for comment tree props — requires significant component refactor
-- Both tracked in TODOS.md for future implementation
+- ThreadLiveWrapper state optimization (useReducer/Zustand) — 6 useState calls manage independent concerns; converting would add boilerplate without benefit
+
+### Refactor
+
+- Create `ThreadContext` to eliminate 16-level prop drilling through CommentTree → CommentNode recursion. CommentNode receives only `node` and `depth` props (down from 17). All shared state flows through context.
+- Export `shouldSkipLoopback`, `unregisterSocketFromMaps`, and `INSTANCE_ID` from WebSocket server for testability
+- Fix mock tests: `websocket.test.mts` now imports from real module instead of re-implementing locally
 
 ## [Unreleased] — Round 3
 
