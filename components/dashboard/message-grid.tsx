@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { staggerContainer, fadeUpItem } from '@/lib/motion';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { MessageSquare, ArrowRight } from 'lucide-react';
@@ -21,21 +22,6 @@ interface MessageGridProps {
   messages: Message[];
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 },
-};
-
 export function MessageGrid({ messages }: MessageGridProps) {
   if (messages.length === 0) {
     return (
@@ -47,9 +33,9 @@ export function MessageGrid({ messages }: MessageGridProps) {
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="grid gap-4">
+    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4">
       {messages.map((message) => (
-        <motion.div key={message.id} variants={item}>
+        <motion.div key={message.id} variants={fadeUpItem}>
           <Link href={ROUTES.THREAD(message.section.slug)}>
             <div className="group flex flex-col gap-2 rounded-xl bg-card border border-border p-5 shadow-sm transition-all hover:shadow-md hover:border-indigo-500/20 hover:bg-muted/50">
               <div className="flex items-center justify-between">

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { staggerContainer, fadeUpItem } from '@/lib/motion';
 import { TopicCard } from '@/components/dashboard/topic-card';
 
 interface Topic {
@@ -19,21 +20,6 @@ interface TopicGridProps {
   topics: Topic[];
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 },
-};
-
 export function TopicGrid({ topics }: TopicGridProps) {
   if (topics.length === 0) {
     return (
@@ -46,13 +32,13 @@ export function TopicGrid({ topics }: TopicGridProps) {
 
   return (
     <motion.div
-      variants={container}
+      variants={staggerContainer}
       initial="hidden"
       animate="show"
       className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
     >
       {topics.map((topic) => (
-        <motion.div key={topic.id} variants={item}>
+        <motion.div key={topic.id} variants={fadeUpItem}>
           <TopicCard {...topic} />
         </motion.div>
       ))}

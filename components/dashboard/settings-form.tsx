@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { staggerContainer, fadeUpItem } from '@/lib/motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,21 +39,6 @@ interface SettingsFormProps {
     preferences?: unknown;
   };
 }
-
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 },
-};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -183,8 +169,8 @@ export function SettingsForm({ user }: SettingsFormProps) {
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="grid gap-6">
-      <motion.div variants={item} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-6">
+      <motion.div variants={fadeUpItem} className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
             <User className="h-5 w-5" />
@@ -405,7 +391,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </form>
       </motion.div>
 
-      <motion.div variants={item} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <motion.div variants={fadeUpItem} className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
             <Bell className="h-5 w-5" />
@@ -442,7 +428,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </div>
       </motion.div>
 
-      <motion.div variants={item} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <motion.div variants={fadeUpItem} className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 text-green-500">
             <User className="h-5 w-5" />

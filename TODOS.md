@@ -265,10 +265,10 @@
 - role="log" + aria-live="polite" on thread message scroll container
 - Switch ID uniqueness (settings- prefix to avoid collisions)
 
-#### 25. Error Boundaries
+#### 25. Error Boundaries ✅ COMPLETED
 **What:** Add React ErrorBoundary around CommentTree, ThreadLiveWrapper, AISearch, and app root.
-**Why:** Any component failure crashes the entire app. No graceful degradation exists.
-**Pros:** Isolates failures; shows user-friendly error UI; preserves rest of the app.
-**Cons:** Adds ~50 lines of boilerplate; error boundaries mask bugs if overused.
-**Context:** No error boundaries exist anywhere in the component tree. 100+ components, zero boundaries.
-**Depends on:** None.
+**Status:** ✅ All error boundaries in place:
+- `components/ui/error-boundary.tsx` — reusable ErrorBoundary class component
+- `components/thread/thread-live-wrapper.tsx` — CommentTree wrapped in ErrorBoundary
+- `app/(protected)/dashboard/ai-search/page.tsx` — SearchPage wrapped in ErrorBoundary
+- `app/error.tsx` — Next.js global error boundary (pre-existing)

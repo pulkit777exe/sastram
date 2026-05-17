@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { staggerContainer, fadeUpItem } from '@/lib/motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageSquare, Hash, Calendar, Mail } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
@@ -19,26 +20,11 @@ interface ProfileViewProps {
   };
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 },
-};
-
 export function ProfileView({ user }: ProfileViewProps) {
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-8">
       <motion.div
-        variants={item}
+        variants={fadeUpItem}
         className="flex flex-col items-center md:flex-row md:items-start gap-6 rounded-2xl border border-border bg-card p-8 shadow-xl"
       >
         <Avatar className="h-32 w-32 border-4 border-background shadow-2xl">
@@ -67,7 +53,7 @@ export function ProfileView({ user }: ProfileViewProps) {
         </div>
       </motion.div>
 
-      <motion.div variants={item} className="grid gap-4 md:grid-cols-2">
+      <motion.div variants={fadeUpItem} className="grid gap-4 md:grid-cols-2">
         <StatCard
           title="Total Messages"
           value={user._count.messages}
