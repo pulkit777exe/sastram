@@ -204,9 +204,10 @@
 **Context:** `modules/threads/service.ts` — 5 casts bypassing type safety.
 **Depends on:** None.
 
-#### 19. DRY: Pagination Response Pattern
-**What:** Extract shared `paginatedResponse<T>()` helper for the `{ items, total, hasMore }` pattern used in 10+ repositories.
-**Why:** The pattern `{ items, total, hasMore: offset + limit < total }` is copy-pasted across `bookmarks/repository.ts`, `activity/repository.ts`, `follows/repository.ts`, `search/repository.ts`, `users/repository.ts`.
+#### 19. DRY: Pagination Response Pattern ✅ COMPLETED
+**What:** Extract shared `computeHasMore()` helper for the `hasMore: offset + limit < total` pattern used across repositories.
+**Why:** The pattern `hasMore: offset + limit < total` was copy-pasted across `bookmarks/repository.ts`, `activity/repository.ts`, `follows/repository.ts`, `search/repository.ts`, `users/repository.ts`, `moderation/actions.ts`, `appeals/actions.ts`.
+**Status:** ✅ Applied `computeHasMore()` across 8 files. Full `paginatedResponse<T>` helper was already present but couldn't be used directly due to module-specific key names (`threads`, `messages`, `users`, etc.).
 **Pros:** Single source of truth; easier to change pagination logic; consistent response shape.
 **Cons:** Minor abstraction — the pattern is simple enough that duplication may be acceptable.
 **Context:** 10+ repository functions with identical pagination response logic.
