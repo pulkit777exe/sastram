@@ -67,12 +67,12 @@ export const createThreadAction = createServerAction(
       }
 
       revalidatePath('/dashboard');
-      return { data: null, error: null };
+      return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[createThreadAction]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg };
-      return { data: null, error: 'Something went wrong' };
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -90,12 +90,12 @@ export const deleteThreadAction = createServerAction(
 
       await deleteThread(threadId);
       revalidatePath('/dashboard');
-      return { data: null, error: null };
+      return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[deleteThreadAction]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg };
-      return { data: null, error: 'Something went wrong' };
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -115,12 +115,12 @@ export const getDashboardThreads = createServerAction(
   async (params) => {
     try {
       const result = await listThreads(params);
-      return { data: result, error: null };
+      return { data: result, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getDashboardThreads]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg };
-      return { data: null, error: 'Something went wrong' };
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -134,12 +134,12 @@ export const getThreadMembersAction = createServerAction(
     try {
       await requireSession();
       const members = await getThreadMembers(threadId);
-      return { data: members, error: null };
+      return { data: members, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getThreadMembersAction]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg };
-      return { data: null, error: 'Something went wrong' };
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -160,7 +160,7 @@ export const manageThreadMemberAction = createServerAction(
       });
 
       if (!thread) {
-        return { data: null, error: 'Something went wrong' };
+        return { data: null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' };
       }
 
       const isCreator = thread.createdBy === session.user.id;
@@ -170,18 +170,18 @@ export const manageThreadMemberAction = createServerAction(
           assertAdmin(session.user);
         } catch (error) {
           const prismaMsg = prismaErrorMessage(error);
-          if (prismaMsg) return { data: null, error: prismaMsg };
-          return { data: null, error: 'Something went wrong' };
+          if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'FORBIDDEN' };
+          return { data: null, error: 'Forbidden', ok: false, errorCode: 'FORBIDDEN' };
         }
       }
 
       if (userId === session.user.id) {
-        return { data: null, error: 'Something went wrong' };
+        return { data: null, error: 'Cannot manage your own membership', ok: false, errorCode: 'VALIDATION_ERROR' };
       }
 
       if (action === 'update_role') {
         if (!role) {
-          return { data: null, error: 'Invalid input' };
+          return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
         }
         await updateThreadMemberRole(threadId, userId, role);
       } else if (action === 'remove') {
@@ -189,12 +189,12 @@ export const manageThreadMemberAction = createServerAction(
       }
 
       revalidatePath(ROUTES.THREAD(thread.slug));
-      return { data: null, error: null };
+      return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[manageThreadMemberAction]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg };
-      return { data: null, error: 'Something went wrong' };
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );

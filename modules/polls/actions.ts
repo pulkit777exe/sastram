@@ -30,7 +30,7 @@ export const createPollAction = withValidation(
       const session = await requireSession();
       const memberRole = await getMemberRole(threadId, session.user.id);
       if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-        return { data: null, error: 'Insufficient permissions to create poll' };
+        return { data: null, error: 'Insufficient permissions to create poll', ok: false, errorCode: 'FORBIDDEN' };
       }
 
       const poll = await createPollRepo(
@@ -47,10 +47,10 @@ export const createPollAction = withValidation(
       });
 
       revalidatePath(ROUTES.THREAD(threadId));
-      return { data: poll, error: null };
+      return { data: poll, error: null, ok: true, errorCode: null };
     } catch (err) {
       logger.error('[createPoll]', { error: err });
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -64,13 +64,13 @@ export const voteOnPollAction = withValidation(
 
       const poll = await getPollByIdRepo(pollId);
       if (!poll) {
-        return { data: null, error: 'Poll not found' };
+        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
       }
       if (!poll.isActive) {
-        return { data: null, error: 'Voting is closed for this poll' };
+        return { data: null, error: 'Voting is closed for this poll', ok: false, errorCode: 'CONFLICT' };
       }
       if (poll.expiresAt && poll.expiresAt.getTime() < Date.now()) {
-        return { data: null, error: 'Voting is closed for this poll' };
+        return { data: null, error: 'Voting is closed for this poll', ok: false, errorCode: 'CONFLICT' };
       }
 
       await voteOnPollRepo(pollId, session.user.id, optionIndex);
@@ -79,13 +79,13 @@ export const voteOnPollAction = withValidation(
         revalidatePath(ROUTES.THREAD(poll.thread.slug));
       }
 
-      return { data: null, error: null };
+      return { data: null, error: null, ok: true, errorCode: null };
     } catch (err) {
       if (isPrismaUniqueConstraintError(err)) {
-        return { data: null, error: 'You have already voted on this poll' };
+        return { data: null, error: 'You have already voted on this poll', ok: false, errorCode: 'CONFLICT' };
       }
       logger.error('[voteOnPoll]', { error: err });
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -101,14 +101,13 @@ export const closePollAction = createServerAction(
 
       const poll = await getPollByIdRepo(pollId);
       if (!poll) {
-        return { data: null, error: 'Poll not found' };
+        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
       }
 
-      // Check if user has permission to close poll
       const memberRole = await getMemberRole(poll.threadId, session.user.id);
       if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
         if (session.user.role !== 'ADMIN') {
-          return { data: null, error: 'Insufficient permissions' };
+          return { data: null, error: 'Insufficient permissions', ok: false, errorCode: 'FORBIDDEN' };
         }
       }
 
@@ -118,10 +117,10 @@ export const closePollAction = createServerAction(
         revalidatePath(ROUTES.THREAD(poll.thread.slug));
       }
 
-      return { data: null, error: null };
+      return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[closePoll]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -135,12 +134,12 @@ export const getPollResultsAction = createServerAction(
     try {
       const poll = await getPollResultsRepo(pollId);
       if (!poll) {
-        return { data: null, error: 'Poll not found' };
+        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
       }
-      return { data: poll, error: null };
+      return { data: poll, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getPollResults]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -154,10 +153,10 @@ export const getUserVoteAction = createServerAction(
     try {
       const session = await requireSession();
       const vote = await getUserVoteRepo(pollId, session.user.id);
-      return { data: vote, error: null };
+      return { data: vote, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getUserVote]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -171,12 +170,12 @@ export const getPollByIdAction = createServerAction(
     try {
       const poll = await getPollByIdRepo(pollId);
       if (!poll) {
-        return { data: null, error: 'Poll not found' };
+        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
       }
-      return { data: poll, error: null };
+      return { data: poll, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getPollById]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -190,12 +189,12 @@ export const getPollByThreadAction = createServerAction(
     try {
       const poll = await getPollByThreadIdRepo(threadId);
       if (!poll) {
-        return { data: null, error: 'Poll not found' };
+        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
       }
-      return { data: poll, error: null };
+      return { data: poll, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getPollByThread]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );

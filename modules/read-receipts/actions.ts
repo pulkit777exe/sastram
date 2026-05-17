@@ -18,10 +18,10 @@ export const markThreadReadAction = withValidation(
         lastReadMessageId: lastReadMessageId ?? null,
       });
 
-      return { data: { marked: true }, error: null };
+      return { data: { marked: true }, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[markThreadRead]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );

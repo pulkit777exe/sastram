@@ -45,6 +45,6 @@ export const createTopic = createServerAction(
 
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );

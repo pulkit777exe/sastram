@@ -29,10 +29,10 @@ export const searchThreadsAction = withValidation(
   async ({ query, limit, offset }) => {
     try {
       const result = await searchThreadsRepo(query, limit, offset);
-      return { data: result, error: null };
+      return { data: result, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[searchThreads]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -43,10 +43,10 @@ export const searchMessagesAction = withValidation(
   async ({ query, threadId, limit, offset }) => {
     try {
       const result = await searchMessagesRepo(query, threadId, limit, offset);
-      return { data: result, error: null };
+      return { data: result, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[searchMessages]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -57,10 +57,10 @@ export const searchUsersAction = withValidation(
   async ({ query, limit, offset }) => {
     try {
       const result = await searchUsersRepo(query, limit, offset);
-      return { data: result, error: null };
+      return { data: result, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[searchUsers]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );

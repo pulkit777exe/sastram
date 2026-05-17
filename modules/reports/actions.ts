@@ -30,7 +30,7 @@ export async function createReport(data: {
 }) {
   const validation = createReportSchema.safeParse(data);
   if (!validation.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
   }
 
   try {
@@ -43,7 +43,7 @@ export async function createReport(data: {
     });
 
     if (existingReport) {
-      return { data: null, error: 'You have already reported this message' };
+      return { data: null, error: 'You have already reported this message', ok: false, errorCode: 'CONFLICT' };
     }
 
     const message = await prisma.message.findUnique({
@@ -56,16 +56,16 @@ export async function createReport(data: {
     });
 
     if (!message) {
-      return { data: null, error: 'Message not found' };
+      return { data: null, error: 'Message not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     try {
       assertCanReportOwnMessage(session.user.id, message.senderId);
     } catch (error) {
       if (error instanceof Error) {
-        return { data: null, error: error.message };
+        return { data: null, error: error.message, ok: false, errorCode: 'FORBIDDEN' };
       }
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
     const report = await prisma.report.create({
       data: {
@@ -94,17 +94,19 @@ export async function createReport(data: {
         message: `Thank you for reporting. We'll review this within 24 hours.`,
       },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   } catch (error) {
     logger.error('[createReport]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
 export async function getReports(filters?: { status?: string; limit?: number; offset?: number }) {
   const parsed = reportFiltersSchema.safeParse(filters ?? {});
   if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
   }
 
   try {
@@ -156,10 +158,10 @@ export async function getReports(filters?: { status?: string; limit?: number; of
       skip: offset,
     });
 
-    return { data: reports, error: null };
+    return { data: reports, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[getReports]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
@@ -193,17 +195,19 @@ export async function getReportStats() {
         autoModActions: 0,
       },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   } catch (error) {
     logger.error('[getReportStats]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
 export async function getReportWithContext(reportId: string) {
   const parsed = reportIdSchema.safeParse({ reportId });
   if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
   }
 
   try {
@@ -248,7 +252,7 @@ export async function getReportWithContext(reportId: string) {
     });
 
     if (!report) {
-      return { data: null, error: 'Report not found' };
+      return { data: null, error: 'Report not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     const [surroundingMessages, violationHistory, similarReports, userBanCount, userReportCount] =
@@ -257,8 +261,8 @@ export async function getReportWithContext(reportId: string) {
           where: {
             sectionId: report.message.section.id,
             createdAt: {
-              gte: new Date(report.message.createdAt.getTime() - 5 * 60 * 1000), // 5 min before
-              lte: new Date(report.message.createdAt.getTime() + 5 * 60 * 1000), // 5 min after
+              gte: new Date(report.message.createdAt.getTime() - 5 * 60 * 1000),
+              lte: new Date(report.message.createdAt.getTime() + 5 * 60 * 1000),
             },
             deletedAt: null,
           },
@@ -351,17 +355,19 @@ export async function getReportWithContext(reportId: string) {
         reportCount: similarReports.length + 1,
       },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   } catch (error) {
     logger.error('[getReportWithContext]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
 export async function updateReportStatusAction(reportId: string, status: 'RESOLVED' | 'DISMISSED') {
   const validation = updateReportStatusSchema.safeParse({ reportId, status });
   if (!validation.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
   }
 
   try {
@@ -382,10 +388,10 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
       userId: session.user.id,
       details: { status: validation.data.status },
     });
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[updateReportStatusAction]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
@@ -419,16 +425,13 @@ export async function getMyReports() {
       threadName: r.message.section.name,
       messagePreview: r.message.content.substring(0, 100),
     }));
-    return { data, error: null };
+    return { data, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[getMyReports]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
-/**
- * Resolve a report with a specific action
- */
 export async function resolveReport(data: {
   reportId: string;
   action: 'DISMISS' | 'REMOVE_MESSAGE' | 'WARN_USER' | 'SUSPEND_USER' | 'BAN_USER';
@@ -438,7 +441,7 @@ export async function resolveReport(data: {
 }) {
   const parsed = resolveReportSchema.safeParse(data);
   if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
   }
 
   try {
@@ -458,10 +461,9 @@ export async function resolveReport(data: {
     });
 
     if (!report) {
-      return { data: null, error: 'Report not found' };
+      return { data: null, error: 'Report not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
-    // Core data operations in a single transaction
     const newStatus = parsed.data.action === 'DISMISS' ? 'DISMISSED' : 'RESOLVED';
     let banExpiresAt: Date | null = null;
 
@@ -550,7 +552,6 @@ export async function resolveReport(data: {
       });
     }
 
-    // Notify reporter if requested
     if (parsed.data.notifyReporter) {
       await createNotification({
         userId: report.reporterId,
@@ -583,9 +584,11 @@ export async function resolveReport(data: {
         } successfully`,
       },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   } catch (error) {
     logger.error('[resolveReport]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }

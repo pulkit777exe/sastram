@@ -34,10 +34,10 @@ export const getUserReputationAction = withValidation(
     try {
       await requireSession();
       const reputation = await getUserReputationRepo(userId);
-      return { data: reputation, error: null };
+      return { data: reputation, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getUserReputation]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -49,17 +49,16 @@ export const awardReputationAction = withValidation(
     try {
       const session = await requireSession();
 
-      // Only admins can manually award reputation
       if (session.user.role !== 'ADMIN') {
-        return { data: null, error: 'Something went wrong' };
+        return { data: null, error: 'Forbidden', ok: false, errorCode: 'FORBIDDEN' };
       }
 
       await awardReputationRepo(userId, points, reason);
       revalidatePath(`/user/${userId}`);
-      return { data: null, error: null };
+      return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[awardReputation]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -73,10 +72,10 @@ export const syncReputationPointsAction = withValidation(
       assertAdmin(session.user);
       await syncReputationPointsRepo(userId);
       revalidatePath(`/user/${userId}`);
-      return { data: null, error: null };
+      return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[syncReputationPoints]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -87,7 +86,7 @@ export async function awardReputationForAction(
 ) {
   const parsed = awardActionSchema.safeParse({ userId, action });
   if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
   }
 
   const pointsMap = {
@@ -101,9 +100,9 @@ export async function awardReputationForAction(
 
   try {
     await awardReputationRepo(userId, points, parsed.data.action);
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[awardReputationForAction]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }

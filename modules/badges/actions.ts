@@ -18,7 +18,7 @@ export const getUserBadgesAction = createServerAction(
   async ({ userId }) => {
     await requireSession();
     const badges = await getUserBadgesRepo(userId);
-    return { data: badges, error: null };
+    return { data: badges, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -31,7 +31,7 @@ export const checkAndAwardBadgesAction = createServerAction(
     if (awardedBadges.length > 0) {
       revalidatePath(`/user/${userId}`);
     }
-    return { data: awardedBadges, error: null };
+    return { data: awardedBadges, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -40,6 +40,6 @@ export const getAllBadgesAction = createServerAction(
   async () => {
     await requireSession();
     const badges = await getAllBadgesRepo();
-    return { data: badges, error: null };
+    return { data: badges, error: null, ok: true, errorCode: null };
   }
 );

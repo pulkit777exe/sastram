@@ -29,7 +29,7 @@ export const recordActivityAction = withValidation(
       entityId: data.entityId,
       metadata: data.metadata,
     });
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -42,7 +42,7 @@ export const getUserActivityAction = withValidation(
       limit || 20,
       offset || 0
     );
-    return { data: result, error: null };
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -56,6 +56,6 @@ export const getFollowedUsersActivityAction = withValidation(
       limit || 20,
       offset || 0
     );
-    return { data: result, error: null };
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );

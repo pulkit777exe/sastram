@@ -28,7 +28,7 @@ export const createTagAction = createServerAction(
   async ({ name, color }) => {
     await requireSession();
     const tag = await createTagRepo(name, color);
-    return { data: tag, error: null };
+    return { data: tag, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -38,7 +38,7 @@ export const addTagToThreadAction = createServerAction(
     await requireSession();
     await addTagToThreadRepo(threadId, tagId);
     revalidatePath(ROUTES.THREAD(threadId));
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -48,7 +48,7 @@ export const removeTagFromThreadAction = createServerAction(
     await requireSession();
     await removeTagFromThreadRepo(threadId, tagId);
     revalidatePath(ROUTES.THREAD(threadId));
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -56,7 +56,7 @@ export const getThreadTagsAction = createServerAction(
   { schema: z.object({ threadId: z.string().cuid() }), actionName: 'getThreadTagsAction' },
   async ({ threadId }) => {
     const tags = await getThreadTagsRepo(threadId);
-    return { data: tags, error: null };
+    return { data: tags, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -65,6 +65,6 @@ export const getPopularTagsAction = withValidation(
   'getPopularTagsAction',
   async ({ limit }) => {
     const tags = await getPopularTagsRepo(limit || 20);
-    return { data: tags, error: null };
+    return { data: tags, error: null, ok: true, errorCode: null };
   }
 );

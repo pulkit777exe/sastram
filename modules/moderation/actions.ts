@@ -22,6 +22,7 @@ import {
   getModerationQueueSchema,
 } from './schemas';
 import { createServerAction } from '@/lib/utils/server-action';
+import type { ActionErrorCode } from '@/lib/actions/result';
 import type { Prisma } from '@prisma/client';
 
 const bulkDeleteSchema = z.object({
@@ -90,7 +91,7 @@ export const deleteMessageAction = createServerAction(
       originalAuthor: message.senderId,
     });
 
-    return { data: null, error: null };
+    return { ok: true, data: null, error: null, errorCode: null };
   }
 );
 
@@ -161,7 +162,7 @@ export const bulkDeleteMessages = createServerAction(
       paths: ['/dashboard/admin/moderation'],
     });
 
-    return { data: { deletedCount: result.deletedCount }, error: null };
+    return { ok: true, data: { deletedCount: result.deletedCount }, error: null, errorCode: null };
   }
 );
 
@@ -191,8 +192,10 @@ export const banUser = createServerAction(
 
     if (existingBan) {
       return {
+        ok: false,
         data: null,
         error: threadId ? 'User is already banned from this thread' : 'User is already globally banned',
+        errorCode: 'CONFLICT',
       };
     }
 
@@ -204,7 +207,7 @@ export const banUser = createServerAction(
       : null;
 
     if (threadId && !thread) {
-      return { data: null, error: 'Thread not found' };
+      return { ok: false, data: null, error: 'Thread not found', errorCode: 'NOT_FOUND' };
     }
 
     const ban = await prisma.$transaction(async (tx) => {
@@ -268,7 +271,7 @@ export const banUser = createServerAction(
       paths: ['/dashboard/admin/moderation', '/dashboard'],
     });
 
-    return { data: { banId: ban.id, expiresAt: ban.expiresAt }, error: null };
+    return { ok: true, data: { banId: ban.id, expiresAt: ban.expiresAt }, error: null, errorCode: null };
   }
 );
 
@@ -339,7 +342,7 @@ export const unbanUser = createServerAction(
       paths: ['/dashboard/admin/moderation'],
     });
 
-    return { data: null, error: null };
+    return { ok: true, data: null, error: null, errorCode: null };
   }
 );
 
@@ -381,6 +384,8 @@ export const getBannedUsers = createServerAction(
         },
       },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   }
 );
@@ -417,7 +422,7 @@ export const deleteCommunity = createServerAction(
       paths: ['/dashboard', '/dashboard/admin/moderation'],
     });
 
-    return { data: { affectedSections: sectionCount }, error: null };
+    return { data: { affectedSections: sectionCount }, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -474,7 +479,7 @@ export const deleteThread = createServerAction(
       paths: ['/dashboard', '/dashboard/threads', '/dashboard/admin/moderation'],
     });
 
-    return { data: { notifiedMembers: members.length }, error: null };
+    return { data: { notifiedMembers: members.length }, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -501,7 +506,7 @@ export const getMessageDetails = createServerAction(
     });
 
     if (!message) {
-      return { data: null, error: 'Message not found' };
+      return { data: null, error: 'Message not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     const recentMessages = await prisma.message.count({
@@ -516,6 +521,8 @@ export const getMessageDetails = createServerAction(
     return {
       data: { message, context: { recentMessages24h: recentMessages, activeBans: senderBans } },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   }
 );
@@ -554,6 +561,8 @@ export const getModerationQueue = createServerAction(
         pagination: { total: totalCount, limit, offset, hasMore: computeHasMore(offset, limit, totalCount) },
       },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   }
 );

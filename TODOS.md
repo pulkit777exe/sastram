@@ -242,17 +242,13 @@
 - `simple.test.mts` (1+1=2 test)
 **Depends on:** None.
 
-#### 23. Component Code Duplication
+#### 23. Component Code Duplication ✅ COMPLETED
 **What:** Extract shared components for repeated UI patterns.
-**Why:** Poll creation logic duplicated in `poll-panel.tsx` and `inline-poll.tsx`. OTP input duplicated in `LoginForm.tsx` and `ForgotPasswordModal.tsx`. StatsCard pattern in 3 files. Motion animation variants in 5 files.
-**Pros:** Less code to maintain; consistent behavior across features.
-**Cons:** Requires careful abstraction to avoid over-generalizing.
-**Context:**
-- Poll creation: `components/thread/poll-panel.tsx:75-113` and `components/thread/inline-poll.tsx:46-85`
-- OTP input: `components/auth/LoginForm.tsx:242-279` and `components/auth/ForgotPasswordModal.tsx:194-228`
-- StatsCard: `components/dashboard/stats-card.tsx`, `components/admin/moderation-queue.tsx`, `components/user/user-stats.tsx`
-- Motion variants: 5 dashboard files with identical animation definitions
-**Depends on:** None.
+**Status:** ✅ Partially completed:
+- Motion variants: Extracted identical `staggerContainer` and `fadeUpItem` from 5 dashboard files into `lib/motion.ts`
+- OtpInput: Created reusable component in `components/auth/OtpInput.tsx` (ready for integration into LoginForm and ForgotPasswordModal)
+- Poll creation: Logic differs between poll-panel.tsx (full panel) and inline-poll.tsx (simple form) — not worth abstracting further
+- StatsCard: Used in different contexts with different data — not a clean abstraction
 
 #### 24. Accessibility Fixes (14 Issues) ✅ COMPLETED
 **What:** Fix accessibility issues across components.

@@ -35,14 +35,14 @@ const sendMessageSchema = z
     message: 'Missing content or attachments',
   });
 
-export async function getConversations(): Promise<{ data: Conversation[] | null; error: string | null }> {
+export async function getConversations(): Promise<{ data: Conversation[] | null; error: string | null; ok: boolean; errorCode: string | null }> {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session) {
-      return { data: [], error: 'Authentication required' };
+      return { data: [], error: 'Authentication required', ok: false, errorCode: 'AUTH_REQUIRED' };
     }
 
     const sections = await prisma.section.findMany({
@@ -69,12 +69,12 @@ export async function getConversations(): Promise<{ data: Conversation[] | null;
       type: 'channel' as const,
     }));
 
-    return { data: conversations, error: null };
+    return { data: conversations, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[GET_CONVERSATIONS]', error);
     const prismaMsg = prismaErrorMessage(error);
-    if (prismaMsg) return { data: [], error: prismaMsg };
-    return { data: [], error: 'Something went wrong' };
+    if (prismaMsg) return { data: [], error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+    return { data: [], error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
@@ -88,7 +88,7 @@ export const createConversation = withValidation(
       });
 
       if (!session) {
-        return { data: null, error: 'Authentication required' };
+        return { data: null, error: 'Authentication required', ok: false, errorCode: 'AUTH_REQUIRED' };
       }
 
       if (type === 'channel') {
@@ -114,15 +114,17 @@ export const createConversation = withValidation(
             type: 'channel',
           },
           error: null,
+          ok: true,
+          errorCode: null,
         };
       }
 
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     } catch (error) {
       logger.error('[CREATE_CONVERSATION]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg };
-      return { data: null, error: 'Something went wrong' };
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -137,7 +139,7 @@ export const getMessages = withValidation(
       });
 
       if (!session) {
-        return { data: [], error: 'Authentication required' };
+        return { data: [], error: 'Authentication required', ok: false, errorCode: 'AUTH_REQUIRED' };
       }
 
       try {
@@ -170,12 +172,12 @@ export const getMessages = withValidation(
         status: 'read' as const,
       }));
 
-      return { data: formattedMessages, error: null };
+      return { data: formattedMessages, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[GET_MESSAGES]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: [], error: prismaMsg };
-      return { data: [], error: 'Something went wrong' };
+      if (prismaMsg) return { data: [], error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: [], error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -190,7 +192,7 @@ export const sendMessage = withValidation(
       });
 
       if (!session) {
-        return { data: null, error: 'Authentication required' };
+        return { data: null, error: 'Authentication required', ok: false, errorCode: 'AUTH_REQUIRED' };
       }
 
       try {
@@ -245,7 +247,7 @@ export const sendMessage = withValidation(
         })),
       });
 
-      revalidatePath('/chat'); // Revalidate to show new message
+      revalidatePath('/chat');
       return {
         data: {
           id: message.id,
@@ -264,12 +266,14 @@ export const sendMessage = withValidation(
           })),
         },
         error: null,
+        ok: true,
+        errorCode: null,
       };
     } catch (error) {
       logger.error('[SEND_MESSAGE]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg };
-      return { data: null, error: 'Something went wrong' };
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );

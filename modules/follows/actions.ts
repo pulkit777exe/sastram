@@ -38,7 +38,7 @@ export const followUser = createServerAction(
     const session = await requireSession();
 
     if (session.user.id === userId) {
-      return { data: null, error: 'Cannot follow yourself' };
+      return { data: null, error: 'Cannot follow yourself', ok: false, errorCode: 'VALIDATION_ERROR' };
     }
 
     const targetUser = await prisma.user.findUnique({
@@ -47,7 +47,7 @@ export const followUser = createServerAction(
     });
 
     if (!targetUser) {
-      return { data: null, error: 'User not found' };
+      return { data: null, error: 'User not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     await followUserRepo(session.user.id, userId);
@@ -66,7 +66,7 @@ export const followUser = createServerAction(
     revalidatePath(`/user/${userId}`);
     revalidatePath('/dashboard');
 
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -79,7 +79,7 @@ export const unfollowUser = createServerAction(
     revalidatePath(`/user/${userId}`);
     revalidatePath('/dashboard');
 
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -87,7 +87,7 @@ export const getFollowers = createServerAction(
   { schema: getFollowersSchema, actionName: 'getFollowers' },
   async ({ userId, limit, offset }) => {
     const result = await getFollowersRepo(userId, limit, offset);
-    return { data: result, error: null };
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -95,7 +95,7 @@ export const getFollowing = createServerAction(
   { schema: getFollowingSchema, actionName: 'getFollowing' },
   async ({ userId, limit, offset }) => {
     const result = await getFollowingRepo(userId, limit, offset);
-    return { data: result, error: null };
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -104,6 +104,6 @@ export const checkFollowingStatus = createServerAction(
   async ({ userId }) => {
     const session = await requireSession();
     const isFollowing = await isFollowingRepo(session.user.id, userId);
-    return { data: { isFollowing }, error: null };
+    return { data: { isFollowing }, error: null, ok: true, errorCode: null };
   }
 );

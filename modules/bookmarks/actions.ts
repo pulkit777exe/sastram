@@ -33,7 +33,7 @@ export const toggleBookmark = createServerAction(
     revalidatePath('/dashboard/bookmarks');
     revalidatePath(ROUTES.THREAD(threadId));
 
-    return { data: { isBookmarked: !isBookmarked }, error: null };
+    return { data: { isBookmarked: !isBookmarked }, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -46,7 +46,7 @@ export const getBookmarkedThreads = createServerAction(
       limit || 20,
       offset || 0
     );
-    return { data: result, error: null };
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -55,6 +55,6 @@ export const checkBookmarkStatus = createServerAction(
   async ({ threadId }) => {
     const session = await requireSession();
     const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
-    return { data: { isBookmarked }, error: null };
+    return { data: { isBookmarked }, error: null, ok: true, errorCode: null };
   }
 );

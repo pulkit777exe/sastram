@@ -50,7 +50,7 @@ export const updateUserProfile = withValidation(
 
     revalidatePath('/dashboard/settings');
     revalidatePath('/dashboard/settings/profile');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -63,11 +63,13 @@ export const uploadAvatar = withValidation(
       return {
         data: null,
         error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
+        ok: false,
+        errorCode: 'VALIDATION_ERROR',
       };
     }
 
     if (file.size > FILE_LIMITS.MAX_IMAGE_SIZE) {
-      return { data: null, error: 'File size must be less than 4.5MB' };
+      return { data: null, error: 'File size must be less than 4.5MB', ok: false, errorCode: 'VALIDATION_ERROR' };
     }
 
     try {
@@ -85,10 +87,10 @@ export const uploadAvatar = withValidation(
 
       revalidatePath('/dashboard/settings');
       revalidatePath('/dashboard/settings/profile');
-      return { data: { url: blob.url }, error: null };
+      return { data: { url: blob.url }, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[uploadAvatar]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -102,11 +104,13 @@ export const uploadBanner = withValidation(
       return {
         data: null,
         error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
+        ok: false,
+        errorCode: 'VALIDATION_ERROR',
       };
     }
 
     if (file.size > FILE_LIMITS.MAX_IMAGE_SIZE) {
-      return { data: null, error: 'File size must be less than 4.5MB' };
+      return { data: null, error: 'File size must be less than 4.5MB', ok: false, errorCode: 'VALIDATION_ERROR' };
     }
 
     try {
@@ -124,10 +128,10 @@ export const uploadBanner = withValidation(
 
       revalidatePath('/dashboard/settings');
       revalidatePath('/dashboard/settings/profile');
-      return { data: { url: blob.url }, error: null };
+      return { data: { url: blob.url }, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[uploadBanner]', error);
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
@@ -139,10 +143,10 @@ export const getUserProfile = createServerAction(
     const profile = await getPublicProfile(userId, session.user.id);
 
     if (!profile) {
-      return { data: null, error: 'Profile not found or not accessible' };
+      return { data: null, error: 'Profile not found or not accessible', ok: false, errorCode: 'NOT_FOUND' };
     }
 
-    return { data: profile, error: null };
+    return { data: profile, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -155,7 +159,7 @@ export const getUserThreadsAction = withValidation(
   'getUserThreadsAction',
   async ({ userId, limit, offset }) => {
     const result = await getUserThreads(userId, limit || 20, offset || 0);
-    return { data: result, error: null };
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -167,7 +171,7 @@ export const updateProfilePrivacyAction = withValidation(
     await updateProfilePrivacy(session.user.id, privacy);
     revalidatePath('/dashboard/settings');
     revalidatePath(`/user/${session.user.id}`);
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -194,6 +198,6 @@ export const updateUserPreferencesAction = withValidation(
     });
 
     revalidatePath('/dashboard/settings');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );

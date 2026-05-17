@@ -21,7 +21,7 @@ export async function createCommunityAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
   }
 
   try {
@@ -37,11 +37,11 @@ export async function createCommunityAction(formData: FormData) {
     });
 
     revalidatePath('/dashboard');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[createCommunityAction]', error);
     const prismaMsg = prismaErrorMessage(error);
-    if (prismaMsg) return { data: null, error: prismaMsg };
-    return { data: null, error: 'Something went wrong' };
+    if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }

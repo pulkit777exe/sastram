@@ -52,6 +52,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - ThreadContext for comment tree props — requires significant component refactor
 - Both tracked in TODOS.md for future implementation
 
+## [Unreleased] — Round 3
+
+### DRY
+
+- Replace 12 duplicated `hasMore: offset + limit < total` expressions with `computeHasMore()` helper from `lib/db/pagination.ts` across 8 files (search, activity, follows, bookmarks, users repositories + moderation/appeals actions)
+- Extract duplicated framer-motion animation variants (`staggerContainer`, `fadeUpItem`) from 5 dashboard components into shared `lib/motion.ts`
+- Create reusable `OtpInput` component in `components/auth/OtpInput.tsx` for future OTP input deduplication
+
+### Cleanup
+
+- Remove 5 unexported/uncalled functions from `notifications/repository.ts` (markAsUnread, markMultipleAsRead, getUnreadCountByType, getNotificationStats, cleanupOldNotifications)
+- Remove 4 unexported/uncalled functions from `audit/repository.ts` (getEntityHistory, getUserActivity, getMostActiveUsers, searchUserActivities, cleanupOldUserActivities)
+- Remove unused `getMutualFollows` from `follows/repository.ts` — never imported or called
+- Total: 288 lines of dead code removed
+
+### Accessibility
+
+- Add `aria-label` to pin message button in `message-node.tsx`
+- Add `role="dialog"`, `aria-modal`, `aria-label` to ApiKeysModal
+- Guard keyboard shortcuts in moderation-dashboard and header from firing when focus is in input/textarea/select
+- Add `role="log"` and `aria-live="polite"` to thread message scroll container
+- Prefix switch IDs with `settings-` to avoid collisions with preferences-form
+- Wrap AI Search page in ErrorBoundary for graceful degradation
+
 ## [Unreleased] — Round 2
 
 ### Security

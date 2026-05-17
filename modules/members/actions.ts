@@ -50,7 +50,7 @@ export const joinSection = createServerAction(
     const session = await requireSession();
     const existing = await getMemberRole(sectionId, session.user.id);
     if (existing && existing.status === 'ACTIVE') {
-      return { data: null, error: 'Already a member' };
+      return { data: null, error: 'Already a member', ok: false, errorCode: 'CONFLICT' };
     }
 
     await addMember(sectionId, session.user.id, 'MEMBER');
@@ -61,7 +61,7 @@ export const joinSection = createServerAction(
     });
 
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -79,7 +79,7 @@ export const leaveSection = createServerAction(
     }
 
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -89,7 +89,7 @@ export const inviteMember = createServerAction(
     const session = await requireSession();
     const memberRole = await getMemberRole(sectionId, session.user.id);
     if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-      return { data: null, error: 'Insufficient permissions' };
+      return { data: null, error: 'Insufficient permissions', ok: false, errorCode: 'FORBIDDEN' };
     }
 
     const user = await prisma.user.findUnique({
@@ -97,7 +97,7 @@ export const inviteMember = createServerAction(
     });
 
     if (!user) {
-      return { data: null, error: 'User not found' };
+      return { data: null, error: 'User not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     await addMember(sectionId, user.id, role);
@@ -110,7 +110,7 @@ export const inviteMember = createServerAction(
     });
 
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -120,12 +120,12 @@ export const updateMemberRoleAction = createServerAction(
     const session = await requireSession();
     const memberRole = await getMemberRole(sectionId, session.user.id);
     if (!memberRole || memberRole.role !== 'OWNER') {
-      return { data: null, error: 'Only section owners can change roles' };
+      return { data: null, error: 'Only section owners can change roles', ok: false, errorCode: 'FORBIDDEN' };
     }
 
     await updateMemberRole(sectionId, userId, role);
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -135,7 +135,7 @@ export const removeMemberAction = createServerAction(
     const session = await requireSession();
     const memberRole = await getMemberRole(sectionId, session.user.id);
     if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-      return { data: null, error: 'Insufficient permissions' };
+      return { data: null, error: 'Insufficient permissions', ok: false, errorCode: 'FORBIDDEN' };
     }
 
     const result = await removeMember(sectionId, userId);
@@ -148,7 +148,7 @@ export const removeMemberAction = createServerAction(
     }
 
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -157,6 +157,6 @@ export const getSectionMembersAction = createServerAction(
   async ({ sectionId }) => {
     await requireSession();
     const members = await getSectionMembers(sectionId);
-    return { data: members, error: null };
+    return { data: members, error: null, ok: true, errorCode: null };
   }
 );

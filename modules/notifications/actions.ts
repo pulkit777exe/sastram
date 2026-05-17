@@ -32,7 +32,7 @@ export const getNotifications = withValidation(
       limit,
       offset,
     });
-    return { data: notifications, error: null };
+    return { data: notifications, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -43,7 +43,7 @@ export const markNotificationRead = withValidation(
     const session = await requireSession();
     await markAsRead(notificationId, session.user.id);
     revalidatePath('/dashboard');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -53,7 +53,7 @@ export const markAllNotificationsRead = createServerAction(
     const session = await requireSession();
     await markAllAsRead(session.user.id);
     revalidatePath('/dashboard');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -62,6 +62,6 @@ export const getUnreadNotificationCount = createServerAction(
   async () => {
     const session = await requireSession();
     const count = await getUnreadCount(session.user.id);
-    return { data: { count }, error: null };
+    return { data: { count }, error: null, ok: true, errorCode: null };
   }
 );

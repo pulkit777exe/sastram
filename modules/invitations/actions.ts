@@ -14,23 +14,21 @@ export async function inviteFriendToThread(formData: FormData) {
 
   const parsed = inviteFriendSchema.safeParse({ threadId, email });
   if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
   }
 
   try {
     const session = await requireSession(false);
 
-    // Check if thread exists
     const thread = await prisma.section.findUnique({
       where: { id: parsed.data.threadId },
       select: { id: true, slug: true, name: true },
     });
 
     if (!thread) {
-      return { data: null, error: 'Thread not found' };
+      return { data: null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
-    // Check if invitation already exists
     const existingInvitation = await prisma.threadInvitation.findUnique({
       where: {
         threadId_email: {
@@ -44,10 +42,11 @@ export async function inviteFriendToThread(formData: FormData) {
       return {
         data: null,
         error: 'You have already invited this friend to this thread',
+        ok: false,
+        errorCode: 'CONFLICT',
       };
     }
 
-    // Create invitation
     const invitation = await prisma.threadInvitation.create({
       data: {
         threadId: parsed.data.threadId,
@@ -84,11 +83,11 @@ export async function inviteFriendToThread(formData: FormData) {
     }).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
 
     revalidatePath(ROUTES.THREAD(thread.slug));
-    return { data: invitation, error: null };
+    return { data: invitation, error: null, ok: true, errorCode: null };
   } catch (error) {
     const prismaMsg = prismaErrorMessage(error);
-    if (prismaMsg) return { data: null, error: prismaMsg };
+    if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
     logger.error('[inviteFriendToThread]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }

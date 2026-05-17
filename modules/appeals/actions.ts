@@ -27,7 +27,7 @@ export const submitAppeal = withValidation(
     const session = await requireSession(false);
 
     if (session.user.status !== 'BANNED' && session.user.status !== 'SUSPENDED') {
-      return { data: null, error: 'You are not banned' };
+      return { data: null, error: 'You are not banned', ok: false, errorCode: 'VALIDATION_ERROR' };
     }
 
     const activeBans = await prisma.userBan.findMany({
@@ -36,7 +36,7 @@ export const submitAppeal = withValidation(
     });
 
     if (activeBans.length === 0) {
-      return { data: null, error: 'No active ban found to appeal' };
+      return { data: null, error: 'No active ban found to appeal', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     const sourceReport = reportId
@@ -48,7 +48,7 @@ export const submitAppeal = withValidation(
         });
 
     if (!sourceReport?.messageId) {
-      return { data: null, error: 'No report found to appeal' };
+      return { data: null, error: 'No report found to appeal', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     const appealReport = await prisma.report.create({
@@ -70,7 +70,7 @@ export const submitAppeal = withValidation(
     });
 
     revalidatePath('/banned');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -102,7 +102,7 @@ export const getAppeals = withValidation(
       })
     );
 
-    return { data: appealsWithBanInfo, error: null };
+    return { data: appealsWithBanInfo, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -118,7 +118,7 @@ export const resolveAppeal = withValidation(
     });
 
     if (!appeal) {
-      return { data: null, error: 'Appeal not found' };
+      return { data: null, error: 'Appeal not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     await prisma.$transaction(async (tx) => {
@@ -156,7 +156,7 @@ export const resolveAppeal = withValidation(
     });
 
     revalidatePath('/dashboard/admin/appeals');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -194,6 +194,8 @@ export const getBannedUsers = withValidation(
         pagination: { total: totalCount, limit, offset, hasMore: computeHasMore(offset, limit, totalCount) },
       },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   }
 );
