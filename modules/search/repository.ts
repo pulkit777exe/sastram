@@ -1,12 +1,16 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 
-export async function searchThreads(query: string, limit: number = 20, offset: number = 0) {
+export async function searchThreads(query: string, limit: number = 20, offset: number = 0, sectionIds?: string[]) {
   try {
     const sanitized = query.replace(/[^\w\s]/g, '').trim();
     if (!sanitized) {
       return { threads: [], total: 0, hasMore: false };
     }
+
+    const sectionFilter = sectionIds && sectionIds.length > 0
+      ? prisma.$queryRaw`AND id = ANY(${sectionIds}::text[])`
+      : prisma.$queryRaw``;
 
     const [threads, total] = await Promise.all([
       prisma.$queryRaw`
@@ -16,6 +20,7 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
                 ts_rank("fts_vector", plainto_tsquery('english', ${sanitized})) AS rank
         FROM "sections"
         WHERE "fts_vector" @@ plainto_tsquery('english', ${sanitized})
+          ${sectionFilter}
         ORDER BY rank DESC, "messageCount" DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
@@ -23,6 +28,7 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
         SELECT count(*)::int AS total
         FROM "sections"
         WHERE "fts_vector" @@ plainto_tsquery('english', ${sanitized})
+          ${sectionFilter}
       `,
     ]);
 
@@ -55,7 +61,8 @@ export async function searchMessages(
   query: string,
   threadId?: string,
   limit: number = 20,
-  offset: number = 0
+  offset: number = 0,
+  sectionIds?: string[]
 ) {
   try {
     const sanitized = query.replace(/[^\w\s]/g, '').trim();
@@ -65,6 +72,10 @@ export async function searchMessages(
 
     const threadFilter = threadId
       ? prisma.$queryRaw`AND m."sectionId" = ${threadId}::text`
+      : prisma.$queryRaw``;
+
+    const sectionFilter = sectionIds && sectionIds.length > 0
+      ? prisma.$queryRaw`AND m."sectionId" = ANY(${sectionIds}::text[])`
       : prisma.$queryRaw``;
 
     const [messages, total] = await Promise.all([
@@ -80,6 +91,7 @@ export async function searchMessages(
         WHERE m."deletedAt" IS NULL
           AND m."fts_vector" @@ plainto_tsquery('english', ${sanitized})
           ${threadFilter}
+          ${sectionFilter}
         ORDER BY rank DESC, m."createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
@@ -89,6 +101,7 @@ export async function searchMessages(
         WHERE m."deletedAt" IS NULL
           AND m."fts_vector" @@ plainto_tsquery('english', ${sanitized})
           ${threadFilter}
+          ${sectionFilter}
       `,
     ]);
 

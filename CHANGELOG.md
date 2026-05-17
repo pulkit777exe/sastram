@@ -50,3 +50,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - ThreadLiveWrapper state optimization (useReducer/Zustand) — requires significant component refactor
 - ThreadContext for comment tree props — requires significant component refactor
 - Both tracked in TODOS.md for future implementation
+
+## [Unreleased] — Round 2
+
+### Security
+
+- Add membership scoping to search API — threads and messages now scoped to user's section memberships
+- Add membership check to `/api/ai/thread-summary` — prevents accessing summaries of sections user isn't a member of
+- Add ownership check to `DELETE /api/ai/jobs` — prevents users from cancelling other users' AI jobs
+- Add authentication to `getMessageEditHistory` action — prevents unauthenticated access to edit history
+- Add authentication to `getSectionMembersAction` — prevents unauthenticated member enumeration
+
+### Fixed
+
+- Use `upsert` for system user creation in moderation — eliminates race condition on concurrent moderation requests
+- Replace hardcoded `localhost:3000` in oAuthProxy with `NEXT_PUBLIC_APP_URL` — OAuth works in staging/preview
+- Replace unsafe `as Record<string, unknown>` casts in `buildThreadDetailDTO` with proper typed attachment mapping
+- Add `sectionIds` parameter to `listThreads` for membership-scoped thread listing
+
+### Changed
+
+- `searchThreads` and `searchMessages` now accept optional `sectionIds` parameter for scoping results
+- `ListThreadsParams` now supports `sectionIds` field for membership filtering
+- `requireModerationSession` and `requireReportsModeratorSession` are now re-exports instead of passthrough wrappers
+
+### Cleanup
+
+- Remove unused `logger` imports from `bookmarks/actions.ts`, `tags/actions.ts`, `badges/actions.ts`
+- Fix module index.ts stubs: `audit`, `read-receipts`, `appeals`, `ws` now properly barrel-export their public APIs
+
+### Tests
+
+- Rewrite `actions.test.mts` to import from real `@/lib/utils/server-action` instead of re-implementing locally
+- Add `redis-upstash.test.mts` — tests for Redis singleton, UTC midnight helper, and Lua script
+- Add `rate-limit.test.mts` — tests for rate limit config, memoization, and bucket behavior
+- Add `moderation-regex.test.mts` — tests for regex complexity validation (nesting, backreferences, quantifiers)
+- Test count increased from 74 to 93 passing

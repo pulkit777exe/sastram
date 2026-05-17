@@ -1,5 +1,2 @@
-/**
- * Module contract stub.
- * This module currently does not expose a dedicated index.ts implementation.
- */
-export {};
+export { markThreadReadAction } from './actions';
+export { getThreadReadReceipt, upsertThreadReadReceipt, type ThreadReadReceipt } from './repository';

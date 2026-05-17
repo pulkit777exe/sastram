@@ -157,6 +157,8 @@ export const getMessageEditHistory = createServerAction(
   { schema: getMessageEditHistorySchema, actionName: 'getMessageEditHistory' },
   async ({ messageId }) => {
     try {
+      await requireSession();
+
       const edits = await prisma.messageEdit.findMany({
         where: { messageId },
         orderBy: { editedAt: 'desc' },

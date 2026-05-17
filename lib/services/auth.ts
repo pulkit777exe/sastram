@@ -30,8 +30,7 @@ export const auth = betterAuth({
   },
   plugins: [
     oAuthProxy({
-      currentURL: 'http://localhost:3000',
-      productionURL: process.env.NEXT_PUBLIC_APP_URL,
+      currentURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     }),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {

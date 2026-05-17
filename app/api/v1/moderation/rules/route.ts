@@ -19,7 +19,7 @@ export async function GET() {
  * Validate regex pattern for ReDoS safety.
  * Checks: length limit, quantifier nesting depth, backreference count.
  */
-function validateRegexPattern(pattern: string): { valid: boolean; error?: string } {
+export function validateRegexPattern(pattern: string): { valid: boolean; error?: string } {
   if (pattern.length > 200) {
     return { valid: false, error: 'Pattern too long (max 200 chars)' };
   }

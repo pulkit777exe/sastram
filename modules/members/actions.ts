@@ -155,6 +155,7 @@ export const removeMemberAction = createServerAction(
 export const getSectionMembersAction = createServerAction(
   { schema: getSectionMembersSchema, actionName: 'getSectionMembersAction' },
   async ({ sectionId }) => {
+    await requireSession();
     const members = await getSectionMembers(sectionId);
     return { data: members, error: null };
   }

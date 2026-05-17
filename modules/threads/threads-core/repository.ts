@@ -38,6 +38,7 @@ export interface ListThreadsParams {
   pageSize?: number;
   sortBy?: 'recent' | 'popular' | 'trending' | 'oldest';
   memberUserId?: string;
+  sectionIds?: string[];
 }
 
 export interface PaginatedThreads {
@@ -53,12 +54,16 @@ export interface PaginatedThreads {
 }
 
 export async function listThreads(params: ListThreadsParams = {}): Promise<PaginatedThreads> {
-  const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId } = params;
+  const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, sectionIds } = params;
   const skip = (page - 1) * pageSize;
 
-  const where = memberUserId
-    ? { members: { some: { userId: memberUserId } } }
-    : {};
+  const where: Record<string, unknown> = {};
+  if (memberUserId) {
+    where.members = { some: { userId: memberUserId } };
+  }
+  if (sectionIds && sectionIds.length > 0) {
+    where.id = { in: sectionIds };
+  }
 
   try {
     const [totalItems, threadRows] = await dedupe(`threads:list:${page}:${pageSize}:${sortBy}:${memberUserId ?? ''}`, () =>

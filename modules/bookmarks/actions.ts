@@ -1,8 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { logger } from '@/lib/infrastructure/logger';
-
+import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';

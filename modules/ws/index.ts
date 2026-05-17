@@ -1,5 +1,9 @@
-/**
- * Module contract stub.
- * This module currently does not expose a dedicated index.ts implementation.
- */
-export {};
+export {
+  emitThreadMessage,
+  emitMessageDeleted,
+  emitPinUpdate,
+  emitReactionUpdate,
+  emitTypingIndicator,
+  emitMentionNotification,
+  type ThreadMessagePayload,
+} from './publisher';

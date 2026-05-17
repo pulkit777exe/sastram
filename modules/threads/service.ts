@@ -1,11 +1,30 @@
-import { type Community, type UserStatus } from '@prisma/client';
+import { type Community, type Message, type UserStatus, type Attachment, type AttachmentType } from '@prisma/client';
 import type {
   ThreadDetail,
   ThreadRecord,
   ThreadSummary,
   CommunitySummary,
   ThreadDNA,
+  AttachmentInfo,
 } from './types';
+
+function formatAttachmentSize(size: bigint | null): string | null {
+  if (size === null) return null;
+  const bytes = Number(size);
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mapAttachment(att: Attachment): AttachmentInfo {
+  return {
+    id: att.id,
+    url: att.url,
+    type: att.type as string,
+    name: att.name,
+    size: formatAttachmentSize(att.size),
+  };
+}
 
 export function buildThreadDTO(
   thread: ThreadRecord,
@@ -46,51 +65,50 @@ export function buildThreadDetailDTO(
 ): ThreadDetail {
   return {
     ...buildThreadDTO(thread, messageCount, activeUsers, memberCount),
-    summary: summary ?? ((thread as Record<string, unknown>).aiSummary as string) ?? null,
+    summary: summary ?? thread.aiSummary ?? null,
     resolutionScore: thread.resolutionScore,
     threadDna: thread.threadDna ? (thread.threadDna as unknown as ThreadDNA) : undefined,
     lastVerifiedAt: thread.lastVerifiedAt,
     isOutdated: thread.isOutdated,
     subscriptionCount,
     messages:
-      thread.messages?.map((message) => ({
-        id: message.id,
-        content: message.content,
-        senderId: message.senderId,
-        parentId: message.parentId ?? null,
-        senderName: message.sender?.name || message.sender?.email || 'Anonymous',
-        senderAvatar: message.sender?.image,
-        createdAt: message.createdAt,
-        updatedAt: message.updatedAt,
-        deletedAt: message.deletedAt ?? null,
-        depth: message.depth ?? 0,
-        isEdited: message.isEdited ?? false,
-        isPinned: message.isPinned ?? false,
-        likeCount: ((message as Record<string, unknown>).likeCount as number) ?? 0,
-        replyCount: ((message as Record<string, unknown>).replyCount as number) ?? 0,
-        isAiResponse: ((message as Record<string, unknown>).isAiResponse as boolean) ?? false,
-        sender: message.sender
-          ? {
-              id: message.sender.id,
-              name: message.sender.name,
-              avatarUrl: message.sender.image,
-              status: (message.sender.status as UserStatus) || 'ACTIVE',
-            }
-          : {
-              id: message.senderId,
-              name: null,
-              avatarUrl: null,
-              status: 'ACTIVE' as UserStatus,
-            },
-        attachments:
-          ((message as Record<string, unknown>).attachments as Array<{
-            id: string;
-            url: string;
-            type: string;
-            name?: string | null;
-            size?: string | null;
-          }>) ?? [],
-      })) ?? [],
+      thread.messages?.map((message) => {
+        const msg = message as Message & {
+          sender?: { id: string; name: string | null; image: string | null; status: UserStatus } | null;
+          attachments?: Attachment[];
+        };
+        return {
+          id: msg.id,
+          content: msg.content,
+          senderId: msg.senderId,
+          parentId: msg.parentId ?? null,
+          senderName: msg.sender?.name || 'Anonymous',
+          senderAvatar: msg.sender?.image,
+          createdAt: msg.createdAt,
+          updatedAt: msg.updatedAt,
+          deletedAt: msg.deletedAt ?? null,
+          depth: msg.depth ?? 0,
+          isEdited: msg.isEdited ?? false,
+          isPinned: msg.isPinned ?? false,
+          likeCount: msg.likeCount ?? 0,
+          replyCount: msg.replyCount ?? 0,
+          isAiResponse: msg.isAiResponse ?? false,
+          sender: msg.sender
+            ? {
+                id: msg.sender.id,
+                name: msg.sender.name,
+                avatarUrl: msg.sender.image,
+                status: msg.sender.status || ('ACTIVE' as UserStatus),
+              }
+            : {
+                id: msg.senderId,
+                name: null,
+                avatarUrl: null,
+                status: 'ACTIVE' as UserStatus,
+              },
+          attachments: msg.attachments?.map(mapAttachment) ?? [],
+        };
+      }) ?? [],
   };
 }
 

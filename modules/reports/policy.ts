@@ -1,8 +1,4 @@
-import { requireModerationRole } from '@/modules/policy';
-
-export async function requireReportsModeratorSession() {
-  return requireModerationRole();
-}
+export { requireModerationRole as requireReportsModeratorSession } from '@/modules/policy';
 
 export function assertCanReportOwnMessage(reporterId: string, senderId: string) {
   if (reporterId === senderId) {

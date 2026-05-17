@@ -1,5 +1,1 @@
-/**
- * Module contract stub.
- * This module currently does not expose a dedicated index.ts implementation.
- */
-export {};
+export { logAction, getUserActivities, getUserActivityStats, type AuditEventDetails } from './repository';

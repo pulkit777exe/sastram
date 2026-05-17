@@ -93,6 +93,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
+    // Check if user has access to the job (same as GET)
+    const jobDataPayload = job.data as { userId?: string };
+    if (jobDataPayload.userId && jobDataPayload.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Unauthorized to cancel this job' }, { status: 403 });
+    }
+
     await job.remove();
 
     return NextResponse.json({ success: true, message: 'Job cancelled' });

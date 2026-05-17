@@ -2,9 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { requireModerationRole } from '@/modules/policy';
 
-export async function requireModerationSession() {
-  return requireModerationRole();
-}
+export { requireModerationRole as requireModerationSession } from '@/modules/policy';
 
 export async function applyModerationRateLimit(userId: string) {
   try {

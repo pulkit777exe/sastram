@@ -331,19 +331,15 @@ export class MessageService {
 
       // If moderation action is needed, create a report (outside transaction — idempotent)
       if (result.action !== 'ALLOW') {
-        let systemUser = await prisma.user.findFirst({
+        const systemUser = await prisma.user.upsert({
           where: { email: 'system@example.com' },
+          create: {
+            email: 'system@example.com',
+            name: 'System',
+            role: 'ADMIN',
+          },
+          update: {},
         });
-
-        if (!systemUser) {
-          systemUser = await prisma.user.create({
-            data: {
-              email: 'system@example.com',
-              name: 'System',
-              role: 'ADMIN',
-            },
-          });
-        }
 
         await prisma.report.create({
           data: {
