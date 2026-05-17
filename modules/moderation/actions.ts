@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { revalidatePath } from 'next/cache';
+import { computeHasMore } from '@/lib/db/pagination';
 import { createNotification } from '@/modules/notifications/repository';
 import {
   applyModerationRateLimit,
@@ -376,7 +377,7 @@ export const getBannedUsers = createServerAction(
           total: totalCount,
           limit,
           offset,
-          hasMore: offset + limit < totalCount,
+          hasMore: computeHasMore(offset, limit, totalCount),
         },
       },
       error: null,
@@ -550,7 +551,7 @@ export const getModerationQueue = createServerAction(
     return {
       data: {
         reports,
-        pagination: { total: totalCount, limit, offset, hasMore: offset + limit < totalCount },
+        pagination: { total: totalCount, limit, offset, hasMore: computeHasMore(offset, limit, totalCount) },
       },
       error: null,
     };

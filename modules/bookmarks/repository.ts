@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { computeHasMore } from '@/lib/db/pagination';
 
 export async function bookmarkThread(userId: string, threadId: string) {
   return prisma.userBookmark.upsert({
@@ -64,7 +65,7 @@ export async function getUserBookmarks(userId: string, limit: number = 20, offse
     return {
       bookmarks: (bookmarks ?? []).map((bookmark) => bookmark.thread),
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getUserBookmarks]', error);

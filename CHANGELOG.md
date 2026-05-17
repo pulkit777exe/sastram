@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `removeMember()` repository function now returns `{ count: number }` to enable callers to check affected rows
 - `validateModerationTarget()` now accepts `string | null | undefined` for moderatorRole and throws if role is missing
 - `/api/cron/worker` response shape changed from `{ processed, failed }` to `{ processed, failed, total }`
+- Replace 12 duplicated `hasMore: offset + limit < total` expressions with `computeHasMore()` helper from `lib/db/pagination.ts`
 
 ### Added
 
@@ -85,4 +86,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Add `redis-upstash.test.mts` — tests for Redis singleton, UTC midnight helper, and Lua script
 - Add `rate-limit.test.mts` — tests for rate limit config, memoization, and bucket behavior
 - Add `moderation-regex.test.mts` — tests for regex complexity validation (nesting, backreferences, quantifiers)
-- Test count increased from 74 to 93 passing
+- Add `bullmq-config.test.mts` — tests for queue names, job options, AI job types
+- Add `email-template.test.mts` — tests for regex-safe variable interpolation
+- Add `slug.test.mts` — tests for slugify edge cases
+- Rewrite `utils.test.mts` to import real slugify, content-safety, rate-limit
+- Fix `content-safety.test.mts` and `queue-config.test.mts` to use `@/` alias
+- Delete `simple.test.mts` (trivial 1+1=2 test)
+- Test count increased from 74 to 118 passing
+
+## [Unreleased] — Round 3
+
+### Security
+
+- Add Zod validation to all 5 email OTP endpoints — prevents malformed body attacks and OTP spam
+- Prevent internal error message leakage in OTP responses — no more `error.message` exposed to clients
+
+### Fixed
+
+- Merge moderation + reports executors into shared `executeAuditAndRevalidate()` — eliminates 95% duplicated code
+- Consolidate file size constants to `FILE_LIMITS` in `constants.ts` — single source of truth across blob.ts, file-upload.ts, content-safety.ts
+
+### Added
+
+- `ErrorBoundary` component (`components/ui/error-boundary.tsx`) — graceful degradation for component failures
+- Wrap `CommentTree` with `ErrorBoundary` in `ThreadLiveWrapper`
+
+### Accessibility
+
+- Add `aria-label` and `aria-pressed` to like button
+- Add `aria-label` to reply button
+- Add `aria-label` and `focus-visible` ring to edit/delete/pin buttons
+- Add `role="radiogroup"` and `role="radio"` with `aria-checked` to poll options
+
+### Tests
+
+- Add `bullmq-config.test.mts`, `email-template.test.mts`, `slug.test.mts`
+- Rewrite `utils.test.mts` to import real implementations
+- Test count: 96 → 118 passing

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { computeHasMore, emptyPagination } from '@/lib/db/pagination';
 
 export async function searchThreads(query: string, limit: number = 20, offset: number = 0, sectionIds?: string[]) {
   try {
@@ -49,7 +50,7 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
         memberCount: t.memberCount,
       })),
       total: count,
-      hasMore: offset + limit < count,
+      hasMore: computeHasMore(offset, limit, count),
     };
   } catch (error) {
     logger.error('[searchThreads]', error);
@@ -134,7 +135,7 @@ export async function searchMessages(
         },
       })),
       total: count,
-      hasMore: offset + limit < count,
+      hasMore: computeHasMore(offset, limit, count),
     };
   } catch (error) {
     logger.error('[searchMessages]', error);
@@ -182,7 +183,7 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     return {
       users: users ?? [],
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[searchUsers]', error);

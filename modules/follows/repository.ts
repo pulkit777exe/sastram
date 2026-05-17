@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { computeHasMore } from '@/lib/db/pagination';
 
 export async function followUser(followerId: string, followingId: string) {
   // Prevent self-follow
@@ -127,7 +128,7 @@ export async function getFollowers(userId: string, limit: number = 50, offset: n
     return {
       followers: (follows ?? []).map((follow) => follow.follower),
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getFollowers]', error);
@@ -170,7 +171,7 @@ export async function getFollowing(userId: string, limit: number = 50, offset: n
     return {
       following: (follows ?? []).map((follow) => follow.following),
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getFollowing]', error);

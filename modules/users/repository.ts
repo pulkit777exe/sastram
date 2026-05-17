@@ -2,6 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { ProfilePrivacy } from '@prisma/client';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
+import { computeHasMore } from '@/lib/db/pagination';
 
 export async function getPublicProfile(userId: string, viewerId?: string) {
   const user = await prisma.user.findUnique({
@@ -118,7 +119,7 @@ export async function getUserThreads(userId: string, limit: number = 20, offset:
     return {
       threads: threads ?? [],
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getUserThreads]', error);
@@ -185,7 +186,7 @@ export async function getUserMessages(userId: string, limit: number = 20, offset
     return {
       messages: messages ?? [],
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getUserMessages]', error);

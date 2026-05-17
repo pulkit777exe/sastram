@@ -2,6 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 import { Prisma } from '@prisma/client';
+import { computeHasMore } from '@/lib/db/pagination';
 
 export async function recordActivity(data: {
   userId: string;
@@ -40,7 +41,7 @@ export async function getUserActivity(userId: string, limit: number = 20, offset
     return {
       activities: activities ?? [],
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getUserActivity]', error);
@@ -108,7 +109,7 @@ export async function getFollowedUsersActivity(
     return {
       activities: activities ?? [],
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getFollowedUsersActivity]', error);

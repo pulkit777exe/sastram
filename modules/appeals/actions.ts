@@ -5,6 +5,7 @@ import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { logAction } from '@/modules/audit/repository';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { computeHasMore } from '@/lib/db/pagination';
 import { withValidation } from '@/lib/utils/server-action';
 import { getBannedUsersSchema } from '@/modules/moderation/schemas';
 import { requireModerationRole } from '@/modules/policy';
@@ -190,7 +191,7 @@ export const getBannedUsers = withValidation(
     return {
       data: {
         bans,
-        pagination: { total: totalCount, limit, offset, hasMore: offset + limit < totalCount },
+        pagination: { total: totalCount, limit, offset, hasMore: computeHasMore(offset, limit, totalCount) },
       },
       error: null,
     };
