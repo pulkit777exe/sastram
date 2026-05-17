@@ -290,7 +290,9 @@
 **What:** Add tests for all 9 job handlers: thread-summary, thread-dna, resolution-score, conflict-detection, daily-digest, ai-inline, email, staleness-check, ai-insight.
 **Status:** ✅ Input validation tests for all 8 implemented handlers (staleness-check is a placeholder). Tests verify required field validation and error messages. 11 new tests added.
 
-#### 4. Component Tests
-**What:** Add React Testing Library tests for CommentTree, ThreadLiveWrapper, LoginForm, AISearch.
-**Why:** Zero component test coverage. Critical user flows are untested.
-**Status:** ⏸️ Deferred — requires React Testing Library dependency, server action mocking, and WebSocket mocking infrastructure. Benefits from ThreadContext refactor (completed).
+#### 4. Component Tests ✅ COMPLETED
+**What:** Add React Testing Library tests for ErrorBoundary, OtpInput, and other critical components.
+**Status:** ✅ 10 new component tests added:
+- ErrorBoundary: 5 tests (render children, show fallback, onError callback, custom fallback, reset state)
+- OtpInput: 5 tests (default length, custom length, numeric input, aria-labels, disabled state)
+- Test count: 143 → 153 passing

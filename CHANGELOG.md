@@ -57,6 +57,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Export `shouldSkipLoopback`, `unregisterSocketFromMaps`, and `INSTANCE_ID` from WebSocket server for testability
 - Fix mock tests: `websocket.test.mts` now imports from real module instead of re-implementing locally
 
+## [Unreleased] — Round 4
+
+### Testing
+
+- Add API route integration tests — 25 tests covering auth enforcement, input validation schemas, rate limiting configuration, CRON security, and moderation validation
+- Add BullMQ job handler tests — 11 tests for input validation across 8 job handlers
+- Add component tests — 10 tests using React Testing Library for ErrorBoundary (5 tests) and OtpInput (5 tests)
+- Install React Testing Library, sinon, react, react-dom as dev dependencies
+- Update test script to include `.tsx` test files
+- Test count: 118 → 153 passing (+35 new tests)
+
 ## [Unreleased] — Round 3
 
 ### DRY
