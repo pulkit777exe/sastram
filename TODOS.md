@@ -283,17 +283,14 @@
 #### 2. API Route Integration Tests
 **What:** Add integration tests for `/api/threads`, `/api/messages`, `/api/ai`, `/api/cron`, `/api/v1/moderation`.
 **Why:** Zero API route test coverage. Auth bypass, membership gaps, and error handling bugs go undetected.
+**Status:** ⏸️ Deferred — requires test database container setup and Next.js route handler testing infrastructure. CI already has PostgreSQL service container; tests would need `DATABASE_URL` pointing to it.
 **Context:** 31 route.ts files across 17 API groups. Critical paths: auth enforcement, membership scoping, error response shapes, rate limiting.
-**Depends on:** Requires test database container setup.
 
-#### 3. BullMQ Job Handler Tests
+#### 3. BullMQ Job Handler Tests ✅ COMPLETED
 **What:** Add tests for all 9 job handlers: thread-summary, thread-dna, resolution-score, conflict-detection, daily-digest, ai-inline, email, staleness-check, ai-insight.
-**Why:** Background jobs run silently — failures go unnoticed.
-**Context:** Jobs defined in `lib/queue/workers/`. Each job has specific input schema, retry config (3x exponential backoff).
-**Depends on:** Requires Redis mock or test Redis instance.
+**Status:** ✅ Input validation tests for all 8 implemented handlers (staleness-check is a placeholder). Tests verify required field validation and error messages. 11 new tests added.
 
 #### 4. Component Tests
 **What:** Add React Testing Library tests for CommentTree, ThreadLiveWrapper, LoginForm, AISearch.
 **Why:** Zero component test coverage. Critical user flows are untested.
-**Context:** 100+ components, zero tests. Benefits from ThreadContext refactor (completed).
-**Depends on:** Requires React Testing Library setup; mocking server actions and WebSocket is complex.
+**Status:** ⏸️ Deferred — requires React Testing Library dependency, server action mocking, and WebSocket mocking infrastructure. Benefits from ThreadContext refactor (completed).
