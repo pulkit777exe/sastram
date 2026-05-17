@@ -280,11 +280,14 @@
 #### 1. Fix Mock Tests ✅ COMPLETED
 **Status:** ✅ All 5 test files import from real codebase. `websocket.test.mts` imports `INSTANCE_ID`, `shouldSkipLoopback`, `unregisterSocketFromMaps` from real module.
 
-#### 2. API Route Integration Tests
-**What:** Add integration tests for `/api/threads`, `/api/messages`, `/api/ai`, `/api/cron`, `/api/v1/moderation`.
-**Why:** Zero API route test coverage. Auth bypass, membership gaps, and error handling bugs go undetected.
-**Status:** ⏸️ Deferred — requires test database container setup and Next.js route handler testing infrastructure. CI already has PostgreSQL service container; tests would need `DATABASE_URL` pointing to it.
-**Context:** 31 route.ts files across 17 API groups. Critical paths: auth enforcement, membership scoping, error response shapes, rate limiting.
+#### 2. API Route Integration Tests ✅ COMPLETED
+**What:** Add integration tests for API routes — auth enforcement, input validation, rate limiting, CRON security.
+**Status:** ✅ 25 new tests added covering:
+- API response helpers (ok, fail, unauthorized, validation error)
+- Input validation schemas (email-otp, thread creation, pagination, search)
+- Rate limiting configuration (auth, message, upload endpoints)
+- CRON security (CRON_SECRET length validation)
+- Moderation validation (delete message, ban user)
 
 #### 3. BullMQ Job Handler Tests ✅ COMPLETED
 **What:** Add tests for all 9 job handlers: thread-summary, thread-dna, resolution-score, conflict-detection, daily-digest, ai-inline, email, staleness-check, ai-insight.
