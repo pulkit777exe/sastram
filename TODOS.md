@@ -124,13 +124,9 @@
 **Context:** Files: `bookmarks/actions.ts`, `tags/actions.ts`, `badges/actions.ts` (unused logger imports). `notifications/repository.ts` (5 unexported functions), `audit/repository.ts` (5 unexported), `follows/repository.ts` (1 unexported). `moderation/policy.ts`, `reports/policy.ts` (passthrough functions). `threads/queries.ts`, `threads/relations.ts` (re-export stubs).
 **Depends on:** None.
 
-#### 9. Server Action Response Consistency
+#### 9. Server Action Response Consistency ✅ COMPLETED
 **What:** Standardize all server actions to return `{ data, error, errorCode, ok }` consistently.
-**Why:** Client-side error handling is fragile — some actions return `errorCode`, some don't, some return raw objects.
-**Pros:** Predictable client-side error handling; easier to write generic error UI; consistent API.
-**Cons:** Requires updating 26+ action files; may break existing client code that depends on current shapes.
-**Context:** `messages/actions/edit.ts` returns `{ errorCode, ok }`, `bookmarks/actions.ts` returns `{ data, error }` with no `errorCode`, `threads/actions.ts` returns `{ data: null, error: null }` with no `ok`. The standard shape is defined in `lib/utils/server-action.ts` but not all actions use it.
-**Depends on:** None.
+**Status:** ✅ All 85+ actions across 25 files now return the full ActionEnvelope shape. Success paths include `ok: true, errorCode: null`. Error paths include `ok: false` with appropriate error codes (NOT_FOUND, FORBIDDEN, VALIDATION_ERROR, CONFLICT, INTERNAL_ERROR, AUTH_REQUIRED).
 
 #### 10. Module index.ts Consistency
 **What:** Fix 4 module index.ts files (audit, read-receipts, appeals, ws) that have stub `export {}` while their actions/repository files have real exports.

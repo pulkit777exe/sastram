@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `validateModerationTarget()` now accepts `string | null | undefined` for moderatorRole and throws if role is missing
 - `/api/cron/worker` response shape changed from `{ processed, failed }` to `{ processed, failed, total }`
 - Replace 12 duplicated `hasMore: offset + limit < total` expressions with `computeHasMore()` helper from `lib/db/pagination.ts`
+- Standardize all 85+ server action return statements to use full `{ ok, data, error, errorCode }` envelope across 25 action files
 
 ### Added
 
