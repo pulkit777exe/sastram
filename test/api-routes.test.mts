@@ -93,7 +93,7 @@ describe('API Route — CRON Security', () => {
   it('CRON_SECRET meets minimum length requirement', async () => {
     const { env } = await import('@/lib/config/env');
     expect(env.CRON_SECRET).to.be.a('string');
-    expect(env.CRON_SECRET.length).to.be.greaterThanOrEqual(32);
+    expect(env.CRON_SECRET!.length).to.be.greaterThanOrEqual(32);
   });
 });
 
