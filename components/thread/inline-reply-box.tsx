@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useRouter } from 'next/navigation';
 import { postMessage } from '@/modules/messages/actions';
 import { toasts } from '@/lib/utils/toast';
+import { cn } from '@/lib/utils/cn';
 import type { MessageNode } from '@/modules/messages/types';
 import type { Message } from '@/lib/types/index';
 
@@ -41,7 +42,9 @@ export function InlineReplyBox({
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isShaking, setIsShaking] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const replyDepth = Math.min(parentMessage.depth + 1, MAX_VISUAL_DEPTH);
 
@@ -49,12 +52,26 @@ export function InlineReplyBox({
     textareaRef.current?.focus();
   }, []);
 
+  const triggerShake = () => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const input = wrap.querySelector('.t-input');
+    if (!input) return;
+    input.classList.remove('is-shaking');
+    void (input as HTMLElement).offsetWidth;
+    input.classList.add('is-shaking');
+    setTimeout(() => input.classList.remove('is-shaking'), 300);
+  };
+
   async function handleSubmit() {
     if (!content.trim()) {
       setError('Reply cannot be empty');
+      setIsShaking(true);
+      triggerShake();
       return;
     }
     setError(null);
+    setIsShaking(false);
     setIsSubmitting(true);
 
     const formData = new FormData();
@@ -150,33 +167,36 @@ export function InlineReplyBox({
               {currentUser.name?.substring(0, 2).toUpperCase() || 'ME'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <Textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => {
-                setContent(e.target.value);
-                setError(null);
-                onTypingStart?.();
-              }}
-              placeholder="Write your reply…"
-              className="min-h-[60px] max-h-[200px] text-sm resize-none shadow-none border-0 bg-transparent p-0 focus-visible:ring-0"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  handleSubmit();
-                  onTypingStop?.();
-                }
-                if (e.key === 'Escape') {
-                  onCancel();
-                  onTypingStop?.();
-                } else {
+          <div ref={wrapRef} className={cn('t-input-wrap flex-1', isShaking && 'is-error')}>
+            <div className={cn('t-input', isShaking && 'is-error')}>
+              <Textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => {
+                  setContent(e.target.value);
+                  setError(null);
+                  setIsShaking(false);
                   onTypingStart?.();
-                }
-              }}
-              onBlur={() => onTypingStop?.()}
-            />
+                }}
+                placeholder="Write your reply…"
+                className="min-h-[60px] max-h-[200px] text-sm resize-none shadow-none border-0 bg-transparent p-0 focus-visible:ring-0"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    handleSubmit();
+                    onTypingStop?.();
+                  }
+                  if (e.key === 'Escape') {
+                    onCancel();
+                    onTypingStop?.();
+                  } else {
+                    onTypingStart?.();
+                  }
+                }}
+                onBlur={() => onTypingStop?.()}
+              />
+            </div>
 
-            {error && <p className="text-[11px] text-red-500 mt-1">{error}</p>}
+            <p className="t-error-msg text-[11px] text-red-500 mt-1">{error || 'Reply cannot be empty'}</p>
 
             <div className="flex items-center justify-end gap-2 mt-1.5">
               <Button

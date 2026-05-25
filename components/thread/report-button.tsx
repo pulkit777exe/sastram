@@ -114,7 +114,7 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
         {submitted ? (
           <>
             <DialogHeader className="text-center items-center pt-4">
-              <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
+              <div className="t-success-check w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-3" data-state="in">
                 <CheckCircle2 className="w-6 h-6 text-green-500" />
               </div>
               <DialogTitle className="text-xl font-bold tracking-tight">

@@ -8,6 +8,7 @@ import {
   unsubscribeFromThread,
   updateSubscriptionFrequencyAction,
 } from '@/modules/newsletter/actions';
+import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
 
 type SubscriptionFrequency = 'DAILY' | 'WEEKLY' | 'NEVER' | null;
@@ -33,9 +34,11 @@ export function ThreadSubscribeButton({
   initialFrequency,
 }: ThreadSubscribeButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [frequency, setFrequency] = useState<SubscriptionFrequency>(initialFrequency);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const closeMs = 150;
 
   const triggerLabel = useMemo(() => {
     if (!frequency) return 'Not subscribed';
@@ -50,7 +53,8 @@ export function ThreadSubscribeButton({
       if (!target || containerRef.current?.contains(target)) {
         return;
       }
-      setIsOpen(false);
+      setIsClosing(true);
+      setTimeout(() => { setIsOpen(false); setIsClosing(false); }, closeMs);
     };
 
     document.addEventListener('mousedown', onOutsideClick);
@@ -66,7 +70,8 @@ export function ThreadSubscribeButton({
     const previous = frequency;
     setFrequency(nextFrequency);
     setIsSaving(true);
-    setIsOpen(false);
+    setIsClosing(true);
+    setTimeout(() => { setIsOpen(false); setIsClosing(false); }, closeMs);
 
     try {
       if (nextFrequency === null || nextFrequency === 'NEVER') {
@@ -112,7 +117,15 @@ export function ThreadSubscribeButton({
         type="button"
         variant="outline"
         disabled={isSaving}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => {
+          if (isOpen) {
+            setIsClosing(true);
+            setTimeout(() => { setIsOpen(false); setIsClosing(false); }, closeMs);
+          } else {
+            setIsClosing(false);
+            setIsOpen(true);
+          }
+        }}
         className="w-full justify-between rounded-xl border-border/70"
       >
         <span className="inline-flex items-center gap-2">
@@ -123,7 +136,13 @@ export function ThreadSubscribeButton({
       </Button>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-2 rounded-lg border border-border bg-popover shadow-lg z-20">
+        <div
+          className={cn(
+            't-dropdown absolute left-0 right-0 mt-2 rounded-lg border border-border bg-popover shadow-lg z-20',
+            isClosing ? 'is-closing' : 'is-open'
+          )}
+          data-origin="top-left"
+        >
           <div className="p-2">
             {OPTIONS.map((option) => (
               <button

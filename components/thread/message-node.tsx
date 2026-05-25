@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -77,6 +77,36 @@ function renderDiffLine(text: string, compareTo: string, className: string) {
       </span>
     );
   });
+}
+
+function LikeCount({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.classList.remove('is-animating');
+    void el.offsetWidth;
+    el.classList.add('is-animating');
+  }, [value]);
+
+  if (value === 0) return null;
+
+  const chars = String(value).split('');
+
+  return (
+    <span ref={ref} className="t-digit-group text-[11px] font-medium tabular-nums">
+      {chars.map((ch, i) => (
+        <span
+          key={i}
+          className="t-digit"
+          data-stagger={i === chars.length - 2 ? '1' : i === chars.length - 1 ? '2' : undefined}
+        >
+          {ch}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 interface CommentNodeProps {
@@ -358,9 +388,7 @@ export function CommentNode({
                     className={`flex items-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded ${isLiked ? 'text-amber-500' : 'text-muted-foreground/60 hover:text-amber-500'}`}
                   >
                     <ThumbsUp size={13} className={isLiked ? 'fill-current' : ''} />
-                    <span className="text-[11px] font-medium tabular-nums">
-                      {likeCount > 0 ? likeCount : ''}
-                    </span>
+                    <LikeCount value={likeCount} />
                   </button>
 
                   {!beyondDepthLimit && (
