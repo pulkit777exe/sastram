@@ -99,7 +99,8 @@ export default function AiSynthesisCard({
           </p>
         )}
 
-        {isExpanded && sources.length > 0 && (
+        <div className="t-panel-slide" data-open={isExpanded ? 'true' : 'false'}>
+          {sources.length > 0 && (
           <div className="mt-[8px] space-y-[6px]">
             {sources.map((source) => {
               const confidence =
@@ -140,6 +141,7 @@ export default function AiSynthesisCard({
             })}
           </div>
         )}
+        </div>
       </div>
     </section>
   );

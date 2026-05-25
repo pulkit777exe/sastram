@@ -1,7 +1,34 @@
+'use client';
+
+import { useRef, useEffect } from 'react';
 import type { ThreadWithFullContext } from '@/modules/threads/queries';
 
 interface ThreadInfoCardProps {
   thread: ThreadWithFullContext;
+}
+
+function DigitGroup({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const chars = String(value).split('');
+    el.innerHTML = '';
+    chars.forEach((ch, i) => {
+      const span = document.createElement('span');
+      span.className = 't-digit';
+      span.textContent = ch;
+      if (i === chars.length - 2) span.dataset.stagger = '1';
+      else if (i === chars.length - 1) span.dataset.stagger = '2';
+      el.appendChild(span);
+    });
+    el.classList.remove('is-animating');
+    void el.offsetHeight;
+    el.classList.add('is-animating');
+  }, [value]);
+
+  return <span ref={ref} className="t-digit-group font-['Syne'] text-[16px] font-bold text-(--text)" />;
 }
 
 export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
@@ -14,15 +41,11 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
       <div className="mt-[12px] space-y-[8px] text-[13px] text-muted">
         <div className="flex items-center justify-between">
           <span>Messages</span>
-          <span className="font-['Syne'] text-[16px] font-bold text-(--text)">
-            {thread._count.messages}
-          </span>
+          <DigitGroup value={thread._count.messages} />
         </div>
         <div className="flex items-center justify-between">
           <span>Participants</span>
-          <span className="font-['Syne'] text-[16px] font-bold text-(--text)">
-            {thread._count.members}
-          </span>
+          <DigitGroup value={thread._count.members} />
         </div>
 
         {thread.resolutionScore !== null && (
@@ -35,9 +58,7 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
                   style={{ width: `${thread.resolutionScore}%` }}
                 />
               </div>
-              <span className="font-['Syne'] text-[12px] font-bold text-(--text)">
-                {thread.resolutionScore}
-              </span>
+              <DigitGroup value={thread.resolutionScore} />
             </div>
           </div>
         )}
