@@ -68,6 +68,7 @@ export function Sidebar({
   const handleMouseEnter = () => {
     clearHideTimeout();
     if (!isCollapsed) {
+      setProfileMenuClosing(false);
       setShowProfileMenu(true);
     }
   };
@@ -76,13 +77,20 @@ export function Sidebar({
     clearHideTimeout();
     if (typeof window === 'undefined') return;
     hideTimeout.current = window.setTimeout(() => {
-      setShowProfileMenu(false);
+      setProfileMenuClosing(true);
+      setTimeout(() => {
+        setShowProfileMenu(false);
+        setProfileMenuClosing(false);
+      }, closeMs);
       hideTimeout.current = null;
     }, 500);
   };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [profileMenuClosing, setProfileMenuClosing] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const closeMs = 150;
 
   const toggleCollapse = () => {
     const newState = !isCollapsed;
@@ -304,7 +312,14 @@ export function Sidebar({
           )}
         </div>
         {showProfileMenu && !isCollapsed && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-10">
+          <div
+            ref={menuRef}
+            className={cn(
+              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-10',
+              profileMenuClosing ? 'is-closing' : 'is-open'
+            )}
+            data-origin="bottom-left"
+          >
             <Link
               href="/dashboard/settings/profile"
               className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
@@ -402,6 +417,19 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge }: 
           )}
         >
           {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+
+      {badge != null && badge > 0 && !collapsed && (
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+      {badge != null && badge > 0 && collapsed && (
+        <span className="t-badge" data-open="true">
+          <span className="t-badge-dot flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+            {badge > 99 ? '99+' : badge}
+          </span>
         </span>
       )}
 
