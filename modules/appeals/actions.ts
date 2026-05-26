@@ -86,21 +86,28 @@ export const getAppeals = withValidation(
       orderBy: { createdAt: 'asc' },
     });
 
-    const appealsWithBanInfo = await Promise.all(
-      appeals.map(async (appeal) => {
-        const activeBans = await prisma.userBan.findMany({
-          where: { userId: appeal.reporterId, isActive: true },
-          orderBy: { createdAt: 'desc' },
-        });
+    const reporterIds = appeals.map((a) => a.reporterId);
+    const allBans = await prisma.userBan.findMany({
+      where: { userId: { in: reporterIds }, isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
 
-        return {
-          ...appeal,
-          details: appeal.details?.replace(/^APPEAL:\s*/i, '') ?? null,
-          banReason: activeBans[0]?.reason || 'Unknown',
-          banDate: activeBans[0]?.createdAt || new Date(),
-        };
-      })
-    );
+    const banMap = new Map<string, (typeof allBans)[0]>();
+    for (const ban of allBans) {
+      if (!banMap.has(ban.userId)) {
+        banMap.set(ban.userId, ban);
+      }
+    }
+
+    const appealsWithBanInfo = appeals.map((appeal) => {
+      const activeBan = banMap.get(appeal.reporterId);
+      return {
+        ...appeal,
+        details: appeal.details?.replace(/^APPEAL:\s*/i, '') ?? null,
+        banReason: activeBan?.reason || 'Unknown',
+        banDate: activeBan?.createdAt || new Date(),
+      };
+    });
 
     return { data: appealsWithBanInfo, error: null, ok: true, errorCode: null };
   }
@@ -128,21 +135,20 @@ export const resolveAppeal = withValidation(
       });
 
       if (approved) {
-        const activeBans = await tx.userBan.findMany({
+        await tx.userBan.updateMany({
           where: { userId: appeal.reporterId, isActive: true },
-          select: { id: true },
+          data: { isActive: false },
         });
 
-        for (const ban of activeBans) {
-          await tx.userBan.update({ where: { id: ban.id }, data: { isActive: false } });
+        const remainingBans = await tx.userBan.count({
+          where: { userId: appeal.reporterId, isActive: true },
+        });
 
-          const otherActiveBans = await tx.userBan.count({
-            where: { userId: appeal.reporterId, isActive: true, id: { not: ban.id } },
+        if (remainingBans === 0) {
+          await tx.user.update({
+            where: { id: appeal.reporterId },
+            data: { status: 'ACTIVE' },
           });
-
-          if (otherActiveBans === 0) {
-            await tx.user.update({ where: { id: appeal.reporterId }, data: { status: 'ACTIVE' } });
-          }
         }
       }
     });
