@@ -35,12 +35,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch thread and messages
+    const totalMessageCount = await prisma.message.count({
+      where: { sectionId: threadId, deletedAt: null },
+    });
+
+    if (totalMessageCount < 50) {
+      return NextResponse.json(
+        { error: 'Thread needs at least 50 messages before a summary can be generated.' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch thread and last 50 messages for AI context
     const thread = await prisma.section.findUnique({
       where: { id: threadId },
       include: {
         messages: {
-          take: 50, // Limit to last 50 messages for summary context
+          take: 50,
           orderBy: { createdAt: 'desc' },
           include: { sender: true },
         },
@@ -53,10 +64,6 @@ export async function POST(req: NextRequest) {
 
     // Reverse to chronological order for AI
     const messages = thread.messages.reverse();
-
-    if (messages.length === 0) {
-      return NextResponse.json({ summary: 'No messages to summarize yet.' });
-    }
 
     // Add job to AI queue
     const threadSummaryQueue = getThreadSummaryQueue();
