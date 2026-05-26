@@ -183,50 +183,50 @@ export default function ReplyBox({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-[6px] px-[8px] py-[4px] text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
           >
             <PlusCircle className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => applyInlineFormat('bold')}
-            className="rounded-[6px] px-[8px] py-[4px] text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
           >
             **B**
           </button>
           <button
             type="button"
             onClick={() => applyInlineFormat('italic')}
-            className="rounded-[6px] px-[8px] py-[4px] text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
           >
             *I*
           </button>
           <button
             type="button"
             onClick={() => applyInlineFormat('code')}
-            className="rounded-[6px] px-[8px] py-[4px] text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
           >
             {'</>'}
           </button>
           <button
             type="button"
             onClick={() => applyInlineFormat('link')}
-            className="rounded-[6px] px-[8px] py-[4px] text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
           >
             Link
           </button>
 
-          <div className="ml-auto flex items-center gap-[8px]">
+          <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
               onClick={handleAiReply}
               className={cn(
-                'inline-flex items-center gap-[6px] rounded-[999px] border border-border px-[10px] py-[4px] text-[12px] font-medium',
+                'inline-flex items-center gap-1.5 rounded-[999px] border border-border px-2.5 py-1 text-[12px] font-medium',
                 'text-(--blue) hover:bg-(--blue-dim)'
               )}
               disabled={isAiLoading}
             >
-              {isAiLoading && <Loader2 className="h-[14px] w-[14px] animate-spin" />}
+              {isAiLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <span>@ai</span>
             </button>
           </div>
@@ -254,10 +254,10 @@ export default function ReplyBox({
           }}
           onBlur={() => onTypingStop?.()}
           placeholder="Add your reply. Press Ctrl+Enter or Cmd+Enter to submit."
-          className="min-h-[80px] w-full resize-none border-0 bg-transparent text-[14px] leading-normal text-(--text) outline-none"
+          className="min-h-20 w-full resize-none border-0 bg-transparent text-[14px] leading-normal text-(--text) outline-none"
         />
 
-        <div className="mt-[8px] flex items-center justify-between">
+        <div className="mt-2 flex items-center justify-between">
           {error ? (
             <span className="text-[12px] text-(--red)">{error}</span>
           ) : (
@@ -269,13 +269,13 @@ export default function ReplyBox({
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
             className={cn(
-              'inline-flex items-center gap-[6px] rounded-[6px] px-[12px] py-[6px] text-[12px] font-medium',
+              'inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[12px] font-medium',
               canSubmit
                 ? 'bg-(--blue) text-white hover:opacity-90'
                 : 'bg-(--blue-dim) text-muted cursor-not-allowed'
             )}
           >
-            {isSubmitting && <Loader2 className="h-[14px] w-[14px] animate-spin" />}
+            {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             <span>Post reply</span>
           </button>
         </div>

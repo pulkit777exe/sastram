@@ -407,8 +407,8 @@ export function PostMessageForm({
         </div>
       )}
 
-      <div className="hidden">
-        <Button type="submit" disabled={loading} className="rounded-md px-4 h-10 shadow-sm">
+      <div className="flex items-center gap-1 shrink-0">
+        <Button type="submit" disabled={loading} size="icon" className="h-10 w-10 rounded-md shadow-sm">
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
         </Button>
       </div>

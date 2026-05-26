@@ -24,6 +24,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
   const mountedRef = useRef(true);
+  const isLoadingRef = useRef(false);
 
   function stopPolling() {
     if (pollIntervalRef.current !== null) {
@@ -99,7 +100,8 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   }, []);
 
   const requestSummary = useCallback(async function () {
-    if (isLoading) return;
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
     setIsLoading(true);
 
     try {
@@ -119,30 +121,17 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
 
       if (data.jobId) {
         startPolling(data.jobId);
-        // isLoading stays true — polling will clear it
       } else {
-        // Job was synchronous or summary already existed
         setIsLoading(false);
+        isLoadingRef.current = false;
       }
     } catch {
       if (!mountedRef.current) return;
       setIsLoading(false);
+      isLoadingRef.current = false;
       toast.error('Failed to generate summary. Please try again.');
     }
-  }, [isLoading, threadId, startPolling]);
-
-// Auto-request summary on mount only if none was provided by the server
-  useEffect(() => {
-    if (!initialSummary) {
-      let cancelled = false;
-      (async () => {
-        await requestSummary();
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }
-  }, [initialSummary, threadId, requestSummary]);
+  }, [threadId, startPolling]);
 
   return (
     <div
