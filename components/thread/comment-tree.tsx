@@ -11,6 +11,7 @@ import {
 } from '@/modules/messages/service';
 import { CommentNode } from './message-node';
 import { ThreadProvider } from './thread-context';
+import { MessageList } from './message-list';
 
 function findNodeById(nodes: MessageNode[], id: string): MessageNode | null {
   const stack = [...nodes];
@@ -37,6 +38,7 @@ interface CommentTreeProps {
   aiInlineStatus?: Record<string, 'pending' | 'failed'>;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
+  firstUnreadMessageId: string | null;
 }
 
 export function CommentTree({
@@ -46,6 +48,7 @@ export function CommentTree({
   aiInlineStatus = {},
   onTypingStart,
   onTypingStop,
+  firstUnreadMessageId,
 }: CommentTreeProps) {
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -149,7 +152,7 @@ export function CommentTree({
     router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [router, pathname, searchParams]);
 
-  if (tree.length === 0) return null;
+  if (localMessages.length === 0) return null;
 
   const contextValue = {
     threadId,
@@ -171,36 +174,7 @@ export function CommentTree({
 
   return (
     <ThreadProvider value={contextValue}>
-      <div className="space-y-4">
-        {focusedNode ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 bg-background/80">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                Focused Thread
-              </div>
-              <button
-                onClick={clearFocus}
-                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
-              >
-                Back to full thread
-              </button>
-            </div>
-            <CommentNode
-              key={focusedNode.id}
-              node={focusedNode}
-              depth={0}
-            />
-          </div>
-        ) : (
-          tree.map((node) => (
-            <CommentNode
-              key={node.id}
-              node={node}
-              depth={0}
-            />
-          ))
-        )}
-      </div>
+      <MessageList firstUnreadMessageId={firstUnreadMessageId} />
     </ThreadProvider>
   );
 }

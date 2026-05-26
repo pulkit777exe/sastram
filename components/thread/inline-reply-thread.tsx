@@ -1,0 +1,128 @@
+import React, { useState } from 'react';
+import { MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { Message } from '@/lib/types/index';
+
+interface InlineReplyThreadProps {
+  replies: Message[];
+  onReplyClick?: (messageId?: string) => void;
+}
+
+export function InlineReplyThread({ replies, onReplyClick }: InlineReplyThreadProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (replies.length === 0) return null;
+
+  // Show unique senders (for stacked avatars, max 4)
+  const uniqueSenders = Array.from(
+    new Map(replies.map((r) => [r.senderId, r.sender])).values()
+  ).slice(0, 4);
+
+  const visible = expanded ? replies : replies.slice(0, 3);
+  const hidden = replies.length - 3;
+  const lastReply = replies[replies.length - 1];
+
+  return (
+    <div className="mt-2 group/thread">
+      {/* Collapsed summary bar — always visible */}
+      <button
+        type="button"
+        onClick={() => onReplyClick?.()}
+        className="flex items-center gap-2.5 w-full text-left group/bar hover:bg-indigo-50/60 dark:hover:bg-indigo-950/20 rounded-lg px-2.5 py-1.5 transition-colors duration-100"
+      >
+        {/* Stacked avatars */}
+        <div className="flex -space-x-1.5 shrink-0">
+          {uniqueSenders.map((sender) => (
+            <Avatar
+              key={sender.id}
+              className="w-5 h-5 ring-2 ring-background"
+            >
+              <AvatarImage src={sender.image || ''} />
+              <AvatarFallback className="bg-indigo-100 text-indigo-600 text-[8px] font-bold">
+                {sender.name?.substring(0, 1).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          ))}
+        </div>
+
+        {/* Reply count */}
+        <span className="text-[12px] font-semibold text-indigo-600 group-hover/bar:text-indigo-700 transition-colors">
+          {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+        </span>
+
+        {/* Last reply preview */}
+        {lastReply && !expanded && (
+          <span className="text-[11px] text-muted-foreground/70 truncate flex-1 min-w-0">
+            <span className="font-medium text-foreground/60 mr-1">
+              {lastReply.sender.name?.split(' ')[0]}:
+            </span>
+            {lastReply.content.slice(0, 60)}{lastReply.content.length > 60 ? '…' : ''}
+          </span>
+        )}
+
+        {/* Expand/collapse toggle */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((p) => !p);
+          }}
+          className="ml-auto shrink-0 text-muted-foreground/50 hover:text-indigo-600 transition-colors"
+          title={expanded ? 'Collapse replies' : 'Expand replies'}
+        >
+          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+      </button>
+
+      {/* Expanded reply list */}
+      {expanded && (
+        <div className="mt-1 pl-2.5 border-l-2 border-indigo-200/60 dark:border-indigo-800/40 flex flex-col gap-0.5 ml-2.5">
+          {visible.map((reply) => (
+            <div
+              key={reply.id}
+              className="flex items-start gap-2 text-[12px] py-1 px-2 rounded-lg hover:bg-muted/40 cursor-pointer group/reply transition-colors"
+              onClick={() => onReplyClick?.(reply.id)}
+            >
+              <Avatar className="w-4 h-4 mt-0.5 shrink-0">
+                <AvatarImage src={reply.sender.image || ''} />
+                <AvatarFallback className="bg-indigo-50 text-indigo-600 text-[7px] font-bold">
+                  {reply.sender.name?.substring(0, 1).toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 leading-relaxed">
+                <span className="font-semibold text-foreground/80 mr-1.5">
+                  {reply.sender.name?.split(' ')[0] || 'Anonymous'}
+                </span>
+                <span className="text-muted-foreground/80">{reply.content}</span>
+              </div>
+            </div>
+          ))}
+
+          {hidden > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded(true);
+              }}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 px-2 py-1 w-fit transition-colors"
+            >
+              <MessageCircle size={11} />
+              {hidden} more {hidden === 1 ? 'reply' : 'replies'}
+            </button>
+          )}
+
+          {/* Reply CTA */}
+          <button
+            type="button"
+            onClick={() => onReplyClick?.()}
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-indigo-600 px-2 py-1 w-fit transition-colors mt-0.5"
+          >
+            <MessageCircle size={11} />
+            Reply to thread
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -22,6 +22,7 @@ import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
 import type { Message } from '@/lib/types/index';
 import { InlinePollButton } from '@/components/thread/inline-poll-button';
+import { cn } from '@/lib/utils/cn';
 
 const COMMON_EMOJIS = [
   '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
@@ -324,199 +325,212 @@ export function PostMessageForm({
     setSelectedFile(file);
   };
 
-  const placeholder = replyTo ? `Reply to ${replyTo.userName}...` : 'Message #chat';
+  const placeholder = replyTo
+    ? `Reply to @${replyTo.userName}…`
+    : 'Share your thoughts, ask questions, or @mention someone…';
 
   return (
-    <form ref={formRef} action={handleSubmit} className="relative px-4 pb-0 pt-0">
+    <form ref={formRef} action={handleSubmit} className="relative w-full">
       {replyTo && (
-        <div className="absolute -top-12 left-4 right-4 bg-[#2f3136] border border-[#202225] p-2 rounded-t-md text-sm flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[#b9bbbe]">
+        <div className="absolute -top-11 left-0 right-0 bg-indigo-50 border-x border-t border-indigo-100 px-4 py-2 rounded-t-xl text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150">
+          <div className="flex items-center gap-2 text-indigo-700">
             <MessageSquare className="h-3.5 w-3.5" />
             <span>Replying to</span>
-            <span className="text-[#5865f2] font-medium">{replyTo.userName}</span>
+            <span className="font-semibold">@{replyTo.userName}</span>
           </div>
           <button
             type="button"
             onClick={onCancelReply}
-            className="text-[#72767d] hover:text-[#dcddde] transition-colors"
+            className="text-indigo-500 hover:text-indigo-700 transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
       {selectedFile && (
         <div
-          className={`absolute ${replyTo ? '-top-24' : '-top-14'} left-4 bg-[#2f3136] border border-[#202225] p-2 rounded-md text-sm flex items-center gap-2 shadow-md`}
+          className={`absolute ${replyTo ? '-top-20' : '-top-11'} left-0 bg-muted/90 backdrop-blur border border-border px-3 py-1.5 rounded-t-xl text-xs flex items-center gap-2 shadow-sm z-10`}
         >
-          <FileIcon className="h-4 w-4 text-[#b9bbbe]" />
-          <span className="truncate max-w-[200px] text-[#dcddde]">{selectedFile.name}</span>
+          <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="truncate max-w-[200px] text-foreground font-medium">{selectedFile.name}</span>
           <button
             type="button"
             onClick={() => {
               setSelectedFile(null);
               if (fileInputRef.current) fileInputRef.current.value = '';
             }}
-            className="ml-2 cursor-pointer text-[#72767d] hover:text-[#dcddde]"
+            className="ml-1 cursor-pointer text-muted-foreground hover:text-foreground"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
       <div
-        className={`flex items-center rounded-lg p-0 pr-2 focus-within:ring-1 focus-within:ring-[#5865f2] transition-all ${
-          replyTo ? 'border-t border-[#202225] rounded-t-none' : ''
-        }`}
+        className={cn(
+          "flex flex-col border border-border/80 rounded-2xl bg-card hover:border-indigo-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-sm overflow-hidden",
+          replyTo && "rounded-t-none border-t-0"
+        )}
       >
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="hover:bg-transparent h-11 w-11 ml-1 shrink-0"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Paperclip className="h-5 w-5" />
-        </Button>
-
-        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
-
-        <Textarea
-          ref={textareaRef}
-          name="content"
-          placeholder={placeholder}
-          value={content}
-          onChange={(e) => {
-            const nextValue = e.target.value;
-            const caret = e.target.selectionStart ?? nextValue.length;
-            setContent(nextValue);
-            detectMentionQuery(nextValue, caret);
-            onTypingStart?.();
-          }}
-          className="flex-1 min-h-11 max-h-[50vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-3 px-2 text-base"
-          onKeyDown={(e) => {
-            if (mentionOpen && mentionCandidates.length > 0) {
-              if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setActiveMentionIndex((prev) =>
-                  prev + 1 >= mentionCandidates.length ? 0 : prev + 1
-                );
-                return;
+        {/* Top Tier: Textarea */}
+        <div className="flex items-start px-4 pt-3 pb-1">
+          <Textarea
+            ref={textareaRef}
+            name="content"
+            placeholder={placeholder}
+            value={content}
+            onChange={(e) => {
+              const nextValue = e.target.value;
+              const caret = e.target.selectionStart ?? nextValue.length;
+              setContent(nextValue);
+              detectMentionQuery(nextValue, caret);
+              onTypingStart?.();
+            }}
+            className="flex-1 min-h-[44px] max-h-[30vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1.5 px-0 text-sm leading-relaxed placeholder-muted-foreground/60 text-foreground"
+            onKeyDown={(e) => {
+              if (mentionOpen && mentionCandidates.length > 0) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setActiveMentionIndex((prev) =>
+                    prev + 1 >= mentionCandidates.length ? 0 : prev + 1
+                  );
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setActiveMentionIndex((prev) =>
+                    prev - 1 < 0 ? mentionCandidates.length - 1 : prev - 1
+                  );
+                  return;
+                }
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  const selected = mentionCandidates[activeMentionIndex];
+                  if (selected) {
+                    applyMentionSelection(selected);
+                  }
+                  return;
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  closeMentions();
+                  return;
+                }
               }
-              if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setActiveMentionIndex((prev) =>
-                  prev - 1 < 0 ? mentionCandidates.length - 1 : prev - 1
-                );
-                return;
-              }
+
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                const selected = mentionCandidates[activeMentionIndex];
-                if (selected) {
-                  applyMentionSelection(selected);
-                }
-                return;
-              }
-              if (e.key === 'Escape') {
-                e.preventDefault();
+                formRef.current?.requestSubmit();
+                onTypingStop?.();
+              } else if (e.key === 'Escape' && replyTo) {
+                onCancelReply?.();
                 closeMentions();
-                return;
+              } else {
+                onTypingStart?.();
               }
-            }
-
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              formRef.current?.requestSubmit();
-              onTypingStop?.();
-            } else if (e.key === 'Escape' && replyTo) {
-              onCancelReply?.();
-              closeMentions();
-            } else {
-              onTypingStart?.();
-            }
-          }}
-          onBlur={() => onTypingStop?.()}
-/>
-
-        <div className="flex items-center gap-0.5 shrink-0 border-l border-forum-border-secondary pl-2 ml-1">
-          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleBold}>
-            <Bold className="h-4 w-4" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleItalic}>
-            <Italic className="h-4 w-4" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleCode}>
-            <Code2 className="h-4 w-4" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleLink}>
-            <Link2 className="h-4 w-4" />
-          </Button>
+            }}
+            onBlur={() => onTypingStop?.()}
+          />
         </div>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <div className="relative">
-            <Button ref={emojiButtonRef} type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={() => setEmojiOpen((p) => !p)}>
-              <SmilePlus className="h-4 w-4" />
+
+        {/* Bottom Tier: Toolbar */}
+        <div className="flex items-center justify-between px-3 py-2 bg-muted/10 border-t border-border/40 select-none">
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="h-4.5 w-4.5" />
             </Button>
-            {emojiOpen && (
-              <div ref={emojiPanelRef} className="absolute bottom-10 right-0 z-30 w-72 rounded-lg border border-forum-border-secondary bg-forum-bg-secondary p-2 shadow-xl">
-                <div className="grid grid-cols-8 gap-1">
-                  {COMMON_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className="hover:bg-forum-bg-tertiary rounded p-1 text-lg leading-none transition-colors"
-                      onClick={() => handleEmojiSelect(emoji)}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+
+            <div className="h-4 w-px bg-border/60 mx-1" />
+
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleBold}>
+              <Bold className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleItalic}>
+              <Italic className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleCode}>
+              <Code2 className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleLink}>
+              <Link2 className="h-4 w-4" />
+            </Button>
+
+            <div className="h-4 w-px bg-border/60 mx-1" />
+
+            <div className="relative">
+              <Button ref={emojiButtonRef} type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setEmojiOpen((p) => !p)}>
+                <SmilePlus className="h-4 w-4" />
+              </Button>
+              {emojiOpen && (
+                <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 rounded-xl border border-border/80 bg-popover p-2.5 shadow-xl">
+                  <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
+                    {COMMON_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className="hover:bg-muted rounded p-1.5 text-lg leading-none transition-colors text-center"
+                        onClick={() => handleEmojiSelect(emoji)}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtAi}>
+              <AtSign className="h-4 w-4" />
+            </Button>
+
+            <div className="flex items-center gap-0.5">
+              <InlinePollButton onClick={() => setShowPoll(true)} disabled={!canManagePoll} />
+            </div>
           </div>
-          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleAtAi}>
-            <AtSign className="h-4 w-4" />
+
+          <Button type="submit" disabled={loading || !content.trim()} size="sm" className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-sm font-semibold transition-all">
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            <span>Send</span>
           </Button>
-          <div className="flex items-center gap-0.5 shrink-0">
-            <InlinePollButton onClick={() => setShowPoll(true)} disabled={!canManagePoll} />
-          </div>
         </div>
       </div>
 
       {mentionOpen && mentionCandidates.length > 0 && (
         <div
           ref={mentionListRef}
-          className="absolute bottom-14 left-16 z-20 w-[280px] rounded-md border border-border bg-background shadow-lg"
+          className="absolute bottom-13 left-4 z-30 w-[280px] rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
         >
-          <div className="max-h-56 overflow-y-auto py-1">
+          <div className="max-h-56 overflow-y-auto py-1.5">
             {mentionCandidates.map((candidate, index) => (
               <button
                 key={candidate.id}
                 type="button"
-                className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                className={cn(
+                  "w-full px-3 py-2 text-left text-xs flex flex-col transition-colors",
                   index === activeMentionIndex
-                    ? 'bg-muted text-foreground'
-                    : 'hover:bg-muted/70 text-muted-foreground'
-                }`}
+                    ? 'bg-indigo-50/80 text-indigo-900'
+                    : 'hover:bg-muted/50 text-foreground'
+                )}
                 onMouseEnter={() => setActiveMentionIndex(index)}
                 onClick={() => applyMentionSelection(candidate)}
               >
-                <div className="font-medium text-foreground">
+                <div className="font-semibold text-foreground">
                   {candidate.name || candidate.email}
                 </div>
-                <div className="text-xs text-muted-foreground">@{candidate.handle}</div>
+                <div className="text-[10px] text-muted-foreground">@{candidate.handle}</div>
               </button>
             ))}
           </div>
         </div>
       )}
-
-      <div className="flex items-center gap-1 shrink-0">
-        <Button type="submit" disabled={loading} size="icon" className="h-10 w-10 rounded-md shadow-sm">
-          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-        </Button>
-      </div>
     </form>
   );
 }
