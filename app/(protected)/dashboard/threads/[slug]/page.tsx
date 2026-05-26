@@ -97,39 +97,6 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
-        <header className="flex h-18 items-center justify-between px-6 border-b border-border/60 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 z-10">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center shadow-sm">
-              <Hash size={20} strokeWidth={2.5} />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <h1 className="text-lg font-bold tracking-tight text-foreground">{thread.title}</h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-                  Live Discussion
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex border rounded-full px-3 py-1 items-center gap-1.5 cursor-help transition-colors hover:bg-indigo-50 text-indigo-600">
-              <TrendingUp size={13} />
-              <span className="text-xs font-semibold">Trending Topic</span>
-            </div>
-            <ThreadManagementControls
-              threadId={thread.id}
-              creatorId={thread.createdBy}
-              currentUserId={session.user.id}
-              threadName={thread.title}
-            />
-          </div>
-        </header>
-
         <ThreadLiveWrapper
           messages={allMessages}
           threadId={thread.id}
@@ -153,6 +120,10 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
             image: session.user.image ?? null,
             role: session.user.role,
           }}
+          title={thread.title}
+          slug={thread.slug}
+          memberCount={thread._count.members}
+          initialFrequency={subscription?.frequency ?? null}
         />
       </main>
 
@@ -166,27 +137,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
           </div>
 
           <h2 className="text-xl font-bold mb-3 text-foreground">{thread.title}</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-8">{thread.description}</p>
-
-          <div className="grid grid-cols-2 gap-3 mb-8">
-            <StatCard icon={<Users size={16} />} label="Members" value={thread._count.members} />
-            <StatCard
-              icon={<MessageSquare size={16} />}
-              label="Messages"
-              value={thread._count.messages}
-            />
-          </div>
-
-          <ThreadSubscribeButton
-            initialFrequency={subscription?.frequency ?? null}
-            threadName={thread.title}
-            threadId={thread.id}
-            slug={thread.slug}
-          />
-
-          <div className="mt-3">
-            <InviteFriendButton threadId={thread.id} threadName={thread.title} />
-          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">{thread.description}</p>
         </div>
 
         <div className="p-6 space-y-6">

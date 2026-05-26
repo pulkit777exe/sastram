@@ -1,6 +1,6 @@
 'use server';
 
-import { requireSectionMembership, requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
@@ -50,15 +50,53 @@ export async function postMessage(formData: FormData) {
 
   const session = await requireSession(false);
 
+  // Ensure the user has a section_members row (auto-enroll for public threads).
+  // If the user is authenticated but lacks a membership record, create one.
   try {
-    await requireSectionMembership(sectionId, session.user.id);
-  } catch {
-    return {
-      data: null,
-      error: 'You are not a member of this section',
-      errorCode: 'FORBIDDEN',
-      ok: false,
-    };
+    const existing = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId, userId: session.user.id } },
+    });
+
+    if (!existing) {
+      // Verify the section exists before auto-enrolling
+      const section = await prisma.section.findUnique({
+        where: { id: sectionId },
+        select: { id: true, visibility: true },
+      });
+
+      if (!section) {
+        return { data: null, error: 'Thread not found', errorCode: 'NOT_FOUND', ok: false };
+      }
+
+      // Auto-enroll for PUBLIC or UNLISTED sections; PRIVATE requires explicit invite
+      if (section.visibility === 'PRIVATE') {
+        return {
+          data: null,
+          error: 'You are not a member of this thread',
+          errorCode: 'FORBIDDEN',
+          ok: false,
+        };
+      }
+
+      await prisma.sectionMember.create({
+        data: {
+          sectionId,
+          userId: session.user.id,
+          role: 'MEMBER',
+          status: 'ACTIVE',
+        },
+      });
+    } else if (existing.status !== 'ACTIVE') {
+      return {
+        data: null,
+        error: 'Your membership in this thread is inactive',
+        errorCode: 'FORBIDDEN',
+        ok: false,
+      };
+    }
+  } catch (membershipError) {
+    logger.error('[postMessage] membership check failed', membershipError);
+    return { data: null, error: 'Failed to verify membership', errorCode: 'INTERNAL_ERROR', ok: false };
   }
 
   try {
