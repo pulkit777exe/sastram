@@ -3,16 +3,19 @@ import { Message } from '@/types';
 import { getMessages, sendMessage } from '@/modules/chat/actions';
 import type { AttachmentInput } from '@/lib/schemas/database';
 import { toasts } from '@/lib/utils/toast';
+import type { ActionResult } from '@/lib/utils/server-action';
+
+type MessagesResult = { messages: Message[]; nextCursor: string | null; hasMore: boolean };
 
 export function useMessages(conversationId: string) {
   return useQuery({
     queryKey: ['messages', conversationId],
     queryFn: async () => {
-      const result = await getMessages(conversationId);
+      const result = await getMessages({ conversationId, limit: 200 }) as ActionResult<MessagesResult>;
       if (result.error) {
         throw new Error(result.error);
       }
-      return (result.data ?? []) as Message[];
+      return (result.data?.messages ?? []) as Message[];
     },
     enabled: !!conversationId,
   });

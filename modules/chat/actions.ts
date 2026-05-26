@@ -25,6 +25,12 @@ const conversationIdSchema = z.object({
   conversationId: z.string().cuid(),
 });
 
+const messagesQuerySchema = z.object({
+  conversationId: z.string().cuid(),
+  limit: z.number().int().min(1).max(200).default(50),
+  cursor: z.string().optional(),
+});
+
 const sendMessageSchema = z
   .object({
     content: z.string().optional(),
@@ -130,27 +136,28 @@ export const createConversation = withValidation(
 );
 
 export const getMessages = withValidation(
-  conversationIdSchema,
+  messagesQuerySchema,
   'getMessages',
-  async ({ conversationId }) => {
+  async ({ conversationId, limit, cursor }) => {
     try {
       const session = await auth.api.getSession({
         headers: await headers(),
       });
 
       if (!session) {
-        return { data: [], error: 'Authentication required', ok: false, errorCode: 'AUTH_REQUIRED' };
+        return { data: { messages: [], nextCursor: null, hasMore: false }, error: 'Authentication required', ok: false, errorCode: 'AUTH_REQUIRED' };
       }
 
       try {
         await requireSectionMembership(conversationId, session.user.id);
       } catch {
-        return { data: [], error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
+        return { data: { messages: [], nextCursor: null, hasMore: false }, error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
       }
 
       const messages = await prisma.message.findMany({
         where: {
           sectionId: conversationId,
+          ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
         },
         include: {
           sender: {
@@ -158,9 +165,15 @@ export const getMessages = withValidation(
           },
         },
         orderBy: {
-          createdAt: 'asc',
+          createdAt: 'desc',
         },
+        take: limit,
       });
+
+      messages.reverse();
+
+      const nextCursor = messages.length === limit ? messages[0]?.createdAt.toISOString() : null;
+      const hasMore = messages.length === limit;
 
       const formattedMessages = messages.map((msg) => ({
         id: msg.id,
@@ -172,12 +185,17 @@ export const getMessages = withValidation(
         status: 'read' as const,
       }));
 
-      return { data: formattedMessages, error: null, ok: true, errorCode: null };
+      return {
+        data: { messages: formattedMessages, nextCursor, hasMore },
+        error: null,
+        ok: true,
+        errorCode: null,
+      };
     } catch (error) {
       logger.error('[GET_MESSAGES]', error);
       const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: [], error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: [], error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      if (prismaMsg) return { data: { messages: [], nextCursor: null, hasMore: false }, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: { messages: [], nextCursor: null, hasMore: false }, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
