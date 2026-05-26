@@ -9,13 +9,18 @@ import { useRouter } from 'next/navigation';
 import { postMessage } from '@/modules/messages/actions';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
-import type { MessageNode } from '@/modules/messages/types';
 import type { Message } from '@/lib/types/index';
 
 const MAX_VISUAL_DEPTH = 4;
 
 interface InlineReplyBoxProps {
-  parentMessage: MessageNode;
+  parentMessage: {
+    id: string;
+    depth: number;
+    sender: {
+      name: string | null;
+    };
+  };
   threadId: string;
   currentUser: {
     id: string;

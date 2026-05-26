@@ -11,6 +11,8 @@ import { markThreadReadAction } from '@/modules/read-receipts/actions';
 import { toasts } from '@/lib/utils/toast';
 import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { ThreadPageHeader } from './thread-page-header';
+import { ChevronDown } from 'lucide-react';
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
@@ -31,6 +33,10 @@ interface ThreadLiveWrapperProps {
     image: string | null;
     role?: string;
   };
+  title: string;
+  slug: string;
+  memberCount: number;
+  initialFrequency: 'DAILY' | 'WEEKLY' | 'NEVER' | null;
 }
 
 export function ThreadLiveWrapper({
@@ -41,6 +47,10 @@ export function ThreadLiveWrapper({
   poll,
   canManagePoll,
   currentUser,
+  title,
+  slug,
+  memberCount,
+  initialFrequency,
 }: ThreadLiveWrapperProps) {
   const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
@@ -49,6 +59,7 @@ export function ThreadLiveWrapper({
   const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(initialFirstUnreadMessageId);
   const [showPoll, setShowPoll] = useState(false);
   const [currentPoll, setCurrentPoll] = useState(poll);
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -244,85 +255,93 @@ export function ThreadLiveWrapper({
     };
   }, []);
 
-return (
-      <>
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto"
-          role="log"
-          aria-live="polite"
-          aria-label="Thread messages"
-          onScroll={() => {
-            if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
-            readDebounceRef.current = setTimeout(() => {
-              void markThreadAsRead(false);
-            }, 250);
-          }}
-        >
-          <div className="max-w-4xl mx-auto p-6 md:p-8">
-            <div className="mb-4">
-              <InlinePoll
-                threadId={threadId}
-                canManagePoll={canManagePoll}
-                isOpen={showPoll}
-                onToggle={setShowPoll}
-                onPollCreated={(newPoll) => {
-                  setCurrentPoll(newPoll);
-                }}
-              />
-            </div>
-            {currentPoll && (
-              <div className="mb-4">
-                <PollPanel threadId={threadId} initialPoll={currentPoll} canManagePoll={canManagePoll} />
-              </div>
-            )}
-          </div>
+  return (
+    <div className="flex flex-col h-full overflow-hidden bg-background">
+      {/* Fixed header */}
+      <ThreadPageHeader
+        title={title}
+        memberCount={memberCount}
+        threadId={threadId}
+        slug={slug}
+        initialFrequency={initialFrequency}
+      />
 
-          {pinnedMessage && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-amber-700">
-                    📌 Pinned by {pinnedMessage.sender.name || 'Anonymous'} ·{' '}
-                    <TimeAgo date={pinnedMessage.createdAt} />
-                  </p>
-                  <p className="mt-1 truncate text-sm text-amber-900">{pinnedMessage.content}</p>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-xs font-medium text-amber-700 hover:text-amber-900 underline"
-                  onClick={() =>
-                    document
-                      .getElementById(`message-${pinnedMessage.id}`)
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  }
-                >
-                  Jump to message
-                </button>
-              </div>
+      {/* Fixed pinned message banner just below header */}
+      {pinnedMessage && (
+        <div className="border-b border-amber-100 bg-amber-50/60 px-6 py-2.5 flex-shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
+                📌 Pinned Message
+              </p>
+              <p className="mt-0.5 truncate text-xs text-amber-900/90 font-medium">
+                {pinnedMessage.content}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 underline"
+              onClick={() =>
+                document
+                  .getElementById(`message-${pinnedMessage.id}`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
+            >
+              Jump to message
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Scrollable messages — flex-1 */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto px-6 py-4"
+        role="log"
+        aria-live="polite"
+        aria-label="Thread messages"
+        onScroll={() => {
+          if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
+          readDebounceRef.current = setTimeout(() => {
+            void markThreadAsRead(false);
+          }, 250);
+          // Track scroll position for the jump-to-bottom button
+          const el = scrollContainerRef.current;
+          if (el) {
+            setIsScrolledUp(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+          }
+        }}
+      >
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-4">
+            <InlinePoll
+              threadId={threadId}
+              canManagePoll={canManagePoll}
+              isOpen={showPoll}
+              onToggle={setShowPoll}
+              onPollCreated={(newPoll) => {
+                setCurrentPoll(newPoll);
+              }}
+            />
+          </div>
+          {currentPoll && (
+            <div className="mb-4">
+              <PollPanel threadId={threadId} initialPoll={currentPoll} canManagePoll={canManagePoll} />
             </div>
           )}
+        </div>
 
+        <div className="max-w-4xl mx-auto">
           {liveMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                <svg
-                  className="w-6 h-6 text-muted-foreground"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
+            <div className="flex flex-col items-center justify-center py-24 text-center select-none">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100/60 dark:from-indigo-950/30 dark:to-violet-950/30 dark:border-indigo-900/40 shadow-sm">
+                <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-3.037-.476 4.5 4.5 0 01-5.014-4.986L3 20.25l3.5-1.75A8.956 8.956 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
                 </svg>
               </div>
-              <h3 className="text-foreground font-medium mb-1">No comments yet</h3>
-              <p className="text-muted-foreground text-sm">
-                Be the first to share your thoughts on this topic!
+              <h3 className="text-foreground font-semibold text-base mb-1.5">No messages yet</h3>
+              <p className="text-muted-foreground/70 text-sm max-w-[260px] leading-relaxed">
+                Be the first to share something — ask a question, share a thought, or just say hi! 👋
               </p>
             </div>
           ) : (
@@ -334,54 +353,79 @@ return (
                 aiInlineStatus={aiInlineStatus}
                 onTypingStart={emitTypingStart}
                 onTypingStop={emitTypingStop}
+                firstUnreadMessageId={firstUnreadMessageId}
               />
             </ErrorBoundary>
           )}
         </div>
+      </div>
 
+      {/* Fixed typing indicator at bottom */}
+      <div className="h-7 px-6 flex items-center gap-2 flex-shrink-0">
         {typingUsers.length > 0 && (
-          <div className="px-8 py-1.5 text-xs text-muted-foreground">
-            <div className="max-w-4xl mx-auto flex items-center gap-2">
-              <div className="flex gap-0.5">
-                {[0, 150, 300].map((delay) => (
-                  <span
-                    key={delay}
-                    className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce"
-                    style={{ animationDelay: `${delay}ms` }}
-                  />
-                ))}
-              </div>
-              <span>
-                {typingUsers.length === 1
-                  ? `${typingUsers[0].userName} is typing...`
-                  : typingUsers.length === 2
-                    ? `${typingUsers[0].userName} and ${typingUsers[1].userName} are typing...`
-                    : 'Several people are typing...'}
-              </span>
+          <div className="max-w-4xl mx-auto flex items-center gap-1.5 w-full">
+            <div className="flex gap-0.5 shrink-0 mr-0.5">
+              {[0, 120, 240].map((delay) => (
+                <span
+                  key={delay}
+                  className="w-1 h-1 rounded-full bg-indigo-400 animate-bounce"
+                  style={{ animationDelay: `${delay}ms` }}
+                />
+              ))}
             </div>
+            <span className="text-[11px] text-muted-foreground/70">
+              <span className="font-semibold text-indigo-600">
+                {typingUsers.length === 1 ? typingUsers[0].userName : 'Several people'}
+              </span>
+              {typingUsers.length === 1 ? ' is' : ' are'} typing…
+            </span>
           </div>
         )}
+      </div>
 
-        <div className="p-4 bg-background border-t border-border/60">
-          <div className="max-w-4xl mx-auto">
-            <PostMessageForm
-              sectionId={threadId}
-              onMessagePosted={handleMessagePosted}
-              onTypingStart={emitTypingStart}
-              onTypingStop={emitTypingStop}
-              canManagePoll={canManagePoll}
-              onPollCreated={(newPoll) => {
-                setCurrentPoll({
-                  id: newPoll.id,
-                  question: newPoll.question,
-                  options: newPoll.options,
-                  isActive: newPoll.isActive,
-                  expiresAt: newPoll.expiresAt,
-                });
-              }}
-            />
-          </div>
+      {/* Scroll-to-bottom floating button */}
+      {isScrolledUp && (
+        <div className="absolute bottom-[130px] right-6 z-30 flex flex-col items-center gap-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <button
+            type="button"
+            onClick={() => {
+              scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
+              void markThreadAsRead(true);
+            }}
+            className="relative w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            title="Scroll to bottom"
+          >
+            {unreadCount > 0 && (
+              <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center px-1 border-2 border-background">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+            <ChevronDown size={16} strokeWidth={2.5} />
+          </button>
         </div>
-      </>
-    );
+      )}
+
+      {/* Composer container */}
+      <div className="p-4 bg-background border-t border-border/60 flex-shrink-0">
+        <div className="max-w-4xl mx-auto">
+          <PostMessageForm
+            sectionId={threadId}
+            onMessagePosted={handleMessagePosted}
+            onTypingStart={emitTypingStart}
+            onTypingStop={emitTypingStop}
+            canManagePoll={canManagePoll}
+            onPollCreated={(newPoll) => {
+              setCurrentPoll({
+                id: newPoll.id,
+                question: newPoll.question,
+                options: newPoll.options,
+                isActive: newPoll.isActive,
+                expiresAt: newPoll.expiresAt,
+              });
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
