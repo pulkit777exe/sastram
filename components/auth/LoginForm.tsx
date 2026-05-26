@@ -109,12 +109,24 @@ function UserAuthForm({
           setLoadingState(null);
           return;
         }
-        if (result.data) {
-          router.push(redirectTarget);
-          router.refresh();
-        } else {
-          router.push(redirectTarget);
-          router.refresh();
+        setOtpEmail(email);
+        try {
+          const { data: otpData } = await axios.post('/api/email-otp/send-verification-otp', {
+            email,
+            type: 'sign-in',
+          });
+          if (otpData?.error) {
+            setError(otpData.error?.message || 'Failed to send verification code');
+            setLoadingState(null);
+            return;
+          }
+          setMode('otp-verify');
+          setCountdown(60);
+          setTimeout(() => inputRefs.current[0]?.focus(), 100);
+        } catch {
+          setError('Failed to send verification code. Please try again.');
+        } finally {
+          setLoadingState(null);
         }
       } else {
         const result = await signIn.email({
@@ -124,6 +136,20 @@ function UserAuthForm({
         });
 
         if (result.error) {
+          if (/email.*not.*verif|verify.*email/i.test(result.error.message || '')) {
+            setOtpEmail(email);
+            try {
+              const { data: otpData } = await axios.post('/api/email-otp/send-verification-otp', {
+                email,
+                type: 'sign-in',
+              });
+              if (!otpData?.error) {
+                setMode('otp-verify');
+                setCountdown(60);
+                setTimeout(() => inputRefs.current[0]?.focus(), 100);
+              }
+            } catch {}
+          }
           setError(result.error.message || 'Login failed. Please check your credentials.');
           setLoadingState(null);
           return;
