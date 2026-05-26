@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
 
@@ -97,7 +98,7 @@ export async function unfollowUser(followerId: string, followingId: string) {
   });
 }
 
-export async function getFollowers(userId: string, limit: number = 50, offset: number = 0) {
+export const getFollowers = cache(async (userId: string, limit: number = 50, offset: number = 0) => {
   try {
     const [follows, total] = await Promise.all([
       prisma.userFollow.findMany({
@@ -138,9 +139,9 @@ export async function getFollowers(userId: string, limit: number = 50, offset: n
       hasMore: false,
     };
   }
-}
+});
 
-export async function getFollowing(userId: string, limit: number = 50, offset: number = 0) {
+export const getFollowing = cache(async (userId: string, limit: number = 50, offset: number = 0) => {
   try {
     const [follows, total] = await Promise.all([
       prisma.userFollow.findMany({
@@ -181,9 +182,9 @@ export async function getFollowing(userId: string, limit: number = 50, offset: n
       hasMore: false,
     };
   }
-}
+});
 
-export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
+export const isFollowing = cache(async (followerId: string, followingId: string): Promise<boolean> => {
   const follow = await prisma.userFollow.findUnique({
     where: {
       followerId_followingId: {
@@ -194,4 +195,4 @@ export async function isFollowing(followerId: string, followingId: string): Prom
   });
 
   return !!follow;
-}
+});

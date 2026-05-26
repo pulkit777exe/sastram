@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 
 export type AuditEventDetails = Prisma.InputJsonValue | null;
@@ -74,7 +75,7 @@ export async function logAction({
   });
 }
 
-export async function getUserActivities(filters?: UserActivityFilters) {
+export const getUserActivities = cache(async (filters?: UserActivityFilters) => {
   return safeList('[getUserActivities]', () =>
     prisma.userActivity.findMany({
       where: buildUserActivityWhere(filters),
@@ -95,13 +96,19 @@ export async function getUserActivities(filters?: UserActivityFilters) {
       skip: filters?.offset ?? 0,
     })
   );
-}
+});
 
-export async function getUserActivityStats(filters?: {
-  startDate?: Date;
-  endDate?: Date;
-  entityType?: string;
-}) {
+export const getUserActivityStats = cache(async (
+  filters?: {
+    startDate?: Date;
+    endDate?: Date;
+    entityType?: string;
+  }
+): Promise<{
+  totalActions: number;
+  byAction: { action: string; count: number }[];
+  byEntityType: { entityType: string | null; count: number }[];
+}> => {
   const where: Prisma.UserActivityWhereInput = {
     createdAt: buildCreatedAtRange(filters),
     entityType: filters?.entityType,
@@ -136,4 +143,4 @@ export async function getUserActivityStats(filters?: {
       count: item._count.entityType,
     })),
   };
-}
+});

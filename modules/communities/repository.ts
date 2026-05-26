@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Prisma } from '@prisma/client';
+import { cache } from 'react';
 import type { CommunitySummary } from './types';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
@@ -29,7 +30,7 @@ export function buildCommunityDTO(
   };
 }
 
-export async function listCommunities(): Promise<CommunitySummary[]> {
+export const listCommunities = cache(async (): Promise<CommunitySummary[]> => {
   try {
     const communities = await dedupe('communities:list', () =>
       prisma.community.findMany({
@@ -53,9 +54,9 @@ export async function listCommunities(): Promise<CommunitySummary[]> {
     logger.error('[listCommunities]', error);
     return [];
   }
-}
+});
 
-export async function getJoinedCommunities(userId: string) {
+export const getJoinedCommunities = cache(async (userId: string) => {
   try {
     const communities = await dedupe(`communities:joined:${userId}`, () =>
       prisma.community.findMany({
@@ -80,7 +81,7 @@ export async function getJoinedCommunities(userId: string) {
     logger.error('[getJoinedCommunities]', error);
     return [];
   }
-}
+});
 
 export async function createCommunity(payload: {
   title: string;

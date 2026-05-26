@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { dedupe } from '@/lib/dedupe';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
@@ -53,7 +54,7 @@ export interface PaginatedThreads {
   };
 }
 
-export async function listThreads(params: ListThreadsParams = {}): Promise<PaginatedThreads> {
+export const listThreads = cache(async (params: ListThreadsParams = {}): Promise<PaginatedThreads> => {
   const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, sectionIds } = params;
   const skip = (page - 1) * pageSize;
 
@@ -162,9 +163,9 @@ export async function listThreads(params: ListThreadsParams = {}): Promise<Pagin
       },
     };
   }
-}
+});
 
-export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null> {
+export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail | null> => {
   const row = await dedupe(`threads:bySlug:${slug}`, () =>
     prisma.section.findFirst({
       where: {
@@ -186,6 +187,7 @@ export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null
           orderBy: {
             createdAt: 'asc',
           },
+          take: 500,
         },
         subscriptions: true,
         _count: {
@@ -222,4 +224,4 @@ export async function getThreadBySlug(slug: string): Promise<ThreadDetail | null
     typedRow.aiSummary ?? undefined,
     typedRow.subscriptions?.length ?? 0
   );
-}
+});

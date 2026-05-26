@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore, emptyPagination } from '@/lib/db/pagination';
 
-export async function searchThreads(query: string, limit: number = 20, offset: number = 0, sectionIds?: string[]) {
+export const searchThreads = cache(async (query: string, limit: number = 20, offset: number = 0, sectionIds?: string[]) => {
   try {
     const sanitized = query.replace(/[^\w\s]/g, '').trim();
     if (!sanitized) {
@@ -56,15 +57,15 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
     logger.error('[searchThreads]', error);
     return { threads: [], total: 0, hasMore: false };
   }
-}
+});
 
-export async function searchMessages(
+export const searchMessages = cache(async (
   query: string,
   threadId?: string,
   limit: number = 20,
   offset: number = 0,
   sectionIds?: string[]
-) {
+) => {
   try {
     const sanitized = query.replace(/[^\w\s]/g, '').trim();
     if (!sanitized) {
@@ -141,9 +142,9 @@ export async function searchMessages(
     logger.error('[searchMessages]', error);
     return { messages: [], total: 0, hasMore: false };
   }
-}
+});
 
-export async function searchUsers(query: string, limit: number = 20, offset: number = 0) {
+export const searchUsers = cache(async (query: string, limit: number = 20, offset: number = 0) => {
   try {
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -189,4 +190,4 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     logger.error('[searchUsers]', error);
     return { users: [], total: 0, hasMore: false };
   }
-}
+});

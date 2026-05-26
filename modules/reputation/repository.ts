@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import { dedupe } from '@/lib/dedupe';
 
-export async function getUserReputation(userId: string) {
+export const getUserReputation = cache(async (userId: string) => {
   return dedupe(`reputation:user:${userId}`, async () => {
     let reputation = await prisma.userReputation.findUnique({
       where: { userId },
@@ -20,7 +21,7 @@ export async function getUserReputation(userId: string) {
 
     return reputation;
   });
-}
+});
 
 export async function awardReputation(userId: string, points: number, reason: string) {
   const reputation = await getUserReputation(userId);
@@ -36,7 +37,7 @@ export async function awardReputation(userId: string, points: number, reason: st
   });
 }
 
-export async function calculateReputationPoints(userId: string) {
+export const calculateReputationPoints = cache(async (userId: string) => {
   const [threadCount, messageCount, reactionCount, followerCount] = await dedupe(
     `reputation:calc:${userId}`,
     () =>
@@ -75,7 +76,7 @@ export async function calculateReputationPoints(userId: string) {
   const points = threadCount * 10 + messageCount * 1 + reactionCount * 5 + followerCount * 2;
 
   return points;
-}
+});
 
 export async function syncReputationPoints(userId: string) {
   const calculatedPoints = await calculateReputationPoints(userId);

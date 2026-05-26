@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { SectionRole, MemberStatus } from '@prisma/client';
+import { cache } from 'react';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 
@@ -49,7 +50,7 @@ export async function updateMemberRole(sectionId: string, userId: string, role: 
   });
 }
 
-export async function getSectionMembers(sectionId: string) {
+export const getSectionMembers = cache(async (sectionId: string) => {
   try {
     return (
       (await dedupe(`members:section:${sectionId}`, () =>
@@ -80,9 +81,9 @@ export async function getSectionMembers(sectionId: string) {
     logger.error('[getSectionMembers]', error);
     return [];
   }
-}
+});
 
-export async function getUserMemberships(userId: string) {
+export const getUserMemberships = cache(async (userId: string) => {
   try {
     return (
       (await dedupe(`members:user:${userId}`, () =>
@@ -110,9 +111,9 @@ export async function getUserMemberships(userId: string) {
     logger.error('[getUserMemberships]', error);
     return [];
   }
-}
+});
 
-export async function getMemberRole(sectionId: string, userId: string) {
+export const getMemberRole = cache(async (sectionId: string, userId: string) => {
   const member = await dedupe(`members:role:${sectionId}:${userId}`, () =>
     prisma.sectionMember.findUnique({
       where: {
@@ -129,9 +130,9 @@ export async function getMemberRole(sectionId: string, userId: string) {
   );
 
   return member;
-}
+});
 
-export async function isMember(sectionId: string, userId: string) {
+export const isMember = cache(async (sectionId: string, userId: string) => {
   const member = await getMemberRole(sectionId, userId);
   return member?.status === 'ACTIVE';
-}
+});

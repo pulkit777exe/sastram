@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { Prisma } from '@prisma/client';
 
@@ -8,7 +9,7 @@ interface BadgeCriteria {
   points?: number;
 }
 
-export async function getUserBadges(userId: string) {
+export const getUserBadges = cache(async (userId: string) => {
   try {
     const earnedBadges = await prisma.userBadgeEarned.findMany({
       where: { userId },
@@ -25,7 +26,7 @@ export async function getUserBadges(userId: string) {
     logger.error('[getUserBadges]', error);
     return [];
   }
-}
+});
 
 export async function awardBadge(userId: string, badgeId: string) {
   const existing = await prisma.userBadgeEarned.findUnique({
@@ -103,7 +104,7 @@ export async function checkAndAwardBadges(userId: string) {
   }
 }
 
-export async function getAllBadges() {
+export const getAllBadges = cache(async () => {
   try {
     return (
       (await prisma.userBadge.findMany({
@@ -116,7 +117,7 @@ export async function getAllBadges() {
     logger.error('[getAllBadges]', error);
     return [];
   }
-}
+});
 
 export async function createBadge(
   name: string,

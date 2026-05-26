@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 import { Prisma } from '@prisma/client';
@@ -22,7 +23,7 @@ export async function recordActivity(data: {
   });
 }
 
-export async function getUserActivity(userId: string, limit: number = 20, offset: number = 0) {
+export const getUserActivity = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
   try {
     const [activities, total] = await dedupe(`activity:user:${userId}:${limit}:${offset}`, () =>
       Promise.all([
@@ -51,13 +52,13 @@ export async function getUserActivity(userId: string, limit: number = 20, offset
       hasMore: false,
     };
   }
-}
+});
 
-export async function getFollowedUsersActivity(
+export const getFollowedUsersActivity = cache(async (
   userId: string,
   limit: number = 20,
   offset: number = 0
-) {
+) => {
   try {
     // Get users that the current user follows
     const following = await dedupe(`activity:following:${userId}`, () =>
@@ -119,4 +120,4 @@ export async function getFollowedUsersActivity(
       hasMore: false,
     };
   }
-}
+});

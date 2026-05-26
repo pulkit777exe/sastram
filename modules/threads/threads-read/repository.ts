@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import type { Prisma } from '@prisma/client';
 import { dedupe } from '@/lib/dedupe';
 
@@ -131,10 +132,10 @@ type ThreadRow = {
   is_subscribed: boolean | null;
 };
 
-export async function getThreadWithFullContext(
+export const getThreadWithFullContext = cache(async (
   slug: string,
   userId: string
-): Promise<ThreadWithFullContext | null> {
+): Promise<ThreadWithFullContext | null> => {
   return dedupe(`threads:full:${slug}:${userId}`, async () => {
     const rows = await prisma.$queryRaw<ThreadRow[]>`
       SELECT
@@ -233,6 +234,8 @@ export async function getThreadWithFullContext(
             WHERE a."messageId" = m.id
           ) a ON true
           WHERE m."sectionId" = s.id
+          ORDER BY m."createdAt" DESC
+          LIMIT 500
         ) mrow
       ) msgs ON true
       LEFT JOIN LATERAL (
@@ -287,4 +290,4 @@ export async function getThreadWithFullContext(
       isSubscribed: row.is_subscribed ?? false,
     };
   });
-}
+});

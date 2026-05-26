@@ -1,10 +1,11 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { ProfilePrivacy } from '@prisma/client';
+import { cache } from 'react';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
 
-export async function getPublicProfile(userId: string, viewerId?: string) {
+export const getPublicProfile = cache(async (userId: string, viewerId?: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -63,9 +64,9 @@ export async function getPublicProfile(userId: string, viewerId?: string) {
   }
 
   return user;
-}
+});
 
-export async function getUserBootstrapProfile(userId: string) {
+export const getUserBootstrapProfile = cache(async (userId: string) => {
   return dedupe(`users:bootstrap:${userId}`, () =>
     prisma.user.findUnique({
       where: { id: userId },
@@ -79,9 +80,9 @@ export async function getUserBootstrapProfile(userId: string) {
       },
     })
   );
-}
+});
 
-export async function getUserThreads(userId: string, limit: number = 20, offset: number = 0) {
+export const getUserThreads = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
   try {
     const [threads, total] = await Promise.all([
       prisma.section.findMany({
@@ -129,7 +130,7 @@ export async function getUserThreads(userId: string, limit: number = 20, offset:
       hasMore: false,
     };
   }
-}
+});
 
 export async function updateProfilePrivacy(userId: string, privacy: ProfilePrivacy) {
   return prisma.user.update({
@@ -138,7 +139,7 @@ export async function updateProfilePrivacy(userId: string, privacy: ProfilePriva
   });
 }
 
-export async function getUserMessages(userId: string, limit: number = 20, offset: number = 0) {
+export const getUserMessages = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
   try {
     const [messages, total] = await Promise.all([
       prisma.message.findMany({
@@ -196,4 +197,4 @@ export async function getUserMessages(userId: string, limit: number = 20, offset
       hasMore: false,
     };
   }
-}
+});

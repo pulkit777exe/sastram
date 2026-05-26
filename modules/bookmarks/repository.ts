@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
 
@@ -25,7 +26,7 @@ export async function unbookmarkThread(userId: string, threadId: string) {
   }
 }
 
-export async function getUserBookmarks(userId: string, limit: number = 20, offset: number = 0) {
+export const getUserBookmarks = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
   try {
     const [bookmarks, total] = await Promise.all([
       prisma.userBookmark.findMany({
@@ -75,9 +76,9 @@ export async function getUserBookmarks(userId: string, limit: number = 20, offse
       hasMore: false,
     };
   }
-}
+});
 
-export async function isBookmarked(userId: string, threadId: string): Promise<boolean> {
+export const isBookmarked = cache(async (userId: string, threadId: string): Promise<boolean> => {
   const bookmark = await prisma.userBookmark.findUnique({
     where: {
       userId_threadId: {
@@ -88,4 +89,4 @@ export async function isBookmarked(userId: string, threadId: string): Promise<bo
   });
 
   return !!bookmark;
-}
+});
