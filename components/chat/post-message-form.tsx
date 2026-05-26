@@ -4,22 +4,33 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  PlusCircle,
-  Gift,
-  Smile,
-  Sticker,
+  Paperclip,
+  Bold,
+  Italic,
+  Code2,
+  Link2,
+  SmilePlus,
+  AtSign,
   Send,
   Loader2,
   FileIcon,
   X,
   MessageSquare,
-  BarChart2,
 } from 'lucide-react';
 import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
 import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
 import type { Message } from '@/lib/types/index';
 import { InlinePollButton } from '@/components/thread/inline-poll-button';
+
+const COMMON_EMOJIS = [
+  '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
+  '😉', '😊', '😋', '😎', '😍', '🥰', '😘', '😗',
+  '👍', '👎', '👊', '✊', '🤝', '🙏', '💪', '🔥',
+  '❤️', '💔', '💯', '✨', '⭐', '🌟', '💡', '🎉',
+  '🎈', '🎁', '📌', '📍', '💬', '🗨️', '👀', '🙌',
+  '🤔', '😤', '😢', '😭', '😱', '🤯', '🥳', '🤩',
+];
 
 interface PostMessageFormProps {
   sectionId: string;
@@ -62,6 +73,7 @@ export function PostMessageForm({
   const [activeMentionIndex, setActiveMentionIndex] = useState(0);
   const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
   const [showPoll, setShowPoll] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -84,6 +96,9 @@ export function PostMessageForm({
     };
   }, []);
 
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const emojiPanelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       const target = event.target as Node | null;
@@ -94,13 +109,21 @@ export function PostMessageForm({
       }
 
       closeMentions();
+
+      if (
+        emojiOpen &&
+        !emojiButtonRef.current?.contains(target) &&
+        !emojiPanelRef.current?.contains(target)
+      ) {
+        setEmojiOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
-  }, [closeMentions]);
+  }, [closeMentions, emojiOpen]);
 
   const resolveMentionCandidates = useCallback(
     async (query: string) => {
@@ -163,6 +186,74 @@ export function PostMessageForm({
       });
     },
     [content, mentionStartIndex, closeMentions]
+  );
+
+  const wrapSelection = useCallback(
+    (before: string, after: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = content.substring(start, end);
+      const next = content.slice(0, start) + before + selected + after + content.slice(end);
+      setContent(next);
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const cursor = start + before.length;
+        if (selected) {
+          textarea.setSelectionRange(cursor, cursor + selected.length);
+        } else {
+          textarea.setSelectionRange(cursor, cursor);
+        }
+      });
+    },
+    [content]
+  );
+
+  const insertAtCursor = useCallback(
+    (text: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const next = content.slice(0, start) + text + content.slice(textarea.selectionEnd);
+      setContent(next);
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const cursor = start + text.length;
+        textarea.setSelectionRange(cursor, cursor);
+      });
+    },
+    [content]
+  );
+
+  const handleBold = useCallback(() => wrapSelection('**', '**'), [wrapSelection]);
+  const handleItalic = useCallback(() => wrapSelection('*', '*'), [wrapSelection]);
+  const handleCode = useCallback(() => wrapSelection('`', '`'), [wrapSelection]);
+  const handleLink = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = content.substring(start, end);
+    const url = window.prompt('Enter URL:', 'https://');
+    if (!url) return;
+    const linkText = selected || 'link';
+    const next = content.slice(0, start) + '[' + linkText + '](' + url + ')' + content.slice(end);
+    setContent(next);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + next.length - (content.length - end));
+    });
+  }, [content]);
+
+  const handleAtAi = useCallback(() => insertAtCursor('@ai '), [insertAtCursor]);
+
+  const handleEmojiSelect = useCallback(
+    (emoji: string) => {
+      insertAtCursor(emoji);
+      setEmojiOpen(false);
+    },
+    [insertAtCursor]
   );
 
   async function handleSubmit(formData: FormData) {
@@ -285,7 +376,7 @@ export function PostMessageForm({
           className="hover:bg-transparent h-11 w-11 ml-1 shrink-0"
           onClick={() => fileInputRef.current?.click()}
         >
-          <PlusCircle className="h-6 w-6" />
+          <Paperclip className="h-5 w-5" />
         </Button>
 
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
@@ -348,34 +439,48 @@ export function PostMessageForm({
           onBlur={() => onTypingStop?.()}
 />
 
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="hover:bg-transparent h-10 w-10"
-          >
-            <Gift className="h-6 w-6" />
+        <div className="flex items-center gap-0.5 shrink-0 border-l border-forum-border-secondary pl-2 ml-1">
+          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleBold}>
+            <Bold className="h-4 w-4" />
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="hover:bg-transparent h-10 w-10"
-          >
-            <Sticker className="h-6 w-6" />
+          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleItalic}>
+            <Italic className="h-4 w-4" />
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="hover:bg-transparent h-10 w-10"
-          >
-            <Smile className="h-6 w-6" />
+          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleCode}>
+            <Code2 className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleLink}>
+            <Link2 className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <InlinePollButton onClick={() => setShowPoll(true)} disabled={!canManagePoll} />
+        <div className="flex items-center gap-0.5 shrink-0">
+          <div className="relative">
+            <Button ref={emojiButtonRef} type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={() => setEmojiOpen((p) => !p)}>
+              <SmilePlus className="h-4 w-4" />
+            </Button>
+            {emojiOpen && (
+              <div ref={emojiPanelRef} className="absolute bottom-10 right-0 z-30 w-72 rounded-lg border border-forum-border-secondary bg-forum-bg-secondary p-2 shadow-xl">
+                <div className="grid grid-cols-8 gap-1">
+                  {COMMON_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="hover:bg-forum-bg-tertiary rounded p-1 text-lg leading-none transition-colors"
+                      onClick={() => handleEmojiSelect(emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <Button type="button" variant="ghost" size="icon" className="hover:bg-forum-bg-tertiary h-8 w-8" onClick={handleAtAi}>
+            <AtSign className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <InlinePollButton onClick={() => setShowPoll(true)} disabled={!canManagePoll} />
+          </div>
         </div>
       </div>
 
