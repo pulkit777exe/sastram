@@ -62,7 +62,17 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldReconnectRef = useRef(true);
 
+  const isPublicPage = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return window.location.pathname.startsWith('/login');
+  }, []);
+
   const fetchBootstrap = useCallback(async () => {
+    if (isPublicPage()) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -87,6 +97,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       if (!mountedRef.current) return;
+      if (err instanceof TypeError && err.message === 'Failed to fetch') return;
       const error = err instanceof Error ? err : new Error('Failed to load app data');
       setError(error);
       toast.error('Failed to load your data.', {
@@ -102,7 +113,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     }
-  }, [router]);
+  }, [router, isPublicPage]);
 
   useEffect(() => {
     let cancelled = false;
