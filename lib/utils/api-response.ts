@@ -1,5 +1,3 @@
-'use server';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError, handleError } from './errors';
 import { logger, generateRequestId } from '@/lib/infrastructure/logger';

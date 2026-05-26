@@ -4,6 +4,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().default('3000').transform(Number),
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
+  DATABASE_URL_UNPOOLED: z.string().optional(),
   REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().default('127.0.0.1'),
   REDIS_PORT: z.coerce.number().int().default(6379),
