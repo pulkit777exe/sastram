@@ -15,7 +15,7 @@ interface ThreadPageParams {
 }
 
 export default async function ThreadPage({ params }: ThreadPageParams) {
-  const { thread: slug } = params;
+  const { thread: slug } = await params;
   const session = await getSession();
   if (!session) return null;
 
