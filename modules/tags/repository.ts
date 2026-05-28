@@ -134,6 +134,63 @@ export async function listAllTags(params?: { page?: number; pageSize?: number; s
   };
 }
 
+export async function getTagBySlug(slug: string) {
+  try {
+    const tag = await prisma.threadTag.findUnique({
+      where: { slug },
+      include: {
+        _count: { select: { threads: true } },
+      },
+    });
+    if (!tag) return null;
+    return { ...tag, threadCount: tag._count.threads };
+  } catch (error) {
+    logger.error('[getTagBySlug]', error);
+    return null;
+  }
+}
+
+export async function getThreadsByTag(tagId: string, memberUserIds?: string[]) {
+  try {
+    const where: Record<string, unknown> = { tags: { some: { tagId } } };
+    if (memberUserIds && memberUserIds.length > 0) {
+      where.members = { some: { userId: { in: memberUserIds }, status: 'ACTIVE' } };
+    }
+
+    const threads = await prisma.section.findMany({
+      where,
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        messageCount: true,
+        memberCount: true,
+        community: { select: { title: true } },
+        tags: { select: { tag: { select: { name: true, slug: true, color: true } } } },
+        messages: { select: { senderId: true, createdAt: true } },
+        _count: { select: { messages: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    return threads.map((t) => ({
+      id: t.id,
+      slug: t.slug,
+      title: t.name,
+      description: t.description ?? '',
+      activeUsers: new Set(t.messages.map((m) => m.senderId)).size,
+      messagesCount: t._count.messages,
+      trending: t._count.messages > 10,
+      tags: t.tags.map((rel) => rel.tag.name),
+    }));
+  } catch (error) {
+    logger.error('[getThreadsByTag]', error);
+    return [];
+  }
+}
+
 export async function mergeTags(sourceId: string, targetId: string) {
   const relations = await prisma.threadTagRelation.findMany({
     where: { tagId: sourceId },
