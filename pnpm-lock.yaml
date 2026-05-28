@@ -214,6 +214,9 @@ importers:
       eslint-config-next:
         specifier: ^16.2.4
         version: 16.2.6(@typescript-eslint/parser@8.59.3(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
+      esmock:
+        specifier: ^2.7.5
+        version: 2.7.5
       global-jsdom:
         specifier: ^29.0.0
         version: 29.0.0(jsdom@29.1.1(@noble/hashes@2.2.0))
@@ -3269,6 +3272,10 @@ packages:
     peerDependenciesMeta:
       jiti:
         optional: true
+
+  esmock@2.7.5:
+    resolution: {integrity: sha512-jKwL7yYpVOERalCllSnPur59s9M0gV5BKijtmOKclqDMuhqdS7DT/a7cODjz6w1XusE0wAaHBTrK+zgab/ENgw==}
+    engines: {node: '>=14.16.0'}
 
   espree@10.4.0:
     resolution: {integrity: sha512-j6PAQ2uUr79PZhBjP5C5fhl8e39FmRnOjsD5lGnWrFU8i2G776tBK7+nP8KuQUTTyAZUwfQqXAgrVH5MbH9CYQ==}
@@ -8170,6 +8177,8 @@ snapshots:
       jiti: 2.7.0
     transitivePeerDependencies:
       - supports-color
+
+  esmock@2.7.5: {}
 
   espree@10.4.0:
     dependencies:
