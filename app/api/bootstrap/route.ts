@@ -5,12 +5,13 @@ import { getUnreadCount } from '@/modules/notifications/repository';
 import { getUserActivity } from '@/modules/activity/repository';
 import { getUserReputation } from '@/modules/reputation/repository';
 import { getJoinedCommunities } from '@/modules/communities/repository';
+import { ok, fail } from '@/lib/utils/api-response';
 
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({ headers: request.headers });
 
   if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
   }
 
   const userId = session.user.id;
@@ -25,10 +26,10 @@ export async function GET(request: NextRequest) {
     ]);
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json(fail('NOT_FOUND', 'User not found'), { status: 404 });
   }
 
-  return NextResponse.json({
+  return NextResponse.json(ok({
     user: {
       id: user.id,
       name: user.name,
@@ -44,5 +45,5 @@ export async function GET(request: NextRequest) {
       level: reputation.level,
     },
     joinedCommunities,
-  });
+  }));
 }

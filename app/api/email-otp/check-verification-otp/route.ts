@@ -1,5 +1,6 @@
 import { auth } from '@/lib/services/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { ok, fail } from '@/lib/utils/api-response';
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 
@@ -14,10 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validation = checkVerificationOtpSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Email and OTP are required' },
-        { status: 400 }
-      );
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Email and OTP are required'), { status: 400 });
     }
 
     const data = await auth.api.checkVerificationOTP({
@@ -26,12 +24,9 @@ export async function POST(request: NextRequest) {
         type: validation.data.type || 'sign-in',
       },
     });
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(ok(data));
   } catch (error) {
     logger.error('[check-verification-otp]', error);
-    return NextResponse.json(
-      { error: 'Verification failed' },
-      { status: 400 }
-    );
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Verification failed'), { status: 400 });
   }
 }

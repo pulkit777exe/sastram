@@ -3,13 +3,14 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { auth } from '@/lib/services/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { buildThreadSlug } from '@/lib/utils/slug';
+import { ok, fail } from '@/lib/utils/api-response';
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
 
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 
     const sections = await prisma.section.findMany({
@@ -52,10 +53,10 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json(conversations);
+    return NextResponse.json(ok(conversations));
   } catch (error) {
     logger.error('Error fetching conversations:', error);
-    return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to fetch conversations'), { status: 500 });
   }
 }
 
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: req.headers });
 
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -73,13 +74,13 @@ export async function POST(req: NextRequest) {
     });
 
     if (user?.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Only admins can create sections' }, { status: 403 });
+      return NextResponse.json(fail('FORBIDDEN', 'Only admins can create sections'), { status: 403 });
     }
 
     const { name } = await req.json();
 
     if (!name) {
-      return NextResponse.json({ error: 'Section name is required' }, { status: 400 });
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Section name is required'), { status: 400 });
     }
 
     const section = await prisma.section.create({
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    return NextResponse.json(ok({
       id: section.id,
       name: section.name,
       avatar: '',
@@ -99,9 +100,9 @@ export async function POST(req: NextRequest) {
       unread: 0,
       online: false,
       type: 'channel' as const,
-    });
+    }));
   } catch (error) {
     logger.error('Error creating section:', error);
-    return NextResponse.json({ error: 'Failed to create section' }, { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to create section'), { status: 500 });
   }
 }

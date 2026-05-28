@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ok, fail } from '@/lib/utils/api-response';
 import { requireSectionMembershipOrThrow, requireSession } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType, DEFAULT_JOB_OPTIONS, getThreadSummaryQueue } from '@/lib/infrastructure/bullmq';
@@ -14,16 +15,13 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireSession();
     if (!session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 
     const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
     const rateLimitResult = await rateLimit(ip);
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please try again later.' },
-        { status: 429 }
-      );
+      return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
     }
 
     const body = await req.json();
@@ -32,7 +30,7 @@ export async function POST(req: NextRequest) {
     try {
       await requireSectionMembershipOrThrow(threadId, session.user.id);
     } catch {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
     }
 
     const totalMessageCount = await prisma.message.count({
@@ -40,10 +38,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (totalMessageCount < 50) {
-      return NextResponse.json(
-        { error: 'Thread needs at least 50 messages before a summary can be generated.' },
-        { status: 400 }
-      );
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Thread needs at least 50 messages before a summary can be generated.'), { status: 400 });
     }
 
     // Fetch thread and last 50 messages for AI context
@@ -59,7 +54,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!thread) {
-      return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+      return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: 404 });
     }
 
     // Reverse to chronological order for AI
@@ -76,13 +71,9 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    return NextResponse.json({
-      jobId: job.id,
-      status: 'pending',
-      message: 'Summary generation started',
-    });
+    return NextResponse.json(ok({ jobId: job.id, status: 'pending', message: 'Summary generation started' }));
   } catch (error) {
     logger.error('Error generating thread summary:', error);
-    return NextResponse.json({ error: 'Failed to generate summary' }, { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to generate summary'), { status: 500 });
   }
 }

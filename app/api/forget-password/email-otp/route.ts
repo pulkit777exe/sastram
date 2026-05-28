@@ -1,5 +1,6 @@
 import { auth } from '@/lib/services/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { ok, fail } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
@@ -13,30 +14,21 @@ export async function POST(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
     const rateLimitResult = await rateLimit(ip);
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please try again later.' },
-        { status: 429 }
-      );
+      return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
     }
 
     const body = await request.json();
     const validation = forgetPasswordOtpSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Invalid email address' },
-        { status: 400 }
-      );
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid email address'), { status: 400 });
     }
 
     const data = await auth.api.forgetPasswordEmailOTP({
       body: validation.data,
     });
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(ok(data));
   } catch (error) {
     logger.error('[forget-password:email-otp]', error);
-    return NextResponse.json(
-      { error: 'Failed to send reset code' },
-      { status: 400 }
-    );
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to send reset code'), { status: 400 });
   }
 }

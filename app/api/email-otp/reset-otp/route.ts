@@ -1,5 +1,6 @@
 import { auth } from '@/lib/services/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { ok, fail } from '@/lib/utils/api-response';
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 
@@ -14,21 +15,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validation = resetOtpSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Email, OTP, and password are required' },
-        { status: 400 }
-      );
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Email, OTP, and password are required'), { status: 400 });
     }
 
     const data = await auth.api.resetPasswordEmailOTP({
       body: validation.data,
     });
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(ok(data));
   } catch (error) {
     logger.error('[reset-otp]', error);
-    return NextResponse.json(
-      { error: 'Password reset failed' },
-      { status: 400 }
-    );
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Password reset failed'), { status: 400 });
   }
 }
