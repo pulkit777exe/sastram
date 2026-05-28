@@ -1,11 +1,20 @@
 'use client';
 
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useSyncExternalStore } from 'react';
 import type { ThreadWithFullContext } from '@/modules/threads/queries';
 import { TagChip } from '@/components/thread/tag-chip';
 
 interface ThreadInfoCardProps {
   thread: ThreadWithFullContext;
+}
+
+function subscribeToClock(cb: () => void) {
+  const id = setInterval(cb, 60000);
+  return () => clearInterval(id);
+}
+
+function getClockSnapshot() {
+  return Date.now();
 }
 
 function DigitGroup({ value }: { value: number }) {
@@ -33,11 +42,11 @@ function DigitGroup({ value }: { value: number }) {
 }
 
 export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
-  const lastVerifiedDays = useMemo(() => {
-    const ref = thread.lastVerifiedAt ?? thread.updatedAt;
-    if (!ref) return null;
-    return Math.floor((Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24));
-  }, [thread.lastVerifiedAt, thread.updatedAt]);
+  const now = useSyncExternalStore(subscribeToClock, getClockSnapshot, getClockSnapshot);
+  const lastVerifiedRef = thread.lastVerifiedAt ?? thread.updatedAt;
+  const lastVerifiedDays = lastVerifiedRef
+    ? Math.floor((now - new Date(lastVerifiedRef).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
 
   return (
     <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
