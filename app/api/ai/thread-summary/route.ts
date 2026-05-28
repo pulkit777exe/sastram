@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireSectionMembershipOrThrow, requireSession } from '@/modules/auth/session';
+import { requireSectionMembershipOrThrow } from '@/modules/auth/session';
+import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType, DEFAULT_JOB_OPTIONS, getThreadSummaryQueue } from '@/lib/infrastructure/bullmq';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -13,8 +14,20 @@ const summaryRequestSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireSession();
-    if (!session.user) {
+    let threadId: string;
+    try {
+      const body = await req.json();
+      const parsed = summaryRequestSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(fail('VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid request'), { status: 400 });
+      }
+      threadId = parsed.data.threadId;
+    } catch {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON in request body'), { status: 400 });
+    }
+
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session?.user) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 
@@ -23,9 +36,6 @@ export async function POST(req: NextRequest) {
     if (!rateLimitResult.success) {
       return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
     }
-
-    const body = await req.json();
-    const { threadId } = summaryRequestSchema.parse(body);
 
     try {
       await requireSectionMembershipOrThrow(threadId, session.user.id);

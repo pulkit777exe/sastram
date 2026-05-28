@@ -1,4 +1,3 @@
-import { headers } from 'next/headers';
 import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { enqueueInlineJob } from '@/lib/infrastructure/bullmq';
@@ -13,7 +12,7 @@ export async function POST(
   try {
     const { threadId } = await params;
     const session = await auth.api.getSession({
-      headers: await headers(),
+      headers: request.headers,
     });
 
     if (!session) {

@@ -62,6 +62,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    let name: string;
+    try {
+      const body = await req.json();
+      name = body.name;
+      if (!name) {
+        return NextResponse.json(fail('VALIDATION_ERROR', 'Section name is required'), { status: 400 });
+      }
+    } catch {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid request body'), { status: 400 });
+    }
+
     const session = await auth.api.getSession({ headers: req.headers });
 
     if (!session) {
@@ -75,12 +86,6 @@ export async function POST(req: NextRequest) {
 
     if (user?.role !== 'ADMIN') {
       return NextResponse.json(fail('FORBIDDEN', 'Only admins can create sections'), { status: 403 });
-    }
-
-    const { name } = await req.json();
-
-    if (!name) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Section name is required'), { status: 400 });
     }
 
     const section = await prisma.section.create({

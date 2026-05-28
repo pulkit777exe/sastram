@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireSectionMembershipOrThrow, requireSession } from '@/modules/auth/session';
+import { requireSectionMembershipOrThrow } from '@/modules/auth/session';
+import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -13,8 +14,8 @@ const dnaRequestSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireSession();
-    if (!session.user) {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session?.user) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 

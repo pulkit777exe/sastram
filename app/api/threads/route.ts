@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { auth } from '@/lib/services/auth';
 import { listThreads } from '@/modules/threads/repository';
 import { ok, fail } from '@/lib/utils/api-response';
@@ -8,7 +7,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({
-    headers: await headers(),
+    headers: request.headers,
   });
 
   const requestId = request.headers.get('x-request-id') ?? '';

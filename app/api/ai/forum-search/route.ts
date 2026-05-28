@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { z } from 'zod';
-import { headers } from 'next/headers';
 import { auth } from '@/lib/services/auth';
 import { sanitizeSearchQuery, validateApiKeys } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -36,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Authentication
-    const session = await auth.api.getSession({ headers: await headers() });
+    const session = await auth.api.getSession({ headers: request.headers });
     if (!session) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Authentication required'), { status: 401, headers: { 'Cache-Control': 'no-store' } });
     }

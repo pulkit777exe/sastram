@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { postMessage } from '@/modules/messages/actions';
-import { requireSession } from '@/modules/auth/session';
+import { auth } from '@/lib/services/auth';
 import { ok, fail } from '@/lib/utils/api-response';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await requireSession();
-    if (!session.user) {
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 

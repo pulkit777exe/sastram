@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { getAiPipelineQueues } from '@/lib/infrastructure/bullmq';
-import { requireSession } from '@/modules/auth/session';
+import { auth } from '@/lib/services/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import type { Job } from 'bullmq';
 
@@ -21,8 +21,8 @@ async function findJob(jobId: string): Promise<{ job: Job; queueName: string } |
 // Get job status
 export async function GET(req: NextRequest) {
   try {
-    const session = await requireSession();
-    if (!session.user) {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session?.user) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 
@@ -75,8 +75,8 @@ export async function GET(req: NextRequest) {
 // Cancel a job
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await requireSession();
-    if (!session.user) {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session?.user) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 
