@@ -4,6 +4,7 @@ import ThreadInfoCard from './ThreadInfoCard';
 import AiSynthesisCard from './AiSynthesisCard';
 import ParticipantsCard from './ParticipantsCard';
 import ThreadDnaCard from './ThreadDnaCard';
+import RelatedThreadsCard from './RelatedThreadsCard';
 
 interface RightPanelProps {
   thread: ThreadWithFullContext;
@@ -24,6 +25,7 @@ export default function RightPanel({ thread }: RightPanelProps) {
         threadId={thread.id}
         messageCount={thread._count.messages}
       />
+      <RelatedThreadsCard threadId={thread.id} />
       <ParticipantsCard thread={thread} />
     </div>
   );

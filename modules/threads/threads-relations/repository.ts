@@ -141,15 +141,16 @@ export async function findRelatedThreads(threadId: string): Promise<
 /**
  * Gets related threads for a given thread from the database
  */
-export async function getRelatedThreads(threadId: string): Promise<
-  Array<{
-    id: string;
-    name: string;
-    slug: string;
-    similarity: number;
-    threadDna: any;
-  }>
-> {
+export type RelatedThread = {
+  id: string;
+  name: string;
+  slug: string;
+  similarity: number;
+  threadDna: any;
+  community: { slug: string; name: string } | null;
+};
+
+export async function getRelatedThreads(threadId: string): Promise<RelatedThread[]> {
   const relations = await prisma.threadRelation.findMany({
     where: { sourceThreadId: threadId },
     include: {
@@ -159,6 +160,7 @@ export async function getRelatedThreads(threadId: string): Promise<
           name: true,
           slug: true,
           threadDna: true,
+          community: { select: { slug: true, name: true } },
         },
       },
     },
@@ -172,6 +174,7 @@ export async function getRelatedThreads(threadId: string): Promise<
     slug: relation.target.slug,
     similarity: relation.similarity,
     threadDna: relation.target.threadDna,
+    community: relation.target.community,
   }));
 }
 
