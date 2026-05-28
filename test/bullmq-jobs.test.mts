@@ -1,4 +1,4 @@
-import { describe, it } from 'mocha';
+import { describe, it, before } from 'mocha';
 import { expect } from 'chai';
 import {
   handleThreadSummaryJob,
@@ -9,11 +9,21 @@ import {
   handleAIInlineJob,
   handleStalenessCheckJob,
 } from '@/lib/queue/workers/ai.worker';
+import { prisma } from '@/lib/infrastructure/prisma';
 import {
   QUEUE_NAMES,
   DEFAULT_JOB_OPTIONS,
   AIJobType,
 } from '@/lib/queue/config';
+
+async function dbAvailable(): Promise<boolean> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function makeMockJob<T>(data: T) {
   return {
@@ -97,10 +107,30 @@ describe('BullMQ Job Handlers', () => {
       }
     });
 
-    it('handleStalenessCheckJob should return placeholder when handler not implemented', async () => {
-      const job = makeMockJob({ threadId: 't1' });
+    it('handleStalenessCheckJob should throw when both threadId and cronJob are missing', async () => {
+      const job = makeMockJob({});
+      try {
+        await handleStalenessCheckJob(job);
+        expect.fail('Should have thrown');
+      } catch (err) {
+        expect((err as Error).message).to.include('Missing required fields');
+      }
+    });
+
+    it('handleStalenessCheckJob should handle non-existent thread gracefully', async function () {
+      if (!(await dbAvailable())) this.skip();
+      const job = makeMockJob({ threadId: `non-existent-${Date.now()}` });
       const result = await handleStalenessCheckJob(job);
-      expect(result).to.deep.equal({ queued: true, handled: false });
+      expect(result).to.have.property('handled', true);
+      expect(result).to.have.property('checked', 1);
+      expect(result).to.have.property('updated', 0);
+    });
+
+    it('handleStalenessCheckJob should run batch check for cron mode', async function () {
+      if (!(await dbAvailable())) this.skip();
+      const job = makeMockJob({ cronJob: true });
+      const result = await handleStalenessCheckJob(job);
+      expect(result).to.have.property('handled', true);
     });
   });
 

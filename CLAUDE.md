@@ -1,14 +1,14 @@
-# Sastram — Forum Application
+# Sastram — Discussion and Research Platform
 
 Personal project, open sourced. Built with Next.js, Prisma, WebSockets, and AI.
 
 ## Overview
 
-Next.js 16+ forum application with TypeScript, Prisma ORM, PostgreSQL (Neon), WebSocket real-time chat, Better Auth authentication, and AI integration.
+Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, PostgreSQL (Neon), WebSocket real-time chat, Better Auth authentication, and AI integration.
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Database**: PostgreSQL via Neon serverless
 - **ORM**: Prisma 7+
@@ -23,14 +23,16 @@ Next.js 16+ forum application with TypeScript, Prisma ORM, PostgreSQL (Neon), We
 # Development
 pnpm dev              # Next.js dev server
 pnpm dev:server       # Custom server (runs WebSocket server)
-pnpm dev:worker      # BullMQ worker process
+pnpm dev:worker      # BullMQ worker process (standalone, hot-reload)
+pnpm start:server    # Production server (includes WebSocket)
+pnpm start:worker    # Production worker process
 
 # Build & Deploy
 pnpm build           # Prisma generate + Next build
 pnpm start           # Production server
 
 # Testing & Linting
-pnpm test            # Mocha tests (60 passing)
+pnpm test            # Mocha tests (166+ passing)
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
 pnpm lint:fix      # ESLint fix
