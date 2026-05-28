@@ -88,3 +88,69 @@ export async function getPopularTags(limit: number = 20) {
     return [];
   }
 }
+
+export async function updateTag(id: string, data: { name?: string; color?: string }) {
+  const updateData: { name?: string; slug?: string; color?: string } = { ...data };
+  if (data.name) {
+    updateData.slug = slugify(data.name);
+  }
+  return prisma.threadTag.update({
+    where: { id },
+    data: updateData,
+  });
+}
+
+export async function deleteTag(id: string) {
+  await prisma.threadTagRelation.deleteMany({ where: { tagId: id } });
+  return prisma.threadTag.delete({ where: { id } });
+}
+
+export async function listAllTags(params?: { page?: number; pageSize?: number; search?: string }) {
+  const page = params?.page ?? 1;
+  const pageSize = params?.pageSize ?? 50;
+  const search = params?.search;
+
+  const where = search
+    ? { name: { contains: search, mode: 'insensitive' as const } }
+    : {};
+
+  const [tags, total] = await Promise.all([
+    prisma.threadTag.findMany({
+      where,
+      include: { _count: { select: { threads: true } } },
+      orderBy: { threads: { _count: 'desc' } },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.threadTag.count({ where }),
+  ]);
+
+  return {
+    tags: tags.map((t) => ({ ...t, threadCount: t._count.threads })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
+}
+
+export async function mergeTags(sourceId: string, targetId: string) {
+  const relations = await prisma.threadTagRelation.findMany({
+    where: { tagId: sourceId },
+  });
+
+  await Promise.all(
+    relations.map((r) =>
+      prisma.threadTagRelation.upsert({
+        where: { threadId_tagId: { threadId: r.threadId, tagId: targetId } },
+        update: {},
+        create: { threadId: r.threadId, tagId: targetId },
+      })
+    )
+  );
+
+  await prisma.threadTagRelation.deleteMany({ where: { tagId: sourceId } });
+  await prisma.threadTag.delete({ where: { id: sourceId } });
+
+  return prisma.threadTag.findUnique({ where: { id: targetId } });
+}

@@ -20,6 +20,7 @@ import {
   Activity,
   LogOut,
   LineChart,
+  Tags,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { usePathname, useRouter } from 'next/navigation';
@@ -148,6 +149,11 @@ export function Sidebar({
         icon: LineChart,
         label: 'System Health',
         href: '/dashboard/admin/health',
+      },
+      {
+        icon: Tags,
+        label: 'Tags',
+        href: '/dashboard/admin/tags',
       }
     );
   }
