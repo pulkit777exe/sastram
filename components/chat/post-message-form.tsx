@@ -22,6 +22,7 @@ import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
 import type { Message } from '@/lib/types/index';
 import { InlinePollButton } from '@/components/thread/inline-poll-button';
+import { MentionSuggest, type MentionCandidate } from '@/components/chat/mention-suggest';
 import { cn } from '@/lib/utils/cn';
 
 const COMMON_EMOJIS = [
@@ -46,14 +47,6 @@ interface PostMessageFormProps {
   canManagePoll?: boolean;
   onPollCreated?: (poll: any) => void;
 }
-
-type MentionCandidate = {
-  id: string;
-  name: string | null;
-  email: string;
-  image: string | null;
-  handle: string;
-};
 
 export function PostMessageForm({
   sectionId,
@@ -160,7 +153,7 @@ export function PostMessageForm({
 
       mentionTimeoutRef.current = setTimeout(() => {
         void resolveMentionCandidates(query);
-      }, 120);
+      }, 300);
     },
     [closeMentions, resolveMentionCandidates]
   );
@@ -503,34 +496,14 @@ export function PostMessageForm({
         </div>
       </div>
 
-      {mentionOpen && mentionCandidates.length > 0 && (
-        <div
-          ref={mentionListRef}
-          className="absolute bottom-13 left-4 z-30 w-[280px] rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
-        >
-          <div className="max-h-56 overflow-y-auto py-1.5">
-            {mentionCandidates.map((candidate, index) => (
-              <button
-                key={candidate.id}
-                type="button"
-                className={cn(
-                  "w-full px-3 py-2 text-left text-xs flex flex-col transition-colors",
-                  index === activeMentionIndex
-                    ? 'bg-indigo-50/80 text-indigo-900'
-                    : 'hover:bg-muted/50 text-foreground'
-                )}
-                onMouseEnter={() => setActiveMentionIndex(index)}
-                onClick={() => applyMentionSelection(candidate)}
-              >
-                <div className="font-semibold text-foreground">
-                  {candidate.name || candidate.email}
-                </div>
-                <div className="text-[10px] text-muted-foreground">@{candidate.handle}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <MentionSuggest
+        open={mentionOpen}
+        candidates={mentionCandidates}
+        activeIndex={activeMentionIndex}
+        onSelect={applyMentionSelection}
+        onHover={setActiveMentionIndex}
+        listRef={mentionListRef}
+      />
     </form>
   );
 }
