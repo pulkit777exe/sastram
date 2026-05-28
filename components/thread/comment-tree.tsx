@@ -9,7 +9,6 @@ import {
   loadCollapseStates,
   saveCollapseState,
 } from '@/modules/messages/service';
-import { CommentNode } from './message-node';
 import { ThreadProvider } from './thread-context';
 import { MessageList } from './message-list';
 
