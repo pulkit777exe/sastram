@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import type { ThreadWithFullContext } from '@/modules/threads/queries';
+import { TagChip } from '@/components/thread/tag-chip';
 
 interface ThreadInfoCardProps {
   thread: ThreadWithFullContext;
@@ -32,6 +33,12 @@ function DigitGroup({ value }: { value: number }) {
 }
 
 export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
+  const lastVerifiedDays = useMemo(() => {
+    const ref = thread.lastVerifiedAt ?? thread.updatedAt;
+    if (!ref) return null;
+    return Math.floor((Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24));
+  }, [thread.lastVerifiedAt, thread.updatedAt]);
+
   return (
     <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
       <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
@@ -49,17 +56,26 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
         </div>
 
         {thread.resolutionScore !== null && (
-          <div className="mt-[4px] flex items-center justify-between">
-            <span className="text-[12px]">Resolution</span>
-            <div className="flex items-center gap-[6px]">
-              <div className="h-[4px] w-[60px] overflow-hidden rounded-full bg-(--bg)">
-                <div
-                  className="h-full rounded-full bg-(--green)"
-                  style={{ width: `${thread.resolutionScore}%` }}
-                />
+          <div className="mt-[4px] space-y-[2px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[12px]">Resolution</span>
+              <div className="flex items-center gap-[6px]">
+                <div className="h-[4px] w-[60px] overflow-hidden rounded-full bg-(--bg)">
+                  <div
+                    className="h-full rounded-full bg-(--green)"
+                    style={{ width: `${thread.resolutionScore}%` }}
+                  />
+                </div>
+                <DigitGroup value={thread.resolutionScore} />
               </div>
-              <DigitGroup value={thread.resolutionScore} />
             </div>
+            {lastVerifiedDays !== null && lastVerifiedDays > 30 && (
+              <p className="text-[10px] text-muted/60 text-right">
+                Confidence aged — last verified {lastVerifiedDays > 90
+                  ? `${Math.floor(lastVerifiedDays / 30)} months`
+                  : `${lastVerifiedDays} days`} ago
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -67,12 +83,7 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
       {thread.tags.length > 0 && (
         <div className="mt-[12px] flex flex-wrap gap-[6px]">
           {thread.tags.map((tag) => (
-            <span
-              key={tag.tag.name}
-              className="rounded-[999px] bg-(--blue-dim) px-[8px] py-[4px] font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-(--blue)"
-            >
-              {tag.tag.name}
-            </span>
+            <TagChip key={tag.tag.id} tag={tag.tag} clickable={false} />
           ))}
         </div>
       )}

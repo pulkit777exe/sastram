@@ -42,7 +42,10 @@ export type ThreadMessage = {
 
 type ThreadTag = {
   tag: {
+    id: string;
     name: string;
+    slug: string;
+    color: string;
   };
 };
 
@@ -86,6 +89,8 @@ export type ThreadWithFullContext = {
   aiSummary: string | null;
   resolutionScore: number | null;
   isOutdated: boolean;
+  lastVerifiedAt: Date | null;
+  updatedAt: Date;
   threadDna: Prisma.JsonValue | null;
   createdAt: Date;
   author: {
@@ -115,6 +120,8 @@ type ThreadRow = {
   aiSummary: string | null;
   resolutionScore: number | null;
   isOutdated: boolean;
+  lastVerifiedAt: Date | null;
+  updatedAt: Date;
   threadDna: Prisma.JsonValue | null;
   createdAt: Date;
   author: {
@@ -147,6 +154,8 @@ export const getThreadWithFullContext = cache(async (
         s."aiSummary" as "aiSummary",
         s."resolutionScore" as "resolutionScore",
         s."isOutdated" as "isOutdated",
+        s."lastVerifiedAt" as "lastVerifiedAt",
+        s."updatedAt" as "updatedAt",
         s."threadDna" as "threadDna",
         s."createdAt" as "createdAt",
         json_build_object(
@@ -172,7 +181,7 @@ export const getThreadWithFullContext = cache(async (
       JOIN "users" u ON u.id = s."createdBy"
       LEFT JOIN LATERAL (
         SELECT json_agg(
-          json_build_object('tag', json_build_object('name', tt.name))
+          json_build_object('tag', json_build_object('id', tt.id, 'name', tt.name, 'slug', tt.slug, 'color', tt.color))
         ) as tags
         FROM "thread_tag_relations" ttr
         JOIN "thread_tags" tt ON tt.id = ttr."tagId"
@@ -274,6 +283,8 @@ export const getThreadWithFullContext = cache(async (
       aiSummary: row.aiSummary ?? null,
       resolutionScore: row.resolutionScore ?? null,
       isOutdated: row.isOutdated,
+      lastVerifiedAt: row.lastVerifiedAt ?? null,
+      updatedAt: row.updatedAt,
       threadDna: row.threadDna ?? null,
       createdAt: row.createdAt,
       author: row.author,

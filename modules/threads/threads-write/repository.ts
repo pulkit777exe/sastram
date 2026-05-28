@@ -93,7 +93,7 @@ export async function createThread(payload: {
 
       await prisma.section.update({
         where: { id: thread.id },
-        data: { threadDna: threadDNA, resolutionScore },
+        data: { threadDna: threadDNA, resolutionScore, lastVerifiedAt: new Date() },
       });
     } catch (error) {
       logger.error('Failed to generate thread metadata:', error);
@@ -107,6 +107,7 @@ export async function createThread(payload: {
             readTimeMinutes: 1,
           },
           resolutionScore: 50,
+          lastVerifiedAt: new Date(),
         },
       });
     }
