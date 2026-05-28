@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
 import { toggleReaction } from '@/modules/reactions/actions';
 import { toasts } from '@/lib/utils/toast';
-import type { Message, Sender } from '@/lib/types/index';
+import type { Message } from '@/lib/types/index';
 import { useThreadContext } from './thread-context';
 import { InlineReplyThread } from './inline-reply-thread';
 import { MessageActions } from './message-actions';
@@ -15,35 +15,26 @@ import { InlineReplyBox } from './inline-reply-box';
 import { AttachmentItem } from './attachment-item';
 import { renderContent } from '@/lib/utils/render-content';
 import { cn } from '@/lib/utils/cn';
-
-interface MessageGroup {
-  senderId: string;
-  sender: Sender;
-  messages: Message[];
-}
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface MessageListProps {
   firstUnreadMessageId: string | null;
 }
 
-// Group messages: same sender within 60 seconds = one group
-function groupMessages(messages: Message[]): MessageGroup[] {
-  const groups: MessageGroup[] = [];
-  const topLevel = messages.filter((m) => !m.parentId);
-
-  for (const msg of topLevel) {
-    const last = groups[groups.length - 1];
-    const timeDiff = last
-      ? new Date(msg.createdAt).getTime() - new Date(last.messages[last.messages.length - 1].createdAt).getTime()
-      : Infinity;
-
-    if (last && last.senderId === msg.senderId && timeDiff < 60_000) {
-      last.messages.push(msg);
+// Compute whether each top-level message is compact (same sender, within 60s)
+function computeCompactFlags(messages: Message[]): boolean[] {
+  const flags: boolean[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    if (i === 0) {
+      flags.push(false);
     } else {
-      groups.push({ senderId: msg.senderId, sender: msg.sender, messages: [msg] });
+      const prev = messages[i - 1];
+      const curr = messages[i];
+      const timeDiff = new Date(curr.createdAt).getTime() - new Date(prev.createdAt).getTime();
+      flags.push(curr.senderId === prev.senderId && timeDiff < 60_000);
     }
   }
-  return groups;
+  return flags;
 }
 
 // Flat, chronological replies list
@@ -59,58 +50,82 @@ function getAllDescendants(parentId: string, repliesMap: Map<string, Message[]>)
   return all.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
-export function MessageList({ firstUnreadMessageId }: MessageListProps) {
-  const { allMessages } = useThreadContext();
-
-  const repliesMap = useMemo(() => {
-    const map = new Map<string, Message[]>();
-    allMessages.forEach((msg) => {
-      if (msg.parentId) {
-        const arr = map.get(msg.parentId) || [];
-        arr.push(msg);
-        map.set(msg.parentId, arr);
-      }
-    });
-    return map;
-  }, [allMessages]);
-
-  const groups = useMemo(() => groupMessages(allMessages), [allMessages]);
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      {groups.map((group) => (
-        <MessageGroup
-          key={group.messages[0].id}
-          group={group}
-          repliesMap={repliesMap}
-          firstUnreadMessageId={firstUnreadMessageId}
-        />
-      ))}
-    </div>
-  );
+function buildRepliesMap(messages: Message[]): Map<string, Message[]> {
+  const map = new Map<string, Message[]>();
+  messages.forEach((msg) => {
+    if (msg.parentId) {
+      const arr = map.get(msg.parentId) || [];
+      arr.push(msg);
+      map.set(msg.parentId, arr);
+    }
+  });
+  return map;
 }
 
-function MessageGroup({
-  group,
-  repliesMap,
-  firstUnreadMessageId,
-}: {
-  group: MessageGroup;
-  repliesMap: Map<string, Message[]>;
-  firstUnreadMessageId: string | null;
-}) {
+export function MessageList({ firstUnreadMessageId }: MessageListProps) {
+  const { allMessages, scrollContainerRef } = useThreadContext();
+
+  const topLevelMessages = useMemo(
+    () => allMessages.filter((m) => !m.parentId),
+    [allMessages]
+  );
+
+  const repliesMap = useMemo(() => buildRepliesMap(allMessages), [allMessages]);
+
+  const compactFlags = useMemo(
+    () => computeCompactFlags(topLevelMessages),
+    [topLevelMessages]
+  );
+
+  const virtualizer = useVirtualizer({
+    count: topLevelMessages.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 100,
+    measureElement: (element) => element?.getBoundingClientRect().height ?? 100,
+    overscan: 5,
+  });
+
+  // Auto-scroll to bottom when new messages arrive and user is at the bottom
+  const prevCountRef = useRef(topLevelMessages.length);
+  useLayoutEffect(() => {
+    if (topLevelMessages.length > prevCountRef.current) {
+      const container = scrollContainerRef.current;
+      if (container) {
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 120;
+        if (isAtBottom) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+    }
+    prevCountRef.current = topLevelMessages.length;
+  });
+
   return (
-    <div className="flex flex-col mb-2">
-      {group.messages.map((msg, i) => {
+    <div style={{ position: 'relative', height: `${virtualizer.getTotalSize()}px`, minHeight: 0 }}>
+      {virtualizer.getVirtualItems().map((virtualItem) => {
+        const msg = topLevelMessages[virtualItem.index];
         const replies = getAllDescendants(msg.id, repliesMap);
+        const isCompact = compactFlags[virtualItem.index];
         return (
-          <MessageRow
+          <div
             key={msg.id}
-            message={msg}
-            isCompact={i > 0}
-            isFirstUnread={msg.id === firstUnreadMessageId}
-            replies={replies}
-          />
+            data-index={virtualItem.index}
+            ref={virtualizer.measureElement}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              transform: `translateY(${virtualItem.start}px)`,
+            }}
+          >
+            <MessageRow
+              message={msg}
+              isCompact={isCompact}
+              isFirstUnread={msg.id === firstUnreadMessageId}
+              replies={replies}
+            />
+          </div>
         );
       })}
     </div>

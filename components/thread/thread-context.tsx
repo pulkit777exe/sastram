@@ -13,6 +13,7 @@ interface ThreadContextValue {
   };
   activeReplyId: string | null;
   collapsedIds: Set<string>;
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onReply: (messageId: string) => void;
   onCancelReply: () => void;
   onToggleCollapse: (messageId: string) => void;

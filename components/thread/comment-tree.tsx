@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, type RefObject } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Message } from '@/lib/types/index';
 import type { MessageNode } from '@/modules/messages/types';
@@ -39,6 +39,7 @@ interface CommentTreeProps {
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   firstUnreadMessageId: string | null;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
 
 export function CommentTree({
@@ -49,6 +50,7 @@ export function CommentTree({
   onTypingStart,
   onTypingStop,
   firstUnreadMessageId,
+  scrollContainerRef,
 }: CommentTreeProps) {
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -159,6 +161,7 @@ export function CommentTree({
     currentUser,
     activeReplyId,
     collapsedIds,
+    scrollContainerRef,
     onReply: handleReply,
     onCancelReply: handleCancelReply,
     onToggleCollapse: toggleCollapse,

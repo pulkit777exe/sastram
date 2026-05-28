@@ -354,6 +354,7 @@ export function ThreadLiveWrapper({
                 onTypingStart={emitTypingStart}
                 onTypingStop={emitTypingStop}
                 firstUnreadMessageId={firstUnreadMessageId}
+                scrollContainerRef={scrollContainerRef}
               />
             </ErrorBoundary>
           )}
