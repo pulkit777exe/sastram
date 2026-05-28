@@ -43,6 +43,27 @@ services:
       BETTER_AUTH_URL: http://localhost:3001
       NEXT_PUBLIC_APP_URL: http://localhost:3001
       CRON_SECRET: cron-secret-min-32-chars-long!!!!!!
+      QUEUE_WORKERS_ENABLED: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "--import", "tsx", "worker/index.ts"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sastram:sastram_dev@db:5432/sastram
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      BETTER_AUTH_SECRET: dev-secret-key-min-32-chars-long!!
+      BETTER_AUTH_URL: http://localhost:3001
+      NEXT_PUBLIC_APP_URL: http://localhost:3001
+      CRON_SECRET: cron-secret-min-32-chars-long!!!!!!
       QUEUE_WORKERS_ENABLED: "true"
     depends_on:
       db:

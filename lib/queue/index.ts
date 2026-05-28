@@ -46,6 +46,7 @@ export {
 
 export {
   startAllWorkers,
+  stopAllWorkers,
   workerDefinitions,
 } from './workers';
 

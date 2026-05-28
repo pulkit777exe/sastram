@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { logger } from '@/lib/infrastructure/logger';
+import { createRedisConnection } from '@/lib/infrastructure/redis-connection';
 
 export interface RedisThreadPayload {
   id: string;
@@ -7,14 +7,14 @@ export interface RedisThreadPayload {
   senderId: string;
   senderName: string | null;
   senderAvatar: string | null;
-  createdAt: string; // ISO string — safe to serialize
+  createdAt: string;
   sectionId: string;
   parentId: string | null;
   depth: number;
   likeCount: number;
   replyCount: number;
   isAiResponse: boolean;
-  isComplete: boolean; // true on final chunk — clears "pending" status
+  isComplete: boolean;
   reactions: unknown[];
   attachments: unknown[];
 }
@@ -43,39 +43,20 @@ export function getUserChannel(userId: string): string {
   return `user:${userId}`;
 }
 
-// pub/sub clients need dedicated connections; cannot be reused for regular commands.
-
-function createRedisClient(label: string): Redis {
-  const url = process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL;
-  if (!url) {
-    throw new Error(`[Redis ${label}] REDIS_URL is not set`);
-  }
-
-  const client = new Redis(url, {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-    lazyConnect: true,
-  });
-
-  client.on('error', (err) => {
-    logger.error(`[Redis ${label}] Connection error`, { error: err.message });
-  });
-
-  return client;
-}
-
-// Lazy-initialized — created when first used.
-
 let _pub: Redis | null = null;
 let _sub: Redis | null = null;
 
 export function getRedisPub(): Redis {
-  if (!_pub) _pub = createRedisClient('pub');
+  if (!_pub) {
+    _pub = createRedisConnection({ label: 'pubsub-pub', lazyConnect: true });
+  }
   return _pub;
 }
 
 export function getRedisSub(): Redis {
-  if (!_sub) _sub = createRedisClient('sub');
+  if (!_sub) {
+    _sub = createRedisConnection({ label: 'pubsub-sub', lazyConnect: true });
+  }
   return _sub;
 }
 

@@ -1,5 +1,6 @@
 import { Redis } from 'ioredis';
 import { logger } from '@/lib/infrastructure/logger';
+import { createRedisConnection } from '@/lib/infrastructure/redis-connection';
 
 type CacheValue = Record<string, unknown> | unknown[] | string | number | boolean | null;
 
@@ -19,17 +20,12 @@ function getCacheClient(): Redis | null {
   }
 
   try {
-    _redis = new Redis(url, {
-      maxRetriesPerRequest: 1,
-      enableReadyCheck: false,
-      lazyConnect: true,
+    _redis = createRedisConnection({
+      label: 'query-cache',
       retryStrategy: () => null,
+      maxRetriesPerRequest: 1,
+      lazyConnect: true,
     });
-
-    _redis.on('error', (err) => {
-      logger.error('[query-cache] Redis error', { error: err.message });
-    });
-
     return _redis;
   } catch (err) {
     logger.error('[query-cache] Failed to create Redis client', { error: (err as Error).message });
