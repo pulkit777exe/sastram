@@ -1,19 +1,19 @@
 import { notFound } from 'next/navigation';
 import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
-import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
-import { InviteFriendButton } from '@/components/thread/invite-friend-button';
-import { Hash, Users, MessageSquare, ShieldCheck, TrendingUp, Activity } from 'lucide-react';
+import { ShieldCheck, Activity } from 'lucide-react';
 import type { Message } from '@/lib/types/index';
 import { isAdmin, requireSession } from '@/modules/auth/session';
 import { getThreadWithFullContext } from '@/modules/threads';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
-import { ThreadManagementControls } from '@/components/thread/thread-management-controls';
 import ThreadDnaCard from '@/components/panels/ThreadDnaCard';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
 import { getThreadReadReceipt } from '@/modules/read-receipts/repository';
 import { prisma } from '@/lib/infrastructure/prisma';
+import ThreadInfoCard from '@/components/panels/ThreadInfoCard';
+import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
+import ParticipantsCard from '@/components/panels/ParticipantsCard';
 
 export default async function ThreadPage({ params }: { params: { slug: string } }) {
   const { slug } = await params;
@@ -140,10 +140,16 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
           <p className="text-sm text-muted-foreground leading-relaxed mb-4">{thread.description}</p>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 flex flex-col gap-4">
+          <ThreadInfoCard thread={thread} />
+
           <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
 
           {threadDna && <ThreadDnaCard dna={threadDna} />}
+
+          <RelatedThreadsCard threadId={thread.id} />
+
+          <ParticipantsCard thread={thread} />
 
           {thread.isOutdated && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
@@ -156,7 +162,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
             </div>
           )}
 
-          <div>
+          <div className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-[10px] text-zinc-400 font-bold mb-2 uppercase tracking-wider">
               Created
             </p>
