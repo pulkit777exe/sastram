@@ -147,10 +147,10 @@ function ReportCard({ report }: { report: Report }) {
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Thread:</span>
                 <Link
-                  href={ROUTES.THREAD(report.message.section.slug)}
+                  href={ROUTES.THREAD(report.message.thread.slug)}
                   className="text-indigo-500 hover:text-indigo-600 underline"
                 >
-                  {report.message.section.name}
+                  {report.message.thread.name}
                 </Link>
               </div>
             </div>

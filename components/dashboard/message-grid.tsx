@@ -11,7 +11,7 @@ interface Message {
   id: string;
   content: string;
   createdAt: Date;
-  sectionId: string;
+  threadId: string;
   section: {
     name: string;
     slug: string;

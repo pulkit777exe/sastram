@@ -58,9 +58,9 @@ export function ModerationDashboard({
         id: r.message.sender.id,
         name: r.message.sender.name,
       },
-      section: {
-        name: r.message.section.name,
-        slug: r.message.section.slug,
+      thread: {
+        name: r.message.thread.name,
+        slug: r.message.thread.slug,
       },
     },
     aiConfidence: null,

@@ -33,19 +33,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 
-    const memberships = await prisma.sectionMember.findMany({
+    const memberships = await prisma.threadMember.findMany({
       where: { userId: session.user.id },
-      select: { sectionId: true },
+      select: { threadId: true },
     });
-    const sectionIds = memberships.map((m) => m.sectionId);
+    const threadIds = memberships.map((m) => m.threadId);
 
     switch (type) {
       case 'threads': {
-        const result = await searchThreads(q, limit, offset, sectionIds);
+        const result = await searchThreads(q, limit, offset, threadIds);
         return NextResponse.json(ok(result));
       }
       case 'messages': {
-        const result = await searchMessages(q, threadId, limit, offset, sectionIds);
+        const result = await searchMessages(q, threadId, limit, offset, threadIds);
         return NextResponse.json(ok(result));
       }
       case 'users': {

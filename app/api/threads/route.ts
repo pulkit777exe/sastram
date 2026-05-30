@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/services/auth';
 import { listThreads } from '@/modules/threads/repository';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireSectionMembershipOrThrow } from '@/modules/auth/session';
+import { requireThreadMembershipOrThrow } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
 
 export async function GET(request: NextRequest) {
@@ -20,13 +20,13 @@ export async function GET(request: NextRequest) {
 
   try {
     // Scope threads to user's memberships
-    const memberships = await prisma.sectionMember.findMany({
+    const memberships = await prisma.threadMember.findMany({
       where: { userId: session.user.id },
-      select: { sectionId: true },
+      select: { threadId: true },
     });
-    const sectionIds = memberships.map((m) => m.sectionId);
+    const threadIds = memberships.map((m) => m.threadId);
 
-    const threads = await listThreads({ memberUserId: session.user.id, sectionIds });
+    const threads = await listThreads({ memberUserId: session.user.id, threadIds });
     return NextResponse.json(ok({ threads }, requestId));
   } catch (error) {
     return NextResponse.json(

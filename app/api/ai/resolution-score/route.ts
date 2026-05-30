@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireSectionMembershipOrThrow } from '@/modules/auth/session';
+import { requireThreadMembershipOrThrow } from '@/modules/auth/session';
 import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
@@ -30,13 +30,13 @@ export async function POST(req: NextRequest) {
     const { threadId } = scoreRequestSchema.parse(body);
 
     try {
-      await requireSectionMembershipOrThrow(threadId, session.user.id);
+      await requireThreadMembershipOrThrow(threadId, session.user.id);
     } catch {
       return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
     }
 
     // Fetch thread and messages
-    const thread = await prisma.section.findUnique({
+    const thread = await prisma.thread.findUnique({
       where: { id: threadId },
       include: {
         messages: {
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const score = await aiService.calculateResolutionScore(messages);
     const { decayedScore } = applyConfidenceDecay(score, thread.updatedAt);
 
-    await prisma.section.update({
+    await prisma.thread.update({
       where: { id: threadId },
       data: { resolutionScore: decayedScore, lastVerifiedAt: new Date() },
     });

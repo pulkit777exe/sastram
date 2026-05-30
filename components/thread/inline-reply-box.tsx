@@ -81,7 +81,7 @@ export function InlineReplyBox({
 
     const formData = new FormData();
     formData.append('content', content);
-    formData.append('sectionId', threadId);
+    formData.append('threadId', threadId);
     formData.append('parentId', parentMessage.id);
     formData.append('depth', String(replyDepth));
 
@@ -95,7 +95,7 @@ export function InlineReplyBox({
       const newMsg: Message = {
         id: data?.id ?? crypto.randomUUID(),
         content: data?.content ?? content,
-        sectionId: data?.sectionId ?? threadId,
+        threadId: data?.threadId ?? threadId,
         senderId: data?.senderId ?? currentUser.id,
         parentId: parentMessage.id,
         depth: data?.depth ?? replyDepth,
@@ -118,11 +118,11 @@ export function InlineReplyBox({
               name: currentUser.name,
               image: currentUser.image,
             },
-        section: data?.section
+        thread: data?.thread
           ? {
-              id: data.section.id,
-              name: data.section.name,
-              slug: data.section.slug,
+              id: data.thread.id,
+              name: data.thread.name,
+              slug: data.thread.slug,
             }
           : { id: threadId, name: '', slug: '' },
         attachments:

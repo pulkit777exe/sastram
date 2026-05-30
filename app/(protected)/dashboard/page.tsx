@@ -31,10 +31,10 @@ export default async function DashboardPage({
   const session = await getSession();
   if (!session) return null;
 
-  const [{ threads }, communities, topicSections] = await Promise.all([
+  const [{ threads }, communities, topicThreads] = await Promise.all([
     listThreads(),
     listCommunities(),
-    prisma.section.findMany({
+    prisma.thread.findMany({
       where:
         selectedTags.length > 0
           ? {
@@ -59,15 +59,15 @@ export default async function DashboardPage({
     }),
   ]);
 
-  const sectionIds = topicSections.map((s) => s.id);
+  const threadIds = topicThreads.map((s) => s.id);
 
   const readReceiptRows =
-    sectionIds.length > 0
+    threadIds.length > 0
       ? await prisma.readReceipt
           .findMany({
             where: {
               userId: session.user.id,
-              threadId: { in: sectionIds }, // threadId maps to section in this schema
+              threadId: { in: threadIds },
             },
             select: {
               threadId: true,
@@ -82,9 +82,9 @@ export default async function DashboardPage({
 
   const readAtByThread = new Map(readReceiptRows.map((row) => [row.threadId, row.readAt]));
 
-  const totalMessages = topicSections.reduce((acc, t) => acc + t.messageCount, 0);
+  const totalMessages = topicThreads.reduce((acc, t) => acc + t.messageCount, 0);
 
-  const threadTopics = topicSections.map((thread) => {
+  const threadTopics = topicThreads.map((thread) => {
     const readAt = readAtByThread.get(thread.id);
 
     const unreadCount = thread.messages.filter((msg) => {
@@ -144,7 +144,7 @@ export default async function DashboardPage({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <DarkMetric
           label="Active threads"
-          value={topicSections.length}
+          value={topicThreads.length}
           icon={<MessageSquare size={18} />}
           color="blue"
         />

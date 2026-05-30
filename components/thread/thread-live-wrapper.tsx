@@ -410,7 +410,7 @@ export function ThreadLiveWrapper({
       <div className="p-4 bg-background border-t border-border/60 flex-shrink-0">
         <div className="max-w-4xl mx-auto">
           <PostMessageForm
-            sectionId={threadId}
+            threadId={threadId}
             onMessagePosted={handleMessagePosted}
             onTypingStart={emitTypingStart}
             onTypingStop={emitTypingStop}

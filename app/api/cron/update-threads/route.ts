@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
     // Process threads in batches to avoid loading all into memory
     while (true) {
-      const threads = await prisma.section.findMany({
+      const threads = await prisma.thread.findMany({
         where: {
           updatedAt: {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),

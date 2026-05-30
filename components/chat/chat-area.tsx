@@ -10,7 +10,7 @@ import type { Message } from '@/lib/types/index';
 
 interface ChatAreaProps {
   initialMessages: Message[];
-  sectionId: string;
+  threadId: string;
   currentUser: {
     id: string;
     name: string | null;
@@ -18,14 +18,14 @@ interface ChatAreaProps {
   };
 }
 
-export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaProps) {
+export function ChatArea({ initialMessages, threadId, currentUser }: ChatAreaProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [replyingTo, setReplyingTo] = useState<{
     messageId: string;
     userName: string;
   } | null>(null);
 
-  const { isConnected, lastMessage, typingUsers } = useThreadWebSocket(sectionId);
+  const { isConnected, lastMessage, typingUsers } = useThreadWebSocket(threadId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaPr
       try {
         const data = JSON.parse(lastMessage);
 
-        if (data.type === 'NEW_MESSAGE' && data.payload.sectionId === sectionId) {
+        if (data.type === 'NEW_MESSAGE' && data.payload.threadId === threadId) {
           const newMessage = {
             ...data.payload,
             createdAt: new Date(data.payload.createdAt),
@@ -45,10 +45,10 @@ export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaPr
             if (prev.some((m) => m.id === newMessage.id)) return prev;
             return [...prev, newMessage];
           });
-        } else if (data.type === 'MESSAGE_DELETED' && data.payload.sectionId === sectionId) {
+        } else if (data.type === 'MESSAGE_DELETED' && data.payload.threadId === threadId) {
           const { messageId } = data.payload;
           setMessages((prev) => prev.filter((m) => m.id !== messageId));
-        } else if (data.type === 'MESSAGE_EDITED' && data.payload.sectionId === sectionId) {
+        } else if (data.type === 'MESSAGE_EDITED' && data.payload.threadId === threadId) {
           const { messageId, content } = data.payload;
           setMessages((prev) =>
             prev.map((m) =>
@@ -62,7 +62,7 @@ export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaPr
     };
 
     handleMessage();
-  }, [lastMessage, sectionId]);
+  }, [lastMessage, threadId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -112,7 +112,7 @@ export function ChatArea({ initialMessages, sectionId, currentUser }: ChatAreaPr
         <TypingIndicatorComponent users={typingUsers} />
         <div className="mt-1">
           <PostMessageForm
-            sectionId={sectionId}
+            threadId={threadId}
             onMessagePosted={handleMessagePosted}
             replyTo={replyingTo}
             onCancelReply={handleCancelReply}

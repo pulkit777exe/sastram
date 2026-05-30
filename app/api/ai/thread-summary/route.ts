@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireSectionMembershipOrThrow } from '@/modules/auth/session';
+import { requireThreadMembershipOrThrow } from '@/modules/auth/session';
 import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType, DEFAULT_JOB_OPTIONS, getThreadSummaryQueue } from '@/lib/infrastructure/bullmq';
@@ -38,13 +38,13 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      await requireSectionMembershipOrThrow(threadId, session.user.id);
+      await requireThreadMembershipOrThrow(threadId, session.user.id);
     } catch {
       return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
     }
 
     const totalMessageCount = await prisma.message.count({
-      where: { sectionId: threadId, deletedAt: null },
+      where: { threadId: threadId, deletedAt: null },
     });
 
     if (totalMessageCount < 50) {
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch thread and last 50 messages for AI context
-    const thread = await prisma.section.findUnique({
+    const thread = await prisma.thread.findUnique({
       where: { id: threadId },
       include: {
         messages: {

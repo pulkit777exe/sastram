@@ -105,7 +105,7 @@ export default async function ActivityPage() {
           ) : (
             <div className="space-y-3">
               {messages.map((message) => (
-                <Link key={message.id} href={ROUTES.THREAD(message.section.slug)}>
+                <Link key={message.id} href={ROUTES.THREAD(message.thread.slug)}>
                   <Card className="p-4 hover:bg-accent transition-colors">
                     {message.parent && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 pb-2 border-b border-border">
@@ -122,7 +122,7 @@ export default async function ActivityPage() {
                     <p className="text-sm text-foreground line-clamp-2 mb-2">{message.content}</p>
 
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="font-medium text-brand">{message.section.name}</span>
+                      <span className="font-medium text-brand">{message.thread.name}</span>
                       <span>
                         <TimeAgo date={message.createdAt} />
                       </span>

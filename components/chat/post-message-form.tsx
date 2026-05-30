@@ -35,7 +35,7 @@ const COMMON_EMOJIS = [
 ];
 
 interface PostMessageFormProps {
-  sectionId: string;
+  threadId: string;
   onMessagePosted?: (message: Message) => void;
   replyTo?: {
     messageId: string;
@@ -49,7 +49,7 @@ interface PostMessageFormProps {
 }
 
 export function PostMessageForm({
-  sectionId,
+  threadId,
   onMessagePosted,
   replyTo,
   onCancelReply,
@@ -122,7 +122,7 @@ export function PostMessageForm({
   const resolveMentionCandidates = useCallback(
     async (query: string) => {
       const requestId = ++mentionRequestIdRef.current;
-      const result = await searchMentionUsers(sectionId, query);
+      const result = await searchMentionUsers(threadId, query);
       if (requestId !== mentionRequestIdRef.current) return;
 
       const users = Array.isArray(result.data) ? result.data : [];
@@ -130,7 +130,7 @@ export function PostMessageForm({
       setMentionOpen(users.length > 0);
       setActiveMentionIndex(0);
     },
-    [sectionId]
+    [threadId]
   );
 
   const detectMentionQuery = useCallback(
@@ -257,7 +257,7 @@ export function PostMessageForm({
     }
 
     setLoading(true);
-    formData.append('sectionId', sectionId);
+    formData.append('threadId', threadId);
     formData.set('content', content);
 
     if (selectedFile) {

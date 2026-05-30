@@ -34,7 +34,7 @@ import { toast } from 'sonner';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import { getThreadMembersAction, manageThreadMemberAction } from '@/modules/threads/actions';
 import type { ThreadMember } from '@/modules/threads/types';
-import { SectionRole } from '@prisma/client';
+import { ThreadRole } from '@prisma/client';
 
 interface ThreadAccessModalProps {
   threadId: string;
@@ -47,7 +47,7 @@ type ConfirmActionState = {
   type: 'update_role' | 'remove';
   userId: string;
   userName: string;
-  role?: SectionRole;
+  role?: ThreadRole;
 } | null;
 
 export function ThreadAccessModal({
@@ -88,7 +88,7 @@ export function ThreadAccessModal({
     };
   }, [isOpen, threadId]);
 
-  const handleRoleChangeRequest = (userId: string, userName: string, newRole: SectionRole) => {
+  const handleRoleChangeRequest = (userId: string, userName: string, newRole: ThreadRole) => {
     setConfirmAction({
       type: 'update_role',
       userId,
@@ -206,7 +206,7 @@ export function ThreadAccessModal({
                                   handleRoleChangeRequest(
                                     member.userId,
                                     userName,
-                                    val as SectionRole
+                                    val as ThreadRole
                                   )
                                 }
                               >

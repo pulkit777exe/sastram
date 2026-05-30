@@ -3,7 +3,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { enqueueInlineJob } from '@/lib/infrastructure/bullmq';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
-import { requireSectionMembershipOrThrow } from '@/modules/auth/session';
+import { requireThreadMembershipOrThrow } from '@/modules/auth/session';
 
 export async function POST(
   request: NextRequest,
@@ -20,7 +20,7 @@ export async function POST(
     }
 
     try {
-      await requireSectionMembershipOrThrow(threadId, session.user.id);
+      await requireThreadMembershipOrThrow(threadId, session.user.id);
     } catch {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -28,7 +28,7 @@ export async function POST(
     // Find the latest message with @ai mention in this thread
     const parentMessage = await prisma.message.findFirst({
       where: {
-        sectionId: threadId,
+        threadId: threadId,
         content: { contains: '@ai' },
       },
       orderBy: { createdAt: 'desc' },
@@ -51,8 +51,7 @@ export async function POST(
     // Enqueue the AI inline job
     await enqueueInlineJob({
       messageId: parentMessage.id,
-      threadId: parentMessage.sectionId,
-      sectionId: parentMessage.sectionId,
+      threadId: parentMessage.threadId,
       query,
       userId: session.user.id,
     });

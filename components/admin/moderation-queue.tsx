@@ -140,7 +140,7 @@ export function ModerationQueue({
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>by {report.message.sender.name || 'Unknown'}</span>
                           <span>•</span>
-                          <span>{report.message.section.name}</span>
+                          <span>{report.message.thread.name}</span>
                           <span>•</span>
                           <span>
                             <TimeAgo date={report.createdAt} />

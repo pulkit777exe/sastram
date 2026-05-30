@@ -56,7 +56,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
       createdAt: raw.createdAt,
       senderId: raw.senderId,
       parentId: raw.parentId ?? null,
-      sectionId: thread.id,
+      threadId: thread.id,
       depth: raw.depth ?? 0,
       isEdited: raw.isEdited ?? false,
       isPinned: raw.isPinned ?? false,
@@ -77,7 +77,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
         type: att.type,
         size: att.size ?? null,
       })),
-      section: {
+      thread: {
         id: thread.id,
         name: thread.title,
         slug: thread.slug,

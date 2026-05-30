@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
 
-    const sections = await prisma.section.findMany({
+    const threads = await prisma.thread.findMany({
       where: {
         members: { some: { userId: session.user.id } },
       },
@@ -37,11 +37,11 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: 'desc' },
     });
 
-    const conversations = sections.map((section) => {
-      const lastMessage = section.messages[0];
+    const conversations = threads.map((thread) => {
+      const lastMessage = thread.messages[0];
       return {
-        id: section.id,
-        name: section.name,
+        id: thread.id,
+        name: thread.name,
         avatar: '',
         lastMessage: lastMessage
           ? `${lastMessage.sender.name}: ${lastMessage.content.substring(0, 50)}...`
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       name = body.name;
       if (!name) {
-        return NextResponse.json(fail('VALIDATION_ERROR', 'Section name is required'), { status: 400 });
+        return NextResponse.json(fail('VALIDATION_ERROR', 'Thread name is required'), { status: 400 });
       }
     } catch {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid request body'), { status: 400 });
@@ -85,10 +85,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (user?.role !== 'ADMIN') {
-      return NextResponse.json(fail('FORBIDDEN', 'Only admins can create sections'), { status: 403 });
+      return NextResponse.json(fail('FORBIDDEN', 'Only admins can create threads'), { status: 403 });
     }
 
-    const section = await prisma.section.create({
+    const thread = await prisma.thread.create({
       data: {
         name,
         createdBy: session.user.id,
@@ -97,8 +97,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(ok({
-      id: section.id,
-      name: section.name,
+      id: thread.id,
+      name: thread.name,
       avatar: '',
       lastMessage: 'No messages yet',
       timestamp: '',
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       type: 'channel' as const,
     }));
   } catch (error) {
-    logger.error('Error creating section:', error);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to create section'), { status: 500 });
+    logger.error('Error creating thread:', error);
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to create thread'), { status: 500 });
   }
 }
