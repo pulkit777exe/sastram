@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSectionMembership, requireSession } from '@/modules/auth/session';
+import { requireThreadMembership, requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { getMessageReactions } from '@/modules/reactions/repository';
 import { emitReactionUpdate } from '@/modules/ws/publisher';
@@ -26,7 +26,7 @@ export const toggleReaction = createServerAction(
 
     const message = await prisma.message.findUnique({
       where: { id: messageId },
-      select: { sectionId: true },
+      select: { threadId: true },
     });
 
     if (!message) {
@@ -34,7 +34,7 @@ export const toggleReaction = createServerAction(
     }
 
     try {
-      await requireSectionMembership(message.sectionId, session.user.id);
+      await requireThreadMembership(message.threadId, session.user.id);
     } catch {
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }
@@ -62,7 +62,7 @@ export const toggleReaction = createServerAction(
     });
 
     const match = reactionCounts.find((r) => r.emoji === emoji);
-    emitReactionUpdate(message.sectionId, {
+    emitReactionUpdate(message.threadId, {
       messageId,
       reactionType: emoji,
       count: match?._count._all ?? 0,
@@ -80,7 +80,7 @@ export const getReactionSummary = createServerAction(
 
     const message = await prisma.message.findUnique({
       where: { id: messageId },
-      select: { sectionId: true },
+      select: { threadId: true },
     });
 
     if (!message) {
@@ -88,7 +88,7 @@ export const getReactionSummary = createServerAction(
     }
 
     try {
-      await requireSectionMembership(message.sectionId, session.user.id);
+      await requireThreadMembership(message.threadId, session.user.id);
     } catch {
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }

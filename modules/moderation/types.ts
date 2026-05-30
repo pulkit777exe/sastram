@@ -44,7 +44,7 @@ export interface MessageDetails {
     status: string;
     createdAt: Date;
   };
-  section: {
+  thread: {
     id: string;
     name: string;
     slug: string;

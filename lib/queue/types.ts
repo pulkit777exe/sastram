@@ -4,7 +4,7 @@ export interface JobMessageData {
   createdAt: Date;
   updatedAt: Date;
   senderId: string;
-  sectionId: string;
+  threadId: string;
   parentId: string | null;
   depth: number;
   isAiResponse: boolean;
@@ -89,7 +89,6 @@ export interface EmailJobData {
 export interface AIInlineJobData {
   messageId: string;
   threadId: string;
-  sectionId: string;
   query: string;
   userId: string;
 }

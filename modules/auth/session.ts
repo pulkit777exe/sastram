@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { Role, SectionMember, SectionRole, User } from '@prisma/client';
+import { Role, ThreadMember, ThreadRole, User } from '@prisma/client';
 import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 
@@ -60,23 +60,23 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
 }
 
 /**
- * Require that a user is a member of the given section.
- * Returns the SectionMember record if membership exists.
+ * Require that a user is a member of the given thread.
+ * Returns the ThreadMember record if membership exists.
  * Throws (redirects to dashboard) if not a member.
  *
  * Usage in server actions:
- *   const membership = await requireSectionMembership(sectionId, session.user.id);
+ *   const membership = await requireThreadMembership(threadId, session.user.id);
  *
  * Usage in API routes (throws instead of redirecting):
- *   const membership = await requireSectionMembershipOrThrow(sectionId, userId);
+ *   const membership = await requireThreadMembershipOrThrow(threadId, userId);
  */
-export async function requireSectionMembership(
-  sectionId: string,
+export async function requireThreadMembership(
+  threadId: string,
   userId: string,
-  requiredRole?: SectionRole
-): Promise<SectionMember> {
-  const membership = await prisma.sectionMember.findUnique({
-    where: { sectionId_userId: { sectionId, userId } },
+  requiredRole?: ThreadRole
+): Promise<ThreadMember> {
+  const membership = await prisma.threadMember.findUnique({
+    where: { threadId_userId: { threadId, userId } },
   });
 
   if (!membership) {
@@ -94,17 +94,17 @@ export async function requireSectionMembership(
  * API route variant — throws an error instead of redirecting.
  * Use in API route handlers where redirect() is not available.
  */
-export async function requireSectionMembershipOrThrow(
-  sectionId: string,
+export async function requireThreadMembershipOrThrow(
+  threadId: string,
   userId: string,
-  requiredRole?: SectionRole
-): Promise<SectionMember> {
-  const membership = await prisma.sectionMember.findUnique({
-    where: { sectionId_userId: { sectionId, userId } },
+  requiredRole?: ThreadRole
+): Promise<ThreadMember> {
+  const membership = await prisma.threadMember.findUnique({
+    where: { threadId_userId: { threadId, userId } },
   });
 
   if (!membership) {
-    throw new Error('Forbidden: not a member of this section');
+    throw new Error('Forbidden: not a member of this thread');
   }
 
   if (requiredRole && membership.role !== requiredRole) {

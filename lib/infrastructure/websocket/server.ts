@@ -183,7 +183,7 @@ function cleanupTypingIndicators() {
         threadTyping.delete(userId);
         publishThreadEvent(threadId, {
           type: 'USER_STOPPED_TYPING',
-          payload: { userId, sectionId: threadId },
+          payload: { userId, threadId: threadId },
         });
       }
     });
@@ -354,7 +354,7 @@ export function initWebSocketServer(server: HTTPServer) {
           threadTyping.set(ws.userId, {
             userId: ws.userId,
             userName: ws.userName,
-            sectionId: threadId,
+            threadId: threadId,
             timestamp: Date.now(),
           });
           typingIndicators.set(threadId, threadTyping);
@@ -364,7 +364,7 @@ export function initWebSocketServer(server: HTTPServer) {
             payload: {
               userId: ws.userId,
               userName: ws.userName,
-              sectionId: threadId,
+              threadId: threadId,
             },
           });
         } else if (message.type === 'USER_STOPPED_TYPING' && ws.userId) {
@@ -375,7 +375,7 @@ export function initWebSocketServer(server: HTTPServer) {
 
           publishThreadEvent(threadId, {
             type: 'USER_STOPPED_TYPING',
-            payload: { userId: ws.userId, sectionId: threadId },
+            payload: { userId: ws.userId, threadId: threadId },
           });
         } else {
           publishThreadEvent(threadId, message);
@@ -419,8 +419,8 @@ export function initWebSocketServer(server: HTTPServer) {
       }
 
       if (channel.startsWith('thread:')) {
-        const sectionId = channel.replace('thread:', '');
-        const localSockets = threadChannels.get(sectionId);
+        const threadId = channel.replace('thread:', '');
+        const localSockets = threadChannels.get(threadId);
         if (!localSockets || localSockets.size === 0) return;
 
         localSockets.forEach((client) => {
@@ -480,7 +480,7 @@ export async function publishUserEvent(userId: string, payload: unknown) {
   try {
     await redisUserPublish(userId, {
       type: 'NOTIFICATION_COUNT_UPDATE',
-      sectionId: userId,
+      threadId: userId,
       payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
       sourceInstance: INSTANCE_ID,
     });
@@ -508,7 +508,7 @@ export async function publishThreadEvent(threadId: string, payload: unknown) {
     const parsedPayload = typeof payload === 'string' ? JSON.parse(payload) : payload;
     await redisPublish(threadId, {
       type: 'NEW_MESSAGE',
-      sectionId: threadId,
+      threadId: threadId,
       payload: parsedPayload,
       sourceInstance: INSTANCE_ID,
     });

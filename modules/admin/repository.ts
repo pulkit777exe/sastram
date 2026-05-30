@@ -15,7 +15,7 @@ export async function getAdminStats() {
     pendingReports,
   ] = await Promise.all([
     prisma.user.count(),
-    prisma.section.count(),
+    prisma.thread.count(),
     prisma.message.count({ where: { deletedAt: null } }),
     prisma.community.count(),
     prisma.user.count({

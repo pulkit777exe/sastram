@@ -151,7 +151,7 @@ export async function prewarmQueriesForThread(threadId: string): Promise<{
 
   try {
     // Get thread information
-    const thread = await prisma.section.findUnique({
+    const thread = await prisma.thread.findUnique({
       where: { id: threadId },
       include: {
         messages: true,

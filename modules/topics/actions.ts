@@ -21,7 +21,7 @@ export const createTopic = createServerAction(
   async ({ title, description, icon, tags }) => {
     const session = await requireSession();
 
-    const section = await prisma.section.create({
+    const thread = await prisma.thread.create({
       data: {
         name: title,
         description: description,
@@ -38,7 +38,7 @@ export const createTopic = createServerAction(
       await Promise.all(
         uniqueTags.map(async (tagName) => {
           const tag = await createTag(tagName);
-          await addTagToThread(section.id, tag.id);
+          await addTagToThread(thread.id, tag.id);
         })
       );
     }

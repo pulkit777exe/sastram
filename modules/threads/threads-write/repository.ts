@@ -6,7 +6,7 @@ import { buildThreadDTO } from '@/modules/threads/service';
 import type { ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 import { Prisma } from '@prisma/client';
 
-type ThreadStorageWithCommunityAndMessages = Prisma.SectionGetPayload<{
+type ThreadStorageWithCommunityAndMessages = Prisma.ThreadGetPayload<{
   include: {
     community: true;
     messages: true;
@@ -29,7 +29,7 @@ export async function createThread(payload: {
   createdBy: string;
   initialMessage?: string;
 }): Promise<ThreadSummary> {
-  const thread = await prisma.section.create({
+  const thread = await prisma.thread.create({
     data: {
       name: payload.name,
       description: payload.description,
@@ -91,13 +91,13 @@ export async function createThread(payload: {
         aiService.calculateResolutionScore(initialMessages),
       ]);
 
-      await prisma.section.update({
+      await prisma.thread.update({
         where: { id: thread.id },
         data: { threadDna: threadDNA, resolutionScore, lastVerifiedAt: new Date() },
       });
     } catch (error) {
       logger.error('Failed to generate thread metadata:', error);
-      await prisma.section.update({
+      await prisma.thread.update({
         where: { id: thread.id },
         data: {
           threadDna: {
@@ -123,14 +123,14 @@ export async function createThread(payload: {
 }
 
 export async function deleteThread(threadId: string): Promise<void> {
-  await prisma.section.delete({
+  await prisma.thread.delete({
     where: { id: threadId },
   });
 }
 
 export async function updateThreadDNA(threadId: string, threadDNA: Record<string, unknown>): Promise<void> {
   const validatedDNA = threadDNASchema.parse(threadDNA);
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { threadDna: validatedDNA },
   });
@@ -138,14 +138,14 @@ export async function updateThreadDNA(threadId: string, threadDNA: Record<string
 
 export async function updateResolutionScore(threadId: string, score: number): Promise<void> {
   const validatedScore = z.number().int().min(0).max(100).parse(score);
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { resolutionScore: validatedScore },
   });
 }
 
 export async function updateThreadStaleness(threadId: string, isOutdated: boolean): Promise<void> {
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { isOutdated, lastVerifiedAt: new Date() },
   });

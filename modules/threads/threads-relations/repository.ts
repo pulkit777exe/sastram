@@ -52,7 +52,7 @@ export async function findRelatedThreads(threadId: string): Promise<
   }>
 > {
   try {
-    const thread = await prisma.section.findUnique({
+    const thread = await prisma.thread.findUnique({
       where: { id: threadId },
       select: {
         threadDna: true,
@@ -64,7 +64,7 @@ export async function findRelatedThreads(threadId: string): Promise<
     }
 
     // Get all other threads with thread DNA
-    const otherThreads = await prisma.section.findMany({
+    const otherThreads = await prisma.thread.findMany({
       where: {
         id: { not: threadId },
         threadDna: { not: Prisma.DbNull },
@@ -189,7 +189,7 @@ export async function updateAllThreadRelations(): Promise<{
   const stats = { processed: 0, updated: 0, errors: 0 };
 
   try {
-    const threads = await prisma.section.findMany({
+    const threads = await prisma.thread.findMany({
       where: {
         threadDna: { not: Prisma.DbNull },
         updatedAt: {

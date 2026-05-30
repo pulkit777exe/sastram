@@ -85,7 +85,7 @@ export const getUserBootstrapProfile = cache(async (userId: string) => {
 export const getUserThreads = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
   try {
     const [threads, total] = await Promise.all([
-      prisma.section.findMany({
+      prisma.thread.findMany({
         where: {
           createdBy: userId,
         },
@@ -110,7 +110,7 @@ export const getUserThreads = cache(async (userId: string, limit: number = 20, o
         take: limit,
         skip: offset,
       }),
-      prisma.section.count({
+      prisma.thread.count({
         where: {
           createdBy: userId,
         },
@@ -152,7 +152,7 @@ export const getUserMessages = cache(async (userId: string, limit: number = 20, 
           content: true,
           createdAt: true,
           parentId: true,
-          section: {
+          thread: {
             select: {
               id: true,
               name: true,

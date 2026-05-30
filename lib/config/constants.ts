@@ -70,7 +70,7 @@ export const SECTION_VISIBILITY = {
   RESTRICTED: 'RESTRICTED',
 } as const;
 
-export type SectionVisibility = (typeof SECTION_VISIBILITY)[keyof typeof SECTION_VISIBILITY];
+export type ThreadVisibility = (typeof SECTION_VISIBILITY)[keyof typeof SECTION_VISIBILITY];
 
 export const COMMUNITY_VISIBILITY = {
   PUBLIC: 'PUBLIC',

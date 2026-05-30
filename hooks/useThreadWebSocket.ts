@@ -106,7 +106,7 @@ export function useThreadWebSocket({
               id: payload.id as string,
               content: payload.content as string,
               senderId,
-              sectionId: payload.sectionId as string,
+              threadId: payload.threadId as string,
               parentId: (payload.parentId as string | null) ?? null,
               createdAt: new Date(payload.createdAt as string),
               updatedAt: new Date(payload.createdAt as string),
@@ -145,7 +145,7 @@ export function useThreadWebSocket({
                     size: a.size ?? null,
                   }))
                 : [],
-              section: { id: payload.sectionId as string, name: '', slug: '' },
+              thread: { id: payload.threadId as string, name: '', slug: '' },
             };
 
             // Deliver message or streaming content update
@@ -180,7 +180,7 @@ export function useThreadWebSocket({
             const { userId, userName } = msg.payload as {
               userId: string;
               userName: string;
-              sectionId: string;
+              threadId: string;
             };
             if (userId === currentUserId) return;
 
@@ -204,7 +204,7 @@ export function useThreadWebSocket({
           case 'USER_STOPPED_TYPING': {
             const { userId } = msg.payload as {
               userId: string;
-              sectionId: string;
+              threadId: string;
             };
             setTypers((prev) => prev.filter((t) => t.userId !== userId));
             const timer = typingTimersRef.current.get(userId);
@@ -258,7 +258,7 @@ export function useThreadWebSocket({
       typingTimeoutRef.current = null;
     }
     lastTypingEmitRef.current = 0;
-    sendWsMessage('USER_STOPPED_TYPING', { sectionId: threadId });
+    sendWsMessage('USER_STOPPED_TYPING', { threadId: threadId });
   }, [threadId, sendWsMessage]);
 
   const emitTypingStart = useCallback(() => {
@@ -266,7 +266,7 @@ export function useThreadWebSocket({
     if (now - lastTypingEmitRef.current < 3000) return;
     lastTypingEmitRef.current = now;
 
-    sendWsMessage('USER_TYPING', { sectionId: threadId });
+    sendWsMessage('USER_TYPING', { threadId: threadId });
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {

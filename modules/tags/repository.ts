@@ -157,7 +157,7 @@ export async function getThreadsByTag(tagId: string, memberUserIds?: string[]) {
       where.members = { some: { userId: { in: memberUserIds }, status: 'ACTIVE' } };
     }
 
-    const threads = await prisma.section.findMany({
+    const threads = await prisma.thread.findMany({
       where,
       select: {
         id: true,

@@ -18,7 +18,7 @@ import { prismaErrorMessage } from '@/lib/utils/errors';
 
 export async function postMessage(formData: FormData) {
   const content = formData.get('content') as string;
-  const sectionId = formData.get('sectionId') as string;
+  const threadId = formData.get('threadId') as string;
   const parentId = formData.get('parentId') as string | null;
   const mentionsRaw = formData.get('mentions') as string | null;
 
@@ -39,7 +39,7 @@ export async function postMessage(formData: FormData) {
 
   const validation = createMessageWithAttachmentsSchema.safeParse({
     content,
-    sectionId,
+    threadId,
     parentId: parentId || undefined,
     mentions,
   });
@@ -50,26 +50,26 @@ export async function postMessage(formData: FormData) {
 
   const session = await requireSession(false);
 
-  // Ensure the user has a section_members row (auto-enroll for public threads).
+  // Ensure the user has a thread_members row (auto-enroll for public threads).
   // If the user is authenticated but lacks a membership record, create one.
   try {
-    const existing = await prisma.sectionMember.findUnique({
-      where: { sectionId_userId: { sectionId, userId: session.user.id } },
+    const existing = await prisma.threadMember.findUnique({
+      where: { threadId_userId: { threadId, userId: session.user.id } },
     });
 
     if (!existing) {
-      // Verify the section exists before auto-enrolling
-      const section = await prisma.section.findUnique({
-        where: { id: sectionId },
+      // Verify the thread exists before auto-enrolling
+      const thread = await prisma.thread.findUnique({
+        where: { id: threadId },
         select: { id: true, visibility: true },
       });
 
-      if (!section) {
+      if (!thread) {
         return { data: null, error: 'Thread not found', errorCode: 'NOT_FOUND', ok: false };
       }
 
-      // Auto-enroll for PUBLIC or UNLISTED sections; PRIVATE requires explicit invite
-      if (section.visibility === 'PRIVATE') {
+      // Auto-enroll for PUBLIC or UNLISTED threads; PRIVATE requires explicit invite
+      if (thread.visibility === 'PRIVATE') {
         return {
           data: null,
           error: 'You are not a member of this thread',
@@ -78,9 +78,9 @@ export async function postMessage(formData: FormData) {
         };
       }
 
-      await prisma.sectionMember.create({
+      await prisma.threadMember.create({
         data: {
-          sectionId,
+          threadId,
           userId: session.user.id,
           role: 'MEMBER',
           status: 'ACTIVE',
@@ -123,7 +123,7 @@ export async function postMessage(formData: FormData) {
 
   try {
     const moderationResult = await moderateIncomingMessage({
-      sectionId,
+      threadId,
       authorId: session.user.id,
       content: safeContent,
       parentId,
@@ -141,7 +141,7 @@ export async function postMessage(formData: FormData) {
     const message = await prisma.message.findUnique({
       where: { id: moderationResult.messageId! },
       include: {
-        section: {
+        thread: {
           select: {
             id: true,
             name: true,
@@ -170,7 +170,7 @@ export async function postMessage(formData: FormData) {
 
     await createMentionsForMessage({
       messageId: message.id,
-      sectionId,
+      threadId,
       mentions,
       mentionedBy: {
         id: session.user.id,
@@ -179,7 +179,7 @@ export async function postMessage(formData: FormData) {
       },
       content: message.content,
       parentId: message.parentId ?? null,
-      sectionSlug: message.section?.slug ?? null,
+      threadSlug: message.thread?.slug ?? null,
       sideEffects: infraMessageSideEffects,
     });
 
@@ -190,7 +190,7 @@ export async function postMessage(formData: FormData) {
       senderName: message.sender?.name || session.user.email,
       senderAvatar: message.sender?.image ?? session.user.image,
       createdAt: message.createdAt,
-      sectionId,
+      threadId,
       parentId: message.parentId ?? null,
       depth: message.depth ?? 0,
       likeCount: 0,
@@ -206,18 +206,18 @@ export async function postMessage(formData: FormData) {
       })),
     };
 
-    infraMessageSideEffects.emitThreadMessage(sectionId, payload);
+    infraMessageSideEffects.emitThreadMessage(threadId, payload);
 
     const { aiInlineQueued, aiInlineLimited } = await queueAiInlineIfRequested({
       content: safeContent,
       userId: session.user.id,
-      sectionId,
+      threadId,
       messageId: message.id,
       sideEffects: infraMessageSideEffects,
     });
 
-    if (message.section?.slug) {
-      revalidatePath(ROUTES.THREAD(message.section.slug));
+    if (message.thread?.slug) {
+      revalidatePath(ROUTES.THREAD(message.thread.slug));
     }
     revalidatePath('/dashboard');
 
@@ -227,8 +227,8 @@ export async function postMessage(formData: FormData) {
       entityType: 'Message',
       entityId: message.id,
       metadata: {
-        sectionId,
-        threadName: message.section?.slug,
+        threadId,
+        threadName: message.thread?.slug,
       },
     });
 

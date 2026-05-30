@@ -54,7 +54,7 @@ export async function validateModerationTarget(
 }
 
 export async function validateEntityForDeletion(
-  entityType: 'message' | 'section' | 'community',
+  entityType: 'message' | 'thread' | 'community',
   entityId: string
 ) {
   let entity: unknown;
@@ -65,16 +65,16 @@ export async function validateEntityForDeletion(
         where: { id: entityId },
         select: {
           id: true,
-          sectionId: true,
+          threadId: true,
           senderId: true,
-          section: {
+          thread: {
             select: { name: true, slug: true },
           },
         },
       });
       break;
-    case 'section':
-      entity = await prisma.section.findUnique({
+    case 'thread':
+      entity = await prisma.thread.findUnique({
         where: { id: entityId },
         select: {
           id: true,

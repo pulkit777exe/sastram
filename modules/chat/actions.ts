@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { attachmentInputSchema } from '@/lib/schemas/database';
 import { withValidation } from '@/lib/utils/server-action';
 import { prismaErrorMessage } from '@/lib/utils/errors';
-import { requireSectionMembership } from '@/modules/auth/session';
+import { requireThreadMembership } from '@/modules/auth/session';
 
 const createConversationSchema = z.object({
   name: z.string().min(1),
@@ -51,7 +51,7 @@ export async function getConversations(): Promise<{ data: Conversation[] | null;
       return { data: [], error: 'Authentication required', ok: false, errorCode: 'AUTH_REQUIRED' };
     }
 
-    const sections = await prisma.section.findMany({
+    const threads = await prisma.thread.findMany({
       where: {
         members: { some: { userId: session.user.id } },
       },
@@ -64,12 +64,12 @@ export async function getConversations(): Promise<{ data: Conversation[] | null;
       },
     });
 
-    const conversations = sections.map((section) => ({
-      id: section.id,
-      name: section.name,
+    const conversations = threads.map((thread) => ({
+      id: thread.id,
+      name: thread.name,
       avatar: '',
-      lastMessage: section.messages[0]?.content || 'No messages yet',
-      timestamp: section.messages[0]?.createdAt.toISOString() || section.updatedAt.toISOString(),
+      lastMessage: thread.messages[0]?.content || 'No messages yet',
+      timestamp: thread.messages[0]?.createdAt.toISOString() || thread.updatedAt.toISOString(),
       unread: 0,
       online: true,
       type: 'channel' as const,
@@ -98,7 +98,7 @@ export const createConversation = withValidation(
       }
 
       if (type === 'channel') {
-        const section = await prisma.section.create({
+        const thread = await prisma.thread.create({
           data: {
             name,
             description,
@@ -110,11 +110,11 @@ export const createConversation = withValidation(
         revalidatePath('/chat');
         return {
           data: {
-            id: section.id,
-            name: section.name,
+            id: thread.id,
+            name: thread.name,
             avatar: '',
             lastMessage: 'No messages yet',
-            timestamp: section.updatedAt.toISOString(),
+            timestamp: thread.updatedAt.toISOString(),
             unread: 0,
             online: true,
             type: 'channel',
@@ -149,14 +149,14 @@ export const getMessages = withValidation(
       }
 
       try {
-        await requireSectionMembership(conversationId, session.user.id);
+        await requireThreadMembership(conversationId, session.user.id);
       } catch {
         return { data: { messages: [], nextCursor: null, hasMore: false }, error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
       }
 
       const messages = await prisma.message.findMany({
         where: {
-          sectionId: conversationId,
+          threadId: conversationId,
           ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
         },
         include: {
@@ -214,7 +214,7 @@ export const sendMessage = withValidation(
       }
 
       try {
-        await requireSectionMembership(conversationId, session.user.id);
+        await requireThreadMembership(conversationId, session.user.id);
       } catch {
         return { data: null, error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
       }
@@ -222,7 +222,7 @@ export const sendMessage = withValidation(
       const message = await prisma.message.create({
         data: {
           content: content || '',
-          sectionId: conversationId,
+          threadId: conversationId,
           senderId: session.user.id,
           attachments: {
             create:
@@ -249,7 +249,7 @@ export const sendMessage = withValidation(
         senderName: message.sender.name || session.user.email,
         senderAvatar: message.sender.image,
         createdAt: message.createdAt,
-        sectionId: conversationId,
+        threadId: conversationId,
         parentId: null,
         depth: 0,
         likeCount: 0,

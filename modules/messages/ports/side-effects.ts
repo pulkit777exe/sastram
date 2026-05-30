@@ -3,7 +3,7 @@ export interface MentionNotificationPayload {
   mentionedUserId: string;
   mentionedBy: string;
   mentionedByName: string;
-  sectionId: string;
+  threadId: string;
   content: string;
   parentId?: string;
 }
@@ -15,7 +15,7 @@ export interface MessageBroadcastPayload {
   senderName: string;
   senderAvatar: string | null | undefined;
   createdAt: Date;
-  sectionId: string;
+  threadId: string;
   parentId: string | null;
   depth: number;
   likeCount: number;
@@ -32,10 +32,10 @@ export interface MessageBroadcastPayload {
 }
 
 export interface MessageSideEffectsPort {
-  emitThreadMessage: (sectionId: string, payload: MessageBroadcastPayload) => void;
-  emitMentionNotification: (sectionId: string, payload: MentionNotificationPayload) => void;
-  emitMessageDeleted: (sectionId: string, messageId: string, userId?: string) => void;
-  emitPinUpdate: (sectionId: string, payload: { messageId: string; isPinned: boolean }) => void;
+  emitThreadMessage: (threadId: string, payload: MessageBroadcastPayload) => void;
+  emitMentionNotification: (threadId: string, payload: MentionNotificationPayload) => void;
+  emitMessageDeleted: (threadId: string, messageId: string, userId?: string) => void;
+  emitPinUpdate: (threadId: string, payload: { messageId: string; isPinned: boolean }) => void;
   sendMentionEmail: (args: {
     toEmail: string;
     mentionedByName: string;
@@ -46,7 +46,6 @@ export interface MessageSideEffectsPort {
   enqueueAiInline: (args: {
     messageId: string;
     threadId: string;
-    sectionId: string;
     query: string;
     userId: string;
   }) => Promise<void>;

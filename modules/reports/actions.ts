@@ -51,7 +51,7 @@ export async function createReport(data: {
       select: {
         id: true,
         senderId: true,
-        section: { select: { name: true, slug: true } },
+        thread: { select: { name: true, slug: true } },
       },
     });
 
@@ -136,7 +136,7 @@ export async function getReports(filters?: { status?: string; limit?: number; of
                 createdAt: true,
               },
             },
-            section: {
+            thread: {
               select: {
                 id: true,
                 name: true,
@@ -229,7 +229,7 @@ export async function getReportWithContext(reportId: string) {
                 reputationPoints: true,
               },
             },
-            section: {
+            thread: {
               select: {
                 id: true,
                 name: true,
@@ -259,7 +259,7 @@ export async function getReportWithContext(reportId: string) {
       await Promise.all([
         prisma.message.findMany({
           where: {
-            sectionId: report.message.section.id,
+            threadId: report.message.thread.id,
             createdAt: {
               gte: new Date(report.message.createdAt.getTime() - 5 * 60 * 1000),
               lte: new Date(report.message.createdAt.getTime() + 5 * 60 * 1000),
@@ -324,9 +324,9 @@ export async function getReportWithContext(reportId: string) {
         categoryLabel:
           REPORT_CATEGORY_LABELS[report.category as keyof typeof REPORT_CATEGORY_LABELS],
         threadContext: {
-          threadTitle: report.message.section.name,
-          threadSlug: report.message.section.slug,
-          messageCount: report.message.section.messageCount,
+          threadTitle: report.message.thread.name,
+          threadSlug: report.message.thread.slug,
+          messageCount: report.message.thread.messageCount,
           surroundingMessages: surroundingMessages.map((m) => ({
             id: m.id,
             content: m.content,
@@ -405,7 +405,7 @@ export async function getMyReports() {
           select: {
             id: true,
             content: true,
-            section: {
+            thread: {
               select: { name: true, slug: true },
             },
           },
@@ -422,7 +422,7 @@ export async function getMyReports() {
       status: r.status,
       createdAt: r.createdAt,
       resolvedBy: r.resolvedBy,
-      threadName: r.message.section.name,
+      threadName: r.message.thread.name,
       messagePreview: r.message.content.substring(0, 100),
     }));
     return { data, error: null, ok: true, errorCode: null };
@@ -453,7 +453,7 @@ export async function resolveReport(data: {
         message: {
           include: {
             sender: { select: { id: true, name: true, email: true } },
-            section: { select: { id: true, name: true, slug: true } },
+            thread: { select: { id: true, name: true, slug: true } },
           },
         },
         reporter: { select: { id: true, name: true, email: true } },
@@ -532,7 +532,7 @@ export async function resolveReport(data: {
         message: `Your message has been removed for violating community guidelines. Reason: ${parsed.data.note}`,
         data: {
           reportId: parsed.data.reportId,
-          threadSlug: report.message.section.slug,
+          threadSlug: report.message.thread.slug,
         },
       });
     }

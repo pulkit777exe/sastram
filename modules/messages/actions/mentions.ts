@@ -10,7 +10,7 @@ import { ROUTES } from '@/lib/config/routes';
 
 export async function createMentionsForMessage(args: {
   messageId: string;
-  sectionId: string;
+  threadId: string;
   mentions: string[];
   mentionedBy: {
     id: string;
@@ -19,7 +19,7 @@ export async function createMentionsForMessage(args: {
   };
   content: string;
   parentId: string | null;
-  sectionSlug: string | null;
+  threadSlug: string | null;
   sideEffects: MessageSideEffectsPort;
 }) {
   if (args.mentions.length === 0) {
@@ -33,8 +33,8 @@ export async function createMentionsForMessage(args: {
     })),
   });
 
-  const linkUrl = args.sectionSlug
-    ? `${ROUTES.THREAD(args.sectionSlug)}?focus=${args.messageId}`
+  const linkUrl = args.threadSlug
+    ? `${ROUTES.THREAD(args.threadSlug)}?focus=${args.messageId}`
     : null;
 
   await prisma.notification.createMany({
@@ -43,24 +43,24 @@ export async function createMentionsForMessage(args: {
       type: 'MENTION',
       title: 'You were mentioned',
       message: `${args.mentionedBy.name || args.mentionedBy.email} mentioned you in a message`,
-      data: { messageId: args.messageId, sectionId: args.sectionId, linkUrl },
+      data: { messageId: args.messageId, threadId: args.threadId, linkUrl },
     })),
   });
 
   for (const userId of args.mentions) {
-    args.sideEffects.emitMentionNotification(args.sectionId, {
+    args.sideEffects.emitMentionNotification(args.threadId, {
       messageId: args.messageId,
       mentionedUserId: userId,
       mentionedBy: args.mentionedBy.id,
       mentionedByName: args.mentionedBy.name || args.mentionedBy.email,
-      sectionId: args.sectionId,
+      threadId: args.threadId,
       content: args.content,
       parentId: args.parentId ?? undefined,
     });
   }
 
-  const thread = await prisma.section.findUnique({
-    where: { id: args.sectionId },
+  const thread = await prisma.thread.findUnique({
+    where: { id: args.threadId },
     select: { name: true, slug: true },
   });
 
@@ -92,7 +92,7 @@ export async function createMentionsForMessage(args: {
 
 export const searchMentionUsers = createServerAction(
   { schema: searchMentionUsersSchema, actionName: 'searchMentionUsers' },
-  async ({ sectionId, query }) => {
+  async ({ threadId, query }) => {
     const session = await requireSession(false);
 
     try {
@@ -100,7 +100,7 @@ export const searchMentionUsers = createServerAction(
         where: {
           id: { not: session.user.id },
           memberships: {
-            some: { sectionId },
+            some: { threadId },
           },
           OR: [
             { name: { contains: query, mode: 'insensitive' } },

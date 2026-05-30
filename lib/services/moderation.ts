@@ -9,14 +9,14 @@ export type MessageLike = {
   id?: string;
   content: string;
   authorId: string;
-  sectionId: string;
+  threadId: string;
   parentId?: string | null;
   timestamp?: Date;
   metadata?: Record<string, unknown>;
 };
 
 export type ConversationContext = {
-  sectionId: string;
+  threadId: string;
   participantIds: string[];
   recentHistory: Array<{
     id: string;
@@ -24,7 +24,7 @@ export type ConversationContext = {
     senderId: string;
     createdAt: Date;
   }>;
-  sectionMetadata?: Record<string, unknown>;
+  threadMetadata?: Record<string, unknown>;
   relationships?: Map<string, unknown>;
 };
 
@@ -310,7 +310,7 @@ export class MessageService {
         const msg = await tx.message.create({
           data: {
             content: message.content,
-            sectionId: message.sectionId,
+            threadId: message.threadId,
             senderId: message.authorId,
             parentId: message.parentId ?? null,
             depth,
@@ -383,7 +383,7 @@ export class ModerationDashboard {
                 email: true,
               },
             },
-            section: {
+            thread: {
               select: {
                 id: true,
                 name: true,
@@ -423,7 +423,7 @@ export class ModerationDashboard {
           userId: report.message.senderId,
           bannedBy: 'system',
           reason,
-          threadId: report.message.sectionId,
+          threadId: report.message.threadId,
         },
       });
     }

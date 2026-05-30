@@ -6,7 +6,7 @@ import type { TypingIndicator, WebSocketEventType } from '@/lib/types/index';
 interface WebSocketEvent {
   type: WebSocketEventType;
   payload: {
-    sectionId: string;
+    threadId: string;
     [key: string]: unknown;
   };
 }
@@ -63,7 +63,7 @@ export function useThreadWebSocket(threadId: string | null) {
                 {
                   userId: typingData.userId,
                   userName: typingData.userName,
-                  sectionId: threadId,
+                  threadId: threadId,
                   timestamp: Date.now(),
                 },
               ];

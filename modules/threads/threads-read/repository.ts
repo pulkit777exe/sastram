@@ -11,7 +11,7 @@ export type ThreadMessageReactionAggregate = {
 export type ThreadMessage = {
   id: string;
   body: string;
-  sectionId: string;
+  threadId: string;
   senderId: string;
   parentId: string | null;
   depth: number;
@@ -177,7 +177,7 @@ export const getThreadWithFullContext = cache(async (
           SELECT 1 FROM "thread_subscriptions" ts
           WHERE ts."threadId" = s.id AND ts."userId" = ${userId} AND ts."isActive" = true
         ) as is_subscribed
-      FROM "sections" s
+      FROM "threads" s
       JOIN "users" u ON u.id = s."createdBy"
       LEFT JOIN LATERAL (
         SELECT json_agg(
@@ -194,9 +194,9 @@ export const getThreadWithFullContext = cache(async (
             'role', sm.role
           )
         ) as members
-        FROM "section_members" sm
+        FROM "thread_members" sm
         JOIN "users" mu ON mu.id = sm."userId"
-        WHERE sm."sectionId" = s.id AND sm.status = 'ACTIVE'
+        WHERE sm."threadId" = s.id AND sm.status = 'ACTIVE'
       ) members ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(mrow.message ORDER BY mrow.created_at) as messages
@@ -206,7 +206,7 @@ export const getThreadWithFullContext = cache(async (
             json_build_object(
               'id', m.id,
               'body', m.content,
-              'sectionId', m."sectionId",
+              'threadId', m."threadId",
               'senderId', m."senderId",
               'parentId', m."parentId",
               'depth', m.depth,
@@ -242,7 +242,7 @@ export const getThreadWithFullContext = cache(async (
             FROM "attachments" a
             WHERE a."messageId" = m.id
           ) a ON true
-          WHERE m."sectionId" = s.id
+          WHERE m."threadId" = s.id
           ORDER BY m."createdAt" DESC
           LIMIT 500
         ) mrow
@@ -261,8 +261,8 @@ export const getThreadWithFullContext = cache(async (
       ) poll ON true
       LEFT JOIN LATERAL (
         SELECT
-          (SELECT COUNT(*)::int FROM "messages" m2 WHERE m2."sectionId" = s.id AND m2."deletedAt" IS NULL) as message_count,
-          (SELECT COUNT(*)::int FROM "section_members" sm2 WHERE sm2."sectionId" = s.id AND sm2.status = 'ACTIVE') as member_count
+          (SELECT COUNT(*)::int FROM "messages" m2 WHERE m2."threadId" = s.id AND m2."deletedAt" IS NULL) as message_count,
+          (SELECT COUNT(*)::int FROM "thread_members" sm2 WHERE sm2."threadId" = s.id AND sm2.status = 'ACTIVE') as member_count
       ) counts ON true
       WHERE s.slug = ${slug}
       LIMIT 1

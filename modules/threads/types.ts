@@ -1,21 +1,20 @@
 import type {
-  Section,
+  Thread,
   Community,
   Message,
   User,
-  SectionMember,
   Reaction,
   Attachment,
-  SectionVisibility,
-  SectionRole,
+  ThreadVisibility,
+  ThreadRole,
   UserStatus,
 } from '@prisma/client';
 
 // Base thread record with all relations
-export type ThreadRecord = Section & {
+export type ThreadRecord = Thread & {
   community?: Community | null;
   creator?: User | null;
-  members?: SectionMember[];
+  members?: ThreadMember[];
   messages?: (Message & {
     sender?: User | null;
     reactions?: Reaction[];
@@ -32,7 +31,7 @@ export interface ThreadSummary {
   name: string; // Changed from 'title' to match schema
   description?: string | null;
   icon?: string | null;
-  visibility: SectionVisibility;
+  visibility: ThreadVisibility;
   community?: {
     id: string;
     title: string;
@@ -68,7 +67,7 @@ export interface ThreadDetail extends ThreadSummary {
   messages: MessageWithDetails[];
   summary?: string | null;
   subscriptionCount?: number;
-  userRole?: SectionRole | null; // Current user's role in this thread
+  userRole?: ThreadRole | null; // Current user's role in this thread
   isSubscribed?: boolean;
   unreadCount?: number;
   resolutionScore?: number | null;
@@ -170,7 +169,7 @@ export interface UserProfile {
 export interface ThreadMember {
   id: string;
   userId: string;
-  role: SectionRole;
+  role: ThreadRole;
   joinedAt: Date;
   user: {
     id: string;
@@ -209,7 +208,7 @@ export interface PaginatedResponse<T> {
 // Thread filters
 export interface ThreadFilters {
   communityId?: string;
-  visibility?: SectionVisibility;
+  visibility?: ThreadVisibility;
   search?: string;
   sortBy?: 'recent' | 'popular' | 'active' | 'oldest';
   page?: number;
@@ -234,7 +233,7 @@ export interface CreateThreadInput {
   description?: string;
   summary?: string;
   icon?: string;
-  visibility?: SectionVisibility;
+  visibility?: ThreadVisibility;
   communityId?: string;
 }
 
@@ -243,7 +242,7 @@ export interface UpdateThreadInput {
   description?: string;
   summary?: string;
   icon?: string;
-  visibility?: SectionVisibility;
+  visibility?: ThreadVisibility;
 }
 
 export interface CreateMessageInput {

@@ -9,7 +9,7 @@ import { buildThreadSlug } from '@/lib/utils/slug';
 import { createThread, deleteThread, listThreads, getThreadMembers, updateThreadMemberRole, removeThreadMember, updateThreadDNA, updateResolutionScore, updateThreadStaleness } from './repository';
 import { createPoll } from '@/modules/polls/repository';
 import { ROUTES } from '@/lib/config/routes';
-import { SectionRole } from '@prisma/client';
+import { ThreadRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { prismaErrorMessage } from '@/lib/utils/errors';
@@ -37,7 +37,7 @@ const manageMemberSchema = z.object({
   threadId: z.string().cuid(),
   userId: z.string().cuid(),
   action: z.enum(['update_role', 'remove']),
-  role: z.nativeEnum(SectionRole).optional(),
+  role: z.nativeEnum(ThreadRole).optional(),
 });
 
 /**
@@ -154,7 +154,7 @@ export const manageThreadMemberAction = createServerAction(
     try {
       const session = await requireSession();
 
-      const thread = await prisma.section.findUnique({
+      const thread = await prisma.thread.findUnique({
         where: { id: threadId },
         select: { createdBy: true, slug: true },
       });

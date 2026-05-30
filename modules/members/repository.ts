@@ -1,13 +1,13 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { SectionRole, MemberStatus } from '@prisma/client';
+import { ThreadRole, MemberStatus } from '@prisma/client';
 import { cache } from 'react';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 
-export async function addMember(sectionId: string, userId: string, role: SectionRole = 'MEMBER') {
-  return prisma.sectionMember.create({
+export async function addMember(threadId: string, userId: string, role: ThreadRole = 'MEMBER') {
+  return prisma.threadMember.create({
     data: {
-      sectionId,
+      threadId,
       userId,
       role,
       status: 'ACTIVE',
@@ -25,10 +25,10 @@ export async function addMember(sectionId: string, userId: string, role: Section
   });
 }
 
-export async function removeMember(sectionId: string, userId: string): Promise<{ count: number }> {
-  return prisma.sectionMember.updateMany({
+export async function removeMember(threadId: string, userId: string): Promise<{ count: number }> {
+  return prisma.threadMember.updateMany({
     where: {
-      sectionId,
+      threadId,
       userId,
       status: 'ACTIVE',
     },
@@ -38,10 +38,10 @@ export async function removeMember(sectionId: string, userId: string): Promise<{
   });
 }
 
-export async function updateMemberRole(sectionId: string, userId: string, role: SectionRole) {
-  return prisma.sectionMember.updateMany({
+export async function updateMemberRole(threadId: string, userId: string, role: ThreadRole) {
+  return prisma.threadMember.updateMany({
     where: {
-      sectionId,
+      threadId,
       userId,
     },
     data: {
@@ -50,13 +50,13 @@ export async function updateMemberRole(sectionId: string, userId: string, role: 
   });
 }
 
-export const getSectionMembers = cache(async (sectionId: string) => {
+export const getThreadMembers = cache(async (threadId: string) => {
   try {
     return (
-      (await dedupe(`members:section:${sectionId}`, () =>
-        prisma.sectionMember.findMany({
+      (await dedupe(`members:thread:${threadId}`, () =>
+        prisma.threadMember.findMany({
           where: {
-            sectionId,
+            threadId,
             status: 'ACTIVE',
           },
           include: {
@@ -78,7 +78,7 @@ export const getSectionMembers = cache(async (sectionId: string) => {
       )) ?? []
     );
   } catch (error) {
-    logger.error('[getSectionMembers]', error);
+    logger.error('[getThreadMembers]', error);
     return [];
   }
 });
@@ -87,13 +87,13 @@ export const getUserMemberships = cache(async (userId: string) => {
   try {
     return (
       (await dedupe(`members:user:${userId}`, () =>
-        prisma.sectionMember.findMany({
+        prisma.threadMember.findMany({
           where: {
             userId,
             status: 'ACTIVE',
           },
           include: {
-            section: {
+            thread: {
               select: {
                 id: true,
                 name: true,
@@ -113,12 +113,12 @@ export const getUserMemberships = cache(async (userId: string) => {
   }
 });
 
-export const getMemberRole = cache(async (sectionId: string, userId: string) => {
-  const member = await dedupe(`members:role:${sectionId}:${userId}`, () =>
-    prisma.sectionMember.findUnique({
+export const getMemberRole = cache(async (threadId: string, userId: string) => {
+  const member = await dedupe(`members:role:${threadId}:${userId}`, () =>
+    prisma.threadMember.findUnique({
       where: {
-        sectionId_userId: {
-          sectionId,
+        threadId_userId: {
+          threadId,
           userId,
         },
       },
@@ -132,7 +132,7 @@ export const getMemberRole = cache(async (sectionId: string, userId: string) => 
   return member;
 });
 
-export const isMember = cache(async (sectionId: string, userId: string) => {
-  const member = await getMemberRole(sectionId, userId);
+export const isMember = cache(async (threadId: string, userId: string) => {
+  const member = await getMemberRole(threadId, userId);
   return member?.status === 'ACTIVE';
 });

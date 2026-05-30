@@ -20,7 +20,7 @@ export async function inviteFriendToThread(formData: FormData) {
   try {
     const session = await requireSession(false);
 
-    const thread = await prisma.section.findUnique({
+    const thread = await prisma.thread.findUnique({
       where: { id: parsed.data.threadId },
       select: { id: true, slug: true, name: true },
     });

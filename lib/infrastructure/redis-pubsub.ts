@@ -8,7 +8,7 @@ export interface RedisThreadPayload {
   senderName: string | null;
   senderAvatar: string | null;
   createdAt: string;
-  sectionId: string;
+  threadId: string;
   parentId: string | null;
   depth: number;
   likeCount: number;
@@ -30,13 +30,13 @@ export interface RedisThreadEvent {
     | 'USER_STOPPED_TYPING'
     | 'MENTION_NOTIFICATION'
     | 'NOTIFICATION_COUNT_UPDATE';
-  sectionId: string;
+  threadId: string;
   payload: Record<string, unknown>;
   sourceInstance?: string;
 }
 
-export function getThreadChannel(sectionId: string): string {
-  return `thread:${sectionId}`;
+export function getThreadChannel(threadId: string): string {
+  return `thread:${threadId}`;
 }
 
 export function getUserChannel(userId: string): string {
@@ -61,11 +61,11 @@ export function getRedisSub(): Redis {
 }
 
 export async function publishThreadEvent(
-  sectionId: string,
+  threadId: string,
   event: RedisThreadEvent
 ): Promise<void> {
   const pub = getRedisPub();
-  await pub.publish(getThreadChannel(sectionId), JSON.stringify(event));
+  await pub.publish(getThreadChannel(threadId), JSON.stringify(event));
 }
 
 export async function publishUserEvent(

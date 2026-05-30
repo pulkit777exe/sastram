@@ -3,15 +3,15 @@ import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore, emptyPagination } from '@/lib/db/pagination';
 
-export const searchThreads = cache(async (query: string, limit: number = 20, offset: number = 0, sectionIds?: string[]) => {
+export const searchThreads = cache(async (query: string, limit: number = 20, offset: number = 0, threadIds?: string[]) => {
   try {
     const sanitized = query.replace(/[^\w\s]/g, '').trim();
     if (!sanitized) {
       return { threads: [], total: 0, hasMore: false };
     }
 
-    const sectionFilter = sectionIds && sectionIds.length > 0
-      ? prisma.$queryRaw`AND id = ANY(${sectionIds}::text[])`
+    const threadFilter = threadIds && threadIds.length > 0
+      ? prisma.$queryRaw`AND id = ANY(${threadIds}::text[])`
       : prisma.$queryRaw``;
 
     const [threads, total] = await Promise.all([
@@ -19,18 +19,18 @@ export const searchThreads = cache(async (query: string, limit: number = 20, off
         SELECT id, name, slug, description, "aiSummary" as "aiSummary",
                "createdAt", "updatedAt", "createdBy",
                "messageCount", "memberCount",
-                ts_rank("fts_vector", plainto_tsquery('english', ${sanitized})) AS rank
-        FROM "sections"
+                 ts_rank("fts_vector", plainto_tsquery('english', ${sanitized})) AS rank
+        FROM "threads"
         WHERE "fts_vector" @@ plainto_tsquery('english', ${sanitized})
-          ${sectionFilter}
+          ${threadFilter}
         ORDER BY rank DESC, "messageCount" DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
       prisma.$queryRaw`
         SELECT count(*)::int AS total
-        FROM "sections"
+        FROM "threads"
         WHERE "fts_vector" @@ plainto_tsquery('english', ${sanitized})
-          ${sectionFilter}
+          ${threadFilter}
       `,
     ]);
 
@@ -64,7 +64,7 @@ export const searchMessages = cache(async (
   threadId?: string,
   limit: number = 20,
   offset: number = 0,
-  sectionIds?: string[]
+  threadIds?: string[]
 ) => {
   try {
     const sanitized = query.replace(/[^\w\s]/g, '').trim();
@@ -73,27 +73,27 @@ export const searchMessages = cache(async (
     }
 
     const threadFilter = threadId
-      ? prisma.$queryRaw`AND m."sectionId" = ${threadId}::text`
+      ? prisma.$queryRaw`AND m."threadId" = ${threadId}::text`
       : prisma.$queryRaw``;
 
-    const sectionFilter = sectionIds && sectionIds.length > 0
-      ? prisma.$queryRaw`AND m."sectionId" = ANY(${sectionIds}::text[])`
+    const threadsFilter = threadIds && threadIds.length > 0
+      ? prisma.$queryRaw`AND m."threadId" = ANY(${threadIds}::text[])`
       : prisma.$queryRaw``;
 
     const [messages, total] = await Promise.all([
       prisma.$queryRaw`
-        SELECT m.id, m.content, m."sectionId", m."senderId", m."createdAt", m."parentId", m.depth,
+        SELECT m.id, m.content, m."threadId", m."senderId", m."createdAt", m."parentId", m.depth,
                m."isAiResponse", m."likeCount", m."replyCount",
-               s.name as "sectionName", s.slug as "sectionSlug",
+               t.name as "threadName", t.slug as "threadSlug",
                u.name as "senderName", u.email as "senderEmail", u.image as "senderImage", u."avatarUrl" as "senderAvatarUrl",
                ts_rank(m."fts_vector", plainto_tsquery('english', ${sanitized})) AS rank
         FROM "messages" m
-        JOIN "sections" s ON s.id = m."sectionId"
+        JOIN "threads" t ON t.id = m."threadId"
         JOIN "users" u ON u.id = m."senderId"
         WHERE m."deletedAt" IS NULL
           AND m."fts_vector" @@ plainto_tsquery('english', ${sanitized})
           ${threadFilter}
-          ${sectionFilter}
+          ${threadsFilter}
         ORDER BY rank DESC, m."createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
@@ -103,8 +103,8 @@ export const searchMessages = cache(async (
         WHERE m."deletedAt" IS NULL
           AND m."fts_vector" @@ plainto_tsquery('english', ${sanitized})
           ${threadFilter}
-          ${sectionFilter}
-      `,
+          ${threadsFilter}
+        `,
     ]);
 
     const rows = messages as Array<Record<string, unknown>>;
@@ -114,7 +114,7 @@ export const searchMessages = cache(async (
       messages: rows.map((m: any) => ({
         id: m.id,
         content: m.content,
-        sectionId: m.sectionId,
+        threadId: m.threadId,
         senderId: m.senderId,
         createdAt: m.createdAt,
         parentId: m.parentId,
@@ -129,10 +129,10 @@ export const searchMessages = cache(async (
           image: m.senderImage,
           avatarUrl: m.senderAvatarUrl,
         },
-        section: {
-          id: m.sectionId,
-          name: m.sectionName,
-          slug: m.sectionSlug,
+        thread: {
+          id: m.threadId,
+          name: m.threadName,
+          slug: m.threadSlug,
         },
       })),
       total: count,

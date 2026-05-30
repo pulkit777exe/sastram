@@ -2,7 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { MessageService } from '@/lib/services/moderation';
 
 export async function moderateIncomingMessage(args: {
-  sectionId: string;
+  threadId: string;
   authorId: string;
   content: string;
   parentId: string | null;
@@ -10,7 +10,7 @@ export async function moderateIncomingMessage(args: {
   const messageService = new MessageService();
 
   const recentMessages = await prisma.message.findMany({
-    where: { sectionId: args.sectionId, deletedAt: null },
+    where: { threadId: args.threadId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: 10,
     select: {
@@ -21,8 +21,8 @@ export async function moderateIncomingMessage(args: {
     },
   });
 
-  const section = await prisma.section.findUnique({
-    where: { id: args.sectionId },
+  const thread = await prisma.thread.findUnique({
+    where: { id: args.threadId },
     select: {
       id: true,
       name: true,
@@ -32,13 +32,13 @@ export async function moderateIncomingMessage(args: {
   });
 
   const context = {
-    sectionId: args.sectionId,
+    threadId: args.threadId,
     participantIds: [args.authorId],
     recentHistory: recentMessages,
-    sectionMetadata: {
-      visibility: section?.visibility,
-      name: section?.name,
-      createdBy: section?.createdBy,
+    threadMetadata: {
+      visibility: thread?.visibility,
+      name: thread?.name,
+      createdBy: thread?.createdBy,
     },
     relationships: new Map(),
   };
@@ -48,7 +48,7 @@ export async function moderateIncomingMessage(args: {
       id: '',
       content: args.content,
       authorId: args.authorId,
-      sectionId: args.sectionId,
+      threadId: args.threadId,
       parentId: args.parentId,
       timestamp: new Date(),
       metadata: { edited: false },

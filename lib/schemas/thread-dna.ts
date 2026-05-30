@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * ThreadDNA Zod schema — validates the JSON field from Section.threadDna
+ * ThreadDNA Zod schema — validates the JSON field from Thread.threadDna
  */
 export const threadDnaSchema = z.object({
   questionType: z.enum(['factual', 'opinion', 'technical', 'comparison', 'other']),

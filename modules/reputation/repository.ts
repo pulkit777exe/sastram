@@ -42,7 +42,7 @@ export const calculateReputationPoints = cache(async (userId: string) => {
     `reputation:calc:${userId}`,
     () =>
       Promise.all([
-        prisma.section.count({
+        prisma.thread.count({
           where: {
             createdBy: userId,
           },

@@ -1,13 +1,13 @@
-import { SectionRole } from '@prisma/client';
+import { ThreadRole } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import type { ThreadMember } from '@/modules/threads/types';
 
 export async function getThreadMembers(threadId: string): Promise<ThreadMember[]> {
   try {
-    const members = await prisma.sectionMember.findMany({
+    const members = await prisma.threadMember.findMany({
       where: {
-        sectionId: threadId,
+        threadId: threadId,
         status: 'ACTIVE',
       },
       include: {
@@ -48,12 +48,12 @@ export async function getThreadMembers(threadId: string): Promise<ThreadMember[]
 export async function addThreadMember(
   threadId: string,
   userId: string,
-  role: SectionRole = 'MEMBER'
+  role: ThreadRole = 'MEMBER'
 ): Promise<void> {
-  await prisma.sectionMember.upsert({
+  await prisma.threadMember.upsert({
     where: {
-      sectionId_userId: {
-        sectionId: threadId,
+      threadId_userId: {
+        threadId: threadId,
         userId,
       },
     },
@@ -62,7 +62,7 @@ export async function addThreadMember(
       status: 'ACTIVE',
     },
     create: {
-      sectionId: threadId,
+      threadId: threadId,
       userId,
       role,
       status: 'ACTIVE',
@@ -73,12 +73,12 @@ export async function addThreadMember(
 export async function updateThreadMemberRole(
   threadId: string,
   userId: string,
-  role: SectionRole
+  role: ThreadRole
 ): Promise<void> {
-  await prisma.sectionMember.update({
+  await prisma.threadMember.update({
     where: {
-      sectionId_userId: {
-        sectionId: threadId,
+      threadId_userId: {
+        threadId: threadId,
         userId,
       },
     },
@@ -89,10 +89,10 @@ export async function updateThreadMemberRole(
 }
 
 export async function removeThreadMember(threadId: string, userId: string): Promise<void> {
-  await prisma.sectionMember.delete({
+  await prisma.threadMember.delete({
     where: {
-      sectionId_userId: {
-        sectionId: threadId,
+      threadId_userId: {
+        threadId: threadId,
         userId,
       },
     },

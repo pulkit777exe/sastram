@@ -6,8 +6,8 @@ import { ROUTES } from '@/lib/config/routes';
 
 export async function executeMessageDeletionEffects(args: {
   messageId: string;
-  sectionId: string;
-  sectionSlug: string;
+  threadId: string;
+  threadSlug: string;
   moderatorId: string;
   reason?: string;
   originalAuthor: string;
@@ -19,14 +19,14 @@ export async function executeMessageDeletionEffects(args: {
     userId: args.moderatorId,
     details: {
       reason: args.reason,
-      sectionSlug: args.sectionSlug,
+      threadSlug: args.threadSlug,
       originalAuthor: args.originalAuthor,
     },
   });
 
-  emitMessageDeleted(args.sectionId, args.messageId);
+  emitMessageDeleted(args.threadId, args.messageId);
 
-  revalidatePath(ROUTES.THREAD(args.sectionSlug));
+  revalidatePath(ROUTES.THREAD(args.threadSlug));
   revalidatePath('/dashboard/admin/moderation');
 }
 

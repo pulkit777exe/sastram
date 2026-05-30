@@ -25,7 +25,7 @@ export interface Report {
       email: string;
       image: string | null;
     };
-    section: {
+    thread: {
       id: string;
       name: string;
       slug: string;
@@ -104,7 +104,7 @@ export interface ReportQueueItem {
       id: string;
       name: string | null;
     };
-    section: {
+    thread: {
       name: string;
       slug: string;
     };

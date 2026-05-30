@@ -52,16 +52,16 @@ export function emptyPagination<T>(): OffsetPaginationResult<T> {
   };
 }
 
-async function paginateSections<TSelect extends Prisma.SectionSelect>(
+async function paginateThreads<TSelect extends Prisma.ThreadSelect>(
   params: {
-    where?: Prisma.SectionWhereInput;
-    orderBy?: Prisma.SectionOrderByWithRelationInput;
+    where?: Prisma.ThreadWhereInput;
+    orderBy?: Prisma.ThreadOrderByWithRelationInput;
     select: TSelect;
   } & CursorPaginationParams<{ id: string }>
-): Promise<CursorPaginationResult<Prisma.SectionGetPayload<{ select: TSelect }>, { id: string }>> {
+): Promise<CursorPaginationResult<Prisma.ThreadGetPayload<{ select: TSelect }>, { id: string }>> {
   const take = params.take ?? 20;
 
-  const items = await prisma.section.findMany({
+  const items = await prisma.thread.findMany({
     where: params.where,
     orderBy: params.orderBy ?? { createdAt: 'desc' },
     take: take + 1,

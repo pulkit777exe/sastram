@@ -10,7 +10,7 @@ export const createMessageSchema = z.object({
     .max(1000, 'Message must be less than 1000 characters')
     .refine((val) => val.trim().length > 0, 'Message cannot be only whitespace')
     .refine((val) => !val.includes('\x00'), 'Message cannot contain null bytes'),
-  sectionId: z.string().cuid('Invalid section ID'),
+  threadId: z.string().cuid('Invalid thread ID'),
   parentId: z.string().cuid('Invalid parent message ID').optional(),
   mentions: z.array(z.string().cuid('Invalid user ID')).optional(),
 });
@@ -43,7 +43,7 @@ export const createMessageWithAttachmentsSchema = createMessageSchema.extend({
 });
 
 /**
- * Thread/Section creation schema
+ * Thread creation schema
  */
 export const createThreadSchema = z.object({
   name: z
@@ -128,7 +128,7 @@ export const newsletterSubscriptionSchema = z.object({
  */
 export const messageQueueSchema = z.object({
   userId: z.string().cuid('Invalid user ID'),
-  sectionId: z.string().cuid('Invalid section ID'),
+  threadId: z.string().cuid('Invalid thread ID'),
   messageId: z.string().cuid('Invalid message ID'),
   delivered: z.boolean().default(false),
 });
@@ -141,7 +141,7 @@ export const mentionDataSchema = z.object({
   mentionedUserId: z.string().cuid('Invalid user ID'),
   mentionedBy: z.string().cuid('Invalid user ID'),
   mentionedByName: z.string(),
-  sectionId: z.string().cuid('Invalid section ID'),
+  threadId: z.string().cuid('Invalid thread ID'),
   content: z.string(),
   parentId: z.string().cuid('Invalid parent message ID').optional(),
 });

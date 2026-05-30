@@ -33,7 +33,7 @@ export const uploadResponseSchema = z.object({
 });
 
 /**
- * Thread/Section schemas
+ * Thread schemas
  */
 export const createThreadRequestSchema = z.object({
   title: z

@@ -29,7 +29,7 @@ export const banUserSchema = z.object({
 
 export const deleteMessageSchema = z.object({
   messageId: z.string().cuid('Invalid message ID'),
-  sectionSlug: z.string().min(1, 'Section slug required'),
+  threadSlug: z.string().min(1, 'Thread slug required'),
   reason: z.string().max(500, 'Reason too long (max 500 characters)').optional(),
 });
 

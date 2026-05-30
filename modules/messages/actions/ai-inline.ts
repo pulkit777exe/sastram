@@ -14,7 +14,7 @@ export function extractAiInlineQuery(content: string): string | null {
 export async function queueAiInlineIfRequested(args: {
   content: string;
   userId: string;
-  sectionId: string;
+  threadId: string;
   messageId: string;
   sideEffects: MessageSideEffectsPort;
 }): Promise<{ aiInlineQueued: boolean; aiInlineLimited: boolean }> {
@@ -26,7 +26,7 @@ export async function queueAiInlineIfRequested(args: {
 
   const quota = await consumeAiInlineQuota({
     userId: args.userId,
-    threadId: args.sectionId,
+    threadId: args.threadId,
   });
 
   if (!quota.allowed) {
@@ -35,8 +35,7 @@ export async function queueAiInlineIfRequested(args: {
 
   await args.sideEffects.enqueueAiInline({
     messageId: args.messageId,
-    threadId: args.sectionId,
-    sectionId: args.sectionId,
+    threadId: args.threadId,
     query: aiQuery,
     userId: args.userId,
   });

@@ -157,7 +157,7 @@ export async function handleStalenessCheckJob(job: Job<StalenessCheckJobData>) {
 
   logger.info(`[worker:ai] staleness-check job ${job.id} for thread ${threadId}`);
 
-  const thread = await prisma.section.findUnique({
+  const thread = await prisma.thread.findUnique({
     where: { id: threadId! },
     select: { id: true, updatedAt: true, resolutionScore: true, isOutdated: true },
   });
@@ -172,7 +172,7 @@ export async function handleStalenessCheckJob(job: Job<StalenessCheckJobData>) {
   }
 
   if (isStale(thread.updatedAt, thread.resolutionScore)) {
-    await prisma.section.update({
+    await prisma.thread.update({
       where: { id: threadId! },
       data: { isOutdated: true, lastVerifiedAt: new Date() },
     });
@@ -189,7 +189,7 @@ async function handleStalenessBatchCheck() {
   let cursor: string | undefined;
 
   while (true) {
-    const threads = await prisma.section.findMany({
+    const threads = await prisma.thread.findMany({
       where: {
         isOutdated: false,
         updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000) },
@@ -206,7 +206,7 @@ async function handleStalenessBatchCheck() {
 
     if (threads.length === 0) break;
 
-    await prisma.section.updateMany({
+    await prisma.thread.updateMany({
       where: { id: { in: threads.map((t) => t.id) } },
       data: { isOutdated: true, lastVerifiedAt: new Date() },
     });
@@ -224,17 +224,17 @@ async function handleStalenessBatchCheck() {
 
 export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   logger.info(`[worker:ai] ai-inline job ${job.id}`);
-  const { messageId, sectionId, query } = job.data;
-  if (!messageId || !sectionId || !query) {
-    throw new Error('Missing required fields: messageId, sectionId, query');
+  const { messageId, threadId, query } = job.data;
+  if (!messageId || !threadId || !query) {
+    throw new Error('Missing required fields: messageId, threadId, query');
   }
-  return generateAIInlineResponse(job.id, messageId, sectionId, query);
+  return generateAIInlineResponse(job.id, messageId, threadId, query);
 }
 
 async function generateThreadSummary(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread summary for thread: ${threadId}`);
   const summary = await aiService.generateThreadSummary(messages);
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { aiSummary: summary },
   });
@@ -244,7 +244,7 @@ async function generateThreadSummary(threadId: string, messages: JobMessageData[
 async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread DNA for thread: ${threadId}`);
   const threadDNA = await aiService.generateThreadDNA(messages);
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { threadDna: threadDNA },
   });
@@ -255,7 +255,7 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
   logger.info(`Calculating resolution score for thread: ${threadId}`);
   const [score, thread] = await Promise.all([
     aiService.calculateResolutionScore(messages),
-    prisma.section.findUnique({
+    prisma.thread.findUnique({
       where: { id: threadId },
       select: { updatedAt: true },
     }),
@@ -266,7 +266,7 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
     logger.info(`Confidence decay applied for ${threadId}: raw=${score}, decayed=${decayedScore}, ageDays=${Math.round(ageDays)}`);
   }
 
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { resolutionScore: decayedScore, lastVerifiedAt: new Date() },
   });
@@ -277,7 +277,7 @@ async function detectConflicts(threadId: string, messages: JobMessageData[]) {
   logger.info(`Detecting conflicts for thread: ${threadId}`);
   const conflictResult = await aiService.detectConflicts(messages);
   if (conflictResult.hasConflict) {
-    await prisma.section.update({
+    await prisma.thread.update({
       where: { id: threadId },
       data: {
         isOutdated: true,
@@ -367,13 +367,13 @@ async function sendAIInsightNotifications(
 async function generateAIInlineResponse(
   jobId: string | undefined,
   messageId: string,
-  sectionId: string,
+  threadId: string,
   query: string,
 ) {
 
   const parentMessage = await prisma.message.findUnique({
     where: { id: messageId },
-    select: { id: true, depth: true, sectionId: true },
+    select: { id: true, depth: true, threadId: true },
   });
 
   if (!parentMessage) {
@@ -382,7 +382,7 @@ async function generateAIInlineResponse(
   }
 
   const recentMessages = await prisma.message.findMany({
-    where: { sectionId, deletedAt: null },
+    where: { threadId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: 8,
     select: {
@@ -412,7 +412,7 @@ async function generateAIInlineResponse(
   const aiMessage = await prisma.message.create({
     data: {
       content: '',
-      sectionId,
+      threadId,
       senderId: aiUser.id,
       parentId: parentMessage.id,
       depth: Math.min((parentMessage.depth ?? 0) + 1, 4),
@@ -423,18 +423,18 @@ async function generateAIInlineResponse(
       replyCount: 0,
     },
     include: {
-      section: { select: { id: true, name: true, slug: true } },
+      thread: { select: { id: true, name: true, slug: true } },
     },
   });
 
-  emitThreadMessage(sectionId, {
+  emitThreadMessage(threadId, {
     id: aiMessage.id,
     content: '',
     senderId: aiUser.id,
     senderName: aiUser.name,
     senderAvatar: aiUser.image ?? null,
     createdAt: aiMessage.createdAt,
-    sectionId,
+    threadId,
     parentId: aiMessage.parentId ?? null,
     depth: aiMessage.depth ?? 0,
     likeCount: 0,
@@ -461,14 +461,14 @@ async function generateAIInlineResponse(
           });
           lastDbUpdateTime = now;
         }
-        emitThreadMessage(sectionId, {
+        emitThreadMessage(threadId, {
           id: aiMessage.id,
           content: fullContent.slice(0, 2000),
           senderId: aiUser.id,
           senderName: aiUser.name ?? 'Sastram AI',
           senderAvatar: aiUser.image ?? null,
           createdAt: aiMessage.createdAt,
-          sectionId,
+          threadId,
           parentId: aiMessage.parentId ?? null,
           depth: aiMessage.depth ?? 0,
           likeCount: 0,
@@ -485,14 +485,14 @@ async function generateAIInlineResponse(
       data: { content: fullContent.slice(0, 2000) },
     });
 
-    emitThreadMessage(sectionId, {
+    emitThreadMessage(threadId, {
       id: aiMessage.id,
       content: fullContent.slice(0, 2000),
       senderId: aiUser.id,
       senderName: aiUser.name ?? 'Sastram AI',
       senderAvatar: aiUser.image ?? null,
       createdAt: aiMessage.createdAt,
-      sectionId,
+      threadId,
       parentId: aiMessage.parentId ?? null,
       depth: aiMessage.depth ?? 0,
       likeCount: 0,
@@ -509,14 +509,14 @@ async function generateAIInlineResponse(
       where: { id: aiMessage.id },
       data: { content: errorMessage },
     });
-    emitThreadMessage(sectionId, {
+    emitThreadMessage(threadId, {
       id: aiMessage.id,
       content: errorMessage,
       senderId: aiUser.id,
       senderName: aiUser.name ?? 'Sastram AI',
       senderAvatar: aiUser.image ?? null,
       createdAt: aiMessage.createdAt,
-      sectionId,
+      threadId,
       parentId: aiMessage.parentId ?? null,
       depth: aiMessage.depth ?? 0,
       likeCount: 0,

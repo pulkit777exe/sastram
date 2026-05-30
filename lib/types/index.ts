@@ -14,7 +14,7 @@ export interface Attachment {
 export interface Message {
   id: string;
   content: string;
-  sectionId: string;
+  threadId: string;
   senderId: string;
   parentId: string | null;
   depth: number;
@@ -28,7 +28,7 @@ export interface Message {
   deletedAt: Date | null;
 
   sender: Sender;
-  section: {
+  thread: {
     id: string;
     name: string;
     slug: string;
@@ -53,7 +53,7 @@ export type WebSocketEventType =
 export interface TypingIndicator {
   userId: string;
   userName: string;
-  sectionId?: string;
+  threadId?: string;
   timestamp?: number;
 }
 

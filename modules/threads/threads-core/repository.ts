@@ -6,7 +6,7 @@ import { dedupe } from '@/lib/dedupe';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 
-type ThreadStorageWithCommunityAndCount = Prisma.SectionGetPayload<{
+type ThreadStorageWithCommunityAndCount = Prisma.ThreadGetPayload<{
   include: {
     community: true;
     messages: { select: { senderId: true } };
@@ -14,7 +14,7 @@ type ThreadStorageWithCommunityAndCount = Prisma.SectionGetPayload<{
   };
 }>;
 
-type ThreadStorageWithFullDetails = Prisma.SectionGetPayload<{
+type ThreadStorageWithFullDetails = Prisma.ThreadGetPayload<{
   include: {
     community: true;
     messages: {
@@ -39,7 +39,7 @@ export interface ListThreadsParams {
   pageSize?: number;
   sortBy?: 'recent' | 'popular' | 'trending' | 'oldest';
   memberUserId?: string;
-  sectionIds?: string[];
+  threadIds?: string[];
 }
 
 export interface PaginatedThreads {
@@ -55,22 +55,22 @@ export interface PaginatedThreads {
 }
 
 export const listThreads = cache(async (params: ListThreadsParams = {}): Promise<PaginatedThreads> => {
-  const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, sectionIds } = params;
+  const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, threadIds } = params;
   const skip = (page - 1) * pageSize;
 
   const where: Record<string, unknown> = {};
   if (memberUserId) {
     where.members = { some: { userId: memberUserId } };
   }
-  if (sectionIds && sectionIds.length > 0) {
-    where.id = { in: sectionIds };
+  if (threadIds && threadIds.length > 0) {
+    where.id = { in: threadIds };
   }
 
   try {
     const [totalItems, threadRows] = await dedupe(`threads:list:${page}:${pageSize}:${sortBy}:${memberUserId ?? ''}`, () =>
       Promise.all([
-        prisma.section.count({ where }),
-        prisma.section.findMany({
+        prisma.thread.count({ where }),
+        prisma.thread.findMany({
           where,
           include: {
             community: true,
@@ -167,7 +167,7 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
 
 export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail | null> => {
   const row = await dedupe(`threads:bySlug:${slug}`, () =>
-    prisma.section.findFirst({
+    prisma.thread.findFirst({
       where: {
         slug,
       },
@@ -209,9 +209,9 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
 
   const typedRow = row as ThreadStorageWithFullDetails;
 
-  const memberCount = await prisma.sectionMember.count({
+  const memberCount = await prisma.threadMember.count({
     where: {
-      sectionId: typedRow.id,
+      threadId: typedRow.id,
       status: 'ACTIVE',
     },
   });

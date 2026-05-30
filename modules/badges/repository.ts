@@ -55,7 +55,7 @@ export async function checkAndAwardBadges(userId: string) {
     const [badges, threadCount, messageCount, followerCount, reputation, earnedBadges] =
       await Promise.all([
         prisma.userBadge.findMany(),
-        prisma.section.count({ where: { createdBy: userId } }),
+        prisma.thread.count({ where: { createdBy: userId } }),
         prisma.message.count({ where: { senderId: userId, deletedAt: null } }),
         prisma.userFollow.count({ where: { followingId: userId } }),
         prisma.userReputation.findUnique({ where: { userId } }),

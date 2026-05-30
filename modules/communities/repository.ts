@@ -8,7 +8,7 @@ import { logger } from '@/lib/infrastructure/logger';
 // Using @ts-expect-error where Prisma's TypeScript has limitations
 type CommunityWithCount = Prisma.CommunityGetPayload<{
   include: {
-    _count: { select: { sections: true } };
+    _count: { select: { threads: true } };
   };
 }>;
 
@@ -37,7 +37,7 @@ export const listCommunities = cache(async (): Promise<CommunitySummary[]> => {
         include: {
           _count: {
             select: {
-              sections: true,
+              threads: true,
             },
           },
         },
@@ -48,7 +48,7 @@ export const listCommunities = cache(async (): Promise<CommunitySummary[]> => {
     );
 
     return (communities ?? []).map((community: CommunityWithCount) =>
-      buildCommunityDTO(community, community._count.sections)
+      buildCommunityDTO(community, community._count.threads)
     );
   } catch (error) {
     logger.error('[listCommunities]', error);
@@ -61,7 +61,7 @@ export const getJoinedCommunities = cache(async (userId: string) => {
     const communities = await dedupe(`communities:joined:${userId}`, () =>
       prisma.community.findMany({
         where: {
-          sections: {
+          threads: {
             some: {
               members: {
                 some: {

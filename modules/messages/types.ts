@@ -10,7 +10,7 @@ export interface MessageWithDetails {
   createdAt: Date;
   updatedAt: Date;
   senderId: string;
-  sectionId: string;
+  threadId: string;
   parentId: string | null;
   depth: number;
   isEdited: boolean;
@@ -61,5 +61,5 @@ export interface PostMessageResult {
   senderName: string;
   senderAvatar: string | null;
   createdAt: Date;
-  sectionId: string;
+  threadId: string;
 }

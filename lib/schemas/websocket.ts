@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 /**
- * Base payload schema - all WebSocket messages must have a sectionId
+ * Base payload schema - all WebSocket messages must have a threadId
  */
 const basePayloadSchema = z.object({
-  sectionId: z.string().cuid('Invalid section ID'),
+  threadId: z.string().cuid('Invalid thread ID'),
 });
 
 /**
