@@ -52,16 +52,16 @@ export async function signIn(page: Page): Promise<string> {
   return token;
 }
 
-export async function getSectionSlugs(page: Page, token: string): Promise<Map<string, string>> {
-  const resp = await page.request.get('/api/sections', {
+export async function getThreadSlugs(page: Page, token: string): Promise<Map<string, string>> {
+  const resp = await page.request.get('/api/threads', {
     headers: { cookie: `better-auth.session_token=${token}` },
   });
   const body = await resp.json();
-  const sections = body.data ?? body.sections ?? body;
+  const threads = body.data ?? body.threads ?? body;
   const map = new Map<string, string>();
-  if (Array.isArray(sections)) {
-    for (const s of sections) {
-      map.set(s.name ?? s.title, s.slug);
+  if (Array.isArray(threads)) {
+    for (const t of threads) {
+      map.set(t.name ?? t.title, t.slug);
     }
   }
   return map;

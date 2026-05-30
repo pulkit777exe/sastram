@@ -52,24 +52,24 @@ test.describe('Flow 3: WebSocket Real-Time Message Delivery', () => {
       },
     ]);
 
-    const sectionsResp = await page.request.get('/api/sections', {
+    const threadsResp = await page.request.get('/api/threads', {
       headers: { cookie: `better-auth.session_token=${token}` },
     });
 
     let threadSlug: string | null = null;
-    if (sectionsResp.ok()) {
-      const body = await sectionsResp.json();
-      const sections = body.data ?? body.sections ?? body;
-      if (Array.isArray(sections) && sections.length > 0) {
-        threadSlug = sections[0].slug;
+    if (threadsResp.ok()) {
+      const body = await threadsResp.json();
+      const threads = body.data ?? body.threads ?? body;
+      if (Array.isArray(threads) && threads.length > 0) {
+        threadSlug = threads[0].slug;
       }
     }
 
-    test.skip(!threadSlug, 'No sections available');
+    test.skip(!threadSlug, 'No threads available');
 
     const wsConnected = page.waitForEvent('websocket', { timeout: 10000 }).then(() => true).catch(() => false);
 
-    await page.goto(`/sections/${threadSlug}`);
+    await page.goto(`/dashboard/threads/${threadSlug}`);
     await page.waitForLoadState('networkidle');
 
     const connected = await wsConnected;

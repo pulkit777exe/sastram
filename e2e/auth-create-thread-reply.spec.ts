@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { signIn, getSectionSlugs, TEST_USER } from './helpers';
+import { signIn, getThreadSlugs, TEST_USER } from './helpers';
 import { prisma } from '../lib/infrastructure/prisma';
 
 test.describe('Flow 1: Auth → Create Thread → Reply', () => {
@@ -32,7 +32,7 @@ test.describe('Flow 1: Auth → Create Thread → Reply', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('should create a new thread (section) and reply to it', async ({ page }) => {
+  test('should create a new thread and reply to it', async ({ page }) => {
     await page.context().addCookies([
       {
         name: 'better-auth.session_token',
@@ -44,12 +44,12 @@ test.describe('Flow 1: Auth → Create Thread → Reply', () => {
       },
     ]);
 
-    const sections = await getSectionSlugs(page, token);
-    const firstSection = sections.values().next().value;
-    test.skip(!firstSection, 'No sections found in seed data');
+    const threads = await getThreadSlugs(page, token);
+    const firstThread = threads.values().next().value;
+    test.skip(!firstThread, 'No threads found in seed data');
 
     const threadTitle = `E2E Test Thread ${Date.now()}`;
-    await page.goto(`/sections/${firstSection}/new`);
+    await page.goto(`/dashboard/threads/${firstThread}`);
     await page.waitForLoadState('networkidle');
 
     const titleInput = page.locator('input[name="title"], input[placeholder*="title" i]').first();

@@ -11,7 +11,7 @@ describe('GET /api/search', () => {
 
   beforeEach(() => {
     stubs.push(stubAuth());
-    stubs.push(sinon.stub(prisma.sectionMember, 'findMany').resolves([]));
+    stubs.push(sinon.stub(prisma.threadMember, 'findMany').resolves([]));
   });
 
   afterEach(() => {
@@ -23,7 +23,7 @@ describe('GET /api/search', () => {
     restoreStubs(...stubs);
     stubs = [];
     stubs.push(stubAuth(null));
-    stubs.push(sinon.stub(prisma.sectionMember, 'findMany').resolves([]));
+    stubs.push(sinon.stub(prisma.threadMember, 'findMany').resolves([]));
 
     const res = await GET()(mockRequest('/api/search?q=test'));
     const body = await res.json();

@@ -60,7 +60,7 @@ test.describe('Flow 2: AI Search Pipeline', () => {
     ]);
 
     const resp = await page.request.post('/api/ai/forum-search', {
-      data: { query: 'What is ethical AI?', sectionId: null },
+      data: { query: 'What is ethical AI?' },
       headers: { cookie: `better-auth.session_token=${token}` },
     });
 
