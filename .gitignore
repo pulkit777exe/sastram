@@ -46,3 +46,7 @@ skills
 /lib/generated/prisma
 # Sentry Config File
 .env.sentry-build-plugin
+UBIQUITOUS_LANGUAGE.md
+CONTEXT.md
+TODOS.md
+docs

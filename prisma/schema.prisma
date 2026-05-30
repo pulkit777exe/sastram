@@ -30,13 +30,13 @@ enum CommunityVisibility {
   UNLISTED
 }
 
-enum SectionVisibility {
+enum ThreadVisibility {
   PUBLIC
   PRIVATE
   RESTRICTED
 }
 
-enum SectionRole {
+enum ThreadRole {
   OWNER
   MODERATOR
   MEMBER
@@ -131,10 +131,10 @@ model User {
   accounts      Account[]
   sessions      Session[]
   communities   Community[]          @relation("CommunityCreator")
-  sections      Section[]            @relation("SectionCreator")
+  threads       Thread[]             @relation("ThreadCreator")
   messages      Message[]
   reactions     Reaction[]
-  memberships   SectionMember[]
+  memberships   ThreadMember[]
   notifications Notification[]
   reports       Report[]             @relation("Reporter")
   invitations   ThreadInvitation[]   @relation("InvitationSender")
@@ -221,20 +221,20 @@ model Community {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
-  creator  User      @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  sections Section[]
+  creator  User     @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  threads  Thread[]
 
   @@index([slug])
   @@index([visibility])
   @@map("communities")
 }
 
-model Section {
+model Thread {
   id           String            @id @default(cuid())
   name         String
   slug         String            @unique
   description  String?
-  visibility   SectionVisibility @default(PUBLIC)
+  visibility   ThreadVisibility @default(PUBLIC)
   messageCount Int               @default(0)
   memberCount  Int               @default(0)
   communityId  String?
@@ -248,10 +248,10 @@ model Section {
   aiSummary       String?   @db.Text
   threadDna       Json?
 
-  creator       User                 @relation("SectionCreator", fields: [createdBy], references: [id])
+  creator       User                 @relation("ThreadCreator", fields: [createdBy], references: [id])
   community     Community?           @relation(fields: [communityId], references: [id])
   messages      Message[]
-  members       SectionMember[]
+  members       ThreadMember[]
   invitations   ThreadInvitation[]
   bans          UserBan[]
   bookmarks     UserBookmark[]
@@ -267,30 +267,30 @@ model Section {
   @@index([communityId])
   @@index([createdBy])
   @@index([resolutionScore])
-  @@map("sections")
+  @@map("threads")
 }
 
-model SectionMember {
+model ThreadMember {
   id        String       @id @default(cuid())
-  sectionId String
+  threadId  String
   userId    String
-  role      SectionRole  @default(MEMBER)
+  role      ThreadRole   @default(MEMBER)
   status    MemberStatus @default(ACTIVE)
   joinedAt  DateTime     @default(now())
 
-  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([sectionId, userId])
-  @@index([sectionId])
+  @@unique([threadId, userId])
+  @@index([threadId])
   @@index([userId])
-  @@map("section_members")
+  @@map("thread_members")
 }
 
 model Message {
   id           String    @id @default(cuid())
   content      String    @db.Text
-  sectionId    String
+  threadId     String
   senderId     String
   parentId     String? // null = root post
   depth        Int       @default(0) // 0=root, 1=reply, 2=reply-to-reply, max 4
@@ -303,7 +303,7 @@ model Message {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime? // soft delete — keep for tree integrity
 
-  section     Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   sender      User             @relation(fields: [senderId], references: [id], onDelete: Cascade)
   parent      Message?         @relation("MessageReplies", fields: [parentId], references: [id])
   replies     Message[]        @relation("MessageReplies")
@@ -315,11 +315,11 @@ model Message {
   readReceipts ReadReceipt[]    @relation("ReadReceiptMessage")
   appeals     Appeal[]         @relation("MessageAppeal")
 
-  @@index([sectionId])
-  @@index([sectionId, createdAt])
+  @@index([threadId])
+  @@index([threadId, createdAt])
   @@index([senderId])
   @@index([parentId]) // critical for tree building
-  @@index([parentId, sectionId]) // critical for tree building
+  @@index([parentId, threadId]) // critical for tree building
   @@index([depth])
   @@map("messages")
 }
@@ -388,7 +388,7 @@ model ReadReceipt {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  thread          Section  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread          Thread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   lastReadMessage Message? @relation("ReadReceiptMessage", fields: [lastReadMessageId], references: [id], onDelete: SetNull)
 
@@ -421,7 +421,7 @@ model UserBookmark {
   createdAt DateTime @default(now())
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@unique([userId, threadId])
   @@index([userId])
@@ -454,7 +454,7 @@ model ThreadSubscription {
   isActive  Boolean         @default(true)
   createdAt DateTime        @default(now())
 
-  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   user   User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, userId])
@@ -535,7 +535,7 @@ model UserBan {
 
   user   User     @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
   issuer User     @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
-  thread Section? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread Thread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
   @@index([threadId])
@@ -559,7 +559,7 @@ model ThreadTagRelation {
   threadId String
   tagId    String
 
-  thread Section   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
   tag    ThreadTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([threadId, tagId])
@@ -576,7 +576,7 @@ model Poll {
   expiresAt DateTime?
   createdAt DateTime  @default(now())
 
-  thread Section    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
   votes  PollVote[]
 
   @@map("polls")
@@ -664,7 +664,7 @@ model ThreadInvitation {
   expiresAt DateTime?
   createdAt DateTime         @default(now())
 
-  thread Section @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   sender User    @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, email])
@@ -723,8 +723,8 @@ model ThreadRelation {
   similarity     Float // 0.0 - 1.0 cosine similarity
   createdAt      DateTime @default(now())
 
-  source Section @relation("SourceThread", fields: [sourceThreadId], references: [id], onDelete: Cascade)
-  target Section @relation("TargetThread", fields: [targetThreadId], references: [id], onDelete: Cascade)
+  source Thread @relation("SourceThread", fields: [sourceThreadId], references: [id], onDelete: Cascade)
+  target Thread @relation("TargetThread", fields: [targetThreadId], references: [id], onDelete: Cascade)
 
   @@unique([sourceThreadId, targetThreadId])
   @@index([sourceThreadId, similarity])

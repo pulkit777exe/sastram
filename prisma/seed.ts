@@ -21,7 +21,7 @@ async function createThread({
   userId: string;
   communityId?: string;
 }) {
-  return prisma.section.create({
+  return prisma.thread.create({
     data: {
       name,
       description,
