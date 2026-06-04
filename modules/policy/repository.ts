@@ -1,16 +1,17 @@
 import { requireSession, type SessionPayload } from '@/modules/auth/session';
+import type { Role } from '@prisma/client';
 import type { AuthPolicyRole } from './types';
 
-const MODERATION_ROLES: ReadonlySet<string> = new Set(['ADMIN', 'MODERATOR', 'SUPER_ADMIN']);
+const MODERATION_ROLES: ReadonlySet<Role> = new Set(['ADMIN', 'MODERATOR']);
 
 export function hasAnyRole(
-  role: string | null | undefined,
+  role: Role | null | undefined,
   allowedRoles: ReadonlyArray<AuthPolicyRole>
 ): boolean {
   return Boolean(role && allowedRoles.includes(role as AuthPolicyRole));
 }
 
-export function canModerate(role: string | null | undefined): boolean {
+export function canModerate(role: Role | null | undefined): boolean {
   return Boolean(role && MODERATION_ROLES.has(role));
 }
 

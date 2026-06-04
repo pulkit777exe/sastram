@@ -36,14 +36,14 @@ export const uploadResponseSchema = z.object({
  * Thread schemas
  */
 export const createThreadRequestSchema = z.object({
-  title: z
+  name: z
     .string()
-    .min(3, 'Title must be at least 3 characters')
-    .max(100, 'Title must be less than 100 characters')
-    .refine((val) => /[a-zA-Z]/.test(val), 'Title must contain at least one letter')
-    .refine((val) => !val.includes('\n'), 'Title cannot contain newlines')
-    .refine((val) => !val.includes('\t'), 'Title cannot contain tabs')
-    .refine((val) => val.trim() === val, 'Title cannot have leading or trailing whitespace'),
+    .min(3, 'Name must be at least 3 characters')
+    .max(100, 'Name must be less than 100 characters')
+    .refine((val) => /[a-zA-Z]/.test(val), 'Name must contain at least one letter')
+    .refine((val) => !val.includes('\n'), 'Name cannot contain newlines')
+    .refine((val) => !val.includes('\t'), 'Name cannot contain tabs')
+    .refine((val) => val.trim() === val, 'Name cannot have leading or trailing whitespace'),
   description: z
     .string()
     .max(480, 'Description must be less than 480 characters')
@@ -61,7 +61,7 @@ export const createThreadRequestSchema = z.object({
 export const threadSummarySchema = z.object({
   id: z.string().cuid(),
   slug: z.string(),
-  title: z.string(),
+  name: z.string(),
   description: z.string().nullable().optional(),
   community: z
     .object({
@@ -73,7 +73,6 @@ export const threadSummarySchema = z.object({
     .optional(),
   messageCount: z.number().int().nonnegative(),
   activeUsers: z.number().int().nonnegative(),
-  icon: z.string().nullable().optional(),
 });
 
 export const threadDetailSchema = threadSummarySchema.extend({
@@ -83,11 +82,11 @@ export const threadDetailSchema = threadSummarySchema.extend({
       content: z.string(),
       senderId: z.string().cuid(),
       senderName: z.string(),
-      senderAvatar: z.string().url().nullable().optional(),
+      senderImage: z.string().url().nullable().optional(),
       createdAt: z.coerce.date(),
     })
   ),
-  summary: z.string().nullable().optional(),
+  aiSummary: z.string().nullable().optional(),
   subscriptionCount: z.number().int().nonnegative().optional(),
 });
 

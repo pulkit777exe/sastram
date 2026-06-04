@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { requireModerationRole } from '@/modules/policy';
+import type { Role } from '@prisma/client';
 
 export { requireModerationRole as requireModerationSession } from '@/modules/policy';
 
@@ -21,7 +22,7 @@ export async function applyModerationRateLimit(userId: string) {
 export async function validateModerationTarget(
   targetUserId: string,
   moderatorId: string,
-  moderatorRole: string | null | undefined
+  moderatorRole: Role | null | undefined
 ) {
   if (targetUserId === moderatorId) {
     throw new Error('Cannot perform moderation actions on yourself');
@@ -46,7 +47,7 @@ export async function validateModerationTarget(
     throw new Error('Moderator role is missing');
   }
 
-  if (targetUser.role === 'ADMIN' && moderatorRole !== 'SUPER_ADMIN') {
+  if (targetUser.role === 'ADMIN' && moderatorRole !== 'ADMIN') {
     throw new Error('Cannot moderate administrator accounts');
   }
 

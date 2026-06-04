@@ -7,7 +7,7 @@ export const createMessageSchema = z.object({
   content: z
     .string()
     .min(1, 'Message cannot be empty')
-    .max(1000, 'Message must be less than 1000 characters')
+    .max(10000, 'Message must be less than 10000 characters')
     .refine((val) => val.trim().length > 0, 'Message cannot be only whitespace')
     .refine((val) => !val.includes('\x00'), 'Message cannot contain null bytes'),
   threadId: z.string().cuid('Invalid thread ID'),
@@ -59,8 +59,7 @@ export const createThreadSchema = z.object({
     .refine((val) => !val.endsWith('-'), 'Slug cannot end with a hyphen')
     .refine((val) => !val.includes('--'), 'Slug cannot have consecutive hyphens'),
   description: z.string().max(480, 'Description must be less than 480 characters').optional(),
-  summary: z.string().max(2000, 'Summary must be less than 2000 characters').optional(),
-  icon: z.string().emoji('Icon must be a valid emoji').optional(),
+  aiSummary: z.string().max(2000, 'Summary must be less than 2000 characters').optional(),
   createdBy: z.string().cuid('Invalid user ID'),
   communityId: z.string().cuid('Invalid community ID').nullable().optional(),
 });
@@ -71,8 +70,7 @@ export const createThreadSchema = z.object({
 export const updateThreadSchema = z.object({
   name: z.string().min(3).max(100).optional(),
   description: z.string().max(480).optional(),
-  summary: z.string().max(2000).optional(),
-  icon: z.string().emoji().optional(),
+  aiSummary: z.string().max(2000).optional(),
 });
 
 /**
@@ -102,17 +100,7 @@ export const updateCommunitySchema = z.object({
   description: z.string().max(280).optional(),
 });
 
-/**
- * User profile update schema
- */
-export const updateUserProfileSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'Name must be at least 2 characters')
-    .max(50, 'Name must be less than 50 characters'),
-  bio: z.string().max(160, 'Bio must be less than 160 characters').optional(),
-  image: z.string().url('Invalid image URL').optional(),
-});
+
 
 /**
  * Newsletter subscription schema

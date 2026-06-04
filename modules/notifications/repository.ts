@@ -100,7 +100,6 @@ export const getUserNotifications = cache(async (filters: NotificationFilters) =
             data: true,
             isRead: true,
             createdAt: true,
-            updatedAt: true,
           },
           orderBy: {
             createdAt: 'desc',
@@ -120,17 +119,16 @@ export const getNotificationById = cache(async (notificationId: string) => {
   return dedupe(`notifications:byId:${notificationId}`, () =>
     prisma.notification.findUnique({
       where: { id: notificationId },
-      select: {
-        id: true,
-        userId: true,
-        type: true,
-        title: true,
-        message: true,
-        data: true,
-        isRead: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+          select: {
+            id: true,
+            userId: true,
+            type: true,
+            title: true,
+            message: true,
+            data: true,
+            isRead: true,
+            createdAt: true,
+          },
     })
   );
 });
@@ -248,7 +246,6 @@ export const getRecentNotifications = cache(async (userId: string, limit: number
             data: true,
             isRead: true,
             createdAt: true,
-            updatedAt: true,
           },
           orderBy: {
             createdAt: 'desc',
