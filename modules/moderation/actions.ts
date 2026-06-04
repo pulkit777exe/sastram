@@ -536,7 +536,7 @@ export const getModerationQueue = createServerAction(
     const offset = filters.offset || 0;
 
     const whereClause: any = {
-      status: filters.status || { in: ['PENDING', 'REVIEWING'] },
+      status: filters.status || { in: ['PENDING'] },
     };
 
     const [reports, totalCount] = await Promise.all([

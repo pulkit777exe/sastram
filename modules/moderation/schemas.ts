@@ -50,7 +50,7 @@ export const getMessageDetailsSchema = z.object({
 });
 
 export const getModerationQueueSchema = z.object({
-  status: z.enum(['PENDING', 'REVIEWING']).optional(),
+  status: z.enum(['PENDING']).optional(),
   limit: z.number().int().positive().max(100).optional(),
   offset: z.number().int().nonnegative().optional(),
 });
