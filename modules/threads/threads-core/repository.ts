@@ -221,7 +221,6 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
     typedRow._count.messages,
     new Set(typedRow.messages.map((message) => message.senderId)).size,
     memberCount,
-    typedRow.aiSummary ?? undefined,
     typedRow.subscriptions?.length ?? 0
   );
 });

@@ -13,7 +13,6 @@ export interface UserBadge {
 }
 
 export interface UserBadgeEarned {
-  id: string;
   userId: string;
   badgeId: string;
   earnedAt: Date;

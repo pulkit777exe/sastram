@@ -72,8 +72,11 @@ export type Reaction = PrismaReaction;
 
 export interface ReadReceipt {
   id: string;
-  messageId: string;
+  threadId: string;
   userId: string;
+  lastReadMessageId: string;
   readAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 

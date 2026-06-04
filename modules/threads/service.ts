@@ -21,8 +21,9 @@ function mapAttachment(att: Attachment): AttachmentInfo {
     id: att.id,
     url: att.url,
     type: att.type as string,
-    name: att.name,
-    size: formatAttachmentSize(att.size),
+    name: att.name ?? null,
+    mimeType: null,
+    size: att.size != null ? Number(att.size) : null,
   };
 }
 
@@ -60,12 +61,11 @@ export function buildThreadDetailDTO(
   messageCount: number,
   activeUsers: number,
   memberCount: number,
-  summary?: string | null,
   subscriptionCount?: number
 ): ThreadDetail {
   return {
     ...buildThreadDTO(thread, messageCount, activeUsers, memberCount),
-    summary: summary ?? thread.aiSummary ?? null,
+    aiSummary: thread.aiSummary ?? null,
     resolutionScore: thread.resolutionScore,
     threadDna: thread.threadDna ? (thread.threadDna as unknown as ThreadDNA) : undefined,
     lastVerifiedAt: thread.lastVerifiedAt,
@@ -80,10 +80,11 @@ export function buildThreadDetailDTO(
         return {
           id: msg.id,
           content: msg.content,
+          threadId: msg.threadId,
           senderId: msg.senderId,
           parentId: msg.parentId ?? null,
           senderName: msg.sender?.name || 'Anonymous',
-          senderAvatar: msg.sender?.image,
+          senderImage: msg.sender?.image,
           createdAt: msg.createdAt,
           updatedAt: msg.updatedAt,
           deletedAt: msg.deletedAt ?? null,
@@ -97,13 +98,13 @@ export function buildThreadDetailDTO(
             ? {
                 id: msg.sender.id,
                 name: msg.sender.name,
-                avatarUrl: msg.sender.image,
+                image: msg.sender.image,
                 status: msg.sender.status || ('ACTIVE' as UserStatus),
               }
             : {
                 id: msg.senderId,
                 name: null,
-                avatarUrl: null,
+                image: null,
                 status: 'ACTIVE' as UserStatus,
               },
           attachments: msg.attachments?.map(mapAttachment) ?? [],
@@ -112,7 +113,7 @@ export function buildThreadDetailDTO(
   };
 }
 
-export function buildCommunityDTO(community: Community, threadCount: number): CommunitySummary {
+export function buildCommunityDTO(community: Community, threadCount: number, memberCount: number | null = null): CommunitySummary {
   return {
     id: community.id,
     slug: community.slug,
@@ -120,6 +121,7 @@ export function buildCommunityDTO(community: Community, threadCount: number): Co
     description: community.description,
     visibility: community.visibility,
     threadCount,
+    memberCount,
     createdAt: community.createdAt,
   };
 }

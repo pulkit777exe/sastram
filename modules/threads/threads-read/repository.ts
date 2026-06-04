@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, ThreadRole } from '@prisma/client';
 import { dedupe } from '@/lib/dedupe';
 
 export type ThreadMessageReactionAggregate = {
@@ -67,7 +67,7 @@ type ThreadMember = {
     name: string | null;
     image: string | null;
   };
-  role: string;
+  role: ThreadRole;
 };
 
 type ThreadPoll = {
@@ -81,11 +81,10 @@ type ThreadPoll = {
 
 export type ThreadWithFullContext = {
   id: string;
-  title: string;
+  name: string;
   slug: string;
   description: string | null;
   createdBy: string;
-  coverImage: string | null;
   aiSummary: string | null;
   resolutionScore: number | null;
   isOutdated: boolean;
@@ -113,7 +112,7 @@ export type ThreadWithFullContext = {
 
 type ThreadRow = {
   id: string;
-  title: string;
+  name: string;
   slug: string;
   description: string | null;
   createdBy: string;
@@ -147,7 +146,7 @@ export const getThreadWithFullContext = cache(async (
     const rows = await prisma.$queryRaw<ThreadRow[]>`
       SELECT
         s.id,
-        s.name as title,
+        s.name,
         s.slug,
         s.description as description,
         s."createdBy" as "createdBy",
@@ -275,11 +274,10 @@ export const getThreadWithFullContext = cache(async (
 
     return {
       id: row.id,
-      title: row.title,
+      name: row.name,
       slug: row.slug,
       description: row.description ?? null,
       createdBy: row.createdBy,
-      coverImage: null,
       aiSummary: row.aiSummary ?? null,
       resolutionScore: row.resolutionScore ?? null,
       isOutdated: row.isOutdated,

@@ -12,13 +12,12 @@ import { createServerAction } from '@/lib/utils/server-action';
 const createTopicSchema = z.object({
   title: z.string().min(3),
   description: z.string().max(280).optional().or(z.literal('')),
-  icon: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
 
 export const createTopic = createServerAction(
   { schema: createTopicSchema, actionName: 'createTopic' },
-  async ({ title, description, icon, tags }) => {
+  async ({ title, description, tags }) => {
     const session = await requireSession();
 
     const thread = await prisma.thread.create({

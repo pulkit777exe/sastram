@@ -7,12 +7,10 @@ export interface ThreadInvitation {
   threadId: string;
   senderId: string;
   email: string;
-  message: string | null;
   status: string;
-  token: string | null;
+  token: string;
   expiresAt: Date | null;
   createdAt: Date;
-  updatedAt: Date;
   thread: {
     slug: string;
     name: string;
