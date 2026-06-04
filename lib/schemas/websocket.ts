@@ -15,7 +15,7 @@ const newMessagePayloadSchema = basePayloadSchema.extend({
   content: z.string().min(0).max(10000),
   senderId: z.string().cuid(),
   senderName: z.string(),
-  senderAvatar: z.string().url().nullable().optional(),
+  senderImage: z.string().url().nullable().optional(),
   createdAt: z.coerce.date(),
   parentId: z.string().cuid().optional(),
   depth: z.number().int().min(0).optional(),

@@ -178,7 +178,7 @@ export async function getThreadsByTag(tagId: string, memberUserIds?: string[]) {
     return threads.map((t) => ({
       id: t.id,
       slug: t.slug,
-      title: t.name,
+      name: t.name,
       description: t.description ?? '',
       activeUsers: new Set(t.messages.map((m) => m.senderId)).size,
       messagesCount: t._count.messages,

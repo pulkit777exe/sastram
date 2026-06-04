@@ -13,7 +13,7 @@ export interface MessageBroadcastPayload {
   content: string;
   senderId: string;
   senderName: string;
-  senderAvatar: string | null | undefined;
+  senderImage: string | null | undefined;
   createdAt: Date;
   threadId: string;
   parentId: string | null;

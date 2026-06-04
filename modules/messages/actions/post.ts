@@ -188,7 +188,7 @@ export async function postMessage(formData: FormData) {
       content: message.content,
       senderId: session.user.id,
       senderName: message.sender?.name || session.user.email,
-      senderAvatar: message.sender?.image ?? session.user.image,
+      senderImage: message.sender?.image ?? session.user.image,
       createdAt: message.createdAt,
       threadId,
       parentId: message.parentId ?? null,

@@ -247,7 +247,7 @@ export const sendMessage = withValidation(
         content: message.content,
         senderId: message.senderId,
         senderName: message.sender.name || session.user.email,
-        senderAvatar: message.sender.image,
+        senderImage: message.sender.image,
         createdAt: message.createdAt,
         threadId: conversationId,
         parentId: null,

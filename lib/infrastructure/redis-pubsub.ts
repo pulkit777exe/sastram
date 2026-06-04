@@ -6,7 +6,7 @@ export interface RedisThreadPayload {
   content: string;
   senderId: string;
   senderName: string | null;
-  senderAvatar: string | null;
+  senderImage: string | null;
   createdAt: string;
   threadId: string;
   parentId: string | null;

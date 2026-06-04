@@ -175,7 +175,7 @@ export function ThreadAccessModal({
                       <div key={member.id} className="flex items-center justify-between group">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9 border">
-                            <AvatarImage src={member.user.avatarUrl || undefined} />
+                            <AvatarImage src={member.user.image || undefined} />
                             <AvatarFallback>
                               {member.user.name?.[0]?.toUpperCase() || '?'}
                             </AvatarFallback>

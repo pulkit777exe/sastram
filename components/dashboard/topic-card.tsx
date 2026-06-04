@@ -5,7 +5,7 @@ import { ROUTES } from '@/lib/config/routes';
 interface TopicCardProps {
   id: string;
   slug: string;
-  title: string;
+  name: string;
   description: string;
   activeUsers: number;
   messagesCount: number;
@@ -16,7 +16,7 @@ interface TopicCardProps {
 
 export function TopicCard({
   slug,
-  title,
+  name,
   description,
   activeUsers,
   messagesCount,
@@ -40,7 +40,7 @@ export function TopicCard({
 
         <Link href={ROUTES.THREAD(slug)}>
           <h3 className="mb-2 text-lg font-bold text-foreground hover:text-indigo-500 transition-colors">
-            {title}
+            {name}
           </h3>
         </Link>
         {unreadCount > 0 && (

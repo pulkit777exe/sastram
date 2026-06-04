@@ -15,6 +15,7 @@ export async function getThreadMembers(threadId: string): Promise<ThreadMember[]
           select: {
             id: true,
             name: true,
+            email: true,
             image: true,
             status: true,
             lastSeenAt: true,
@@ -28,13 +29,16 @@ export async function getThreadMembers(threadId: string): Promise<ThreadMember[]
 
     return (members ?? []).map((member) => ({
       id: member.id,
+      threadId: member.threadId,
       userId: member.userId,
       role: member.role,
+      status: member.status,
       joinedAt: member.joinedAt,
       user: {
         id: member.user.id,
         name: member.user.name,
-        avatarUrl: member.user.image,
+        email: member.user.email,
+        image: member.user.image,
         status: member.user.status,
         lastSeenAt: member.user.lastSeenAt,
       },

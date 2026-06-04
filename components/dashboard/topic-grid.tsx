@@ -7,7 +7,7 @@ import { TopicCard } from '@/components/dashboard/topic-card';
 interface Topic {
   id: string;
   slug: string;
-  title: string;
+  name: string;
   description: string;
   activeUsers: number;
   messagesCount: number;

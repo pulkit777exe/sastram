@@ -43,7 +43,7 @@ export default async function ThreadPage({ params }: ThreadPageParams) {
               initialFirstUnreadMessageId={null}
               poll={null}
               canManagePoll={false}
-              title={thread.title ?? thread.slug}
+              title={thread.name ?? thread.slug}
               slug={thread.slug}
               memberCount={thread._count?.members ?? 0}
               initialFrequency={null}

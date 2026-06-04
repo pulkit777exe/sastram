@@ -128,7 +128,6 @@ function makeNode(overrides: Partial<MessageNode> & { id: string }): MessageNode
   return {
     content: 'test',
     senderId: 'u1',
-    threadId: 's1',
     parentId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -139,8 +138,8 @@ function makeNode(overrides: Partial<MessageNode> & { id: string }): MessageNode
     replyCount: 0,
     isAiResponse: false,
     deletedAt: null,
-    sender: { id: 'u1', name: 'Test', image: null },
-    thread: { id: 't1', name: 'Test', slug: 'test' },
+    sender: { id: 'u1', name: 'Test', image: null, status: 'ACTIVE' as const },
+    threadId: 't1',
     attachments: [],
     children: [],
     isCollapsed: false,

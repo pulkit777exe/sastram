@@ -96,7 +96,7 @@ export default async function DashboardPage({
     return {
       id: thread.id,
       slug: thread.slug,
-      title: thread.name,
+      name: thread.name,
       description: thread.description ?? 'No description',
       activeUsers: new Set(thread.messages.map((m) => m.senderId)).size,
       messagesCount: thread._count.messages,

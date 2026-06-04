@@ -79,7 +79,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
       })),
       thread: {
         id: thread.id,
-        name: thread.title,
+        name: thread.name,
         slug: thread.slug,
       },
     };
@@ -120,7 +120,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
             image: session.user.image ?? null,
             role: session.user.role,
           }}
-          title={thread.title}
+          title={thread.name}
           slug={thread.slug}
           memberCount={thread._count.members}
           initialFrequency={subscription?.frequency ?? null}
@@ -136,7 +136,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
             </p>
           </div>
 
-          <h2 className="text-xl font-bold mb-3 text-foreground">{thread.title}</h2>
+          <h2 className="text-xl font-bold mb-3 text-foreground">{thread.name}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed mb-4">{thread.description}</p>
         </div>
 

@@ -7,7 +7,7 @@ export interface ThreadMessagePayload {
   content: string;
   senderId: string;
   senderName: string | null;
-  senderAvatar: string | null | undefined;
+  senderImage: string | null | undefined;
   createdAt: Date | string;
   threadId: string;
   parentId: string | null;
@@ -77,7 +77,7 @@ export function emitThreadMessage(threadId: string, message: ThreadMessagePayloa
     // Serialize Date to ISO string for safe JSON transport
     createdAt:
       message.createdAt instanceof Date ? message.createdAt.toISOString() : message.createdAt,
-    senderAvatar: message.senderAvatar ?? null,
+    senderImage: message.senderImage ?? null,
     parentId: message.parentId ?? undefined,
     depth: message.depth ?? 0,
     likeCount: message.likeCount ?? 0,

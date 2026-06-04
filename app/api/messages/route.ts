@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('INTERNAL_ERROR', result?.error || 'Failed to post message'), { status: 500 });
     }
 
-    return NextResponse.json(ok({ message: (result as unknown as { data: { id: string; content: string; senderId: string; senderName: string; senderAvatar: string | null; createdAt: Date; threadId: string } }).data }));
+    return NextResponse.json(ok({ message: (result as unknown as { data: { id: string; content: string; senderId: string; senderName: string; senderImage: string | null; createdAt: Date; threadId: string } }).data }));
   } catch (error) {
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to post message'), { status: 500 });
   }
