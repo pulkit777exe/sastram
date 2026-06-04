@@ -18,15 +18,21 @@ export function buildCommunityDTO(
     slug: string;
     title: string;
     description: string | null;
+    visibility: string;
+    createdAt: Date;
   },
-  threadCount: number
+  threadCount: number,
+  memberCount: number | null = null
 ): CommunitySummary {
   return {
     id: community.id,
     slug: community.slug,
     title: community.title,
     description: community.description,
+    visibility: community.visibility,
     threadCount,
+    memberCount,
+    createdAt: community.createdAt,
   };
 }
 

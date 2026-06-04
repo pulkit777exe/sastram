@@ -21,43 +21,54 @@ export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
     if (node) {
       Object.assign(node, msg, {
         isCollapsed: node.isCollapsed ?? false,
-        likeCount: (msg as MessageNode).likeCount ?? node.likeCount ?? 0,
-        replyCount: (msg as MessageNode).replyCount ?? node.replyCount ?? 0,
-        isAiResponse: (msg as MessageNode).isAiResponse ?? node.isAiResponse ?? false,
+        likeCount: (msg as any).likeCount ?? node.likeCount ?? 0,
+        replyCount: (msg as any).replyCount ?? node.replyCount ?? 0,
+        isAiResponse: (msg as any).isAiResponse ?? node.isAiResponse ?? false,
         children: node.children ?? [],
       });
     } else {
       node = {
-        ...msg,
+        id: msg.id,
+        content: msg.content,
+        createdAt: msg.createdAt,
+        updatedAt: msg.updatedAt,
+        senderId: msg.senderId,
+        threadId: msg.threadId,
+        parentId: msg.parentId ?? null,
+        depth: (msg as any).depth ?? 0,
+        isEdited: (msg as any).isEdited ?? false,
+        isPinned: (msg as any).isPinned ?? false,
+        likeCount: (msg as any).likeCount ?? 0,
+        replyCount: (msg as any).replyCount ?? 0,
+        isAiResponse: (msg as any).isAiResponse ?? false,
+        deletedAt: (msg as any).deletedAt ?? null,
+        sender: (msg as any).sender ?? { id: msg.senderId, name: null, image: null },
         children: [],
         isCollapsed: false,
-        likeCount: (msg as MessageNode).likeCount ?? 0,
-        replyCount: (msg as MessageNode).replyCount ?? 0,
-        isAiResponse: (msg as MessageNode).isAiResponse ?? false,
       };
       nodeMap.set(msg.id, node);
     }
 
     const queued = pendingChildren.get(msg.id);
     if (queued && queued.length > 0) {
-      node.children.push(...queued);
+      node!.children.push(...queued);
       pendingChildren.delete(msg.id);
     }
 
     if (msg.parentId) {
       const parent = nodeMap.get(msg.parentId);
       if (parent) {
-        parent.children.push(node);
+        parent.children.push(node!);
       } else {
         const list = pendingChildren.get(msg.parentId);
         if (list) {
-          list.push(node);
+          list.push(node!);
         } else {
-          pendingChildren.set(msg.parentId, [node]);
+          pendingChildren.set(msg.parentId, [node!]);
         }
       }
     } else {
-      roots.push(node);
+      roots.push(node!);
     }
   }
 

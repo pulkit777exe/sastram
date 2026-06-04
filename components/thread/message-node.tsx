@@ -27,6 +27,7 @@ import { AppealMessageModal } from './appeal-message-modal';
 import { InlineReplyBox } from './inline-reply-box';
 import { DeletedMessagePlaceholder } from './deleted-message-placeholder';
 import { AttachmentItem } from './attachment-item';
+import type { Attachment } from '@/lib/types/index';
 import { countDescendants } from '@/modules/messages/service';
 import { ReportButton } from './report-button';
 import { useThreadContext } from './thread-context';
@@ -359,7 +360,7 @@ export function CommentNode({
               {node.attachments && node.attachments.length > 0 && !isEditing && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {node.attachments.map((file) => (
-                    <AttachmentItem key={file.id} file={file} />
+                    <AttachmentItem key={(file as Attachment).id} file={file as Attachment} />
                   ))}
                 </div>
               )}

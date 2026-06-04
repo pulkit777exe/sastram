@@ -10,4 +10,5 @@ export interface ReactionSummary {
     name: string | null;
     image: string | null;
   }>;
+  hasReacted: boolean;
 }
