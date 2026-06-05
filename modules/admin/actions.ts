@@ -3,8 +3,8 @@
 import { logger } from '@/lib/infrastructure/logger';
 
 import { requireRole } from '@/modules/policy';
-import { listCommunities } from '@/modules/communities/repository';
-import { listThreads } from '@/modules/threads/repository';
+import { listCommunities } from '@/modules/communities';
+import { listThreads } from '@/modules/threads';
 import { deleteCommunity, deleteThread } from '@/modules/moderation';
 
 export async function getAdminDashboardData() {

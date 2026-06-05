@@ -1,4 +1,4 @@
-import type { ThreadWithFullContext } from '@/modules/threads/queries';
+import type { ThreadWithFullContext } from '@/modules/threads';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import ThreadInfoCard from './ThreadInfoCard';
 import AiSynthesisCard from './AiSynthesisCard';

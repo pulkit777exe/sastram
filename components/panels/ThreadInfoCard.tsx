@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useSyncExternalStore } from 'react';
-import type { ThreadWithFullContext } from '@/modules/threads/queries';
+import type { ThreadWithFullContext } from '@/modules/threads';
 import { TagChip } from '@/components/thread/tag-chip';
 
 interface ThreadInfoCardProps {

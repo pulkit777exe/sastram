@@ -1,8 +1,8 @@
-import { assertAdmin } from '@/modules/auth/session';
-import { getSession } from '@/modules/auth/session';
-import { getReports, getReportStats } from '@/modules/reports/actions';
-import { getBannedUsers } from '@/modules/moderation/actions';
-import { getUserActivities } from '@/modules/audit/repository';
+import { assertAdmin } from '@/modules/auth';
+import { getSession } from '@/modules/auth';
+import { getReports, getReportStats } from '@/modules/reports';
+import { getBannedUsers } from '@/modules/moderation';
+import { getUserActivities } from '@/modules/audit';
 import { ModerationDashboard } from '@/components/admin/moderation-dashboard';
 import { BannedUsersList } from '@/components/admin/banned-users-list';
 

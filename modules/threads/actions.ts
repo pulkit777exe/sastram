@@ -7,7 +7,7 @@ import { requireSession, assertAdmin } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { createThread, deleteThread, listThreads, getThreadMembers, updateThreadMemberRole, removeThreadMember, updateThreadDNA, updateResolutionScore, updateThreadStaleness } from './repository';
-import { createPoll } from '@/modules/polls/repository';
+import { createPoll } from '@/modules/polls';
 import { ROUTES } from '@/lib/config/routes';
 import { ThreadRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';

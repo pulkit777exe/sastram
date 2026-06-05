@@ -1,5 +1,5 @@
-import { getUserThreads, getUserMessages } from '@/modules/users/repository';
-import { getSession } from '@/modules/auth/session';
+import { getUserThreads, getUserMessages } from '@/modules/users';
+import { getSession } from '@/modules/auth';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Activity, MessageSquare, FileText, Users, Calendar, Reply } from 'lucide-react';

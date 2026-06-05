@@ -13,21 +13,28 @@ import {
   searchUsersAction,
 } from '@/modules/search/actions';
 import Link from 'next/link';
+import type { SearchThreadResult, SearchMessageResult, SearchUserResult } from '@/modules/search/repository';
 
 type SearchType = 'all' | 'threads' | 'messages' | 'users';
+
+interface SearchResults {
+  threads: { threads: SearchThreadResult[]; total: number; hasMore: boolean } | null;
+  messages: { messages: SearchMessageResult[]; total: number; hasMore: boolean } | null;
+  users: { users: SearchUserResult[]; total: number; hasMore: boolean } | null;
+}
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [searchType, setSearchType] = useState<SearchType>('all');
   const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<SearchResults | null>(null);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
 
     setIsSearching(true);
     try {
-      const promises: Promise<any>[] = [];
+      const promises: Promise<{ data: unknown; error: unknown; ok?: boolean }>[] = [];
 
       if (searchType === 'all' || searchType === 'threads') {
         promises.push(searchThreadsAction(query));
@@ -41,9 +48,9 @@ export default function SearchPage() {
 
       const searchResults = await Promise.all(promises);
       setResults({
-        threads: searchResults[0]?.data || null,
-        messages: searchResults[1]?.data || null,
-        users: searchResults[2]?.data || null,
+        threads: (searchResults[0]?.data as SearchResults['threads']) || null,
+        messages: (searchResults[1]?.data as SearchResults['messages']) || null,
+        users: (searchResults[2]?.data as SearchResults['users']) || null,
       });
     } catch (error) {
       console.error('Search error:', error);
@@ -101,7 +108,7 @@ export default function SearchPage() {
                   Threads ({results.threads.total || 0})
                 </h2>
                 <div className="grid gap-4">
-                  {results.threads.threads?.map((thread: any) => (
+                  {results.threads.threads?.map((thread) => (
                     <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <h3 className="font-semibold">{thread.name}</h3>
@@ -122,15 +129,15 @@ export default function SearchPage() {
                   Messages ({results.messages.total || 0})
                 </h2>
                 <div className="grid gap-4">
-                  {results.messages.messages?.map((message: any) => (
+                  {results.messages.messages?.map((message) => (
                     <Link
                       key={message.id}
-                      href={ROUTES.THREAD(message.section.slug)}
+                      href={ROUTES.THREAD(message.thread.slug)}
                     >
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <p className="text-sm">{message.content}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          by {message.sender.name || message.sender.email} in {message.section.name}
+                          by {message.sender.name || message.sender.email} in {message.thread.name}
                         </p>
                       </Card>
                     </Link>
@@ -146,7 +153,7 @@ export default function SearchPage() {
                   Users ({results.users.total || 0})
                 </h2>
                 <div className="grid gap-4">
-                  {results.users.users?.map((user: any) => (
+                  {results.users.users?.map((user) => (
                     <Link key={user.id} href={`/user/${user.id}`}>
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <h3 className="font-semibold">{user.name || user.email}</h3>

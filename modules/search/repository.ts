@@ -3,7 +3,55 @@ import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore, emptyPagination } from '@/lib/db/pagination';
 
-export const searchThreads = cache(async (query: string, limit: number = 20, offset: number = 0, threadIds?: string[]) => {
+export interface SearchThreadResult {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  aiSummary: string | null;
+  messageCount: number;
+  memberCount: number;
+}
+
+export interface SearchMessageResult {
+  id: string;
+  content: string;
+  threadId: string;
+  senderId: string;
+  createdAt: Date;
+  parentId: string | null;
+  depth: number;
+  isAiResponse: boolean;
+  likeCount: number;
+  replyCount: number;
+  sender: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  };
+  thread: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
+
+export interface SearchUserResult {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  bio: string | null;
+  followerCount: number;
+  followingCount: number;
+  reputationPoints: number;
+}
+
+export const searchThreads = cache(async (query: string, limit: number = 20, offset: number = 0, threadIds?: string[]): Promise<{ threads: SearchThreadResult[]; total: number; hasMore: boolean }> => {
   try {
     const sanitized = query.replace(/[^\w\s]/g, '').trim();
     if (!sanitized) {
@@ -38,17 +86,17 @@ export const searchThreads = cache(async (query: string, limit: number = 20, off
     const [{ total: count }] = total as [{ total: number }];
 
     return {
-      threads: rows.map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        slug: t.slug,
-        description: t.description,
-        createdAt: t.createdAt,
-        updatedAt: t.updatedAt,
-        createdBy: t.createdBy,
-        aiSummary: t.aiSummary,
-        messageCount: t.messageCount,
-        memberCount: t.memberCount,
+      threads: rows.map((t) => ({
+        id: t.id as string,
+        name: t.name as string,
+        slug: t.slug as string,
+        description: t.description as string | null,
+        createdAt: t.createdAt as Date,
+        updatedAt: t.updatedAt as Date,
+        createdBy: t.createdBy as string,
+        aiSummary: t.aiSummary as string | null,
+        messageCount: t.messageCount as number,
+        memberCount: t.memberCount as number,
       })),
       total: count,
       hasMore: computeHasMore(offset, limit, count),
@@ -65,7 +113,7 @@ export const searchMessages = cache(async (
   limit: number = 20,
   offset: number = 0,
   threadIds?: string[]
-) => {
+): Promise<{ messages: SearchMessageResult[]; total: number; hasMore: boolean }> => {
   try {
     const sanitized = query.replace(/[^\w\s]/g, '').trim();
     if (!sanitized) {
@@ -111,27 +159,27 @@ export const searchMessages = cache(async (
     const [{ total: count }] = total as [{ total: number }];
 
     return {
-      messages: rows.map((m: any) => ({
-        id: m.id,
-        content: m.content,
-        threadId: m.threadId,
-        senderId: m.senderId,
-        createdAt: m.createdAt,
-        parentId: m.parentId,
-        depth: m.depth,
-        isAiResponse: m.isAiResponse,
-        likeCount: m.likeCount,
-        replyCount: m.replyCount,
+      messages: rows.map((m) => ({
+        id: m.id as string,
+        content: m.content as string,
+        threadId: m.threadId as string,
+        senderId: m.senderId as string,
+        createdAt: m.createdAt as Date,
+        parentId: m.parentId as string | null,
+        depth: m.depth as number,
+        isAiResponse: m.isAiResponse as boolean,
+        likeCount: m.likeCount as number,
+        replyCount: m.replyCount as number,
         sender: {
-          id: m.senderId,
-          name: m.senderName,
-          email: m.senderEmail,
-          image: m.senderImage,
+          id: m.senderId as string,
+          name: m.senderName as string | null,
+          email: m.senderEmail as string,
+          image: m.senderImage as string | null,
         },
         thread: {
-          id: m.threadId,
-          name: m.threadName,
-          slug: m.threadSlug,
+          id: m.threadId as string,
+          name: m.threadName as string,
+          slug: m.threadSlug as string,
         },
       })),
       total: count,
@@ -143,7 +191,7 @@ export const searchMessages = cache(async (
   }
 });
 
-export const searchUsers = cache(async (query: string, limit: number = 20, offset: number = 0) => {
+export const searchUsers = cache(async (query: string, limit: number = 20, offset: number = 0): Promise<{ users: SearchUserResult[]; total: number; hasMore: boolean }> => {
   try {
     const [users, total] = await Promise.all([
       prisma.user.findMany({

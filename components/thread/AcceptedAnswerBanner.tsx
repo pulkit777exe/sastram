@@ -1,4 +1,4 @@
-import type { ThreadMessage } from '@/modules/threads/queries';
+import type { ThreadMessage } from '@/modules/threads';
 
 interface AcceptedAnswerBannerProps {
   answer: ThreadMessage | null;

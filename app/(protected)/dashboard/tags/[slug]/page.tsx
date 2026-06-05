@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Hash, MessageSquare, Users, TrendingUp } from 'lucide-react';
-import { getSession } from '@/modules/auth/session';
-import { getTagBySlug, getThreadsByTag } from '@/modules/tags/repository';
+import { getSession } from '@/modules/auth';
+import { getTagBySlug, getThreadsByTag } from '@/modules/tags';
 import { TopicGrid } from '@/components/dashboard/topic-grid';
 
 export default async function TagDetailPage({ params }: { params: { slug: string } }) {

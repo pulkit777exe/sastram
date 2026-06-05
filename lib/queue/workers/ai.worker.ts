@@ -4,8 +4,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { applyConfidenceDecay } from '@/lib/utils/confidence-decay';
 import { NotificationType } from '@prisma/client';
-import { notifyMultipleUsers } from '@/modules/notifications/repository';
-import { emitThreadMessage } from '@/modules/ws/publisher';
+import { notifyMultipleUsers } from '@/modules/notifications';
+import { emitThreadMessage } from '@/modules/ws';
 import { getAiInsightNotificationsQueue } from '../queue';
 import { DEFAULT_JOB_OPTIONS, AIJobType } from '../config';
 import type {

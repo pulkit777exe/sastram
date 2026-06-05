@@ -1,5 +1,5 @@
-import { assertAdmin, getSession } from '@/modules/auth/session';
-import { listAllTags } from '@/modules/tags/repository';
+import { assertAdmin, getSession } from '@/modules/auth';
+import { listAllTags } from '@/modules/tags';
 import { TagManager } from '@/components/admin/tag-manager';
 
 export default async function AdminTagsPage(props: {

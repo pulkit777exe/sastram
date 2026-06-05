@@ -3,10 +3,10 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
-import { createTag, addTagToThread } from '@/modules/tags/repository';
+import { createTag, addTagToThread } from '@/modules/tags';
 import { createServerAction } from '@/lib/utils/server-action';
 
 const createTopicSchema = z.object({

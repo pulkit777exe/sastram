@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/services/auth';
-import { getUserBootstrapProfile } from '@/modules/users/repository';
-import { getUnreadCount } from '@/modules/notifications/repository';
-import { getUserActivity } from '@/modules/activity/repository';
-import { getUserReputation } from '@/modules/reputation/repository';
-import { getJoinedCommunities } from '@/modules/communities/repository';
+import { getUserBootstrapProfile } from '@/modules/users';
+import { getUnreadCount } from '@/modules/notifications';
+import { getUserActivity } from '@/modules/activity';
+import { getUserReputation } from '@/modules/reputation';
+import { getJoinedCommunities } from '@/modules/communities';
 import { ok, fail } from '@/lib/utils/api-response';
 
 export async function GET(request: NextRequest) {

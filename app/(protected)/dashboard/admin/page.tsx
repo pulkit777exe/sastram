@@ -1,9 +1,7 @@
-import { assertAdmin } from '@/modules/auth/session';
-import { getSession } from '@/modules/auth/session';
-import { listCommunities } from '@/modules/communities/repository';
-import { listThreads } from '@/modules/threads/repository';
-import { createCommunityAction } from '@/modules/communities/actions';
-import { createThreadAction, deleteThreadAction } from '@/modules/threads/actions';
+import { assertAdmin } from '@/modules/auth';
+import { getSession } from '@/modules/auth';
+import { listCommunities, createCommunityAction } from '@/modules/communities';
+import { listThreads, createThreadAction, deleteThreadAction } from '@/modules/threads';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';

@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { cn } from '@/lib/utils/cn';
-import type { ThreadWithFullContext } from '@/modules/threads/queries';
+import type { ThreadWithFullContext } from '@/modules/threads';
 
 interface ParticipantsCardProps {
   thread: ThreadWithFullContext;

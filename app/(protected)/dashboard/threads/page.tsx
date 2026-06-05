@@ -102,7 +102,7 @@ export default async function ThreadsPage({
         </Card>
       ) : (
         <div className="grid gap-4">
-          {threads.map((thread: any) => (
+          {threads.map((thread) => (
             <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
               <Card className="p-4 hover:bg-accent transition-colors">
                 <h3 className="font-semibold text-foreground mb-2">{thread.name}</h3>
@@ -114,15 +114,15 @@ export default async function ThreadsPage({
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <MessageSquare className="h-3 w-3" />
-                    {(thread as any)._count?.messages ?? 0}
+                    {thread.messageCount}
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
-                    {(thread as any)._count?.members ?? (thread as any).memberCount ?? 0}
+                    {thread.memberCount}
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    <TimeAgo date={(thread as any).createdAt} />
+                    <TimeAgo date={thread.createdAt} />
                   </span>
                 </div>
               </Card>

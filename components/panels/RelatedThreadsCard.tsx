@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getRelatedThreads } from '@/modules/threads/relations';
+import { getRelatedThreads } from '@/modules/threads';
 import type { ThreadDNA } from '@/lib/schemas/thread-dna';
 
 interface RelatedThreadsCardProps {
