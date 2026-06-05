@@ -5,7 +5,7 @@ import { buildCommunitySlug } from '@/lib/utils/slug';
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { requireSession, assertAdmin } from '@/modules/auth/session';
+import { requireSession, assertAdmin } from '@/modules/auth';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { createCommunity } from './repository';
 

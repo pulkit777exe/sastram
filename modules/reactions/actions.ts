@@ -3,10 +3,10 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireThreadMembership, requireSession } from '@/modules/auth/session';
+import { requireThreadMembership, requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { getMessageReactions } from '@/modules/reactions/repository';
-import { emitReactionUpdate } from '@/modules/ws/publisher';
+import { emitReactionUpdate } from '@/modules/ws';
 import { createServerAction } from '@/lib/utils/server-action';
 import { messageIdSchema, threadIdSchema } from '@/lib/utils/validation-common';
 
@@ -93,7 +93,7 @@ export const getReactionSummary = createServerAction(
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }
 
-    const reactions = await getMessageReactions(messageId);
+    const reactions = await getMessageReactions(messageId, session.user.id);
     return { data: reactions, error: null, ok: true, errorCode: null };
   }
 );

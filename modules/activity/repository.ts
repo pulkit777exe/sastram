@@ -91,7 +91,6 @@ export const getFollowedUsersActivity = cache(async (
                 name: true,
                 email: true,
                 image: true,
-                avatarUrl: true,
               },
             },
           },

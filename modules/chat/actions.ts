@@ -7,12 +7,12 @@ import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/infrastructure/logger';
 import type { Conversation } from '@/lib/types/index';
 import { buildThreadSlug } from '@/lib/utils/slug';
-import { emitThreadMessage } from '@/modules/ws/publisher';
+import { emitThreadMessage } from '@/modules/ws';
 import { z } from 'zod';
 import { attachmentInputSchema } from '@/lib/schemas/database';
 import { withValidation } from '@/lib/utils/server-action';
 import { prismaErrorMessage } from '@/lib/utils/errors';
-import { requireThreadMembership } from '@/modules/auth/session';
+import { requireThreadMembership } from '@/modules/auth';
 
 const createConversationSchema = z.object({
   name: z.string().min(1),

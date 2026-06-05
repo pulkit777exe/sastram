@@ -1,4 +1,5 @@
 import type { ReportCategory, ReportStatus } from '@/lib/config/constants';
+import type { UserStatus } from '@prisma/client';
 
 /**
  * Report domain types
@@ -66,7 +67,7 @@ export interface ReportWithContext extends Report {
     name: string | null;
     email: string;
     createdAt: Date;
-    status: string;
+    status: UserStatus;
     reputationPoints: number;
     trustScore: number;
     violationHistory: Array<{
@@ -84,8 +85,8 @@ export interface ReportWithContext extends Report {
   } | null;
   similarReports: Array<{
     id: string;
-    category: string;
-    status: string;
+    category: ReportCategory;
+    status: ReportStatus;
     createdAt: Date;
   }>;
   reportCount: number;

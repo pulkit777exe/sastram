@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession, assertAdmin } from '@/modules/auth/session';
+import { requireSession, assertAdmin } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { createThread, deleteThread, listThreads, getThreadMembers, updateThreadMemberRole, removeThreadMember, updateThreadDNA, updateResolutionScore, updateThreadStaleness } from './repository';

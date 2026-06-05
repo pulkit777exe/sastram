@@ -10,8 +10,8 @@ import {
   getResolutionScoreQueue,
   getThreadDnaQueue,
 } from '@/lib/infrastructure/bullmq';
-import { updateAllThreadRelations } from '@/modules/threads/relations';
-import { prewarmFollowUpQueries } from '@/modules/ai-search/query-warming';
+import { updateAllThreadRelations } from '@/modules/threads';
+import { prewarmFollowUpQueries } from '@/modules/ai-search';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
 const BATCH_SIZE = 100;

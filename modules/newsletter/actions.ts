@@ -3,7 +3,7 @@
 import { logger } from '@/lib/infrastructure/logger';
 
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { subscribeToThreadNewsletter, scheduleThreadDigest } from './repository';
 import { z } from 'zod';

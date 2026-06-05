@@ -85,7 +85,7 @@ export const getUserActivities = cache(async (filters?: UserActivityFilters) => 
             id: true,
             name: true,
             email: true,
-            avatarUrl: true,
+            image: true,
           },
         },
       },

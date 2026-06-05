@@ -1,13 +1,13 @@
 'use server';
 
 import { z } from 'zod';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
-import { logAction } from '@/modules/audit/repository';
+import { logAction } from '@/modules/audit';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { computeHasMore } from '@/lib/db/pagination';
 import { withValidation } from '@/lib/utils/server-action';
-import { getBannedUsersSchema } from '@/modules/moderation/schemas';
+import { getBannedUsersSchema } from '@/modules/moderation';
 import { requireModerationRole } from '@/modules/policy';
 
 const createAppealSchema = z.object({

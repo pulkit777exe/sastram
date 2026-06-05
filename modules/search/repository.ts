@@ -85,7 +85,7 @@ export const searchMessages = cache(async (
         SELECT m.id, m.content, m."threadId", m."senderId", m."createdAt", m."parentId", m.depth,
                m."isAiResponse", m."likeCount", m."replyCount",
                t.name as "threadName", t.slug as "threadSlug",
-               u.name as "senderName", u.email as "senderEmail", u.image as "senderImage", u."avatarUrl" as "senderAvatarUrl",
+               u.name as "senderName", u.email as "senderEmail", u.image as "senderImage",
                ts_rank(m."fts_vector", plainto_tsquery('english', ${sanitized})) AS rank
         FROM "messages" m
         JOIN "threads" t ON t.id = m."threadId"
@@ -127,7 +127,6 @@ export const searchMessages = cache(async (
           name: m.senderName,
           email: m.senderEmail,
           image: m.senderImage,
-          avatarUrl: m.senderAvatarUrl,
         },
         thread: {
           id: m.threadId,
@@ -160,7 +159,6 @@ export const searchUsers = cache(async (query: string, limit: number = 20, offse
           name: true,
           email: true,
           image: true,
-          avatarUrl: true,
           bio: true,
           followerCount: true,
           followingCount: true,

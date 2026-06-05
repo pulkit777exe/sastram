@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { requireRole } from '@/modules/policy';
 import { listCommunities } from '@/modules/communities/repository';
 import { listThreads } from '@/modules/threads/repository';
-import { deleteCommunity, deleteThread } from '@/modules/moderation/actions';
+import { deleteCommunity, deleteThread } from '@/modules/moderation';
 
 export async function getAdminDashboardData() {
   try {
@@ -28,4 +28,4 @@ export async function getAdminDashboardData() {
   }
 }
 
-export { deleteCommunity, deleteThread } from '@/modules/moderation/actions';
+export { deleteCommunity, deleteThread } from '@/modules/moderation';

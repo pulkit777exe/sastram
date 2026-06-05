@@ -1,9 +1,10 @@
 import {
   emitThreadMessage,
-  emitMentionNotification,
   emitMessageDeleted,
   emitPinUpdate,
-} from '@/modules/ws/publisher';
+  emitReactionUpdate,
+  emitMentionNotification,
+} from '@/modules/ws';
 import { sendMentionNotification } from '@/lib/services/email';
 import { getAiInlineQueue } from '@/lib/infrastructure/bullmq';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';

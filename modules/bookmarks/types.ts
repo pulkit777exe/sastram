@@ -24,7 +24,6 @@ export interface BookmarkedThreadsResponse {
       name: string | null;
       email: string;
       image: string | null;
-      avatarUrl: string | null;
     };
   }>;
   total: number;

@@ -12,7 +12,7 @@ import {
   getFollowing as getFollowingRepo,
   isFollowing as isFollowingRepo,
 } from './repository';
-import { createNotification } from '@/modules/notifications/repository';
+import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
 import { userIdSchema } from '@/lib/utils/validation-common';
 

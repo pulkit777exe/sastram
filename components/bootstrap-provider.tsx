@@ -16,7 +16,7 @@ import type { Community, UserActivity } from '@prisma/client';
 export type BootstrapUser = {
   id: string;
   name: string | null;
-  avatarUrl: string | null;
+  image: string | null;
   role: string;
   reputationPoints: number;
   isPro: boolean;

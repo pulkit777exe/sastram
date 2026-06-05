@@ -18,7 +18,6 @@ export const getPublicProfile = cache(async (userId: string, viewerId?: string) 
       twitter: true,
       github: true,
       image: true,
-      avatarUrl: true,
       bannerUrl: true,
       profilePrivacy: true,
       reputationPoints: true,
@@ -73,7 +72,7 @@ export const getUserBootstrapProfile = cache(async (userId: string) => {
       select: {
         id: true,
         name: true,
-        avatarUrl: true,
+        image: true,
         role: true,
         reputationPoints: true,
         isPro: true,

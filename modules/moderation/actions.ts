@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { revalidatePath } from 'next/cache';
 import { computeHasMore } from '@/lib/db/pagination';
-import { createNotification } from '@/modules/notifications/repository';
+import { createNotification } from '@/modules/notifications';
 import {
   applyModerationRateLimit,
   requireModerationSession,

@@ -10,5 +10,6 @@ export {
 
 export { buildThreadDTO, buildThreadDetailDTO } from './service';
 export { buildThreadSlug } from '@/lib/utils/slug';
+export { updateAllThreadRelations } from './relations';
 
 export type { ThreadRecord, ThreadSummary, ThreadDetail } from './types';

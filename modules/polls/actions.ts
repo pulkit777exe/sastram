@@ -14,7 +14,7 @@ import {
 import { createPollSchema, voteOnPollSchema } from './schemas';
 import { z } from 'zod';
 import { ROUTES } from '@/lib/config/routes';
-import { getMemberRole } from '@/modules/members/repository';
+import { getMemberRole } from '@/modules/members';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { isPrismaUniqueConstraintError } from '@/lib/utils/errors';

@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { ThreadRole } from '@prisma/client';
 import {
@@ -12,7 +12,7 @@ import {
   getThreadMembers,
   getMemberRole,
 } from '@/modules/members/repository';
-import { createNotification } from '@/modules/notifications/repository';
+import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
 
 const joinThreadSchema = z.object({

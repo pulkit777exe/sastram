@@ -7,7 +7,7 @@ import { requireSession } from '@/modules/auth/session';
 import { z } from 'zod';
 import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
-import { createNotification } from '@/modules/notifications/repository';
+import { createNotification } from '@/modules/notifications';
 import { requireRole } from '@/modules/policy';
 import { requireReportsModeratorSession, assertCanReportOwnMessage } from './policy';
 import { executeReportAuditAndRefresh } from './executors';

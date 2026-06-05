@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/services/auth';
 import { listThreads } from '@/modules/threads/repository';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireThreadMembershipOrThrow } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
 
 export async function GET(request: NextRequest) {

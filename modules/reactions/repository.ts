@@ -36,23 +36,33 @@ export async function removeReaction(messageId: string, userId: string, emoji: s
   });
 }
 
-export async function getMessageReactions(messageId: string) {
+export async function getMessageReactions(messageId: string, userId?: string) {
   try {
-    const reactions = await prisma.reaction.findMany({
-      where: { messageId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
+    const [reactions, userReactions] = await Promise.all([
+      prisma.reaction.findMany({
+        where: { messageId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
+        orderBy: {
+          createdAt: 'asc',
+        },
+      }),
+      userId
+        ? prisma.reaction.findMany({
+            where: { messageId, userId },
+            select: { emoji: true },
+          })
+        : [],
+    ]);
+
+    const userEmojiSet = new Set(userReactions.map((r) => r.emoji));
 
     const grouped = (reactions ?? []).reduce(
       (acc, reaction) => {
@@ -61,7 +71,7 @@ export async function getMessageReactions(messageId: string) {
             emoji: reaction.emoji,
             count: 0,
             users: [],
-            hasReacted: false,
+            hasReacted: userEmojiSet.has(reaction.emoji),
           };
         }
         acc[reaction.emoji].count++;

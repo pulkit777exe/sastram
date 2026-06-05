@@ -21,9 +21,9 @@ export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
     if (node) {
       Object.assign(node, msg, {
         isCollapsed: node.isCollapsed ?? false,
-        likeCount: (msg as any).likeCount ?? node.likeCount ?? 0,
-        replyCount: (msg as any).replyCount ?? node.replyCount ?? 0,
-        isAiResponse: (msg as any).isAiResponse ?? node.isAiResponse ?? false,
+        likeCount: msg.likeCount ?? node.likeCount ?? 0,
+        replyCount: msg.replyCount ?? node.replyCount ?? 0,
+        isAiResponse: msg.isAiResponse ?? node.isAiResponse ?? false,
         children: node.children ?? [],
       });
     } else {
@@ -35,14 +35,14 @@ export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
         senderId: msg.senderId,
         threadId: msg.threadId,
         parentId: msg.parentId ?? null,
-        depth: (msg as any).depth ?? 0,
-        isEdited: (msg as any).isEdited ?? false,
-        isPinned: (msg as any).isPinned ?? false,
-        likeCount: (msg as any).likeCount ?? 0,
-        replyCount: (msg as any).replyCount ?? 0,
-        isAiResponse: (msg as any).isAiResponse ?? false,
-        deletedAt: (msg as any).deletedAt ?? null,
-        sender: (msg as any).sender ?? { id: msg.senderId, name: null, image: null },
+        depth: msg.depth ?? 0,
+        isEdited: msg.isEdited ?? false,
+        isPinned: msg.isPinned ?? false,
+        likeCount: msg.likeCount ?? 0,
+        replyCount: msg.replyCount ?? 0,
+        isAiResponse: msg.isAiResponse ?? false,
+        deletedAt: msg.deletedAt ?? null,
+        sender: msg.sender ?? { id: msg.senderId, name: null, image: null },
         children: [],
         isCollapsed: false,
       };

@@ -1,13 +1,13 @@
 'use server';
 
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { filterBadLanguage } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
-import { getMemberRole } from '@/modules/members/repository';
-import { logAction } from '@/modules/audit/repository';
+import { getMemberRole } from '@/modules/members';
+import { logAction } from '@/modules/audit';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { ROUTES } from '@/lib/config/routes';

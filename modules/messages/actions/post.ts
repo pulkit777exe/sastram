@@ -9,7 +9,7 @@ import { createMessageWithAttachmentsSchema } from '@/lib/schemas/database';
 import { messageLimiter } from '@/lib/services/rate-limit';
 import { parseMentions, resolveUserMentions } from '@/lib/utils/mention-parser';
 import { ROUTES } from '@/lib/config/routes';
-import { recordActivity } from '@/modules/activity/repository';
+import { recordActivity } from '@/modules/activity';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';

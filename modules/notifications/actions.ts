@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import {
   getUserNotifications,

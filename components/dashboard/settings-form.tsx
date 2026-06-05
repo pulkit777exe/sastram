@@ -33,7 +33,6 @@ interface SettingsFormProps {
     github?: string | null;
     linkedin?: string | null;
     image?: string | null;
-    avatarUrl?: string | null;
     bannerUrl?: string | null;
     profilePrivacy?: string;
     preferences?: unknown;
@@ -61,7 +60,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
   const [twitter, setTwitter] = useState(user.twitter || '');
   const [github, setGithub] = useState(user.github || '');
   const [linkedin, setLinkedin] = useState(user.linkedin || '');
-  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || user.image || '');
+  const [avatarUrl, setAvatarUrl] = useState(user.image || '');
   const [bannerUrl, setBannerUrl] = useState(user.bannerUrl || '');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
