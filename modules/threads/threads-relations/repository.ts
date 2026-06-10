@@ -206,24 +206,64 @@ export async function updateAllThreadRelations(): Promise<{
 
     stats.processed = threads.length;
 
-    const CONCURRENCY = 5;
-    const chunks: typeof threads[] = [];
-    for (let i = 0; i < threads.length; i += CONCURRENCY) {
-      chunks.push(threads.slice(i, i + CONCURRENCY));
+    // Pre-fetch all existing relations for batch updates
+    const threadIds = threads.map(t => t.id);
+    const existingRelations = await prisma.threadRelation.findMany({
+      where: { sourceThreadId: { in: threadIds } },
+      select: { id: true, sourceThreadId: true, targetThreadId: true, similarity: true },
+    });
+
+    // Group relations by sourceThreadId
+    const relationsBySource = new Map<string, Map<string, { id: string; similarity: number }>>();
+    for (const rel of existingRelations) {
+      const map = relationsBySource.get(rel.sourceThreadId) ?? new Map();
+      map.set(rel.targetThreadId, { id: rel.id, similarity: rel.similarity });
+      relationsBySource.set(rel.sourceThreadId, map);
     }
 
-    for (const chunk of chunks) {
-      const results = await Promise.allSettled(
-        chunk.map((thread) => findRelatedThreads(thread.id))
-      );
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          stats.updated += result.value.length;
-        } else {
-          logger.error('[updateAllThreadRelations] chunk error', { error: result.reason });
-          stats.errors++;
+    // Calculate similarities for all thread pairs in memory
+    const toCreate: Array<{ sourceThreadId: string; targetThreadId: string; similarity: number }> = [];
+    const toUpdate: Array<{ id: string; similarity: number }> = [];
+
+    for (const thread of threads) {
+      if (!thread.threadDna) continue;
+
+      for (const other of threads) {
+        if (thread.id === other.id || !other.threadDna) continue;
+
+        const similarity = calculateThreadSimilarity(thread.threadDna, other.threadDna);
+        if (similarity < SIMILARITY_THRESHOLD) continue;
+
+        const existingRel = relationsBySource.get(thread.id)?.get(other.id);
+        if (!existingRel) {
+          toCreate.push({
+            sourceThreadId: thread.id,
+            targetThreadId: other.id,
+            similarity,
+          });
+        } else if (existingRel.similarity !== similarity) {
+          toUpdate.push({ id: existingRel.id, similarity });
         }
       }
+    }
+
+    // Batch create new relations
+    if (toCreate.length > 0) {
+      await prisma.threadRelation.createMany({ data: toCreate });
+      stats.updated += toCreate.length;
+    }
+
+    // Batch update changed relations
+    if (toUpdate.length > 0) {
+      await Promise.all(
+        toUpdate.map(u =>
+          prisma.threadRelation.update({
+            where: { id: u.id },
+            data: { similarity: u.similarity },
+          })
+        )
+      );
+      stats.updated += toUpdate.length;
     }
   } catch (error) {
     logger.error('Failed to update all thread relations:', error);

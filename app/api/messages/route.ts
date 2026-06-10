@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { postMessage } from '@/modules/messages/actions';
-import { auth } from '@/lib/services/auth';
 import { ok, fail } from '@/lib/utils/api-response';
+import { requireSessionOrThrow } from '@/modules/auth/session';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user) {
-      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
-    }
+    const session = await requireSessionOrThrow(false);
 
     const formData = await request.formData();
 
@@ -44,6 +41,11 @@ export async function POST(request: NextRequest) {
     const resultData = (result as { data: { message: unknown } }).data;
     return NextResponse.json(ok({ message: resultData.message }));
   } catch (error) {
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to post message'), { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const status = message.includes('Unauthorized') ? 401 : 500;
+    return NextResponse.json(
+      fail(status === 401 ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', message),
+      { status }
+    );
   }
 }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/services/auth';
 import { ok, fail } from '@/lib/utils/api-response';
 import { searchThreads, searchMessages, searchUsers } from '@/modules/search/repository';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { requireSessionOrThrow } from '@/modules/auth/session';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,10 +28,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session) {
-      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
-    }
+    const session = await requireSessionOrThrow();
 
     const memberships = await prisma.threadMember.findMany({
       where: { userId: session.user.id },
@@ -59,6 +56,11 @@ export async function GET(request: NextRequest) {
         );
     }
   } catch (error) {
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Search failed'), { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const status = message.includes('Unauthorized') ? 401 : 500;
+    return NextResponse.json(
+      fail(status === 401 ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', message),
+      { status }
+    );
   }
 }

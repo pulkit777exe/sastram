@@ -370,7 +370,6 @@ async function generateAIInlineResponse(
   threadId: string,
   query: string,
 ) {
-
   const parentMessage = await prisma.message.findUnique({
     where: { id: messageId },
     select: { id: true, depth: true, threadId: true },
@@ -381,6 +380,31 @@ async function generateAIInlineResponse(
     return { queued: false, handled: false, error: 'Parent message not found' };
   }
 
+  const context = await fetchThreadContext(threadId);
+  const aiUser = await getOrCreateAiUser();
+  const aiMessage = await createAiMessage(threadId, parentMessage.id, (parentMessage.depth ?? 0) + 1, aiUser.id);
+
+  emitAiMessage(threadId, aiMessage, aiUser, false);
+
+  try {
+    await streamAiResponse(threadId, query, context, aiMessage, aiUser);
+    emitAiMessage(threadId, aiMessage, aiUser, true);
+  } catch (error) {
+    logger.error('[worker:ai] AI streaming error:', error);
+    const errorMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
+    await prisma.message.update({
+      where: { id: aiMessage.id },
+      data: { content: errorMessage },
+    });
+    emitAiMessage(threadId, { ...aiMessage, content: errorMessage }, aiUser, true);
+    throw error; // BullMQ will retry with exponential backoff (configured 3 attempts)
+  }
+
+  logger.info(`[worker:ai] AI inline job complete: ${jobId}`);
+  return { queued: true, handled: true, aiMessageId: aiMessage.id };
+}
+
+async function fetchThreadContext(threadId: string): Promise<string> {
   const recentMessages = await prisma.message.findMany({
     where: { threadId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
@@ -391,12 +415,14 @@ async function generateAIInlineResponse(
     },
   });
 
-  const context = recentMessages
+  return recentMessages
     .reverse()
     .map((m) => `${m.sender?.name || 'User'}: ${m.content}`)
     .join('\n');
+}
 
-  const aiUser = await prisma.user.upsert({
+async function getOrCreateAiUser() {
+  return prisma.user.upsert({
     where: { email: 'ai@sastram.system' },
     update: { name: 'Sastram AI', emailVerified: true },
     create: {
@@ -408,14 +434,21 @@ async function generateAIInlineResponse(
     },
     select: { id: true, name: true, image: true },
   });
+}
 
-  const aiMessage = await prisma.message.create({
+async function createAiMessage(
+  threadId: string,
+  parentId: string,
+  depth: number,
+  senderId: string,
+) {
+  return prisma.message.create({
     data: {
       content: '',
       threadId,
-      senderId: aiUser.id,
-      parentId: parentMessage.id,
-      depth: Math.min((parentMessage.depth ?? 0) + 1, 4),
+      senderId,
+      parentId,
+      depth: Math.min(depth, 4),
       isAiResponse: true,
       isEdited: false,
       isPinned: false,
@@ -426,109 +459,61 @@ async function generateAIInlineResponse(
       thread: { select: { id: true, name: true, slug: true } },
     },
   });
+}
 
+function emitAiMessage(
+  threadId: string,
+  message: { id: string; content: string; parentId: string | null; depth: number; createdAt: Date },
+  aiUser: { id: string; name: string | null; image: string | null },
+  isComplete: boolean,
+) {
   emitThreadMessage(threadId, {
-    id: aiMessage.id,
-    content: '',
+    id: message.id,
+    content: message.content,
     senderId: aiUser.id,
-    senderName: aiUser.name,
+    senderName: aiUser.name ?? 'Sastram AI',
     senderImage: aiUser.image ?? null,
-    createdAt: aiMessage.createdAt,
+    createdAt: message.createdAt,
     threadId,
-    parentId: aiMessage.parentId ?? null,
-    depth: aiMessage.depth ?? 0,
+    parentId: message.parentId ?? null,
+    depth: message.depth ?? 0,
     likeCount: 0,
     replyCount: 0,
     isAiResponse: true,
-    isComplete: false,
+    isComplete,
     reactions: [],
     attachments: [],
   });
+}
 
+async function streamAiResponse(
+  threadId: string,
+  query: string,
+  context: string,
+  aiMessage: { id: string; createdAt: Date; parentId: string | null; depth: number },
+  aiUser: { id: string; name: string | null; image: string | null },
+) {
   let fullContent = '';
   let lastDbUpdateTime = Date.now();
 
-  try {
-    await aiService.generateStreamingResponse(
-      `Answer this forum question in under 200 words and stay grounded in thread context.\nQuestion: ${query}\n\nRecent thread context:\n${context}`,
-      async (chunk) => {
-        fullContent += chunk;
-        const now = Date.now();
-        if (now - lastDbUpdateTime >= 500) {
-          await prisma.message.update({
-            where: { id: aiMessage.id },
-            data: { content: fullContent.slice(0, 2000) },
-          });
-          lastDbUpdateTime = now;
-        }
-        emitThreadMessage(threadId, {
-          id: aiMessage.id,
-          content: fullContent.slice(0, 2000),
-          senderId: aiUser.id,
-          senderName: aiUser.name ?? 'Sastram AI',
-          senderImage: aiUser.image ?? null,
-          createdAt: aiMessage.createdAt,
-          threadId,
-          parentId: aiMessage.parentId ?? null,
-          depth: aiMessage.depth ?? 0,
-          likeCount: 0,
-          replyCount: 0,
-          isAiResponse: true,
-          reactions: [],
-          attachments: [],
+  await aiService.generateStreamingResponse(
+    `Answer this forum question in under 200 words and stay grounded in thread context.\nQuestion: ${query}\n\nRecent thread context:\n${context}`,
+    async (chunk) => {
+      fullContent += chunk;
+      const now = Date.now();
+      if (now - lastDbUpdateTime >= 500) {
+        await prisma.message.update({
+          where: { id: aiMessage.id },
+          data: { content: fullContent.slice(0, 2000) },
         });
-      },
-    );
+        lastDbUpdateTime = now;
+      }
+      emitAiMessage(threadId, { ...aiMessage, content: fullContent.slice(0, 2000) }, aiUser, false);
+    },
+  );
 
-    await prisma.message.update({
-      where: { id: aiMessage.id },
-      data: { content: fullContent.slice(0, 2000) },
-    });
-
-    emitThreadMessage(threadId, {
-      id: aiMessage.id,
-      content: fullContent.slice(0, 2000),
-      senderId: aiUser.id,
-      senderName: aiUser.name ?? 'Sastram AI',
-      senderImage: aiUser.image ?? null,
-      createdAt: aiMessage.createdAt,
-      threadId,
-      parentId: aiMessage.parentId ?? null,
-      depth: aiMessage.depth ?? 0,
-      likeCount: 0,
-      replyCount: 0,
-      isAiResponse: true,
-      isComplete: true,
-      reactions: [],
-      attachments: [],
-    });
-  } catch (error) {
-    logger.error('[worker:ai] AI streaming error:', error);
-    const errorMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
-    await prisma.message.update({
-      where: { id: aiMessage.id },
-      data: { content: errorMessage },
-    });
-    emitThreadMessage(threadId, {
-      id: aiMessage.id,
-      content: errorMessage,
-      senderId: aiUser.id,
-      senderName: aiUser.name ?? 'Sastram AI',
-      senderImage: aiUser.image ?? null,
-      createdAt: aiMessage.createdAt,
-      threadId,
-      parentId: aiMessage.parentId ?? null,
-      depth: aiMessage.depth ?? 0,
-      likeCount: 0,
-      replyCount: 0,
-      isAiResponse: true,
-      isComplete: true,
-      reactions: [],
-      attachments: [],
-    });
-    throw error; // BullMQ will retry with exponential backoff (configured 3 attempts)
-  }
-
-  logger.info(`[worker:ai] AI inline job complete: ${jobId}`);
-  return { queued: true, handled: true, aiMessageId: aiMessage.id };
+  await prisma.message.update({
+    where: { id: aiMessage.id },
+    data: { content: fullContent.slice(0, 2000) },
+  });
 }

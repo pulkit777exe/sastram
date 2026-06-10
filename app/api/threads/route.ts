@@ -1,23 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/services/auth';
 import { listThreads } from '@/modules/threads/repository';
 import { ok, fail } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { requireSessionOrThrow } from '@/modules/auth/session';
 
 export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
-
   const requestId = request.headers.get('x-request-id') ?? '';
 
-  if (!session) {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized', undefined, requestId), {
-      status: 401,
-    });
-  }
-
   try {
+    const session = await requireSessionOrThrow();
+
     // Scope threads to user's memberships
     const memberships = await prisma.threadMember.findMany({
       where: { userId: session.user.id },
@@ -28,9 +20,11 @@ export async function GET(request: NextRequest) {
     const threads = await listThreads({ memberUserId: session.user.id, threadIds });
     return NextResponse.json(ok({ threads }, requestId));
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const status = message.includes('Unauthorized') ? 401 : 500;
     return NextResponse.json(
-      fail('INTERNAL_ERROR', 'Failed to load threads', undefined, requestId),
-      { status: 500 }
+      fail(status === 401 ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', message, undefined, requestId),
+      { status }
     );
   }
 }

@@ -1,81 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail } from '@/lib/utils/api-response';
-import { requireThreadMembershipOrThrow } from '@/modules/auth/session';
-import { auth } from '@/lib/services/auth';
+import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
+import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 
 const dnaRequestSchema = z.object({
   threadId: z.string(),
 });
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await auth.api.getSession({ headers: req.headers });
-    if (!session?.user) {
-      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
-    }
+const handler = withErrorHandling(async (req: NextRequest) => {
+  const session = await requireSessionOrThrow();
 
-    const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-    const rateLimitResult = await rateLimit(ip);
-    if (!rateLimitResult.success) {
-      return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
-    }
-
-    const body = await req.json();
-    const { threadId } = dnaRequestSchema.parse(body);
-
-    try {
-      await requireThreadMembershipOrThrow(threadId, session.user.id);
-    } catch {
-      return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
-    }
-
-    // Fetch thread and messages
-    const thread = await prisma.thread.findUnique({
-      where: { id: threadId },
-      include: {
-        messages: {
-          take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
-          orderBy: { createdAt: 'desc' },
-          include: { sender: true },
-        },
-      },
-    });
-
-    if (!thread) {
-      return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: 404 });
-    }
-
-    // Reverse to chronological order for AI
-    const messages = thread.messages.reverse();
-
-    if (messages.length === 0) {
-      return NextResponse.json(ok({
-        dna: {
-          questionType: 'other',
-          expertiseLevel: 'intermediate',
-          topics: ['general discussion'],
-          readTimeMinutes: 1,
-        },
-      }));
-    }
-
-    // Generate thread DNA
-    const threadDNA = await aiService.generateThreadDNA(messages);
-
-    // Update thread with new DNA
-    await prisma.thread.update({
-      where: { id: threadId },
-      data: { threadDna: threadDNA },
-    });
-
-    return NextResponse.json(ok({ dna: threadDNA }));
-  } catch (error) {
-    logger.error('Error generating thread DNA:', error);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to generate thread DNA'), { status: 500 });
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const rateLimitResult = await rateLimit(ip);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
   }
-}
+
+  const body = await req.json();
+  const { threadId } = dnaRequestSchema.parse(body);
+
+  try {
+    await requireThreadMembershipOrThrow(threadId, session.user.id);
+  } catch {
+    return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
+  }
+
+  // Fetch thread and messages
+  const thread = await prisma.thread.findUnique({
+    where: { id: threadId },
+    include: {
+      messages: {
+        take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
+        orderBy: { createdAt: 'desc' },
+        include: { sender: true },
+      },
+    },
+  });
+
+  if (!thread) {
+    return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: 404 });
+  }
+
+  // Reverse to chronological order for AI
+  const messages = thread.messages.reverse();
+
+  if (messages.length === 0) {
+    return NextResponse.json(ok({
+      dna: {
+        questionType: 'other',
+        expertiseLevel: 'intermediate',
+        topics: ['general discussion'],
+        readTimeMinutes: 1,
+      },
+    }));
+  }
+
+  // Generate thread DNA
+  const threadDNA = await aiService.generateThreadDNA(messages);
+
+  // Update thread with new DNA
+  await prisma.thread.update({
+    where: { id: threadId },
+    data: { threadDna: threadDNA },
+  });
+
+  return NextResponse.json(ok({ dna: threadDNA }));
+});
+
+export { handler as POST };

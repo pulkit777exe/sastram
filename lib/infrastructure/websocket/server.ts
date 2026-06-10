@@ -7,6 +7,7 @@ import type { TypingIndicator } from '@/lib/types/index';
 import { validateWebSocketMessage } from '@/lib/schemas/websocket';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { getRedisSub, getThreadChannel, getUserChannel, publishThreadEvent as redisPublish, publishUserEvent as redisUserPublish } from '@/lib/infrastructure/redis-pubsub';
+import { prisma } from '@/lib/infrastructure/prisma';
 import crypto from 'crypto';
 
 export interface AuthenticatedWebSocket extends WebSocket {
@@ -236,11 +237,32 @@ export function initWebSocketServer(server: HTTPServer) {
         headers.set('cookie', `better-auth.session_token=${sessionCookie}`);
         auth.api
           .getSession({ headers })
-          .then((session) => {
+          .then(async (session) => {
             if (session?.user) {
               authWs.userId = session.user.id;
               authWs.userName = session.user.name || session.user.email;
               if (authWs.userId) {
+                // Check thread membership for PRIVATE/RESTRICTED threads
+                if (threadId) {
+                  const thread = await prisma.thread.findUnique({
+                    where: { id: threadId },
+                    select: { visibility: true },
+                  });
+
+                  if (thread?.visibility === 'PRIVATE' || thread?.visibility === 'RESTRICTED') {
+                    const membership = await prisma.threadMember.findUnique({
+                      where: { threadId_userId: { threadId, userId: authWs.userId } },
+                      select: { status: true },
+                    });
+
+                    if (!membership || membership.status !== 'ACTIVE') {
+                      logger.warn(`[ws] User ${authWs.userId} denied access to ${thread?.visibility} thread ${threadId}`);
+                      authWs.close(1008, 'Not a member of this thread');
+                      return;
+                    }
+                  }
+                }
+
                 const wasUserEmpty = !connectionsByUserId.has(authWs.userId);
                 const userConns = connectionsByUserId.get(authWs.userId) ?? new Set();
                 userConns.add(authWs);

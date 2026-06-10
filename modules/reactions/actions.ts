@@ -53,6 +53,17 @@ export const toggleReaction = createServerAction(
           data: { messageId, userId: session.user.id, emoji },
         });
       }
+
+      // Recalculate likeCount from all unique users who reacted
+      const uniqueUserCount = await tx.reaction.groupBy({
+        by: ['userId'],
+        where: { messageId },
+      });
+
+      await tx.message.update({
+        where: { id: messageId },
+        data: { likeCount: uniqueUserCount.length },
+      });
     });
 
     const reactionCounts = await prisma.reaction.groupBy({

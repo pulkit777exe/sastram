@@ -332,7 +332,7 @@ export class MessageService {
         }
       }
 
-      // Create message + increment replyCount atomically
+      // Create message + increment replyCount + messageCount atomically
       const created = await prisma.$transaction(async (tx) => {
         const msg = await tx.message.create({
           data: {
@@ -350,6 +350,11 @@ export class MessageService {
             data: { replyCount: { increment: 1 } },
           });
         }
+
+        await tx.thread.update({
+          where: { id: message.threadId },
+          data: { messageCount: { increment: 1 } },
+        });
 
         return msg;
       });

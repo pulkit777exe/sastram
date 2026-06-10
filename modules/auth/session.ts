@@ -60,6 +60,23 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
 }
 
 /**
+ * API route variant — throws an error instead of redirecting.
+ * Use in API route handlers where redirect() is not available.
+ */
+export async function requireSessionOrThrow(checkBanStatus = true): Promise<SessionPayload> {
+  const session = await getSession();
+  if (!session) {
+    throw new Error('Unauthorized: no session');
+  }
+
+  if (checkBanStatus && session.user.status === 'BANNED') {
+    throw new Error('Forbidden: user is banned');
+  }
+
+  return session;
+}
+
+/**
  * Require that a user is a member of the given thread.
  * Returns the ThreadMember record if membership exists.
  * Throws (redirects to dashboard) if not a member.
