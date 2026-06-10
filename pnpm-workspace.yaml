@@ -10,12 +10,17 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - diff@8.0.3
   - serialize-javascript@7.0.3
-  - serialize-javascript@7.0.5
   - '@hono/node-server@1.19.13'
   - postcss@8.5.10
+  - next@16.2.5
+  - next@16.2.6
+  - serialize-javascript@7.0.5
 overrides:
   '@hono/node-server@<1.19.13': ^1.19.13
   diff@>=6.0.0 <8.0.3: ^8.0.3
+  ioredis@<5.11.1: ^5.11.1
+  next@>=16.0.0 <16.2.5: ^16.2.5
+  next@>=16.0.0 <16.2.6: ^16.2.6
   postcss@<8.5.10: ^8.5.10
-  serialize-javascript@<7.0.5: ^7.0.5
   serialize-javascript@<=7.0.2: ^7.0.3
+  serialize-javascript@>=5.0.0 <7.0.5: ^7.0.5
