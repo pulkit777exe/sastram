@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import { aiService } from '@/lib/services/ai';
 import { buildThreadDTO } from '@/modules/threads/service';
 import type { ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 import { Prisma } from '@prisma/client';
+import { getThreadDnaQueue, getResolutionScoreQueue } from '@/lib/queue/queue';
+import { AIJobType, DEFAULT_JOB_OPTIONS } from '@/lib/queue/config';
 
 type ThreadStorageWithCommunityAndMessages = Prisma.ThreadGetPayload<{
   include: {
@@ -85,31 +86,23 @@ export async function createThread(payload: {
       },
     ];
 
+    // Enqueue background jobs for AI analysis instead of blocking the response
     try {
-      const [threadDNA, resolutionScore] = await Promise.all([
-        aiService.generateThreadDNA(initialMessages),
-        aiService.calculateResolutionScore(initialMessages),
+      await Promise.all([
+        getThreadDnaQueue().add(
+          AIJobType.GENERATE_THREAD_DNA,
+          { threadId: thread.id, messages: initialMessages },
+          DEFAULT_JOB_OPTIONS
+        ),
+        getResolutionScoreQueue().add(
+          AIJobType.CALCULATE_RESOLUTION_SCORE,
+          { threadId: thread.id, messages: initialMessages },
+          DEFAULT_JOB_OPTIONS
+        ),
       ]);
-
-      await prisma.thread.update({
-        where: { id: thread.id },
-        data: { threadDna: threadDNA, resolutionScore, lastVerifiedAt: new Date() },
-      });
     } catch (error) {
-      logger.error('Failed to generate thread metadata:', error);
-      await prisma.thread.update({
-        where: { id: thread.id },
-        data: {
-          threadDna: {
-            questionType: 'other',
-            expertiseLevel: 'intermediate',
-            topics: ['general discussion'],
-            readTimeMinutes: 1,
-          },
-          resolutionScore: 50,
-          lastVerifiedAt: new Date(),
-        },
-      });
+      logger.error('Failed to enqueue thread AI jobs:', error);
+      // Non-critical — thread is created, AI will be processed later
     }
   }
 
