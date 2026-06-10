@@ -1,21 +1,5 @@
 import sanitizeHtml from 'sanitize-html';
 
-const BAD_WORDS = ['spam', 'scam', 'malware', 'virus', 'phishing'];
-
-export function containsBadLanguage(content: string): boolean {
-  const lowerContent = content.toLowerCase();
-  return BAD_WORDS.some((word) => lowerContent.includes(word));
-}
-
-export function filterBadLanguage(content: string): string {
-  let filteredContent = content;
-  BAD_WORDS.forEach((word) => {
-    const regex = new RegExp(word, 'gi');
-    filteredContent = filteredContent.replace(regex, '*'.repeat(word.length));
-  });
-  return filteredContent;
-}
-
 export interface XssSanitizeResult {
   sanitized: string;
   hadDangerousContent: boolean;
@@ -95,10 +79,6 @@ export function validateFile(file: File): FileValidationResult {
       isValid: false,
       error: 'Invalid file type. Only Images and PDFs are allowed.',
     };
-  }
-
-  if (file.name.toLowerCase().includes('virus')) {
-    return { isValid: false, error: 'Malware detected.' };
   }
 
   return { isValid: true };

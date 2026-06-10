@@ -1,7 +1,6 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { slugify } from '@/lib/utils/slug';
-import { containsBadLanguage, filterBadLanguage } from '@/lib/services/content-safety';
 import { rateLimitConfig } from '@/lib/services/rate-limit';
 
 describe('Real Utilities', () => {
@@ -28,27 +27,6 @@ describe('Real Utilities', () => {
 
     it('should handle unicode characters', () => {
       expect(slugify('Héllo Wörld')).to.equal('h-llo-w-rld');
-    });
-  });
-
-  describe('Content Safety', () => {
-    it('should detect bad language', () => {
-      expect(containsBadLanguage('This is spam')).to.be.true;
-      expect(containsBadLanguage('Hello world')).to.be.false;
-    });
-
-    it('should be case-insensitive', () => {
-      expect(containsBadLanguage('This is SPAM')).to.be.true;
-      expect(containsBadLanguage('This is Spam')).to.be.true;
-    });
-
-    it('should filter bad language', () => {
-      const result = filterBadLanguage('This is spam');
-      expect(result).to.not.include('spam');
-    });
-
-    it('should leave clean content unchanged', () => {
-      expect(filterBadLanguage('Hello world')).to.equal('Hello world');
     });
   });
 

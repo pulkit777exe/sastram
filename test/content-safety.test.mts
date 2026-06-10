@@ -1,36 +1,47 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { containsBadLanguage, filterBadLanguage } from '@/lib/services/content-safety';
+import { sanitizeUserContent, validateFile } from '@/lib/services/content-safety';
 
 describe('Content Safety', () => {
-  describe('containsBadLanguage', () => {
-    it('should detect bad words in content', () => {
-      expect(containsBadLanguage('This is a scam message')).to.be.true;
-      expect(containsBadLanguage('Click here for malware')).to.be.true;
+  describe('sanitizeUserContent', () => {
+    it('should strip script tags', () => {
+      const result = sanitizeUserContent('<script>alert("xss")</script>Hello');
+      expect(result.sanitized).to.not.include('<script>');
+      expect(result.hadDangerousContent).to.be.true;
     });
 
-    it('should be case insensitive', () => {
-      expect(containsBadLanguage('SCAM alert')).to.be.true;
-      expect(containsBadLanguage('Phishing attempt')).to.be.true;
+    it('should allow safe HTML tags', () => {
+      const result = sanitizeUserContent('<b>Bold</b> and <i>italic</i>');
+      expect(result.sanitized).to.include('<b>');
+      expect(result.sanitized).to.include('<i>');
+      expect(result.hadDangerousContent).to.be.false;
     });
 
-    it('should return false for clean content', () => {
-      expect(containsBadLanguage('Hello world')).to.be.false;
-      expect(containsBadLanguage('Welcome to the forum')).to.be.false;
+    it('should strip event handlers', () => {
+      const result = sanitizeUserContent('<div onclick="alert(1)">Click</div>');
+      expect(result.sanitized).to.not.include('onclick');
     });
   });
 
-  describe('filterBadLanguage', () => {
-    it('should replace bad words with asterisks', () => {
-      expect(filterBadLanguage('This is a scam')).to.equal('This is a ****');
+  describe('validateFile', () => {
+    it('should reject files exceeding size limit', () => {
+      const file = new File(['x'.repeat(5 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' });
+      const result = validateFile(file);
+      expect(result.isValid).to.be.false;
+      expect(result.error).to.include('4.5MB');
     });
 
-    it('should replace multiple bad words', () => {
-      expect(filterBadLanguage('scam and malware')).to.equal('**** and *******');
+    it('should reject invalid file types', () => {
+      const file = new File(['x'], 'test.exe', { type: 'application/x-executable' });
+      const result = validateFile(file);
+      expect(result.isValid).to.be.false;
+      expect(result.error).to.include('Invalid file type');
     });
 
-    it('should preserve clean content', () => {
-      expect(filterBadLanguage('Hello world')).to.equal('Hello world');
+    it('should accept valid file types', () => {
+      const file = new File(['x'], 'image.png', { type: 'image/png' });
+      const result = validateFile(file);
+      expect(result.isValid).to.be.true;
     });
   });
 });

@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { env } from '@/lib/config/env';
-import { containsBadLanguage } from '@/lib/services/content-safety';
 import { aiService } from '@/lib/services/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import type { ReportCategory } from '@prisma/client';
@@ -35,6 +34,19 @@ export type ModerationResult = {
   reason?: string;
   confidence?: number;
   messageId?: string;
+  message?: {
+    id: string;
+    content: string;
+    threadId: string;
+    senderId: string;
+    parentId: string | null;
+    depth: number;
+    createdAt: Date;
+    updatedAt: Date;
+    sender?: { id: string; name: string | null; image: string | null } | null;
+    thread?: { id: string; name: string; slug: string } | null;
+    attachments?: Array<{ id: string; url: string; type: string; name: string | null; size: bigint | null }>;
+  } | null;
   pendingModeration?: boolean;
 };
 
@@ -48,41 +60,31 @@ export class RateLimitFilter {
 }
 
 export class RegexFilter {
-  private rulesCache: { rules: any[]; timestamp: number } | null = null;
+  private rulesCache: { rules: any[]; compiledRules: Map<string, { regex: RegExp; action: string; severity: string; category: string }>; timestamp: number } | null = null;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   async check(message: MessageLike): Promise<ModerationResult> {
-    if (containsBadLanguage(message.content)) {
-      return {
-        success: false,
-        action: 'BLOCK',
-        severity: 'MEDIUM',
-        reason: 'Matched default bad language filter',
-      };
-    }
-
     // Check against custom moderation rules (with caching)
-    let rules = this.getRulesFromCache();
-    if (!rules) {
-      rules = await prisma.moderationRule.findMany({
+    let compiledRules = this.getCompiledRulesFromCache();
+    if (!compiledRules) {
+      const rules = await prisma.moderationRule.findMany({
         select: { id: true, pattern: true, action: true, severity: true, category: true },
       });
-      this.cacheRules(rules);
+      compiledRules = this.cacheRules(rules);
     }
 
-    for (const rule of rules) {
+    for (const [ruleId, { regex, action, severity, category }] of compiledRules) {
       try {
-        const regex = new RegExp(rule.pattern, 'i');
         if (regex.test(message.content)) {
           return {
             success: false,
-            action: rule.action as 'BLOCK' | 'REVIEW' | 'FLAG',
-            severity: rule.severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
-            reason: `Matched rule: ${rule.category}`,
+            action: action as 'BLOCK' | 'REVIEW' | 'FLAG',
+            severity: severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
+            reason: `Matched rule: ${category}`,
           };
         }
       } catch (error) {
-        logger.warn(`Invalid regex pattern for rule ${rule.id}:`, error);
+        logger.warn(`Invalid regex pattern for rule ${ruleId}:`, error);
         continue;
       }
     }
@@ -93,21 +95,36 @@ export class RegexFilter {
     };
   }
 
-  private getRulesFromCache() {
+  private getCompiledRulesFromCache(): Map<string, { regex: RegExp; action: string; severity: string; category: string }> | null {
     if (!this.rulesCache) return null;
     const now = Date.now();
     if (now - this.rulesCache.timestamp > this.CACHE_TTL) {
       this.rulesCache = null;
       return null;
     }
-    return this.rulesCache.rules;
+    return this.rulesCache.compiledRules;
   }
 
-  private cacheRules(rules: any[]) {
+  private cacheRules(rules: any[]): Map<string, { regex: RegExp; action: string; severity: string; category: string }> {
+    const compiledRules = new Map<string, { regex: RegExp; action: string; severity: string; category: string }>();
+    for (const rule of rules) {
+      try {
+        compiledRules.set(rule.id, {
+          regex: new RegExp(rule.pattern, 'i'),
+          action: rule.action,
+          severity: rule.severity,
+          category: rule.category,
+        });
+      } catch (error) {
+        logger.warn(`Failed to compile regex for rule ${rule.id}:`, error);
+      }
+    }
     this.rulesCache = {
       rules,
+      compiledRules,
       timestamp: Date.now(),
     };
+    return compiledRules;
   }
 }
 
@@ -291,6 +308,16 @@ export class MessageService {
     const result = await this.pipeline.process(message, context);
 
     let dbMessageId: string | undefined;
+    let createdMessage: {
+      id: string;
+      content: string;
+      threadId: string;
+      senderId: string;
+      parentId: string | null;
+      depth: number;
+      createdAt: Date;
+      updatedAt: Date;
+    } | null = null;
 
     try {
       // Calculate depth from parent
@@ -328,6 +355,7 @@ export class MessageService {
       });
 
       dbMessageId = created.id;
+      createdMessage = created;
 
       // If moderation action is needed, create a report (outside transaction — idempotent)
       if (result.action !== 'ALLOW') {
@@ -361,6 +389,12 @@ export class MessageService {
     return {
       ...result,
       messageId: dbMessageId,
+      message: createdMessage ? {
+        ...createdMessage,
+        sender: null,
+        thread: null,
+        attachments: [],
+      } : null,
     };
   }
 }

@@ -4,7 +4,6 @@ import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import { filterBadLanguage } from '@/lib/services/content-safety';
 import { createMessageWithAttachmentsSchema } from '@/lib/schemas/database';
 import { messageLimiter } from '@/lib/services/rate-limit';
 import { parseMentions, resolveUserMentions } from '@/lib/utils/mention-parser';
@@ -110,8 +109,6 @@ export async function postMessage(formData: FormData) {
     };
   }
 
-  const safeContent = filterBadLanguage(content);
-
   if (mentions.length > 10) {
     return {
       data: null,
@@ -125,7 +122,7 @@ export async function postMessage(formData: FormData) {
     const moderationResult = await moderateIncomingMessage({
       threadId,
       authorId: session.user.id,
-      content: safeContent,
+      content,
       parentId,
     });
 
@@ -138,26 +135,7 @@ export async function postMessage(formData: FormData) {
       };
     }
 
-    const message = await prisma.message.findUnique({
-      where: { id: moderationResult.messageId! },
-      include: {
-        thread: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-        attachments: true,
-      },
-    });
+    const message = moderationResult.message;
 
     if (!message) {
       return {
@@ -187,8 +165,8 @@ export async function postMessage(formData: FormData) {
       id: message.id,
       content: message.content,
       senderId: session.user.id,
-      senderName: message.sender?.name || session.user.email,
-      senderImage: message.sender?.image ?? session.user.image,
+      senderName: session.user.name || session.user.email,
+      senderImage: session.user.image,
       createdAt: message.createdAt,
       threadId,
       parentId: message.parentId ?? null,
@@ -197,19 +175,13 @@ export async function postMessage(formData: FormData) {
       replyCount: 0,
       isAiResponse: false,
       reactions: [],
-      attachments: message.attachments.map((att) => ({
-        id: att.id,
-        url: att.url,
-        type: att.type,
-        name: att.name,
-        size: att.size !== null ? Number(att.size) : null,
-      })),
+      attachments: [],
     };
 
     infraMessageSideEffects.emitThreadMessage(threadId, payload);
 
     const { aiInlineQueued, aiInlineLimited } = await queueAiInlineIfRequested({
-      content: safeContent,
+      content,
       userId: session.user.id,
       threadId,
       messageId: message.id,
