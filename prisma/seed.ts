@@ -52,7 +52,7 @@ async function createThread({
 
 async function main() {
   const user = await prisma.user.upsert({
-    where: { email: 'test@example.com' },
+    where: { email: 'admin@sastram.com' },
     update: {},
     create: {
       email: 'admin@sastram.com',
