@@ -200,7 +200,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   }, [connectWebSocket]);
 
   useEffect(() => {
-    if (!data?.user.id) return;
+    if (!data?.user?.id) return;
 
     shouldReconnectRef.current = true;
     connectWebSocket(data.user.id);
@@ -215,7 +215,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
         wsRef.current = null;
       }
     };
-  }, [data?.user.id, connectWebSocket]);
+  }, [data?.user?.id, connectWebSocket]);
 
   const setNotificationCount = useCallback((count: number) => {
     setData((prev) => (prev ? { ...prev, unreadNotificationCount: Math.max(0, count) } : prev));
