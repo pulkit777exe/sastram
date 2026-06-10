@@ -288,12 +288,28 @@ export function PostMessageForm({
       onCancelReply?.();
 
       if (onMessagePosted) {
+        const msg = result.data.message;
         const transformedMessage = {
-          ...result.data.message,
-          attachments: result.data.message.attachments.map((att) => ({
+          id: msg.id,
+          content: msg.content,
+          threadId: msg.threadId,
+          senderId: msg.senderId,
+          parentId: msg.parentId,
+          depth: msg.depth,
+          isEdited: false,
+          isPinned: false,
+          likeCount: 0,
+          replyCount: 0,
+          isAiResponse: false,
+          createdAt: msg.createdAt,
+          updatedAt: msg.updatedAt,
+          deletedAt: null,
+          sender: msg.sender ?? { id: msg.senderId, name: null, image: null },
+          thread: msg.thread ?? { id: msg.threadId, name: '', slug: '' },
+          attachments: msg.attachments?.map((att) => ({
             ...att,
             size: att.size !== null ? Number(att.size) : null,
-          })),
+          })) ?? [],
         };
         onMessagePosted(transformedMessage);
       }

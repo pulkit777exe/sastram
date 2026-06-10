@@ -26,6 +26,7 @@ export async function moderateIncomingMessage(args: {
     select: {
       id: true,
       name: true,
+      slug: true,
       visibility: true,
       createdBy: true,
     },
@@ -38,12 +39,13 @@ export async function moderateIncomingMessage(args: {
     threadMetadata: {
       visibility: thread?.visibility,
       name: thread?.name,
+      slug: thread?.slug,
       createdBy: thread?.createdBy,
     },
     relationships: new Map(),
   };
 
-  return messageService.processMessage(
+  const result = await messageService.processMessage(
     {
       id: '',
       content: args.content,
@@ -55,4 +57,15 @@ export async function moderateIncomingMessage(args: {
     },
     context
   );
+
+  // Attach thread slug to the result
+  if (result.message && thread?.slug) {
+    result.message.thread = {
+      id: thread.id,
+      name: thread.name,
+      slug: thread.slug,
+    };
+  }
+
+  return result;
 }
