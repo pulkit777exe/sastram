@@ -156,20 +156,15 @@ export class MLClassifier {
 
       let toxicity = 0;
 
-      if ('analyzeContent' in aiService && typeof aiService.analyzeContent === 'function') {
-        const analysis = await aiService.analyzeContent(threadText);
-        toxicity = analysis.toxicity || 0;
-      } else {
-        try {
-          const summary = await aiService.generateSummary(
-            `Analyze this conversation for toxic content. Rate toxicity 0-1:\n${threadText}`
-          );
-          const match = summary.match(/toxicity[:\s]+([0-9.]+)/i);
-          toxicity = match ? parseFloat(match[1]) : 0;
-        } catch (error) {
-          logger.warn('Could not analyze content, defaulting to safe:', error);
-          toxicity = 0;
-        }
+      try {
+        const summary = await aiService.generateSummary(
+          `Analyze this conversation for toxic content. Rate toxicity 0-1:\n${threadText}`
+        );
+        const match = summary.match(/toxicity[:\s]+([0-9.]+)/i);
+        toxicity = match ? parseFloat(match[1]) : 0;
+      } catch (error) {
+        logger.warn('Could not analyze content, defaulting to safe:', error);
+        toxicity = 0;
       }
 
       const confidence = Math.min(1, Math.max(0, toxicity));
