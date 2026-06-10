@@ -28,13 +28,34 @@ class InMemoryRateLimiter implements RateLimiter {
   private requests: Map<string, number[]> = new Map();
   private maxPoints: number;
   private duration: number;
+  private lastCleanup: number = Date.now();
+  private readonly CLEANUP_INTERVAL = 60000; // Clean up every minute
 
   constructor(maxPoints: number, duration: number) {
     this.maxPoints = maxPoints;
     this.duration = duration;
   }
 
+  private cleanup() {
+    const now = Date.now();
+    if (now - this.lastCleanup < this.CLEANUP_INTERVAL) return;
+    
+    this.lastCleanup = now;
+    const windowMs = this.duration * 1000;
+    
+    for (const [identifier, timestamps] of this.requests.entries()) {
+      const filtered = timestamps.filter((ts) => now - ts < windowMs);
+      if (filtered.length === 0) {
+        this.requests.delete(identifier);
+      } else {
+        this.requests.set(identifier, filtered);
+      }
+    }
+  }
+
   async check(identifier: string): Promise<RateLimitResult> {
+    this.cleanup();
+    
     const now = Date.now();
     const requests = this.requests.get(identifier) || [];
     const windowMs = this.duration * 1000;

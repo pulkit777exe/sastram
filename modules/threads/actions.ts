@@ -13,6 +13,7 @@ import { ThreadRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { prismaErrorMessage } from '@/lib/utils/errors';
+import { getMemberRole } from '@/modules/members';
 
 /**
  * Parse a newline-separated string of poll options into a trimmed string array.
@@ -114,7 +115,8 @@ export const getDashboardThreads = createServerAction(
   },
   async (params) => {
     try {
-      const result = await listThreads(params);
+      const session = await requireSession();
+      const result = await listThreads({ ...params, memberUserId: session.user.id });
       return { data: result, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getDashboardThreads]', error);
@@ -132,7 +134,19 @@ export const getThreadMembersAction = createServerAction(
   { schema: threadIdSchema, actionName: 'getThreadMembersAction' },
   async ({ threadId }) => {
     try {
-      await requireSession();
+      const session = await requireSession();
+      
+      // Check thread membership
+      const membership = await getMemberRole(threadId, session.user.id);
+      if (!membership || membership.status !== 'ACTIVE') {
+        return {
+          data: null,
+          error: 'You are not a member of this thread',
+          errorCode: 'FORBIDDEN',
+          ok: false,
+        };
+      }
+
       const members = await getThreadMembers(threadId);
       return { data: members, error: null, ok: true, errorCode: null };
     } catch (error) {

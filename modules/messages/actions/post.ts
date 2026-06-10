@@ -98,9 +98,8 @@ export async function postMessage(formData: FormData) {
     return { data: null, error: 'Failed to verify membership', errorCode: 'INTERNAL_ERROR', ok: false };
   }
 
-  try {
-    await messageLimiter.check(session.user.id);
-  } catch {
+  const rateLimitResult = await messageLimiter.check(session.user.id);
+  if (!rateLimitResult.success) {
     return {
       data: null,
       error: 'Rate limit exceeded. Please slow down.',

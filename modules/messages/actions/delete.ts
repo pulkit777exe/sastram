@@ -44,9 +44,19 @@ export const deleteMessage = createServerAction(
         };
       }
 
-      await prisma.message.update({
-        where: { id: messageId },
-        data: { deletedAt: new Date() },
+      await prisma.$transaction(async (tx) => {
+        await tx.message.update({
+          where: { id: messageId },
+          data: { deletedAt: new Date() },
+        });
+
+        // Decrement messageCount on the thread
+        if (message.threadId) {
+          await tx.thread.update({
+            where: { id: message.threadId },
+            data: { messageCount: { decrement: 1 } },
+          });
+        }
       });
 
       await logAction({

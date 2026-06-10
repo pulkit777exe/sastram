@@ -195,7 +195,7 @@ function cleanupTypingIndicators() {
   });
 }
 
-setInterval(cleanupTypingIndicators, 1000);
+let typingCleanupInterval: ReturnType<typeof setInterval> | null = null;
 
 export function initWebSocketServer(server: HTTPServer) {
   if (wss) return wss;
@@ -214,76 +214,77 @@ export function initWebSocketServer(server: HTTPServer) {
       return;
     }
 
-    // Accept connection immediately — auth happens post-connect via WebSocket message.
-    // This avoids the async upgrade handler race condition where the socket times out
-    // before handleUpgrade is called under load.
-    wss?.handleUpgrade(request, socket, head, (ws) => {
-      const authWs = ws as AuthenticatedWebSocket;
+    // Authenticate synchronously using cookie from request headers before accepting connection.
+    // This prevents unauthenticated sockets from receiving any messages.
+    const sessionCookie = request.headers.cookie
+      ?.split(';')
+      .find((c) => c.trim().startsWith('better-auth.session_token='))
+      ?.split('=')[1];
 
-      if (threadId) {
-        authWs.threadId = threadId;
-      }
+    if (!sessionCookie) {
+      socket.destroy();
+      return;
+    }
 
-      // Authenticate synchronously using cookie from request headers.
-      // If auth fails, we still register the socket but it will be anonymous.
-      // Anonymous sockets cannot send messages (checked in message handler).
-      const sessionCookie = request.headers.cookie
-        ?.split(';')
-        .find((c) => c.trim().startsWith('better-auth.session_token='))
-        ?.split('=')[1];
+    const headers = new Headers();
+    headers.set('cookie', `better-auth.session_token=${sessionCookie}`);
 
-      if (sessionCookie) {
-        const headers = new Headers();
-        headers.set('cookie', `better-auth.session_token=${sessionCookie}`);
-        auth.api
-          .getSession({ headers })
-          .then(async (session) => {
-            if (session?.user) {
-              authWs.userId = session.user.id;
-              authWs.userName = session.user.name || session.user.email;
-              if (authWs.userId) {
-                // Check thread membership for PRIVATE/RESTRICTED threads
-                if (threadId) {
-                  const thread = await prisma.thread.findUnique({
-                    where: { id: threadId },
-                    select: { visibility: true },
-                  });
+    auth.api
+      .getSession({ headers })
+      .then(async (session) => {
+        if (!session?.user) {
+          socket.destroy();
+          return;
+        }
 
-                  if (thread?.visibility === 'PRIVATE' || thread?.visibility === 'RESTRICTED') {
-                    const membership = await prisma.threadMember.findUnique({
-                      where: { threadId_userId: { threadId, userId: authWs.userId } },
-                      select: { status: true },
-                    });
-
-                    if (!membership || membership.status !== 'ACTIVE') {
-                      logger.warn(`[ws] User ${authWs.userId} denied access to ${thread?.visibility} thread ${threadId}`);
-                      authWs.close(1008, 'Not a member of this thread');
-                      return;
-                    }
-                  }
-                }
-
-                const wasUserEmpty = !connectionsByUserId.has(authWs.userId);
-                const userConns = connectionsByUserId.get(authWs.userId) ?? new Set();
-                userConns.add(authWs);
-                connectionsByUserId.set(authWs.userId, userConns);
-                if (wasUserEmpty) {
-                  subscribeToUser(authWs.userId);
-                }
-              }
-            }
-          })
-          .catch((error) => {
-            logger.warn('[ws] Post-connect auth failed:', error);
+        // For thread connections, verify membership for PRIVATE/RESTRICTED threads
+        if (threadId) {
+          const thread = await prisma.thread.findUnique({
+            where: { id: threadId },
+            select: { visibility: true },
           });
-      }
 
-      if (threadId) {
-        registerSocket(threadId, authWs);
-      }
+          if (thread?.visibility === 'PRIVATE' || thread?.visibility === 'RESTRICTED') {
+            const membership = await prisma.threadMember.findUnique({
+              where: { threadId_userId: { threadId, userId: session.user.id } },
+              select: { status: true },
+            });
 
-      wss?.emit('connection', authWs, request);
-    });
+            if (!membership || membership.status !== 'ACTIVE') {
+              logger.warn(`[ws] User ${session.user.id} denied access to ${thread?.visibility} thread ${threadId}`);
+              socket.destroy();
+              return;
+            }
+          }
+        }
+
+        // Auth passed — now accept the connection
+        wss?.handleUpgrade(request, socket, head, (ws) => {
+          const authWs = ws as AuthenticatedWebSocket;
+          authWs.userId = session.user.id;
+          authWs.userName = session.user.name || session.user.email;
+
+          if (threadId) {
+            authWs.threadId = threadId;
+            registerSocket(threadId, authWs);
+          }
+
+          // Register user connection
+          const wasUserEmpty = !connectionsByUserId.has(authWs.userId);
+          const userConns = connectionsByUserId.get(authWs.userId) ?? new Set();
+          userConns.add(authWs);
+          connectionsByUserId.set(authWs.userId, userConns);
+          if (wasUserEmpty) {
+            subscribeToUser(authWs.userId);
+          }
+
+          wss?.emit('connection', authWs, request);
+        });
+      })
+      .catch((error) => {
+        logger.warn('[ws] Auth failed:', error);
+        socket.destroy();
+      });
   });
 
   wss.on('connection', (ws: AuthenticatedWebSocket) => {
@@ -296,15 +297,6 @@ export function initWebSocketServer(server: HTTPServer) {
 
     if (isNotifications) {
       logger.debug('Client connected to notifications channel');
-      if (ws.userId) {
-        const wasEmpty = !connectionsByUserId.has(ws.userId);
-        const userConns = connectionsByUserId.get(ws.userId) ?? new Set();
-        userConns.add(ws);
-        connectionsByUserId.set(ws.userId, userConns);
-        if (wasEmpty) {
-          subscribeToUser(ws.userId);
-        }
-      }
       ws.on('close', () => unregisterSocket(ws));
       return;
     }
@@ -414,6 +406,11 @@ export function initWebSocketServer(server: HTTPServer) {
     });
   });
 
+  // Start typing indicator cleanup interval
+  if (!typingCleanupInterval) {
+    typingCleanupInterval = setInterval(cleanupTypingIndicators, 1000);
+  }
+
   const heartbeatInterval = setInterval(() => {
     wss?.clients.forEach((ws) => {
       const authWs = ws as AuthenticatedWebSocket;
@@ -427,6 +424,10 @@ export function initWebSocketServer(server: HTTPServer) {
 
   wss.on('close', () => {
     clearInterval(heartbeatInterval);
+    if (typingCleanupInterval) {
+      clearInterval(typingCleanupInterval);
+      typingCleanupInterval = null;
+    }
   });
 
   try {

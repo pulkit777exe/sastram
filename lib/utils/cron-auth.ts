@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 export function verifyCronAuth(req: NextRequest): NextResponse | null {
   const secret = process.env.CRON_SECRET;
@@ -11,7 +12,14 @@ export function verifyCronAuth(req: NextRequest): NextResponse | null {
     return null;
   }
 
-  if (authHeader !== `Bearer ${secret}`) {
+  const expected = `Bearer ${secret}`;
+  if (!authHeader || authHeader.length !== expected.length) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const a = Buffer.from(authHeader);
+  const b = Buffer.from(expected);
+  if (!crypto.timingSafeEqual(a, b)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

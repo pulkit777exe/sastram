@@ -31,6 +31,19 @@ export const editMessage = createServerAction(
         return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
       }
 
+      // Check thread membership
+      if (message.threadId) {
+        const membership = await getMemberRole(message.threadId, session.user.id);
+        if (!membership || membership.status !== 'ACTIVE') {
+          return {
+            data: null,
+            error: 'You are not a member of this thread',
+            errorCode: 'FORBIDDEN',
+            ok: false,
+          };
+        }
+      }
+
       if (message.senderId !== session.user.id) {
         return {
           data: null,
@@ -155,7 +168,30 @@ export const getMessageEditHistory = createServerAction(
   { schema: getMessageEditHistorySchema, actionName: 'getMessageEditHistory' },
   async ({ messageId }) => {
     try {
-      await requireSession();
+      const session = await requireSession();
+
+      // Get message to find threadId
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        select: { threadId: true },
+      });
+
+      if (!message) {
+        return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+      }
+
+      // Check thread membership
+      if (message.threadId) {
+        const membership = await getMemberRole(message.threadId, session.user.id);
+        if (!membership || membership.status !== 'ACTIVE') {
+          return {
+            data: null,
+            error: 'You are not a member of this thread',
+            errorCode: 'FORBIDDEN',
+            ok: false,
+          };
+        }
+      }
 
       const edits = await prisma.messageEdit.findMany({
         where: { messageId },
