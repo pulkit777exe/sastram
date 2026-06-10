@@ -2,7 +2,6 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
-import { dedupe } from '@/lib/dedupe';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 
@@ -67,56 +66,54 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
   }
 
   try {
-    const [totalItems, threadRows] = await dedupe(`threads:list:${page}:${pageSize}:${sortBy}:${memberUserId ?? ''}`, () =>
-      Promise.all([
-        prisma.thread.count({ where }),
-        prisma.thread.findMany({
-          where,
-          include: {
-            community: true,
-            messages: {
-              where: {
-                deletedAt: null,
-                createdAt: {
-                  gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                },
-              },
-              select: {
-                senderId: true,
-                createdAt: true,
+    const [totalItems, threadRows] = await Promise.all([
+      prisma.thread.count({ where }),
+      prisma.thread.findMany({
+        where,
+        include: {
+          community: true,
+          messages: {
+            where: {
+              deletedAt: null,
+              createdAt: {
+                gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
               },
             },
-            members: {
-              where: {
-                status: 'ACTIVE',
-              },
+            select: {
+              senderId: true,
+              createdAt: true,
             },
-            _count: {
-              select: {
-                messages: {
-                  where: {
-                    deletedAt: null,
-                  },
+          },
+          members: {
+            where: {
+              status: 'ACTIVE',
+            },
+          },
+          _count: {
+            select: {
+              messages: {
+                where: {
+                  deletedAt: null,
                 },
-                members: {
-                  where: {
-                    status: 'ACTIVE',
-                  },
+              },
+              members: {
+                where: {
+                  status: 'ACTIVE',
                 },
               },
             },
           },
-          orderBy:
-            sortBy === 'oldest'
-              ? { createdAt: 'asc' }
-              : sortBy === 'popular'
-                ? { messageCount: 'desc' }
-                : { updatedAt: 'desc' },
-          skip,
-          take: pageSize,
-        }),
-      ])
-    );
+        },
+        orderBy:
+          sortBy === 'oldest'
+            ? { createdAt: 'asc' }
+            : sortBy === 'popular'
+              ? { messageCount: 'desc' }
+              : { updatedAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+    ]);
 
     let mappedThreads = (threadRows ?? []).map((thread: ThreadStorageWithCommunityAndCount) => {
       const uniqueActiveUsers = new Set(thread.messages.map((message) => message.senderId));
@@ -166,42 +163,40 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
 });
 
 export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail | null> => {
-  const row = await dedupe(`threads:bySlug:${slug}`, () =>
-    prisma.thread.findFirst({
-      where: {
-        slug,
-      },
-      include: {
-        community: true,
-        messages: {
-          include: {
-            sender: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              },
+  const row = await prisma.thread.findFirst({
+    where: {
+      slug,
+    },
+    include: {
+      community: true,
+      messages: {
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
             },
-            attachments: true,
           },
-          orderBy: {
-            createdAt: 'asc',
-          },
-          take: 500,
+          attachments: true,
         },
-        subscriptions: true,
-        _count: {
-          select: {
-            messages: {
-              where: {
-                deletedAt: null,
-              },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        take: 500,
+      },
+      subscriptions: true,
+      _count: {
+        select: {
+          messages: {
+            where: {
+              deletedAt: null,
             },
           },
         },
       },
-    })
-  );
+    },
+  });
 
   if (!row) {
     return null;
