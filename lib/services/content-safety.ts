@@ -20,7 +20,10 @@ export function sanitizeUserContent(content: string): XssSanitizeResult {
     /data:/gi,
   ];
 
-  const hadDangerousContent = dangerousPatterns.some((pattern) => pattern.test(content));
+  const hadDangerousContent = dangerousPatterns.some((pattern) => {
+    pattern.lastIndex = 0;
+    return pattern.test(content);
+  });
 
   const sanitized = sanitizeHtml(content, {
     allowedTags: XSS_ALLOWED_TAGS,

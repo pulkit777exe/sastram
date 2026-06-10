@@ -19,8 +19,21 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
   }
 
-  const body = await req.json();
-  const { threadId } = dnaRequestSchema.parse(body);
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: 400 });
+  }
+
+  const parsed = dnaRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      fail('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input'),
+      { status: 400 }
+    );
+  }
+  const { threadId } = parsed.data;
 
   try {
     await requireThreadMembershipOrThrow(threadId, session.user.id);
@@ -33,7 +46,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     where: { id: threadId },
     include: {
       messages: {
-        take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
+        take: Math.min(parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10) || 50, 100),
         orderBy: { createdAt: 'desc' },
         include: { sender: true },
       },

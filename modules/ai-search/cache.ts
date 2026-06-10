@@ -67,19 +67,24 @@ export async function cacheResult(
 
   try {
     // Get or create a single anonymous session for all cache entries
-    let anonymousSession = await prisma.aiSearchSession.findFirst({
-      where: { userId: 'anonymous' },
-    });
-
-    if (!anonymousSession) {
-      anonymousSession = await prisma.aiSearchSession.create({
-        data: {
-          userId: 'anonymous',
-          query: '', // placeholder query
-          queryHash: hashQuery(''), // hash of empty string
-        },
+    // Use a transaction to avoid race condition with concurrent requests
+    const anonymousSession = await prisma.$transaction(async (tx) => {
+      let session = await tx.aiSearchSession.findFirst({
+        where: { userId: 'anonymous' },
       });
-    }
+
+      if (!session) {
+        session = await tx.aiSearchSession.create({
+          data: {
+            userId: 'anonymous',
+            query: '', // placeholder query
+            queryHash: hashQuery(''), // hash of empty string
+          },
+        });
+      }
+
+      return session;
+    });
 
     await prisma.aiSearchResult.create({
       data: {
