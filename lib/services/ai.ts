@@ -124,10 +124,10 @@ function parseResolutionScore(text: string): number {
   return Math.max(0, Math.min(100, score));
 }
 
-function makeAbortController(): { controller: AbortController; clear: () => void } {
+function makeAbortController(): { signal: AbortSignal; clear: () => void } {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
-  return { controller, clear: () => clearTimeout(timer) };
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
 }
 
 export interface AIService {
@@ -154,10 +154,10 @@ export class GeminiService implements AIService {
     content: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    const { controller, clear } = makeAbortController();
+    const { signal, clear } = makeAbortController();
     try {
       const result = await this.flashModel.generateContentStream(content, {
-        signal: controller.signal,
+        signal,
       });
       for await (const chunk of result.stream) {
         const text = chunk.text();
@@ -178,12 +178,17 @@ export class GeminiService implements AIService {
       content.substring(0, MAX_CONTENT_CHARS) +
       '\n\nSummary:';
 
-    const { controller, clear } = makeAbortController();
+    const { signal, clear } = makeAbortController();
     try {
-      const result = await withRetry(() =>
-        this.flashModel.generateContent(prompt, {
-          signal: controller.signal,
-        })
+      const result = await withRetry(
+        (retrySignal) =>
+          this.flashModel.generateContent(prompt, {
+            signal: retrySignal,
+          }),
+        3,
+        300,
+        15_000,
+        signal
       );
       return result.response.text();
     } catch (error) {
@@ -202,12 +207,17 @@ export class GeminiService implements AIService {
     const content = buildMessageContent(messages);
     const prompt = `${THREAD_DNA_SYSTEM_PROMPT}\n\nMessages:\n${content}\n\nJSON:`;
 
-    const { controller, clear } = makeAbortController();
+    const { signal, clear } = makeAbortController();
     try {
-      const result = await withRetry(() =>
-        this.flashModel.generateContent(prompt, {
-          signal: controller.signal,
-        })
+      const result = await withRetry(
+        (retrySignal) =>
+          this.flashModel.generateContent(prompt, {
+            signal: retrySignal,
+          }),
+        3,
+        300,
+        15_000,
+        signal
       );
       return parseThreadDNA(result.response.text());
     } catch (error) {
@@ -228,12 +238,17 @@ export class GeminiService implements AIService {
       content +
       '\n\nScore:';
 
-    const { controller, clear } = makeAbortController();
+    const { signal, clear } = makeAbortController();
     try {
-      const result = await withRetry(() =>
-        this.flashModel.generateContent(prompt, {
-          signal: controller.signal,
-        })
+      const result = await withRetry(
+        (retrySignal) =>
+          this.flashModel.generateContent(prompt, {
+            signal: retrySignal,
+          }),
+        3,
+        300,
+        15_000,
+        signal
       );
       return parseResolutionScore(result.response.text());
     } catch (error) {
@@ -248,12 +263,17 @@ export class GeminiService implements AIService {
     const content = buildIndexedContent(messages);
     const prompt = `${CONFLICT_SYSTEM_PROMPT}\n\nMessages:\n${content}\n\nJSON:`;
 
-    const { controller, clear } = makeAbortController();
+    const { signal, clear } = makeAbortController();
     try {
-      const result = await withRetry(() =>
-        this.flashModel.generateContent(prompt, {
-          signal: controller.signal,
-        })
+      const result = await withRetry(
+        (retrySignal) =>
+          this.flashModel.generateContent(prompt, {
+            signal: retrySignal,
+          }),
+        3,
+        300,
+        15_000,
+        signal
       );
       return parseConflict(result.response.text());
     } catch (error) {
@@ -274,12 +294,17 @@ export class GeminiService implements AIService {
       'Professional and concise.\n\nMessages:\n' +
       content;
 
-    const { controller, clear } = makeAbortController();
+    const { signal, clear } = makeAbortController();
     try {
-      const result = await withRetry(() =>
-        this.proModel.generateContent(prompt, {
-          signal: controller.signal,
-        })
+      const result = await withRetry(
+        (retrySignal) =>
+          this.proModel.generateContent(prompt, {
+            signal: retrySignal,
+          }),
+        3,
+        300,
+        15_000,
+        signal
       );
       return result.response
         .text()
@@ -310,31 +335,37 @@ export class OpenAIService implements AIService {
     userContent: string,
     maxTokens: number
   ): Promise<string> {
-    const { controller, clear } = makeAbortController();
+    const { signal, clear } = makeAbortController();
     try {
-      const data = await withRetry(async () => {
-        const response = await fetch(this.baseUrl, {
-          method: 'POST',
-          headers: this.headers,
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userContent },
-            ],
-            max_tokens: maxTokens,
-            temperature: 0.4,
-          }),
-          signal: controller.signal,
-        });
+      const data = await withRetry(
+        async (retrySignal) => {
+          const response = await fetch(this.baseUrl, {
+            method: 'POST',
+            headers: this.headers,
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userContent },
+              ],
+              max_tokens: maxTokens,
+              temperature: 0.4,
+            }),
+            signal: retrySignal,
+          });
 
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => response.statusText);
-          throw new Error(`OpenAI ${response.status}: ${errorText}`);
-        }
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => response.statusText);
+            throw new Error(`OpenAI ${response.status}: ${errorText}`);
+          }
 
-        return response.json();
-      });
+          return response.json();
+        },
+        3,
+        300,
+        15_000,
+        signal
+      );
 
       return data.choices[0]?.message?.content ?? '';
     } finally {
@@ -346,7 +377,7 @@ export class OpenAIService implements AIService {
     content: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    const { controller, clear } = makeAbortController();
+    const { signal, clear } = makeAbortController();
     try {
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -366,7 +397,7 @@ export class OpenAIService implements AIService {
           max_tokens: 400,
           temperature: 0.4,
         }),
-        signal: controller.signal,
+        signal,
       });
 
       if (!response.ok) {
