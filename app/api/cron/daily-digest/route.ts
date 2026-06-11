@@ -6,6 +6,11 @@ import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ROUTES } from '@/lib/config/routes';
+import sanitizeHtml from 'sanitize-html';
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
@@ -112,9 +117,9 @@ export async function GET(req: NextRequest) {
             subject: `Daily Digest: ${thread.name}`,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Daily Digest for ${thread.name}</h2>
+                <h2>Daily Digest for ${escapeHtml(thread.name)}</h2>
                 <div style="background-color: #f4f4f5; padding: 20px; border-radius: 8px;">
-                  ${summaryHtml}
+                  ${sanitizeHtml(summaryHtml, { allowedTags: ['h3', 'p', 'ul', 'li', 'strong', 'em', 'b', 'i'], allowedAttributes: {} })}
                 </div>
                 <p style="margin-top: 20px; font-size: 12px; color: #666;">
                   You are receiving this because you subscribed to this thread.
