@@ -147,7 +147,7 @@ export type RelatedThread = {
   slug: string;
   similarity: number;
   threadDna: any;
-  community: { slug: string; name: string } | null;
+  community: { slug: string; title: string } | null;
 };
 
 export async function getRelatedThreads(threadId: string): Promise<RelatedThread[]> {
@@ -160,7 +160,7 @@ export async function getRelatedThreads(threadId: string): Promise<RelatedThread
           name: true,
           slug: true,
           threadDna: true,
-          community: { select: { slug: true, name: true } },
+          community: { select: { slug: true, title: true } },
         },
       },
     },
