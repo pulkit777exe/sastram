@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireThreadMembershipOrThrow } from '@/modules/auth';
-import { auth } from '@/lib/services/auth';
+import { requireSessionOrThrow, requireThreadMembershipOrThrow } from '@/modules/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType, DEFAULT_JOB_OPTIONS, getThreadSummaryQueue } from '@/lib/infrastructure/bullmq';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -26,10 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON in request body'), { status: 400 });
     }
 
-    const session = await auth.api.getSession({ headers: req.headers });
-    if (!session?.user) {
-      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
-    }
+    const session = await requireSessionOrThrow();
 
     const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
     const rateLimitResult = await rateLimit(ip);
@@ -51,7 +47,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Thread needs at least 50 messages before a summary can be generated.'), { status: 400 });
     }
 
-    // Fetch thread and last 50 messages for AI context
     const thread = await prisma.thread.findUnique({
       where: { id: threadId },
       include: {
@@ -67,10 +62,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: 404 });
     }
 
-    // Reverse to chronological order for AI
     const messages = thread.messages.reverse();
 
-    // Add job to AI queue
     const threadSummaryQueue = getThreadSummaryQueue();
     const job = await threadSummaryQueue.add(
       AIJobType.GENERATE_THREAD_SUMMARY,
@@ -83,6 +76,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(ok({ jobId: job.id, status: 'pending', message: 'Summary generation started' }));
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
+    }
     logger.error('Error generating thread summary:', error);
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to generate summary'), { status: 500 });
   }

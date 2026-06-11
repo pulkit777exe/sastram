@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/services/auth';
+import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail } from '@/lib/utils/api-response';
 import { submitAppeal } from '@/modules/appeals/actions';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user) {
+    let session;
+    try {
+      session = await requireSessionOrThrow();
+    } catch {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
     }
+
+    const rateLimitResult = await rateLimit({ key: `appeal:${session.user.id}`, type: 'api' });
+    if (!rateLimitResult.success) {
+      return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
+    }
+
     const body = await request.json();
 
     if (!body.reason) {
