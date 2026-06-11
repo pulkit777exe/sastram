@@ -17,6 +17,8 @@ export interface AuthenticatedWebSocket extends WebSocket {
   isAlive?: boolean;
 }
 
+const MAX_CONNECTIONS_PER_USER = 10;
+
 export const INSTANCE_ID = crypto.randomUUID();
 
 export function shouldSkipLoopback(message: string, instanceId: string): boolean {
@@ -256,6 +258,14 @@ export function initWebSocketServer(server: HTTPServer) {
               return;
             }
           }
+        }
+
+        // Auth passed — enforce per-user connection limit
+        const existingConns = connectionsByUserId.get(session.user.id);
+        if (existingConns && existingConns.size >= MAX_CONNECTIONS_PER_USER) {
+          logger.warn(`[ws] User ${session.user.id} exceeded connection limit (${MAX_CONNECTIONS_PER_USER})`);
+          socket.destroy();
+          return;
         }
 
         // Auth passed — now accept the connection
