@@ -32,7 +32,7 @@ export function parseMentions(content: string): {
  */
 export async function resolveUserMentions(
   usernames: string[],
-  prisma: { user: { findMany: (args: any) => Promise<{ id: string }[]> } }
+  prisma: { user: { findMany: (args: { where: Record<string, unknown>; select: { id: true } }) => Promise<{ id: string }[]> } }
 ): Promise<string[]> {
   if (usernames.length === 0) return [];
 
@@ -40,7 +40,7 @@ export async function resolveUserMentions(
   const emails = usernames.filter((u) => u.includes('@'));
   const names = usernames.filter((u) => !u.includes('@'));
 
-  const where: any = {
+  const where: { OR: Array<Record<string, unknown>> } = {
     OR: [],
   };
 

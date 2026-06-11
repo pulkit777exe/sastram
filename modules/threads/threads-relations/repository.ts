@@ -2,6 +2,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Prisma } from '@prisma/client';
 import { aiService } from '@/lib/services/ai';
+import { parseThreadDna, type ThreadDNA } from '@/lib/schemas/thread-dna';
 
 // Threshold for considering threads semantically similar (0-1)
 const SIMILARITY_THRESHOLD = 0.7;
@@ -12,7 +13,7 @@ const MAX_RELATED_THREADS = 5;
 /**
  * Calculates semantic similarity between two thread DNA objects
  */
-function calculateThreadSimilarity(dna1: any, dna2: any): number {
+function calculateThreadSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
   if (!dna1 || !dna2) return 0;
 
   // Calculate topic similarity (Jaccard index)
@@ -48,7 +49,7 @@ export async function findRelatedThreads(threadId: string): Promise<
     name: string;
     slug: string;
     similarity: number;
-    threadDna: any;
+    threadDna: ThreadDNA | null;
   }>
 > {
   try {
@@ -59,7 +60,8 @@ export async function findRelatedThreads(threadId: string): Promise<
       },
     });
 
-    if (!thread?.threadDna) {
+    const parsedDna = parseThreadDna(thread?.threadDna);
+    if (!parsedDna) {
       return [];
     }
 
@@ -80,12 +82,18 @@ export async function findRelatedThreads(threadId: string): Promise<
     // Calculate similarity for each thread
     const relatedThreads = otherThreads
       .map((other) => {
-        const similarity = calculateThreadSimilarity(thread.threadDna, other.threadDna);
+        const otherDna = parseThreadDna(other.threadDna);
+        if (!otherDna) return null;
+        const similarity = calculateThreadSimilarity(parsedDna, otherDna);
         return {
-          ...other,
+          id: other.id,
+          name: other.name,
+          slug: other.slug,
           similarity,
+          threadDna: otherDna,
         };
       })
+      .filter((t): t is NonNullable<typeof t> => t !== null)
       .filter((t) => t.similarity >= SIMILARITY_THRESHOLD)
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, MAX_RELATED_THREADS);
@@ -146,7 +154,7 @@ export type RelatedThread = {
   name: string;
   slug: string;
   similarity: number;
-  threadDna: any;
+  threadDna: ThreadDNA | null;
   community: { slug: string; title: string } | null;
 };
 
@@ -173,7 +181,7 @@ export async function getRelatedThreads(threadId: string): Promise<RelatedThread
     name: relation.target.name,
     slug: relation.target.slug,
     similarity: relation.similarity,
-    threadDna: relation.target.threadDna,
+    threadDna: parseThreadDna(relation.target.threadDna),
     community: relation.target.community,
   }));
 }
@@ -226,12 +234,15 @@ export async function updateAllThreadRelations(): Promise<{
     const toUpdate: Array<{ id: string; similarity: number }> = [];
 
     for (const thread of threads) {
-      if (!thread.threadDna) continue;
+      const threadDna = parseThreadDna(thread.threadDna);
+      if (!threadDna) continue;
 
       for (const other of threads) {
-        if (thread.id === other.id || !other.threadDna) continue;
+        if (thread.id === other.id) continue;
+        const otherDna = parseThreadDna(other.threadDna);
+        if (!otherDna) continue;
 
-        const similarity = calculateThreadSimilarity(thread.threadDna, other.threadDna);
+        const similarity = calculateThreadSimilarity(threadDna, otherDna);
         if (similarity < SIMILARITY_THRESHOLD) continue;
 
         const existingRel = relationsBySource.get(thread.id)?.get(other.id);

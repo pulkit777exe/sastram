@@ -7,6 +7,7 @@ import { startOfDay, endOfDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ROUTES } from '@/lib/config/routes';
 import { escapeHtml } from '@/lib/utils/escape';
+import { ok, fail } from '@/lib/utils/api-response';
 import sanitizeHtml from 'sanitize-html';
 
 export async function GET(req: NextRequest) {
@@ -141,9 +142,9 @@ export async function GET(req: NextRequest) {
       await Promise.allSettled(emailPromises.slice(i, i + BATCH_SIZE));
     }
 
-    return NextResponse.json({ success: true, results });
+    return NextResponse.json(ok(results));
   } catch (error) {
     logger.error('Daily digest cron error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Daily digest failed'), { status: 500 });
   }
 }

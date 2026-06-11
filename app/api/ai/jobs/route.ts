@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     }
 
     const jobState = await job.getState();
-    const jobData: any = {
+    const jobData: Record<string, unknown> = {
       id: job.id,
       name: job.name,
       state: jobState,

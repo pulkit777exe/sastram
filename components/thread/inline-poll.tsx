@@ -12,7 +12,7 @@ import { toasts } from '@/lib/utils/toast';
 interface InlinePollProps {
   threadId: string;
   canManagePoll: boolean;
-  onPollCreated?: (poll: any) => void;
+  onPollCreated?: (poll: { id: string; threadId: string; question: string; options: string[]; isActive: boolean; expiresAt: Date | null; createdAt: Date }) => void;
   isOpen: boolean;
   onToggle: (isOpen: boolean) => void;
 }
@@ -73,7 +73,11 @@ const validOptions = options.filter(option => option.trim().length > 0);
       if (result.error) {
         toasts.error(result.error || 'Failed to create poll');
       } else if (result.data) {
-        onPollCreated?.(result.data);
+        const pollData = result.data;
+        onPollCreated?.({
+          ...pollData,
+          options: pollData.options as string[],
+        });
         toasts.success('Poll created successfully!');
         onToggle(false);
       }

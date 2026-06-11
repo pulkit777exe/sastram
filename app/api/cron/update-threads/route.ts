@@ -13,6 +13,7 @@ import {
 import { updateAllThreadRelations } from '@/modules/threads';
 import { prewarmFollowUpQueries } from '@/modules/ai-search';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { ok, fail } from '@/lib/utils/api-response';
 
 const BATCH_SIZE = 100;
 
@@ -62,7 +63,9 @@ export async function GET(req: NextRequest) {
         }
 
         const messages = thread.messages.reverse();
-        const subscriberIds = thread.subscriptions.map((sub: any) => sub.userId);
+        const subscriberIds = thread.subscriptions
+          .filter((sub): sub is { userId: string } & Omit<typeof sub, 'userId'> => sub.userId !== null)
+          .map((sub) => sub.userId);
         const isOutdated = thread.updatedAt < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const oldScore = thread.resolutionScore;
         const ts = Date.now();
@@ -120,17 +123,16 @@ export async function GET(req: NextRequest) {
     const relationsResult = await updateAllThreadRelations();
     const prewarmResult = await prewarmFollowUpQueries();
 
-    return NextResponse.json({
-      success: true,
-      results: {
+    return NextResponse.json(
+      ok({
         processed: totalProcessed,
         jobsAdded: totalJobsAdded,
         relationsUpdated: relationsResult.updated,
         prewarmedQueries: prewarmResult.prewarmed,
-      },
-    });
+      })
+    );
   } catch (error) {
     logger.error('Update threads cron error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Update threads failed'), { status: 500 });
   }
 }

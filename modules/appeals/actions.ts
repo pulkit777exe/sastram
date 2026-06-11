@@ -175,7 +175,7 @@ export const getBannedUsers = withValidation(
     const limit = Math.min(filters.limit || 50, 100);
     const offset = filters.offset || 0;
 
-    const whereClause: any = {};
+    const whereClause: { isActive?: boolean; threadId?: string } = {};
     if (filters.isActive !== undefined) whereClause.isActive = filters.isActive;
     if (filters.threadId) whereClause.threadId = filters.threadId;
 

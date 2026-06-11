@@ -45,7 +45,7 @@ interface PostMessageFormProps {
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   canManagePoll?: boolean;
-  onPollCreated?: (poll: any) => void;
+  onPollCreated?: (poll: { id: string; threadId: string; question: string; options: string[]; isActive: boolean; expiresAt: Date | null; createdAt: Date }) => void;
 }
 
 export function PostMessageForm({

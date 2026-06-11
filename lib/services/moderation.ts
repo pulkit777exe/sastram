@@ -59,8 +59,11 @@ export class RateLimitFilter {
   }
 }
 
+type CompiledRule = { regex: RegExp; action: string; severity: string; category: string };
+type RawRule = { id: string; pattern: string; action: string; severity: string; category: string };
+
 export class RegexFilter {
-  private rulesCache: { rules: any[]; compiledRules: Map<string, { regex: RegExp; action: string; severity: string; category: string }>; timestamp: number } | null = null;
+  private rulesCache: { rules: RawRule[]; compiledRules: Map<string, CompiledRule>; timestamp: number } | null = null;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   async check(message: MessageLike): Promise<ModerationResult> {
@@ -95,7 +98,7 @@ export class RegexFilter {
     };
   }
 
-  private getCompiledRulesFromCache(): Map<string, { regex: RegExp; action: string; severity: string; category: string }> | null {
+  private getCompiledRulesFromCache(): Map<string, CompiledRule> | null {
     if (!this.rulesCache) return null;
     const now = Date.now();
     if (now - this.rulesCache.timestamp > this.CACHE_TTL) {
@@ -105,8 +108,8 @@ export class RegexFilter {
     return this.rulesCache.compiledRules;
   }
 
-  private cacheRules(rules: any[]): Map<string, { regex: RegExp; action: string; severity: string; category: string }> {
-    const compiledRules = new Map<string, { regex: RegExp; action: string; severity: string; category: string }>();
+  private cacheRules(rules: RawRule[]): Map<string, CompiledRule> {
+    const compiledRules = new Map<string, CompiledRule>();
     for (const rule of rules) {
       try {
         compiledRules.set(rule.id, {

@@ -1,6 +1,6 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { ok, fail, unauthorizedResponse, errorResponse, validationErrorResponse } from '@/lib/utils/api-response';
+import { ok, fail } from '@/lib/utils/api-response';
 
 describe('API Response Helpers', () => {
   describe('successResponse', () => {
@@ -21,16 +21,18 @@ describe('API Response Helpers', () => {
   });
 
   describe('unauthorizedResponse', () => {
-    it('should return 401 status', async () => {
-      const response = await unauthorizedResponse();
-      expect(response.status).to.equal(401);
+    it('should return AUTH_REQUIRED error', () => {
+      const response = fail('AUTH_REQUIRED', 'Unauthorized');
+      expect(response.success).to.be.false;
+      expect(response.error?.code).to.equal('AUTH_REQUIRED');
     });
   });
 
   describe('validationErrorResponse', () => {
-    it('should return 400 status response', async () => {
-      const response = await validationErrorResponse(['email is required', 'password too short']);
-      expect(response.status).to.equal(400);
+    it('should return VALIDATION_ERROR with details', () => {
+      const response = fail('VALIDATION_ERROR', 'Validation failed', ['email is required', 'password too short']);
+      expect(response.success).to.be.false;
+      expect(response.error?.code).to.equal('VALIDATION_ERROR');
     });
   });
 });

@@ -14,6 +14,7 @@ import {
   handleThreadSummaryJob,
 } from '@/lib/infrastructure/bullmq';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { ok, fail } from '@/lib/utils/api-response';
 import { getRedisConnection } from '@/lib/queue/connection';
 
 export const maxDuration = 300;
@@ -68,20 +69,19 @@ export async function GET(req: NextRequest) {
   const queue = url.searchParams.get('queue');
 
   if (!queue || !queueHandlers[queue]) {
-    return NextResponse.json({
-      availableQueues: Object.keys(queueHandlers),
-      usage: '/api/cron/worker?queue=THREAD_SUMMARY',
-    });
+    return NextResponse.json(
+      ok({
+        availableQueues: Object.keys(queueHandlers),
+        usage: '/api/cron/worker?queue=THREAD_SUMMARY',
+      })
+    );
   }
 
   try {
     const result = await drainQueue(queue, queueHandlers[queue]);
-    return NextResponse.json({
-      queue,
-      ...result,
-    });
+    return NextResponse.json(ok({ queue, ...result }));
   } catch (error) {
     logger.error(`[Worker] ${queue} failed:`, error);
-    return NextResponse.json({ error: 'Failed to process queue' }, { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', `Failed to process queue: ${queue}`), { status: 500 });
   }
 }

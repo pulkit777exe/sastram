@@ -32,22 +32,6 @@ export function withErrorHandling(handler: ApiHandler): ApiHandler {
   };
 }
 
-export async function successResponse<T>(data: T, status = 200): Promise<NextResponse> {
-  return NextResponse.json({ data }, { status });
-}
-
-export async function errorResponse(message: string, status = 400): Promise<NextResponse> {
-  return NextResponse.json({ error: message }, { status });
-}
-
-export async function validationErrorResponse(issues: string[]): Promise<NextResponse> {
-  return NextResponse.json({ error: 'Validation failed', details: issues }, { status: 400 });
-}
-
-export async function unauthorizedResponse(message = 'Unauthorized'): Promise<NextResponse> {
-  return NextResponse.json({ error: message, code: 'UNAUTHORIZED' }, { status: 401 });
-}
-
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
