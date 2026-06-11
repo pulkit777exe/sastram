@@ -39,7 +39,7 @@ export function CreateThreadDialog({ communities }: { communities?: Array<{ id: 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="bg-[#3736fc] hover:bg-[#2d2de0] cursor-pointer">
           <Plus className="h-4 w-4 mr-2" />
           Create Thread
         </Button>
@@ -91,7 +91,7 @@ export function CreateThreadDialog({ communities }: { communities?: Array<{ id: 
             <p className="text-xs text-muted-foreground">One option per line, at least 2.</p>
             <Input name="pollExpiresAt" type="datetime-local" />
           </div>
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button type="submit" className="w-full bg-[#3736fc] hover:bg-[#2d2de0] text-white font-bold" disabled={isPending}>
             {isPending ? 'Creating...' : 'Publish thread'}
           </Button>
         </form>

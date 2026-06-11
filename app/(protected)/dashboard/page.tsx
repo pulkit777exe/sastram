@@ -8,6 +8,7 @@ import { TopicGrid } from '@/components/dashboard/topic-grid';
 import { Card, CardContent } from '@/components/ui/card';
 import { ThreadInsights } from '@/components/dashboard/thread-insights';
 import { CreateTopicButton } from '@/components/dashboard/create-topic-button';
+import { CreateThreadDialog } from '@/components/create-thread-dialog';
 import { cn } from '@/lib/utils/cn';
 import { prisma } from '@/lib/infrastructure/prisma';
 import Link from 'next/link';
@@ -123,6 +124,7 @@ export default async function DashboardPage({
             <ChevronDown size={14} />
           </div>
           {isAdmin(session.user) && <CreateTopicButton />}
+          {isAdmin(session.user) && <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />}
         </div>
       </div>
 
