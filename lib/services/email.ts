@@ -10,6 +10,15 @@ import { DEFAULT_JOB_OPTIONS, getEmailQueue, type EmailJobData } from '@/lib/inf
 
 const env = getEnv();
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const transporter = nodemailer.createTransport({
   host: env.SMTP_HOST,
   port: env.SMTP_PORT,
@@ -288,7 +297,7 @@ async function loadTemplate(
 
     for (const [key, value] of Object.entries(variables)) {
       const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      html = html.replace(new RegExp(`{{${escapedKey}}}`, 'g'), value);
+      html = html.replace(new RegExp(`{{${escapedKey}}}`, 'g'), escapeHtml(value));
     }
 
     return html;
