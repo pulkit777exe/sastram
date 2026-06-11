@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Plus } from 'lucide-react';
-import { createThreadAction } from '@/modules/threads';
+import { createThreadAction } from '@/modules/threads/actions';
 import { toast } from 'sonner';
 
 export function CreateThreadDialog({ communities }: { communities?: Array<{ id: string; title: string }> }) {
