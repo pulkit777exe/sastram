@@ -1,13 +1,14 @@
 import { z } from 'zod';
 
 /**
- * ThreadDNA Zod schema — validates the JSON field from Thread.threadDna
+ * ThreadDNA Zod schema — validates the JSON field from Thread.threadDna.
+ * This is the single source of truth for ThreadDNA shape.
  */
 export const threadDnaSchema = z.object({
   questionType: z.enum(['factual', 'opinion', 'technical', 'comparison', 'other']),
   expertiseLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
-  topics: z.array(z.string()),
-  readTimeMinutes: z.number().nonnegative(),
+  topics: z.array(z.string()).min(1).max(5),
+  readTimeMinutes: z.number().int().min(1),
 });
 
 export type ThreadDNA = z.infer<typeof threadDnaSchema>;

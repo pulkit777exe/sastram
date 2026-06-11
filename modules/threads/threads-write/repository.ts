@@ -1,11 +1,12 @@
-import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { buildThreadDTO } from '@/modules/threads/service';
 import type { ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 import { Prisma } from '@prisma/client';
+import { z } from 'zod';
 import { getThreadDnaQueue, getResolutionScoreQueue } from '@/lib/queue/queue';
 import { AIJobType, DEFAULT_JOB_OPTIONS } from '@/lib/queue/config';
+import { threadDnaSchema } from '@/lib/schemas/thread-dna';
 
 type ThreadStorageWithCommunityAndMessages = Prisma.ThreadGetPayload<{
   include: {
@@ -14,13 +15,6 @@ type ThreadStorageWithCommunityAndMessages = Prisma.ThreadGetPayload<{
     _count: { select: { messages: true; members: true } };
   };
 }>;
-
-const threadDNASchema = z.object({
-  questionType: z.enum(['factual', 'opinion', 'technical', 'comparison', 'other']),
-  expertiseLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
-  topics: z.array(z.string()).min(3).max(5),
-  readTimeMinutes: z.number().int().min(1),
-});
 
 export async function createThread(payload: {
   name: string;
@@ -122,7 +116,7 @@ export async function deleteThread(threadId: string): Promise<void> {
 }
 
 export async function updateThreadDNA(threadId: string, threadDNA: Record<string, unknown>): Promise<void> {
-  const validatedDNA = threadDNASchema.parse(threadDNA);
+  const validatedDNA = threadDnaSchema.parse(threadDNA);
   await prisma.thread.update({
     where: { id: threadId },
     data: { threadDna: validatedDNA },

@@ -7,17 +7,9 @@ import sanitizeHtml from 'sanitize-html';
 import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
 import { DEFAULT_JOB_OPTIONS, getEmailQueue, type EmailJobData } from '@/lib/infrastructure/bullmq';
+import { escapeHtml } from '@/lib/utils/escape';
 
 const env = getEnv();
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 const transporter = nodemailer.createTransport({
   host: env.SMTP_HOST,

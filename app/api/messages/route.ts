@@ -47,11 +47,10 @@ export async function POST(request: NextRequest) {
     const resultData = (result as { data: { message: unknown } }).data;
     return NextResponse.json(ok({ message: resultData.message }));
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    const status = message.includes('Unauthorized') ? 401 : 500;
+    const isAuth = error instanceof Error && error.message.includes('Unauthorized');
     return NextResponse.json(
-      fail(status === 401 ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', message),
-      { status }
+      fail(isAuth ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', isAuth ? 'Unauthorized' : 'Failed to post message'),
+      { status: isAuth ? 401 : 500 }
     );
   }
 }

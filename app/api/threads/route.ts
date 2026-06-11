@@ -20,11 +20,10 @@ export async function GET(request: NextRequest) {
     const threads = await listThreads({ memberUserId: session.user.id, threadIds });
     return NextResponse.json(ok({ threads }, requestId));
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    const status = message.includes('Unauthorized') ? 401 : 500;
+    const isAuth = error instanceof Error && error.message.includes('Unauthorized');
     return NextResponse.json(
-      fail(status === 401 ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', message, undefined, requestId),
-      { status }
+      fail(isAuth ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', isAuth ? 'Unauthorized' : 'Failed to load threads', undefined, requestId),
+      { status: isAuth ? 401 : 500 }
     );
   }
 }

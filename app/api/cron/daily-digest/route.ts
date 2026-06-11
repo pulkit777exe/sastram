@@ -6,11 +6,8 @@ import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ROUTES } from '@/lib/config/routes';
+import { escapeHtml } from '@/lib/utils/escape';
 import sanitizeHtml from 'sanitize-html';
-
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);

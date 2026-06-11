@@ -3,6 +3,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
 import { getEnv } from '@/lib/config/env';
+import { threadDnaSchema, type ThreadDNA } from '@/lib/schemas/thread-dna';
 
 interface MessageInput {
   content: string;
@@ -11,20 +12,12 @@ interface MessageInput {
   depth?: number;
 }
 
-const threadDNASchema = z.object({
-  questionType: z.enum(['factual', 'opinion', 'technical', 'comparison', 'other']),
-  expertiseLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
-  topics: z.array(z.string()).min(1).max(5),
-  readTimeMinutes: z.number().int().min(1),
-});
-
 const conflictSchema = z.object({
   hasConflict: z.boolean(),
   conflictingMessages: z.tuple([z.number(), z.number()]).optional(),
   reason: z.string().optional(),
 });
 
-export type ThreadDNA = z.infer<typeof threadDNASchema>;
 export type ConflictResult = z.infer<typeof conflictSchema>;
 
 const DEFAULT_THREAD_DNA: ThreadDNA = {
@@ -86,7 +79,7 @@ function cleanJsonText(text: string): string {
 
 function parseThreadDNA(text: string): ThreadDNA {
   try {
-    const parsed = threadDNASchema.safeParse(JSON.parse(cleanJsonText(text)));
+    const parsed = threadDnaSchema.safeParse(JSON.parse(cleanJsonText(text)));
     if (!parsed.success) {
       logger.error('[parseThreadDNA] Zod validation failed', {
         error: parsed.error.flatten(),
