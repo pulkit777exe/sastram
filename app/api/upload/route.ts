@@ -6,9 +6,15 @@ import { logger } from '@/lib/infrastructure/logger';
 import { randomUUID } from 'crypto';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth/session';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 const handler = withErrorHandling(async (req: NextRequest) => {
   const session = await requireSessionOrThrow();
+
+  const rateLimitResult = await rateLimit({ key: `upload:${session.user.id}`, type: 'upload' });
+  if (!rateLimitResult.success) {
+    return NextResponse.json(fail('RATE_LIMITED', 'Upload limit reached. Please try again later.'), { status: 429 });
+  }
 
   const formData = await req.formData();
   const files = formData.getAll('files') as File[];

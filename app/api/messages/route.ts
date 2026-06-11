@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postMessage } from '@/modules/messages/actions';
 import { ok, fail } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth/session';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const session = await requireSessionOrThrow(false);
+
+    const rateLimitResult = await rateLimit({ key: `message:${session.user.id}`, type: 'message' });
+    if (!rateLimitResult.success) {
+      return NextResponse.json(fail('RATE_LIMITED', 'Too many messages. Please slow down.'), { status: 429 });
+    }
 
     const formData = await request.formData();
 

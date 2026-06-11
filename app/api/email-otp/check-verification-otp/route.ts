@@ -2,6 +2,7 @@ import { auth } from '@/lib/services/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { logger } from '@/lib/infrastructure/logger';
+import { rateLimit } from '@/lib/services/rate-limit';
 import { z } from 'zod';
 
 const checkVerificationOtpSchema = z.object({
@@ -12,6 +13,12 @@ const checkVerificationOtpSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    const rateLimitResult = await rateLimit({ key: `otp-check:${ip}`, type: 'auth' });
+    if (!rateLimitResult.success) {
+      return NextResponse.json(fail('RATE_LIMITED', 'Too many attempts. Please try again later.'), { status: 429 });
+    }
+
     const body = await request.json();
     const validation = checkVerificationOtpSchema.safeParse(body);
     if (!validation.success) {
