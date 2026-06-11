@@ -1,13 +1,14 @@
 import { getSession } from '@/modules/auth/session';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { FileText, MessageSquare, Users, Calendar, Search, Plus } from 'lucide-react';
+import { FileText, MessageSquare, Users, Calendar, Search } from 'lucide-react';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { searchThreads } from '@/modules/search/repository';
 import { listThreads } from '@/modules/threads/repository';
+import { listCommunities } from '@/modules/communities/repository';
 import { ROUTES } from '@/lib/config/routes';
+import { CreateThreadDialog } from '@/components/create-thread-dialog';
 
 export default async function ThreadsPage({
   searchParams,
@@ -21,6 +22,7 @@ export default async function ThreadsPage({
 
   const isAdmin = session.user.role === 'ADMIN';
   const { q } = await searchParams;
+  const communities = isAdmin ? await listCommunities() : [];
 
   if (q && q.trim()) {
     const result = await searchThreads(q.trim(), 50, 0);
@@ -37,12 +39,7 @@ export default async function ThreadsPage({
             </span>
           </div>
           {isAdmin && (
-            <Link href={ROUTES.ADMIN}>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Thread
-              </Button>
-            </Link>
+            <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />
           )}
         </div>
 
@@ -105,12 +102,7 @@ export default async function ThreadsPage({
           <span className="text-muted-foreground">({paginatedResult.pagination.totalItems})</span>
         </div>
         {isAdmin && (
-          <Link href={ROUTES.ADMIN}>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Thread
-            </Button>
-          </Link>
+          <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />
         )}
       </div>
 

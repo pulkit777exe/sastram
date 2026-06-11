@@ -7,7 +7,7 @@ type ApiHandler = (
   context?: { params: Promise<Record<string, string>> }
 ) => Promise<NextResponse>;
 
-export async function withErrorHandling(handler: ApiHandler): Promise<ApiHandler> {
+export function withErrorHandling(handler: ApiHandler): ApiHandler {
   return async (request, context) => {
     const requestId = generateRequestId();
 
