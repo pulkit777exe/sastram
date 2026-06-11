@@ -63,6 +63,7 @@ export function ThreadLiveWrapper({
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMarkingReadRef = useRef(false);
   const ownPendingIds = useRef<Set<string>>(new Set());
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -248,6 +249,7 @@ export function ThreadLiveWrapper({
     const timers = aiInlineTimerRef.current;
     return () => {
       if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
+      if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
       for (const timer of timers.values()) {
         clearTimeout(timer);
       }
@@ -305,11 +307,13 @@ export function ThreadLiveWrapper({
           readDebounceRef.current = setTimeout(() => {
             void markThreadAsRead(false);
           }, 250);
-          // Track scroll position for the jump-to-bottom button
-          const el = scrollContainerRef.current;
-          if (el) {
-            setIsScrolledUp(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
-          }
+          if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
+          scrollDebounceRef.current = setTimeout(() => {
+            const el = scrollContainerRef.current;
+            if (el) {
+              setIsScrolledUp(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+            }
+          }, 100);
         }}
       >
         <div className="max-w-4xl mx-auto">

@@ -72,19 +72,16 @@ export function CommentTree({
   }, [threadId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalMessages((prev) => {
-      const existingMap = new Map(prev.map((msg) => [msg.id, msg]));
-      const newMap = new Map(messages.map((msg) => [msg.id, msg]));
-      const updated = messages.map((msg) => {
-        if (existingMap.has(msg.id) && existingMap.get(msg.id)?.content !== msg.content) {
-          return msg;
-        }
-        if (!existingMap.has(msg.id)) return msg;
-        return existingMap.get(msg.id)!;
+    // Only update if the message set actually changed (added/removed or content changed)
+    if (localMessages.length === messages.length) {
+      const same = localMessages.every((msg, i) => {
+        const incoming = messages[i];
+        return msg.id === incoming.id && msg.content === incoming.content && msg.deletedAt === incoming.deletedAt;
       });
-      return updated.filter((msg) => newMap.has(msg.id));
-    });
+      if (same) return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalMessages(messages);
   }, [messages]);
 
   const tree = useMemo(() => buildMessageTree(localMessages), [localMessages]);
@@ -153,26 +150,34 @@ export function CommentTree({
     router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [router, pathname, searchParams]);
 
-  if (localMessages.length === 0) return null;
+  const contextValue = useMemo(
+    () => ({
+      threadId,
+      currentUser,
+      activeReplyId,
+      collapsedIds,
+      scrollContainerRef,
+      onReply: handleReply,
+      onCancelReply: handleCancelReply,
+      onToggleCollapse: toggleCollapse,
+      onMessagePosted: handleMessagePosted,
+      onFocusBranch: handleFocusBranch,
+      onMessageUpdate: handleMessageUpdate,
+      allMessages: localMessages,
+      animateMessageId,
+      aiInlineStatus,
+      onTypingStart,
+      onTypingStop,
+    }),
+    [
+      threadId, currentUser, activeReplyId, collapsedIds, scrollContainerRef,
+      handleReply, handleCancelReply, toggleCollapse, handleMessagePosted,
+      handleFocusBranch, handleMessageUpdate, localMessages, animateMessageId,
+      aiInlineStatus, onTypingStart, onTypingStop,
+    ]
+  );
 
-  const contextValue = {
-    threadId,
-    currentUser,
-    activeReplyId,
-    collapsedIds,
-    scrollContainerRef,
-    onReply: handleReply,
-    onCancelReply: handleCancelReply,
-    onToggleCollapse: toggleCollapse,
-    onMessagePosted: handleMessagePosted,
-    onFocusBranch: handleFocusBranch,
-    onMessageUpdate: handleMessageUpdate,
-    allMessages: localMessages,
-    animateMessageId,
-    aiInlineStatus,
-    onTypingStart,
-    onTypingStop,
-  };
+  if (localMessages.length === 0) return null;
 
   return (
     <ThreadProvider value={contextValue}>

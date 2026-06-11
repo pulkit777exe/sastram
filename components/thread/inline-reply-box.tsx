@@ -5,7 +5,6 @@ import { Reply, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useRouter } from 'next/navigation';
 import { postMessage } from '@/modules/messages/actions';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
@@ -50,7 +49,6 @@ export function InlineReplyBox({
   const [isShaking, setIsShaking] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const replyDepth = Math.min(parentMessage.depth + 1, MAX_VISUAL_DEPTH);
 
   useEffect(() => {
@@ -139,7 +137,6 @@ export function InlineReplyBox({
 
       onMessagePosted(newMsg);
       toasts.sent();
-      router.refresh();
     }
   }
 
