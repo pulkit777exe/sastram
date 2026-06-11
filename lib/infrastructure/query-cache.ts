@@ -126,7 +126,7 @@ export async function invalidatePattern(pattern: string): Promise<void> {
   try {
     let cursor = '0';
     do {
-      const result = await (client as any).scan(cursor, 'MATCH', KEY_PREFIX + pattern + '*', 'COUNT', 100);
+      const result = await (client as Redis).scan(cursor, 'MATCH', KEY_PREFIX + pattern + '*', 'COUNT', 100);
       cursor = result[0];
       const keys = result[1];
       if (keys.length > 0) {

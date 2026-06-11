@@ -114,7 +114,8 @@ export async function cleanupExpiredCache(): Promise<number> {
       where: { expiresAt: { lt: new Date() } },
     });
     return result.count;
-  } catch {
+  } catch (err) {
+    logger.warn('[ai-search-cache] Failed to cleanup expired cache', { error: err instanceof Error ? err.message : String(err) });
     return 0;
   }
 }

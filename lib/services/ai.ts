@@ -433,6 +433,7 @@ export class OpenAIService implements AIService {
             const delta = parsed.choices[0]?.delta?.content;
             if (delta) onChunk(delta);
           } catch {
+            // Malformed SSE chunk — skip silently (common with streaming)
           }
         }
       }

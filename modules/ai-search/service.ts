@@ -367,8 +367,8 @@ No markdown, valid JSON only.`;
       const text = result.response.text().trim();
       const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
       conflictData = JSON.parse(cleaned) as ConflictInfo;
-    } catch {
-      // Conflict detection is non-critical, continue without it
+    } catch (err) {
+      logger.warn('[ai-search] Conflict detection failed, continuing without it', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 
