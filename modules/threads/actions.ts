@@ -31,9 +31,9 @@ const threadSchema = z.object({
   description: z.string().max(480).optional().or(z.literal('')),
   communityId: z.string().cuid().optional().or(z.literal('')),
   initialMessage: z.string().optional(),
-  pollQuestion: z.string().min(1).max(500).optional(),
-  pollOptions: pollOptionsFromString.optional(),
-  pollExpiresAt: z.coerce.date().optional(),
+  pollQuestion: z.string().min(1).max(500).optional().or(z.literal('')),
+  pollOptions: pollOptionsFromString.optional().or(z.literal('')),
+  pollExpiresAt: z.coerce.date().optional().or(z.literal('')),
 });
 
 const manageMemberSchema = z.object({
@@ -65,7 +65,7 @@ export const createThreadAction = createServerAction(
 
       // Create poll alongside thread if poll data is provided
       if (pollQuestion && pollOptions && pollOptions.length >= 2) {
-        await createPoll(thread.id, pollQuestion, pollOptions, pollExpiresAt);
+        await createPoll(thread.id, pollQuestion, pollOptions, pollExpiresAt || undefined);
       }
 
       revalidatePath('/dashboard');
