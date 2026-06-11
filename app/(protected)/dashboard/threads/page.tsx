@@ -20,9 +20,8 @@ export default async function ThreadsPage({
     redirect('/login');
   }
 
-  const isAdmin = session.user.role === 'ADMIN';
   const { q } = await searchParams;
-  const communities = isAdmin ? await listCommunities() : [];
+  const communities = await listCommunities();
 
   if (q && q.trim()) {
     const result = await searchThreads(q.trim(), 50, 0);
@@ -38,9 +37,7 @@ export default async function ThreadsPage({
               &ldquo;{q}&rdquo; ({threads.length})
             </span>
           </div>
-          {isAdmin && (
-            <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />
-          )}
+          <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />
         </div>
 
         {threads.length === 0 ? (
@@ -101,9 +98,7 @@ export default async function ThreadsPage({
           <h1 className="text-2xl font-bold">Threads</h1>
           <span className="text-muted-foreground">({paginatedResult.pagination.totalItems})</span>
         </div>
-        {isAdmin && (
-          <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />
-        )}
+        <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />
       </div>
 
       {threads.length === 0 ? (

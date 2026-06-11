@@ -124,7 +124,7 @@ export default async function DashboardPage({
             <ChevronDown size={14} />
           </div>
           {isAdmin(session.user) && <CreateTopicButton />}
-          {isAdmin(session.user) && <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />}
+          <CreateThreadDialog communities={communities.map(c => ({ id: c.id, title: c.title }))} />
         </div>
       </div>
 

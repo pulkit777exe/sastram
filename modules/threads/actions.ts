@@ -52,7 +52,6 @@ export const createThreadAction = createServerAction(
   async ({ title, description, communityId, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
     try {
       const session = await requireSession();
-      assertAdmin(session.user);
 
       const slug = buildThreadSlug(title);
       const thread = await createThread({
