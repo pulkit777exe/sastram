@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 import { withRetry } from '@/lib/utils/retry';
 import { logger } from '@/lib/infrastructure/logger';
+import { getEnv } from '@/lib/config/env';
 import type {
   SearchConfig,
   QueryClassification,
@@ -103,7 +104,7 @@ function isOutdated(publishedDate?: string): boolean {
 
 async function classifyQuery(query: string, geminiKey: string): Promise<QueryClassification> {
   const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+  const model = genAI.getGenerativeModel({ model: getEnv().GEMINI_LITE_MODEL });
 
   const prompt = `Classify this forum search query into ONE category:
 - factual: has a single correct answer
@@ -342,7 +343,7 @@ async function crossReference(
     try {
       const genAI = new GoogleGenerativeAI(geminiKey);
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite',
+        model: getEnv().GEMINI_LITE_MODEL,
       });
 
       const sourceSummaries = ranked
@@ -384,7 +385,7 @@ async function synthesize(
   tavilyAnswer?: string
 ): Promise<SynthesisResult> {
   const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: getEnv().GEMINI_SEARCH_MODEL });
 
   const sourcesText = sources
     .slice(0, 8)

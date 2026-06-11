@@ -2,6 +2,7 @@ import { withRetry } from '@/lib/utils/retry';
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
+import { getEnv } from '@/lib/config/env';
 
 interface MessageInput {
   content: string;
@@ -146,8 +147,9 @@ export class GeminiService implements AIService {
 
   constructor(apiKey: string) {
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.flashModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    this.proModel = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const env = getEnv();
+    this.flashModel = genAI.getGenerativeModel({ model: env.GEMINI_FLASH_MODEL });
+    this.proModel = genAI.getGenerativeModel({ model: env.GEMINI_PRO_MODEL });
   }
 
   async generateStreamingResponse(
@@ -322,12 +324,14 @@ export class GeminiService implements AIService {
 export class OpenAIService implements AIService {
   private readonly baseUrl = 'https://api.openai.com/v1/chat/completions';
   private readonly headers: Record<string, string>;
+  private readonly model: string;
 
   constructor(apiKey: string) {
     this.headers = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     };
+    this.model = getEnv().OPENAI_MODEL;
   }
 
   private async callOpenAI(
@@ -343,7 +347,7 @@ export class OpenAIService implements AIService {
             method: 'POST',
             headers: this.headers,
             body: JSON.stringify({
-              model: 'gpt-4o-mini',
+              model: this.model,
               messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userContent },
@@ -383,7 +387,7 @@ export class OpenAIService implements AIService {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: this.model,
           messages: [
             {
               role: 'system',

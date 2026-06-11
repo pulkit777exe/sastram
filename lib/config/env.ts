@@ -35,6 +35,11 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   AI_PROVIDER: z.enum(['gemini', 'openai']).default('gemini'),
   AI_ANALYSIS_MESSAGE_LIMIT: z.coerce.number().int().positive().default(50),
+  GEMINI_FLASH_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_PRO_MODEL: z.string().default('gemini-1.5-pro'),
+  GEMINI_LITE_MODEL: z.string().default('gemini-2.0-flash-lite'),
+  GEMINI_SEARCH_MODEL: z.string().default('gemini-2.0-flash'),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
 
 
 
