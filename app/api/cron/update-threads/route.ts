@@ -65,46 +65,48 @@ export async function GET(req: NextRequest) {
         const subscriberIds = thread.subscriptions.map((sub: any) => sub.userId);
         const isOutdated = thread.updatedAt < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const oldScore = thread.resolutionScore;
+        const ts = Date.now();
 
-        await threadDnaQueue.add(
-          AIJobType.GENERATE_THREAD_DNA,
-          { threadId: thread.id, messages, cronJob: true },
-          { ...DEFAULT_JOB_OPTIONS, jobId: `generate-dna-${thread.id}-${Date.now()}` }
-        );
-        totalJobsAdded++;
-
-        await resolutionScoreQueue.add(
-          AIJobType.CALCULATE_RESOLUTION_SCORE,
-          { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, isOutdated, cronJob: true },
-          { ...DEFAULT_JOB_OPTIONS, jobId: `resolution-score-${thread.id}-${Date.now()}` }
-        );
-        totalJobsAdded++;
-
-        await conflictDetectionQueue.add(
-          AIJobType.DETECT_CONFLICTS,
-          { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, cronJob: true },
-          { ...DEFAULT_JOB_OPTIONS, jobId: `conflict-detection-${thread.id}-${Date.now()}` }
-        );
-        totalJobsAdded++;
+        const jobs: Promise<unknown>[] = [
+          threadDnaQueue.add(
+            AIJobType.GENERATE_THREAD_DNA,
+            { threadId: thread.id, messages, cronJob: true },
+            { ...DEFAULT_JOB_OPTIONS, jobId: `generate-dna-${thread.id}-${ts}` }
+          ),
+          resolutionScoreQueue.add(
+            AIJobType.CALCULATE_RESOLUTION_SCORE,
+            { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, isOutdated, cronJob: true },
+            { ...DEFAULT_JOB_OPTIONS, jobId: `resolution-score-${thread.id}-${ts}` }
+          ),
+          conflictDetectionQueue.add(
+            AIJobType.DETECT_CONFLICTS,
+            { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, cronJob: true },
+            { ...DEFAULT_JOB_OPTIONS, jobId: `conflict-detection-${thread.id}-${ts}` }
+          ),
+        ];
 
         if (subscriberIds.length > 0) {
-          await dailyDigestQueue.add(
-            AIJobType.GENERATE_DAILY_DIGEST,
-            { messages, subscriberIds, cronJob: true },
-            { ...DEFAULT_JOB_OPTIONS, jobId: `generate-digest-${thread.id}-${Date.now()}` }
+          jobs.push(
+            dailyDigestQueue.add(
+              AIJobType.GENERATE_DAILY_DIGEST,
+              { messages, subscriberIds, cronJob: true },
+              { ...DEFAULT_JOB_OPTIONS, jobId: `generate-digest-${thread.id}-${ts}` }
+            )
           );
-          totalJobsAdded++;
         }
 
         if (subscriberIds.length > 0 && isOutdated) {
-          await aiInsightNotificationsQueue.add(
-            AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
-            { subscriberIds, threadId: thread.id, threadName: thread.name, oldScore: oldScore ?? undefined, isOutdated, cronJob: true },
-            { ...DEFAULT_JOB_OPTIONS, jobId: `send-notifications-${thread.id}-${Date.now()}` }
+          jobs.push(
+            aiInsightNotificationsQueue.add(
+              AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
+              { subscriberIds, threadId: thread.id, threadName: thread.name, oldScore: oldScore ?? undefined, isOutdated, cronJob: true },
+              { ...DEFAULT_JOB_OPTIONS, jobId: `send-notifications-${thread.id}-${ts}` }
+            )
           );
-          totalJobsAdded++;
         }
 
+        const results = await Promise.allSettled(jobs);
+        totalJobsAdded += results.filter((r) => r.status === 'fulfilled').length;
         totalProcessed++;
       }
 
