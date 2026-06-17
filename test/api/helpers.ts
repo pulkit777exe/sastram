@@ -18,16 +18,18 @@ export function mockRequest(url: string, options: MockRequestOptions = {}): Next
     ...headers,
   };
 
-  const init: RequestInit = {
-    method,
-    headers: allHeaders,
-  };
-
   if (body !== undefined && method !== 'GET') {
-    init.body = JSON.stringify(body);
+    return new NextRequest(new URL(url, 'http://localhost:3000'), {
+      method,
+      headers: allHeaders,
+      body: JSON.stringify(body),
+    });
   }
 
-  return new NextRequest(new URL(url, 'http://localhost:3000'), init as any);
+  return new NextRequest(new URL(url, 'http://localhost:3000'), {
+    method,
+    headers: allHeaders,
+  });
 }
 
 const defaultUser = {
@@ -46,11 +48,11 @@ export function createMockSession(user: Partial<typeof defaultUser> = {}): { use
 export function stubAuth(session: { user: Record<string, unknown> } | null = createMockSession()): sinon.SinonStub {
   const value = session
     ? {
-        session: { id: 's1', createdAt: new Date(), updatedAt: new Date(), userId: session.user.id, expiresAt: new Date(Date.now() + 86400000), token: 't1' },
+        session: { id: 's1', createdAt: new Date(), updatedAt: new Date(), userId: session.user.id as string, expiresAt: new Date(Date.now() + 86400000), token: 't1' },
         user: { ...session.user, createdAt: new Date(), updatedAt: new Date(), emailVerified: true },
       }
     : null;
-  return sinon.stub(auth.api, 'getSession').resolves(value as any);
+  return sinon.stub(auth.api, 'getSession').resolves(value as Awaited<ReturnType<typeof auth.api.getSession>>);
 }
 
 export function stubLogger() {

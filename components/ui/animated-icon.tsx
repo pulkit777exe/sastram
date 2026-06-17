@@ -2,6 +2,9 @@ import { motion, HTMLMotionProps } from 'framer-motion';
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// framer-motion variants use dynamic string keys for animation targets
+type AnimationVariants = Record<string, Record<string, any>>;
+
 interface AnimatedIconProps extends Omit<HTMLMotionProps<'span'>, 'children'> {
   icon: LucideIcon;
   animateOnHover?: boolean | string;
@@ -41,7 +44,7 @@ export function AnimatedIcon({
   size = 16,
   ...props
 }: AnimatedIconProps) {
-  const variants: Record<string, any> = {};
+  const variants: AnimationVariants = {};
   if (animateOnHover) {
     variants.hover =
       typeof animateOnHover === 'string' ? { [animateOnHover]: true } : defaultAnimations.hover;
