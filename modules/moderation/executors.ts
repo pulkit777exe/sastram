@@ -27,7 +27,7 @@ export async function executeMessageDeletionEffects(args: {
   emitMessageDeleted(args.threadId, args.messageId);
 
   revalidatePath(ROUTES.THREAD(args.threadSlug));
-  revalidatePath('/dashboard/admin/moderation');
+  revalidatePath(ROUTES.ADMIN_MODERATION);
 }
 
 /**
@@ -50,7 +50,7 @@ export async function executeAuditAndRevalidate(args: {
     details: args.details,
   });
 
-  const defaultPaths = ['/dashboard/admin/moderation', '/dashboard/admin/reports'];
+  const defaultPaths = [ROUTES.ADMIN_MODERATION, ROUTES.ADMIN_REPORTS];
   for (const path of args.paths ?? defaultPaths) {
     revalidatePath(path);
   }

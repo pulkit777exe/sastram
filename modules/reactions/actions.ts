@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { getMessageReactions } from '@/modules/reactions/repository';
 import { emitReactionUpdate } from '@/modules/ws';
 import { createServerAction } from '@/lib/utils/server-action';
+import { ROUTES } from '@/lib/config/routes';
 import { messageIdSchema, threadIdSchema } from '@/lib/utils/validation-common';
 
 const toggleReactionSchema = z.object({
@@ -79,7 +80,7 @@ export const toggleReaction = createServerAction(
       count: match?._count._all ?? 0,
     });
 
-    revalidatePath('/dashboard/threads');
+    revalidatePath(ROUTES.DASHBOARD_THREADS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );

@@ -1,12 +1,12 @@
 'use server';
 
 import { z } from 'zod';
-import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { createTag, addTagToThread } from '@/modules/tags';
+import { ROUTES } from '@/lib/config/routes';
 import { createServerAction } from '@/lib/utils/server-action';
 
 const createTopicSchema = z.object({
@@ -42,8 +42,8 @@ export const createTopic = createServerAction(
       );
     }
 
-    revalidatePath('/dashboard');
-    revalidatePath('/dashboard/threads');
+    revalidatePath(ROUTES.DASHBOARD);
+    revalidatePath(ROUTES.DASHBOARD_THREADS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );

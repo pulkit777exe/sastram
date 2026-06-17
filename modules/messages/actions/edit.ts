@@ -68,7 +68,7 @@ export const editMessage = createServerAction(
         },
       });
 
-      revalidatePath('/dashboard/threads');
+      revalidatePath(ROUTES.DASHBOARD_THREADS);
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[editMessage]', error);

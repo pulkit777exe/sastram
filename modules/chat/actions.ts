@@ -11,6 +11,7 @@ import { emitThreadMessage } from '@/modules/ws';
 import { z } from 'zod';
 import { attachmentInputSchema } from '@/lib/schemas/database';
 import { withValidation } from '@/lib/utils/server-action';
+import { ROUTES } from '@/lib/config/routes';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { requireThreadMembership } from '@/modules/auth';
 
@@ -107,7 +108,7 @@ export const createConversation = withValidation(
           },
         });
 
-        revalidatePath('/chat');
+        revalidatePath(ROUTES.CHAT);
         return {
           data: {
             id: thread.id,
@@ -265,7 +266,7 @@ export const sendMessage = withValidation(
         })),
       });
 
-      revalidatePath('/chat');
+      revalidatePath(ROUTES.CHAT);
       return {
         data: {
           id: message.id,

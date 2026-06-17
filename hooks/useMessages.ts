@@ -1,11 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Message } from '@/types';
 import { getMessages, sendMessage } from '@/modules/chat/actions';
 import type { AttachmentInput } from '@/lib/schemas/database';
 import { toasts } from '@/lib/utils/toast';
 import type { ActionResult } from '@/lib/utils/server-action';
 
-type MessagesResult = { messages: Message[]; nextCursor: string | null; hasMore: boolean };
+type ChatMessage = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  sender: string;
+  content: string;
+  timestamp: string;
+  avatar: string;
+  isOwn: boolean;
+  status?: 'sent' | 'delivered' | 'read';
+};
+
+type MessagesResult = { messages: ChatMessage[]; nextCursor: string | null; hasMore: boolean };
 
 export function useMessages(conversationId: string) {
   return useQuery({
@@ -15,7 +26,7 @@ export function useMessages(conversationId: string) {
       if (result.error) {
         throw new Error(result.error);
       }
-      return (result.data?.messages ?? []) as Message[];
+      return (result.data?.messages ?? []) as ChatMessage[];
     },
     enabled: !!conversationId,
   });
@@ -33,7 +44,7 @@ export function useSendMessage(conversationId: string) {
       if (!result.data) {
         throw new Error('Message could not be sent');
       }
-      return result.data as unknown as Message;
+      return result.data as unknown as ChatMessage;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });

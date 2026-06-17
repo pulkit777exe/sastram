@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireSession, assertAdmin } from '@/modules/auth';
 import { prismaErrorMessage } from '@/lib/utils/errors';
+import { ROUTES } from '@/lib/config/routes';
 import { createCommunity } from './repository';
 
 const communitySchema = z.object({
@@ -36,7 +37,7 @@ export async function createCommunityAction(formData: FormData) {
       createdBy: session.user.id,
     });
 
-    revalidatePath('/dashboard');
+    revalidatePath(ROUTES.DASHBOARD);
     return { data: null, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[createCommunityAction]', error);

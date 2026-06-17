@@ -68,7 +68,7 @@ export const createThreadAction = createServerAction(
         await createPoll(thread.id, pollQuestion, pollOptions, pollExpiresAt || undefined);
       }
 
-      revalidatePath('/dashboard');
+      revalidatePath(ROUTES.DASHBOARD);
       return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[createThreadAction]', error);
@@ -91,7 +91,7 @@ export const deleteThreadAction = createServerAction(
       assertAdmin(session.user);
 
       await deleteThread(threadId);
-      revalidatePath('/dashboard');
+      revalidatePath(ROUTES.DASHBOARD);
       return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[deleteThreadAction]', error);

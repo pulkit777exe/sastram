@@ -13,8 +13,4 @@ export const authClient = createAuthClient({
   plugins: [emailOTPClient()],
 });
 
-if (process.env.NODE_ENV === 'development') {
-  console.log('Auth client initialized with baseURL:', getBaseURL());
-}
-
 export const { signIn, signOut, signUp, useSession } = authClient;

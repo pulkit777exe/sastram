@@ -17,6 +17,7 @@ import {
   updateUserPreferencesSchema,
 } from './schemas';
 import { parseUserPreferences, type UserPreferences } from '@/lib/schemas/user-preferences';
+import { ROUTES } from '@/lib/config/routes';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { paginationSchema } from '@/lib/utils/validation-common';
 
@@ -48,8 +49,8 @@ export const updateUserProfile = withValidation(
       },
     });
 
-    revalidatePath('/dashboard/settings');
-    revalidatePath('/dashboard/settings/profile');
+    revalidatePath(ROUTES.DASHBOARD_SETTINGS);
+    revalidatePath(ROUTES.DASHBOARD_SETTINGS_PROFILE);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -85,8 +86,8 @@ export const uploadAvatar = withValidation(
         data: { avatarUrl: blob.url },
       });
 
-      revalidatePath('/dashboard/settings');
-      revalidatePath('/dashboard/settings/profile');
+      revalidatePath(ROUTES.DASHBOARD_SETTINGS);
+      revalidatePath(ROUTES.DASHBOARD_SETTINGS_PROFILE);
       return { data: { url: blob.url }, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[uploadAvatar]', error);
@@ -126,8 +127,8 @@ export const uploadBanner = withValidation(
         data: { bannerUrl: blob.url },
       });
 
-      revalidatePath('/dashboard/settings');
-      revalidatePath('/dashboard/settings/profile');
+      revalidatePath(ROUTES.DASHBOARD_SETTINGS);
+      revalidatePath(ROUTES.DASHBOARD_SETTINGS_PROFILE);
       return { data: { url: blob.url }, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[uploadBanner]', error);
@@ -169,8 +170,8 @@ export const updateProfilePrivacyAction = withValidation(
   async ({ privacy }) => {
     const session = await requireSession();
     await updateProfilePrivacy(session.user.id, privacy);
-    revalidatePath('/dashboard/settings');
-    revalidatePath(`/user/${session.user.id}`);
+    revalidatePath(ROUTES.DASHBOARD_SETTINGS);
+    revalidatePath(ROUTES.USER_PROFILE(session.user.id));
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -197,7 +198,7 @@ export const updateUserPreferencesAction = withValidation(
       data: { preferences: newPrefs },
     });
 
-    revalidatePath('/dashboard/settings');
+    revalidatePath(ROUTES.DASHBOARD_SETTINGS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );

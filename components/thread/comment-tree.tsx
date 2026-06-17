@@ -82,7 +82,7 @@ export function CommentTree({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalMessages(messages);
-  }, [messages]);
+  }, [messages, localMessages]);
 
   const tree = useMemo(() => buildMessageTree(localMessages), [localMessages]);
   const focusedNode = useMemo(

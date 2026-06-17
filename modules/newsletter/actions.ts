@@ -39,7 +39,7 @@ export const unsubscribeFromThread = withValidation(
         },
       });
 
-      revalidatePath('/dashboard/settings');
+      revalidatePath(ROUTES.DASHBOARD_SETTINGS);
       return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[unsubscribeFromThread]', error);

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Conversation } from '@/types';
+import type { Conversation } from '@/lib/types/index';
 import { getConversations, createConversation } from '@/modules/chat/actions';
 import { toasts } from '@/lib/utils/toast';
 

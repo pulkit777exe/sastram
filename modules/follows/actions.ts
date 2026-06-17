@@ -1,7 +1,6 @@
 'use server';
 
 import { z } from 'zod';
-import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
@@ -13,6 +12,7 @@ import {
   isFollowing as isFollowingRepo,
 } from './repository';
 import { createNotification } from '@/modules/notifications';
+import { ROUTES } from '@/lib/config/routes';
 import { createServerAction } from '@/lib/utils/server-action';
 import { userIdSchema } from '@/lib/utils/validation-common';
 
@@ -63,8 +63,8 @@ export const followUser = createServerAction(
       },
     });
 
-    revalidatePath(`/user/${userId}`);
-    revalidatePath('/dashboard');
+    revalidatePath(ROUTES.USER_PROFILE(userId));
+    revalidatePath(ROUTES.DASHBOARD);
 
     return { data: null, error: null, ok: true, errorCode: null };
   }
@@ -76,8 +76,8 @@ export const unfollowUser = createServerAction(
     const session = await requireSession();
     await unfollowUserRepo(session.user.id, userId);
 
-    revalidatePath(`/user/${userId}`);
-    revalidatePath('/dashboard');
+    revalidatePath(ROUTES.USER_PROFILE(userId));
+    revalidatePath(ROUTES.DASHBOARD);
 
     return { data: null, error: null, ok: true, errorCode: null };
   }

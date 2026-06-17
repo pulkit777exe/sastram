@@ -13,6 +13,7 @@ import {
   getMemberRole,
 } from '@/modules/members/repository';
 import { createNotification } from '@/modules/notifications';
+import { ROUTES } from '@/lib/config/routes';
 import { createServerAction } from '@/lib/utils/server-action';
 
 const joinThreadSchema = z.object({
@@ -60,7 +61,7 @@ export const joinThread = createServerAction(
       data: { memberCount: { increment: 1 } },
     });
 
-    revalidatePath('/dashboard/threads');
+    revalidatePath(ROUTES.DASHBOARD_THREADS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -78,7 +79,7 @@ export const leaveThread = createServerAction(
       });
     }
 
-    revalidatePath('/dashboard/threads');
+    revalidatePath(ROUTES.DASHBOARD_THREADS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -109,7 +110,7 @@ export const inviteMember = createServerAction(
       message: "You've been invited to join a thread",
     });
 
-    revalidatePath('/dashboard/threads');
+    revalidatePath(ROUTES.DASHBOARD_THREADS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -124,7 +125,7 @@ export const updateMemberRoleAction = createServerAction(
     }
 
     await updateMemberRole(threadId, userId, role);
-    revalidatePath('/dashboard/threads');
+    revalidatePath(ROUTES.DASHBOARD_THREADS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -147,7 +148,7 @@ export const removeMemberAction = createServerAction(
       });
     }
 
-    revalidatePath('/dashboard/threads');
+    revalidatePath(ROUTES.DASHBOARD_THREADS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );

@@ -1,6 +1,7 @@
 import { publishThreadEvent } from '@/lib/infrastructure/redis-pubsub';
 import { logger } from '@/lib/infrastructure/logger';
 import { websocketSchemas } from '@/lib/schemas/websocket';
+import type { MentionNotificationPayload } from '@/modules/messages/ports/side-effects';
 
 export interface ThreadMessagePayload {
   id: string;
@@ -18,16 +19,6 @@ export interface ThreadMessagePayload {
   isComplete?: boolean;
   reactions: unknown[];
   attachments: unknown[];
-}
-
-interface MentionNotificationPayload {
-  messageId: string;
-  mentionedUserId: string;
-  mentionedBy: string;
-  mentionedByName: string;
-  threadId: string;
-  content: string;
-  parentId?: string;
 }
 
 interface ReactionUpdatePayload {

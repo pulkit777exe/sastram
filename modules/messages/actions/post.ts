@@ -190,7 +190,7 @@ export async function postMessage(formData: FormData) {
     if (message.thread?.slug) {
       revalidatePath(ROUTES.THREAD(message.thread.slug));
     }
-    revalidatePath('/dashboard');
+    revalidatePath(ROUTES.DASHBOARD);
 
     await recordActivity({
       userId: session.user.id,

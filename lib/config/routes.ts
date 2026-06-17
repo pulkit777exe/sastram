@@ -6,13 +6,19 @@ export const ROUTES = {
   DASHBOARD_MESSAGES: '/dashboard/messages',
   DASHBOARD_SETTINGS: '/dashboard/settings',
   DASHBOARD_SETTINGS_PROFILE: '/dashboard/settings/profile',
+  DASHBOARD_BOOKMARKS: '/dashboard/bookmarks',
 
   ADMIN: '/dashboard/admin',
   ADMIN_REPORTS: '/dashboard/admin/reports',
   ADMIN_MODERATION: '/dashboard/admin/moderation',
+  ADMIN_APPEALS: '/dashboard/admin/appeals',
+
+  CHAT: '/chat',
+  BANNED: '/banned',
 
   THREAD: (slug: string) => `/dashboard/threads/${slug}`,
   THREAD_BY_SLUG: (slug: string) => `/thread/${slug}`,
+  USER_PROFILE: (userId: string) => `/user/${userId}`,
 
   API: {
     AUTH: '/api/auth',

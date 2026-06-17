@@ -98,7 +98,7 @@ export function MessageList({ firstUnreadMessageId }: MessageListProps) {
       }
     }
     prevCountRef.current = topLevelMessages.length;
-  }, [topLevelMessages.length]);
+  }, [topLevelMessages.length, scrollContainerRef]);
 
   return (
     <div style={{ position: 'relative', height: `${virtualizer.getTotalSize()}px`, minHeight: 0 }}>

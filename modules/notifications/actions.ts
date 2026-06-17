@@ -9,6 +9,7 @@ import {
   markAllAsRead,
   getUnreadCount,
 } from '@/modules/notifications/repository';
+import { ROUTES } from '@/lib/config/routes';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 
 const getNotificationsSchema = z.object({
@@ -42,7 +43,7 @@ export const markNotificationRead = withValidation(
   async ({ notificationId }) => {
     const session = await requireSession();
     await markAsRead(notificationId, session.user.id);
-    revalidatePath('/dashboard');
+    revalidatePath(ROUTES.DASHBOARD);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -52,7 +53,7 @@ export const markAllNotificationsRead = createServerAction(
   async () => {
     const session = await requireSession();
     await markAllAsRead(session.user.id);
-    revalidatePath('/dashboard');
+    revalidatePath(ROUTES.DASHBOARD);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );

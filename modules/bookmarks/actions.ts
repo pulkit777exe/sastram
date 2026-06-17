@@ -1,7 +1,6 @@
 'use server';
 
 import { z } from 'zod';
-import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
@@ -30,7 +29,7 @@ export const toggleBookmark = createServerAction(
       await bookmarkThreadRepo(session.user.id, threadId);
     }
 
-    revalidatePath('/dashboard/bookmarks');
+    revalidatePath(ROUTES.DASHBOARD_BOOKMARKS);
     revalidatePath(ROUTES.THREAD(threadId));
 
     return { data: { isBookmarked: !isBookmarked }, error: null, ok: true, errorCode: null };

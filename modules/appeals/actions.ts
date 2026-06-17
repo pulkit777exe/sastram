@@ -8,6 +8,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { computeHasMore } from '@/lib/db/pagination';
 import { withValidation } from '@/lib/utils/server-action';
 import { getBannedUsersSchema } from '@/modules/moderation';
+import { ROUTES } from '@/lib/config/routes';
 import { requireModerationRole } from '@/modules/policy';
 
 const createAppealSchema = z.object({
@@ -69,7 +70,7 @@ export const submitAppeal = withValidation(
       details: { reason, banId: activeBans[0].id },
     });
 
-    revalidatePath('/banned');
+    revalidatePath(ROUTES.BANNED);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -161,7 +162,7 @@ export const resolveAppeal = withValidation(
       details: { approved, userId: appeal.reporterId },
     });
 
-    revalidatePath('/dashboard/admin/appeals');
+    revalidatePath(ROUTES.ADMIN_APPEALS);
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
