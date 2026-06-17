@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { mockRequest, stubAuth, restoreStubs } from './helpers';
+import { mockRequest, stubAuth, stubHeaders, restoreStubs } from './helpers';
 
 const GET = () => require('@/app/api/conversations/route').GET;
 const POST = () => require('@/app/api/conversations/route').POST;
@@ -10,7 +10,8 @@ describe('GET /api/conversations', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
-    stubs.push(stubAuth());
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth());
   });
 
   afterEach(() => {
@@ -21,7 +22,8 @@ describe('GET /api/conversations', () => {
   it('returns 401 when unauthenticated', async () => {
     restoreStubs(...stubs);
     stubs = [];
-    stubs.push(stubAuth(null));
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth(null));
 
     const res = await GET()(mockRequest('/api/conversations'));
     const body = await res.json();
@@ -34,7 +36,8 @@ describe('POST /api/conversations', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
-    stubs.push(stubAuth());
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth());
   });
 
   afterEach(() => {
@@ -45,7 +48,8 @@ describe('POST /api/conversations', () => {
   it('returns 401 when unauthenticated', async () => {
     restoreStubs(...stubs);
     stubs = [];
-    stubs.push(stubAuth(null));
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth(null));
 
     const res = await POST()(mockRequest('/api/conversations', { method: 'POST', body: { name: 'test' } }));
     const body = await res.json();

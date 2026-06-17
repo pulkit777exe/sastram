@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { mockRequest, stubAuth, restoreStubs } from './helpers';
+import { mockRequest, stubAuth, stubHeaders, restoreStubs } from './helpers';
 import { prisma } from '@/lib/infrastructure/prisma';
 
 const GET = () => require('@/app/api/search/route').GET;
@@ -10,7 +10,8 @@ describe('GET /api/search', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
-    stubs.push(stubAuth());
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth());
     stubs.push(sinon.stub(prisma.threadMember, 'findMany').resolves([]));
   });
 
@@ -22,7 +23,8 @@ describe('GET /api/search', () => {
   it('returns 401 when unauthenticated', async () => {
     restoreStubs(...stubs);
     stubs = [];
-    stubs.push(stubAuth(null));
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth(null));
     stubs.push(sinon.stub(prisma.threadMember, 'findMany').resolves([]));
 
     const res = await GET()(mockRequest('/api/search?q=test'));

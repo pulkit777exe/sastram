@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { stubAuth, restoreStubs } from './helpers';
+import { stubAuth, stubHeaders, restoreStubs } from './helpers';
 
 const POST = () => require('@/app/api/messages/route').POST;
 
@@ -9,7 +9,8 @@ describe('POST /api/messages', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
-    stubs.push(stubAuth());
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth());
   });
 
   afterEach(() => {
@@ -20,7 +21,8 @@ describe('POST /api/messages', () => {
   it('returns 401 when unauthenticated', async () => {
     restoreStubs(...stubs);
     stubs = [];
-    stubs.push(stubAuth(null));
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth(null));
 
     const formData = new FormData();
     formData.append('threadId', 't1');

@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { mockRequest, stubAuth, restoreStubs } from '../helpers';
+import { mockRequest, stubAuth, stubHeaders, restoreStubs } from '../helpers';
 
 const GET = () => require('@/app/api/ai/jobs/route').GET;
 const DELETE = () => require('@/app/api/ai/jobs/route').DELETE;
@@ -10,7 +10,8 @@ describe('GET /api/ai/jobs', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
-    stubs.push(stubAuth());
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth());
   });
 
   afterEach(() => {
@@ -21,7 +22,8 @@ describe('GET /api/ai/jobs', () => {
   it('returns 401 when unauthenticated', async () => {
     restoreStubs(...stubs);
     stubs = [];
-    stubs.push(stubAuth(null));
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth(null));
 
     const res = await GET()(mockRequest('/api/ai/jobs'));
     const body = await res.json();
@@ -43,7 +45,8 @@ describe('DELETE /api/ai/jobs', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
-    stubs.push(stubAuth());
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth());
   });
 
   afterEach(() => {
@@ -54,7 +57,8 @@ describe('DELETE /api/ai/jobs', () => {
   it('returns 401 when unauthenticated', async () => {
     restoreStubs(...stubs);
     stubs = [];
-    stubs.push(stubAuth(null));
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth(null));
 
     const res = await DELETE()(mockRequest('/api/ai/jobs', { method: 'DELETE' }));
     const body = await res.json();

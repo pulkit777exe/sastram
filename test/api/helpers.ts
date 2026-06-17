@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
 import sinon from 'sinon';
 import { auth } from '@/lib/services/auth';
-import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+
+const nextHeaders = require('next/headers');
+const { prisma } = require('@/lib/infrastructure/prisma');
 
 export type MockRequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -45,14 +47,32 @@ export function createMockSession(user: Partial<typeof defaultUser> = {}): { use
   return { user: { ...defaultUser, ...user } };
 }
 
-export function stubAuth(session: { user: Record<string, unknown> } | null = createMockSession()): sinon.SinonStub {
-  const value = session
-    ? {
-        session: { id: 's1', createdAt: new Date(), updatedAt: new Date(), userId: session.user.id as string, expiresAt: new Date(Date.now() + 86400000), token: 't1' },
-        user: { ...session.user, createdAt: new Date(), updatedAt: new Date(), emailVerified: true },
-      }
-    : null;
-  return sinon.stub(auth.api, 'getSession').resolves(value as Awaited<ReturnType<typeof auth.api.getSession>>);
+export function stubAuth(session: { user: Record<string, unknown> } | null = createMockSession()): sinon.SinonStub[] {
+  const stubs: sinon.SinonStub[] = [];
+
+  if (session === null) {
+    stubs.push(sinon.stub(auth.api, 'getSession').resolves(null));
+  } else {
+    const value = {
+      session: { id: 's1', createdAt: new Date(), updatedAt: new Date(), userId: session.user.id as string, expiresAt: new Date(Date.now() + 86400000), token: 't1' },
+      user: { ...session.user, createdAt: new Date(), updatedAt: new Date(), emailVerified: true },
+    };
+    stubs.push(sinon.stub(auth.api, 'getSession').resolves(value as Awaited<ReturnType<typeof auth.api.getSession>>));
+    stubs.push(sinon.stub(prisma.user, 'findUnique').resolves({
+      id: session.user.id as string,
+      email: session.user.email as string,
+      name: (session.user.name as string) ?? null,
+      image: (session.user.image as string) ?? null,
+      role: ((session.user.role as string) ?? 'USER') as never,
+      status: ((session.user.status as string) ?? 'ACTIVE') as never,
+    } as never));
+  }
+
+  return stubs;
+}
+
+export function stubHeaders(): sinon.SinonStub {
+  return sinon.stub(nextHeaders, 'headers').resolves(new Headers());
 }
 
 export function stubLogger() {

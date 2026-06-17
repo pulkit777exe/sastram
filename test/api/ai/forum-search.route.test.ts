@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { mockRequest, stubAuth, restoreStubs } from '../helpers';
+import { mockRequest, stubAuth, stubHeaders, restoreStubs } from '../helpers';
 
 const POST = () => require('@/app/api/ai/forum-search/route').POST;
 
@@ -9,7 +9,8 @@ describe('POST /api/ai/forum-search', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
-    stubs.push(stubAuth());
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth());
   });
 
   afterEach(() => {
@@ -20,7 +21,8 @@ describe('POST /api/ai/forum-search', () => {
   it('returns 401 when unauthenticated', async () => {
     restoreStubs(...stubs);
     stubs = [];
-    stubs.push(stubAuth(null));
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth(null));
 
     const res = await POST()(mockRequest('/api/ai/forum-search', {
       method: 'POST',

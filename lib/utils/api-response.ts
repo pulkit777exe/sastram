@@ -25,7 +25,7 @@ export function withErrorHandling(handler: ApiHandler): ApiHandler {
       });
 
       return NextResponse.json(
-        { error: message, code, requestId },
+        fail(code ?? 'INTERNAL_ERROR', message, undefined, requestId),
         { status: statusCode, headers: { 'x-request-id': requestId } }
       );
     }

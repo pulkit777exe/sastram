@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { Role, ThreadMember, ThreadRole, User } from '@prisma/client';
 import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
+import { AppError } from '@/lib/utils/errors';
 
 export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status'>;
 
@@ -21,18 +23,26 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
   }
 
   const { user } = session;
-  // Fetch the full user from database to get the role field
-  const fullUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      image: true,
-      role: true,
-      status: true,
-    },
-  });
+
+  let role: Role = Role.USER;
+  let status: User['status'] = 'ACTIVE';
+
+  try {
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        role: true,
+        status: true,
+      },
+    });
+
+    if (fullUser) {
+      role = fullUser.role as Role;
+      status = fullUser.status;
+    }
+  } catch {
+    logger.warn('[auth] Failed to fetch full user profile, using auth defaults', { userId: user.id });
+  }
 
   return {
     user: {
@@ -40,8 +50,8 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
       email: user.email,
       name: user.name,
       image: user.image ?? null,
-      role: (fullUser?.role as Role) ?? Role.USER,
-      status: fullUser?.status ?? 'ACTIVE',
+      role,
+      status,
     },
   };
 });
@@ -66,11 +76,11 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
 export async function requireSessionOrThrow(checkBanStatus = true): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) {
-    throw new Error('Unauthorized: no session');
+    throw new AppError('Unauthorized: no session', 'AUTH_REQUIRED', 401);
   }
 
   if (checkBanStatus && session.user.status === 'BANNED') {
-    throw new Error('Forbidden: user is banned');
+    throw new AppError('Forbidden: user is banned', 'FORBIDDEN', 403);
   }
 
   return session;
@@ -121,11 +131,11 @@ export async function requireThreadMembershipOrThrow(
   });
 
   if (!membership) {
-    throw new Error('Forbidden: not a member of this thread');
+    throw new AppError('Forbidden: not a member of this thread', 'FORBIDDEN', 403);
   }
 
   if (requiredRole && membership.role !== requiredRole) {
-    throw new Error('Forbidden: insufficient role');
+    throw new AppError('Forbidden: insufficient role', 'FORBIDDEN', 403);
   }
 
   return membership;

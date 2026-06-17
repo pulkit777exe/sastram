@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { mockRequest, stubAuth, restoreStubs } from '../helpers';
+import { mockRequest, stubAuth, stubHeaders, restoreStubs } from '../helpers';
 import { prisma } from '@/lib/infrastructure/prisma';
 
 const POST = () => require('@/app/api/ai/resolution-score/route').POST;
@@ -10,7 +10,8 @@ describe('POST /api/ai/resolution-score', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
-    stubs.push(stubAuth());
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth());
   });
 
   afterEach(() => {
@@ -21,7 +22,8 @@ describe('POST /api/ai/resolution-score', () => {
   it('returns 401 when unauthenticated', async () => {
     restoreStubs(...stubs);
     stubs = [];
-    stubs.push(stubAuth(null));
+    stubs.push(stubHeaders());
+    stubs.push(...stubAuth(null));
 
     const res = await POST()(mockRequest('/api/ai/resolution-score', {
       method: 'POST',
