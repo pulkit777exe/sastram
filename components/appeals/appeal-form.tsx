@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { submitAppeal } from '@/modules/appeals/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { useRouter } from 'next/navigation';
 
 export function AppealForm() {
@@ -16,9 +16,9 @@ export function AppealForm() {
     setIsSubmitting(false);
 
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else {
-      toast.success('Appeal submitted successfully');
+      toasts.success('Appeal submitted successfully');
       router.refresh();
     }
   }

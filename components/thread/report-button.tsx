@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Flag, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { createReport } from '@/modules/reports/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 
 interface ReportButtonProps {
@@ -46,7 +46,7 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!category) {
-      toast.error('Please select a report category');
+      toasts.error('Please select a report category');
       return;
     }
 
@@ -59,11 +59,11 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
     setIsSubmitting(false);
 
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else if (result?.data) {
       setSubmitted(true);
       setReportId(result.data.reportId);
-      toast.success(result.data.message || 'Report submitted successfully');
+      toasts.success(result.data.message || 'Report submitted successfully');
     }
   }
 

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mail, X } from 'lucide-react';
 import { unsubscribeFromThread } from '@/modules/newsletter/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { TimeAgo } from '@/components/ui/TimeAgo';
@@ -42,9 +42,9 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
       });
 
       if (result?.error) {
-        toast.error(result.error);
+        toasts.error(result.error);
       } else {
-        toast.success('Unsubscribed successfully!');
+        toasts.success('Unsubscribed successfully!');
       }
     });
   }

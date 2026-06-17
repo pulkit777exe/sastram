@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils';
 
 interface ThreadSummaryCardProps {
@@ -48,7 +48,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         }
         if (mountedRef.current) {
           setIsLoading(false);
-          toast.error('Summary is taking too long. Try again in a moment.');
+          toasts.error('Summary is taking too long. Try again in a moment.');
         }
         return;
       }
@@ -67,7 +67,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
           if (mountedRef.current) {
             setSummary(jobData.result?.summary ?? null);
             setIsLoading(false);
-            toast.success('Thread summary generated!'); 
+            toasts.success('Thread summary generated!'); 
             // Do NOT call router.refresh() here — local state already updated.
             // Only call router.refresh() if server-rendered counts need updating.
           }
@@ -75,7 +75,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
           stopPolling();
           if (mountedRef.current) {
             setIsLoading(false);
-            toast.error('Failed to generate summary. Please try again.');
+            toasts.error('Failed to generate summary. Please try again.');
           }
         }
         // "waiting" | "active" | "delayed" → keep polling
@@ -129,7 +129,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
       if (!mountedRef.current) return;
       setIsLoading(false);
       isLoadingRef.current = false;
-      toast.error('Failed to generate summary. Please try again.');
+      toasts.error('Failed to generate summary. Please try again.');
     }
   }, [threadId, startPolling]);
 

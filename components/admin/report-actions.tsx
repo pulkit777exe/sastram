@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Eye, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { updateReportStatusAction } from '@/modules/reports/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { useRouter } from 'next/navigation';
 import {
   Dialog,
@@ -31,9 +31,9 @@ export function ReportActions({ reportId }: { reportId: string }) {
     const result = await updateReportStatusAction(reportId, status);
 
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else {
-      toast.success(`Report ${status.toLowerCase()}`);
+      toasts.success(`Report ${status.toLowerCase()}`);
       router.refresh();
     }
     setLoading(false);

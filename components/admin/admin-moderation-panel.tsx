@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Trash2, Ban, AlertTriangle, Users, MessageSquare } from 'lucide-react';
 import { deleteThread, deleteCommunity, banUser } from '@/modules/moderation/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { useRouter } from 'next/navigation';
 import type { ThreadSummary } from '@/modules/threads/types';
 import type { CommunitySummary } from '@/modules/communities/types';
@@ -50,7 +50,7 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
 
   async function handleBanUser() {
     if (!banUserId || !banReason) {
-      toast.error('Please fill in all required fields');
+      toasts.error('Please fill in all required fields');
       return;
     }
 
@@ -63,9 +63,9 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
     );
 
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else {
-      toast.success('User banned successfully');
+      toasts.success('User banned successfully');
       setBanDialogOpen(false);
       setBanUserId('');
       setBanThreadId('');
@@ -78,7 +78,7 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
 
   async function handleDeleteThread() {
     if (!selectedThread) {
-      toast.error('Please select a thread');
+      toasts.error('Please select a thread');
       return;
     }
 
@@ -86,9 +86,9 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
     const result = await deleteThread(selectedThread, deleteReason || undefined);
 
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else {
-      toast.success('Thread deleted successfully');
+      toasts.success('Thread deleted successfully');
       setDeleteThreadDialogOpen(false);
       setSelectedThread('');
       setDeleteReason('');
@@ -99,7 +99,7 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
 
   async function handleDeleteCommunity() {
     if (!selectedCommunity) {
-      toast.error('Please select a community');
+      toasts.error('Please select a community');
       return;
     }
 
@@ -107,9 +107,9 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
     const result = await deleteCommunity(selectedCommunity, deleteReason || undefined);
 
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else {
-      toast.success('Community deleted successfully');
+      toasts.success('Community deleted successfully');
       setDeleteCommunityDialogOpen(false);
       setSelectedCommunity('');
       setDeleteReason('');

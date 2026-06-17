@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { UserPlus, Mail } from 'lucide-react';
 import { inviteFriendToThread } from '@/modules/invitations/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { useRouter } from 'next/navigation';
 
 interface InviteFriendButtonProps {
@@ -35,7 +35,7 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
     e.preventDefault();
 
     if (!email.trim()) {
-      toast.error('Please enter an email address');
+      toasts.error('Please enter an email address');
       return;
     }
 
@@ -51,9 +51,9 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
     setIsSubmitting(false);
 
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else {
-      toast.success('Invitation sent successfully!');
+      toasts.success('Invitation sent successfully!');
       setEmail('');
       setMessage('');
       setOpen(false);

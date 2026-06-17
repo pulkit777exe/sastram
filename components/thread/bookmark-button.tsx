@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toggleBookmark, checkBookmarkStatus } from '@/modules/bookmarks/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 
@@ -32,13 +32,13 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
     try {
       const result = await toggleBookmark(threadId);
       if (result?.error) {
-        toast.error(result.error);
+        toasts.error(result.error);
       } else if (result?.data?.isBookmarked !== undefined) {
         setIsBookmarked(result.data.isBookmarked || false);
-        toast.success(result.data.isBookmarked ? 'Bookmarked' : 'Removed from bookmarks');
+        toasts.success(result.data.isBookmarked ? 'Bookmarked' : 'Removed from bookmarks');
       }
     } catch {
-      toast.error('Something went wrong');
+      toasts.error('Something went wrong');
     } finally {
       setIsLoading(false);
     }

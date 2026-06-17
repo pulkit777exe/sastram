@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 
 interface AppealMessageModalProps {
   messageId: string;
@@ -18,7 +18,7 @@ export function AppealMessageModal({ messageId, isOpen, onClose }: AppealMessage
 
   const handleSubmit = async () => {
     if (!reason.trim()) {
-      toast.error('Please provide a reason for your appeal');
+      toasts.error('Please provide a reason for your appeal');
       return;
     }
 
@@ -34,12 +34,12 @@ export function AppealMessageModal({ messageId, isOpen, onClose }: AppealMessage
         throw new Error('Failed to submit appeal');
       }
 
-      toast.success('Appeal submitted successfully');
+      toasts.success('Appeal submitted successfully');
       setReason('');
       onClose();
     } catch (error) {
       console.error(error);
-      toast.error('Failed to submit appeal');
+      toasts.error('Failed to submit appeal');
     } finally {
       setLoading(false);
     }

@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Plus } from 'lucide-react';
 import { createThreadAction } from '@/modules/threads/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 
 export function CreateThreadDialog({ communities }: { communities?: Array<{ id: string; title: string }> }) {
   const [open, setOpen] = useState(false);
@@ -27,9 +27,9 @@ export function CreateThreadDialog({ communities }: { communities?: Array<{ id: 
     startTransition(async () => {
       const result = await createThreadAction(formData);
       if (result && 'error' in result && result.error) {
-        toast.error(result.error as string);
+        toasts.error(result.error as string);
       } else {
-        toast.success('Thread created');
+        toasts.success('Thread created');
         setOpen(false);
         router.refresh();
       }

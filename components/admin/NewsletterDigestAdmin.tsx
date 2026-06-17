@@ -15,7 +15,7 @@ import {
   Users,
   Calendar,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import axios from 'axios';
 import { cn } from '@/lib/utils/cn';
 import { TimeAgo } from '@/components/ui/TimeAgo';
@@ -48,10 +48,10 @@ export function NewsletterDigestAdmin({ digests, totalSubscribers }: NewsletterD
     setIsGenerating(true);
     try {
       await axios.post('/api/newsletter/generate');
-      toast.success('Newsletter digests generated and sent successfully!');
+      toasts.success('Newsletter digests generated and sent successfully!');
     } catch (error) {
       console.error('Failed to generate digests:', error);
-      toast.error('Failed to generate newsletter digests');
+      toasts.error('Failed to generate newsletter digests');
     } finally {
       setIsGenerating(false);
     }

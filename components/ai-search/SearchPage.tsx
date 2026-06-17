@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, KeyRound } from 'lucide-react';
 import { SearchBox } from './SearchBox';
@@ -72,23 +72,17 @@ export function SearchPage() {
       // Validate query
       const trimmed = query.trim();
       if (!trimmed || trimmed.length < 3) {
-        toast.error('Query too short', {
-          description: 'Please enter at least 3 characters.',
-        });
+        toasts.error('Query too short', 'Please enter at least 3 characters.');
         return;
       }
       if (trimmed.length > 500) {
-        toast.error('Query too long', {
-          description: 'Please keep your query under 500 characters.',
-        });
+        toasts.error('Query too long', 'Please keep your query under 500 characters.');
         return;
       }
 
       const keys = getStoredApiKeys();
       if (!keys.exa || !keys.tavily || !keys.gemini) {
-        toast.error('Please configure your API keys first', {
-          description: 'Click the API Keys button to get started.',
-        });
+        toasts.error('Please configure your API keys first', 'Click the API Keys button to get started.');
         setShowApiKeys(true);
         return;
       }
@@ -129,11 +123,12 @@ export function SearchPage() {
 
         if (response.status === 429) {
           const retryAfter = response.headers.get('Retry-After');
-          toast.error('Rate limit exceeded', {
-            description: retryAfter
+          toasts.error(
+            'Rate limit exceeded',
+            retryAfter
               ? `Please wait ${retryAfter} seconds.`
-              : 'Please wait a moment before searching again.',
-          });
+              : 'Please wait a moment before searching again.'
+          );
           setAppState('idle');
           return;
         }
@@ -143,7 +138,7 @@ export function SearchPage() {
           const msg = data.error || `Search failed (${response.status}). Please try again.`;
           setErrorMessage(msg);
           setAppState('error');
-          toast.error(msg);
+          toasts.error(msg);
           return;
         }
 
@@ -170,7 +165,7 @@ export function SearchPage() {
           setErrorMessage('Network error. Please check your connection and try again.');
         }
         setAppState('error');
-        toast.error('Search failed');
+        toasts.error('Search failed');
       }
     },
     [addPastSearch]

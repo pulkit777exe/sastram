@@ -30,7 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Trash2, Shield, Crown } from 'lucide-react';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import { getThreadMembersAction, manageThreadMemberAction } from '@/modules/threads/actions';
 import type { ThreadMember } from '@/modules/threads/types';
@@ -69,14 +69,14 @@ export function ThreadAccessModal({
         const result = await getThreadMembersAction(threadId);
         if (cancelled) return;
         if (result?.error) {
-          toast.error(result.error);
+          toasts.error(result.error);
           setMembers([]);
         } else {
           setMembers(result?.data ?? []);
         }
       } catch {
         if (cancelled) return;
-        toast.error('Failed to load members');
+        toasts.error('Failed to load members');
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -118,10 +118,10 @@ export function ThreadAccessModal({
           role: confirmAction.role,
         });
         if (result?.error) {
-          toast.error(result.error);
+          toasts.error(result.error);
           return;
         }
-        toast.success(`Role updated for ${confirmAction.userName}`);
+        toasts.success(`Role updated for ${confirmAction.userName}`);
         setMembers((prev) =>
           prev.map((m) =>
             m.userId === confirmAction.userId ? { ...m, role: confirmAction.role! } : m
@@ -134,14 +134,14 @@ export function ThreadAccessModal({
           action: 'remove',
         });
         if (result?.error) {
-          toast.error(result.error);
+          toasts.error(result.error);
           return;
         }
-        toast.success(`${confirmAction.userName} removed from thread`);
+        toasts.success(`${confirmAction.userName} removed from thread`);
         setMembers((prev) => prev.filter((m) => m.userId !== confirmAction.userId));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to execute action');
+      toasts.error(error instanceof Error ? error.message : 'Failed to execute action');
     } finally {
       setConfirmAction(null);
     }

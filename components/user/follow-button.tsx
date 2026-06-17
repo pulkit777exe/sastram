@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { followUser, unfollowUser } from '@/modules/follows/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { UserPlus, UserMinus, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
@@ -25,24 +25,24 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
       if (isFollowing) {
         const result = await unfollowUser(userId);
         if (result?.error) {
-          toast.error(result.error);
+          toasts.error(result.error);
         } else {
           setIsFollowing(false);
-          toast.success('Unfollowed successfully');
+          toasts.success('Unfollowed successfully');
           router.refresh();
         }
       } else {
         const result = await followUser(userId);
         if (result?.error) {
-          toast.error(result.error);
+          toasts.error(result.error);
         } else {
           setIsFollowing(true);
-          toast.success('Following successfully');
+          toasts.success('Following successfully');
           router.refresh();
         }
       }
     } catch (error) {
-      toast.error('Something went wrong');
+      toasts.error('Something went wrong');
     } finally {
       setIsLoading(false);
     }

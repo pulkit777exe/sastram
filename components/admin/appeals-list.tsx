@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { resolveAppeal } from '@/modules/appeals/actions';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { Check, X } from 'lucide-react';
 
 interface Appeal {
@@ -56,9 +56,9 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
     const result = await resolveAppeal(selectedAppeal.id, approved);
 
     if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     } else {
-      toast.success(`Appeal ${approved ? 'approved' : 'rejected'} successfully`);
+      toasts.success(`Appeal ${approved ? 'approved' : 'rejected'} successfully`);
       setSelectedAppeal(null);
       setActionType(null);
     }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, PlusCircle, FileIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
 
 interface ReplyBoxProps {
@@ -40,14 +40,14 @@ export default function ReplyBox({
 
     const validation = validateFile(file);
     if (!validation.isValid) {
-      toast.error(validation.error);
+      toasts.error(validation.error ?? 'Invalid file');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('File size must be less than 10MB');
+      toasts.error('File size must be less than 10MB');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -114,7 +114,7 @@ export default function ReplyBox({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Something went wrong. Try again.';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toasts.error(errorMessage);
     } finally {
       setIsSubmitting(false);
       router.refresh();

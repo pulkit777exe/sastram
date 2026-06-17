@@ -13,7 +13,7 @@ import type {
   ReportWithContext,
   Report,
 } from '@/modules/reports/types';
-import { toast } from 'sonner';
+import { toasts } from '@/lib/utils/toast';
 
 interface AuditLogEntry {
   id: string;
@@ -75,7 +75,7 @@ export function ModerationDashboard({
     if (result?.data) {
       setSelectedReport(result.data as unknown as ReportWithContext);
     } else if (result?.error) {
-      toast.error(result.error);
+      toasts.error(result.error);
     }
 
     setIsLoadingReport(false);
@@ -85,7 +85,7 @@ export function ModerationDashboard({
     async (action: string) => {
       if (!selectedReportId) return;
 
-      toast.info(`Action "${action}" selected. Confirmation modal coming soon.`);
+      toasts.info(`Action "${action}" selected. Confirmation modal coming soon.`);
     },
     [selectedReportId]
   );
