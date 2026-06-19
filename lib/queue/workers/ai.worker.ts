@@ -387,8 +387,8 @@ async function generateAIInlineResponse(
   emitAiMessage(threadId, aiMessage, aiUser, false);
 
   try {
-    await streamAiResponse(threadId, query, context, aiMessage, aiUser);
-    emitAiMessage(threadId, aiMessage, aiUser, true);
+    const finalContent = await streamAiResponse(threadId, query, context, aiMessage, aiUser);
+    emitAiMessage(threadId, { ...aiMessage, content: finalContent }, aiUser, true);
   } catch (error) {
     logger.error('[worker:ai] AI streaming error:', error);
     const errorMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
@@ -492,28 +492,36 @@ async function streamAiResponse(
   context: string,
   aiMessage: { id: string; createdAt: Date; parentId: string | null; depth: number },
   aiUser: { id: string; name: string | null; image: string | null },
-) {
+): Promise<string> {
   let fullContent = '';
   let lastDbUpdateTime = Date.now();
+  let lastEmitTime = Date.now();
+  const DB_THROTTLE_MS = 500;
+  const EMIT_THROTTLE_MS = 100;
 
   await aiService.generateStreamingResponse(
     `Answer this forum question in under 200 words and stay grounded in thread context.\nQuestion: ${query}\n\nRecent thread context:\n${context}`,
     async (chunk) => {
       fullContent += chunk;
       const now = Date.now();
-      if (now - lastDbUpdateTime >= 500) {
+      if (now - lastDbUpdateTime >= DB_THROTTLE_MS) {
         await prisma.message.update({
           where: { id: aiMessage.id },
           data: { content: fullContent.slice(0, 2000) },
         });
         lastDbUpdateTime = now;
       }
-      emitAiMessage(threadId, { ...aiMessage, content: fullContent.slice(0, 2000) }, aiUser, false);
+      if (now - lastEmitTime >= EMIT_THROTTLE_MS) {
+        emitAiMessage(threadId, { ...aiMessage, content: fullContent.slice(0, 2000) }, aiUser, false);
+        lastEmitTime = now;
+      }
     },
   );
 
+  const finalContent = fullContent.slice(0, 2000);
   await prisma.message.update({
     where: { id: aiMessage.id },
-    data: { content: fullContent.slice(0, 2000) },
+    data: { content: finalContent },
   });
+  return finalContent;
 }

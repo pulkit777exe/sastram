@@ -56,6 +56,7 @@ export function CommentTree({
   const [localMessages, setLocalMessages] = useState<Message[]>(messages);
   const [animateMessageId, setAnimateMessageId] = useState<string | null>(null);
   const animateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevMessagesRef = useRef(messages);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -72,17 +73,19 @@ export function CommentTree({
   }, [threadId]);
 
   useEffect(() => {
-    // Only update if the message set actually changed (added/removed or content changed)
-    if (localMessages.length === messages.length) {
-      const same = localMessages.every((msg, i) => {
+    const prev = prevMessagesRef.current;
+    if (prev === messages) return;
+    prevMessagesRef.current = messages;
+
+    if (prev.length === messages.length) {
+      const same = prev.every((msg, i) => {
         const incoming = messages[i];
         return msg.id === incoming.id && msg.content === incoming.content && msg.deletedAt === incoming.deletedAt;
       });
       if (same) return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalMessages(messages);
-  }, [messages, localMessages]);
+  }, [messages]);
 
   const tree = useMemo(() => buildMessageTree(localMessages), [localMessages]);
   const focusedNode = useMemo(
