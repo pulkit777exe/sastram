@@ -149,20 +149,27 @@ export class GeminiService implements AIService {
     content: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    const { signal, clear } = makeAbortController();
+    const controller = new AbortController();
+    // Stall-based timeout: abort if no chunk arrives for 30s
+    let stallTimer = setTimeout(() => controller.abort(), 30_000);
+    const resetTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => controller.abort(), 30_000);
+    };
     try {
       const result = await this.flashModel.generateContentStream(content, {
-        signal,
+        signal: controller.signal,
       });
       for await (const chunk of result.stream) {
         const text = chunk.text();
         if (text) onChunk(text);
+        resetTimer();
       }
     } catch (error) {
       logger.error('[GeminiService.generateStreamingResponse]', { error });
       throw error;
     } finally {
-      clear();
+      clearTimeout(stallTimer);
     }
   }
 

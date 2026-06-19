@@ -157,7 +157,7 @@ export default function ReplyBox({
       {/* File preview */}
       {selectedFile && (
         <div className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm">
-          <FileIcon className="h-4 w-4 text-muted-foreground" />
+          <FileIcon className="h-4 w-4 text-muted-foreground-foreground" />
           <span className="truncate flex-1">{selectedFile.name}</span>
           <button
             type="button"
@@ -165,7 +165,7 @@ export default function ReplyBox({
               setSelectedFile(null);
               if (fileInputRef.current) fileInputRef.current.value = '';
             }}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -173,7 +173,7 @@ export default function ReplyBox({
       )}
 
       <div className="flex items-center justify-between">
-        <span className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
+        <span className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           Reply
         </span>
       </div>
@@ -183,35 +183,35 @@ export default function ReplyBox({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-(--blue-dim) hover:text-(--text)"
           >
             <PlusCircle className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => applyInlineFormat('bold')}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-(--blue-dim) hover:text-(--text)"
           >
             **B**
           </button>
           <button
             type="button"
             onClick={() => applyInlineFormat('italic')}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-(--blue-dim) hover:text-(--text)"
           >
             *I*
           </button>
           <button
             type="button"
             onClick={() => applyInlineFormat('code')}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-(--blue-dim) hover:text-(--text)"
           >
             {'</>'}
           </button>
           <button
             type="button"
             onClick={() => applyInlineFormat('link')}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted hover:bg-(--blue-dim) hover:text-(--text)"
+            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-(--blue-dim) hover:text-(--text)"
           >
             Link
           </button>
@@ -261,7 +261,7 @@ export default function ReplyBox({
           {error ? (
             <span className="text-[12px] text-(--red)">{error}</span>
           ) : (
-            <span className="text-[11px] text-muted">Markdown-style formatting is supported.</span>
+            <span className="text-[11px] text-muted-foreground">Markdown-style formatting is supported.</span>
           )}
 
           <button
@@ -272,7 +272,7 @@ export default function ReplyBox({
               'inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[12px] font-medium',
               canSubmit
                 ? 'bg-(--blue) text-white hover:opacity-90'
-                : 'bg-(--blue-dim) text-muted cursor-not-allowed'
+                : 'bg-(--blue-dim) text-muted-foreground cursor-not-allowed'
             )}
           >
             {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

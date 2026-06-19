@@ -22,7 +22,7 @@ const EXPERTISE_COLORS: Record<string, string> = {
 export default function ThreadDnaCard({ dna }: ThreadDnaCardProps) {
   return (
     <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
-      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
+      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
         Thread DNA
       </p>
 
@@ -57,7 +57,7 @@ export default function ThreadDnaCard({ dna }: ThreadDnaCardProps) {
       </div>
 
       {dna.readTimeMinutes > 0 && (
-        <p className="mt-[8px] text-[11px] text-muted">
+        <p className="mt-[8px] text-[11px] text-muted-foreground">
           ~{Math.ceil(dna.readTimeMinutes)} min read
         </p>
       )}

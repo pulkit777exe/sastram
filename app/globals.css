@@ -217,6 +217,15 @@
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.2 0 0);
   --sidebar-ring: oklch(1 0 0);
+
+  /* Sastram thread page design system — dark */
+  --blue-dim: rgba(55, 54, 252, 0.15);
+  --bg: #1c1c1e;
+  --surface: #1c1c1e;
+  --text: #e4e4e7;
+  --green: #22c55e;
+  --amber: #fbbf24;
+  --red: #f87171;
 }
 
 @layer base {

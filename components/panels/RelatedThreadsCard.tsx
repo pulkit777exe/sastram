@@ -19,7 +19,7 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
 
   return (
     <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
-      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
+      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
         Related Threads
       </p>
 
@@ -41,7 +41,7 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
                 <span className="text-[13px] font-semibold leading-snug text-(--text) group-hover:text-(--accent)">
                   {thread.name}
                 </span>
-                <span className="shrink-0 text-[11px] font-medium text-muted">
+                <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
                   {formatSimilarity(thread.similarity)}
                 </span>
               </div>

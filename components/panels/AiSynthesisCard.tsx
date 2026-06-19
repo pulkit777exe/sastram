@@ -43,7 +43,7 @@ export default function AiSynthesisCard({
             <span className="absolute h-full w-full animate-[pulse-dot_2s_ease_infinite] rounded-full bg-(--blue)" />
             <span className="relative h-[8px] w-[8px] rounded-full bg-(--blue)" />
           </span>
-          <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
+          <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
             AI synthesis
           </p>
         </div>
@@ -53,7 +53,7 @@ export default function AiSynthesisCard({
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="rounded-[6px] border border-border px-[8px] py-[4px] text-[11px] font-medium text-muted hover:bg-(--bg) transition-colors"
+              className="rounded-[6px] border border-border px-[8px] py-[4px] text-[11px] font-medium text-muted-foreground hover:bg-(--bg) transition-colors"
             >
               {isExpanded ? (
                 <ChevronDown className="h-[12px] w-[12px]" />
@@ -72,11 +72,11 @@ export default function AiSynthesisCard({
         </div>
       </div>
 
-      <div className="space-y-[10px] text-[13px] text-muted">
+      <div className="space-y-[10px] text-[13px] text-muted-foreground">
         {isGenerating ? (
           <div className="flex items-center gap-[8px]">
             <Loader2 className="h-[14px] w-[14px] animate-spin text-(--blue)" />
-            <p className="text-[13px] text-muted">Summary generating...</p>
+            <p className="text-[13px] text-muted-foreground">Summary generating...</p>
           </div>
         ) : hasSummary ? (
           <>
@@ -111,7 +111,7 @@ export default function AiSynthesisCard({
                   ? 'text-(--green)'
                   : confidence >= 70
                     ? 'text-(--amber)'
-                    : 'text-muted';
+                    : 'text-muted-foreground';
 
               return (
                 <div
@@ -127,7 +127,7 @@ export default function AiSynthesisCard({
                     <div className="flex flex-col">
                       <span className="text-[12px] text-(--text)">{source.source}</span>
                       {source.snippet && (
-                        <span className="text-[11px] text-muted line-clamp-1">
+                        <span className="text-[11px] text-muted-foreground line-clamp-1">
                           {source.snippet}
                         </span>
                       )}

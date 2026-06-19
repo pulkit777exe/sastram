@@ -25,10 +25,12 @@ export function InlineReplyThread({ replies, onReplyClick }: InlineReplyThreadPr
   return (
     <div className="mt-2 group/thread">
       {/* Collapsed summary bar — always visible */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onReplyClick?.()}
-        className="flex items-center gap-2.5 w-full text-left group/bar hover:bg-indigo-50/60 dark:hover:bg-indigo-950/20 rounded-lg px-2.5 py-1.5 transition-colors duration-100"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onReplyClick?.(); }}
+        className="flex items-center gap-2.5 w-full text-left group/bar hover:bg-indigo-50/60 dark:hover:bg-indigo-950/20 rounded-lg px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
       >
         {/* Stacked avatars */}
         <div className="flex -space-x-1.5 shrink-0">
@@ -72,7 +74,7 @@ export function InlineReplyThread({ replies, onReplyClick }: InlineReplyThreadPr
         >
           {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
-      </button>
+      </div>
 
       {/* Expanded reply list */}
       {expanded && (

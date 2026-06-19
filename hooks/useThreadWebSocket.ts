@@ -10,6 +10,12 @@ export interface TypingUser {
   userName: string;
 }
 
+export interface ReactionUpdate {
+  messageId: string;
+  reactionType: string;
+  count: number;
+}
+
 interface UseThreadWebSocketOptions {
   threadId: string;
   currentUserId: string;
@@ -18,6 +24,7 @@ interface UseThreadWebSocketOptions {
   onPinUpdate?: (messageId: string, isPinned: boolean) => void;
   onTypingUpdate?: (typers: TypingUser[]) => void;
   onAiComplete?: (parentMessageId: string) => void;
+  onReactionUpdate?: (update: ReactionUpdate) => void;
 }
 
 export function useThreadWebSocket({
@@ -28,6 +35,7 @@ export function useThreadWebSocket({
   onPinUpdate,
   onTypingUpdate,
   onAiComplete,
+  onReactionUpdate,
 }: UseThreadWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -42,6 +50,7 @@ export function useThreadWebSocket({
     onPinUpdate,
     onTypingUpdate,
     onAiComplete,
+    onReactionUpdate,
   });
   useEffect(() => {
     callbacksRef.current = {
@@ -50,6 +59,7 @@ export function useThreadWebSocket({
       onPinUpdate,
       onTypingUpdate,
       onAiComplete,
+      onReactionUpdate,
     };
   });
 
@@ -159,6 +169,16 @@ export function useThreadWebSocket({
               isPinned: boolean;
             };
             callbacksRef.current.onPinUpdate?.(messageId, isPinned);
+            break;
+          }
+
+          case 'REACTION_UPDATE': {
+            const { messageId, reactionType, count } = msg.payload as {
+              messageId: string;
+              reactionType: string;
+              count: number;
+            };
+            callbacksRef.current.onReactionUpdate?.({ messageId, reactionType, count });
             break;
           }
 

@@ -52,7 +52,7 @@ export default function ParticipantsCard({ thread }: ParticipantsCardProps) {
 
   return (
     <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
-      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
+      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
         Participants
       </p>
 

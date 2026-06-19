@@ -47,7 +47,7 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
         <div className="min-w-0 flex-1">
           <div className="inline-flex items-center gap-[8px] rounded-[999px] bg-(--blue-dim) px-[10px] py-[4px]">
             <span className="h-[8px] w-[8px] rounded-full bg-(--blue)" />
-            <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted">
+            <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               Thread
             </span>
           </div>
@@ -56,7 +56,7 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
             {thread.name}
           </h1>
 
-          <div className="mt-[12px] flex flex-wrap items-center gap-[8px] text-[12px] text-muted">
+          <div className="mt-[12px] flex flex-wrap items-center gap-[8px] text-[12px] text-muted-foreground">
             <div className="flex items-center gap-[8px]">
               <div className="h-[32px] w-[32px] overflow-hidden rounded-full bg-(--blue-light)" />
               <div className="flex flex-col">
@@ -69,7 +69,7 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
 
             <span className="mx-[8px] h-[16px] w-px bg-border" />
 
-            <div className="flex items-center gap-[12px] text-[11px] font-medium text-muted">
+            <div className="flex items-center gap-[12px] text-[11px] font-medium text-muted-foreground">
               <span>{thread._count.messages} messages</span>
               <span>·</span>
               <span>{thread._count.members} participants</span>
@@ -80,7 +80,7 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
         <div className="flex flex-col items-end gap-[12px]">
           <div className="inline-flex items-center gap-[8px] rounded-[999px] border border-border bg-(--bg) px-[10px] py-[4px]">
             <span className={`h-[8px] w-[8px] rounded-full ${resolution.colorClass}`} />
-            <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted">
+            <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               {resolution.label}
             </span>
           </div>

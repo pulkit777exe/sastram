@@ -50,11 +50,11 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
 
   return (
     <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
-      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted">
+      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground-foreground">
         Thread information
       </p>
 
-      <div className="mt-[12px] space-y-[8px] text-[13px] text-muted">
+      <div className="mt-[12px] space-y-[8px] text-[13px] text-muted-foreground-foreground">
         <div className="flex items-center justify-between">
           <span>Messages</span>
           <DigitGroup value={thread._count.messages} />
@@ -79,7 +79,7 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
               </div>
             </div>
             {lastVerifiedDays !== null && lastVerifiedDays > 30 && (
-              <p className="text-[10px] text-muted/60 text-right">
+              <p className="text-[10px] text-muted-foreground/60 text-right">
                 Confidence aged — last verified {lastVerifiedDays > 90
                   ? `${Math.floor(lastVerifiedDays / 30)} months`
                   : `${lastVerifiedDays} days`} ago

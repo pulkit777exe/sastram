@@ -204,6 +204,17 @@ export function ThreadLiveWrapper({
     setTypingUsers(typers);
   }, []);
 
+  const handleReactionUpdate = useCallback(
+    (update: { messageId: string; reactionType: string; count: number }) => {
+      setLiveMessages((prev) =>
+        prev.map((m) =>
+          m.id === update.messageId ? { ...m, likeCount: update.count } : m
+        )
+      );
+    },
+    []
+  );
+
   const { emitTypingStart, emitTypingStop } = useThreadWebSocket({
     threadId,
     currentUserId: currentUser.id,
@@ -211,7 +222,8 @@ export function ThreadLiveWrapper({
     onMessageDeleted: handleWsMessageDeleted,
     onPinUpdate: handleWsPinUpdate,
     onTypingUpdate: handleTypingUpdate,
-    onAiComplete: handleAiComplete, // ← clears "pending" when stream ends
+    onAiComplete: handleAiComplete,
+    onReactionUpdate: handleReactionUpdate,
   });
 
   const handleMessagePosted = useCallback(
