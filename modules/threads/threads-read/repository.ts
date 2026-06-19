@@ -138,6 +138,125 @@ type ThreadRow = {
   is_subscribed: boolean | null;
 };
 
+export type PaginatedMessagesResult = {
+  messages: ThreadMessage[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  totalCount: number;
+};
+
+export const getThreadMessagesPaginated = cache(async (
+  threadId: string,
+  cursor?: string | null,
+  limit: number = 50
+): Promise<PaginatedMessagesResult> => {
+  const pageSize = Math.min(limit, 100);
+
+  const totalCount = await prisma.message.count({
+    where: { threadId, deletedAt: null },
+  });
+
+  let cursorCreatedAt: Date | undefined;
+  if (cursor) {
+    const cursorMessage = await prisma.message.findUnique({
+      where: { id: cursor },
+      select: { createdAt: true },
+    });
+    cursorCreatedAt = cursorMessage?.createdAt;
+  }
+
+  const messages = await prisma.message.findMany({
+    where: {
+      threadId,
+      deletedAt: null,
+      ...(cursorCreatedAt
+        ? {
+            createdAt: {
+              lt: cursorCreatedAt,
+            },
+          }
+        : {}),
+    },
+    include: {
+      sender: {
+        select: { id: true, name: true, image: true },
+      },
+      attachments: {
+        select: { id: true, url: true, type: true, name: true, size: true },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: pageSize + 1,
+  });
+
+  let hasMore = false;
+  let nextCursor: string | null = null;
+
+  if (messages.length > pageSize) {
+    hasMore = true;
+    const nextMessage = messages.pop()!;
+    nextCursor = nextMessage.id;
+  }
+
+  const messageIds = messages.map((m) => m.id);
+
+  const reactionsAgg = await prisma.reaction.groupBy({
+    by: ['messageId', 'emoji'],
+    where: { messageId: { in: messageIds } },
+    _count: { emoji: true },
+  });
+
+  const reactionsMap = new Map<string, Map<string, number>>();
+  for (const r of reactionsAgg) {
+    const msgReactions = reactionsMap.get(r.messageId) || new Map();
+    msgReactions.set(r.emoji, r._count.emoji);
+    reactionsMap.set(r.messageId, msgReactions);
+  }
+
+  const typedMessages: ThreadMessage[] = messages.map((m) => {
+    const msgReactions = reactionsMap.get(m.id) || new Map();
+    const reactions: ThreadMessageReactionAggregate[] = Array.from(msgReactions.entries()).map(
+      ([emoji, count]) => ({
+        type: emoji,
+        _count: count,
+      })
+    );
+
+    return {
+      id: m.id,
+      body: m.content,
+      threadId: m.threadId,
+      senderId: m.senderId,
+      parentId: m.parentId,
+      depth: m.depth,
+      createdAt: m.createdAt,
+      isEdited: m.isEdited,
+      isPinned: m.isPinned,
+      isAI: m.isAiResponse,
+      deletedAt: m.deletedAt,
+      likeCount: m.likeCount,
+      replyCount: m.replyCount,
+      author: m.sender,
+      reactions,
+      _count: { replies: m.replyCount },
+      attachments: m.attachments.map((a) => ({
+        id: a.id,
+        url: a.url,
+        type: a.type,
+        name: a.name,
+        size: a.size != null ? Number(a.size) : null,
+      })),
+    };
+  });
+
+  return {
+    messages: typedMessages.reverse(),
+    nextCursor,
+    hasMore,
+    totalCount,
+  };
+});
+
 export const getThreadWithFullContext = cache(async (
   slug: string,
   userId: string

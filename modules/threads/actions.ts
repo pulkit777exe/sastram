@@ -9,6 +9,7 @@ import { buildThreadSlug } from '@/lib/utils/slug';
 import { createThread, deleteThread, updateThreadDNA, updateResolutionScore, updateThreadStaleness } from './threads-write/repository';
 import { listThreads } from './threads-core/repository';
 import { getThreadMembers, updateThreadMemberRole, removeThreadMember } from './threads-members/repository';
+import { getThreadMessagesPaginated } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
 import { ROUTES } from '@/lib/config/routes';
 import { ThreadRole } from '@prisma/client';
@@ -207,6 +208,53 @@ export const manageThreadMemberAction = createServerAction(
       return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[manageThreadMemberAction]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+    }
+  }
+);
+
+/**
+ * Load older messages for a thread using cursor-based pagination.
+ */
+export const loadThreadMessages = createServerAction(
+  {
+    schema: z.object({
+      threadId: z.string().cuid(),
+      cursor: z.string().cuid().optional(),
+    }),
+    actionName: 'loadThreadMessages',
+  },
+  async ({ threadId, cursor }) => {
+    try {
+      const session = await requireSession();
+
+      const membership = await getMemberRole(threadId, session.user.id);
+      if (!membership || membership.status !== 'ACTIVE') {
+        return {
+          data: null,
+          error: 'You are not a member of this thread',
+          errorCode: 'FORBIDDEN',
+          ok: false,
+        };
+      }
+
+      const result = await getThreadMessagesPaginated(threadId, cursor, 50);
+
+      return {
+        data: {
+          messages: result.messages,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          totalCount: result.totalCount,
+        },
+        error: null,
+        ok: true,
+        errorCode: null,
+      };
+    } catch (error) {
+      logger.error('[loadThreadMessages]', error);
       const prismaMsg = prismaErrorMessage(error);
       if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
       return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };

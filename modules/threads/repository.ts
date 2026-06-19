@@ -31,7 +31,8 @@ export {
   removeThreadMember,
 } from './threads-members/repository';
 
-export { getThreadWithFullContext } from './threads-read/repository';
+export { getThreadWithFullContext, getThreadMessagesPaginated } from './threads-read/repository';
+export type { PaginatedMessagesResult } from './threads-read/repository';
 
 export {
   findRelatedThreads,

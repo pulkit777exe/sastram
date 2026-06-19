@@ -41,6 +41,9 @@ export default async function ThreadPage({ params }: ThreadPageParams) {
               messages={thread.messages as unknown as Parameters<typeof ThreadLiveWrapper>[0]['messages']}
               initialUnreadCount={0}
               initialFirstUnreadMessageId={null}
+              hasMoreMessages={false}
+              nextCursor={null}
+              totalMessageCount={thread._count?.messages ?? 0}
               poll={null}
               canManagePoll={false}
               title={thread.name ?? thread.slug}

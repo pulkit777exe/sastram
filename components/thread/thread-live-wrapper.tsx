@@ -8,17 +8,21 @@ import type { Message } from '@/lib/types/index';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
+import { loadThreadMessages } from '@/modules/threads/actions';
 import { toasts } from '@/lib/utils/toast';
 import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
   threadId: string;
   initialUnreadCount: number;
   initialFirstUnreadMessageId: string | null;
+  hasMoreMessages: boolean;
+  nextCursor: string | null;
+  totalMessageCount: number;
   poll: {
     id: string;
     question: string;
@@ -44,6 +48,9 @@ export function ThreadLiveWrapper({
   threadId,
   initialUnreadCount,
   initialFirstUnreadMessageId,
+  hasMoreMessages: initialHasMore,
+  nextCursor: initialNextCursor,
+  totalMessageCount,
   poll,
   canManagePoll,
   currentUser,
@@ -60,6 +67,10 @@ export function ThreadLiveWrapper({
   const [showPoll, setShowPoll] = useState(false);
   const [currentPoll, setCurrentPoll] = useState(poll);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(initialHasMore);
+  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [displayedCount, setDisplayedCount] = useState(messages.length);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,6 +78,68 @@ export function ThreadLiveWrapper({
   const isMarkingReadRef = useRef(false);
   const ownPendingIds = useRef<Set<string>>(new Set());
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const isLoadingMoreRef = useRef(false);
+
+  const loadMoreMessages = useCallback(async () => {
+    if (!hasMoreMessages || !nextCursor || isLoadingMoreRef.current) return;
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+
+    try {
+      const result = await loadThreadMessages(threadId, nextCursor);
+
+      if (result.ok && result.data) {
+        const { messages: olderMessages, hasMore, nextCursor: newCursor } = result.data;
+
+        const mappedMessages: Message[] = olderMessages.map((m: any) => ({
+          id: m.id,
+          content: m.body ?? m.content ?? '',
+          createdAt: m.createdAt,
+          senderId: m.senderId,
+          parentId: m.parentId ?? null,
+          threadId,
+          depth: m.depth ?? 0,
+          isEdited: m.isEdited ?? false,
+          isPinned: m.isPinned ?? false,
+          likeCount: m.likeCount ?? 0,
+          replyCount: m.replyCount ?? 0,
+          isAiResponse: m.isAI ?? m.isAiResponse ?? false,
+          updatedAt: m.createdAt,
+          deletedAt: m.deletedAt ?? null,
+          sender: {
+            id: m.author?.id ?? m.senderId,
+            name: m.author?.name ?? 'Anonymous',
+            image: m.author?.image ?? null,
+          },
+          attachments: (m.attachments ?? []).map((att: any) => ({
+            id: att.id,
+            name: att.name ?? null,
+            url: att.url,
+            type: att.type,
+            size: att.size ?? null,
+          })),
+          thread: {
+            id: threadId,
+            name: title,
+            slug,
+          },
+        }));
+
+        setLiveMessages((prev) => [...mappedMessages, ...prev]);
+        setHasMoreMessages(hasMore);
+        setNextCursor(newCursor);
+        setDisplayedCount((prev) => prev + mappedMessages.length);
+      } else {
+        toasts.serverError();
+      }
+    } catch (error) {
+      toasts.serverError();
+    } finally {
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }, [hasMoreMessages, nextCursor, threadId, title, slug]);
 
   const liveMessagesRef = useRef<Message[]>(messages);
   useEffect(() => {
@@ -361,6 +434,27 @@ export function ThreadLiveWrapper({
             </div>
           ) : (
             <ErrorBoundary>
+              {hasMoreMessages && (
+                <div className="mb-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={loadMoreMessages}
+                    disabled={isLoadingMore}
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Load older messages ({totalMessageCount - displayedCount} remaining)
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
               <CommentTree
                 messages={liveMessages}
                 threadId={threadId}

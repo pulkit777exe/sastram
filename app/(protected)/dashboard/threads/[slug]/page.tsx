@@ -3,7 +3,7 @@ import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
 import { ShieldCheck, Activity } from 'lucide-react';
 import type { Message } from '@/lib/types/index';
 import { isAdmin, requireSession } from '@/modules/auth/session';
-import { getThreadWithFullContext } from '@/modules/threads';
+import { getThreadWithFullContext, getThreadMessagesPaginated } from '@/modules/threads';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import ThreadDnaCard from '@/components/panels/ThreadDnaCard';
@@ -15,19 +15,17 @@ import ThreadInfoCard from '@/components/panels/ThreadInfoCard';
 import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
 import ParticipantsCard from '@/components/panels/ParticipantsCard';
 
+const INITIAL_MESSAGE_LIMIT = 50;
+
 export default async function ThreadPage({ params }: { params: { slug: string } }) {
   const { slug } = await params;
   const session = await requireSession();
 
-  // Fetch thread first — readReceipt and subscription both need thread.id
   const thread = await getThreadWithFullContext(slug, session.user.id);
   if (!thread) notFound();
 
-  // Fetch dependent data in parallel
-  const [readReceipt, subscription] = await Promise.all([
+  const [readReceipt, subscription, paginatedResult] = await Promise.all([
     getThreadReadReceipt(thread.id, session.user.id),
-    // Inline query — avoids creating a repository function for a single
-    // select used only in this page
     prisma.threadSubscription.findUnique({
       where: {
         threadId_userId: {
@@ -37,13 +35,14 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
       },
       select: { frequency: true },
     }),
+    getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT),
   ]);
 
   const threadDna = parseThreadDna(thread.threadDna);
   const canManagePoll =
     thread.createdBy === session.user.id || ['ADMIN', 'MODERATOR'].includes(session.user.role);
 
-  const allMessages: Message[] = thread.messages.map((m) => {
+  const allMessages: Message[] = paginatedResult.messages.map((m) => {
     const raw = m as { sender?: { name?: string; image?: string }; author?: { name?: string; image?: string }; content?: string; body?: string; isAiResponse?: boolean; isAI?: boolean; id: string; createdAt: Date; senderId: string; parentId?: string | null; depth?: number; isEdited?: boolean; isPinned?: boolean; likeCount?: number; replyCount?: number; deletedAt?: Date | null; attachments?: Array<{ id: string; name?: string | null; url: string; type: string; size?: number | null }> };
     const senderName: string = raw.sender?.name ?? raw.author?.name ?? 'Anonymous';
     const senderImage: string | null = raw.sender?.image ?? raw.author?.image ?? null;
@@ -85,7 +84,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
     };
   });
 
-  const unreadMessages = thread.messages.filter((message) => {
+  const unreadMessages = paginatedResult.messages.filter((message) => {
     if (message.senderId === session.user.id) return false;
     if (!readReceipt?.readAt) return true;
     return message.createdAt > readReceipt.readAt;
@@ -102,6 +101,9 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
           threadId={thread.id}
           initialUnreadCount={initialUnreadCount}
           initialFirstUnreadMessageId={firstUnreadMessageId}
+          hasMoreMessages={paginatedResult.hasMore}
+          nextCursor={paginatedResult.nextCursor}
+          totalMessageCount={paginatedResult.totalCount}
           poll={
             thread.poll
               ? {
