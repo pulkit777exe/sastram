@@ -160,11 +160,7 @@ export class MLClassifier {
       let toxicity = 0;
 
       try {
-        const summary = await aiService.generateSummary(
-          `Analyze this conversation for toxic content. Rate toxicity 0-1:\n${threadText}`
-        );
-        const match = summary.match(/toxicity[:\s]+([0-9.]+)/i);
-        toxicity = match ? parseFloat(match[1]) : 0;
+        toxicity = await aiService.classifyToxicity(threadText);
       } catch (error) {
         logger.warn('Could not analyze content, defaulting to safe:', error);
         toxicity = 0;
@@ -455,10 +451,20 @@ export class ModerationDashboard {
 
     // If action is BLOCK, create a ban
     if (action === 'BLOCK') {
+      const systemUser = await prisma.user.upsert({
+        where: { email: 'system@sastram.com' },
+        create: {
+          email: 'system@sastram.com',
+          name: 'System',
+          role: 'ADMIN',
+        },
+        update: {},
+      });
+
       await prisma.userBan.create({
         data: {
           userId: report.message.senderId,
-          bannedBy: 'system',
+          bannedBy: systemUser.id,
           reason,
           threadId: report.message.threadId,
         },
