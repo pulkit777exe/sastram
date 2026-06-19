@@ -7,6 +7,7 @@ import type { TypingIndicator } from '@/lib/types/index';
 import { validateWebSocketMessage } from '@/lib/schemas/websocket';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { getRedisSub, getThreadChannel, getUserChannel, publishThreadEvent as redisPublish, publishUserEvent as redisUserPublish } from '@/lib/infrastructure/redis-pubsub';
+import { createRedisConnection } from '@/lib/infrastructure/redis-connection';
 import { prisma } from '@/lib/infrastructure/prisma';
 import crypto from 'crypto';
 
@@ -35,7 +36,11 @@ type ThreadChannel = Set<AuthenticatedWebSocket>;
 let wss: WebSocketServer | null = null;
 const threadChannels = new Map<string, ThreadChannel>();
 const connectionsByUserId = new Map<string, Set<AuthenticatedWebSocket>>();
-const typingIndicators = new Map<string, Map<string, TypingIndicator>>();
+
+// Redis-backed typing indicators
+let typingRedis: ReturnType<typeof createRedisConnection> | null = null;
+const TYPING_KEY_PREFIX = 'typing:';
+const TYPING_TTL_SECONDS = 5;
 
 function getThreadId(pathname?: string | null) {
   if (!pathname) return null;
@@ -100,11 +105,49 @@ function unsubscribeFromUser(userId: string) {
   }
 }
 
+// Redis-backed typing indicator functions
+function getTypingKey(threadId: string): string {
+  return `${TYPING_KEY_PREFIX}${threadId}`;
+}
+
+async function setTypingIndicator(threadId: string, userId: string, userName: string): Promise<void> {
+  if (!typingRedis) return;
+  try {
+    const key = getTypingKey(threadId);
+    const data = JSON.stringify({ userId, userName, threadId, timestamp: Date.now() });
+    await typingRedis.hset(key, userId, data);
+    await typingRedis.expire(key, TYPING_TTL_SECONDS);
+  } catch (err) {
+    logger.error('[ws] Failed to set typing indicator in Redis', { error: (err as Error).message });
+  }
+}
+
+async function removeTypingIndicator(threadId: string, userId: string): Promise<void> {
+  if (!typingRedis) return;
+  try {
+    const key = getTypingKey(threadId);
+    await typingRedis.hdel(key, userId);
+  } catch (err) {
+    logger.error('[ws] Failed to remove typing indicator from Redis', { error: (err as Error).message });
+  }
+}
+
+async function getTypingIndicators(threadId: string): Promise<TypingIndicator[]> {
+  if (!typingRedis) return [];
+  try {
+    const key = getTypingKey(threadId);
+    const data = await typingRedis.hgetall(key);
+    return Object.values(data).map((v) => JSON.parse(v) as TypingIndicator);
+  } catch (err) {
+    logger.error('[ws] Failed to get typing indicators from Redis', { error: (err as Error).message });
+    return [];
+  }
+}
+
 export function unregisterSocketFromMaps(
   socket: { userId?: string; threadId?: string },
   threadChannels: Map<string, Set<unknown>>,
   connectionsByUserId: Map<string, Set<unknown>>,
-  typingIndicators: Map<string, Map<string, { userId: string }>>,
 ) {
   if (socket.threadId) {
     const channel = threadChannels.get(socket.threadId);
@@ -115,12 +158,9 @@ export function unregisterSocketFromMaps(
       }
     }
 
-    const threadTyping = typingIndicators.get(socket.threadId);
-    if (threadTyping && socket.userId) {
-      threadTyping.delete(socket.userId);
-      if (threadTyping.size === 0) {
-        typingIndicators.delete(socket.threadId);
-      }
+    // Remove typing indicator from Redis on disconnect
+    if (socket.userId) {
+      removeTypingIndicator(socket.threadId, socket.userId);
     }
   }
 
@@ -136,7 +176,7 @@ export function unregisterSocketFromMaps(
 }
 
 function unregisterSocket(socket: AuthenticatedWebSocket) {
-  unregisterSocketFromMaps(socket, threadChannels, connectionsByUserId, typingIndicators);
+  unregisterSocketFromMaps(socket, threadChannels, connectionsByUserId);
 
   if (socket.threadId) {
     const channel = threadChannels.get(socket.threadId);
@@ -176,33 +216,27 @@ function registerSocket(threadId: string, socket: AuthenticatedWebSocket) {
   socket.on('close', () => unregisterSocket(socket));
 }
 
-function cleanupTypingIndicators() {
-  const now = Date.now();
-  const TYPING_TIMEOUT = 3000;
-
-  typingIndicators.forEach((threadTyping, threadId) => {
-    threadTyping.forEach((indicator, userId) => {
-      if (indicator.timestamp && now - indicator.timestamp > TYPING_TIMEOUT) {
-        threadTyping.delete(userId);
-        publishThreadEvent(threadId, {
-          type: 'USER_STOPPED_TYPING',
-          payload: { userId, threadId: threadId },
-        });
-      }
-    });
-
-    if (threadTyping.size === 0) {
-      typingIndicators.delete(threadId);
-    }
-  });
-}
-
-let typingCleanupInterval: ReturnType<typeof setInterval> | null = null;
-
 export function initWebSocketServer(server: HTTPServer) {
   if (wss) return wss;
 
   wss = new WebSocketServer({ noServer: true });
+
+  // Initialize Redis connection for typing indicators
+  try {
+    typingRedis = createRedisConnection({
+      label: 'ws-typing',
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: false,
+      lazyConnect: true,
+      retryStrategy: (times: number) => {
+        if (times > 3) return null;
+        return Math.min(times * 200, 2000);
+      },
+      enableOfflineQueue: false,
+    });
+  } catch (err) {
+    logger.error('[ws] Failed to create Redis connection for typing indicators', { error: (err as Error).message });
+  }
 
   server.on('upgrade', (request, socket, head) => {
     const { pathname } = parse(request.url || '');
@@ -374,14 +408,8 @@ export function initWebSocketServer(server: HTTPServer) {
         }
 
         if (message.type === 'USER_TYPING' && ws.userId && ws.userName) {
-          const threadTyping = typingIndicators.get(threadId) ?? new Map();
-          threadTyping.set(ws.userId, {
-            userId: ws.userId,
-            userName: ws.userName,
-            threadId: threadId,
-            timestamp: Date.now(),
-          });
-          typingIndicators.set(threadId, threadTyping);
+          // Store typing indicator in Redis with TTL
+          setTypingIndicator(threadId, ws.userId, ws.userName);
 
           publishThreadEvent(threadId, {
             type: 'USER_TYPING',
@@ -392,10 +420,8 @@ export function initWebSocketServer(server: HTTPServer) {
             },
           });
         } else if (message.type === 'USER_STOPPED_TYPING' && ws.userId) {
-          const threadTyping = typingIndicators.get(threadId);
-          if (threadTyping) {
-            threadTyping.delete(ws.userId);
-          }
+          // Remove typing indicator from Redis
+          removeTypingIndicator(threadId, ws.userId);
 
           publishThreadEvent(threadId, {
             type: 'USER_STOPPED_TYPING',
@@ -416,11 +442,6 @@ export function initWebSocketServer(server: HTTPServer) {
     });
   });
 
-  // Start typing indicator cleanup interval
-  if (!typingCleanupInterval) {
-    typingCleanupInterval = setInterval(cleanupTypingIndicators, 1000);
-  }
-
   const heartbeatInterval = setInterval(() => {
     wss?.clients.forEach((ws) => {
       const authWs = ws as AuthenticatedWebSocket;
@@ -434,9 +455,9 @@ export function initWebSocketServer(server: HTTPServer) {
 
   wss.on('close', () => {
     clearInterval(heartbeatInterval);
-    if (typingCleanupInterval) {
-      clearInterval(typingCleanupInterval);
-      typingCleanupInterval = null;
+    if (typingRedis) {
+      typingRedis.disconnect();
+      typingRedis = null;
     }
   });
 
@@ -485,16 +506,11 @@ export function initWebSocketServer(server: HTTPServer) {
 }
 
 export function getWsStats() {
-  const typingTotal = Array.from(typingIndicators.values()).reduce(
-    (sum, threadTyping) => sum + threadTyping.size,
-    0
-  );
-
   return {
     totalConnections: wss?.clients.size ?? 0,
     connectedUsers: connectionsByUserId.size,
     activeThreadRooms: threadChannels.size,
-    activeTypingUsers: typingTotal,
+    activeTypingUsers: 0, // Typing indicators are now Redis-backed with TTL, exact count not trivially available
   };
 }
 
