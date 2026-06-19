@@ -132,6 +132,7 @@ export interface AIService {
   calculateResolutionScore(messages: MessageInput[]): Promise<number>;
   detectConflicts(messages: MessageInput[]): Promise<ConflictResult>;
   generateStreamingResponse(content: string, onChunk: (chunk: string) => void): Promise<void>;
+  classifyToxicity(content: string): Promise<number>;
 }
 
 export class GeminiService implements AIService {
@@ -315,6 +316,38 @@ export class GeminiService implements AIService {
     } catch (error) {
       logger.error('[GeminiService.generateDailyDigest]', { error });
       throw error;
+    } finally {
+      clear();
+    }
+  }
+
+  async classifyToxicity(content: string): Promise<number> {
+    const prompt =
+      'You are a content moderation classifier. Analyze the following text for toxicity. ' +
+      'Toxicity includes: hate speech, harassment, threats, slurs, explicit content, ' +
+      'personal attacks, and harmful language.\n\n' +
+      'Return ONLY a JSON object with a single field "toxicity" containing a number between 0 and 1, ' +
+      'where 0 means completely safe and 1 means extremely toxic.\n\n' +
+      `Text to analyze:\n${content.substring(0, MAX_CONTENT_CHARS)}\n\nJSON:`;
+
+    const { signal, clear } = makeAbortController();
+    try {
+      const result = await withRetry(
+        (retrySignal) =>
+          this.flashModel.generateContent(prompt, {
+            signal: retrySignal,
+          }),
+        3,
+        300,
+        10_000,
+        signal
+      );
+      const text = result.response.text();
+      const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
+      return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;
+    } catch (error) {
+      logger.warn('[GeminiService.classifyToxicity] AI failed, returning safe score', { error });
+      return 0;
     } finally {
       clear();
     }
@@ -521,6 +554,25 @@ export class OpenAIService implements AIService {
       throw error;
     }
   }
+
+  async classifyToxicity(content: string): Promise<number> {
+    try {
+      const text = await this.callOpenAI(
+        'You are a content moderation classifier. Analyze the following text for toxicity. ' +
+          'Toxicity includes: hate speech, harassment, threats, slurs, explicit content, ' +
+          'personal attacks, and harmful language.\n\n' +
+          'Return ONLY a JSON object with a single field "toxicity" containing a number between 0 and 1, ' +
+          'where 0 means completely safe and 1 means extremely toxic.',
+        `Text to analyze:\n${content.substring(0, MAX_CONTENT_CHARS)}`,
+        50
+      );
+      const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
+      return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;
+    } catch (error) {
+      logger.warn('[OpenAIService.classifyToxicity] AI failed, returning safe score', { error });
+      return 0;
+    }
+  }
 }
 
 class AIServiceFactory {
@@ -552,6 +604,9 @@ class NoOpAIService implements AIService {
   }
   async generateStreamingResponse(_content: string, onChunk: (chunk: string) => void) {
     onChunk("(AI not configured)");
+  }
+  async classifyToxicity() {
+    return 0;
   }
 }
 
