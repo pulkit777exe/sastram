@@ -42,6 +42,9 @@ export function useThreadWebSocket({
   const lastTypingEmitRef = useRef<number>(0);
   const [typers, setTypers] = useState<TypingUser[]>([]);
   const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   // Keep callbacks fresh without re-connecting
   const callbacksRef = useRef({
@@ -64,18 +67,33 @@ export function useThreadWebSocket({
   });
 
   useEffect(() => {
-    const ws = createThreadSocket(threadId);
-    if (!ws) {
-      return;
-    }
-    wsRef.current = ws;
+    mountedRef.current = true;
 
-    ws.onopen = () => {};
+    function connect() {
+      if (!mountedRef.current) return;
 
-    ws.onerror = () => {};
+      const ws = createThreadSocket(threadId);
+      if (!ws) return;
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      try {
+      ws.onopen = () => {
+        reconnectAttemptsRef.current = 0;
+      };
+
+      ws.onerror = () => {};
+
+      ws.onclose = () => {
+        wsRef.current = null;
+        if (!mountedRef.current) return;
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s cap
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+        reconnectAttemptsRef.current += 1;
+        reconnectTimeoutRef.current = setTimeout(connect, delay);
+      };
+
+      ws.onmessage = (event) => {
+        try {
         const raw = JSON.parse(event.data as string);
         const validation = validateWebSocketMessage(raw);
         if (!validation.success) {
@@ -225,12 +243,22 @@ export function useThreadWebSocket({
         // Ignore malformed messages
       }
     };
+    } // end connect()
+
+    connect();
 
     const timersMap = typingTimersRef.current;
 
     return () => {
-      ws.close();
-      wsRef.current = null;
+      mountedRef.current = false;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      const currentWs = wsRef.current;
+      if (currentWs) {
+        currentWs.close();
+        wsRef.current = null;
+      }
       timersMap.forEach((t) => clearTimeout(t));
       timersMap.clear();
     };

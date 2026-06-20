@@ -37,6 +37,8 @@ const COMMON_EMOJIS = [
 interface PostMessageFormProps {
   threadId: string;
   onMessagePosted?: (message: Message) => void;
+  onOptimisticMessage?: (message: Message) => void;
+  onMessageError?: (tempId: string) => void;
   replyTo?: {
     messageId: string;
     userName: string;
@@ -51,6 +53,8 @@ interface PostMessageFormProps {
 export function PostMessageForm({
   threadId,
   onMessagePosted,
+  onOptimisticMessage,
+  onMessageError,
   replyTo,
   onCancelReply,
   onTypingStart,
@@ -256,9 +260,44 @@ export function PostMessageForm({
       return;
     }
 
+    const messageContent = content;
+    const tempId = `temp-${crypto.randomUUID()}`;
+
+    // Build optimistic message
+    const optimisticMessage: Message = {
+      id: tempId,
+      content: messageContent,
+      threadId,
+      senderId: '',
+      parentId: replyTo?.messageId ?? null,
+      depth: 0,
+      isEdited: false,
+      isPinned: false,
+      likeCount: 0,
+      replyCount: 0,
+      isAiResponse: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      sender: { id: '', name: null, image: null },
+      thread: { id: threadId, name: '', slug: '' },
+      attachments: [],
+    };
+
+    // Optimistic: add message to UI immediately
+    onOptimisticMessage?.(optimisticMessage);
+
+    // Clear form immediately
+    formRef.current?.reset();
+    setSelectedFile(null);
+    setContent('');
+    setMentionedUserIds([]);
+    closeMentions();
+    onCancelReply?.();
+
     setLoading(true);
     formData.append('threadId', threadId);
-    formData.set('content', content);
+    formData.set('content', messageContent);
 
     if (selectedFile) {
       formData.append('fileName', selectedFile.name);
@@ -278,15 +317,10 @@ export function PostMessageForm({
     setLoading(false);
 
     if (result?.error) {
+      // Rollback: remove optimistic message
+      onMessageError?.(tempId);
       toasts.error(result.error);
     } else if (result?.data?.message) {
-      formRef.current?.reset();
-      setSelectedFile(null);
-      setContent('');
-      setMentionedUserIds([]);
-      closeMentions();
-      onCancelReply?.();
-
       if (onMessagePosted) {
         const msg = result.data.message;
         const transformedMessage = {

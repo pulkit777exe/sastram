@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
-import { validateFileUpload, getFileCategory } from '@/lib/utils/file-upload';
+import { validateFileUpload, getFileCategory, detectMimeTypeFromFile, getExtensionFromMime } from '@/lib/utils/file-upload';
 import { uploadResponseSchema } from '@/lib/schemas/api';
 import { logger } from '@/lib/infrastructure/logger';
 import { randomUUID } from 'crypto';
@@ -36,14 +36,29 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
   const uploadedFiles = await Promise.all(
     files.map(async (file) => {
-      const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
-      const key = ext ? `${randomUUID()}.${ext}` : randomUUID();
+      // Verify file content matches declared MIME type via magic bytes
+      const detectedMime = await detectMimeTypeFromFile(file);
+      if (detectedMime && detectedMime !== file.type) {
+        logger.warn('[upload] MIME mismatch', {
+          declared: file.type,
+          detected: detectedMime,
+          filename: file.name,
+        });
+        // Reject: declared type doesn't match actual content
+        throw new Error(`File content does not match declared type. Detected: ${detectedMime}`);
+      }
+
+      // Derive extension from detected or declared MIME type, not from filename
+      const mimeForExt = detectedMime ?? file.type;
+      const ext = getExtensionFromMime(mimeForExt);
+      const key = `${randomUUID()}.${ext}`;
+
       const blob = await put(key, file, {
         access: 'public',
         addRandomSuffix: false,
       });
 
-      const type = getFileCategory(file.type);
+      const type = getFileCategory(mimeForExt);
 
       return {
         url: blob.url,

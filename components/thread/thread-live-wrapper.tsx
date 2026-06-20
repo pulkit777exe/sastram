@@ -302,7 +302,16 @@ export function ThreadLiveWrapper({
   const handleMessagePosted = useCallback(
     (newMessage: Message) => {
       ownPendingIds.current.add(newMessage.id);
-      setLiveMessages((prev) => [...prev, newMessage]);
+      setLiveMessages((prev) => {
+        // Replace optimistic message if it exists
+        const idx = prev.findIndex((m) => m.id === newMessage.id);
+        if (idx !== -1) {
+          const updated = [...prev];
+          updated[idx] = newMessage;
+          return updated;
+        }
+        return [...prev, newMessage];
+      });
       emitTypingStop();
       if (hasAiMention(newMessage.content)) {
         setAiPending(newMessage.id);
@@ -310,6 +319,20 @@ export function ThreadLiveWrapper({
     },
     [emitTypingStop, hasAiMention, setAiPending]
   );
+
+  const handleOptimisticMessage = useCallback(
+    (optimisticMsg: Message) => {
+      ownPendingIds.current.add(optimisticMsg.id);
+      setLiveMessages((prev) => [...prev, optimisticMsg]);
+      emitTypingStop();
+    },
+    [emitTypingStop]
+  );
+
+  const handleMessageError = useCallback((tempId: string) => {
+    setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
+    ownPendingIds.current.delete(tempId);
+  }, []);
 
   const scrollToFirstUnread = useCallback(() => {
     if (firstUnreadMessageId) {
@@ -521,6 +544,8 @@ export function ThreadLiveWrapper({
           <PostMessageForm
             threadId={threadId}
             onMessagePosted={handleMessagePosted}
+            onOptimisticMessage={handleOptimisticMessage}
+            onMessageError={handleMessageError}
             onTypingStart={emitTypingStart}
             onTypingStop={emitTypingStop}
             canManagePoll={canManagePoll}
