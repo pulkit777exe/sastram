@@ -30,7 +30,7 @@ import { AttachmentItem } from './attachment-item';
 import type { Attachment } from '@/lib/types/index';
 import { countDescendants } from '@/modules/messages/service';
 import { ReportButton } from './report-button';
-import { useThreadContext } from './thread-context';
+import { useThreadDataContext, useThreadUIStateContext } from './thread-context';
 
 const MAX_VISUAL_DEPTH = 4;
 const INDENT_PX = 20;
@@ -122,20 +122,22 @@ export function CommentNode({
   const {
     threadId,
     currentUser,
-    activeReplyId,
-    collapsedIds,
     onReply,
     onCancelReply,
     onToggleCollapse,
     onMessagePosted,
     onFocusBranch,
     onMessageUpdate,
+    onTypingStart,
+    onTypingStop,
+  } = useThreadDataContext();
+  const {
+    activeReplyId,
+    collapsedIds,
     allMessages,
     animateMessageId,
     aiInlineStatus,
-    onTypingStart,
-    onTypingStop,
-  } = useThreadContext();
+  } = useThreadUIStateContext();
   const [appealOpen, setAppealOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(node.likeCount ?? 0);

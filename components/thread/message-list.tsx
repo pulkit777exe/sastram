@@ -37,17 +37,33 @@ function computeCompactFlags(messages: Message[]): boolean[] {
   return flags;
 }
 
-// Flat, chronological replies list
-function getAllDescendants(parentId: string, repliesMap: Map<string, Message[]>): Message[] {
-  const direct = repliesMap.get(parentId) || [];
-  const all: Message[] = [];
+// Flat, chronological replies list — pre-computed per parentId
+function buildAllDescendantsMap(repliesMap: Map<string, Message[]>): Map<string, Message[]> {
+  const cache = new Map<string, Message[]>();
 
-  for (const r of direct) {
-    all.push(r);
-    all.push(...getAllDescendants(r.id, repliesMap));
+  function getDescendants(parentId: string): Message[] {
+    const cached = cache.get(parentId);
+    if (cached) return cached;
+
+    const direct = repliesMap.get(parentId) || [];
+    const all: Message[] = [];
+
+    for (const r of direct) {
+      all.push(r);
+      all.push(...getDescendants(r.id));
+    }
+
+    all.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    cache.set(parentId, all);
+    return all;
   }
 
-  return all.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  // Pre-compute for all parents that have replies
+  for (const parentId of repliesMap.keys()) {
+    getDescendants(parentId);
+  }
+
+  return cache;
 }
 
 function buildRepliesMap(messages: Message[]): Map<string, Message[]> {
@@ -72,6 +88,8 @@ export function MessageList({ firstUnreadMessageId }: MessageListProps) {
   );
 
   const repliesMap = useMemo(() => buildRepliesMap(allMessages), [allMessages]);
+
+  const allDescendantsMap = useMemo(() => buildAllDescendantsMap(repliesMap), [repliesMap]);
 
   const compactFlags = useMemo(
     () => computeCompactFlags(topLevelMessages),
@@ -105,7 +123,7 @@ export function MessageList({ firstUnreadMessageId }: MessageListProps) {
     <div style={{ position: 'relative', height: `${virtualizer.getTotalSize()}px`, minHeight: 0 }}>
       {virtualizer.getVirtualItems().map((virtualItem) => {
         const msg = topLevelMessages[virtualItem.index];
-        const replies = getAllDescendants(msg.id, repliesMap);
+        const replies = allDescendantsMap.get(msg.id) || [];
         const isCompact = compactFlags[virtualItem.index];
         return (
           <div
