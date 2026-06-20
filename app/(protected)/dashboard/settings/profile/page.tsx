@@ -67,7 +67,7 @@ export default async function ProfilePage() {
           <div className="rounded-xl border border-dashed p-6 text-center text-sm text-zinc-600">
             <Link
               href="/dashboard/settings"
-              className="text-brand hover:text-indigo-300 underline"
+              className="text-brand hover:text-brand/80 underline"
             >
               Go to Settings
             </Link>{' '}

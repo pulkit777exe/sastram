@@ -86,7 +86,7 @@ export function CreateTopicButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-brand hover:bg-indigo-400 cursor-pointer">New Thread</Button>
+        <Button className="bg-brand hover:bg-brand/90 cursor-pointer">New Thread</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

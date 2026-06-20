@@ -445,7 +445,7 @@ export function ThreadLiveWrapper({
         <div className="max-w-4xl mx-auto">
           {liveMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-gradient-to-br from-brand/10 to-brand/5 border border-brand/15 dark:from-indigo-950/30 dark:to-violet-950/30 dark:border-brand/30 shadow-sm">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-gradient-to-br from-brand/10 to-brand/5 border border-brand/15 dark:from-brand/20 dark:to-brand/10 dark:border-brand/30 shadow-sm">
                 <svg className="w-8 h-8 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-3.037-.476 4.5 4.5 0 01-5.014-4.986L3 20.25l3.5-1.75A8.956 8.956 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
                 </svg>
@@ -501,7 +501,7 @@ export function ThreadLiveWrapper({
               {[0, 120, 240].map((delay) => (
                 <span
                   key={delay}
-                  className="w-1 h-1 rounded-full bg-indigo-400 animate-bounce"
+                  className="w-1 h-1 rounded-full bg-brand animate-bounce"
                   style={{ animationDelay: `${delay}ms` }}
                 />
               ))}

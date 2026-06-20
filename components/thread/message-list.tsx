@@ -286,7 +286,7 @@ const MessageRow = React.memo(function MessageRow({
                 {message.sender.name || 'Anonymous'}
               </span>
               {isOwnMessage && (
-                <span className="bg-brand/15 dark:bg-indigo-950/50 text-brand dark:text-brand text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
+                <span className="bg-brand/15 dark:bg-brand/20 text-brand text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
                   you
                 </span>
               )}
