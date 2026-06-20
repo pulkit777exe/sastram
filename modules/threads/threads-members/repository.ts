@@ -1,4 +1,4 @@
-import { ThreadRole } from '@prisma/client';
+import type { ThreadRole } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import type { ThreadMember } from '@/modules/threads/types';

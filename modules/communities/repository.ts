@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { cache } from 'react';
 import type { CommunitySummary } from './types';
 import { dedupe } from '@/lib/dedupe';

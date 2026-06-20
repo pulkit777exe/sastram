@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import { logger } from '@/lib/infrastructure/logger';
 import type { AISearchResponse } from './types';

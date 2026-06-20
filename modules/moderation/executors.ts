@@ -1,7 +1,7 @@
 import { revalidatePath } from 'next/cache';
 import { emitMessageDeleted } from '@/modules/ws';
 import { logAction } from '@/modules/audit';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { ROUTES } from '@/lib/config/routes';
 
 export async function executeMessageDeletionEffects(args: {

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { computeHasMore } from '@/lib/db/pagination';
 
 export async function recordActivity(data: {

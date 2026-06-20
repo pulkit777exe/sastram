@@ -1,7 +1,8 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { Role, ThreadMember, ThreadRole, User } from '@prisma/client';
+import { Role } from '@prisma/client';
+import type { ThreadMember, ThreadRole, User } from '@prisma/client';
 import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';

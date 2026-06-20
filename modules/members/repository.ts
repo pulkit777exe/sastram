@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { ThreadRole, MemberStatus } from '@prisma/client';
+import type { ThreadRole } from '@prisma/client';
 import { cache } from 'react';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';

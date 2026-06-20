@@ -34,7 +34,7 @@ import { toasts } from '@/lib/utils/toast';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import { getThreadMembersAction, manageThreadMemberAction } from '@/modules/threads/actions';
 import type { ThreadMember } from '@/modules/threads/types';
-import { ThreadRole } from '@prisma/client';
+import type { ThreadRole } from '@prisma/client';
 
 interface ThreadAccessModalProps {
   threadId: string;

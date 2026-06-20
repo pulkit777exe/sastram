@@ -1,4 +1,4 @@
-import { ThreadRole, MemberStatus, UserStatus } from '@prisma/client';
+import type { ThreadRole, MemberStatus, UserStatus } from '@prisma/client';
 
 /**
  * Member domain types

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 interface BadgeCriteria {
   type: string;

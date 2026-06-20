@@ -89,7 +89,7 @@ export async function isUserSubscribedToThread(threadId: string, userId: string)
   return Boolean(subscription);
 }
 
-import { DigestFrequency } from '@prisma/client';
+import type { DigestFrequency } from '@prisma/client';
 
 export async function updateSubscriptionFrequency({
   threadId,

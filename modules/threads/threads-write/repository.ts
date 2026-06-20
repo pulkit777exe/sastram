@@ -2,7 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { buildThreadDTO } from '@/modules/threads/service';
 import type { ThreadRecord, ThreadSummary } from '@/modules/threads/types';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { getThreadDnaQueue, getResolutionScoreQueue } from '@/lib/queue/queue';
 import { AIJobType, DEFAULT_JOB_OPTIONS } from '@/lib/queue/config';
