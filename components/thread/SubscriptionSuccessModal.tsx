@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Sparkles, CheckCircle2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import confetti from 'canvas-confetti';
 
 interface SubscriptionSuccessModalProps {
   isOpen: boolean;
@@ -29,27 +28,34 @@ export function SubscriptionSuccessModal({
       const duration = 2000;
       const end = Date.now() + duration;
 
-      const frame = () => {
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ['#6366f1', '#8b5cf6', '#a855f7'],
-        });
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ['#6366f1', '#8b5cf6', '#a855f7'],
-        });
+      let cancelled = false;
 
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      };
-      frame();
+      import('canvas-confetti').then(({ default: confetti }) => {
+        const frame = () => {
+          if (cancelled) return;
+          confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: ['#6366f1', '#8b5cf6', '#a855f7'],
+          });
+          confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: ['#6366f1', '#8b5cf6', '#a855f7'],
+          });
+
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        };
+        frame();
+      });
+
+      return () => { cancelled = true; };
     }
   }, [isOpen, mounted]);
 
