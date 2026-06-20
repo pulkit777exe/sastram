@@ -8,7 +8,6 @@ import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/thread
 type ThreadStorageWithCommunityAndCount = Prisma.ThreadGetPayload<{
   include: {
     community: true;
-    messages: { select: { senderId: true } };
     _count: { select: { messages: true; members: true } };
   };
 }>;
@@ -66,24 +65,14 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
   }
 
   try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
     const [totalItems, threadRows] = await Promise.all([
       prisma.thread.count({ where }),
       prisma.thread.findMany({
         where,
         include: {
           community: true,
-          messages: {
-            where: {
-              deletedAt: null,
-              createdAt: {
-                gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-              },
-            },
-            select: {
-              senderId: true,
-              createdAt: true,
-            },
-          },
           members: {
             where: {
               status: 'ACTIVE',
@@ -115,12 +104,31 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
       }),
     ]);
 
+    // Aggregate unique active user counts per thread in the last 7 days
+    const threadIds = (threadRows ?? []).map((t) => t.id);
+    let activeUserMap = new Map<string, number>();
+    if (threadIds.length > 0) {
+      const activeUserCounts = await prisma.$queryRaw<
+        Array<{ threadId: string; uniqueUsers: bigint }>
+      >`
+        SELECT "threadId", COUNT(DISTINCT "senderId")::bigint as "uniqueUsers"
+        FROM "messages"
+        WHERE "threadId" IN (${Prisma.join(threadIds)})
+          AND "deletedAt" IS NULL
+          AND "createdAt" >= ${sevenDaysAgo}
+        GROUP BY "threadId"
+      `;
+      for (const row of activeUserCounts) {
+        activeUserMap.set(row.threadId, Number(row.uniqueUsers));
+      }
+    }
+
     let mappedThreads = (threadRows ?? []).map((thread: ThreadStorageWithCommunityAndCount) => {
-      const uniqueActiveUsers = new Set(thread.messages.map((message) => message.senderId));
+      const uniqueActiveUsers = activeUserMap.get(thread.id) ?? 0;
       return buildThreadDTO(
         thread as unknown as ThreadRecord,
         thread._count.messages,
-        uniqueActiveUsers.size,
+        uniqueActiveUsers,
         thread._count.members
       );
     });
