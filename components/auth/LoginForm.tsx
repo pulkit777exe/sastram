@@ -753,7 +753,6 @@ export function LoginForm({
             </Link>
             .
           </p>
-        </div>
       </div>
     </div>
   );

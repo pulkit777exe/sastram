@@ -251,7 +251,7 @@ function DarkMetric({
     <div className="border p-5 rounded-2xl flex items-center gap-4 transition-colors">
       <div className={cn('p-3 rounded-xl', colors[color] ?? colors.blue)}>{icon}</div>
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
         <p className="text-2xl font-bold">{value}</p>
       </div>
     </div>

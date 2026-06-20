@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toasts } from '@/lib/utils/toast';
+import { SerifHeading } from '@/components/layout/serif-heading';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -41,13 +42,15 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
+    <main className="flex flex-1 items-center justify-center py-16 px-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-8 space-y-5 shadow-sm"
       >
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">Forgot Password</h1>
+          <SerifHeading as="h1" className="text-2xl tracking-tight block">
+            Forgot Password
+          </SerifHeading>
           <p className="text-sm text-muted-foreground">
             Enter your email and we&apos;ll send a 6-digit reset code.
           </p>
@@ -63,13 +66,18 @@ export default function ForgotPasswordPage() {
             onChange={(event) => setEmail(event.target.value)}
             disabled={isSubmitting}
             placeholder="name@example.com"
+            className="h-11 rounded-xl"
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting || !email}>
+        <Button
+          type="submit"
+          className="w-full h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={isSubmitting || !email}
+        >
           {isSubmitting ? 'Sending...' : 'Send Reset Code'}
         </Button>
       </form>
-    </div>
+    </main>
   );
 }
