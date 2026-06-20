@@ -53,6 +53,10 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
 
   MODERATION_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+
+  SASTRAM_EXA_KEY: z.string().optional(),
+  SASTRAM_TAVILY_KEY: z.string().optional(),
+  SASTRAM_GEMINI_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
