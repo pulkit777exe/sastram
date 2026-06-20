@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toasts } from '@/lib/utils/toast';
+import { SerifHeading } from '@/components/layout/serif-heading';
 
 function hasNumber(value: string) {
   return /\d/.test(value);
@@ -96,13 +97,15 @@ export default function ForgotPasswordResetPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
+    <main className="flex flex-1 items-center justify-center py-16 px-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-8 space-y-5 shadow-sm"
       >
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">Set New Password</h1>
+          <SerifHeading as="h1" className="text-2xl tracking-tight block">
+            Set New Password
+          </SerifHeading>
           <p className="text-sm text-muted-foreground">
             Choose a strong password for {email || 'your account'}.
           </p>
@@ -117,6 +120,7 @@ export default function ForgotPasswordResetPage() {
             onChange={(event) => setPassword(event.target.value)}
             disabled={isSubmitting}
             required
+            className="h-11 rounded-xl"
           />
         </div>
 
@@ -129,10 +133,11 @@ export default function ForgotPasswordResetPage() {
             onChange={(event) => setConfirmPassword(event.target.value)}
             disabled={isSubmitting}
             required
+            className="h-11 rounded-xl"
           />
         </div>
 
-        <div className="rounded-md border border-border p-3 text-xs space-y-1 text-muted-foreground">
+        <div className="rounded-xl border border-border p-3 text-xs space-y-1 text-muted-foreground">
           <p className={validation.minLength ? 'text-emerald-500' : ''}>Minimum 8 characters</p>
           <p className={validation.includesNumber ? 'text-emerald-500' : ''}>At least one number</p>
           <p className={validation.includesSpecial ? 'text-emerald-500' : ''}>
@@ -141,10 +146,14 @@ export default function ForgotPasswordResetPage() {
           <p className={validation.matches ? 'text-emerald-500' : ''}>Passwords match</p>
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting || !validation.valid}>
+        <Button
+          type="submit"
+          className="w-full h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={isSubmitting || !validation.valid}
+        >
           {isSubmitting ? 'Updating...' : 'Update Password'}
         </Button>
       </form>
-    </div>
+    </main>
   );
 }
