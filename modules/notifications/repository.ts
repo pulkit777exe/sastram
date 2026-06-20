@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import type { NotificationType, Prisma } from '@prisma/client';
+import { Prisma, type NotificationType } from '@prisma/client';
 import { cache } from 'react';
 import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
@@ -26,6 +26,18 @@ interface NotificationFilters {
 
 import { publishUserEvent } from '@/lib/infrastructure/websocket';
 
+async function getBulkUnreadCounts(userIds: string[]): Promise<Map<string, number>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await prisma.$queryRaw<Array<{ userId: string; count: bigint }>>`
+    SELECT "userId", COUNT(*)::bigint as "count"
+    FROM "notifications"
+    WHERE "userId" IN (${Prisma.join(userIds)})
+      AND "isRead" = false
+    GROUP BY "userId"
+  `;
+  return new Map(rows.map((r) => [r.userId, Number(r.count)]));
+}
+
 export async function createNotification({
   userId,
   type,
@@ -43,10 +55,8 @@ export async function createNotification({
     },
   });
 
-  // Get actual unread count
   const unreadCount = await getUnreadCount(userId);
 
-  // Publish notification count update to user's WebSocket connections
   publishUserEvent(userId, {
     type: 'NOTIFICATION_COUNT_UPDATE',
     payload: { unreadCount },
@@ -66,21 +76,19 @@ export async function createBulkNotifications(notifications: CreateNotificationP
     })),
   });
 
-  // Publish count updates to each affected user's WebSocket connections
   const uniqueUserIds = [...new Set(notifications.map((n) => n.userId))];
-  for (const userId of uniqueUserIds) {
-    try {
-      const unreadCount = await getUnreadCount(userId);
+  try {
+    const counts = await getBulkUnreadCounts(uniqueUserIds);
+    for (const userId of uniqueUserIds) {
       publishUserEvent(userId, {
         type: 'NOTIFICATION_COUNT_UPDATE',
-        payload: { unreadCount },
-      });
-    } catch (err) {
-      logger.error('[createBulkNotifications] Failed to publish count update', {
-        userId,
-        error: err instanceof Error ? err.message : String(err),
+        payload: { unreadCount: counts.get(userId) ?? 0 },
       });
     }
+  } catch (err) {
+    logger.error('[createBulkNotifications] Failed to publish count updates', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return result;
@@ -296,20 +304,18 @@ export async function notifyMultipleUsers(
     })),
   });
 
-  // Publish count updates to each user's WebSocket connections
-  for (const userId of userIds) {
-    try {
-      const unreadCount = await getUnreadCount(userId);
+  try {
+    const counts = await getBulkUnreadCounts(userIds);
+    for (const userId of userIds) {
       publishUserEvent(userId, {
         type: 'NOTIFICATION_COUNT_UPDATE',
-        payload: { unreadCount },
-      });
-    } catch (err) {
-      logger.error('[notifyMultipleUsers] Failed to publish count update', {
-        userId,
-        error: err instanceof Error ? err.message : String(err),
+        payload: { unreadCount: counts.get(userId) ?? 0 },
       });
     }
+  } catch (err) {
+    logger.error('[notifyMultipleUsers] Failed to publish count updates', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return result;

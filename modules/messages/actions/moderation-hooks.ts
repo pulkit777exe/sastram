@@ -1,14 +1,14 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { MessageService } from '@/lib/services/moderation';
 
+const messageService = new MessageService();
+
 export async function moderateIncomingMessage(args: {
   threadId: string;
   authorId: string;
   content: string;
   parentId: string | null;
 }) {
-  const messageService = new MessageService();
-
   const recentMessages = await prisma.message.findMany({
     where: { threadId: args.threadId, deletedAt: null },
     orderBy: { createdAt: 'desc' },

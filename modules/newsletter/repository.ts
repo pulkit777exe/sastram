@@ -52,7 +52,7 @@ export async function getThreadTranscript(threadId: string) {
   try {
     return (
       (await prisma.message.findMany({
-        where: { threadId: threadId },
+        where: { threadId: threadId, deletedAt: null },
         include: {
           sender: {
             select: { id: true, name: true, email: true, image: true },
@@ -61,6 +61,7 @@ export async function getThreadTranscript(threadId: string) {
         orderBy: {
           createdAt: 'asc',
         },
+        take: 500,
       })) ?? []
     );
   } catch (error) {

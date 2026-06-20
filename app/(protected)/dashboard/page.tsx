@@ -1,6 +1,7 @@
 
 import type { ReactNode } from 'react';
 import { Users, MessageSquare, Star, ChevronDown, TrendingUp } from 'lucide-react';
+import { Prisma } from '@prisma/client';
 import { isAdmin, getSession } from '@/modules/auth/session';
 import { listThreads } from '@/modules/threads/repository';
 import { listCommunities } from '@/modules/communities/repository';
@@ -52,7 +53,6 @@ export default async function DashboardPage({
         messageCount: true,
         community: { select: { title: true } },
         tags: { select: { tag: { select: { name: true } } } },
-        messages: { select: { senderId: true, createdAt: true } },
         _count: { select: { messages: true } },
       },
       orderBy: { updatedAt: 'desc' },
@@ -62,9 +62,11 @@ export default async function DashboardPage({
 
   const threadIds = topicThreads.map((s) => s.id);
 
-  const readReceiptRows =
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [readReceiptRows, activeUserCounts, unreadCounts] = await Promise.all([
     threadIds.length > 0
-      ? await prisma.readReceipt
+      ? prisma.readReceipt
           .findMany({
             where: {
               userId: session.user.id,
@@ -79,29 +81,46 @@ export default async function DashboardPage({
             console.error('[dashboard.readReceipts]', err);
             return [];
           })
-      : [];
+      : [],
+    threadIds.length > 0
+      ? prisma.$queryRaw<Array<{ threadId: string; uniqueUsers: bigint }>>`
+          SELECT "threadId", COUNT(DISTINCT "senderId")::bigint as "uniqueUsers"
+          FROM "messages"
+          WHERE "threadId" IN (${Prisma.join(threadIds)})
+            AND "deletedAt" IS NULL
+            AND "createdAt" >= ${sevenDaysAgo}
+          GROUP BY "threadId"
+        `
+      : [],
+    threadIds.length > 0
+      ? prisma.$queryRaw<Array<{ threadId: string; unread: bigint }>>`
+          SELECT m."threadId", COUNT(*)::bigint as "unread"
+          FROM "messages" m
+          LEFT JOIN "read_receipts" rr ON rr."threadId" = m."threadId" AND rr."userId" = ${session.user.id}
+          WHERE m."threadId" IN (${Prisma.join(threadIds)})
+            AND m."deletedAt" IS NULL
+            AND m."senderId" != ${session.user.id}
+            AND (rr."readAt" IS NULL OR m."createdAt" > rr."readAt")
+          GROUP BY m."threadId"
+        `
+      : [],
+  ]);
 
   const readAtByThread = new Map(readReceiptRows.map((row) => [row.threadId, row.readAt]));
+  const activeUserMap = new Map(activeUserCounts.map((r) => [r.threadId, Number(r.uniqueUsers)]));
+  const unreadMap = new Map(unreadCounts.map((r) => [r.threadId, Number(r.unread)]));
 
   const totalMessages = topicThreads.reduce((acc, t) => acc + t.messageCount, 0);
 
   const threadTopics = topicThreads.map((thread) => {
-    const readAt = readAtByThread.get(thread.id);
-
-    const unreadCount = thread.messages.filter((msg) => {
-      if (msg.senderId === session.user.id) return false;
-      if (!readAt) return true;
-      return msg.createdAt > readAt;
-    }).length;
-
     return {
       id: thread.id,
       slug: thread.slug,
       name: thread.name,
       description: thread.description ?? 'No description',
-      activeUsers: new Set(thread.messages.map((m) => m.senderId)).size,
+      activeUsers: activeUserMap.get(thread.id) ?? 0,
       messagesCount: thread._count.messages,
-      unreadCount,
+      unreadCount: unreadMap.get(thread.id) ?? 0,
       trending: thread._count.messages > 10,
       tags:
         thread.tags.length > 0

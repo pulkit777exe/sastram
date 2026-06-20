@@ -283,6 +283,7 @@ model ThreadMember {
 
   @@unique([threadId, userId])
   @@index([threadId])
+  @@index([threadId, status])
   @@index([userId])
   @@map("thread_members")
 }

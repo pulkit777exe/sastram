@@ -65,7 +65,7 @@ export async function findRelatedThreads(threadId: string): Promise<
       return [];
     }
 
-    // Get all other threads with thread DNA
+    // Get other threads with thread DNA (bounded to prevent unbounded scans)
     const otherThreads = await prisma.thread.findMany({
       where: {
         id: { not: threadId },
@@ -77,6 +77,7 @@ export async function findRelatedThreads(threadId: string): Promise<
         slug: true,
         threadDna: true,
       },
+      take: 1000,
     });
 
     // Calculate similarity for each thread
@@ -201,7 +202,7 @@ export async function updateAllThreadRelations(): Promise<{
       where: {
         threadDna: { not: Prisma.DbNull },
         updatedAt: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         },
       },
       select: {
@@ -210,6 +211,7 @@ export async function updateAllThreadRelations(): Promise<{
         slug: true,
         threadDna: true,
       },
+      take: 500,
     });
 
     stats.processed = threads.length;
@@ -264,16 +266,20 @@ export async function updateAllThreadRelations(): Promise<{
       stats.updated += toCreate.length;
     }
 
-    // Batch update changed relations
+    // Batch update changed relations (process in chunks to avoid overwhelming DB)
     if (toUpdate.length > 0) {
-      await Promise.all(
-        toUpdate.map(u =>
-          prisma.threadRelation.update({
-            where: { id: u.id },
-            data: { similarity: u.similarity },
-          })
-        )
-      );
+      const BATCH = 50;
+      for (let i = 0; i < toUpdate.length; i += BATCH) {
+        const chunk = toUpdate.slice(i, i + BATCH);
+        await Promise.all(
+          chunk.map(u =>
+            prisma.threadRelation.update({
+              where: { id: u.id },
+              data: { similarity: u.similarity },
+            })
+          )
+        );
+      }
       stats.updated += toUpdate.length;
     }
   } catch (error) {

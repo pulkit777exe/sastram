@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
           messages: {
             take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
             orderBy: { createdAt: 'desc' },
-            include: { sender: true },
+            include: { sender: { select: { name: true } } },
           },
           subscriptions: true,
         },

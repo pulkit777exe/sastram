@@ -12,26 +12,6 @@ type ThreadStorageWithCommunityAndCount = Prisma.ThreadGetPayload<{
   };
 }>;
 
-type ThreadStorageWithFullDetails = Prisma.ThreadGetPayload<{
-  include: {
-    community: true;
-    messages: {
-      include: {
-        sender: {
-          select: {
-            id: true;
-            name: true;
-            image: true;
-          };
-        };
-        attachments: true;
-      };
-    };
-    subscriptions: true;
-    _count: { select: { messages: true } };
-  };
-}>;
-
 export interface ListThreadsParams {
   page?: number;
   pageSize?: number;
@@ -73,11 +53,6 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
         where,
         include: {
           community: true,
-          members: {
-            where: {
-              status: 'ACTIVE',
-            },
-          },
           _count: {
             select: {
               messages: {
@@ -177,23 +152,6 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
     },
     include: {
       community: true,
-      messages: {
-        include: {
-          sender: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
-          },
-          attachments: true,
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-        take: 500,
-      },
-      subscriptions: true,
       _count: {
         select: {
           messages: {
@@ -201,6 +159,12 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
               deletedAt: null,
             },
           },
+          members: {
+            where: {
+              status: 'ACTIVE',
+            },
+          },
+          subscriptions: true,
         },
       },
     },
@@ -210,20 +174,21 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
     return null;
   }
 
-  const typedRow = row as ThreadStorageWithFullDetails;
-
-  const memberCount = await prisma.threadMember.count({
-    where: {
-      threadId: typedRow.id,
-      status: 'ACTIVE',
-    },
-  });
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const activeUserRows = await prisma.$queryRaw<Array<{ uniqueUsers: bigint }>>`
+    SELECT COUNT(DISTINCT "senderId")::bigint as "uniqueUsers"
+    FROM "messages"
+    WHERE "threadId" = ${row.id}
+      AND "deletedAt" IS NULL
+      AND "createdAt" >= ${sevenDaysAgo}
+  `;
+  const activeUsers = Number(activeUserRows[0]?.uniqueUsers ?? 0);
 
   return buildThreadDetailDTO(
-    typedRow as unknown as ThreadRecord,
-    typedRow._count.messages,
-    new Set(typedRow.messages.map((message) => message.senderId)).size,
-    memberCount,
-    typedRow.subscriptions?.length ?? 0
+    row as unknown as ThreadRecord,
+    row._count.messages,
+    activeUsers,
+    row._count.members,
+    row._count.subscriptions
   );
 });

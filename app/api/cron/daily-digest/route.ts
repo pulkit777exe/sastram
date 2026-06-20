@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
                   lte: end,
                 },
               },
-              include: { sender: true },
+              include: { sender: { select: { name: true } } },
               orderBy: { createdAt: 'asc' },
             },
           },

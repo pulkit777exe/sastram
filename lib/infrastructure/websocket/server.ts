@@ -311,15 +311,16 @@ export function initWebSocketServer(server: HTTPServer) {
           if (threadId) {
             authWs.threadId = threadId;
             registerSocket(threadId, authWs);
-          }
-
-          // Register user connection
-          const wasUserEmpty = !connectionsByUserId.has(authWs.userId);
-          const userConns = connectionsByUserId.get(authWs.userId) ?? new Set();
-          userConns.add(authWs);
-          connectionsByUserId.set(authWs.userId, userConns);
-          if (wasUserEmpty) {
-            subscribeToUser(authWs.userId);
+          } else {
+            // Notifications-only connection: register user without a thread channel.
+            // Cleanup handled by wss.on('connection') close handler.
+            const wasUserEmpty = !connectionsByUserId.has(authWs.userId);
+            const userConns = connectionsByUserId.get(authWs.userId) ?? new Set();
+            userConns.add(authWs);
+            connectionsByUserId.set(authWs.userId, userConns);
+            if (wasUserEmpty) {
+              subscribeToUser(authWs.userId);
+            }
           }
 
           wss?.emit('connection', authWs, request);
