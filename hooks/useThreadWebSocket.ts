@@ -2,8 +2,20 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { createThreadSocket } from '@/lib/services/thread-socket';
-import { validateWebSocketMessage } from '@/lib/schemas/websocket';
 import type { Message } from '@/lib/types/index';
+
+const VALID_WS_TYPES = new Set([
+  'NEW_MESSAGE', 'MESSAGE_DELETED', 'PIN_UPDATE', 'REACTION_UPDATE',
+  'USER_TYPING', 'USER_STOPPED_TYPING',
+]);
+
+function validateWsMessage(raw: unknown): { type: string; payload: Record<string, unknown> } | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const msg = raw as Record<string, unknown>;
+  if (typeof msg.type !== 'string' || !VALID_WS_TYPES.has(msg.type)) return null;
+  if (!msg.payload || typeof msg.payload !== 'object') return null;
+  return { type: msg.type, payload: msg.payload as Record<string, unknown> };
+}
 
 export interface TypingUser {
   userId: string;
@@ -95,12 +107,10 @@ export function useThreadWebSocket({
       ws.onmessage = (event) => {
         try {
         const raw = JSON.parse(event.data as string);
-        const validation = validateWebSocketMessage(raw);
-        if (!validation.success) {
+        const msg = validateWsMessage(raw);
+        if (!msg) {
           return;
         }
-
-        const msg = validation.data;
 
         switch (msg.type) {
           case 'NEW_MESSAGE': {
