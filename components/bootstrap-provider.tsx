@@ -53,6 +53,10 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<BootstrapData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // Separate state for notification count — updates via WebSocket don't
+  // recreate the `data` object, so consumers that only read `data` (user,
+  // reputation, communities) won't re-render on every notification push.
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   const router = useRouter();
   const mountedRef = useRef(true);
@@ -94,6 +98,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
 
       if (mountedRef.current) {
         setData(payload);
+        setUnreadNotificationCount(payload.unreadNotificationCount);
       }
     } catch (err) {
       if (!mountedRef.current) return;
@@ -163,9 +168,8 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
           payload: { unreadCount: number };
         };
         if (message.type === 'NOTIFICATION_COUNT_UPDATE') {
-          setData((prev) =>
-            prev ? { ...prev, unreadNotificationCount: message.payload.unreadCount } : prev
-          );
+          // Update only the notification count — don't touch `data`
+          setUnreadNotificationCount(message.payload.unreadCount);
         }
       } catch {
         // ignore
@@ -218,23 +222,15 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   }, [data?.user?.id, connectWebSocket]);
 
   const setNotificationCount = useCallback((count: number) => {
-    setData((prev) => (prev ? { ...prev, unreadNotificationCount: Math.max(0, count) } : prev));
+    setUnreadNotificationCount(Math.max(0, count));
   }, []);
 
   const incrementNotificationCount = useCallback((delta: number = 1) => {
-    setData((prev) =>
-      prev
-        ? { ...prev, unreadNotificationCount: Math.max(0, prev.unreadNotificationCount + delta) }
-        : prev
-    );
+    setUnreadNotificationCount((prev) => Math.max(0, prev + delta));
   }, []);
 
   const decrementNotificationCount = useCallback((delta: number = 1) => {
-    setData((prev) =>
-      prev
-        ? { ...prev, unreadNotificationCount: Math.max(0, prev.unreadNotificationCount - delta) }
-        : prev
-    );
+    setUnreadNotificationCount((prev) => Math.max(0, prev - delta));
   }, []);
 
   const updateUser = useCallback((user: Partial<BootstrapUser>) => {
@@ -249,9 +245,18 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     await fetchBootstrap();
   }, [fetchBootstrap]);
 
+  // Derive the `data` object with the live notification count so consumers
+  // that read `data.unreadNotificationCount` still see the current value,
+  // but the underlying `data` reference only changes when non-notification
+  // fields change.
+  const derivedData = useMemo(() => {
+    if (!data) return null;
+    return { ...data, unreadNotificationCount };
+  }, [data, unreadNotificationCount]);
+
   const value = useMemo(
     () => ({
-      data,
+      data: derivedData,
       isLoading,
       error,
       setData,
@@ -263,7 +268,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       invalidate,
     }),
     [
-      data,
+      derivedData,
       isLoading,
       error,
       setNotificationCount,
