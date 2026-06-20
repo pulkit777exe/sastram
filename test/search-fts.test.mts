@@ -15,7 +15,7 @@ async function dbAvailable(): Promise<boolean> {
 describe('FTS Search with GIN indexes', () => {
   let dbOk = false;
   const testId = `test-${Date.now()}`;
-  let testSectionId: string;
+  let testThreadId: string;
   let testUserId: string;
 
   before(async function () {
@@ -27,7 +27,7 @@ describe('FTS Search with GIN indexes', () => {
     }
 
     testUserId = `user-${testId}`;
-    testSectionId = `section-${testId}`;
+    testThreadId = `thread-${testId}`;
 
     await prisma.$executeRaw`
       INSERT INTO "users" ("id", "email", "name")
@@ -36,14 +36,14 @@ describe('FTS Search with GIN indexes', () => {
     `;
 
     await prisma.$executeRaw`
-      INSERT INTO "sections" ("id", "name", "slug", "description", "createdBy")
-      VALUES (${testSectionId}, 'Docker Networking Guide', ${`${testId}-docker`}, 'How to configure Docker networks and bridge mode', ${testUserId})
+      INSERT INTO "threads" ("id", "name", "slug", "description", "createdBy")
+      VALUES (${testThreadId}, 'Docker Networking Guide', ${`${testId}-docker`}, 'How to configure Docker networks and bridge mode', ${testUserId})
       ON CONFLICT ("id") DO NOTHING
     `;
 
     await prisma.$executeRaw`
-      INSERT INTO "messages" ("id", "content", "sectionId", "senderId")
-      VALUES (${`msg-${testId}`}, 'Docker containers communicate through bridge networks', ${testSectionId}, ${testUserId})
+      INSERT INTO "messages" ("id", "content", "threadId", "senderId")
+      VALUES (${`msg-${testId}`}, 'Docker containers communicate through bridge networks', ${testThreadId}, ${testUserId})
       ON CONFLICT ("id") DO NOTHING
     `;
   });
@@ -52,7 +52,7 @@ describe('FTS Search with GIN indexes', () => {
     if (!dbOk) this.skip();
     const result = await searchThreads('docker networking');
     expect(result.threads.length).to.be.greaterThan(0);
-    const match = result.threads.find((t) => t.id === testSectionId);
+    const match = result.threads.find((t) => t.id === testThreadId);
     expect(match).to.not.be.undefined;
     expect(match!.name).to.equal('Docker Networking Guide');
   });
@@ -79,7 +79,7 @@ describe('FTS Search with GIN indexes', () => {
   after(async () => {
     if (!dbOk) return;
     await prisma.$executeRaw`DELETE FROM "messages" WHERE "id" = ${`msg-${testId}`}`;
-    await prisma.$executeRaw`DELETE FROM "sections" WHERE "id" = ${testSectionId}`;
+    await prisma.$executeRaw`DELETE FROM "threads" WHERE "id" = ${testThreadId}`;
     await prisma.$executeRaw`DELETE FROM "users" WHERE "id" = ${testUserId}`;
   });
 });
