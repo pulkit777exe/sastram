@@ -8,7 +8,7 @@ interface InlineReplyThreadProps {
   onReplyClick?: (messageId?: string) => void;
 }
 
-export function InlineReplyThread({ replies, onReplyClick }: InlineReplyThreadProps) {
+export const InlineReplyThread = React.memo(function InlineReplyThread({ replies, onReplyClick }: InlineReplyThreadProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (replies.length === 0) return null;
@@ -127,4 +127,4 @@ export function InlineReplyThread({ replies, onReplyClick }: InlineReplyThreadPr
       )}
     </div>
   );
-}
+});

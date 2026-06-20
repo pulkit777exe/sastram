@@ -8,7 +8,7 @@ import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actio
 import { toggleReaction } from '@/modules/reactions/actions';
 import { toasts } from '@/lib/utils/toast';
 import type { Message } from '@/lib/types/index';
-import { useThreadContext } from './thread-context';
+import { useThreadDataContext, useThreadUIStateContext } from './thread-context';
 import { InlineReplyThread } from './inline-reply-thread';
 import { MessageActions } from './message-actions';
 import { InlineReplyBox } from './inline-reply-box';
@@ -63,7 +63,8 @@ function buildRepliesMap(messages: Message[]): Map<string, Message[]> {
 }
 
 export function MessageList({ firstUnreadMessageId }: MessageListProps) {
-  const { allMessages, scrollContainerRef } = useThreadContext();
+  const { scrollContainerRef } = useThreadDataContext();
+  const { allMessages } = useThreadUIStateContext();
 
   const topLevelMessages = useMemo(
     () => allMessages.filter((m) => !m.parentId),
@@ -146,7 +147,7 @@ function CompactTimestamp({ time }: { time: Date | string }) {
   );
 }
 
-function MessageRow({
+const MessageRow = React.memo(function MessageRow({
   message,
   isCompact,
   isFirstUnread,
@@ -160,15 +161,14 @@ function MessageRow({
   const {
     threadId,
     currentUser,
-    activeReplyId,
     onReply,
     onCancelReply,
     onMessagePosted,
     onMessageUpdate,
-    aiInlineStatus,
     onTypingStart,
     onTypingStop,
-  } = useThreadContext();
+  } = useThreadDataContext();
+  const { activeReplyId, aiInlineStatus } = useThreadUIStateContext();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -456,4 +456,4 @@ function MessageRow({
       )}
     </>
   );
-}
+});

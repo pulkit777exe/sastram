@@ -4,12 +4,13 @@ import { useState, useCallback } from 'react';
 import { FileIcon, Download } from 'lucide-react';
 import Image from 'next/image';
 import type { Attachment } from '@/lib/types/index';
+import React from 'react';
 
 interface AttachmentItemProps {
   file: Attachment;
 }
 
-export function AttachmentItem({ file }: AttachmentItemProps) {
+export const AttachmentItem = React.memo(function AttachmentItem({ file }: AttachmentItemProps) {
   const isImage =
     file.type === 'IMAGE' || (file.type && (file.type.startsWith('image/') || file.type === 'GIF'));
 
@@ -48,4 +49,4 @@ export function AttachmentItem({ file }: AttachmentItemProps) {
       </a>
     </div>
   );
-}
+});

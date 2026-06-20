@@ -9,7 +9,7 @@ import {
   loadCollapseStates,
   saveCollapseState,
 } from '@/modules/messages/service';
-import { ThreadProvider } from './thread-context';
+import { ThreadDataProvider, ThreadUIStateProvider } from './thread-context';
 import { MessageList } from './message-list';
 
 function findNodeById(nodes: MessageNode[], id: string): MessageNode | null {
@@ -153,12 +153,10 @@ export function CommentTree({
     router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [router, pathname, searchParams]);
 
-  const contextValue = useMemo(
+  const dataContextValue = useMemo(
     () => ({
       threadId,
       currentUser,
-      activeReplyId,
-      collapsedIds,
       scrollContainerRef,
       onReply: handleReply,
       onCancelReply: handleCancelReply,
@@ -166,25 +164,34 @@ export function CommentTree({
       onMessagePosted: handleMessagePosted,
       onFocusBranch: handleFocusBranch,
       onMessageUpdate: handleMessageUpdate,
-      allMessages: localMessages,
-      animateMessageId,
-      aiInlineStatus,
       onTypingStart,
       onTypingStop,
     }),
     [
-      threadId, currentUser, activeReplyId, collapsedIds, scrollContainerRef,
+      threadId, currentUser, scrollContainerRef,
       handleReply, handleCancelReply, toggleCollapse, handleMessagePosted,
-      handleFocusBranch, handleMessageUpdate, localMessages, animateMessageId,
-      aiInlineStatus, onTypingStart, onTypingStop,
+      handleFocusBranch, handleMessageUpdate, onTypingStart, onTypingStop,
     ]
+  );
+
+  const uiStateContextValue = useMemo(
+    () => ({
+      activeReplyId,
+      collapsedIds,
+      allMessages: localMessages,
+      animateMessageId,
+      aiInlineStatus,
+    }),
+    [activeReplyId, collapsedIds, localMessages, animateMessageId, aiInlineStatus]
   );
 
   if (localMessages.length === 0) return null;
 
   return (
-    <ThreadProvider value={contextValue}>
-      <MessageList firstUnreadMessageId={firstUnreadMessageId} />
-    </ThreadProvider>
+    <ThreadDataProvider value={dataContextValue}>
+      <ThreadUIStateProvider value={uiStateContextValue}>
+        <MessageList firstUnreadMessageId={firstUnreadMessageId} />
+      </ThreadUIStateProvider>
+    </ThreadDataProvider>
   );
 }
