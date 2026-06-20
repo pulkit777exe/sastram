@@ -21,7 +21,7 @@ export function ThreadPageHeader({
   return (
     <header className="flex items-center justify-between px-6 h-[64px] border-b border-border/60 flex-shrink-0 bg-background/95 backdrop-blur z-30">
       <div className="flex items-center gap-3">
-        <div className="w-[34px] h-[34px] rounded-lg bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-950/60">
+        <div className="w-[34px] h-[34px] rounded-lg bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand dark:text-brand border border-brand/15 dark:border-brand/25">
           <Hash size={16} strokeWidth={2.5} />
         </div>
         <div className="flex flex-col gap-0.5">

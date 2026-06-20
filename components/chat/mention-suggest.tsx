@@ -44,7 +44,7 @@ export function MentionSuggest({
             className={cn(
               'w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition-colors',
               index === activeIndex
-                ? 'bg-indigo-50/80 text-indigo-900'
+                ? 'bg-brand/10 text-brand'
                 : 'hover:bg-muted/50 text-foreground'
             )}
             onMouseEnter={() => onHover(index)}

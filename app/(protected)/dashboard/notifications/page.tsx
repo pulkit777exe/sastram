@@ -40,7 +40,7 @@ export default async function NotificationsPage() {
   return (
     <div className="space-y-10 max-w-3xl">
       <div>
-        <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-2">
+        <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
           <Bell size={14} />
           <span>Notifications</span>
         </div>

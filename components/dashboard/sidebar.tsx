@@ -246,7 +246,7 @@ export function Sidebar({
           </nav>
 
           {isPro ? (
-            <div className="m-3 p-4 bg-linear-to-br from-brand/10 to-purple-500/10 border border-brand/20 rounded-xl">
+            <div className="m-3 p-4 bg-linear-to-br from-brand/10 to-brand/70/10 border border-brand/20 rounded-xl">
               <div className="flex items-center gap-2 text-foreground">
                 <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
                 <p className="text-sm font-semibold">Pro Member</p>

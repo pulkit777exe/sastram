@@ -12,8 +12,8 @@ export default function NotFound() {
     <div className="h-screen w-screen flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center space-y-6">
         <div className="space-y-2">
-          <h1 className="text-8xl font-bold text-transparent bg-clip-text bg-indigo-500">404</h1>
-          <div className="h-1 w-24 mx-auto bg-linear-to-r from-indigo-500/50 to-indigo-600/50 rounded-full" />
+          <h1 className="text-8xl font-bold text-transparent bg-clip-text bg-brand">404</h1>
+          <div className="h-1 w-24 mx-auto bg-linear-to-r from-brand/100/50 to-indigo-600/50 rounded-full" />
         </div>
 
         <div className="space-y-3">
@@ -24,7 +24,7 @@ export default function NotFound() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-          <Button asChild className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium">
+          <Button asChild className="bg-brand hover:bg-brand/90 text-white font-medium">
             <Link href="/dashboard">
               <Home className="w-4 h-4 mr-2" />
               Go to Dashboard

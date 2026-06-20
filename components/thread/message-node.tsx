@@ -263,7 +263,7 @@ export function CommentNode({
           <div className="flex items-start gap-3">
             <Avatar className="w-8 h-8 shrink-0 border border-border/40">
               <AvatarImage src={node.sender.image || ''} />
-              <AvatarFallback className="bg-indigo-50 text-indigo-600 text-xs font-bold">
+              <AvatarFallback className="bg-brand/10 text-brand text-xs font-bold">
                 {node.sender.name?.substring(0, 2).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
@@ -274,7 +274,7 @@ export function CommentNode({
                   {node.sender.name || 'Anonymous'}
                 </span>
                 {isOwnMessage && (
-                  <span className="bg-indigo-100 text-indigo-700 text-[9px] px-1.5 py-px rounded-full font-medium">
+                  <span className="bg-brand/15 text-brand text-[9px] px-1.5 py-px rounded-full font-medium">
                     You
                   </span>
                 )}
@@ -398,7 +398,7 @@ export function CommentNode({
                     <button
                       onClick={() => onReply(node.id)}
                       aria-label="Reply to this message"
-                      className="flex items-center gap-1 text-muted-foreground/60 hover:text-indigo-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded"
+                      className="flex items-center gap-1 text-muted-foreground/60 hover:text-brand transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded"
                     >
                       <Reply size={13} />
                       <span className="text-[11px] font-medium">Reply</span>
@@ -408,7 +408,7 @@ export function CommentNode({
                   {beyondDepthLimit && hasChildren && (
                     <button
                       onClick={() => onFocusBranch(node.id)}
-                      className="flex items-center gap-1 text-indigo-500 hover:text-indigo-600 transition-colors"
+                      className="flex items-center gap-1 text-brand hover:text-brand transition-colors"
                     >
                       <span className="text-[11px] font-medium">Continue this thread</span>
                       <ArrowRight size={12} />
@@ -461,7 +461,7 @@ export function CommentNode({
                         }}
                         disabled={isPinning}
                         aria-label={node.isPinned ? 'Unpin message' : 'Pin message'}
-                        className={`transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100 ${node.isPinned ? 'text-indigo-500 opacity-100' : 'text-muted-foreground/40 hover:text-indigo-500'}`}
+                        className={`transition-colors p-1 rounded opacity-0 group-hover/branch:opacity-100 focus-visible:opacity-100 ${node.isPinned ? 'text-brand opacity-100' : 'text-muted-foreground/40 hover:text-brand'}`}
                         title={node.isPinned ? 'Unpin message' : 'Pin message'}
                       >
                         <Pin size={13} />
@@ -533,8 +533,8 @@ export function CommentNode({
         <button
           onClick={() => onToggleCollapse(node.id)}
           className="mt-1 ml-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                     bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400
-                     text-[11px] font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-950/50
+                     bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand
+                     text-[11px] font-semibold hover:bg-brand/15 dark:hover:bg-brand/20
                      transition-colors cursor-pointer select-none"
         >
           <span>
@@ -561,7 +561,7 @@ export function CommentNode({
         <div className="mt-1 ml-4">
           <button
             onClick={() => onFocusBranch(node.id)}
-            className="flex items-center gap-1.5 text-[12px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors"
+            className="flex items-center gap-1.5 text-[12px] font-medium text-brand hover:text-brand transition-colors"
           >
             <span>Continue this thread →</span>
           </button>

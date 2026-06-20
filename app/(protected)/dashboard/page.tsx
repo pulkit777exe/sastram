@@ -154,7 +154,7 @@ export default async function DashboardPage({
             <Link
               key={tag}
               href="/dashboard"
-              className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
+              className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-xs text-brand"
             >
               #{tag} ×
             </Link>
@@ -173,7 +173,7 @@ export default async function DashboardPage({
           label="Total Messages"
           value={totalMessages}
           icon={<Users size={18} />}
-          color="indigo"
+          color="brand"
         />
         <DarkMetric
           label="Communities"
@@ -194,7 +194,7 @@ export default async function DashboardPage({
                     <Users size={20} />
                   </div>
                   {community.threadCount > 5 && (
-                    <span className="bg-indigo-500/10 text-indigo-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">
+                    <span className="bg-brand/10 text-brand text-[10px] font-bold px-2 py-0.5 rounded-full border border-brand/20">
                       ACTIVE
                     </span>
                   )}
@@ -216,7 +216,7 @@ export default async function DashboardPage({
 
       <section className="space-y-4">
         <div className="flex items-center gap-2 mb-6">
-          <TrendingUp size={18} className="text-indigo-500" />
+          <TrendingUp size={18} className="text-brand" />
           <h2 className="text-sm font-bold uppercase tracking-widest">Trending Threads</h2>
         </div>
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -243,7 +243,7 @@ function DarkMetric({
 }) {
   const colors: Record<string, string> = {
     blue: 'text-blue-400 bg-blue-400/10',
-    indigo: 'text-indigo-400 bg-indigo-400/10',
+    indigo: 'text-brand bg-indigo-400/10',
     amber: 'text-amber-400 bg-amber-400/10',
   };
 

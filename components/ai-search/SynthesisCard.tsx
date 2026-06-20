@@ -96,7 +96,7 @@ export function SynthesisCard({
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-indigo-400" />
+          <Sparkles size={16} className="text-brand" />
           <span className="text-sm font-semibold text-foreground">AI Synthesis</span>
           <span className="text-xs text-muted-foreground">
             · {sourceCount} source{sourceCount !== 1 ? 's' : ''}

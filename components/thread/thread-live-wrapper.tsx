@@ -389,7 +389,7 @@ export function ThreadLiveWrapper({
             </div>
             <button
               type="button"
-              className="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 underline"
+              className="shrink-0 text-xs font-semibold text-brand hover:text-brand underline"
               onClick={() =>
                 document
                   .getElementById(`message-${pinnedMessage.id}`)
@@ -445,8 +445,8 @@ export function ThreadLiveWrapper({
         <div className="max-w-4xl mx-auto">
           {liveMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100/60 dark:from-indigo-950/30 dark:to-violet-950/30 dark:border-indigo-900/40 shadow-sm">
-                <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-gradient-to-br from-brand/10 to-brand/5 border border-brand/15 dark:from-indigo-950/30 dark:to-violet-950/30 dark:border-brand/30 shadow-sm">
+                <svg className="w-8 h-8 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-3.037-.476 4.5 4.5 0 01-5.014-4.986L3 20.25l3.5-1.75A8.956 8.956 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
                 </svg>
               </div>
@@ -507,7 +507,7 @@ export function ThreadLiveWrapper({
               ))}
             </div>
             <span className="text-[11px] text-muted-foreground/70">
-              <span className="font-semibold text-indigo-600">
+              <span className="font-semibold text-brand">
                 {typingUsers.length === 1 ? typingUsers[0].userName : 'Several people'}
               </span>
               {typingUsers.length === 1 ? ' is' : ' are'} typing…
@@ -525,7 +525,7 @@ export function ThreadLiveWrapper({
               scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
               void markThreadAsRead(true);
             }}
-            className="relative w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
             title="Scroll to bottom"
           >
             {unreadCount > 0 && (

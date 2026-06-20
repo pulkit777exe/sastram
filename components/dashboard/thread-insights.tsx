@@ -53,7 +53,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
 
   return (
     <div className="rounded-3xl border border-border bg-card p-5 shadow-2xl relative overflow-hidden group">
-      <div className="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/10 blur-2xl rounded-full pointer-events-none" />
+      <div className="absolute -right-8 -top-8 w-24 h-24 bg-brand/10 blur-2xl rounded-full pointer-events-none" />
 
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
@@ -95,7 +95,7 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
               className={cn(
                 'group/item flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-200 cursor-pointer border',
                 isActive
-                  ? 'bg-indigo-600 border-indigo-500 shadow-[0_8px_20px_rgba(79,70,229,0.2)]'
+                  ? 'bg-brand border-brand shadow-[0_8px_20px_rgba(55,54,252,0.2)]'
                   : 'bg-muted/30 border-border hover:border-border/80 hover:bg-muted/80'
               )}
             >
@@ -111,12 +111,12 @@ export function ThreadInsights({ initialThreads }: ThreadInsightsProps) {
                 <div className="flex items-center gap-2">
                   <Activity
                     size={10}
-                    className={isActive ? 'text-indigo-200' : 'text-muted-foreground'}
+                    className={isActive ? 'text-brand/70' : 'text-muted-foreground'}
                   />
                   <span
                     className={cn(
                       'text-[10px] font-bold uppercase tracking-tight',
-                      isActive ? 'text-indigo-100/70' : 'text-muted-foreground'
+                      isActive ? 'text-brand/50' : 'text-muted-foreground'
                     )}
                   >
                     {thread.messageCount} messages

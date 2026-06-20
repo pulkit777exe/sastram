@@ -145,12 +145,12 @@ export function InlineReplyBox({
       className="mt-2 animate-in slide-in-from-top-1 fade-in duration-200"
       style={{ marginLeft: visualDepth > 0 ? `${20}px` : 0 }}
     >
-      <div className="border border-indigo-200/50 dark:border-indigo-800/30 rounded-xl p-3 bg-indigo-50/30 dark:bg-indigo-950/10">
+      <div className="border border-brand/20 dark:border-brand/25 rounded-xl p-3 bg-brand/10 dark:bg-brand/10">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Reply size={11} />
             <span>Replying to</span>
-            <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+            <span className="font-semibold text-brand dark:text-brand">
               @{parentMessage.sender.name || 'Anonymous'}
             </span>
           </div>
@@ -165,7 +165,7 @@ export function InlineReplyBox({
         <div className="flex gap-2.5">
           <Avatar className="w-7 h-7 shrink-0 mt-0.5">
             <AvatarImage src={currentUser.image || ''} />
-            <AvatarFallback className="text-[9px] bg-indigo-100 text-indigo-600">
+            <AvatarFallback className="text-[9px] bg-brand/15 text-brand">
               {currentUser.name?.substring(0, 2).toUpperCase() || 'ME'}
             </AvatarFallback>
           </Avatar>
@@ -213,7 +213,7 @@ export function InlineReplyBox({
                 size="sm"
                 onClick={handleSubmit}
                 disabled={isSubmitting || !content.trim()}
-                className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="h-7 text-xs bg-brand hover:bg-brand/90 text-white"
               >
                 {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 {isSubmitting ? 'Posting...' : 'Reply'}

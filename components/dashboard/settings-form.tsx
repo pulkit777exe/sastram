@@ -43,7 +43,7 @@ function SubmitButton() {
     <Button
       type="submit"
       disabled={pending}
-      className="h-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-500/30 transition-all hover:shadow-indigo-500/40 disabled:opacity-50"
+      className="h-11 rounded-xl bg-brand hover:bg-brand/90 text-white font-medium shadow-lg shadow-brand/30 transition-all hover:shadow-indigo-500/40 disabled:opacity-50"
     >
       {pending ? 'Saving...' : 'Save Changes'}
     </Button>
@@ -288,7 +288,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               name="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -302,7 +302,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us about yourself..."
-              className="w-full rounded-xl border border-border bg-background text-foreground px-3 py-2 focus:ring-2 focus:ring-indigo-500/50 transition-all resize-none outline-none"
+              className="w-full rounded-xl border border-border bg-background text-foreground px-3 py-2 focus:ring-2 focus:ring-brand/50 transition-all resize-none outline-none"
             />
           </div>
           <div className="grid gap-2">
@@ -315,7 +315,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="City, Country"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -329,7 +329,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://example.com"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -342,7 +342,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={twitter}
               onChange={(e) => setTwitter(e.target.value)}
               placeholder="@username"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -355,7 +355,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={github}
               onChange={(e) => setGithub(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -368,7 +368,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={linkedin}
               onChange={(e) => setLinkedin(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -453,7 +453,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   onClick={() => void handleUpdatePrivacy(option.value)}
                   className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
                     profilePrivacy === option.value
-                      ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600'
+                      ? 'border-brand bg-brand/10 text-brand'
                       : 'border-border bg-background hover:bg-muted'
                   }`}
                 >

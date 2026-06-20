@@ -28,7 +28,7 @@ export function TopicCard({
     <div className="group relative flex flex-col justify-between h-full rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(99,102,241,0.05)]">
       <div>
         <div className="flex items-center justify-between mb-4">
-          <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:text-indigo-400 group-hover:bg-indigo-500/10 transition-colors">
+          <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:text-brand group-hover:bg-brand/90/10 transition-colors">
             <Hash size={20} />
           </div>
           {trending && (
@@ -39,7 +39,7 @@ export function TopicCard({
         </div>
 
         <Link href={ROUTES.THREAD(slug)}>
-          <h3 className="mb-2 text-lg font-bold text-foreground hover:text-indigo-500 transition-colors">
+          <h3 className="mb-2 text-lg font-bold text-foreground hover:text-brand transition-colors">
             {name}
           </h3>
         </Link>
@@ -58,7 +58,7 @@ export function TopicCard({
             <Link
               key={tag}
               href={`/dashboard?tag=${encodeURIComponent(tag.toLowerCase())}`}
-              className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium border border-border hover:bg-indigo-50 hover:text-indigo-700"
+              className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium border border-border hover:bg-brand/10 hover:text-brand"
             >
               #{tag}
             </Link>
@@ -80,7 +80,7 @@ export function TopicCard({
         <Link href={ROUTES.THREAD(slug)} className="inline-flex items-center">
           <ArrowRight
             size={14}
-            className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-indigo-500"
+            className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-brand"
           />
         </Link>
       </div>

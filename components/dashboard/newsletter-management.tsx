@@ -64,7 +64,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
             receive daily digests.
           </p>
           <Link href="/dashboard/threads">
-            <Button className="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white">
+            <Button className="mt-4 bg-brand hover:bg-brand/90 text-white">
               Browse Threads
             </Button>
           </Link>
@@ -109,7 +109,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                       </span>
                       <Link
                         href={ROUTES.THREAD(subscription.thread.slug)}
-                        className="text-indigo-500 hover:text-indigo-600 underline"
+                        className="text-brand hover:text-brand underline"
                       >
                         View Thread
                       </Link>

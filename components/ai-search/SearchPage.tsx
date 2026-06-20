@@ -185,7 +185,7 @@ export function SearchPage() {
       {/* Header — matches Threads/Search page pattern */}
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-2">
+          <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
             <Sparkles size={14} />
             <span>AI-Powered</span>
           </div>

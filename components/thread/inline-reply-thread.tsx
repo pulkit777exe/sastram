@@ -30,7 +30,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
         tabIndex={0}
         onClick={() => onReplyClick?.()}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onReplyClick?.(); }}
-        className="flex items-center gap-2.5 w-full text-left group/bar hover:bg-indigo-50/60 dark:hover:bg-indigo-950/20 rounded-lg px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
+        className="flex items-center gap-2.5 w-full text-left group/bar hover:bg-brand/10 dark:hover:bg-brand/15 rounded-lg px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
       >
         {/* Stacked avatars */}
         <div className="flex -space-x-1.5 shrink-0">
@@ -40,7 +40,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
               className="w-5 h-5 ring-2 ring-background"
             >
               <AvatarImage src={sender.image || ''} />
-              <AvatarFallback className="bg-indigo-100 text-indigo-600 text-[8px] font-bold">
+              <AvatarFallback className="bg-brand/15 text-brand text-[8px] font-bold">
                 {sender.name?.substring(0, 1).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
@@ -48,7 +48,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
         </div>
 
         {/* Reply count */}
-        <span className="text-[12px] font-semibold text-indigo-600 group-hover/bar:text-indigo-700 transition-colors">
+        <span className="text-[12px] font-semibold text-brand group-hover/bar:text-brand transition-colors">
           {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
         </span>
 
@@ -69,7 +69,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
             e.stopPropagation();
             setExpanded((p) => !p);
           }}
-          className="ml-auto shrink-0 text-muted-foreground/50 hover:text-indigo-600 transition-colors"
+          className="ml-auto shrink-0 text-muted-foreground/50 hover:text-brand transition-colors"
           title={expanded ? 'Collapse replies' : 'Expand replies'}
         >
           {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -78,7 +78,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
 
       {/* Expanded reply list */}
       {expanded && (
-        <div className="mt-1 pl-2.5 border-l-2 border-indigo-200/60 dark:border-indigo-800/40 flex flex-col gap-0.5 ml-2.5">
+        <div className="mt-1 pl-2.5 border-l-2 border-brand/20 dark:border-brand/30 flex flex-col gap-0.5 ml-2.5">
           {visible.map((reply) => (
             <div
               key={reply.id}
@@ -87,7 +87,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
             >
               <Avatar className="w-4 h-4 mt-0.5 shrink-0">
                 <AvatarImage src={reply.sender.image || ''} />
-                <AvatarFallback className="bg-indigo-50 text-indigo-600 text-[7px] font-bold">
+                <AvatarFallback className="bg-brand/10 text-brand text-[7px] font-bold">
                   {reply.sender.name?.substring(0, 1).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
@@ -107,7 +107,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
                 e.stopPropagation();
                 setExpanded(true);
               }}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 px-2 py-1 w-fit transition-colors"
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-brand hover:text-brand px-2 py-1 w-fit transition-colors"
             >
               <MessageCircle size={11} />
               {hidden} more {hidden === 1 ? 'reply' : 'replies'}
@@ -118,7 +118,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
           <button
             type="button"
             onClick={() => onReplyClick?.()}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-indigo-600 px-2 py-1 w-fit transition-colors mt-0.5"
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-brand px-2 py-1 w-fit transition-colors mt-0.5"
           >
             <MessageCircle size={11} />
             Reply to thread

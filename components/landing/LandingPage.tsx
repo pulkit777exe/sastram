@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
@@ -17,8 +16,9 @@ import {
   Lock,
   UserCheck,
 } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PublicNavbar } from '@/components/layout/public-navbar';
+import { PublicFooter } from '@/components/layout/public-footer';
+import { SerifHeading } from '@/components/layout/serif-heading';
 
 interface User {
   id: string;
@@ -149,20 +149,6 @@ function FadeIn({
     >
       {children}
     </motion.div>
-  );
-}
-
-function SerifHeading({
-  children,
-  className = '',
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <span className={`font-[family-name:var(--font-instrument-serif)] ${className}`}>
-      {children}
-    </span>
   );
 }
 

@@ -33,7 +33,7 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
               onClick={() => handleTabChange(tab.id)}
               className={cn(
                 'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 cursor-pointer hover:bg-secondary',
-                isActive ? 'border-indigo-500 bg-muted-foreground/10 rounded' : 'border-transparent'
+                isActive ? 'border-brand bg-muted-foreground/10 rounded' : 'border-transparent'
               )}
             >
               <AnimatedIcon icon={Icon} size={16} animateOnHover />

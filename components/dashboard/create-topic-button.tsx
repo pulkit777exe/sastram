@@ -86,7 +86,7 @@ export function CreateTopicButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-indigo-500 hover:bg-indigo-400 cursor-pointer">New Thread</Button>
+        <Button className="bg-brand hover:bg-indigo-400 cursor-pointer">New Thread</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -147,7 +147,7 @@ export function CreateTopicButton() {
                   key={tag}
                   type="button"
                   onClick={() => removeTag(tag)}
-                  className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
+                  className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-xs text-brand"
                 >
                   #{tag} ×
                 </button>
@@ -159,7 +159,7 @@ export function CreateTopicButton() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold"
+              className="w-full bg-brand hover:bg-brand/90 text-white font-bold"
             >
               {loading ? <Loader2 className="animate-spin" /> : 'Create Topic'}
             </Button>

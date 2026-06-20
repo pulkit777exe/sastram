@@ -116,7 +116,7 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
             <Button
               type="submit"
               disabled={isSubmitting || !email.trim()}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white"
+              className="bg-brand hover:bg-brand/90 text-white"
             >
               {isSubmitting ? 'Sending...' : 'Send Invitation'}
             </Button>

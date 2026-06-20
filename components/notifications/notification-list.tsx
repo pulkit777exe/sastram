@@ -217,7 +217,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
             size="sm"
             onClick={handleMarkAllRead}
             disabled={isPending}
-            className="text-xs text-indigo-600 hover:text-indigo-700"
+            className="text-xs text-brand hover:text-brand"
           >
             <CheckCheck size={14} className="mr-1" />
             Mark all read
@@ -245,14 +245,14 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                       onClick={() => void handleClick(notification)}
                       className={cn(
                         'w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all hover:bg-muted/50',
-                        !notification.isRead && 'bg-indigo-500/5 border border-indigo-500/10'
+                        !notification.isRead && 'bg-brand/5 border border-brand/10'
                       )}
                     >
                       <div
                         className={cn(
                           'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
                           !notification.isRead
-                            ? 'bg-indigo-500/10 text-indigo-500'
+                            ? 'bg-brand/10 text-brand'
                             : 'bg-muted text-muted-foreground'
                         )}
                       >
@@ -279,7 +279,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                         </p>
                       </div>
                       {!notification.isRead && (
-                        <div className="mt-2 w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                        <div className="mt-2 w-2 h-2 rounded-full bg-brand shrink-0" />
                       )}
                     </button>
                   );

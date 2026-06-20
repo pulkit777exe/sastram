@@ -43,7 +43,7 @@ export function ProfileView({ user }: ProfileViewProps) {
             </span>
           </div>
           <div className="pt-4">
-            <span className="inline-flex items-center rounded-lg bg-indigo-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-indigo-500 border border-indigo-500/20">
+            <span className="inline-flex items-center rounded-lg bg-brand/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand border border-brand/20">
               {user.role}
             </span>
           </div>

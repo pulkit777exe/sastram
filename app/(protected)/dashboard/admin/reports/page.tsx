@@ -146,7 +146,7 @@ function ReportCard({ report }: { report: Report }) {
                 <span className="text-muted-foreground">Thread:</span>
                 <Link
                   href={ROUTES.THREAD(report.message.thread.slug)}
-                  className="text-indigo-500 hover:text-indigo-600 underline"
+                  className="text-brand hover:text-brand underline"
                 >
                   {report.message.thread.name}
                 </Link>

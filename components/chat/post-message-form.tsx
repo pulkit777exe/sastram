@@ -375,8 +375,8 @@ export function PostMessageForm({
   return (
     <form ref={formRef} action={handleSubmit} className="relative w-full">
       {replyTo && (
-        <div className="absolute -top-11 left-0 right-0 bg-indigo-50 border-x border-t border-indigo-100 px-4 py-2 rounded-t-xl text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150">
-          <div className="flex items-center gap-2 text-indigo-700">
+        <div className="absolute -top-11 left-0 right-0 bg-brand/10 border-x border-t border-brand/15 px-4 py-2 rounded-t-xl text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150">
+          <div className="flex items-center gap-2 text-brand">
             <MessageSquare className="h-3.5 w-3.5" />
             <span>Replying to</span>
             <span className="font-semibold">@{replyTo.userName}</span>
@@ -384,7 +384,7 @@ export function PostMessageForm({
           <button
             type="button"
             onClick={onCancelReply}
-            className="text-indigo-500 hover:text-indigo-700 transition-colors"
+            className="text-brand hover:text-brand transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -412,7 +412,7 @@ export function PostMessageForm({
 
       <div
         className={cn(
-          "flex flex-col border border-border/80 rounded-2xl bg-card hover:border-indigo-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-sm overflow-hidden",
+          "flex flex-col border border-border/80 rounded-2xl bg-card hover:border-brand/20 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-sm overflow-hidden",
           replyTo && "rounded-t-none border-t-0"
         )}
       >

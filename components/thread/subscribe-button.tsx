@@ -152,7 +152,7 @@ export function ThreadSubscribeButton({
                 onClick={() => void setSubscription(option.value)}
                 className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
                   frequency === option.value
-                    ? 'bg-indigo-50 text-indigo-700'
+                    ? 'bg-brand/10 text-brand'
                     : 'hover:bg-muted text-foreground'
                 }`}
               >

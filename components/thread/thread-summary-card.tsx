@@ -140,8 +140,8 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-indigo-500" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">
+          <Sparkles size={14} className="text-brand" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-brand">
             AI Summary
           </span>
         </div>
@@ -150,7 +150,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-400 hover:text-indigo-600"
+            className="h-6 w-6 text-zinc-400 hover:text-brand"
             onClick={() => void requestSummary()}
             disabled={isLoading}
             title="Refresh summary"
@@ -170,8 +170,8 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
             <div className="h-3 bg-muted rounded w-4/6" />
           </div>
         ) : summary ? (
-          <div className="prose prose-sm prose-indigo max-w-none">
-            <p className="text-xs text-indigo-900/80 leading-relaxed">{summary}</p>
+          <div className="prose prose-sm prose-neutral max-w-none">
+            <p className="text-xs text-brand/80 leading-relaxed">{summary}</p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-2 text-center">
@@ -183,7 +183,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
               variant="outline"
               onClick={() => void requestSummary()}
               disabled={isLoading}
-              className="w-full bg-indigo-50/50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 font-medium text-xs h-8"
+              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
             >
               <Sparkles size={12} className="mr-2" />
               Generate Summary
@@ -193,7 +193,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
       </div>
 
       {/* Decorative blur */}
-      <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-indigo-500/10 blur-2xl rounded-full pointer-events-none" />
+      <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-brand/10 blur-2xl rounded-full pointer-events-none" />
     </div>
   );
 }

@@ -660,12 +660,12 @@ function UserAuthForm({
           {mode === 'signin' ? (
             <>
               Don&apos;t have an account?{' '}
-              <span className="text-indigo-400 hover:underline underline-offset-4">Sign up</span>
+              <span className="text-brand hover:underline underline-offset-4">Sign up</span>
             </>
           ) : (
             <>
               Already have an account?{' '}
-              <span className="text-indigo-400 hover:underline underline-offset-4">Sign in</span>
+              <span className="text-brand hover:underline underline-offset-4">Sign in</span>
             </>
           )}
         </button>

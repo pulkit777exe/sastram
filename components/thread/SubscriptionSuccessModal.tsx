@@ -132,7 +132,7 @@ export function SubscriptionSuccessModal({
                   className="bg-muted rounded-xl p-4 mb-6 text-left"
                 >
                   <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-500" />
+                    <Sparkles className="w-4 h-4 text-brand" />
                     What to expect
                   </h3>
                   <ul className="space-y-2 text-sm text-muted-foreground">

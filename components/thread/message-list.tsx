@@ -265,7 +265,7 @@ const MessageRow = React.memo(function MessageRow({
         className={cn(
           "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-muted/30 relative transition-colors duration-75",
           isCompact && "pl-[52px]",
-          isShowingReplyBox && "bg-indigo-50/20 dark:bg-indigo-950/10"
+          isShowingReplyBox && "bg-brand/10 dark:bg-brand/10"
         )}
       >
         {isCompact ? (
@@ -273,7 +273,7 @@ const MessageRow = React.memo(function MessageRow({
         ) : (
           <Avatar className="w-8 h-8 mt-0.5 shrink-0 ring-1 ring-border/30">
             <AvatarImage src={message.sender.image || ''} />
-            <AvatarFallback className="bg-gradient-to-br from-indigo-50 to-violet-50 text-indigo-600 text-xs font-bold">
+            <AvatarFallback className="bg-gradient-to-br from-brand/10 to-brand/5 text-brand text-xs font-bold">
               {message.sender.name?.substring(0, 2).toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
@@ -286,7 +286,7 @@ const MessageRow = React.memo(function MessageRow({
                 {message.sender.name || 'Anonymous'}
               </span>
               {isOwnMessage && (
-                <span className="bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
+                <span className="bg-brand/15 dark:bg-indigo-950/50 text-brand dark:text-brand text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
                   you
                 </span>
               )}

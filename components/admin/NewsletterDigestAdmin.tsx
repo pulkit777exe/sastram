@@ -99,15 +99,15 @@ export function NewsletterDigestAdmin({ digests, totalSubscribers }: NewsletterD
     <div className="space-y-6">
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-card border-indigo-500/20">
+        <Card className="bg-card border-brand/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-indigo-500 font-medium">Total Subscribers</p>
+                <p className="text-sm text-brand font-medium">Total Subscribers</p>
                 <p className="text-3xl font-bold text-foreground mt-1">{totalSubscribers}</p>
               </div>
-              <div className="h-12 w-12 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-indigo-500" />
+              <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
+                <Users className="h-6 w-6 text-brand" />
               </div>
             </div>
           </CardContent>
@@ -147,8 +147,8 @@ export function NewsletterDigestAdmin({ digests, totalSubscribers }: NewsletterD
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-linear-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-indigo-500" />
+              <div className="h-10 w-10 rounded-xl bg-linear-to-br from-brand/100/20 to-brand/70/20 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-brand" />
               </div>
               <div>
                 <CardTitle className="text-foreground">Generate Newsletter Digests</CardTitle>
@@ -160,7 +160,7 @@ export function NewsletterDigestAdmin({ digests, totalSubscribers }: NewsletterD
             <Button
               onClick={handleGenerateDigests}
               disabled={isGenerating || pendingDigests.length === 0}
-              className="bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white"
+              className="bg-linear-to-r from-brand to-brand/80 hover:from-brand/100 hover:to-brand/70 text-white"
             >
               {isGenerating ? (
                 <>
