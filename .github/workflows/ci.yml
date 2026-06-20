@@ -18,6 +18,15 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -31,6 +40,16 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
+          BETTER_AUTH_SECRET: ci_secret_that_is_long_enough_32chars
+          BETTER_AUTH_URL: http://localhost:3000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          CRON_SECRET: ci_cron_secret_long_enough_32chars
+          GEMINI_API_KEY: skip
+          OPENAI_API_KEY: skip
+          REDIS_URL: redis://localhost:6379
       - run: pnpm test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
@@ -40,3 +59,16 @@ jobs:
           CRON_SECRET: ci_cron_secret_long_enough_32chars
           GEMINI_API_KEY: skip
           OPENAI_API_KEY: skip
+          REDIS_URL: redis://localhost:6379
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
+          BETTER_AUTH_SECRET: ci_secret_that_is_long_enough_32chars
+          BETTER_AUTH_URL: http://localhost:3000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          CRON_SECRET: ci_cron_secret_long_enough_32chars
+          GEMINI_API_KEY: skip
+          OPENAI_API_KEY: skip
+          REDIS_URL: redis://localhost:6379
+          CI: true
