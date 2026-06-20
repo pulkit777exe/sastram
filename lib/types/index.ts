@@ -1,82 +1,24 @@
-import type { User as PrismaUser, Reaction as PrismaReaction } from '@prisma/client';
+/**
+ * Re-export barrel for types used across multiple modules.
+ *
+ * Canonical definitions live in their owning module:
+ *   - Message, Sender, Attachment, Reaction, ReadReceipt → modules/messages/types
+ *   - Conversation → modules/chat/types
+ *   - TypingIndicator, WebSocketEventType → modules/ws/types
+ *
+ * Import from the owning module directly when possible.
+ * This barrel exists so cross-cutting code (hooks, components, tests)
+ * can import shared types from a single stable path.
+ */
 
-export type Sender = Pick<PrismaUser, 'id' | 'name' | 'image'>;
+export type {
+  Sender,
+  Attachment,
+  Message,
+  Reaction,
+  ReadReceipt,
+} from '@/modules/messages/types';
 
-export interface Attachment {
-  id: string;
-  name: string | null;
-  url: string;
-  type: string;
-  size: number | null;
-  messageId?: string;
-}
+export type { Conversation } from '@/modules/chat/types';
 
-export interface Message {
-  id: string;
-  content: string;
-  threadId: string;
-  senderId: string;
-  parentId: string | null;
-  depth: number;
-  isEdited: boolean;
-  isPinned: boolean;
-  likeCount: number;
-  replyCount: number;
-  isAiResponse: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt: Date | null;
-
-  sender: Sender;
-  thread: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  attachments: Attachment[];
-  reactions?: Reaction[];
-  readReceipts?: ReadReceipt[];
-  replies?: Message[];
-}
-
-export type WebSocketEventType =
-  | 'NEW_MESSAGE'
-  | 'MESSAGE_DELETED'
-  | 'MESSAGE_EDITED'
-  | 'USER_TYPING'
-  | 'USER_STOPPED_TYPING'
-  | 'MESSAGE_QUEUED'
-  | 'MENTION_NOTIFICATION'
-  | 'REACTION_UPDATE'
-  | 'PIN_UPDATE';
-
-export interface TypingIndicator {
-  userId: string;
-  userName: string;
-  threadId?: string;
-  timestamp?: number;
-}
-
-export interface Conversation {
-  id: string;
-  name: string;
-  avatar: string;
-  lastMessage: string;
-  timestamp: string;
-  unread: number;
-  online: boolean;
-  type: 'channel' | 'dm';
-}
-
-export type Reaction = PrismaReaction;
-
-export interface ReadReceipt {
-  id: string;
-  threadId: string;
-  userId: string;
-  lastReadMessageId: string;
-  readAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+export type { TypingIndicator, WebSocketEventType } from '@/modules/ws/types';
