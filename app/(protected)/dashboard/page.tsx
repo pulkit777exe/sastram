@@ -243,7 +243,7 @@ function DarkMetric({
 }) {
   const colors: Record<string, string> = {
     blue: 'text-blue-400 bg-blue-400/10',
-    indigo: 'text-brand bg-indigo-400/10',
+    brand: 'text-brand bg-brand/10',
     amber: 'text-amber-400 bg-amber-400/10',
   };
 

@@ -6,7 +6,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session) return null;
 
   return (
-    <div className="flex h-screen bg-background p-4 gap-4 overflow-hidden">
+    <div className="flex h-screen bg-muted/40 p-4 gap-4 overflow-hidden">
       <aside className="h-full shrink-0">
         <Sidebar
           name={session.user.name || session.user.email || 'User'}

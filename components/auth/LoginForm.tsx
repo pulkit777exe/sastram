@@ -10,12 +10,13 @@ import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LoaderIcon, Eye, EyeOff, Mail, ArrowLeft, CheckCircle2, Command } from 'lucide-react';
+import { LoaderIcon, Eye, EyeOff, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { signIn, signUp, authClient } from '@/lib/services/auth-client';
 import axios from 'axios';
 import { GithubIcon } from '@/public/icons/github';
 import { ChromeIcon } from '@/public/icons/google';
 import { toasts } from '@/lib/utils/toast';
+import { SerifHeading } from '@/components/layout/serif-heading';
 
 type AuthMode = 'signin' | 'signup' | 'email-otp' | 'otp-verify';
 
@@ -23,7 +24,7 @@ const inputStyles =
   'h-12 rounded-xl bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all';
 const labelStyles = 'text-muted-foreground text-sm font-medium';
 const primaryButtonStyles =
-  'h-12 rounded-xl bg-brand hover:bg-brand/90 text-white font-medium shadow-lg shadow-brand/20 transition-all hover:scale-[1.02] active:scale-[0.98]';
+  'h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-all hover:scale-[1.02] active:scale-[0.98]';
 const outlineButtonStyles =
   'h-12 rounded-xl border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground transition-all';
 
@@ -711,29 +712,24 @@ export function LoginForm({
   };
 
   return (
-    <div className="flex justify-center items-center h-screen w-full overflow-hidden bg-background">
-      <div className="flex items-center justify-center p-8 bg-background text-foreground relative">
-        <div className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[400px]">
-          <div className="flex flex-col gap-2 text-center mb-4">
-            <div className="lg:hidden flex justify-center mb-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                <Command className="h-7 w-7" />
-              </div>
-            </div>
-
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={mode}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                transition={{ duration: 0.2 }}
-              >
-                <h1 className="text-3xl font-bold tracking-tight mb-2">{getTitle()}</h1>
-                <p className="text-muted-foreground text-sm">{getSubtitle()}</p>
-              </motion.div>
-            </AnimatePresence>
-          </div>
+    <div className="flex flex-1 items-center justify-center py-16 px-6">
+      <div className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[400px]">
+        <div className="flex flex-col gap-2 text-center mb-4">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SerifHeading as="h1" className="text-3xl tracking-tight mb-2 block">
+                {getTitle()}
+              </SerifHeading>
+              <p className="text-muted-foreground text-sm">{getSubtitle()}</p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
           {/* Form Container */}
           <div className="p-1">

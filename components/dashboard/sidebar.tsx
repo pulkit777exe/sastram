@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils/cn';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { LucideIcon } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
@@ -168,7 +169,8 @@ export function Sidebar({
       <div className="p-4 flex items-center justify-between">
         {!isCollapsed && (
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="font-bold text-lg text-foreground">Sastram</span>
+            <Image src="/logo.svg" alt="Sastram" width={20} height={20} className="rounded-md" />
+            <span className="font-semibold text-base text-foreground tracking-tight">Sastram</span>
           </Link>
         )}
         {isCollapsed && <div />}
