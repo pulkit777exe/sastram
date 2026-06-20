@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toggleBookmark, checkBookmarkStatus } from '@/modules/bookmarks/actions';
@@ -45,7 +44,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
   };
 
   return (
-    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+    <div className="hover:scale-105 active:scale-95 transition-transform duration-100">
       <Button
         onClick={handleToggle}
         disabled={isLoading}
@@ -65,6 +64,6 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
           </>
         )}
       </Button>
-    </motion.div>
+    </div>
   );
 }

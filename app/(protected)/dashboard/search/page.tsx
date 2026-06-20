@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { Search, MessageSquare, Users, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -96,10 +95,8 @@ export default function SearchPage() {
         </Card>
 
         {results && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+          <div
+            className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300 fill-mode-both"
           >
             {results.threads && (
               <div>
@@ -166,7 +163,7 @@ export default function SearchPage() {
                 </div>
               </div>
             )}
-          </motion.div>
+          </div>
         )}
       </div>
     </div>

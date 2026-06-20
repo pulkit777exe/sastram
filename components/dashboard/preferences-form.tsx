@@ -1,7 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { staggerContainer, fadeUpItem } from '@/lib/motion';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -55,8 +53,8 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
   }
 
   return (
-    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-6">
-      <motion.div variants={fadeUpItem} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <div className="grid gap-6">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
             <Monitor className="h-5 w-5" />
@@ -102,9 +100,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             </Select>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div variants={fadeUpItem} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '100ms' }}>
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
             <Mail className="h-5 w-5" />
@@ -137,9 +135,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             </Select>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div variants={fadeUpItem} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '200ms' }}>
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 text-green-500">
             <Bell className="h-5 w-5" />
@@ -201,9 +199,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             />
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div variants={fadeUpItem} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '300ms' }}>
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
             <Sparkles className="h-5 w-5" />
@@ -231,9 +229,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             />
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div variants={fadeUpItem} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '400ms' }}>
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
             <Monitor className="h-5 w-5" />
@@ -277,7 +275,7 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             />
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

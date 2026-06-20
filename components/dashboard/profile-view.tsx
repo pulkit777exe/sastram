@@ -1,7 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { staggerContainer, fadeUpItem } from '@/lib/motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageSquare, Hash, Calendar, Mail } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
@@ -22,10 +20,9 @@ interface ProfileViewProps {
 
 export function ProfileView({ user }: ProfileViewProps) {
   return (
-    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-8">
-      <motion.div
-        variants={fadeUpItem}
-        className="flex flex-col items-center md:flex-row md:items-start gap-6 rounded-2xl border border-border bg-card p-8 shadow-xl"
+    <div className="space-y-8">
+      <div
+        className="flex flex-col items-center md:flex-row md:items-start gap-6 rounded-2xl border border-border bg-card p-8 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both"
       >
         <Avatar className="h-32 w-32 border-4 border-background shadow-2xl">
           <AvatarImage src={user.image || ''} />
@@ -51,17 +48,20 @@ export function ProfileView({ user }: ProfileViewProps) {
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div variants={fadeUpItem} className="grid gap-4 md:grid-cols-2">
+      <div
+        className="grid gap-4 md:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both"
+        style={{ animationDelay: '100ms' }}
+      >
         <StatCard
           title="Total Messages"
           value={user._count.messages}
           icon={<MessageSquare size={18} />}
         />
         <StatCard title="Topics Created" value={user._count.sections} icon={<Hash size={18} />} />
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 

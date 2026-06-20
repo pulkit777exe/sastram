@@ -1,10 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { MessageSquare, Calendar, Users } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
-import { cn } from '@/lib/utils/cn';
 import { ROUTES } from '@/lib/config/routes';
 
 interface Thread {
@@ -35,11 +33,10 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
   return (
     <div className="grid gap-4">
       {threads.map((thread, index) => (
-        <motion.div
+        <div
           key={thread.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05, duration: 0.3 }}
+          className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both"
+          style={{ animationDelay: `${index * 50}ms` }}
         >
           <Link
             href={ROUTES.THREAD(thread.slug)}
@@ -66,7 +63,7 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
               </span>
             </div>
           </Link>
-        </motion.div>
+        </div>
       ))}
     </div>
   );

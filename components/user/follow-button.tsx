@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { followUser, unfollowUser } from '@/modules/follows/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -49,7 +48,7 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
   };
 
   return (
-    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+    <div className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-100">
       <Button
         onClick={handleToggle}
         disabled={isLoading}
@@ -70,6 +69,6 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
           </>
         )}
       </Button>
-    </motion.div>
+    </div>
   );
 }
