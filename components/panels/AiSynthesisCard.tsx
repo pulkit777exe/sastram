@@ -22,6 +22,7 @@ interface AiSynthesisCardProps {
 export default function AiSynthesisCard({
   summary,
   sources,
+  lastUpdated,
   threadId,
   messageCount,
 }: AiSynthesisCardProps) {
@@ -91,6 +92,11 @@ export default function AiSynthesisCard({
               >
                 Read more
               </button>
+            )}
+            {lastUpdated && (
+              <p className="text-[11px] text-muted-foreground">
+                Updated {new Date(lastUpdated).toLocaleDateString()}
+              </p>
             )}
           </>
         ) : (

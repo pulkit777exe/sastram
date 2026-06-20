@@ -56,7 +56,7 @@ export async function createNotification({
 }
 
 export async function createBulkNotifications(notifications: CreateNotificationParams[]) {
-  return prisma.notification.createMany({
+  const result = await prisma.notification.createMany({
     data: notifications.map((notif) => ({
       userId: notif.userId,
       type: notif.type,
@@ -65,6 +65,25 @@ export async function createBulkNotifications(notifications: CreateNotificationP
       data: notif.data as Prisma.InputJsonValue,
     })),
   });
+
+  // Publish count updates to each affected user's WebSocket connections
+  const uniqueUserIds = [...new Set(notifications.map((n) => n.userId))];
+  for (const userId of uniqueUserIds) {
+    try {
+      const unreadCount = await getUnreadCount(userId);
+      publishUserEvent(userId, {
+        type: 'NOTIFICATION_COUNT_UPDATE',
+        payload: { unreadCount },
+      });
+    } catch (err) {
+      logger.error('[createBulkNotifications] Failed to publish count update', {
+        userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return result;
 }
 
 export const getUserNotifications = cache(async (filters: NotificationFilters) => {
@@ -267,7 +286,7 @@ export async function notifyMultipleUsers(
   message?: string,
   data?: NotificationData
 ) {
-  return prisma.notification.createMany({
+  const result = await prisma.notification.createMany({
     data: userIds.map((userId) => ({
       userId,
       type,
@@ -276,4 +295,22 @@ export async function notifyMultipleUsers(
       data: data as Prisma.InputJsonValue,
     })),
   });
+
+  // Publish count updates to each user's WebSocket connections
+  for (const userId of userIds) {
+    try {
+      const unreadCount = await getUnreadCount(userId);
+      publishUserEvent(userId, {
+        type: 'NOTIFICATION_COUNT_UPDATE',
+        payload: { unreadCount },
+      });
+    } catch (err) {
+      logger.error('[notifyMultipleUsers] Failed to publish count update', {
+        userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return result;
 }

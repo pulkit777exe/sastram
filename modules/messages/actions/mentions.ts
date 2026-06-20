@@ -7,6 +7,7 @@ import { createServerAction } from '@/lib/utils/server-action';
 import { searchMentionUsersSchema } from '@/modules/messages/schemas';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { ROUTES } from '@/lib/config/routes';
+import { createBulkNotifications } from '@/modules/notifications/repository';
 
 export async function createMentionsForMessage(args: {
   messageId: string;
@@ -37,15 +38,15 @@ export async function createMentionsForMessage(args: {
     ? `${ROUTES.THREAD(args.threadSlug)}?focus=${args.messageId}`
     : null;
 
-  await prisma.notification.createMany({
-    data: args.mentions.map((userId) => ({
+  await createBulkNotifications(
+    args.mentions.map((userId) => ({
       userId,
-      type: 'MENTION',
+      type: 'MENTION' as const,
       title: 'You were mentioned',
       message: `${args.mentionedBy.name || args.mentionedBy.email} mentioned you in a message`,
       data: { messageId: args.messageId, threadId: args.threadId, linkUrl },
-    })),
-  });
+    }))
+  );
 
   for (const userId of args.mentions) {
     args.sideEffects.emitMentionNotification(args.threadId, {
