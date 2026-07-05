@@ -23,6 +23,13 @@ export function getUpstashRedis(): Redis | null {
 }
 
 /**
+ * Reset the cached Upstash Redis client. Use in tests to avoid stale singletons.
+ */
+export function resetUpstashRedis(): void {
+  _upstashRedis = null;
+}
+
+/**
  * Lua script for atomic INCR + EXPIRE.
  * Prevents orphan keys with no TTL if the process crashes between operations.
  *

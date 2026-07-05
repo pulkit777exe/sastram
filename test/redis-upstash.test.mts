@@ -1,9 +1,13 @@
-import { describe, it } from 'mocha';
+import { describe, it, beforeEach } from 'mocha';
 import { expect } from 'chai';
-import { getUpstashRedis, getSecondsUntilUtcMidnight, ATOMIC_INCR_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, getSecondsUntilUtcMidnight, ATOMIC_INCR_EXPIRE_LUA, resetUpstashRedis } from '@/lib/infrastructure/redis-upstash';
 
 describe('Redis Upstash Infrastructure', () => {
   describe('getUpstashRedis', () => {
+    beforeEach(() => {
+      resetUpstashRedis();
+    });
+
     it('should return a Redis client when env vars are set', () => {
       const client = getUpstashRedis();
       if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
