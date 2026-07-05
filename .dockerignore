@@ -1,0 +1,16 @@
+node_modules
+.git
+.next
+.env
+.env.*
+!.env.example
+test/
+e2e/
+*.md
+!.dockerignore
+.github/
+.vscode/
+.idea/
+*.log
+.DS_Store
+coverage/
