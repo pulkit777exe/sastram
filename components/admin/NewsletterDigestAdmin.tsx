@@ -16,7 +16,6 @@ import {
   Calendar,
 } from 'lucide-react';
 import { toasts } from '@/lib/utils/toast';
-import axios from 'axios';
 import { cn } from '@/lib/utils/cn';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 
@@ -47,7 +46,7 @@ export function NewsletterDigestAdmin({ digests, totalSubscribers }: NewsletterD
   async function handleGenerateDigests() {
     setIsGenerating(true);
     try {
-      await axios.post('/api/newsletter/generate');
+      await fetch('/api/newsletter/generate', { method: 'POST' });
       toasts.success('Newsletter digests generated and sent successfully!');
     } catch (error) {
       console.error('Failed to generate digests:', error);
