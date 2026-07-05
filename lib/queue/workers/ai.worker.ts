@@ -3,6 +3,9 @@ import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { applyConfidenceDecay } from '@/lib/utils/confidence-decay';
+import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
+import { sanitizeUserContent, sanitizeHtmlContent } from '@/lib/services/content-safety';
+import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { NotificationType } from '@prisma/client';
 import { notifyMultipleUsers } from '@/modules/notifications';
 import { emitThreadMessage } from '@/modules/ws';
@@ -20,6 +23,13 @@ import type {
   AIConflictResult,
   JobMessageData,
 } from '../types';
+
+async function assertSpendCapAvailable(): Promise<void> {
+  const cap = await checkAiSpendCap();
+  if (!cap.allowed) {
+    throw new Error('AI spend cap exceeded — job skipped until UTC midnight reset');
+  }
+}
 
 export async function handleThreadSummaryJob(job: Job<ThreadSummaryJobData>) {
   logger.info(`[worker:ai] thread-summary job ${job.id}`);
@@ -233,7 +243,9 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
 
 async function generateThreadSummary(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread summary for thread: ${threadId}`);
-  const summary = await aiService.generateThreadSummary(messages);
+  await assertSpendCapAvailable();
+  const rawSummary = await aiService.generateThreadSummary(messages);
+  const { sanitized: summary } = sanitizeUserContent(rawSummary);
   await prisma.thread.update({
     where: { id: threadId },
     data: { aiSummary: summary },
@@ -243,6 +255,7 @@ async function generateThreadSummary(threadId: string, messages: JobMessageData[
 
 async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread DNA for thread: ${threadId}`);
+  await assertSpendCapAvailable();
   const threadDNA = await aiService.generateThreadDNA(messages);
   await prisma.thread.update({
     where: { id: threadId },
@@ -253,6 +266,7 @@ async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
 
 async function calculateResolutionScore(threadId: string, messages: JobMessageData[]) {
   logger.info(`Calculating resolution score for thread: ${threadId}`);
+  await assertSpendCapAvailable();
   const [score, thread] = await Promise.all([
     aiService.calculateResolutionScore(messages),
     prisma.thread.findUnique({
@@ -275,6 +289,7 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
 
 async function detectConflicts(threadId: string, messages: JobMessageData[]) {
   logger.info(`Detecting conflicts for thread: ${threadId}`);
+  await assertSpendCapAvailable();
   const conflictResult = await aiService.detectConflicts(messages);
   if (conflictResult.hasConflict) {
     await prisma.thread.update({
@@ -290,7 +305,9 @@ async function detectConflicts(threadId: string, messages: JobMessageData[]) {
 
 async function generateDailyDigest(messages: JobMessageData[], subscriberIds: string[]) {
   logger.info(`Generating daily digest for ${subscriberIds.length} subscribers`);
-  const digest = await aiService.generateDailyDigest(messages);
+  await assertSpendCapAvailable();
+  const rawDigest = await aiService.generateDailyDigest(messages);
+  const digest = sanitizeHtmlContent(rawDigest);
   await notifyMultipleUsers(subscriberIds, NotificationType.AI_INSIGHT, 'Daily Digest', digest, {
     type: 'daily_digest',
   });
@@ -370,6 +387,8 @@ async function generateAIInlineResponse(
   threadId: string,
   query: string,
 ) {
+  await assertSpendCapAvailable();
+
   const parentMessage = await prisma.message.findUnique({
     where: { id: messageId },
     select: { id: true, depth: true, threadId: true },
@@ -380,15 +399,39 @@ async function generateAIInlineResponse(
     return { queued: false, handled: false, error: 'Parent message not found' };
   }
 
+  // Dedup: check if an AI response already exists for this parent message (e.g. from a previous job attempt)
+  const existingAiMessage = await prisma.message.findFirst({
+    where: {
+      threadId,
+      parentId: parentMessage.id,
+      isAiResponse: true,
+    },
+    select: { id: true, createdAt: true, parentId: true, depth: true, content: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
   const context = await fetchThreadContext(threadId);
   const aiUser = await getOrCreateAiUser();
-  const aiMessage = await createAiMessage(threadId, parentMessage.id, (parentMessage.depth ?? 0) + 1, aiUser.id);
 
-  emitAiMessage(threadId, aiMessage, aiUser, false);
+  let aiMessage: { id: string; content: string; createdAt: Date; parentId: string | null; depth: number };
+  let isRetry = false;
+
+  if (existingAiMessage) {
+    // Reuse existing message — this is a retry
+    logger.info(`[worker:ai] Reusing existing AI message ${existingAiMessage.id} for parent ${messageId} (retry)`);
+    aiMessage = existingAiMessage;
+    isRetry = true;
+  } else {
+    aiMessage = await createAiMessage(threadId, parentMessage.id, (parentMessage.depth ?? 0) + 1, aiUser.id);
+  }
+
+  if (!isRetry) {
+    emitAiMessage(threadId, aiMessage, aiUser, false);
+  }
 
   try {
-    const finalContent = await streamAiResponse(threadId, query, context, aiMessage, aiUser);
-    emitAiMessage(threadId, { ...aiMessage, content: finalContent }, aiUser, true);
+    const { content: finalContent, truncated } = await streamAiResponse(threadId, query, context, aiMessage, aiUser);
+    emitAiMessage(threadId, { ...aiMessage, content: finalContent }, aiUser, true, truncated);
   } catch (error) {
     logger.error('[worker:ai] AI streaming error:', error);
     const errorMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
@@ -466,6 +509,7 @@ function emitAiMessage(
   message: { id: string; content: string; parentId: string | null; depth: number; createdAt: Date },
   aiUser: { id: string; name: string | null; image: string | null },
   isComplete: boolean,
+  truncated = false,
 ) {
   emitThreadMessage(threadId, {
     id: message.id,
@@ -481,6 +525,7 @@ function emitAiMessage(
     replyCount: 0,
     isAiResponse: true,
     isComplete,
+    truncated,
     reactions: [],
     attachments: [],
   });
@@ -492,7 +537,7 @@ async function streamAiResponse(
   context: string,
   aiMessage: { id: string; createdAt: Date; parentId: string | null; depth: number },
   aiUser: { id: string; name: string | null; image: string | null },
-): Promise<string> {
+): Promise<{ content: string; truncated: boolean }> {
   let fullContent = '';
   let lastDbUpdateTime = Date.now();
   let lastEmitTime = Date.now();
@@ -500,7 +545,7 @@ async function streamAiResponse(
   const EMIT_THROTTLE_MS = 100;
 
   await aiService.generateStreamingResponse(
-    `Answer this forum question in under 200 words and stay grounded in thread context.\nQuestion: ${query}\n\nRecent thread context:\n${context}`,
+    `Answer this forum question in under 200 words and stay grounded in thread context.${DATA_ONLY_INSTRUCTION}\nQuestion: ${wrapUserContent(query)}\n\nRecent thread context:\n${wrapUserContent(context)}`,
     async (chunk) => {
       fullContent += chunk;
       const now = Date.now();
@@ -518,10 +563,12 @@ async function streamAiResponse(
     },
   );
 
+  const truncated = fullContent.length > 2000;
   const finalContent = fullContent.slice(0, 2000);
+  const { sanitized: sanitizedContent } = sanitizeUserContent(finalContent);
   await prisma.message.update({
     where: { id: aiMessage.id },
-    data: { content: finalContent },
+    data: { content: sanitizedContent },
   });
-  return finalContent;
+  return { content: sanitizedContent, truncated };
 }

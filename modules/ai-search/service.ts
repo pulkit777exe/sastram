@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { withRetry } from '@/lib/utils/retry';
 import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
+import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 import type {
   SearchConfig,
   QueryClassification,
@@ -352,9 +353,10 @@ async function crossReference(
         .join('\n');
 
       const conflictPrompt = `Review these ${ranked.length} sources about: "${query}"
+${DATA_ONLY_INSTRUCTION}
 
 Sources summary:
-${sourceSummaries}
+${wrapUserContent(sourceSummaries)}
 
 Identify if there are genuine contradictions (not just different perspectives).
 Return JSON: { "detected": boolean, "description": string, "sideA": string, "sideB": string }
@@ -397,13 +399,14 @@ ${s.text.substring(0, 1000)}`
     .join('\n---\n');
 
   const synthesisPrompt = `You are a knowledge synthesis engine for a developer forum.
+${DATA_ONLY_INSTRUCTION}
 
 Query: "${query}"
 Query type: ${classification.type}
-${tavilyAnswer ? `Quick pre-answer from Tavily: ${tavilyAnswer}` : ''}
+${tavilyAnswer ? `Quick pre-answer from Tavily: ${wrapUserContent(tavilyAnswer)}` : ''}
 
 Sources (ranked by trust tier):
-${sourcesText}
+${wrapUserContent(sourcesText)}
 
 Generate a structured synthesis following these STRICT rules:
 1. Quick Answer: 2-3 sentences. Direct. No hedging.

@@ -118,6 +118,7 @@ export function useThreadWebSocket({
             const senderId = payload.senderId as string;
             const isAiResponse = Boolean(payload.isAiResponse);
             const isComplete = Boolean(payload.isComplete);
+            const truncated = Boolean(payload.truncated);
 
             // Don't echo own non-AI messages back (already in state)
             if (senderId === currentUserId && !isAiResponse) return;
@@ -140,6 +141,7 @@ export function useThreadWebSocket({
               likeCount: (payload.likeCount as number) ?? 0,
               replyCount: 0,
               isAiResponse,
+              truncated,
               deletedAt: null,
               sender: sender
                 ? {

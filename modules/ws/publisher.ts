@@ -17,6 +17,7 @@ export interface ThreadMessagePayload {
   replyCount: number;
   isAiResponse: boolean;
   isComplete?: boolean;
+  truncated?: boolean;
   reactions: unknown[];
   attachments: unknown[];
 }

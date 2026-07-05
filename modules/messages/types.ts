@@ -38,6 +38,7 @@ export interface Message {
   likeCount: number;
   replyCount: number;
   isAiResponse: boolean;
+  truncated?: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;

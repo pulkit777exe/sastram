@@ -5,6 +5,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { applyConfidenceDecay } from '@/lib/utils/confidence-decay';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { consumeAiAnalysisQuota } from '@/lib/services/ai-analysis-quota';
+import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { z } from 'zod';
 
 const scoreRequestSchema = z.object({
@@ -18,6 +20,18 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   const rateLimitResult = await rateLimit(ip);
   if (!rateLimitResult.success) {
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
+  }
+
+  // Per-user daily AI analysis quota
+  const quota = await consumeAiAnalysisQuota(session.user.id);
+  if (!quota.allowed) {
+    return NextResponse.json(fail('RATE_LIMITED', `Daily AI analysis limit reached. Resets at UTC midnight.`), { status: 429 });
+  }
+
+  // Global daily spend cap
+  const spendCap = await checkAiSpendCap();
+  if (!spendCap.allowed) {
+    return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
   }
 
   let body: unknown;

@@ -5,6 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { z } from 'zod';
 
 const aiReplyParamsSchema = z.object({
@@ -28,6 +29,12 @@ const handler = withErrorHandling(async (
   const rateLimitResult = await rateLimit({ key: `ai-reply:${session.user.id}:${ip}`, type: 'api' });
   if (!rateLimitResult.success) {
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
+  }
+
+  // Global daily spend cap
+  const spendCap = await checkAiSpendCap();
+  if (!spendCap.allowed) {
+    return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
   }
 
   try {

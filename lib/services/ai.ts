@@ -5,6 +5,7 @@ import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai'
 import { getEnv } from '@/lib/config/env';
 import { threadDnaSchema, type ThreadDNA } from '@/lib/schemas/thread-dna';
 import { getLangChainService, type LangChainAIService } from './ai-langchain';
+import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 
 interface MessageInput {
   content: string;
@@ -154,6 +155,8 @@ export class GeminiService implements AIService {
     const controller = new AbortController();
     // Stall-based timeout: abort if no chunk arrives for 30s
     let stallTimer = setTimeout(() => controller.abort(), 30_000);
+    // Hard total timeout: abort after 90s regardless of chunk cadence
+    const totalTimer = setTimeout(() => controller.abort(), 90_000);
     const resetTimer = () => {
       clearTimeout(stallTimer);
       stallTimer = setTimeout(() => controller.abort(), 30_000);
@@ -172,6 +175,7 @@ export class GeminiService implements AIService {
       throw error;
     } finally {
       clearTimeout(stallTimer);
+      clearTimeout(totalTimer);
     }
   }
 
@@ -334,10 +338,11 @@ export class GeminiService implements AIService {
     const prompt =
       'You are a content moderation classifier. Analyze the following text for toxicity. ' +
       'Toxicity includes: hate speech, harassment, threats, slurs, explicit content, ' +
-      'personal attacks, and harmful language.\n\n' +
+      'personal attacks, and harmful language.' +
+      DATA_ONLY_INSTRUCTION + '\n\n' +
       'Return ONLY a JSON object with a single field "toxicity" containing a number between 0 and 1, ' +
       'where 0 means completely safe and 1 means extremely toxic.\n\n' +
-      `Text to analyze:\n${content.substring(0, MAX_CONTENT_CHARS)}\n\nJSON:`;
+      `Text to analyze:\n${wrapUserContent(content.substring(0, MAX_CONTENT_CHARS))}\n\nJSON:`;
 
     const { signal, clear } = makeAbortController();
     try {
@@ -423,7 +428,16 @@ export class OpenAIService implements AIService {
     content: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    const { signal, clear } = makeAbortController();
+    const controller = new AbortController();
+    // Stall-based timeout: abort if no data arrives for 30s
+    let stallTimer = setTimeout(() => controller.abort(), 30_000);
+    // Hard total timeout: abort after 90s regardless
+    const totalTimer = setTimeout(() => controller.abort(), 90_000);
+    const resetTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => controller.abort(), 30_000);
+    };
+
     try {
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -443,7 +457,7 @@ export class OpenAIService implements AIService {
           max_tokens: 400,
           temperature: 0.4,
         }),
-        signal,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -460,6 +474,7 @@ export class OpenAIService implements AIService {
         const { done, value } = await reader.read();
         if (done) break;
 
+        resetTimer();
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         // Keep last potentially incomplete line in buffer
@@ -483,7 +498,8 @@ export class OpenAIService implements AIService {
       logger.error('[OpenAIService.generateStreamingResponse]', { error });
       throw error;
     } finally {
-      clear();
+      clearTimeout(stallTimer);
+      clearTimeout(totalTimer);
     }
   }
 
@@ -577,10 +593,11 @@ export class OpenAIService implements AIService {
       const text = await this.callOpenAI(
         'You are a content moderation classifier. Analyze the following text for toxicity. ' +
           'Toxicity includes: hate speech, harassment, threats, slurs, explicit content, ' +
-          'personal attacks, and harmful language.\n\n' +
+          'personal attacks, and harmful language.' +
+          DATA_ONLY_INSTRUCTION + '\n\n' +
           'Return ONLY a JSON object with a single field "toxicity" containing a number between 0 and 1, ' +
           'where 0 means completely safe and 1 means extremely toxic.',
-        `Text to analyze:\n${content.substring(0, MAX_CONTENT_CHARS)}`,
+        `Text to analyze:\n${wrapUserContent(content.substring(0, MAX_CONTENT_CHARS))}`,
         50
       );
       const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);

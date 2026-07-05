@@ -296,6 +296,11 @@ const MessageRow = React.memo(function MessageRow({
                   AI
                 </span>
               )}
+              {message.truncated && (
+                <span className="text-[9px] text-muted-foreground/60 italic">
+                  (truncated)
+                </span>
+              )}
               {message.isPinned && (
                 <span className="text-amber-500 text-[10px] leading-none" title="Pinned">📌</span>
               )}

@@ -23,6 +23,7 @@ const newMessagePayloadSchema = basePayloadSchema.extend({
   replyCount: z.number().int().min(0).optional(),
   isAiResponse: z.boolean().optional(),
   isComplete: z.boolean().optional(),
+  truncated: z.boolean().optional(),
   reactions: z
     .array(
       z.object({

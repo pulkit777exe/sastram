@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { sanitizeSearchQuery, validateApiKeys } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch } from '@/modules/ai-search/service';
 import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
@@ -58,6 +59,12 @@ export async function POST(request: NextRequest) {
     const quota = await consumeAiSearchQuota(session.user.id);
     if (!quota.allowed) {
       return NextResponse.json(fail('RATE_LIMITED', `Daily AI search limit reached (${quota.remaining} remaining). Resets at UTC midnight.`), { status: 429, headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    // 4b. Global daily spend cap
+    const spendCap = await checkAiSpendCap();
+    if (!spendCap.allowed) {
+      return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
 
     // 5. Extract and validate API keys from headers
