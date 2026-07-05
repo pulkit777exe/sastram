@@ -1,19 +1,36 @@
+import { Suspense } from 'react';
 import { getSession } from '@/modules/auth/session';
 import { getNotifications } from '@/modules/notifications/actions';
 import { NotificationList } from '@/components/notifications/notification-list';
 import { Bell } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function NotificationsPage() {
-  const session = await getSession();
-
-  if (!session?.user) {
-    return (
-      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-zinc-500">
-        <Bell size={48} className="text-zinc-800" />
-        <p>Please log in to view your notifications.</p>
+function NotificationListSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-6 w-24" />
       </div>
-    );
-  }
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-start gap-3 p-4 rounded-xl">
+            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+            <Skeleton className="h-3 w-12 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function NotificationListData() {
+  const session = await getSession();
+  if (!session?.user) return null;
 
   const result = await getNotifications({ unreadOnly: false, limit: 20, offset: 0 });
   const raw = result.data ?? [];
@@ -37,6 +54,21 @@ export default async function NotificationsPage() {
     };
   });
 
+  return <NotificationList notifications={notifications} />;
+}
+
+export default async function NotificationsPage() {
+  const session = await getSession();
+
+  if (!session?.user) {
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-zinc-500">
+        <Bell size={48} className="text-zinc-800" />
+        <p>Please log in to view your notifications.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-10 max-w-3xl">
       <div>
@@ -48,7 +80,9 @@ export default async function NotificationsPage() {
         <p className="text-zinc-500 mt-2">Stay updated with mentions, replies, and activity.</p>
       </div>
 
-      <NotificationList notifications={notifications} />
+      <Suspense fallback={<NotificationListSkeleton />}>
+        <NotificationListData />
+      </Suspense>
     </div>
   );
 }
