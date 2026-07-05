@@ -17,9 +17,7 @@ import {
   X,
   MessageSquare,
 } from 'lucide-react';
-import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
-import { toasts } from '@/lib/utils/toast';
-import { validateFile } from '@/lib/services/content-safety';
+import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import type { Message } from '@/lib/types/index';
 import { InlinePollButton } from '@/components/thread/inline-poll-button';
 import { MentionSuggest, type MentionCandidate } from '@/components/chat/mention-suggest';
@@ -66,40 +64,50 @@ export function PostMessageForm({
   onTogglePoll,
   onPollCreated,
 }: PostMessageFormProps) {
-  const [loading, setLoading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [content, setContent] = useState('');
-  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
-  const [mentionCandidates, setMentionCandidates] = useState<MentionCandidate[]>([]);
-  const [mentionOpen, setMentionOpen] = useState(false);
-  const [activeMentionIndex, setActiveMentionIndex] = useState(0);
-  const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
   const [showPollLocal, setShowPollLocal] = useState(false);
   const showPoll = showPollProp ?? showPollLocal;
   const setShowPoll = onTogglePoll ?? setShowPollLocal;
   const [emojiOpen, setEmojiOpen] = useState(false);
+
+  const {
+    content,
+    selectedFile,
+    setSelectedFile,
+    handleFileSelect,
+    fileInputRef,
+    handleBold,
+    handleItalic,
+    handleCode,
+    handleLink,
+    mentionedUserIds,
+    mentionCandidates,
+    mentionOpen,
+    activeMentionIndex,
+    setActiveMentionIndex,
+    applyMentionSelection,
+    closeMentions,
+    mentionListRef,
+    handleEmojiSelect,
+    handleAtAi,
+    handleSubmit,
+    isSubmitting,
+    canSubmit,
+    textareaRef,
+    handleKeyDown,
+    handleChange,
+    handleBlur,
+  } = useMessageComposer({
+    threadId,
+    replyTo,
+    onMessagePosted,
+    onOptimisticMessage,
+    onMessageError,
+    onCancelReply,
+    onTypingStart,
+    onTypingStop,
+  });
+
   const formRef = useRef<HTMLFormElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const mentionListRef = useRef<HTMLDivElement>(null);
-  const mentionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mentionRequestIdRef = useRef(0);
-
-  const closeMentions = useCallback(() => {
-    setMentionOpen(false);
-    setMentionCandidates([]);
-    setActiveMentionIndex(0);
-    setMentionStartIndex(null);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (mentionTimeoutRef.current) {
-        clearTimeout(mentionTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPanelRef = useRef<HTMLDivElement>(null);
 
@@ -127,284 +135,22 @@ export function PostMessageForm({
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
-  }, [closeMentions, emojiOpen]);
+  }, [closeMentions, emojiOpen, mentionListRef, textareaRef]);
 
-  const resolveMentionCandidates = useCallback(
-    async (query: string) => {
-      const requestId = ++mentionRequestIdRef.current;
-      const result = await searchMentionUsers(threadId, query);
-      if (requestId !== mentionRequestIdRef.current) return;
-
-      const users = Array.isArray(result.data) ? result.data : [];
-      setMentionCandidates(users);
-      setMentionOpen(users.length > 0);
-      setActiveMentionIndex(0);
-    },
-    [threadId]
-  );
-
-  const detectMentionQuery = useCallback(
-    (value: string, caretIndex: number) => {
-      const beforeCaret = value.slice(0, caretIndex);
-      const match = beforeCaret.match(/(^|\s)@([\w.-]{1,50})$/);
-
-      if (!match || !match[2]) {
-        closeMentions();
-        return;
-      }
-
-      const query = match[2];
-      const atIndex = caretIndex - query.length - 1;
-      setMentionStartIndex(atIndex);
-
-      if (mentionTimeoutRef.current) {
-        clearTimeout(mentionTimeoutRef.current);
-      }
-
-      mentionTimeoutRef.current = setTimeout(() => {
-        void resolveMentionCandidates(query);
-      }, 300);
-    },
-    [closeMentions, resolveMentionCandidates]
-  );
-
-  const applyMentionSelection = useCallback(
-    (candidate: MentionCandidate) => {
-      const textarea = textareaRef.current;
-      if (!textarea || mentionStartIndex === null) return;
-
-      const cursor = textarea.selectionStart ?? content.length;
-      const before = content.slice(0, mentionStartIndex);
-      const after = content.slice(cursor);
-      const mentionToken = `@${candidate.handle}`;
-      const nextContent = `${before}${mentionToken} ${after}`;
-
-      setContent(nextContent);
-      setMentionedUserIds((prev) => Array.from(new Set([...prev, candidate.id])));
-      closeMentions();
-
-      requestAnimationFrame(() => {
-        const nextCursor = before.length + mentionToken.length + 1;
-        textarea.focus();
-        textarea.setSelectionRange(nextCursor, nextCursor);
-      });
-    },
-    [content, mentionStartIndex, closeMentions]
-  );
-
-  const wrapSelection = useCallback(
-    (before: string, after: string) => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const selected = content.substring(start, end);
-      const next = content.slice(0, start) + before + selected + after + content.slice(end);
-      setContent(next);
-      requestAnimationFrame(() => {
-        textarea.focus();
-        const cursor = start + before.length;
-        if (selected) {
-          textarea.setSelectionRange(cursor, cursor + selected.length);
-        } else {
-          textarea.setSelectionRange(cursor, cursor);
-        }
-      });
-    },
-    [content]
-  );
-
-  const insertAtCursor = useCallback(
-    (text: string) => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const next = content.slice(0, start) + text + content.slice(textarea.selectionEnd);
-      setContent(next);
-      requestAnimationFrame(() => {
-        textarea.focus();
-        const cursor = start + text.length;
-        textarea.setSelectionRange(cursor, cursor);
-      });
-    },
-    [content]
-  );
-
-  const handleBold = useCallback(() => wrapSelection('**', '**'), [wrapSelection]);
-  const handleItalic = useCallback(() => wrapSelection('*', '*'), [wrapSelection]);
-  const handleCode = useCallback(() => wrapSelection('`', '`'), [wrapSelection]);
-  const handleLink = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = content.substring(start, end);
-    const url = window.prompt('Enter URL:', 'https://');
-    if (!url) return;
-    const linkText = selected || 'link';
-    const next = content.slice(0, start) + '[' + linkText + '](' + url + ')' + content.slice(end);
-    setContent(next);
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start, start + next.length - (content.length - end));
-    });
-  }, [content]);
-
-  const handleAtAi = useCallback(() => insertAtCursor('@ai '), [insertAtCursor]);
-
-  const handleEmojiSelect = useCallback(
+  const handleEmojiSelectAndClose = useCallback(
     (emoji: string) => {
-      insertAtCursor(emoji);
+      handleEmojiSelect(emoji);
       setEmojiOpen(false);
     },
-    [insertAtCursor]
+    [handleEmojiSelect]
   );
-
-  async function handleSubmit(formData: FormData) {
-    if (!content.trim()) {
-      toasts.error('Message cannot be empty');
-      return;
-    }
-
-    const messageContent = content;
-    const tempId = `temp-${crypto.randomUUID()}`;
-
-    // Build optimistic message
-    const optimisticMessage: Message = {
-      id: tempId,
-      content: messageContent,
-      threadId,
-      senderId: '',
-      parentId: replyTo?.messageId ?? null,
-      depth: 0,
-      isEdited: false,
-      isPinned: false,
-      likeCount: 0,
-      replyCount: 0,
-      isAiResponse: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deletedAt: null,
-      sender: { id: '', name: null, image: null },
-      thread: { id: threadId, name: '', slug: '' },
-      attachments: [],
-    };
-
-    // Optimistic: add message to UI immediately
-    onOptimisticMessage?.(optimisticMessage);
-
-    // Clear form immediately
-    formRef.current?.reset();
-    setSelectedFile(null);
-    setContent('');
-    setMentionedUserIds([]);
-    closeMentions();
-    onCancelReply?.();
-
-    setLoading(true);
-    formData.append('threadId', threadId);
-    formData.set('content', messageContent);
-
-    // Upload file if selected, then include attachment metadata
-    if (selectedFile) {
-      try {
-        const uploadFormData = new FormData();
-        uploadFormData.append('files', selectedFile);
-        const uploadResponse = await fetch('/api/upload', { method: 'POST', body: uploadFormData });
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json();
-          const uploadedFile = uploadData?.data?.files?.[0];
-          if (uploadedFile?.url) {
-            formData.append('attachments', JSON.stringify([{
-              url: uploadedFile.url,
-              type: uploadedFile.type,
-              name: uploadedFile.name,
-              size: uploadedFile.size,
-            }]));
-          }
-        } else {
-          toasts.error('Failed to upload file');
-          setLoading(false);
-          onMessageError?.(tempId);
-          return;
-        }
-      } catch {
-        toasts.error('Failed to upload file');
-        setLoading(false);
-        onMessageError?.(tempId);
-        return;
-      }
-    }
-
-    if (replyTo) {
-      formData.append('parentId', replyTo.messageId);
-    }
-
-    if (mentionedUserIds.length > 0) {
-      formData.append('mentions', JSON.stringify(mentionedUserIds));
-    }
-
-    const result = await postMessage(formData);
-    setLoading(false);
-
-    if (result?.error) {
-      // Rollback: remove optimistic message
-      onMessageError?.(tempId);
-      toasts.error(result.error);
-    } else if (result?.data?.message) {
-      if (onMessagePosted) {
-        const msg = result.data.message;
-        const transformedMessage = {
-          id: msg.id,
-          content: msg.content,
-          threadId: msg.threadId,
-          senderId: msg.senderId,
-          parentId: msg.parentId,
-          depth: msg.depth,
-          isEdited: false,
-          isPinned: false,
-          likeCount: 0,
-          replyCount: 0,
-          isAiResponse: false,
-          createdAt: msg.createdAt,
-          updatedAt: msg.updatedAt,
-          deletedAt: null,
-          sender: msg.sender ?? { id: msg.senderId, name: null, image: null },
-          thread: msg.thread ?? { id: msg.threadId, name: '', slug: '' },
-          attachments: msg.attachments?.map((att) => ({
-            ...att,
-            size: att.size !== null ? Number(att.size) : null,
-          })) ?? [],
-        };
-        onMessagePosted(transformedMessage);
-      }
-
-      if (result.data.aiInlineLimited) {
-        toasts.aiInlineRateLimit();
-      }
-    }
-  }
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validation = validateFile(file);
-    if (!validation.isValid) {
-      toasts.error(validation.error || 'Invalid file');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    setSelectedFile(file);
-  };
 
   const placeholder = replyTo
     ? `Reply to @${replyTo.userName}…`
     : 'Share your thoughts, ask questions, or @mention someone…';
 
   return (
-    <form ref={formRef} action={handleSubmit} className="relative w-full">
+    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }} className="relative w-full">
       {replyTo && (
         <div className="absolute -top-11 left-0 right-0 bg-brand/10 border-x border-t border-brand/15 px-4 py-2 rounded-t-xl text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150">
           <div className="flex items-center gap-2 text-brand">
@@ -454,57 +200,10 @@ export function PostMessageForm({
             name="content"
             placeholder={placeholder}
             value={content}
-            onChange={(e) => {
-              const nextValue = e.target.value;
-              const caret = e.target.selectionStart ?? nextValue.length;
-              setContent(nextValue);
-              detectMentionQuery(nextValue, caret);
-              onTypingStart?.();
-            }}
+            onChange={handleChange}
             className="flex-1 min-h-[44px] max-h-[30vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1.5 px-0 text-sm leading-relaxed placeholder-muted-foreground/60 text-foreground"
-            onKeyDown={(e) => {
-              if (mentionOpen && mentionCandidates.length > 0) {
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  setActiveMentionIndex((prev) =>
-                    prev + 1 >= mentionCandidates.length ? 0 : prev + 1
-                  );
-                  return;
-                }
-                if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  setActiveMentionIndex((prev) =>
-                    prev - 1 < 0 ? mentionCandidates.length - 1 : prev - 1
-                  );
-                  return;
-                }
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  const selected = mentionCandidates[activeMentionIndex];
-                  if (selected) {
-                    applyMentionSelection(selected);
-                  }
-                  return;
-                }
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  closeMentions();
-                  return;
-                }
-              }
-
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                formRef.current?.requestSubmit();
-                onTypingStop?.();
-              } else if (e.key === 'Escape' && replyTo) {
-                onCancelReply?.();
-                closeMentions();
-              } else {
-                onTypingStart?.();
-              }
-            }}
-            onBlur={() => onTypingStop?.()}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
           />
         </div>
 
@@ -551,7 +250,7 @@ export function PostMessageForm({
                         key={emoji}
                         type="button"
                         className="hover:bg-muted rounded p-1.5 text-lg leading-none transition-colors text-center"
-                        onClick={() => handleEmojiSelect(emoji)}
+                        onClick={() => handleEmojiSelectAndClose(emoji)}
                       >
                         {emoji}
                       </button>
@@ -570,8 +269,8 @@ export function PostMessageForm({
             </div>
           </div>
 
-          <Button type="submit" disabled={loading || !content.trim()} size="sm" className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-sm font-semibold transition-all">
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          <Button type="submit" disabled={isSubmitting || !content.trim()} size="sm" className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-sm font-semibold transition-all">
+            {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             <span>Send</span>
           </Button>
         </div>

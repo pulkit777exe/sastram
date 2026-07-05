@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Reply, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { postMessage } from '@/modules/messages/actions';
-import { toasts } from '@/lib/utils/toast';
+import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import { cn } from '@/lib/utils/cn';
 import type { Message } from '@/lib/types/index';
 
@@ -43,17 +42,34 @@ export function InlineReplyBox({
   onTypingStart,
   onTypingStop,
 }: InlineReplyBoxProps) {
-  const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isShaking, setIsShaking] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
   const replyDepth = Math.min(parentMessage.depth + 1, MAX_VISUAL_DEPTH);
+
+  const {
+    content,
+    isSubmitting,
+    error,
+    textareaRef,
+    handleKeyDown,
+    handleChange,
+    handleBlur,
+    handleSubmit,
+    cleanup,
+  } = useMessageComposer({
+    threadId,
+    parentId: parentMessage.id,
+    depth: replyDepth,
+    onMessagePosted,
+    onTypingStart,
+    onTypingStop,
+  });
+
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     textareaRef.current?.focus();
-  }, []);
+  }, [textareaRef]);
+
+  useEffect(() => cleanup, [cleanup]);
 
   const triggerShake = () => {
     const wrap = wrapRef.current;
@@ -66,79 +82,12 @@ export function InlineReplyBox({
     setTimeout(() => input.classList.remove('is-shaking'), 300);
   };
 
-  async function handleSubmit() {
+  const handleSubmitWithShake = async () => {
     if (!content.trim()) {
-      setError('Reply cannot be empty');
-      setIsShaking(true);
       triggerShake();
-      return;
     }
-    setError(null);
-    setIsShaking(false);
-    setIsSubmitting(true);
-
-    const formData = new FormData();
-    formData.append('content', content);
-    formData.append('threadId', threadId);
-    formData.append('parentId', parentMessage.id);
-    formData.append('depth', String(replyDepth));
-
-    const result = await postMessage(formData);
-    setIsSubmitting(false);
-
-    if (result?.error) {
-      setError(result.error);
-    } else if (result?.data?.message) {
-      const data = result.data.message;
-      const newMsg: Message = {
-        id: data?.id ?? crypto.randomUUID(),
-        content: data?.content ?? content,
-        threadId: data?.threadId ?? threadId,
-        senderId: data?.senderId ?? currentUser.id,
-        parentId: parentMessage.id,
-        depth: data?.depth ?? replyDepth,
-        isEdited: false,
-        isPinned: false,
-        likeCount: 0,
-        replyCount: 0,
-        isAiResponse: false,
-        createdAt: data?.createdAt ? new Date(data.createdAt) : new Date(),
-        updatedAt: data?.updatedAt ? new Date(data.updatedAt) : new Date(),
-        deletedAt: null,
-        sender: data?.sender
-          ? {
-              id: data.sender.id,
-              name: data.sender.name,
-              image: data.sender.image,
-            }
-          : {
-              id: currentUser.id,
-              name: currentUser.name,
-              image: currentUser.image,
-            },
-        thread: data?.thread
-          ? {
-              id: data.thread.id,
-              name: data.thread.name,
-              slug: data.thread.slug,
-            }
-          : { id: threadId, name: '', slug: '' },
-        attachments:
-          data?.attachments?.map(
-            (att: { id: string; url: string; type: string; name: string | null; size: bigint | null }) => ({
-              id: att.id,
-              url: att.url,
-              type: att.type,
-              name: att.name,
-              size: att.size !== null ? Number(att.size) : null,
-            })
-          ) ?? [],
-      };
-
-      onMessagePosted(newMsg);
-      toasts.sent();
-    }
-  }
+    await handleSubmit();
+  };
 
   return (
     <div
@@ -169,32 +118,16 @@ export function InlineReplyBox({
               {currentUser.name?.substring(0, 2).toUpperCase() || 'ME'}
             </AvatarFallback>
           </Avatar>
-          <div ref={wrapRef} className={cn('t-input-wrap flex-1', isShaking && 'is-error')}>
-            <div className={cn('t-input', isShaking && 'is-error')}>
+          <div ref={wrapRef} className={cn('t-input-wrap flex-1', error && 'is-error')}>
+            <div className={cn('t-input', error && 'is-error')}>
               <Textarea
                 ref={textareaRef}
                 value={content}
-                onChange={(e) => {
-                  setContent(e.target.value);
-                  setError(null);
-                  setIsShaking(false);
-                  onTypingStart?.();
-                }}
+                onChange={handleChange}
                 placeholder="Write your reply…"
                 className="min-h-[60px] max-h-[200px] text-sm resize-none shadow-none border-0 bg-transparent p-0 focus-visible:ring-0"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                    handleSubmit();
-                    onTypingStop?.();
-                  }
-                  if (e.key === 'Escape') {
-                    onCancel();
-                    onTypingStop?.();
-                  } else {
-                    onTypingStart?.();
-                  }
-                }}
-                onBlur={() => onTypingStop?.()}
+                onKeyDown={handleKeyDown}
+                onBlur={handleBlur}
               />
             </div>
 
@@ -211,7 +144,7 @@ export function InlineReplyBox({
               </Button>
               <Button
                 size="sm"
-                onClick={handleSubmit}
+                onClick={handleSubmitWithShake}
                 disabled={isSubmitting || !content.trim()}
                 className="h-7 text-xs bg-brand hover:bg-brand/90 text-white"
               >
