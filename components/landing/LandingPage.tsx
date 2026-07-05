@@ -1,9 +1,4 @@
-'use client';
-
 import Link from 'next/link';
-import { useTheme } from 'next-themes';
-import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
 import {
   MessageSquare,
   Users,
@@ -19,6 +14,8 @@ import {
 import { PublicNavbar } from '@/components/layout/public-navbar';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { SerifHeading } from '@/components/layout/serif-heading';
+import { FadeIn } from '@/components/landing/FadeIn';
+import { ThemeVideo } from '@/components/landing/LandingMedia';
 
 interface User {
   id: string;
@@ -124,33 +121,6 @@ const useCases = [
     subtitle: 'Open source · Self-hostable',
   },
 ];
-
-function FadeIn({
-  children,
-  className = '',
-  delay = 0,
-  y = 20,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-  y?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-60px' });
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y }}
-      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 function MosaicTile({ className }: { className?: string }) {
   return (
@@ -339,10 +309,6 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
 }
 
 export function LandingPage({ user }: LandingPageProps) {
-  const { theme } = useTheme();
-  const videoSrc = theme === 'dark' ? '/sastram-video-dark.mp4' : '/sastram-video-light.mp4';
-  const posterSrc = theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png';
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Announcement banner */}
@@ -607,20 +573,7 @@ export function LandingPage({ user }: LandingPageProps) {
 
         {/* Demo video */}
         <section className="py-16 px-6 bg-muted/50">
-          <FadeIn className="max-w-4xl mx-auto">
-            <div className="relative rounded-2xl border border-border bg-background overflow-hidden shadow-xl shadow-black/5">
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-auto"
-                poster={posterSrc}
-              >
-                <source src={videoSrc} type="video/mp4" suppressHydrationWarning />
-              </video>
-            </div>
-          </FadeIn>
+          <ThemeVideo className="max-w-4xl mx-auto" />
         </section>
 
         {/* Security section */}
