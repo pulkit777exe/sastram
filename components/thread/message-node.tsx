@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -115,7 +116,7 @@ interface CommentNodeProps {
   depth: number;
 }
 
-export function CommentNode({
+export const CommentNode = React.memo(function CommentNode({
   node,
   depth,
 }: CommentNodeProps) {
@@ -614,4 +615,4 @@ export function CommentNode({
       </Dialog>
     </div>
   );
-}
+});

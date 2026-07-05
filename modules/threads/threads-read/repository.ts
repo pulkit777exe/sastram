@@ -362,7 +362,7 @@ export const getThreadWithFullContext = cache(async (
           ) a ON true
           WHERE m."threadId" = s.id
           ORDER BY m."createdAt" DESC
-          LIMIT 500
+          LIMIT 50
         ) mrow
       ) msgs ON true
       LEFT JOIN LATERAL (

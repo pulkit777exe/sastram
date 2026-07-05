@@ -249,13 +249,28 @@
     font-family: var(--font-instrument-serif), ui-serif, Georgia, serif;
   }
 
-  *,
-  *::before,
-  *::after {
-    transition-property:
-      background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 0.3s;
+  .animated-icon-hover {
+    transition: transform 0.2s ease;
+  }
+  .animated-icon-hover:hover {
+    transform: scale(1.1) rotate(5deg);
+  }
+
+  .animated-icon-tap {
+    transition: transform 0.1s ease;
+  }
+  .animated-icon-tap:active {
+    transform: scale(0.95);
+  }
+
+  .animated-icon-view {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .animated-icon-view.animated-icon-visible {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   @media (prefers-reduced-motion: reduce) {

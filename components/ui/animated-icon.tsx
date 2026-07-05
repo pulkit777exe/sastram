@@ -1,11 +1,8 @@
-import { motion, HTMLMotionProps } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// framer-motion variants use dynamic string keys for animation targets
-type AnimationVariants = Record<string, Record<string, any>>;
-
-interface AnimatedIconProps extends Omit<HTMLMotionProps<'span'>, 'children'> {
+interface AnimatedIconProps {
   icon: LucideIcon;
   animateOnHover?: boolean | string;
   animateOnTap?: boolean | string;
@@ -15,23 +12,6 @@ interface AnimatedIconProps extends Omit<HTMLMotionProps<'span'>, 'children'> {
   className?: string;
   size?: number;
 }
-
-const defaultAnimations = {
-  hover: {
-    scale: 1.1,
-    rotate: 5,
-    transition: { duration: 0.2 },
-  },
-  tap: {
-    scale: 0.95,
-    transition: { duration: 0.1 },
-  },
-  view: {
-    initial: { opacity: 0, y: 10 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 },
-  },
-};
 
 export function AnimatedIcon({
   icon: Icon,
@@ -44,34 +24,39 @@ export function AnimatedIcon({
   size = 16,
   ...props
 }: AnimatedIconProps) {
-  const variants: AnimationVariants = {};
-  if (animateOnHover) {
-    variants.hover =
-      typeof animateOnHover === 'string' ? { [animateOnHover]: true } : defaultAnimations.hover;
-  }
-  if (animateOnTap) {
-    variants.tap =
-      typeof animateOnTap === 'string' ? { [animateOnTap]: true } : defaultAnimations.tap;
-  }
+  const ref = useRef<HTMLSpanElement>(null);
 
-  const motionProps: HTMLMotionProps<'span'> = {
-    whileHover: animateOnHover ? 'hover' : undefined,
-    whileTap: animateOnTap ? 'tap' : undefined,
-    variants,
-    className: cn('inline-block', className),
-    ...props,
-  };
-
-  if (animateOnView) {
-    motionProps.initial = 'initial';
-    motionProps.animate = 'animate';
-    motionProps.viewport = { once: animateOnViewOnce, margin: animateOnViewMargin };
-    motionProps.variants = { ...motionProps.variants, ...defaultAnimations.view };
-  }
+  useEffect(() => {
+    if (!animateOnView || !ref.current) return;
+    const el = ref.current;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('animated-icon-visible');
+          if (animateOnViewOnce) observer.unobserve(el);
+        } else if (!animateOnViewOnce) {
+          el.classList.remove('animated-icon-visible');
+        }
+      },
+      { rootMargin: animateOnViewMargin }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [animateOnView, animateOnViewMargin, animateOnViewOnce]);
 
   return (
-    <motion.span {...motionProps}>
+    <span
+      ref={ref}
+      className={cn(
+        'inline-block',
+        animateOnHover && 'animated-icon-hover',
+        animateOnTap && 'animated-icon-tap',
+        animateOnView && 'animated-icon-view',
+        className
+      )}
+      {...props}
+    >
       <Icon size={size} />
-    </motion.span>
+    </span>
   );
 }
