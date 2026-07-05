@@ -9,7 +9,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '@/modules/notifications/actions';
-import { useBootstrap } from '@/components/bootstrap-provider';
+import { useNotification } from '@/components/bootstrap-provider';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
@@ -43,7 +43,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initial.length >= 20);
   const router = useRouter();
-  const { decrementNotificationCount, setNotificationCount } = useBootstrap();
+  const { decrementNotificationCount, setNotificationCount } = useNotification();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const handleClick = async (notification: NotificationItem) => {

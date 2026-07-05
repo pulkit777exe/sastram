@@ -30,33 +30,56 @@ export type BootstrapData = {
   joinedCommunities: Community[];
 };
 
-type BootstrapContextValue = {
-  data: BootstrapData | null;
-  isLoading: boolean;
-  error: Error | null;
-  setData: (data: BootstrapData) => void;
+// Shell data excludes notification count — does NOT change on WS pushes.
+export type BootstrapShellData = Omit<BootstrapData, 'unreadNotificationCount'>;
+
+// ---------------------------------------------------------------------------
+// Notification context — updates on every WS message.
+// Only badge/count components should subscribe to this.
+// ---------------------------------------------------------------------------
+type NotificationContextValue = {
+  unreadNotificationCount: number;
   setNotificationCount: (count: number) => void;
   incrementNotificationCount: (delta?: number) => void;
   decrementNotificationCount: (delta?: number) => void;
+};
+
+const NotificationContext = createContext<NotificationContextValue | null>(null);
+
+// ---------------------------------------------------------------------------
+// Bootstrap context — user session, layout data, reputation.
+// Does NOT update on WS notification events.
+// ---------------------------------------------------------------------------
+type BootstrapContextValue = {
+  data: BootstrapShellData | null;
+  isLoading: boolean;
+  error: Error | null;
+  setData: (data: BootstrapData) => void;
   updateUser: (user: Partial<BootstrapUser>) => void;
   updateReputation: (points: number, level: number) => void;
   invalidate: () => Promise<void>;
 };
 
+const BootstrapContext = createContext<BootstrapContextValue | null>(null);
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 const WS_INITIAL_DELAY_MS = 1_000;
 const WS_MAX_DELAY_MS = 30_000;
 const WS_MAX_ATTEMPTS = 10;
 
-const BootstrapContext = createContext<BootstrapContextValue | null>(null);
-
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
 export function BootstrapProvider({ children }: { children: React.ReactNode }) {
-  const [data, setData] = useState<BootstrapData | null>(null);
+  // --- notification state (changes on every WS message) ---
+  const [unreadNotificationCount, setUnreadNotificationCountRaw] = useState(0);
+
+  // --- shell state (does NOT change on WS messages) ---
+  const [shellData, setShellData] = useState<BootstrapShellData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  // Separate state for notification count — updates via WebSocket don't
-  // recreate the `data` object, so consumers that only read `data` (user,
-  // reputation, communities) won't re-render on every notification push.
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   const router = useRouter();
   const mountedRef = useRef(true);
@@ -97,8 +120,10 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       const payload = (await res.json()) as BootstrapData;
 
       if (mountedRef.current) {
-        setData(payload);
-        setUnreadNotificationCount(payload.unreadNotificationCount);
+        // Strip notification count into its own state; store the rest in shell.
+        const { unreadNotificationCount: _count, ...shell } = payload;
+        setShellData(shell);
+        setUnreadNotificationCountRaw(payload.unreadNotificationCount);
       }
     } catch (err) {
       if (!mountedRef.current) return;
@@ -131,6 +156,9 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchBootstrap]);
 
+  // ---------------------------------------------------------------------------
+  // WebSocket — only touches notification context
+  // ---------------------------------------------------------------------------
   const connectWebSocketRef = useRef<((userId: string) => void) | null>(null);
 
   const connectWebSocket = useCallback((userId: string) => {
@@ -168,8 +196,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
           payload: { unreadCount: number };
         };
         if (message.type === 'NOTIFICATION_COUNT_UPDATE') {
-          // Update only the notification count — don't touch `data`
-          setUnreadNotificationCount(message.payload.unreadCount);
+          setUnreadNotificationCountRaw(message.payload.unreadCount);
         }
       } catch {
         // ignore
@@ -204,10 +231,10 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   }, [connectWebSocket]);
 
   useEffect(() => {
-    if (!data?.user?.id) return;
+    if (!shellData?.user?.id) return;
 
     shouldReconnectRef.current = true;
-    connectWebSocket(data.user.id);
+    connectWebSocket(shellData.user.id);
 
     return () => {
       shouldReconnectRef.current = false;
@@ -219,70 +246,96 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
         wsRef.current = null;
       }
     };
-  }, [data?.user?.id, connectWebSocket]);
+  }, [shellData?.user?.id, connectWebSocket]);
 
+  // ---------------------------------------------------------------------------
+  // Notification mutators (stable — no deps that change)
+  // ---------------------------------------------------------------------------
   const setNotificationCount = useCallback((count: number) => {
-    setUnreadNotificationCount(Math.max(0, count));
+    setUnreadNotificationCountRaw(Math.max(0, count));
   }, []);
 
   const incrementNotificationCount = useCallback((delta: number = 1) => {
-    setUnreadNotificationCount((prev) => Math.max(0, prev + delta));
+    setUnreadNotificationCountRaw((prev) => Math.max(0, prev + delta));
   }, []);
 
   const decrementNotificationCount = useCallback((delta: number = 1) => {
-    setUnreadNotificationCount((prev) => Math.max(0, prev - delta));
+    setUnreadNotificationCountRaw((prev) => Math.max(0, prev - delta));
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Shell mutators
+  // ---------------------------------------------------------------------------
+  const setData = useCallback((payload: BootstrapData) => {
+    const { unreadNotificationCount: _count, ...shell } = payload;
+    setShellData(shell);
+    setUnreadNotificationCountRaw(payload.unreadNotificationCount);
   }, []);
 
   const updateUser = useCallback((user: Partial<BootstrapUser>) => {
-    setData((prev) => (prev ? { ...prev, user: { ...prev.user, ...user } } : prev));
+    setShellData((prev) => (prev ? { ...prev, user: { ...prev.user, ...user } } : prev));
   }, []);
 
   const updateReputation = useCallback((points: number, level: number) => {
-    setData((prev) => (prev ? { ...prev, reputation: { points, level } } : prev));
+    setShellData((prev) => (prev ? { ...prev, reputation: { points, level } } : prev));
   }, []);
 
   const invalidate = useCallback(async () => {
     await fetchBootstrap();
   }, [fetchBootstrap]);
 
-  // Derive the `data` object with the live notification count so consumers
-  // that read `data.unreadNotificationCount` still see the current value,
-  // but the underlying `data` reference only changes when non-notification
-  // fields change.
-  const derivedData = useMemo(() => {
-    if (!data) return null;
-    return { ...data, unreadNotificationCount };
-  }, [data, unreadNotificationCount]);
-
-  const value = useMemo(
+  // ---------------------------------------------------------------------------
+  // Memoized context values — new object reference only when deps change
+  // ---------------------------------------------------------------------------
+  const notificationValue = useMemo(
     () => ({
-      data: derivedData,
-      isLoading,
-      error,
-      setData,
+      unreadNotificationCount,
       setNotificationCount,
       incrementNotificationCount,
       decrementNotificationCount,
+    }),
+    [
+      unreadNotificationCount,
+      setNotificationCount,
+      incrementNotificationCount,
+      decrementNotificationCount,
+    ]
+  );
+
+  const bootstrapValue = useMemo(
+    () => ({
+      data: shellData,
+      isLoading,
+      error,
+      setData,
       updateUser,
       updateReputation,
       invalidate,
     }),
-    [
-      derivedData,
-      isLoading,
-      error,
-      setNotificationCount,
-      incrementNotificationCount,
-      decrementNotificationCount,
-      updateUser,
-      updateReputation,
-      invalidate,
-    ]
+    [shellData, isLoading, error, setData, updateUser, updateReputation, invalidate]
   );
 
-  return <BootstrapContext.Provider value={value}>{children}</BootstrapContext.Provider>;
+  return (
+    <NotificationContext.Provider value={notificationValue}>
+      <BootstrapContext.Provider value={bootstrapValue}>{children}</BootstrapContext.Provider>
+    </NotificationContext.Provider>
+  );
 }
 
+// ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
+
+/** Notification count + mutators. Updates on every WS message. */
+export function useNotification() {
+  const ctx = useContext(NotificationContext);
+  if (!ctx) {
+    throw new Error('useNotification must be used within BootstrapProvider');
+  }
+  return ctx;
+}
+
+/** Bootstrap shell data (user, reputation, communities). Does NOT update on WS messages. */
 export function useBootstrap() {
   const ctx = useContext(BootstrapContext);
   if (!ctx) {

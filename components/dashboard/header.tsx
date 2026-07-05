@@ -5,18 +5,23 @@ import { Search, Command, Bell } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { usePathname } from 'next/navigation';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
-import { SearchDialog } from './search-dialog';
-import { useBootstrap } from '@/components/bootstrap-provider';
+import dynamic from 'next/dynamic';
+import { useNotification } from '@/components/bootstrap-provider';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+
+const SearchDialog = dynamic(
+  () => import('./search-dialog').then((mod) => mod.SearchDialog),
+  { ssr: false }
+);
 
 export function DashboardHeader() {
   const pathname = usePathname();
   const segments = pathname.split('/').filter(Boolean);
   const breadcrumbs = segments.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1));
   const [open, setOpen] = React.useState(false);
-  const { data: bootstrapData } = useBootstrap();
-  const unreadCount = bootstrapData?.unreadNotificationCount ?? 0;
+  const { unreadNotificationCount } = useNotification();
+  const unreadCount = unreadNotificationCount ?? 0;
   const unreadLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
   React.useEffect(() => {

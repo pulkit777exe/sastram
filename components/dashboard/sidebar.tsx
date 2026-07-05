@@ -30,7 +30,7 @@ import Image from 'next/image';
 import { LucideIcon } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
-import { useBootstrap } from '@/components/bootstrap-provider';
+import { useNotification } from '@/components/bootstrap-provider';
 import { signOut } from '@/lib/services/auth-client';
 
 export function Sidebar({
@@ -54,8 +54,8 @@ export function Sidebar({
     return false;
   });
 
-  const { data: bootstrapData } = useBootstrap();
-  const unreadCount = bootstrapData?.unreadNotificationCount ?? 0;
+  const { unreadNotificationCount } = useNotification();
+  const unreadCount = unreadNotificationCount ?? 0;
 
   const hideTimeout = useRef<number | null>(null);
 
