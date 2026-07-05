@@ -1,26 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message } from '@/lib/types/index';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface InlineReplyThreadProps {
   replies: Message[];
   onReplyClick?: (messageId?: string) => void;
 }
 
+const REPLY_OVERSCAN = 5;
+
 export const InlineReplyThread = React.memo(function InlineReplyThread({ replies, onReplyClick }: InlineReplyThreadProps) {
   const [expanded, setExpanded] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  if (replies.length === 0) return null;
-
-  // Show unique senders (for stacked avatars, max 4)
-  const uniqueSenders = Array.from(
-    new Map(replies.map((r) => [r.senderId, r.sender])).values()
-  ).slice(0, 4);
+  const uniqueSenders = replies.length > 0
+    ? Array.from(new Map(replies.map((r) => [r.senderId, r.sender])).values()).slice(0, 4)
+    : [];
 
   const visible = expanded ? replies : replies.slice(0, 3);
   const hidden = replies.length - 3;
-  const lastReply = replies[replies.length - 1];
+  const lastReply = replies.length > 0 ? replies[replies.length - 1] : null;
+  const shouldVirtualize = expanded && replies.length > 20;
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const virtualizer = useVirtualizer({
+    count: replies.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 40,
+    measureElement: (element) => element?.getBoundingClientRect().height ?? 40,
+    overscan: REPLY_OVERSCAN,
+    enabled: shouldVirtualize,
+  });
+
+  if (replies.length === 0) return null;
 
   return (
     <div className="mt-2 group/thread">
@@ -78,40 +92,58 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
 
       {/* Expanded reply list */}
       {expanded && (
-        <div className="mt-1 pl-2.5 border-l-2 border-brand/20 dark:border-brand/30 flex flex-col gap-0.5 ml-2.5">
-          {visible.map((reply) => (
+        <div className="mt-1 pl-2.5 border-l-2 border-brand/20 dark:border-brand/30 ml-2.5">
+          {shouldVirtualize ? (
+            /* Virtualized list for large reply counts */
             <div
-              key={reply.id}
-              className="flex items-start gap-2 text-[12px] py-1 px-2 rounded-lg hover:bg-muted/40 cursor-pointer group/reply transition-colors"
-              onClick={() => onReplyClick?.(reply.id)}
+              ref={scrollContainerRef}
+              className="max-h-[400px] overflow-y-auto"
             >
-              <Avatar className="w-4 h-4 mt-0.5 shrink-0">
-                <AvatarImage src={reply.sender.image || ''} />
-                <AvatarFallback className="bg-brand/10 text-brand text-[7px] font-bold">
-                  {reply.sender.name?.substring(0, 1).toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0 leading-relaxed">
-                <span className="font-semibold text-foreground/80 mr-1.5">
-                  {reply.sender.name?.split(' ')[0] || 'Anonymous'}
-                </span>
-                <span className="text-muted-foreground/80">{reply.content}</span>
+              <div style={{ position: 'relative', height: `${virtualizer.getTotalSize()}px` }}>
+                {virtualizer.getVirtualItems().map((virtualItem) => {
+                  const reply = replies[virtualItem.index];
+                  return (
+                    <div
+                      key={reply.id}
+                      data-index={virtualItem.index}
+                      ref={(node) => {
+                        if (node) virtualizer.measureElement(node);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualItem.start}px)`,
+                      }}
+                    >
+                      <ReplyItem reply={reply} onReplyClick={onReplyClick} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          ))}
+          ) : (
+            /* Non-virtualized list for small reply counts */
+            <div className="flex flex-col gap-0.5">
+              {visible.map((reply) => (
+                <ReplyItem key={reply.id} reply={reply} onReplyClick={onReplyClick} />
+              ))}
 
-          {hidden > 0 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpanded(true);
-              }}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-brand hover:text-brand px-2 py-1 w-fit transition-colors"
-            >
-              <MessageCircle size={11} />
-              {hidden} more {hidden === 1 ? 'reply' : 'replies'}
-            </button>
+              {hidden > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpanded(true);
+                  }}
+                  className="flex items-center gap-1.5 text-[11px] font-semibold text-brand hover:text-brand px-2 py-1 w-fit transition-colors"
+                >
+                  <MessageCircle size={11} />
+                  {hidden} more {hidden === 1 ? 'reply' : 'replies'}
+                </button>
+              )}
+            </div>
           )}
 
           {/* Reply CTA */}
@@ -128,3 +160,31 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
     </div>
   );
 });
+
+function ReplyItem({
+  reply,
+  onReplyClick,
+}: {
+  reply: Message;
+  onReplyClick?: (messageId?: string) => void;
+}) {
+  return (
+    <div
+      className="flex items-start gap-2 text-[12px] py-1 px-2 rounded-lg hover:bg-muted/40 cursor-pointer group/reply transition-colors"
+      onClick={() => onReplyClick?.(reply.id)}
+    >
+      <Avatar className="w-4 h-4 mt-0.5 shrink-0">
+        <AvatarImage src={reply.sender.image || ''} />
+        <AvatarFallback className="bg-brand/10 text-brand text-[7px] font-bold">
+          {reply.sender.name?.substring(0, 1).toUpperCase() || 'U'}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0 leading-relaxed">
+        <span className="font-semibold text-foreground/80 mr-1.5">
+          {reply.sender.name?.split(' ')[0] || 'Anonymous'}
+        </span>
+        <span className="text-muted-foreground/80">{reply.content}</span>
+      </div>
+    </div>
+  );
+}
