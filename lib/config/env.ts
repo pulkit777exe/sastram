@@ -3,6 +3,7 @@ import { z } from 'zod';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().default('3000').transform(Number),
+  HOSTNAME: z.string().default('localhost'),
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
   DATABASE_URL_UNPOOLED: z.string().optional(),
   REDIS_URL: z.string().optional(),
@@ -57,6 +58,8 @@ const envSchema = z.object({
   SASTRAM_EXA_KEY: z.string().optional(),
   SASTRAM_TAVILY_KEY: z.string().optional(),
   SASTRAM_GEMINI_KEY: z.string().optional(),
+
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

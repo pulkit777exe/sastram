@@ -21,19 +21,16 @@ import { ROUTES } from '@/lib/config/routes';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { paginationSchema } from '@/lib/utils/validation-common';
 
-const fileSchema = z.object({
-  file: z.custom<File>((val) => val instanceof File),
+const avatarFileSchema = z.object({
+  avatar: z.custom<File>((val) => val instanceof File),
+});
+
+const bannerFileSchema = z.object({
+  banner: z.custom<File>((val) => val instanceof File),
 });
 
 export const updateUserProfile = withValidation(
-  z.object({
-    name: z.string().optional(),
-    bio: z.string().optional(),
-    location: z.string().optional(),
-    website: z.string().optional(),
-    twitter: z.string().optional(),
-    github: z.string().optional(),
-  }),
+  updateUserProfileSchema,
   'updateUserProfile',
   async (data) => {
     const session = await requireSession();
@@ -56,9 +53,9 @@ export const updateUserProfile = withValidation(
 );
 
 export const uploadAvatar = withValidation(
-  fileSchema,
+  avatarFileSchema,
   'uploadAvatar',
-  async ({ file }) => {
+  async ({ avatar: file }) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       return {
@@ -97,9 +94,9 @@ export const uploadAvatar = withValidation(
 );
 
 export const uploadBanner = withValidation(
-  fileSchema,
+  bannerFileSchema,
   'uploadBanner',
-  async ({ file }) => {
+  async ({ banner: file }) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       return {

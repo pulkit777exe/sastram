@@ -5,6 +5,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType, DEFAULT_JOB_OPTIONS, getThreadSummaryQueue } from '@/lib/infrastructure/bullmq';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { logger } from '@/lib/infrastructure/logger';
+import { getEnv } from '@/lib/config/env';
 import { z } from 'zod';
 
 const summaryRequestSchema = z.object({
@@ -51,8 +52,8 @@ export async function POST(req: NextRequest) {
       where: { id: threadId },
       include: {
         messages: {
-          take: 50,
-          orderBy: { createdAt: 'desc' },
+          take: getEnv().AI_ANALYSIS_MESSAGE_LIMIT,
+          orderBy: { createdAt: 'asc' },
           include: { sender: true },
         },
       },
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: 404 });
     }
 
-    const messages = thread.messages.reverse();
+    const messages = thread.messages;
 
     const threadSummaryQueue = getThreadSummaryQueue();
     const job = await threadSummaryQueue.add(

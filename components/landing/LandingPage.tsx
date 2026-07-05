@@ -234,7 +234,7 @@ function DashboardPreview() {
 function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
   if (type === 'threads') {
     return (
-      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-brand/20 via-[#3736fc]/5 to-emerald-500/10 p-6">
+      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-brand/20 via-brand/5 to-emerald-500/10 p-6">
         <div className="absolute inset-0 opacity-30">
           {Array.from({ length: 12 }).map((_, i) => (
             <div

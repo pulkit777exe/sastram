@@ -14,9 +14,10 @@ try {
   process.exit(1);
 }
 
-const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
-const port = parseInt(process.env.PORT || '3001', 10);
+const env = getEnv();
+const dev = env.NODE_ENV !== 'production';
+const hostname = env.HOSTNAME;
+const port = env.PORT;
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();

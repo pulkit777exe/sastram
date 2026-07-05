@@ -34,7 +34,7 @@ const SECURITY_HEADERS = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: blob: https:",
+    "img-src 'self' data: blob: https: http:",
     "connect-src 'self' https:",
     "font-src 'self' data: https://fonts.gstatic.com",
     "frame-ancestors 'none'",

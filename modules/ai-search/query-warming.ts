@@ -1,7 +1,20 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { executeAISearch } from '@/modules/ai-search/service';
 import { logger } from '@/lib/infrastructure/logger';
+import { getEnv } from '@/lib/config/env';
 import type { SearchConfig } from '@/modules/ai-search/types';
+
+// Warn at import time if AI search keys are missing — prevents silent no-ops
+try {
+  const envConfig = getEnv();
+  if (!envConfig.SASTRAM_EXA_KEY || !envConfig.SASTRAM_TAVILY_KEY) {
+    logger.warn(
+      '[query-warming] SASTRAM_EXA_KEY and/or SASTRAM_TAVILY_KEY not set — query warming will be disabled'
+    );
+  }
+} catch {
+  // Env validation failed — will be caught elsewhere
+}
 
 // Follow-up query patterns based on query type
 const FOLLOW_UP_PATTERNS = {
@@ -107,11 +120,12 @@ export async function prewarmFollowUpQueries(): Promise<{
             sourceFilter: 'all',
           };
 
-          // Get API keys from environment (fallback to dummy values if not available)
+          // Get API keys from validated environment
+          const envConfig = getEnv();
           const keys = {
-            exa: process.env.EXA_API_KEY || '',
-            tavily: process.env.TAVILY_API_KEY || '',
-            gemini: process.env.GEMINI_API_KEY || '',
+            exa: envConfig.SASTRAM_EXA_KEY || '',
+            tavily: envConfig.SASTRAM_TAVILY_KEY || '',
+            gemini: envConfig.GEMINI_API_KEY || '',
           };
 
           // Only execute if we have all necessary keys
@@ -184,10 +198,11 @@ export async function prewarmQueriesForThread(threadId: string): Promise<{
       sourceFilter: 'all',
     };
 
+    const envConfig = getEnv();
     const keys = {
-      exa: process.env.EXA_API_KEY || '',
-      tavily: process.env.TAVILY_API_KEY || '',
-      gemini: process.env.GEMINI_API_KEY || '',
+      exa: envConfig.SASTRAM_EXA_KEY || '',
+      tavily: envConfig.SASTRAM_TAVILY_KEY || '',
+      gemini: envConfig.GEMINI_API_KEY || '',
     };
 
     if (keys.exa && keys.tavily && keys.gemini) {

@@ -12,7 +12,7 @@ const forgetPasswordOtpSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
-    const rateLimitResult = await rateLimit(ip);
+    const rateLimitResult = await rateLimit({ key: ip, type: 'auth' });
     if (!rateLimitResult.success) {
       return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
     }

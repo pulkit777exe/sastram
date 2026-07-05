@@ -11,6 +11,34 @@
     {
       "path": "/api/cron/worker?queue=STALENESS_CHECK",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/worker?queue=thread-summary",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/worker?queue=resolution-score",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/worker?queue=thread-dna",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/worker?queue=conflict-detection",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/worker?queue=ai-insight-notifications",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/worker?queue=ai-inline",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/update-threads",
+      "schedule": "0 3 * * *"
     }
   ]
 }

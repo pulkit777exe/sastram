@@ -37,9 +37,9 @@ export async function GET() {
 
   try {
     const aiKey =
-      process.env.AI_PROVIDER === "gemini"
-        ? process.env.GEMINI_API_KEY
-        : process.env.OPENAI_API_KEY;
+      env.AI_PROVIDER === "gemini"
+        ? env.GEMINI_API_KEY
+        : env.OPENAI_API_KEY;
     checks.services.ai = aiKey ? "configured" : "not_configured";
   } catch {
     checks.services.ai = "error";

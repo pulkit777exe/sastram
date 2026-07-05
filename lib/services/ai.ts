@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
 import { getEnv } from '@/lib/config/env';
 import { threadDnaSchema, type ThreadDNA } from '@/lib/schemas/thread-dna';
+import { getLangChainService, type LangChainAIService } from './ai-langchain';
 
 interface MessageInput {
   content: string;
@@ -203,7 +204,15 @@ export class GeminiService implements AIService {
   }
 
   async generateThreadSummary(messages: MessageInput[]): Promise<string> {
-    return this.generateSummary(buildMessageContent(messages));
+    try {
+      const langchainService = getLangChainService();
+      return await langchainService.generateThreadSummary(messages);
+    } catch (error) {
+      logger.warn('[GeminiService.generateThreadSummary] LangChain failed, falling back to basic', {
+        error,
+      });
+      return this.generateSummary(buildMessageContent(messages));
+    }
   }
 
   async generateThreadDNA(messages: MessageInput[]): Promise<ThreadDNA> {
@@ -492,7 +501,15 @@ export class OpenAIService implements AIService {
   }
 
   async generateThreadSummary(messages: MessageInput[]): Promise<string> {
-    return this.generateSummary(buildMessageContent(messages));
+    try {
+      const langchainService = getLangChainService();
+      return await langchainService.generateThreadSummary(messages);
+    } catch (error) {
+      logger.warn('[OpenAIService.generateThreadSummary] LangChain failed, falling back to basic', {
+        error,
+      });
+      return this.generateSummary(buildMessageContent(messages));
+    }
   }
 
   async generateThreadDNA(messages: MessageInput[]): Promise<ThreadDNA> {
@@ -611,8 +628,9 @@ class NoOpAIService implements AIService {
 }
 
 function createAiService(): AIService {
-  const provider = (process.env.AI_PROVIDER as 'gemini' | 'openai' | undefined) ?? 'gemini';
-  const key = provider === 'gemini' ? process.env.GEMINI_API_KEY : process.env.OPENAI_API_KEY;
+  const envConfig = getEnv();
+  const provider = envConfig.AI_PROVIDER;
+  const key = provider === 'gemini' ? envConfig.GEMINI_API_KEY : envConfig.OPENAI_API_KEY;
 
   if (!key) {
     logger.warn(
