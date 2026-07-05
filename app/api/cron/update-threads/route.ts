@@ -1,6 +1,7 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { env } from '@/lib/config/env';
 import {
   AIJobType,
   DEFAULT_JOB_OPTIONS,
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
         },
         include: {
           messages: {
-            take: parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10),
+            take: env.AI_ANALYSIS_MESSAGE_LIMIT,
             orderBy: { createdAt: 'desc' },
             include: { sender: { select: { name: true } } },
           },
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
           continue;
         }
 
-        const messages = thread.messages.reverse();
+        const messages = [...thread.messages].reverse();
         const subscriberIds = thread.subscriptions
           .filter((sub): sub is { userId: string } & Omit<typeof sub, 'userId'> => sub.userId !== null)
           .map((sub) => sub.userId);
