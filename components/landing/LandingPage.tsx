@@ -340,7 +340,8 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
 
 export function LandingPage({ user }: LandingPageProps) {
   const { theme } = useTheme();
-  const videoSrc = theme === 'dark' ? '/Sastram-Dark.mp4' : '/Sastram-Light.mp4';
+  const videoSrc = theme === 'dark' ? '/sastram-video-dark.mp4' : '/sastram-video-light.mp4';
+  const posterSrc = theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png';
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -614,7 +615,7 @@ export function LandingPage({ user }: LandingPageProps) {
                 muted
                 playsInline
                 className="w-full h-auto"
-                poster="/logo.svg"
+                poster={posterSrc}
               >
                 <source src={videoSrc} type="video/mp4" suppressHydrationWarning />
               </video>

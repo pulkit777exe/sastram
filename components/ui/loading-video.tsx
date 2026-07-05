@@ -17,7 +17,7 @@ export function LoadingVideo({ className, fullScreen = false }: LoadingVideoProp
     return null;
   }
 
-  const videoSrc = theme === 'dark' ? '/Sastram-Dark.mp4' : '/Sastram-Light.mp4';
+  const videoSrc = theme === 'dark' ? '/sastram-video-dark.mp4' : '/sastram-video-light.mp4';
 
   return (
     <div
