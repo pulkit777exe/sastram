@@ -5,7 +5,7 @@ Sentry.init({
   integrations: [Sentry.replayIntegration()],
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1,
   enableLogs: true,
-  replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1,
+  replaysSessionSampleRate: 0,
   replaysOnErrorSampleRate: 1,
   sendDefaultPii: true,
 });
