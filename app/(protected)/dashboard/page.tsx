@@ -23,6 +23,10 @@ function parseTagFilter(raw: string | string[] | undefined): string[] {
     .filter((t, i, all) => t.length > 0 && all.indexOf(t) === i);
 }
 
+function getDaysAgoDate(days: number): Date {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -62,7 +66,7 @@ export default async function DashboardPage({
 
   const threadIds = topicThreads.map((s) => s.id);
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = getDaysAgoDate(7);
 
   const [readReceiptRows, activeUserCounts, unreadCounts] = await Promise.all([
     threadIds.length > 0

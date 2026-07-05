@@ -81,7 +81,7 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
 
     // Aggregate unique active user counts per thread in the last 7 days
     const threadIds = (threadRows ?? []).map((t) => t.id);
-    let activeUserMap = new Map<string, number>();
+    const activeUserMap = new Map<string, number>();
     if (threadIds.length > 0) {
       const activeUserCounts = await prisma.$queryRaw<
         Array<{ threadId: string; uniqueUsers: bigint }>

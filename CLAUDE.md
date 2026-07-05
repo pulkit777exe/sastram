@@ -32,7 +32,7 @@ pnpm build           # Prisma generate + Next build
 pnpm start           # Production server
 
 # Testing & Linting
-pnpm test            # Mocha tests (166+ passing)
+pnpm test            # Mocha tests (257 passing)
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
 pnpm lint:fix      # ESLint fix
@@ -51,7 +51,7 @@ pnpm db:studio   # Prisma studio
 
 - `app/` - Next.js App Router pages and API routes
 - `lib/` - Core utilities, services, infrastructure
-- `modules/` - Domain modules (50+ feature modules)
+- `modules/` - Domain modules (29 feature modules)
 - `components/` - UI components
 - `prisma/` - Database schema
 - `test/` - Mocha unit tests
@@ -59,9 +59,9 @@ pnpm db:studio   # Prisma studio
 
 ### Database Models
 
-27 models in `prisma/schema.prisma`:
+33 models in `prisma/schema.prisma`:
 - User, Account, Session, Verification
-- Community, Section, SectionMember
+- Community, Thread, ThreadMember
 - Message, MessageEdit, MessageMention, Attachment
 - Reaction, ReadReceipt
 - UserFollow, UserBookmark
@@ -110,8 +110,8 @@ pnpm db:studio   # Prisma studio
 
 **All API routes and server actions must enforce membership checks.**
 
-- **SectionMember** is the primary authorization primitive — user must have a `SectionMember` record for the section
-- Routes that read/write thread data: check `prisma.sectionMember.findUnique({ where: { sectionId_userId: { sectionId, userId } } })`
+- **ThreadMember** is the primary authorization primitive — user must have a `ThreadMember` record for the thread
+- Routes that read/write thread data: check `prisma.threadMember.findUnique({ where: { threadId_userId: { threadId, userId } } })`
 - `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check membership
 - Admin-only: `assertAdmin(session.user)` in thread actions, `requireAdmin()` / `requireModerator()` for API routes
 - Chat: `getConversations` / `getMessages` / `sendMessage` all require membership (modules/chat/actions.ts)
@@ -120,7 +120,7 @@ pnpm db:studio   # Prisma studio
 
 ## Test Coverage
 
-- **Current**: 60 tests in 9 files (api-response, content-safety, error-handling, logger, queue-config, search-fts, simple, utils, websocket)
+- **Current**: 257 tests in 9 files (api-response, content-safety, error-handling, logger, queue-config, search-fts, simple, utils, websocket)
 - **Missing**: API endpoint tests, BullMQ job tests
 
 ## Architecture Notes

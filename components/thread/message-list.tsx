@@ -96,6 +96,7 @@ export function MessageList({ firstUnreadMessageId }: MessageListProps) {
     [topLevelMessages]
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: topLevelMessages.length,
     getScrollElement: () => scrollContainerRef.current,
