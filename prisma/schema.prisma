@@ -381,7 +381,7 @@ model Reaction {
 }
 
 model ReadReceipt {
-  id                String    @id
+  id                String    @id @default(cuid())
   threadId          String
   userId            String
   lastReadMessageId String?
