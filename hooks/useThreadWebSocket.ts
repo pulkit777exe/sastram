@@ -228,7 +228,10 @@ export function useThreadWebSocket({
             typingTimersRef.current.set(
               userId,
               setTimeout(() => {
-                setTypers((prev) => prev.filter((t) => t.userId !== userId));
+                setTypers((prev) => {
+                  const next = prev.filter((t) => t.userId !== userId);
+                  return next.length === prev.length ? prev : next;
+                });
                 typingTimersRef.current.delete(userId);
               }, 4000)
             );
@@ -240,7 +243,11 @@ export function useThreadWebSocket({
               userId: string;
               threadId: string;
             };
-            setTypers((prev) => prev.filter((t) => t.userId !== userId));
+            if (userId === currentUserId) return;
+            setTypers((prev) => {
+              const next = prev.filter((t) => t.userId !== userId);
+              return next.length === prev.length ? prev : next;
+            });
             const timer = typingTimersRef.current.get(userId);
             if (timer) {
               clearTimeout(timer);

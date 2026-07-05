@@ -221,7 +221,13 @@ export function ThreadLiveWrapper({
         // Own message already added via handleMessagePosted
         if (ownPendingIds.current.has(newMessage.id)) {
           ownPendingIds.current.delete(newMessage.id);
-          return prev.map((m) => (m.id === newMessage.id ? { ...m, ...newMessage } : m));
+          const idx = prev.findIndex((m) => m.id === newMessage.id);
+          if (idx === -1) return prev;
+          const merged = { ...prev[idx], ...newMessage };
+          if (merged === prev[idx]) return prev;
+          const next = [...prev];
+          next[idx] = merged;
+          return next;
         }
 
         // Streaming content update (same ID, new content from AI)
