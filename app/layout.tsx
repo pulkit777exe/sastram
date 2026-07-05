@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { Analytics } from '@vercel/analytics/next';
-import { getSession } from '@/modules/auth/session';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -26,12 +25,11 @@ export const metadata: Metadata = {
   description: 'Sastram is the modern forum for people with power of AI.',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getSession();
   return (
     <html lang="en" suppressHydrationWarning>
       <body

@@ -1,23 +1,10 @@
-import { getSession } from '@/modules/auth/session';
-import { PublicNavbar } from '@/components/layout/public-navbar';
 import { PublicFooter } from '@/components/layout/public-footer';
+import { SessionAwareNavbar } from '@/components/layout/session-aware-navbar';
 
-export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
-
+export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <PublicNavbar
-        user={
-          session?.user
-            ? {
-                name: session.user.name,
-                email: session.user.email,
-                image: session.user.image,
-              }
-            : null
-        }
-      />
+      <SessionAwareNavbar />
       <div className="flex-1">{children}</div>
       <PublicFooter />
     </div>
