@@ -555,6 +555,8 @@ export function ThreadLiveWrapper({
             onTypingStart={emitTypingStart}
             onTypingStop={emitTypingStop}
             canManagePoll={canManagePoll}
+            showPoll={showPoll}
+            onTogglePoll={setShowPoll}
             onPollCreated={(newPoll) => {
               setCurrentPoll({
                 id: newPoll.id,

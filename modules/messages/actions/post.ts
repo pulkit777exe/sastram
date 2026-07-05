@@ -14,12 +14,29 @@ import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';
 import { prismaErrorMessage } from '@/lib/utils/errors';
+import { sanitizeUserContent } from '@/lib/services/content-safety';
 
 export async function postMessage(formData: FormData) {
-  const content = formData.get('content') as string;
+  const rawContent = formData.get('content') as string;
+  const { sanitized: content } = sanitizeUserContent(rawContent);
   const threadId = formData.get('threadId') as string;
   const parentId = formData.get('parentId') as string | null;
   const mentionsRaw = formData.get('mentions') as string | null;
+  const attachmentsRaw = formData.get('attachments') as string | null;
+
+  let attachments: Array<{ url: string; type: string; name?: string; size?: number }> = [];
+  if (attachmentsRaw) {
+    try {
+      const parsed = JSON.parse(attachmentsRaw);
+      if (Array.isArray(parsed) && parsed.length <= 10) {
+        attachments = parsed.filter(
+          (a: { url?: string; type?: string }) => a.url && a.type
+        );
+      }
+    } catch {
+      // Ignore malformed attachments JSON
+    }
+  }
 
   const parsedMentions = parseMentions(content);
   let mentions: string[];
@@ -145,6 +162,31 @@ export async function postMessage(formData: FormData) {
       };
     }
 
+    // Create attachment records if files were uploaded
+    let createdAttachments: Array<{ id: string; url: string; type: string; name: string | null; size: number | null }> = [];
+    if (attachments.length > 0) {
+      try {
+        const attachmentData = attachments.map((a) => ({
+          messageId: message.id,
+          url: a.url,
+          type: a.type as 'IMAGE' | 'GIF' | 'FILE' | 'VIDEO',
+          name: a.name ?? null,
+          size: a.size ? BigInt(a.size) : null,
+        }));
+        await prisma.attachment.createMany({ data: attachmentData });
+        const rawAttachments = await prisma.attachment.findMany({
+          where: { messageId: message.id },
+        });
+        createdAttachments = rawAttachments.map((a) => ({
+          ...a,
+          size: a.size !== null ? Number(a.size) : null,
+        }));
+      } catch (attachmentError) {
+        logger.error('[postMessage] failed to create attachments', attachmentError);
+        // Message was already created — don't fail the whole request
+      }
+    }
+
     await createMentionsForMessage({
       messageId: message.id,
       threadId,
@@ -174,7 +216,7 @@ export async function postMessage(formData: FormData) {
       replyCount: 0,
       isAiResponse: false,
       reactions: [],
-      attachments: [],
+      attachments: createdAttachments,
     };
 
     infraMessageSideEffects.emitThreadMessage(threadId, payload);

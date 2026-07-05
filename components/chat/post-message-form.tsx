@@ -47,6 +47,8 @@ interface PostMessageFormProps {
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   canManagePoll?: boolean;
+  showPoll?: boolean;
+  onTogglePoll?: (show: boolean) => void;
   onPollCreated?: (poll: { id: string; threadId: string; question: string; options: string[]; isActive: boolean; expiresAt: Date | null; createdAt: Date }) => void;
 }
 
@@ -60,6 +62,8 @@ export function PostMessageForm({
   onTypingStart,
   onTypingStop,
   canManagePoll,
+  showPoll: showPollProp,
+  onTogglePoll,
   onPollCreated,
 }: PostMessageFormProps) {
   const [loading, setLoading] = useState(false);
@@ -70,7 +74,9 @@ export function PostMessageForm({
   const [mentionOpen, setMentionOpen] = useState(false);
   const [activeMentionIndex, setActiveMentionIndex] = useState(0);
   const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
-  const [showPoll, setShowPoll] = useState(false);
+  const [showPollLocal, setShowPollLocal] = useState(false);
+  const showPoll = showPollProp ?? showPollLocal;
+  const setShowPoll = onTogglePoll ?? setShowPollLocal;
   const [emojiOpen, setEmojiOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -299,10 +305,35 @@ export function PostMessageForm({
     formData.append('threadId', threadId);
     formData.set('content', messageContent);
 
+    // Upload file if selected, then include attachment metadata
     if (selectedFile) {
-      formData.append('fileName', selectedFile.name);
-      formData.append('fileType', selectedFile.type);
-      formData.append('fileSize', selectedFile.size.toString());
+      try {
+        const uploadFormData = new FormData();
+        uploadFormData.append('files', selectedFile);
+        const uploadResponse = await fetch('/api/upload', { method: 'POST', body: uploadFormData });
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          const uploadedFile = uploadData?.data?.files?.[0];
+          if (uploadedFile?.url) {
+            formData.append('attachments', JSON.stringify([{
+              url: uploadedFile.url,
+              type: uploadedFile.type,
+              name: uploadedFile.name,
+              size: uploadedFile.size,
+            }]));
+          }
+        } else {
+          toasts.error('Failed to upload file');
+          setLoading(false);
+          onMessageError?.(tempId);
+          return;
+        }
+      } catch {
+        toasts.error('Failed to upload file');
+        setLoading(false);
+        onMessageError?.(tempId);
+        return;
+      }
     }
 
     if (replyTo) {

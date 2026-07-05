@@ -2,6 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { env } from '@/lib/config/env';
 import { aiService } from '@/lib/services/ai';
 import { logger } from '@/lib/infrastructure/logger';
+import { messageLimiter } from '@/lib/services/rate-limit';
 import type { ReportCategory } from '@prisma/client';
 
 export type MessageLike = {
@@ -51,11 +52,17 @@ export type ModerationResult = {
 };
 
 export class RateLimitFilter {
-  async check(_message: MessageLike, _context: ConversationContext): Promise<ModerationResult> {
-    return {
-      success: true,
-      action: 'ALLOW',
-    };
+  async check(message: MessageLike, _context: ConversationContext): Promise<ModerationResult> {
+    const result = await messageLimiter.check(message.authorId);
+    if (!result.success) {
+      return {
+        success: false,
+        action: 'BLOCK',
+        severity: 'MEDIUM',
+        reason: 'Rate limit exceeded. Please slow down.',
+      };
+    }
+    return { success: true, action: 'ALLOW' };
   }
 }
 

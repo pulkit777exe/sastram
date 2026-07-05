@@ -9,6 +9,7 @@ import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { prismaErrorMessage } from '@/lib/utils/errors';
+import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { ROUTES } from '@/lib/config/routes';
 import {
   editMessageSchema,
@@ -18,8 +19,10 @@ import {
 
 export const editMessage = createServerAction(
   { schema: editMessageSchema, actionName: 'editMessage' },
-  async ({ messageId, content }) => {
+  async ({ messageId, content: rawContent }) => {
     const session = await requireSession(false);
+
+    const { sanitized: content } = sanitizeUserContent(rawContent);
 
     try {
       const message = await prisma.message.findUnique({
