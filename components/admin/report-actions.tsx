@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Eye, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { updateReportStatusAction } from '@/modules/reports/actions';
 import { toasts } from '@/lib/utils/toast';
-import { useRouter } from 'next/navigation';
+import { ReportStatus } from '@/lib/config/constants';
 import {
   Dialog,
   DialogContent,
@@ -15,11 +15,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-export function ReportActions({ reportId }: { reportId: string }) {
-  const router = useRouter();
+interface ReportActionsProps {
+  reportId: string;
+  currentStatus: ReportStatus;
+  onStatusChange?: (reportId: string, newStatus: ReportStatus) => (() => void) | void;
+}
+
+export function ReportActions({ reportId, currentStatus, onStatusChange }: ReportActionsProps) {
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<'RESOLVED' | 'DISMISSED' | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const confirmAction = (status: 'RESOLVED' | 'DISMISSED') => {
     setAction(status);
@@ -27,18 +31,18 @@ export function ReportActions({ reportId }: { reportId: string }) {
   };
 
   async function handleStatusUpdate(status: 'RESOLVED' | 'DISMISSED') {
-    setLoading(true);
+    const rollback = onStatusChange?.(reportId, status);
+    setOpen(false);
+    setAction(null);
+
     const result = await updateReportStatusAction(reportId, status);
 
     if (result?.error) {
+      rollback?.();
       toasts.error(result.error);
     } else {
       toasts.success(`Report ${status.toLowerCase()}`);
-      router.refresh();
     }
-    setLoading(false);
-    setOpen(false);
-    setAction(null);
   }
 
   const getDialogDetails = () => {
@@ -103,16 +107,15 @@ export function ReportActions({ reportId }: { reportId: string }) {
             <DialogDescription>{details.description}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+            <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button
               variant={details.buttonVariant}
               onClick={() => action && handleStatusUpdate(action)}
-              disabled={loading}
               className={action === 'RESOLVED' ? 'bg-green-600 hover:bg-green-500 text-white' : ''}
             >
-              {loading ? 'Processing...' : details.buttonText}
+              {details.buttonText}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -25,7 +25,6 @@ import {
 import { Trash2, Ban, AlertTriangle, Users, MessageSquare } from 'lucide-react';
 import { deleteThread, deleteCommunity, banUser } from '@/modules/moderation/actions';
 import { toasts } from '@/lib/utils/toast';
-import { useRouter } from 'next/navigation';
 import type { ThreadSummary } from '@/modules/threads/types';
 import type { CommunitySummary } from '@/modules/communities/types';
 
@@ -34,8 +33,9 @@ interface AdminModerationPanelProps {
   communities: CommunitySummary[];
 }
 
-export function AdminModerationPanel({ threads, communities }: AdminModerationPanelProps) {
-  const router = useRouter();
+export function AdminModerationPanel({ threads: initialThreads, communities: initialCommunities }: AdminModerationPanelProps) {
+  const [threads, setThreads] = useState<ThreadSummary[]>(initialThreads);
+  const [communities, setCommunities] = useState<CommunitySummary[]>(initialCommunities);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [deleteThreadDialogOpen, setDeleteThreadDialogOpen] = useState(false);
   const [deleteCommunityDialogOpen, setDeleteCommunityDialogOpen] = useState(false);
@@ -46,7 +46,6 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
   const [banUserId, setBanUserId] = useState<string>('');
   const [banThreadId, setBanThreadId] = useState<string>('');
   const [deleteReason, setDeleteReason] = useState<string>('');
-  const [loading, setLoading] = useState(false);
 
   async function handleBanUser() {
     if (!banUserId || !banReason) {
@@ -54,7 +53,13 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
       return;
     }
 
-    setLoading(true);
+    setBanDialogOpen(false);
+    setBanUserId('');
+    setBanThreadId('');
+    setBanReason('');
+    setBanCustomReason('');
+    toasts.success('User banned successfully');
+
     const result = await banUser(
       banUserId,
       banReason,
@@ -64,16 +69,7 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
 
     if (result?.error) {
       toasts.error(result.error);
-    } else {
-      toasts.success('User banned successfully');
-      setBanDialogOpen(false);
-      setBanUserId('');
-      setBanThreadId('');
-      setBanReason('');
-      setBanCustomReason('');
-      router.refresh();
     }
-    setLoading(false);
   }
 
   async function handleDeleteThread() {
@@ -82,19 +78,20 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
       return;
     }
 
-    setLoading(true);
+    const prev = threads;
+    const threadName = threads.find((t) => t.id === selectedThread)?.name ?? '';
+    setThreads((p) => p.filter((t) => t.id !== selectedThread));
+    setDeleteThreadDialogOpen(false);
+    setSelectedThread('');
+    setDeleteReason('');
+    toasts.success(`Thread "${threadName}" deleted`);
+
     const result = await deleteThread(selectedThread, deleteReason || undefined);
 
     if (result?.error) {
+      setThreads(prev);
       toasts.error(result.error);
-    } else {
-      toasts.success('Thread deleted successfully');
-      setDeleteThreadDialogOpen(false);
-      setSelectedThread('');
-      setDeleteReason('');
-      router.refresh();
     }
-    setLoading(false);
   }
 
   async function handleDeleteCommunity() {
@@ -103,19 +100,20 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
       return;
     }
 
-    setLoading(true);
+    const prev = communities;
+    const communityTitle = communities.find((c) => c.id === selectedCommunity)?.title ?? '';
+    setCommunities((p) => p.filter((c) => c.id !== selectedCommunity));
+    setDeleteCommunityDialogOpen(false);
+    setSelectedCommunity('');
+    setDeleteReason('');
+    toasts.success(`Community "${communityTitle}" deleted`);
+
     const result = await deleteCommunity(selectedCommunity, deleteReason || undefined);
 
     if (result?.error) {
+      setCommunities(prev);
       toasts.error(result.error);
-    } else {
-      toasts.success('Community deleted successfully');
-      setDeleteCommunityDialogOpen(false);
-      setSelectedCommunity('');
-      setDeleteReason('');
-      router.refresh();
     }
-    setLoading(false);
   }
 
   return (
@@ -210,9 +208,9 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                 <Button
                   variant="destructive"
                   onClick={handleBanUser}
-                  disabled={loading || !banUserId || !banReason}
+                  disabled={!banUserId || !banReason}
                 >
-                  {loading ? 'Banning...' : 'Ban User'}
+                  Ban User
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -280,9 +278,9 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                 <Button
                   variant="destructive"
                   onClick={handleDeleteThread}
-                  disabled={loading || !selectedThread}
+                  disabled={!selectedThread}
                 >
-                  {loading ? 'Deleting...' : 'Delete Thread'}
+                  Delete Thread
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -350,9 +348,9 @@ export function AdminModerationPanel({ threads, communities }: AdminModerationPa
                 <Button
                   variant="destructive"
                   onClick={handleDeleteCommunity}
-                  disabled={loading || !selectedCommunity}
+                  disabled={!selectedCommunity}
                 >
-                  {loading ? 'Deleting...' : 'Delete Community'}
+                  Delete Community
                 </Button>
               </DialogFooter>
             </DialogContent>

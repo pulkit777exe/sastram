@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { FollowButton } from './follow-button';
@@ -35,6 +36,7 @@ export function ProfileHeader({
   isFollowing,
   limitedView = false,
 }: ProfileHeaderProps) {
+  const [followerCount, setFollowerCount] = useState(user.followerCount);
   const displayName = user.name || user.email.split('@')[0];
   const avatarUrl = user.image;
   const initials = displayName
@@ -146,7 +148,7 @@ export function ProfileHeader({
               className="animate-in fade-in slide-in-from-right-4 duration-400 fill-mode-both"
               style={{ animationDelay: '300ms' }}
             >
-              <FollowButton userId={user.id} isFollowing={isFollowing} />
+              <FollowButton userId={user.id} isFollowing={isFollowing} onFollowChange={(delta) => setFollowerCount((prev) => Math.max(0, prev + delta))} />
             </div>
           )}
         </div>
@@ -159,7 +161,7 @@ export function ProfileHeader({
           >
             <UserStats
               reputationPoints={user.reputationPoints}
-              followerCount={user.followerCount}
+              followerCount={followerCount}
               followingCount={user.followingCount}
               threadsCount={0} // Will be fetched separately
             />

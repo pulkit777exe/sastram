@@ -4,11 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { submitAppeal } from '@/modules/appeals/actions';
 import { toasts } from '@/lib/utils/toast';
-import { useRouter } from 'next/navigation';
-
 export function AppealForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter();
 
   async function handleSubmit(formData: FormData) {
     setIsSubmitting(true);
@@ -19,7 +16,6 @@ export function AppealForm() {
       toasts.error(result.error);
     } else {
       toasts.success('Appeal submitted successfully');
-      router.refresh();
     }
   }
 

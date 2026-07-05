@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { Loader2, PlusCircle, FileIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
@@ -24,7 +23,6 @@ export default function ReplyBox({
   onTypingStart,
   onTypingStop,
 }: ReplyBoxProps) {
-  const router = useRouter();
   const [value, setValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,9 +115,8 @@ export default function ReplyBox({
       toasts.error(errorMessage);
     } finally {
       setIsSubmitting(false);
-      router.refresh();
     }
-  }, [canSubmit, isSubmitting, threadId, parentId, value, selectedFile, onSuccess, router]);
+  }, [canSubmit, isSubmitting, threadId, parentId, value, selectedFile, onSuccess]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {

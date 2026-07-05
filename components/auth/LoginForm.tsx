@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoaderIcon, Eye, EyeOff, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { signIn, signUp, authClient } from '@/lib/services/auth-client';
-import axios from 'axios';
 import { GithubIcon } from '@/public/icons/github';
 import { ChromeIcon } from '@/public/icons/google';
 import { toasts } from '@/lib/utils/toast';
@@ -112,10 +111,12 @@ function UserAuthForm({
         }
         setOtpEmail(email);
         try {
-          const { data: otpData } = await axios.post('/api/email-otp/send-verification-otp', {
-            email,
-            type: 'sign-in',
+          const res = await fetch('/api/email-otp/send-verification-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, type: 'sign-in' }),
           });
+          const otpData = await res.json();
           if (otpData?.error) {
             setError(otpData.error?.message || 'Failed to send verification code');
             setLoadingState(null);
@@ -140,10 +141,12 @@ function UserAuthForm({
           if (/email.*not.*verif|verify.*email/i.test(result.error.message || '')) {
             setOtpEmail(email);
             try {
-              const { data: otpData } = await axios.post('/api/email-otp/send-verification-otp', {
-                email,
-                type: 'sign-in',
+              const res = await fetch('/api/email-otp/send-verification-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, type: 'sign-in' }),
               });
+              const otpData = await res.json();
               if (!otpData?.error) {
                 setMode('otp-verify');
                 setCountdown(60);
@@ -156,13 +159,7 @@ function UserAuthForm({
           return;
         }
 
-        if (result.data) {
-          router.push(redirectTarget);
-          router.refresh();
-        } else {
-          router.push(redirectTarget);
-          router.refresh();
-        }
+        router.push(redirectTarget);
       }
     } catch (error) {
       console.error(`${mode === 'signup' ? 'Signup' : 'Login'} failed:`, error);
@@ -204,10 +201,12 @@ function UserAuthForm({
     setError(null);
 
     try {
-      const { data } = await axios.post('/api/email-otp/send-verification-otp', {
-        email: otpEmail,
-        type: 'sign-in',
+      const res = await fetch('/api/email-otp/send-verification-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpEmail, type: 'sign-in' }),
       });
+      const data = await res.json();
 
       if (data.error) {
         setError(data.error?.message || 'Failed to send verification code');
@@ -256,7 +255,6 @@ function UserAuthForm({
       }
 
       router.push(redirectTarget);
-      router.refresh();
     } catch (err) {
       console.error('Verify OTP error:', err);
       toasts.serverError();
@@ -323,10 +321,12 @@ function UserAuthForm({
     setError(null);
 
     try {
-      const { data } = await axios.post('/api/email-otp/send-verification-otp', {
-        email: otpEmail,
-        type: 'sign-in',
+      const res = await fetch('/api/email-otp/send-verification-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpEmail, type: 'sign-in' }),
       });
+      const data = await res.json();
 
       if (data.error) {
         throw new Error('Failed to resend code');

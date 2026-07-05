@@ -41,16 +41,6 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
   const [showMerge, setShowMerge] = useState(false);
   const [mergeSource, setMergeSource] = useState('');
   const [mergeTarget, setMergeTarget] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const refresh = useCallback(() => {
-    const params = new URLSearchParams();
-    if (searchQuery) params.set('search', searchQuery);
-    if (currentPage > 1) params.set('page', String(currentPage));
-    const qs = params.toString();
-    router.push(qs ? `/dashboard/admin/tags?${qs}` : '/dashboard/admin/tags');
-    router.refresh();
-  }, [router, searchQuery, currentPage]);
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
@@ -58,70 +48,82 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
       const params = new URLSearchParams();
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
       router.push(`/dashboard/admin/tags?${params.toString()}`);
-      router.refresh();
     },
     [router, searchQuery]
   );
 
   const handleCreate = useCallback(async () => {
     if (!newName.trim()) return;
-    setSaving(true);
+    const tempId = `temp-${Date.now()}`;
+    const slug = newName.trim().toLowerCase().replace(/\s+/g, '-');
+    const optimisticTag: Tag = { id: tempId, name: newName.trim(), slug, color: newColor, threadCount: 0 };
+
+    setTags((prev) => [optimisticTag, ...prev]);
+    setNewName('');
+    setNewColor('#3b82f6');
+    setShowCreate(false);
+    toasts.success('Tag created');
+
     const res = await createTagAction({ name: newName.trim(), color: newColor });
-    if (res.ok) {
-      toasts.success('Tag created');
-      setNewName('');
-      setNewColor('#3b82f6');
-      setShowCreate(false);
-      refresh();
+    if (res.ok && res.data) {
+      setTags((prev) => prev.map((t) => t.id === tempId ? { id: res.data!.id, name: newName.trim(), slug: res.data!.slug ?? slug, color: newColor, threadCount: 0 } : t));
     } else {
+      setTags((prev) => prev.filter((t) => t.id !== tempId));
       toasts.error(res.error || 'Failed to create tag');
     }
-    setSaving(false);
-  }, [newName, newColor, refresh]);
+  }, [newName, newColor]);
 
   const handleUpdate = useCallback(async () => {
     if (!editingId || !editName.trim()) return;
-    setSaving(true);
+    const prev = tags;
+    setTags((p) => p.map((t) => t.id === editingId ? { ...t, name: editName.trim(), color: editColor } : t));
+    setEditingId(null);
+    toasts.success('Tag updated');
+
     const res = await updateTagAction({ id: editingId, name: editName.trim(), color: editColor });
-    if (res.ok) {
-      toasts.success('Tag updated');
-      setEditingId(null);
-      refresh();
-    } else {
+    if (!res.ok) {
+      setTags(prev);
       toasts.error(res.error || 'Failed to update tag');
     }
-    setSaving(false);
-  }, [editingId, editName, editColor, refresh]);
+  }, [editingId, editName, editColor, tags]);
 
   const handleDelete = useCallback(async () => {
     if (!deletingId) return;
-    setSaving(true);
+    const prev = tags;
+    const name = tags.find((t) => t.id === deletingId)?.name ?? '';
+    setTags((p) => p.filter((t) => t.id !== deletingId));
+    setDeletingId(null);
+    toasts.success(`Tag "${name}" deleted`);
+
     const res = await deleteTagAction({ id: deletingId });
-    if (res.ok) {
-      toasts.success('Tag deleted');
-      setDeletingId(null);
-      refresh();
-    } else {
+    if (!res.ok) {
+      setTags(prev);
       toasts.error(res.error || 'Failed to delete tag');
     }
-    setSaving(false);
-  }, [deletingId, refresh]);
+  }, [deletingId, tags]);
 
   const handleMerge = useCallback(async () => {
     if (!mergeSource || !mergeTarget || mergeSource === mergeTarget) return;
-    setSaving(true);
+    const prev = tags;
+    const source = tags.find((t) => t.id === mergeSource);
+    setTags((p) => {
+      const target = p.find((t) => t.id === mergeTarget);
+      if (!target || !source) return p.filter((t) => t.id !== mergeSource);
+      return p
+        .filter((t) => t.id !== mergeSource)
+        .map((t) => t.id === mergeTarget ? { ...t, threadCount: t.threadCount + source.threadCount } : t);
+    });
+    setShowMerge(false);
+    setMergeSource('');
+    setMergeTarget('');
+    toasts.success('Tags merged');
+
     const res = await mergeTagsAction({ sourceId: mergeSource, targetId: mergeTarget });
-    if (res.ok) {
-      toasts.success('Tags merged');
-      setShowMerge(false);
-      setMergeSource('');
-      setMergeTarget('');
-      refresh();
-    } else {
+    if (!res.ok) {
+      setTags(prev);
       toasts.error(res.error || 'Failed to merge tags');
     }
-    setSaving(false);
-  }, [mergeSource, mergeTarget, refresh]);
+  }, [mergeSource, mergeTarget, tags]);
 
   const tagMap = new Map(tags.map((t) => [t.id, t]));
 
@@ -183,9 +185,9 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button onClick={handleCreate} size="sm" disabled={saving || !newName.trim()} className="h-9">
+                <Button onClick={handleCreate} size="sm" disabled={!newName.trim()} className="h-9">
                   <Check className="w-3.5 h-3.5 mr-1" />
-                  {saving ? 'Creating...' : 'Create'}
+                  Create
                 </Button>
                 <Button onClick={() => setShowCreate(false)} size="sm" variant="ghost" className="h-9">
                   <X className="w-3.5 h-3.5" />
@@ -241,10 +243,10 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 <Button
                   onClick={handleMerge}
                   size="sm"
-                  disabled={saving || !mergeSource || !mergeTarget || mergeSource === mergeTarget}
+                  disabled={!mergeSource || !mergeTarget || mergeSource === mergeTarget}
                   className="h-9"
                 >
-                  {saving ? 'Merging...' : 'Merge'}
+                  Merge
                 </Button>
                 <Button onClick={() => setShowMerge(false)} size="sm" variant="ghost" className="h-9">
                   Cancel
@@ -314,7 +316,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                                 onClick={handleUpdate}
                                 size="sm"
                                 variant="ghost"
-                                disabled={saving || !editName.trim()}
+                                disabled={!editName.trim()}
                                 className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
                               >
                                 <Check className="w-3.5 h-3.5" />
@@ -397,7 +399,6 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 if (searchQuery) params.set('search', searchQuery);
                 if (p > 1) params.set('page', String(p));
                 router.push(`/dashboard/admin/tags?${params.toString()}`);
-                router.refresh();
               }}
             >
               {p}
@@ -428,8 +429,8 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 <Button onClick={() => setDeletingId(null)} size="sm" variant="outline">
                   Cancel
                 </Button>
-                <Button onClick={handleDelete} size="sm" variant="destructive" disabled={saving}>
-                  {saving ? 'Deleting...' : 'Delete'}
+                <Button onClick={handleDelete} size="sm" variant="destructive">
+                  Delete
                 </Button>
               </div>
             </CardContent>

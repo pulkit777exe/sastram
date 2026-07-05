@@ -4,46 +4,39 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { followUser, unfollowUser } from '@/modules/follows/actions';
 import { toasts } from '@/lib/utils/toast';
-import { UserPlus, UserMinus, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { UserPlus, UserMinus } from 'lucide-react';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 
 interface FollowButtonProps {
   userId: string;
   isFollowing?: boolean;
+  onFollowChange?: (delta: number) => void;
 }
 
-export function FollowButton({ userId, isFollowing: initialIsFollowing }: FollowButtonProps) {
+export function FollowButton({ userId, isFollowing: initialIsFollowing, onFollowChange }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing || false);
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const handleToggle = async () => {
-    setIsLoading(true);
+    const prev = isFollowing;
+    setIsFollowing(!isFollowing);
+    onFollowChange?.(isFollowing ? -1 : 1);
+
     try {
-      if (isFollowing) {
-        const result = await unfollowUser(userId);
-        if (result?.error) {
-          toasts.error(result.error);
-        } else {
-          setIsFollowing(false);
-          toasts.success('Unfollowed successfully');
-          router.refresh();
-        }
+      const result = isFollowing
+        ? await unfollowUser(userId)
+        : await followUser(userId);
+
+      if (result?.error) {
+        setIsFollowing(prev);
+        onFollowChange?.(isFollowing ? 1 : -1);
+        toasts.error(result.error);
       } else {
-        const result = await followUser(userId);
-        if (result?.error) {
-          toasts.error(result.error);
-        } else {
-          setIsFollowing(true);
-          toasts.success('Following successfully');
-          router.refresh();
-        }
+        toasts.success(isFollowing ? 'Unfollowed successfully' : 'Following successfully');
       }
-    } catch (error) {
+    } catch {
+      setIsFollowing(prev);
+      onFollowChange?.(isFollowing ? 1 : -1);
       toasts.error('Something went wrong');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -51,13 +44,10 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing }: Follow
     <div className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-100">
       <Button
         onClick={handleToggle}
-        disabled={isLoading}
         variant={isFollowing ? 'outline' : 'default'}
         className="min-w-[120px]"
       >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        ) : isFollowing ? (
+        {isFollowing ? (
           <>
             <AnimatedIcon icon={UserMinus} className="h-4 w-4 mr-2" animateOnHover />
             Unfollow

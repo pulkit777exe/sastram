@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { UserPlus, Mail } from 'lucide-react';
 import { inviteFriendToThread } from '@/modules/invitations/actions';
 import { toasts } from '@/lib/utils/toast';
-import { useRouter } from 'next/navigation';
+
 
 interface InviteFriendButtonProps {
   threadId: string;
@@ -29,8 +29,6 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter();
-
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
 
@@ -57,7 +55,6 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
       setEmail('');
       setMessage('');
       setOpen(false);
-      router.refresh();
     }
   }
 
