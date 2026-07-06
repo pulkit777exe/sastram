@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { FILE_LIMITS } from '@/lib/config/constants';
 import { getPublicProfile, getUserThreads, updateProfilePrivacy } from './repository';
 import { ProfilePrivacy } from '@prisma/client';
@@ -72,6 +72,12 @@ export const uploadAvatar = withValidation(
 
     try {
       const session = await requireSession();
+
+      const oldUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { avatarUrl: true },
+      });
+
       const blob = await put(
         `avatars/${session.user.id}-${Date.now()}.${file.name.split('.').pop()}`,
         file,
@@ -82,6 +88,10 @@ export const uploadAvatar = withValidation(
         where: { id: session.user.id },
         data: { avatarUrl: blob.url },
       });
+
+      if (oldUser?.avatarUrl && oldUser.avatarUrl !== blob.url) {
+        del(oldUser.avatarUrl).catch(() => {});
+      }
 
       revalidatePath(ROUTES.DASHBOARD_SETTINGS);
       revalidatePath(ROUTES.DASHBOARD_SETTINGS_PROFILE);
@@ -113,6 +123,12 @@ export const uploadBanner = withValidation(
 
     try {
       const session = await requireSession();
+
+      const oldUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { bannerUrl: true },
+      });
+
       const blob = await put(
         `banners/${session.user.id}-${Date.now()}.${file.name.split('.').pop()}`,
         file,
@@ -123,6 +139,10 @@ export const uploadBanner = withValidation(
         where: { id: session.user.id },
         data: { bannerUrl: blob.url },
       });
+
+      if (oldUser?.bannerUrl && oldUser.bannerUrl !== blob.url) {
+        del(oldUser.bannerUrl).catch(() => {});
+      }
 
       revalidatePath(ROUTES.DASHBOARD_SETTINGS);
       revalidatePath(ROUTES.DASHBOARD_SETTINGS_PROFILE);
