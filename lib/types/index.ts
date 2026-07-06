@@ -131,7 +131,7 @@ export interface Reaction {
 
 export interface ReadReceipt {
   id: string;
-  messageId: string;
+  lastReadMessageId: string;
   userId: string;
   readAt: Date;
 }

@@ -1,7 +1,7 @@
 import { SectionRole } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import type { ThreadMember } from '@/modules/threads/types';
+import type { ThreadMember } from '@/modules/members/types';
 
 export async function getThreadMembers(threadId: string): Promise<ThreadMember[]> {
   try {
@@ -15,6 +15,7 @@ export async function getThreadMembers(threadId: string): Promise<ThreadMember[]
           select: {
             id: true,
             name: true,
+            email: true,
             image: true,
             status: true,
             lastSeenAt: true,
@@ -29,12 +30,14 @@ export async function getThreadMembers(threadId: string): Promise<ThreadMember[]
     return (members ?? []).map((member) => ({
       id: member.id,
       userId: member.userId,
+      sectionId: member.sectionId,
       role: member.role,
+      status: member.status,
       joinedAt: member.joinedAt,
       user: {
         id: member.user.id,
         name: member.user.name,
-        avatarUrl: member.user.image,
+        image: member.user.image,
         status: member.user.status,
         lastSeenAt: member.user.lastSeenAt,
       },

@@ -1,46 +1,7 @@
 import { z } from 'zod';
 
-/**
- * Message creation schema
- */
-export const createMessageSchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Message cannot be empty')
-    .max(1000, 'Message must be less than 1000 characters')
-    .refine((val) => val.trim().length > 0, 'Message cannot be only whitespace')
-    .refine((val) => !val.includes('\x00'), 'Message cannot contain null bytes'),
-  sectionId: z.string().cuid('Invalid section ID'),
-  parentId: z.string().cuid('Invalid parent message ID').optional(),
-  mentions: z.array(z.string().cuid('Invalid user ID')).optional(),
-});
-
-/**
- * Attachment input schema
- */
-export const attachmentInputSchema = z.object({
-  url: z
-    .string()
-    .url('Invalid attachment URL')
-    .refine(
-      (val) => !val.includes('..') && !val.includes('\\'),
-      'Invalid path in URL'
-    )
-    .refine(
-      (val) => /^(https?|data:)/.test(val),
-      'URL must start with https:// or data:'
-    ),
-  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
-  name: z.string().nullable(),
-  size: z.number().int().positive('File size must be positive').nullable(),
-});
-
-/**
- * Message with attachments schema
- */
-export const createMessageWithAttachmentsSchema = createMessageSchema.extend({
-  attachments: z.array(attachmentInputSchema).max(10, 'Maximum 10 attachments allowed').optional(),
-});
+// Re-export from modules/messages/schemas for backward compatibility
+export { attachmentInputSchema, createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
 
 /**
  * Thread/Section creation schema
@@ -59,8 +20,7 @@ export const createThreadSchema = z.object({
     .refine((val) => !val.endsWith('-'), 'Slug cannot end with a hyphen')
     .refine((val) => !val.includes('--'), 'Slug cannot have consecutive hyphens'),
   description: z.string().max(480, 'Description must be less than 480 characters').optional(),
-  summary: z.string().max(2000, 'Summary must be less than 2000 characters').optional(),
-  icon: z.string().emoji('Icon must be a valid emoji').optional(),
+  aiSummary: z.string().max(2000, 'Summary must be less than 2000 characters').optional(),
   createdBy: z.string().cuid('Invalid user ID'),
   communityId: z.string().cuid('Invalid community ID').nullable().optional(),
 });
@@ -71,8 +31,7 @@ export const createThreadSchema = z.object({
 export const updateThreadSchema = z.object({
   name: z.string().min(3).max(100).optional(),
   description: z.string().max(480).optional(),
-  summary: z.string().max(2000).optional(),
-  icon: z.string().emoji().optional(),
+  aiSummary: z.string().max(2000).optional(),
 });
 
 /**
@@ -100,18 +59,6 @@ export const createCommunitySchema = z.object({
 export const updateCommunitySchema = z.object({
   title: z.string().min(3).max(100).optional(),
   description: z.string().max(280).optional(),
-});
-
-/**
- * User profile update schema
- */
-export const updateUserProfileSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'Name must be at least 2 characters')
-    .max(50, 'Name must be less than 50 characters'),
-  bio: z.string().max(160, 'Bio must be less than 160 characters').optional(),
-  image: z.string().url('Invalid image URL').optional(),
 });
 
 /**
@@ -149,14 +96,10 @@ export const mentionDataSchema = z.object({
 /**
  * Type exports
  */
-export type CreateMessage = z.infer<typeof createMessageSchema>;
-export type AttachmentInput = z.infer<typeof attachmentInputSchema>;
-export type CreateMessageWithAttachments = z.infer<typeof createMessageWithAttachmentsSchema>;
 export type CreateThread = z.infer<typeof createThreadSchema>;
 export type UpdateThread = z.infer<typeof updateThreadSchema>;
 export type CreateCommunity = z.infer<typeof createCommunitySchema>;
 export type UpdateCommunity = z.infer<typeof updateCommunitySchema>;
-export type UpdateUserProfile = z.infer<typeof updateUserProfileSchema>;
 export type NewsletterSubscription = z.infer<typeof newsletterSubscriptionSchema>;
 export type MessageQueue = z.infer<typeof messageQueueSchema>;
 export type MentionData = z.infer<typeof mentionDataSchema>;

@@ -16,7 +16,6 @@ export async function getPublicProfile(userId: string, viewerId?: string) {
       twitter: true,
       github: true,
       image: true,
-      avatarUrl: true,
       bannerUrl: true,
       profilePrivacy: true,
       reputationPoints: true,
@@ -71,7 +70,7 @@ export async function getUserBootstrapProfile(userId: string) {
       select: {
         id: true,
         name: true,
-        avatarUrl: true,
+        image: true,
         role: true,
         reputationPoints: true,
         isPro: true,

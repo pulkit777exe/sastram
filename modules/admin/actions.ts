@@ -3,10 +3,10 @@
 import { logger } from '@/lib/infrastructure/logger';
 
 import { requireRole } from '@/modules/policy';
-import { listCommunities } from '@/modules/communities/repository';
-import { listThreads } from '@/modules/threads/repository';
+import { listCommunities } from '@/modules/communities';
+import { listThreads } from '@/modules/threads';
 // Note: createCommunityAction and createThreadAction should be implemented in their respective modules
-import { deleteCommunity, deleteThread } from '@/modules/moderation/actions';
+import { deleteCommunity, deleteThread } from '@/modules/moderation';
 
 export async function getAdminDashboardData() {
   try {
@@ -28,6 +28,6 @@ export async function getAdminDashboardData() {
 }
 
 // Re-export moderation actions for admin use
-export { deleteCommunity, deleteThread } from '@/modules/moderation/actions';
+export { deleteCommunity, deleteThread } from '@/modules/moderation';
 // Note: createCommunityAction and createThreadAction should be implemented in their respective modules
 // For now, these are handled by moderation actions

@@ -48,7 +48,7 @@ export const uploadResponseSchema = z.object({
  * Thread/Section schemas
  */
 export const createThreadRequestSchema = z.object({
-  title: z
+  name: z
     .string()
     .min(3, 'Title must be at least 3 characters')
     .max(100, 'Title must be less than 100 characters')
@@ -73,7 +73,7 @@ export const createThreadRequestSchema = z.object({
 export const threadSummarySchema = z.object({
   id: z.string().cuid(),
   slug: z.string(),
-  title: z.string(),
+  name: z.string(),
   description: z.string().nullable().optional(),
   community: z
     .object({
@@ -85,7 +85,6 @@ export const threadSummarySchema = z.object({
     .optional(),
   messageCount: z.number().int().nonnegative(),
   activeUsers: z.number().int().nonnegative(),
-  icon: z.string().nullable().optional(),
 });
 
 export const threadDetailSchema = threadSummarySchema.extend({
@@ -99,7 +98,7 @@ export const threadDetailSchema = threadSummarySchema.extend({
       createdAt: z.coerce.date(),
     })
   ),
-  summary: z.string().nullable().optional(),
+  aiSummary: z.string().nullable().optional(),
   subscriptionCount: z.number().int().nonnegative().optional(),
 });
 

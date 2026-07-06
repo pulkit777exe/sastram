@@ -12,7 +12,7 @@ import {
   getSectionMembers,
   getMemberRole,
 } from '@/modules/members/repository';
-import { createNotification } from '@/modules/notifications/repository';
+import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
 
 const joinSectionSchema = z.object({

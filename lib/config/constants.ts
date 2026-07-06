@@ -10,14 +10,12 @@ export const USER_STATUS = {
   ACTIVE: 'ACTIVE',
   SUSPENDED: 'SUSPENDED',
   BANNED: 'BANNED',
-  DELETED: 'DELETED',
 } as const;
 
 export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
 
 export const REPORT_STATUS = {
   PENDING: 'PENDING',
-  REVIEWING: 'REVIEWING',
   RESOLVED: 'RESOLVED',
   DISMISSED: 'DISMISSED',
 } as const;
@@ -90,15 +88,12 @@ export const MEMBER_STATUS = {
 export type MemberStatus = (typeof MEMBER_STATUS)[keyof typeof MEMBER_STATUS];
 
 export const NOTIFICATION_TYPES = {
-  MESSAGE: 'MESSAGE',
   REPLY: 'REPLY',
   MENTION: 'MENTION',
   REACTION: 'REACTION',
   INVITATION: 'INVITATION',
-  DIGEST: 'DIGEST',
-  REPORT: 'REPORT',
-  BAN: 'BAN',
   SYSTEM: 'SYSTEM',
+  AI_INSIGHT: 'AI_INSIGHT',
 } as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];

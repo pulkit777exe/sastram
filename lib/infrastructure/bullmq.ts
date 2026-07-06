@@ -108,11 +108,12 @@ export interface AIInsightNotificationJobData {
 export interface EmailJobData {
   to: string | string[];
   subject: string;
-  html: string;
   text?: string;
   from?: string;
   type?: string;
   metadata?: Record<string, unknown>;
+  templateId?: string;
+  data?: Record<string, string>;
 }
 
 export interface AIInlineJobData {

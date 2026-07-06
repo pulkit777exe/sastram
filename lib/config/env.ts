@@ -38,13 +38,14 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL'),
   NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
 
-  // Email (SMTP / Nodemailer)
-  SMTP_HOST: z.string().default('smtp.gmail.com'),
-  SMTP_PORT: z.coerce.number().int().default(587),
-  SMTP_SECURE: z.coerce.boolean().default(false),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().default('Sastram <noreply@sastram.com>'),
+  // Email (Resend)
+  RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required'),
+  RESEND_FROM: z.string().default('Sastram <noreply@sastram.wtfpulkit.dev>'),
+  RESEND_TEMPLATE_OTP: z.string().min(1, 'RESEND_TEMPLATE_OTP is required'),
+  RESEND_TEMPLATE_INVITATION: z.string().min(1, 'RESEND_TEMPLATE_INVITATION is required'),
+  RESEND_TEMPLATE_THREAD_SUMMARY: z.string().min(1, 'RESEND_TEMPLATE_THREAD_SUMMARY is required'),
+  RESEND_TEMPLATE_PASSWORD_RESET: z.string().min(1, 'RESEND_TEMPLATE_PASSWORD_RESET is required'),
+  RESEND_TEMPLATE_WELCOME: z.string().min(1, 'RESEND_TEMPLATE_WELCOME is required'),
 
   // AI Providers
   GEMINI_API_KEY: z.string().optional(),

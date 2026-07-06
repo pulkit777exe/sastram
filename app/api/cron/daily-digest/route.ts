@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
-import { sendEmail } from '@/lib/services/email';
+import { sendNewsletterDigest } from '@/lib/services/email';
 import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
@@ -85,22 +85,16 @@ export async function GET(req: NextRequest) {
           continue;
         }
 
-        await sendEmail({
-          to: sub.email,
-          subject: `Daily Digest: ${thread.name}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Daily Digest for ${thread.name}</h2>
-              <div style="background-color: #f4f4f5; padding: 20px; border-radius: 8px;">
-                ${summaryHtml}
-              </div>
-              <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                You are receiving this because you subscribed to this thread.
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}">View Thread</a>
-              </p>
-            </div>
-          `,
-        });
+        const uniqueParticipants = new Set(messages.map((m) => m.senderId));
+
+        await sendNewsletterDigest(
+          sub.email,
+          thread.name,
+          summaryHtml,
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}`,
+          messages.length,
+          uniqueParticipants.size
+        );
         results.sent++;
       } catch (err) {
         logger.error(`Failed to send email to ${sub.email}:`, err);

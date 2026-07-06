@@ -2,17 +2,17 @@
  * Invitation domain types
  */
 
+import { InvitationStatus } from '@prisma/client';
+
 export interface ThreadInvitation {
   id: string;
   threadId: string;
   senderId: string;
   email: string;
-  message: string | null;
-  status: string;
-  token: string | null;
+  status: InvitationStatus;
+  token: string;
   expiresAt: Date | null;
   createdAt: Date;
-  updatedAt: Date;
   thread: {
     slug: string;
     name: string;

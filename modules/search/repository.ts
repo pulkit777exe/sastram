@@ -19,7 +19,6 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
               name: true,
               email: true,
               image: true,
-              avatarUrl: true,
             },
           },
           _count: {
@@ -87,7 +86,6 @@ export async function searchMessages(
               name: true,
               email: true,
               image: true,
-              avatarUrl: true,
             },
           },
           section: {
@@ -138,7 +136,6 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
           name: true,
           email: true,
           image: true,
-          avatarUrl: true,
           bio: true,
           followerCount: true,
           followingCount: true,

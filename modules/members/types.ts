@@ -1,21 +1,25 @@
+import type { SectionRole, MemberStatus, UserStatus } from '@prisma/client';
+
 /**
  * Member domain types
  */
 
-import { SectionRole, MemberStatus } from '@prisma/client';
-
-export interface SectionMember {
+export interface ThreadMember {
   id: string;
-  sectionId: string;
   userId: string;
+  sectionId: string;
   role: SectionRole;
   status: MemberStatus;
   joinedAt: Date;
-  updatedAt: Date;
   user: {
     id: string;
     name: string | null;
     email: string;
     image: string | null;
+    status: UserStatus;
+    lastSeenAt?: Date | null;
   };
 }
+
+// Legacy alias
+export type SectionMember = ThreadMember;

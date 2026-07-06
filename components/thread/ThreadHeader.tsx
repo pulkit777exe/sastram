@@ -42,18 +42,6 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
 
   return (
     <header className="rounded-[10px] bg-(--surface) p-[20px] shadow-sm">
-      <div className="relative h-[140px] w-full overflow-hidden rounded-[10px] bg-thread-cover">
-        {thread.coverImage ? (
-          <Image
-            src={thread.coverImage}
-            alt={thread.title}
-            fill
-            priority
-            className="object-cover"
-          />
-        ) : null}
-      </div>
-
       <div className="mt-[16px] flex items-start justify-between gap-[16px]">
         <div className="min-w-0 flex-1">
           <div className="inline-flex items-center gap-[8px] rounded-[999px] bg-(--blue-dim) px-[10px] py-[4px]">
@@ -64,7 +52,7 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
           </div>
 
           <h1 className="mt-[10px] truncate font-['Syne'] text-[24px] font-extrabold leading-[1.1] text-(--text)">
-            {thread.title}
+            {thread.name}
           </h1>
 
           <div className="mt-[12px] flex flex-wrap items-center gap-[8px] text-[12px] text-muted">

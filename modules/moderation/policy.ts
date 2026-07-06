@@ -44,7 +44,7 @@ export async function validateModerationTarget(
     throw new Error('Target user not found');
   }
 
-  if (targetUser.role === 'ADMIN' && moderatorRole !== 'SUPER_ADMIN') {
+  if (targetUser.role === 'ADMIN') {
     throw new Error('Cannot moderate administrator accounts');
   }
 

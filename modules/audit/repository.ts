@@ -84,7 +84,7 @@ export async function getUserActivities(filters?: UserActivityFilters) {
             id: true,
             name: true,
             email: true,
-            avatarUrl: true,
+            image: true,
           },
         },
       },
@@ -110,7 +110,7 @@ export async function getEntityHistory(entityType: string, entityId: string) {
             id: true,
             name: true,
             email: true,
-            avatarUrl: true,
+            image: true,
           },
         },
       },
@@ -132,7 +132,7 @@ export async function getUserActivity(userId: string, limit = 50, offset = 0) {
           select: {
             id: true,
             name: true,
-            avatarUrl: true,
+            image: true,
           },
         },
       },
@@ -214,7 +214,7 @@ export async function getMostActiveUsers(limit = 10, startDate?: Date, endDate?:
         id: true,
         name: true,
         email: true,
-        avatarUrl: true,
+        image: true,
       },
     })
   );

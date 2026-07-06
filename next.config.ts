@@ -55,7 +55,7 @@ const nextConfig: NextConfig = {
         'os',
         'url',
         // Server-only npm packages that depend on Node built-ins
-        'nodemailer',
+        'resend',
         'bullmq',
         'ioredis',
         'native-dns',

@@ -14,9 +14,8 @@ import {
   uploadAvatarSchema,
   uploadBannerSchema,
   updateProfilePrivacySchema,
-  updateUserPreferencesSchema,
 } from './schemas';
-import { parseUserPreferences, type UserPreferences } from '@/lib/schemas/user-preferences';
+import { parseUserPreferences, type UserPreferences, userPreferencesSchema } from '@/lib/schemas/user-preferences';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { paginationSchema } from '@/lib/utils/validation-common';
 
@@ -80,7 +79,7 @@ export const uploadAvatar = withValidation(
 
       await prisma.user.update({
         where: { id: session.user.id },
-        data: { avatarUrl: blob.url },
+        data: { image: blob.url },
       });
 
       revalidatePath('/dashboard/settings');
@@ -172,7 +171,7 @@ export const updateProfilePrivacyAction = withValidation(
 );
 
 export const updateUserPreferencesAction = withValidation(
-  updateUserPreferencesSchema,
+  userPreferencesSchema.partial(),
   'updateUserPreferencesAction',
   async (preferences) => {
     const session = await requireSession();

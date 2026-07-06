@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { revalidatePath } from 'next/cache';
-import { createNotification } from '@/modules/notifications/repository';
+import { createNotification } from '@/modules/notifications';
 import {
   applyModerationRateLimit,
   requireModerationSession,
@@ -523,7 +523,7 @@ export const getModerationQueue = createServerAction(
     const offset = filters.offset || 0;
 
     const whereClause: Prisma.ReportWhereInput = {
-      status: filters.status || { in: ['PENDING', 'REVIEWING'] as const },
+      status: filters.status || { in: ['PENDING'] as const },
     };
 
     const [reports, totalCount] = await Promise.all([

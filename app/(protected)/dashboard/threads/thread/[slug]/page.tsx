@@ -91,7 +91,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
       })),
       section: {
         id: thread.id,
-        name: thread.title,
+        name: thread.name,
         slug: thread.slug,
       },
     };
@@ -120,7 +120,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
               <Hash size={20} strokeWidth={2.5} />
             </div>
             <div className="flex flex-col gap-0.5">
-              <h1 className="text-lg font-bold tracking-tight text-foreground">{thread.title}</h1>
+              <h1 className="text-lg font-bold tracking-tight text-foreground">{thread.name}</h1>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -142,7 +142,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
               threadId={thread.id}
               creatorId={thread.createdBy}
               currentUserId={session.user.id}
-              threadName={thread.title}
+              threadName={thread.name}
             />
           </div>
         </header>
@@ -182,7 +182,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
             </p>
           </div>
 
-          <h2 className="text-xl font-bold mb-3 text-foreground">{thread.title}</h2>
+          <h2 className="text-xl font-bold mb-3 text-foreground">{thread.name}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed mb-8">{thread.description}</p>
 
           <div className="grid grid-cols-2 gap-3 mb-8">
@@ -196,13 +196,13 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
 
           <ThreadSubscribeButton
             initialFrequency={subscription?.frequency ?? null}
-            threadName={thread.title}
+            threadName={thread.name}
             threadId={thread.id}
             slug={thread.slug}
           />
 
           <div className="mt-3">
-            <InviteFriendButton threadId={thread.id} threadName={thread.title} />
+            <InviteFriendButton threadId={thread.id} threadName={thread.name} />
           </div>
         </div>
 

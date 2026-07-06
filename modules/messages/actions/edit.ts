@@ -7,7 +7,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { filterBadLanguage } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
-import { getMemberRole } from '@/modules/members/repository';
+import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import {

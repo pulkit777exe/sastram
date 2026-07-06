@@ -33,7 +33,7 @@ import { Loader2, Trash2, Shield, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import { getThreadMembersAction, manageThreadMemberAction } from '@/modules/threads/actions';
-import type { ThreadMember } from '@/modules/threads/types';
+import type { ThreadMember } from '@/modules/members/types';
 import { SectionRole } from '@prisma/client';
 
 interface ThreadAccessModalProps {
@@ -175,7 +175,7 @@ export function ThreadAccessModal({
                       <div key={member.id} className="flex items-center justify-between group">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9 border">
-                            <AvatarImage src={member.user.avatarUrl || undefined} />
+                            <AvatarImage src={member.user.image || undefined} />
                             <AvatarFallback>
                               {member.user.name?.[0]?.toUpperCase() || '?'}
                             </AvatarFallback>

@@ -2,6 +2,7 @@ allowBuilds:
   '@prisma/engines': true
   '@sentry/cli': true
   esbuild: true
+  msgpackr-extract: true
   prisma: true
   sharp: true
   unrs-resolver: true

@@ -89,7 +89,7 @@ export const getReactionSummary = createServerAction(
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }
 
-    const reactions = await getMessageReactions(messageId);
+    const reactions = await getMessageReactions(messageId, session.user.id);
     return { data: reactions, error: null };
   }
 );

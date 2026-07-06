@@ -1,8 +1,19 @@
+import type { UserStatus } from '@prisma/client';
+import type { ReactionSummary } from '@/modules/reactions/types';
+import type { Message } from '@/lib/types/index';
+
 /**
  * Message domain types
  */
 
-import type { Message } from '@/lib/types/index';
+export interface AttachmentInfo {
+  id: string;
+  url: string;
+  type: string;
+  name?: string | null;
+  mimeType?: string | null;
+  size?: bigint | string | null;
+}
 
 export interface MessageWithDetails {
   id: string;
@@ -18,22 +29,17 @@ export interface MessageWithDetails {
   likeCount: number;
   replyCount: number;
   isAiResponse: boolean;
+  deletedAt?: Date | null;
   sender: {
     id: string;
     name: string | null;
     image: string | null;
+    status: UserStatus;
   };
-  attachments: Array<{
-    id: string;
-    url: string;
-    type: string;
-    name: string | null;
-  }>;
-  reactions?: Array<{
-    emoji: string;
-    count: number;
-    users: Array<{ id: string; name: string | null }>;
-  }>;
+  attachments: AttachmentInfo[];
+  reactions?: ReactionSummary[];
+  replyCountDisplay?: number;
+  replies?: MessageWithDetails[];
 }
 
 /**
@@ -59,7 +65,7 @@ export interface PostMessageResult {
   content: string;
   senderId: string;
   senderName: string;
-  senderAvatar: string | null;
+  senderImage: string | null;
   createdAt: Date;
   sectionId: string;
 }

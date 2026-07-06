@@ -88,7 +88,6 @@ export async function getFollowedUsersActivity(
                 name: true,
                 email: true,
                 image: true,
-                avatarUrl: true,
               },
             },
           },

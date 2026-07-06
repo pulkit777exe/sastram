@@ -112,7 +112,6 @@ export async function getFollowers(userId: string, limit: number = 50, offset: n
               name: true,
               email: true,
               image: true,
-              avatarUrl: true,
               bio: true,
               followerCount: true,
               followingCount: true,
@@ -155,7 +154,6 @@ export async function getFollowing(userId: string, limit: number = 50, offset: n
               name: true,
               email: true,
               image: true,
-              avatarUrl: true,
               bio: true,
               followerCount: true,
               followingCount: true,
@@ -231,7 +229,6 @@ export async function getMutualFollows(userId1: string, userId2: string) {
           name: true,
           email: true,
           image: true,
-          avatarUrl: true,
         },
       })) ?? []
     );

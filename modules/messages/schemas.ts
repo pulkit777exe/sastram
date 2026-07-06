@@ -1,6 +1,26 @@
 import { z } from 'zod';
 
 /**
+ * Attachment input schema
+ */
+export const attachmentInputSchema = z.object({
+  url: z
+    .string()
+    .url('Invalid attachment URL')
+    .refine(
+      (val) => !val.includes('..') && !val.includes('\\'),
+      'Invalid path in URL'
+    )
+    .refine(
+      (val) => /^(https?|data:)/.test(val),
+      'URL must start with https:// or data:'
+    ),
+  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
+  name: z.string().nullable(),
+  size: z.number().int().positive('File size must be positive').nullable(),
+});
+
+/**
  * Message validation schemas
  */
 
@@ -12,6 +32,10 @@ export const createMessageSchema = z.object({
   sectionId: z.string().cuid('Invalid section ID'),
   parentId: z.string().cuid('Invalid parent message ID').optional(),
   mentions: z.array(z.string().cuid()).optional(),
+});
+
+export const createMessageWithAttachmentsSchema = createMessageSchema.extend({
+  attachments: z.array(attachmentInputSchema).max(10, 'Maximum 10 attachments allowed').optional(),
 });
 
 export const editMessageSchema = z.object({
@@ -43,5 +67,5 @@ export const searchMentionUsersSchema = z.object({
     .max(50, 'Query must be less than 50 characters'),
 });
 
-// Re-export from lib/schemas/database for backward compatibility
-export { createMessageWithAttachmentsSchema } from '@/lib/schemas/database';
+export type CreateMessage = z.infer<typeof createMessageSchema>;
+export type CreateMessageWithAttachments = z.infer<typeof createMessageWithAttachmentsSchema>;

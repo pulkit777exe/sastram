@@ -89,7 +89,7 @@ export function SearchDialog({
               >
                 <div className="flex items-center gap-2 w-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatarUrl || user.image} />
+                    <AvatarImage src={user.image} />
                     <AvatarFallback>
                       {(user.name?.[0] || user.email[0]).toUpperCase()}
                     </AvatarFallback>

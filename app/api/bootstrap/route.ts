@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     user: {
       id: user.id,
       name: user.name,
-      avatarUrl: user.avatarUrl ?? null,
+      image: user.image ?? null,
       role: user.role,
       reputationPoints: user.reputationPoints ?? 0,
       isPro: user.isPro ?? false,

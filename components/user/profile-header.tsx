@@ -20,7 +20,6 @@ interface ProfileHeaderProps {
     twitter: string | null;
     github: string | null;
     image: string | null;
-    avatarUrl: string | null;
     bannerUrl: string | null;
     reputationPoints: number;
     followerCount: number;
@@ -39,7 +38,7 @@ export function ProfileHeader({
   limitedView = false,
 }: ProfileHeaderProps) {
   const displayName = user.name || user.email.split('@')[0];
-  const avatarUrl = user.avatarUrl || user.image;
+  const avatarUrl = user.image;
   const initials = displayName
     .split(' ')
     .map((n) => n[0])

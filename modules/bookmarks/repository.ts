@@ -67,7 +67,6 @@ export async function getUserBookmarks(userId: string, limit: number = 20, offse
                   name: true,
                   email: true,
                   image: true,
-                  avatarUrl: true,
                 },
               },
             },
