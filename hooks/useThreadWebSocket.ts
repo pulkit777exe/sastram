@@ -38,6 +38,7 @@ interface UseThreadWebSocketOptions {
   onTypingUpdate?: (typers: TypingUser[]) => void;
   onAiComplete?: (parentMessageId: string) => void;
   onReactionUpdate?: (update: ReactionUpdate) => void;
+  onReconnect?: () => void;
 }
 
 export function useThreadWebSocket({
@@ -50,6 +51,7 @@ export function useThreadWebSocket({
   onTypingUpdate,
   onAiComplete,
   onReactionUpdate,
+  onReconnect,
 }: UseThreadWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,6 +71,7 @@ export function useThreadWebSocket({
     onTypingUpdate,
     onAiComplete,
     onReactionUpdate,
+    onReconnect,
   });
   useEffect(() => {
     callbacksRef.current = {
@@ -79,6 +82,7 @@ export function useThreadWebSocket({
       onTypingUpdate,
       onAiComplete,
       onReactionUpdate,
+      onReconnect,
     };
   });
 
@@ -93,7 +97,11 @@ export function useThreadWebSocket({
       wsRef.current = ws;
 
       ws.onopen = () => {
+        const wasReconnect = reconnectAttemptsRef.current > 0;
         reconnectAttemptsRef.current = 0;
+        if (wasReconnect) {
+          callbacksRef.current.onReconnect?.();
+        }
       };
 
       ws.onerror = () => {};

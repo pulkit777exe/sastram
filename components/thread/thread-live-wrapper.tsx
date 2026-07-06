@@ -8,7 +8,7 @@ import type { Message } from '@/lib/types/index';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
-import { loadThreadMessages } from '@/modules/threads/actions';
+import { loadThreadMessages, backfillThreadMessages } from '@/modules/threads/actions';
 import { toasts } from '@/lib/utils/toast';
 import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
@@ -79,6 +79,9 @@ export function ThreadLiveWrapper({
   const ownPendingIds = useRef<Set<string>>(new Set());
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const isLoadingMoreRef = useRef(false);
+  const lastMessageTimestampRef = useRef<string>(
+    messages.length > 0 ? new Date(messages[messages.length - 1].createdAt).toISOString() : new Date().toISOString()
+  );
 
   const loadMoreMessages = useCallback(async () => {
     if (!hasMoreMessages || !nextCursor || isLoadingMoreRef.current) return;
@@ -217,6 +220,11 @@ export function ThreadLiveWrapper({
     (newMessage: Message) => {
       const wasAtBottom = isAtBottom();
 
+      const msgTimestamp = new Date(newMessage.createdAt).toISOString();
+      if (msgTimestamp > lastMessageTimestampRef.current) {
+        lastMessageTimestampRef.current = msgTimestamp;
+      }
+
       setLiveMessages((prev) => {
         // Own message already added via handleMessagePosted
         if (ownPendingIds.current.has(newMessage.id)) {
@@ -302,6 +310,65 @@ export function ThreadLiveWrapper({
     []
   );
 
+  const handleReconnect = useCallback(async () => {
+    const since = lastMessageTimestampRef.current;
+    try {
+      const result = await backfillThreadMessages(threadId, since);
+      if (result?.ok && result.data?.messages) {
+        const newMessages = result.data.messages;
+        if (newMessages.length === 0) return;
+
+        setLiveMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const toAdd = newMessages
+            .filter((m: any) => !existingIds.has(m.id))
+            .map((m: any) => ({
+              id: m.id,
+              content: m.body ?? m.content ?? '',
+              createdAt: m.createdAt,
+              senderId: m.senderId,
+              parentId: m.parentId ?? null,
+              threadId,
+              depth: m.depth ?? 0,
+              isEdited: m.isEdited ?? false,
+              isPinned: m.isPinned ?? false,
+              likeCount: m.likeCount ?? 0,
+              replyCount: m.replyCount ?? 0,
+              isAiResponse: m.isAI ?? m.isAiResponse ?? false,
+              updatedAt: m.createdAt,
+              deletedAt: m.deletedAt ?? null,
+              truncated: false,
+              sender: {
+                id: m.sender?.id ?? m.senderId,
+                name: m.sender?.name ?? 'Anonymous',
+                image: m.sender?.image ?? null,
+              },
+              attachments: (m.attachments ?? []).map((att: any) => ({
+                id: att.id,
+                name: att.name ?? null,
+                url: att.url,
+                type: att.type,
+                size: att.size ?? null,
+              })),
+              thread: { id: threadId, name: title, slug },
+            }));
+
+          if (toAdd.length === 0) return prev;
+
+          const merged = [...prev, ...toAdd].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          lastMessageTimestampRef.current = new Date(
+            merged[merged.length - 1].createdAt
+          ).toISOString();
+          return merged;
+        });
+      }
+    } catch {
+      // Silent — backfill is best-effort
+    }
+  }, [threadId, title, slug]);
+
   const { emitTypingStart, emitTypingStop } = useThreadWebSocket({
     threadId,
     currentUserId: currentUser.id,
@@ -311,6 +378,7 @@ export function ThreadLiveWrapper({
     onPinUpdate: handleWsPinUpdate,
     onTypingUpdate: handleTypingUpdate,
     onAiComplete: handleAiComplete,
+    onReconnect: handleReconnect,
     onReactionUpdate: handleReactionUpdate,
   });
 

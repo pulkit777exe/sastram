@@ -261,3 +261,56 @@ export const loadThreadMessages = createServerAction(
     }
   }
 );
+
+export const backfillThreadMessages = createServerAction(
+  {
+    schema: z.object({
+      threadId: z.string().cuid(),
+      since: z.string().datetime(),
+    }),
+    actionName: 'backfillThreadMessages',
+  },
+  async ({ threadId, since }) => {
+    try {
+      const session = await requireSession();
+
+      const membership = await getMemberRole(threadId, session.user.id);
+      if (!membership || membership.status !== 'ACTIVE') {
+        return {
+          data: null,
+          error: 'You are not a member of this thread',
+          errorCode: 'FORBIDDEN',
+          ok: false,
+        };
+      }
+
+      const sinceDate = new Date(since);
+
+      const messages = await prisma.message.findMany({
+        where: {
+          threadId,
+          deletedAt: null,
+          createdAt: { gt: sinceDate },
+        },
+        include: {
+          sender: { select: { id: true, name: true, image: true } },
+          attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: 100,
+      });
+
+      return {
+        data: { messages },
+        error: null,
+        ok: true,
+        errorCode: null,
+      };
+    } catch (error) {
+      logger.error('[backfillThreadMessages]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+    }
+  }
+);
