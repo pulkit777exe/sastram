@@ -6,6 +6,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { revalidatePath } from 'next/cache';
 import { computeHasMore } from '@/lib/db/pagination';
 import { createNotification } from '@/modules/notifications';
+import { del } from '@vercel/blob';
 import {
   applyModerationRateLimit,
   requireModerationSession,
@@ -91,6 +92,17 @@ export const deleteMessageAction = createServerAction(
       originalAuthor: message.senderId,
     });
 
+    // Delete blob files for this message's attachments (best-effort)
+    const attachments = await prisma.attachment.findMany({
+      where: { messageId },
+      select: { url: true },
+    });
+    if (attachments.length > 0) {
+      await Promise.allSettled(
+        attachments.map((att) => del(att.url).catch(() => {}))
+      );
+    }
+
     return { ok: true, data: null, error: null, errorCode: null };
   }
 );
@@ -152,6 +164,17 @@ export const bulkDeleteMessages = createServerAction(
 
       return { deletedCount: messages.length };
     });
+
+    // Delete blob files for deleted messages' attachments (best-effort)
+    const attachments = await prisma.attachment.findMany({
+      where: { messageId: { in: messageIds } },
+      select: { url: true },
+    });
+    if (attachments.length > 0) {
+      await Promise.allSettled(
+        attachments.map((att) => del(att.url).catch(() => {}))
+      );
+    }
 
     await executeModerationAuditAndRevalidate({
       action: 'MESSAGE_DELETED',

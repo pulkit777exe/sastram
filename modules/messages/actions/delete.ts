@@ -11,6 +11,7 @@ import { deleteMessageSchema } from '@/modules/messages/schemas';
 import { ROUTES } from '@/lib/config/routes';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { prismaErrorMessage } from '@/lib/utils/errors';
+import { del } from '@vercel/blob';
 
 export const deleteMessage = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessage' },
@@ -58,6 +59,17 @@ export const deleteMessage = createServerAction(
           });
         }
       });
+
+      // Delete blob files for this message's attachments (best-effort)
+      const attachments = await prisma.attachment.findMany({
+        where: { messageId },
+        select: { url: true },
+      });
+      if (attachments.length > 0) {
+        await Promise.allSettled(
+          attachments.map((att) => del(att.url).catch(() => {}))
+        );
+      }
 
       await logAction({
         action: 'MESSAGE_DELETED',
