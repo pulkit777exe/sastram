@@ -6,12 +6,9 @@ import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireSession } from '@/modules/auth';
 import { getMemberRole } from '@/modules/members';
-import { logAction } from '@/modules/audit';
+import { logAction } from '@/modules/audit/repository';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
-import { ROUTES } from '@/lib/config/routes';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
-import { prismaErrorMessage } from '@/lib/utils/errors';
-import { del } from '@vercel/blob';
 
 export const deleteMessage = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessage' },
@@ -21,7 +18,7 @@ export const deleteMessage = createServerAction(
     try {
       const message = await prisma.message.findUnique({
         where: { id: messageId },
-        include: { thread: true },
+        include: { section: true },
       });
 
       if (!message) {
@@ -29,8 +26,8 @@ export const deleteMessage = createServerAction(
       }
 
       let canDelete = message.senderId === session.user.id;
-      if (!canDelete && message.threadId) {
-        const memberRole = await getMemberRole(message.threadId, session.user.id);
+      if (!canDelete && message.sectionId) {
+        const memberRole = await getMemberRole(message.sectionId, session.user.id);
         if (memberRole && ['OWNER', 'MODERATOR'].includes(memberRole.role)) {
           canDelete = true;
         }
@@ -45,31 +42,10 @@ export const deleteMessage = createServerAction(
         };
       }
 
-      await prisma.$transaction(async (tx) => {
-        await tx.message.update({
-          where: { id: messageId },
-          data: { deletedAt: new Date() },
-        });
-
-        // Decrement messageCount on the thread
-        if (message.threadId) {
-          await tx.thread.update({
-            where: { id: message.threadId },
-            data: { messageCount: { decrement: 1 } },
-          });
-        }
+      await prisma.message.update({
+        where: { id: messageId },
+        data: { deletedAt: new Date() },
       });
-
-      // Delete blob files for this message's attachments (best-effort)
-      const attachments = await prisma.attachment.findMany({
-        where: { messageId },
-        select: { url: true },
-      });
-      if (attachments.length > 0) {
-        await Promise.allSettled(
-          attachments.map((att) => del(att.url).catch(() => {}))
-        );
-      }
 
       await logAction({
         action: 'MESSAGE_DELETED',
@@ -78,19 +54,17 @@ export const deleteMessage = createServerAction(
         userId: session.user.id,
       });
 
-      if (message.thread?.slug) {
-        revalidatePath(ROUTES.THREAD(message.thread.slug));
+      if (message.section?.slug) {
+        revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
       }
 
-      if (message.threadId) {
-        infraMessageSideEffects.emitMessageDeleted(message.threadId, messageId, session.user.id);
+      if (message.sectionId) {
+        infraMessageSideEffects.emitMessageDeleted(message.sectionId, messageId, session.user.id);
       }
 
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[deleteMessage]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
     }
   }

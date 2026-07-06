@@ -1,12 +1,13 @@
 'use server';
 
 import { z } from 'zod';
+import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth';
+import { auth } from '@/lib/services/auth';
+import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
-import { createTag, addTagToThread } from '@/modules/tags';
-import { ROUTES } from '@/lib/config/routes';
+import { createTag, addTagToThread } from '@/modules/tags/repository';
 import { createServerAction } from '@/lib/utils/server-action';
 
 const createTopicSchema = z.object({
@@ -18,9 +19,15 @@ const createTopicSchema = z.object({
 export const createTopic = createServerAction(
   { schema: createTopicSchema, actionName: 'createTopic' },
   async ({ title, description, tags }) => {
-    const session = await requireSession();
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
-    const thread = await prisma.thread.create({
+    if (!session?.user) {
+      return { data: null, error: 'Something went wrong' };
+    }
+
+    const section = await prisma.section.create({
       data: {
         name: title,
         description: description,
@@ -34,16 +41,14 @@ export const createTopic = createServerAction(
     ).slice(0, 5);
 
     if (uniqueTags.length > 0) {
-      await Promise.all(
-        uniqueTags.map(async (tagName) => {
-          const tag = await createTag(tagName);
-          await addTagToThread(thread.id, tag.id);
-        })
-      );
+      for (const tagName of uniqueTags) {
+        const tag = await createTag(tagName);
+        await addTagToThread(section.id, tag.id);
+      }
     }
 
-    revalidatePath(ROUTES.DASHBOARD);
-    revalidatePath(ROUTES.DASHBOARD_THREADS);
-    return { data: null, error: null, ok: true, errorCode: null };
+    revalidatePath('/dashboard');
+    revalidatePath('/dashboard/threads');
+    return { data: null, error: null };
   }
 );

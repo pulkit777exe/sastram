@@ -223,7 +223,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
           )}
 
           <div>
-            <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
+            <p className="text-[10px] text-zinc-400 font-bold mb-2 uppercase tracking-wider">
               Created
             </p>
             <p className="text-xs text-zinc-600 font-medium">

@@ -36,33 +36,32 @@ export async function removeReaction(messageId: string, userId: string, emoji: s
   });
 }
 
-export async function getMessageReactions(messageId: string, userId?: string) {
+export async function getMessageReactions(messageId: string, userId?: string | null) {
   try {
-    const [reactions, userReactions] = await Promise.all([
-      prisma.reaction.findMany({
-        where: { messageId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
+    const reactions = await prisma.reaction.findMany({
+      where: { messageId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
           },
         },
-        orderBy: {
-          createdAt: 'asc',
-        },
-      }),
-      userId
-        ? prisma.reaction.findMany({
-            where: { messageId, userId },
-            select: { emoji: true },
-          })
-        : [],
-    ]);
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
 
-    const userEmojiSet = new Set(userReactions.map((r) => r.emoji));
+    let userEmojis: Set<string> = new Set();
+    if (userId) {
+      const userReactions = await prisma.reaction.findMany({
+        where: { messageId, userId },
+        select: { emoji: true },
+      });
+      userEmojis = new Set(userReactions.map((r) => r.emoji));
+    }
 
     const grouped = (reactions ?? []).reduce(
       (acc, reaction) => {
@@ -71,11 +70,12 @@ export async function getMessageReactions(messageId: string, userId?: string) {
             emoji: reaction.emoji,
             count: 0,
             users: [],
-            hasReacted: userEmojiSet.has(reaction.emoji),
+            hasReacted: false,
           };
         }
         acc[reaction.emoji].count++;
         acc[reaction.emoji].users.push(reaction.user);
+        acc[reaction.emoji].hasReacted = userEmojis.has(reaction.emoji);
         return acc;
       },
       {} as Record<

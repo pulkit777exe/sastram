@@ -3,12 +3,11 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireThreadMembership, requireSession } from '@/modules/auth';
+import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
-import { getMessageReactions } from '@/modules/reactions/repository';
-import { emitReactionUpdate } from '@/modules/ws';
+import { addReaction, removeReaction, getMessageReactions } from '@/modules/reactions/repository';
+import { emitReactionUpdate } from '@/modules/ws/publisher';
 import { createServerAction } from '@/lib/utils/server-action';
-import { ROUTES } from '@/lib/config/routes';
 import { messageIdSchema, threadIdSchema } from '@/lib/utils/validation-common';
 
 const toggleReactionSchema = z.object({
@@ -27,45 +26,29 @@ export const toggleReaction = createServerAction(
 
     const message = await prisma.message.findUnique({
       where: { id: messageId },
-      select: { threadId: true },
+      select: { sectionId: true },
     });
 
     if (!message) {
       return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
     }
 
-    try {
-      await requireThreadMembership(message.threadId, session.user.id);
-    } catch {
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: message.sectionId, userId: session.user.id } },
+    });
+    if (!isMember) {
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }
 
-    await prisma.$transaction(async (tx) => {
-      const existing = await tx.reaction.findFirst({
-        where: { messageId, userId: session.user.id, emoji },
-      });
-
-      if (existing) {
-        await tx.reaction.deleteMany({
-          where: { messageId, userId: session.user.id, emoji },
-        });
-      } else {
-        await tx.reaction.create({
-          data: { messageId, userId: session.user.id, emoji },
-        });
-      }
-
-      // Recalculate likeCount from all unique users who reacted
-      const uniqueUserCount = await tx.reaction.groupBy({
-        by: ['userId'],
-        where: { messageId },
-      });
-
-      await tx.message.update({
-        where: { id: messageId },
-        data: { likeCount: uniqueUserCount.length },
-      });
+    const existing = await prisma.reaction.findFirst({
+      where: { messageId, userId: session.user.id, emoji },
     });
+
+    if (existing) {
+      await removeReaction(messageId, session.user.id, emoji);
+    } else {
+      await addReaction(messageId, session.user.id, emoji);
+    }
 
     const reactionCounts = await prisma.reaction.groupBy({
       by: ['emoji'],
@@ -74,14 +57,14 @@ export const toggleReaction = createServerAction(
     });
 
     const match = reactionCounts.find((r) => r.emoji === emoji);
-    emitReactionUpdate(message.threadId, {
+    emitReactionUpdate(message.sectionId, {
       messageId,
       reactionType: emoji,
       count: match?._count._all ?? 0,
     });
 
-    revalidatePath(ROUTES.DASHBOARD_THREADS);
-    return { data: null, error: null, ok: true, errorCode: null };
+    revalidatePath('/dashboard/threads');
+    return { data: null, error: null };
   }
 );
 
@@ -92,20 +75,21 @@ export const getReactionSummary = createServerAction(
 
     const message = await prisma.message.findUnique({
       where: { id: messageId },
-      select: { threadId: true },
+      select: { sectionId: true },
     });
 
     if (!message) {
       return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
     }
 
-    try {
-      await requireThreadMembership(message.threadId, session.user.id);
-    } catch {
+    const isMember = await prisma.sectionMember.findUnique({
+      where: { sectionId_userId: { sectionId: message.sectionId, userId: session.user.id } },
+    });
+    if (!isMember) {
       return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
     }
 
     const reactions = await getMessageReactions(messageId, session.user.id);
-    return { data: reactions, error: null, ok: true, errorCode: null };
+    return { data: reactions, error: null };
   }
 );

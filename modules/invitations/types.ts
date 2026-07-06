@@ -4,6 +4,8 @@ import type { InvitationStatus } from '@prisma/client';
  * Invitation domain types
  */
 
+import { InvitationStatus } from '@prisma/client';
+
 export interface ThreadInvitation {
   id: string;
   threadId: string;

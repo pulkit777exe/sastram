@@ -1,35 +1,21 @@
 import type {
-  Thread,
+  Section,
   Community,
-  Message,
-  User,
-  Reaction,
-  Attachment,
-  ThreadVisibility,
-  ThreadRole,
+  SectionVisibility,
+  SectionRole,
 } from '@prisma/client';
-
-// Re-export canonical types from their owning modules (must come before usages)
-export type { MessageWithDetails, AttachmentInfo } from '@/modules/messages/types';
-export type { ReactionSummary } from '@/modules/reactions/types';
-export type { CommunitySummary } from '@/modules/communities/types';
-export type { ThreadMember } from '@/modules/members/types';
-
-import type { MessageWithDetails, AttachmentInfo } from '@/modules/messages/types';
-import type { ReactionSummary } from '@/modules/reactions/types';
-import type { CommunitySummary } from '@/modules/communities/types';
-import type { ThreadMember } from '@/modules/members/types';
+import type { MessageWithDetails } from '@/modules/messages/types';
 
 // Base thread record with all relations
-export type ThreadRecord = Thread & {
+export type ThreadRecord = Section & {
   community?: Community | null;
-  creator?: User | null;
-  members?: ThreadMember[];
-  messages?: (Message & {
-    sender?: User | null;
-    reactions?: Reaction[];
-    attachments?: Attachment[];
-    replies?: Message[];
+  creator?: import('@prisma/client').User | null;
+  members?: import('@prisma/client').SectionMember[];
+  messages?: (import('@prisma/client').Message & {
+    sender?: import('@prisma/client').User | null;
+    reactions?: import('@prisma/client').Reaction[];
+    attachments?: import('@prisma/client').Attachment[];
+    replies?: import('@prisma/client').Message[];
   })[];
   subscriptions?: { id: string; email: string }[];
 };
@@ -38,9 +24,9 @@ export type ThreadRecord = Thread & {
 export interface ThreadSummary {
   id: string;
   slug: string;
-  name: string; // Changed from 'title' to match schema
+  name: string;
   description?: string | null;
-  visibility: ThreadVisibility;
+  visibility: SectionVisibility;
   community?: {
     id: string;
     title: string;
@@ -64,7 +50,7 @@ export interface ThreadSummary {
   createdBy: string;
 }
 
-// Detailed thread view with messages
+// Thread DNA metadata
 export interface ThreadDNA {
   questionType: 'factual' | 'opinion' | 'technical' | 'comparison' | 'other';
   expertiseLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
@@ -72,11 +58,12 @@ export interface ThreadDNA {
   readTimeMinutes: number;
 }
 
+// Detailed thread view with messages
 export interface ThreadDetail extends ThreadSummary {
   messages: MessageWithDetails[];
   aiSummary?: string | null;
   subscriptionCount?: number;
-  userRole?: ThreadRole | null; // Current user's role in this thread
+  userRole?: SectionRole | null;
   isSubscribed?: boolean;
   unreadCount?: number;
   resolutionScore?: number | null;
@@ -85,20 +72,10 @@ export interface ThreadDetail extends ThreadSummary {
   isOutdated?: boolean;
 }
 
-// Community detail view
-export interface CommunityDetail extends CommunitySummary {
-  threads: ThreadSummary[];
-  creator: {
-    id: string;
-    name: string | null;
-    image: string | null;
-  };
-}
-
 // Thread filters
 export interface ThreadFilters {
   communityId?: string;
-  visibility?: ThreadVisibility;
+  visibility?: SectionVisibility;
   search?: string;
   sortBy?: 'recent' | 'popular' | 'active' | 'oldest';
   page?: number;
@@ -111,7 +88,7 @@ export interface CreateThreadInput {
   slug: string;
   description?: string;
   summary?: string;
-  visibility?: ThreadVisibility;
+  visibility?: SectionVisibility;
   communityId?: string;
 }
 
@@ -119,7 +96,7 @@ export interface UpdateThreadInput {
   name?: string;
   description?: string;
   summary?: string;
-  visibility?: ThreadVisibility;
+  visibility?: SectionVisibility;
 }
 
 export interface CreateMessageInput {
@@ -138,5 +115,3 @@ export interface CreateMessageInput {
 export interface UpdateMessageInput {
   content: string;
 }
-
-

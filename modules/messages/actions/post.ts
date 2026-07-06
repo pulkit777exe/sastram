@@ -1,42 +1,25 @@
 'use server';
 
-import { requireSession } from '@/modules/auth/session';
+import { auth } from '@/lib/services/auth';
+import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import { createMessageWithAttachmentsSchema } from '@/lib/schemas/database';
+import { filterBadLanguage } from '@/lib/services/content-safety';
+import { createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
 import { messageLimiter } from '@/lib/services/rate-limit';
 import { parseMentions, resolveUserMentions } from '@/lib/utils/mention-parser';
-import { ROUTES } from '@/lib/config/routes';
 import { recordActivity } from '@/modules/activity';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';
-import { prismaErrorMessage } from '@/lib/utils/errors';
-import { sanitizeUserContent } from '@/lib/services/content-safety';
 
 export async function postMessage(formData: FormData) {
-  const rawContent = formData.get('content') as string;
-  const { sanitized: content } = sanitizeUserContent(rawContent);
-  const threadId = formData.get('threadId') as string;
+  const content = formData.get('content') as string;
+  const sectionId = formData.get('sectionId') as string;
   const parentId = formData.get('parentId') as string | null;
   const mentionsRaw = formData.get('mentions') as string | null;
-  const attachmentsRaw = formData.get('attachments') as string | null;
-
-  let attachments: Array<{ url: string; type: string; name?: string; size?: number }> = [];
-  if (attachmentsRaw) {
-    try {
-      const parsed = JSON.parse(attachmentsRaw);
-      if (Array.isArray(parsed) && parsed.length <= 10) {
-        attachments = parsed.filter(
-          (a: { url?: string; type?: string }) => a.url && a.type
-        );
-      }
-    } catch {
-      // Ignore malformed attachments JSON
-    }
-  }
 
   const parsedMentions = parseMentions(content);
   let mentions: string[];
@@ -55,7 +38,7 @@ export async function postMessage(formData: FormData) {
 
   const validation = createMessageWithAttachmentsSchema.safeParse({
     content,
-    threadId,
+    sectionId,
     parentId: parentId || undefined,
     mentions,
   });
@@ -64,59 +47,34 @@ export async function postMessage(formData: FormData) {
     return { data: null, error: 'Invalid input', errorCode: 'VALIDATION_ERROR', ok: false };
   }
 
-  const session = await requireSession(false);
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  // Ensure the user has a thread_members row (auto-enroll for public threads).
-  // If the user is authenticated but lacks a membership record, create one.
-  try {
-    const existing = await prisma.threadMember.findUnique({
-      where: { threadId_userId: { threadId, userId: session.user.id } },
-    });
-
-    if (!existing) {
-      // Verify the thread exists before auto-enrolling
-      const thread = await prisma.thread.findUnique({
-        where: { id: threadId },
-        select: { id: true, visibility: true },
-      });
-
-      if (!thread) {
-        return { data: null, error: 'Thread not found', errorCode: 'NOT_FOUND', ok: false };
-      }
-
-      // Auto-enroll for PUBLIC or UNLISTED threads; PRIVATE requires explicit invite
-      if (thread.visibility === 'PRIVATE') {
-        return {
-          data: null,
-          error: 'You are not a member of this thread',
-          errorCode: 'FORBIDDEN',
-          ok: false,
-        };
-      }
-
-      await prisma.threadMember.create({
-        data: {
-          threadId,
-          userId: session.user.id,
-          role: 'MEMBER',
-          status: 'ACTIVE',
-        },
-      });
-    } else if (existing.status !== 'ACTIVE') {
-      return {
-        data: null,
-        error: 'Your membership in this thread is inactive',
-        errorCode: 'FORBIDDEN',
-        ok: false,
-      };
-    }
-  } catch (membershipError) {
-    logger.error('[postMessage] membership check failed', membershipError);
-    return { data: null, error: 'Failed to verify membership', errorCode: 'INTERNAL_ERROR', ok: false };
+  if (!session?.user) {
+    return {
+      data: null,
+      error: 'Authentication required',
+      errorCode: 'AUTH_REQUIRED',
+      ok: false,
+    };
   }
 
-  const rateLimitResult = await messageLimiter.check(session.user.id);
-  if (!rateLimitResult.success) {
+  const isMember = await prisma.sectionMember.findUnique({
+    where: { sectionId_userId: { sectionId, userId: session.user.id } },
+  });
+  if (!isMember) {
+    return {
+      data: null,
+      error: 'You are not a member of this section',
+      errorCode: 'FORBIDDEN',
+      ok: false,
+    };
+  }
+
+  try {
+    await messageLimiter.check(session.user.id);
+  } catch {
     return {
       data: null,
       error: 'Rate limit exceeded. Please slow down.',
@@ -124,6 +82,8 @@ export async function postMessage(formData: FormData) {
       ok: false,
     };
   }
+
+  const safeContent = filterBadLanguage(content);
 
   if (mentions.length > 10) {
     return {
@@ -136,9 +96,9 @@ export async function postMessage(formData: FormData) {
 
   try {
     const moderationResult = await moderateIncomingMessage({
-      threadId,
+      sectionId,
       authorId: session.user.id,
-      content,
+      content: safeContent,
       parentId,
     });
 
@@ -151,7 +111,26 @@ export async function postMessage(formData: FormData) {
       };
     }
 
-    const message = moderationResult.message;
+    const message = await prisma.message.findUnique({
+      where: { id: moderationResult.messageId! },
+      include: {
+        section: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+        attachments: true,
+      },
+    });
 
     if (!message) {
       return {
@@ -162,34 +141,9 @@ export async function postMessage(formData: FormData) {
       };
     }
 
-    // Create attachment records if files were uploaded
-    let createdAttachments: Array<{ id: string; url: string; type: string; name: string | null; size: number | null }> = [];
-    if (attachments.length > 0) {
-      try {
-        const attachmentData = attachments.map((a) => ({
-          messageId: message.id,
-          url: a.url,
-          type: a.type as 'IMAGE' | 'GIF' | 'FILE' | 'VIDEO',
-          name: a.name ?? null,
-          size: a.size ? BigInt(a.size) : null,
-        }));
-        await prisma.attachment.createMany({ data: attachmentData });
-        const rawAttachments = await prisma.attachment.findMany({
-          where: { messageId: message.id },
-        });
-        createdAttachments = rawAttachments.map((a) => ({
-          ...a,
-          size: a.size !== null ? Number(a.size) : null,
-        }));
-      } catch (attachmentError) {
-        logger.error('[postMessage] failed to create attachments', attachmentError);
-        // Message was already created — don't fail the whole request
-      }
-    }
-
     await createMentionsForMessage({
       messageId: message.id,
-      threadId,
+      sectionId,
       mentions,
       mentionedBy: {
         id: session.user.id,
@@ -198,7 +152,7 @@ export async function postMessage(formData: FormData) {
       },
       content: message.content,
       parentId: message.parentId ?? null,
-      threadSlug: message.thread?.slug ?? null,
+      sectionSlug: message.section?.slug ?? null,
       sideEffects: infraMessageSideEffects,
     });
 
@@ -206,33 +160,39 @@ export async function postMessage(formData: FormData) {
       id: message.id,
       content: message.content,
       senderId: session.user.id,
-      senderName: session.user.name || session.user.email,
-      senderImage: session.user.image,
+      senderName: message.sender?.name || session.user.email,
+      senderAvatar: message.sender?.image ?? session.user.image,
       createdAt: message.createdAt,
-      threadId,
+      sectionId,
       parentId: message.parentId ?? null,
       depth: message.depth ?? 0,
       likeCount: 0,
       replyCount: 0,
       isAiResponse: false,
       reactions: [],
-      attachments: createdAttachments,
+      attachments: message.attachments.map((att) => ({
+        id: att.id,
+        url: att.url,
+        type: att.type,
+        name: att.name,
+        size: att.size !== null ? Number(att.size) : null,
+      })),
     };
 
-    infraMessageSideEffects.emitThreadMessage(threadId, payload);
+    infraMessageSideEffects.emitThreadMessage(sectionId, payload);
 
     const { aiInlineQueued, aiInlineLimited } = await queueAiInlineIfRequested({
-      content,
+      content: safeContent,
       userId: session.user.id,
-      threadId,
+      sectionId,
       messageId: message.id,
       sideEffects: infraMessageSideEffects,
     });
 
-    if (message.thread?.slug) {
-      revalidatePath(ROUTES.THREAD(message.thread.slug));
+    if (message.section?.slug) {
+      revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
     }
-    revalidatePath(ROUTES.DASHBOARD);
+    revalidatePath('/dashboard');
 
     await recordActivity({
       userId: session.user.id,
@@ -240,8 +200,8 @@ export async function postMessage(formData: FormData) {
       entityType: 'Message',
       entityId: message.id,
       metadata: {
-        threadId,
-        threadName: message.thread?.slug,
+        sectionId,
+        threadName: message.section?.slug,
       },
     });
 
@@ -258,8 +218,6 @@ export async function postMessage(formData: FormData) {
     };
   } catch (error) {
     logger.error('[postMessage]', error);
-    const prismaMsg = prismaErrorMessage(error);
-    if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
     return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
   }
 }

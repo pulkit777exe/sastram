@@ -14,6 +14,25 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          try {
+            const { sendWelcomeEmail } = await import('@/lib/services/email');
+            await sendWelcomeEmail(user.email, user.name ?? 'there');
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { welcomeEmailSent: true },
+            });
+            logger.info(`[auth] Welcome email sent to ${user.email}`);
+          } catch (error) {
+            logger.error(`[auth] Failed to send welcome email to ${user.email}:`, error);
+          }
+        },
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

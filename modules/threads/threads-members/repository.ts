@@ -1,13 +1,13 @@
-import type { ThreadRole } from '@prisma/client';
+import { SectionRole } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import type { ThreadMember } from '@/modules/threads/types';
+import type { ThreadMember } from '@/modules/members/types';
 
 export async function getThreadMembers(threadId: string): Promise<ThreadMember[]> {
   try {
-    const members = await prisma.threadMember.findMany({
+    const members = await prisma.sectionMember.findMany({
       where: {
-        threadId: threadId,
+        sectionId: threadId,
         status: 'ACTIVE',
       },
       include: {
@@ -29,15 +29,14 @@ export async function getThreadMembers(threadId: string): Promise<ThreadMember[]
 
     return (members ?? []).map((member) => ({
       id: member.id,
-      threadId: member.threadId,
       userId: member.userId,
+      sectionId: member.sectionId,
       role: member.role,
       status: member.status,
       joinedAt: member.joinedAt,
       user: {
         id: member.user.id,
         name: member.user.name,
-        email: member.user.email,
         image: member.user.image,
         status: member.user.status,
         lastSeenAt: member.user.lastSeenAt,
@@ -52,12 +51,12 @@ export async function getThreadMembers(threadId: string): Promise<ThreadMember[]
 export async function addThreadMember(
   threadId: string,
   userId: string,
-  role: ThreadRole = 'MEMBER'
+  role: SectionRole = 'MEMBER'
 ): Promise<void> {
-  await prisma.threadMember.upsert({
+  await prisma.sectionMember.upsert({
     where: {
-      threadId_userId: {
-        threadId: threadId,
+      sectionId_userId: {
+        sectionId: threadId,
         userId,
       },
     },
@@ -66,7 +65,7 @@ export async function addThreadMember(
       status: 'ACTIVE',
     },
     create: {
-      threadId: threadId,
+      sectionId: threadId,
       userId,
       role,
       status: 'ACTIVE',
@@ -77,12 +76,12 @@ export async function addThreadMember(
 export async function updateThreadMemberRole(
   threadId: string,
   userId: string,
-  role: ThreadRole
+  role: SectionRole
 ): Promise<void> {
-  await prisma.threadMember.update({
+  await prisma.sectionMember.update({
     where: {
-      threadId_userId: {
-        threadId: threadId,
+      sectionId_userId: {
+        sectionId: threadId,
         userId,
       },
     },
@@ -93,10 +92,10 @@ export async function updateThreadMemberRole(
 }
 
 export async function removeThreadMember(threadId: string, userId: string): Promise<void> {
-  await prisma.threadMember.delete({
+  await prisma.sectionMember.delete({
     where: {
-      threadId_userId: {
-        threadId: threadId,
+      sectionId_userId: {
+        sectionId: threadId,
         userId,
       },
     },

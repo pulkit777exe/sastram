@@ -1,0 +1,4 @@
+/**
+ * Moderation domain types
+ */
+export {};

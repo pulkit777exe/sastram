@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { cache } from 'react';
-import type { Prisma, ThreadRole } from '@prisma/client';
+import type { Prisma, SectionRole } from '@prisma/client';
 import { dedupe } from '@/lib/dedupe';
 
 export type ThreadMessageReactionAggregate = {
@@ -11,7 +10,7 @@ export type ThreadMessageReactionAggregate = {
 export type ThreadMessage = {
   id: string;
   body: string;
-  threadId: string;
+  sectionId: string;
   senderId: string;
   parentId: string | null;
   depth: number;
@@ -42,10 +41,7 @@ export type ThreadMessage = {
 
 type ThreadTag = {
   tag: {
-    id: string;
     name: string;
-    slug: string;
-    color: string;
   };
 };
 
@@ -67,7 +63,7 @@ type ThreadMember = {
     name: string | null;
     image: string | null;
   };
-  role: ThreadRole;
+  role: SectionRole;
 };
 
 type ThreadPoll = {
@@ -88,8 +84,6 @@ export type ThreadWithFullContext = {
   aiSummary: string | null;
   resolutionScore: number | null;
   isOutdated: boolean;
-  lastVerifiedAt: Date | null;
-  updatedAt: Date;
   threadDna: Prisma.JsonValue | null;
   createdAt: Date;
   author: {
@@ -119,8 +113,6 @@ type ThreadRow = {
   aiSummary: string | null;
   resolutionScore: number | null;
   isOutdated: boolean;
-  lastVerifiedAt: Date | null;
-  updatedAt: Date;
   threadDna: Prisma.JsonValue | null;
   createdAt: Date;
   author: {
@@ -138,129 +130,10 @@ type ThreadRow = {
   is_subscribed: boolean | null;
 };
 
-export type PaginatedMessagesResult = {
-  messages: ThreadMessage[];
-  nextCursor: string | null;
-  hasMore: boolean;
-  totalCount: number;
-};
-
-export const getThreadMessagesPaginated = cache(async (
-  threadId: string,
-  cursor?: string | null,
-  limit: number = 50
-): Promise<PaginatedMessagesResult> => {
-  const pageSize = Math.min(limit, 100);
-
-  const totalCount = await prisma.message.count({
-    where: { threadId, deletedAt: null },
-  });
-
-  let cursorCreatedAt: Date | undefined;
-  if (cursor) {
-    const cursorMessage = await prisma.message.findUnique({
-      where: { id: cursor },
-      select: { createdAt: true },
-    });
-    cursorCreatedAt = cursorMessage?.createdAt;
-  }
-
-  const messages = await prisma.message.findMany({
-    where: {
-      threadId,
-      deletedAt: null,
-      ...(cursorCreatedAt
-        ? {
-            createdAt: {
-              lt: cursorCreatedAt,
-            },
-          }
-        : {}),
-    },
-    include: {
-      sender: {
-        select: { id: true, name: true, image: true },
-      },
-      attachments: {
-        select: { id: true, url: true, type: true, name: true, size: true },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: pageSize + 1,
-  });
-
-  let hasMore = false;
-  let nextCursor: string | null = null;
-
-  if (messages.length > pageSize) {
-    hasMore = true;
-    const nextMessage = messages.pop()!;
-    nextCursor = nextMessage.id;
-  }
-
-  const messageIds = messages.map((m) => m.id);
-
-  const reactionsAgg = await prisma.reaction.groupBy({
-    by: ['messageId', 'emoji'],
-    where: { messageId: { in: messageIds } },
-    _count: { emoji: true },
-  });
-
-  const reactionsMap = new Map<string, Map<string, number>>();
-  for (const r of reactionsAgg) {
-    const msgReactions = reactionsMap.get(r.messageId) || new Map();
-    msgReactions.set(r.emoji, r._count.emoji);
-    reactionsMap.set(r.messageId, msgReactions);
-  }
-
-  const typedMessages: ThreadMessage[] = messages.map((m) => {
-    const msgReactions = reactionsMap.get(m.id) || new Map();
-    const reactions: ThreadMessageReactionAggregate[] = Array.from(msgReactions.entries()).map(
-      ([emoji, count]) => ({
-        type: emoji,
-        _count: count,
-      })
-    );
-
-    return {
-      id: m.id,
-      body: m.content,
-      threadId: m.threadId,
-      senderId: m.senderId,
-      parentId: m.parentId,
-      depth: m.depth,
-      createdAt: m.createdAt,
-      isEdited: m.isEdited,
-      isPinned: m.isPinned,
-      isAI: m.isAiResponse,
-      deletedAt: m.deletedAt,
-      likeCount: m.likeCount,
-      replyCount: m.replyCount,
-      author: m.sender,
-      reactions,
-      _count: { replies: m.replyCount },
-      attachments: m.attachments.map((a) => ({
-        id: a.id,
-        url: a.url,
-        type: a.type,
-        name: a.name,
-        size: a.size != null ? Number(a.size) : null,
-      })),
-    };
-  });
-
-  return {
-    messages: typedMessages.reverse(),
-    nextCursor,
-    hasMore,
-    totalCount,
-  };
-});
-
-export const getThreadWithFullContext = cache(async (
+export async function getThreadWithFullContext(
   slug: string,
   userId: string
-): Promise<ThreadWithFullContext | null> => {
+): Promise<ThreadWithFullContext | null> {
   return dedupe(`threads:full:${slug}:${userId}`, async () => {
     const rows = await prisma.$queryRaw<ThreadRow[]>`
       SELECT
@@ -272,8 +145,6 @@ export const getThreadWithFullContext = cache(async (
         s."aiSummary" as "aiSummary",
         s."resolutionScore" as "resolutionScore",
         s."isOutdated" as "isOutdated",
-        s."lastVerifiedAt" as "lastVerifiedAt",
-        s."updatedAt" as "updatedAt",
         s."threadDna" as "threadDna",
         s."createdAt" as "createdAt",
         json_build_object(
@@ -295,11 +166,11 @@ export const getThreadWithFullContext = cache(async (
           SELECT 1 FROM "thread_subscriptions" ts
           WHERE ts."threadId" = s.id AND ts."userId" = ${userId} AND ts."isActive" = true
         ) as is_subscribed
-      FROM "threads" s
+      FROM "sections" s
       JOIN "users" u ON u.id = s."createdBy"
       LEFT JOIN LATERAL (
         SELECT json_agg(
-          json_build_object('tag', json_build_object('id', tt.id, 'name', tt.name, 'slug', tt.slug, 'color', tt.color))
+          json_build_object('tag', json_build_object('name', tt.name))
         ) as tags
         FROM "thread_tag_relations" ttr
         JOIN "thread_tags" tt ON tt.id = ttr."tagId"
@@ -312,9 +183,9 @@ export const getThreadWithFullContext = cache(async (
             'role', sm.role
           )
         ) as members
-        FROM "thread_members" sm
+        FROM "section_members" sm
         JOIN "users" mu ON mu.id = sm."userId"
-        WHERE sm."threadId" = s.id AND sm.status = 'ACTIVE'
+        WHERE sm."sectionId" = s.id AND sm.status = 'ACTIVE'
       ) members ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(mrow.message ORDER BY mrow.created_at) as messages
@@ -324,7 +195,7 @@ export const getThreadWithFullContext = cache(async (
             json_build_object(
               'id', m.id,
               'body', m.content,
-              'threadId', m."threadId",
+              'sectionId', m."sectionId",
               'senderId', m."senderId",
               'parentId', m."parentId",
               'depth', m.depth,
@@ -360,9 +231,7 @@ export const getThreadWithFullContext = cache(async (
             FROM "attachments" a
             WHERE a."messageId" = m.id
           ) a ON true
-          WHERE m."threadId" = s.id
-          ORDER BY m."createdAt" DESC
-          LIMIT 50
+          WHERE m."sectionId" = s.id
         ) mrow
       ) msgs ON true
       LEFT JOIN LATERAL (
@@ -379,8 +248,8 @@ export const getThreadWithFullContext = cache(async (
       ) poll ON true
       LEFT JOIN LATERAL (
         SELECT
-          (SELECT COUNT(*)::int FROM "messages" m2 WHERE m2."threadId" = s.id AND m2."deletedAt" IS NULL) as message_count,
-          (SELECT COUNT(*)::int FROM "thread_members" sm2 WHERE sm2."threadId" = s.id AND sm2.status = 'ACTIVE') as member_count
+          (SELECT COUNT(*)::int FROM "messages" m2 WHERE m2."sectionId" = s.id AND m2."deletedAt" IS NULL) as message_count,
+          (SELECT COUNT(*)::int FROM "section_members" sm2 WHERE sm2."sectionId" = s.id AND sm2.status = 'ACTIVE') as member_count
       ) counts ON true
       WHERE s.slug = ${slug}
       LIMIT 1
@@ -400,8 +269,6 @@ export const getThreadWithFullContext = cache(async (
       aiSummary: row.aiSummary ?? null,
       resolutionScore: row.resolutionScore ?? null,
       isOutdated: row.isOutdated,
-      lastVerifiedAt: row.lastVerifiedAt ?? null,
-      updatedAt: row.updatedAt,
       threadDna: row.threadDna ?? null,
       createdAt: row.createdAt,
       author: row.author,
@@ -418,4 +285,4 @@ export const getThreadWithFullContext = cache(async (
       isSubscribed: row.is_subscribed ?? false,
     };
   });
-});
+}

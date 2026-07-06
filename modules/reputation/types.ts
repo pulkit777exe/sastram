@@ -1,0 +1,4 @@
+/**
+ * Reputation domain types
+ */
+export {};

@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
-import { put, del } from '@vercel/blob';
+import { put } from '@vercel/blob';
 import { FILE_LIMITS } from '@/lib/config/constants';
 import { getPublicProfile, getUserThreads, updateProfilePrivacy } from './repository';
 import { ProfilePrivacy } from '@prisma/client';
@@ -14,23 +14,24 @@ import {
   uploadAvatarSchema,
   uploadBannerSchema,
   updateProfilePrivacySchema,
-  updateUserPreferencesSchema,
 } from './schemas';
-import { parseUserPreferences, type UserPreferences } from '@/lib/schemas/user-preferences';
-import { ROUTES } from '@/lib/config/routes';
+import { parseUserPreferences, type UserPreferences, userPreferencesSchema } from '@/lib/schemas/user-preferences';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { paginationSchema } from '@/lib/utils/validation-common';
 
-const avatarFileSchema = z.object({
-  avatar: z.custom<File>((val) => val instanceof File),
-});
-
-const bannerFileSchema = z.object({
-  banner: z.custom<File>((val) => val instanceof File),
+const fileSchema = z.object({
+  file: z.custom<File>((val) => val instanceof File),
 });
 
 export const updateUserProfile = withValidation(
-  updateUserProfileSchema,
+  z.object({
+    name: z.string().optional(),
+    bio: z.string().optional(),
+    location: z.string().optional(),
+    website: z.string().optional(),
+    twitter: z.string().optional(),
+    github: z.string().optional(),
+  }),
   'updateUserProfile',
   async (data) => {
     const session = await requireSession();
@@ -46,38 +47,30 @@ export const updateUserProfile = withValidation(
       },
     });
 
-    revalidatePath(ROUTES.DASHBOARD_SETTINGS);
-    revalidatePath(ROUTES.DASHBOARD_SETTINGS_PROFILE);
-    return { data: null, error: null, ok: true, errorCode: null };
+    revalidatePath('/dashboard/settings');
+    revalidatePath('/dashboard/settings/profile');
+    return { data: null, error: null };
   }
 );
 
 export const uploadAvatar = withValidation(
-  avatarFileSchema,
+  fileSchema,
   'uploadAvatar',
-  async ({ avatar: file }) => {
+  async ({ file }) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       return {
         data: null,
         error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
-        ok: false,
-        errorCode: 'VALIDATION_ERROR',
       };
     }
 
     if (file.size > FILE_LIMITS.MAX_IMAGE_SIZE) {
-      return { data: null, error: 'File size must be less than 4.5MB', ok: false, errorCode: 'VALIDATION_ERROR' };
+      return { data: null, error: 'File size must be less than 4.5MB' };
     }
 
     try {
       const session = await requireSession();
-
-      const oldUser = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { avatarUrl: true },
-      });
-
       const blob = await put(
         `avatars/${session.user.id}-${Date.now()}.${file.name.split('.').pop()}`,
         file,
@@ -86,49 +79,37 @@ export const uploadAvatar = withValidation(
 
       await prisma.user.update({
         where: { id: session.user.id },
-        data: { avatarUrl: blob.url },
+        data: { image: blob.url },
       });
 
-      if (oldUser?.avatarUrl && oldUser.avatarUrl !== blob.url) {
-        del(oldUser.avatarUrl).catch(() => {});
-      }
-
-      revalidatePath(ROUTES.DASHBOARD_SETTINGS);
-      revalidatePath(ROUTES.DASHBOARD_SETTINGS_PROFILE);
-      return { data: { url: blob.url }, error: null, ok: true, errorCode: null };
+      revalidatePath('/dashboard/settings');
+      revalidatePath('/dashboard/settings/profile');
+      return { data: { url: blob.url }, error: null };
     } catch (error) {
       logger.error('[uploadAvatar]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong' };
     }
   }
 );
 
 export const uploadBanner = withValidation(
-  bannerFileSchema,
+  fileSchema,
   'uploadBanner',
-  async ({ banner: file }) => {
+  async ({ file }) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       return {
         data: null,
         error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
-        ok: false,
-        errorCode: 'VALIDATION_ERROR',
       };
     }
 
     if (file.size > FILE_LIMITS.MAX_IMAGE_SIZE) {
-      return { data: null, error: 'File size must be less than 4.5MB', ok: false, errorCode: 'VALIDATION_ERROR' };
+      return { data: null, error: 'File size must be less than 4.5MB' };
     }
 
     try {
       const session = await requireSession();
-
-      const oldUser = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { bannerUrl: true },
-      });
-
       const blob = await put(
         `banners/${session.user.id}-${Date.now()}.${file.name.split('.').pop()}`,
         file,
@@ -140,16 +121,12 @@ export const uploadBanner = withValidation(
         data: { bannerUrl: blob.url },
       });
 
-      if (oldUser?.bannerUrl && oldUser.bannerUrl !== blob.url) {
-        del(oldUser.bannerUrl).catch(() => {});
-      }
-
-      revalidatePath(ROUTES.DASHBOARD_SETTINGS);
-      revalidatePath(ROUTES.DASHBOARD_SETTINGS_PROFILE);
-      return { data: { url: blob.url }, error: null, ok: true, errorCode: null };
+      revalidatePath('/dashboard/settings');
+      revalidatePath('/dashboard/settings/profile');
+      return { data: { url: blob.url }, error: null };
     } catch (error) {
       logger.error('[uploadBanner]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong' };
     }
   }
 );
@@ -161,10 +138,10 @@ export const getUserProfile = createServerAction(
     const profile = await getPublicProfile(userId, session.user.id);
 
     if (!profile) {
-      return { data: null, error: 'Profile not found or not accessible', ok: false, errorCode: 'NOT_FOUND' };
+      return { data: null, error: 'Profile not found or not accessible' };
     }
 
-    return { data: profile, error: null, ok: true, errorCode: null };
+    return { data: profile, error: null };
   }
 );
 
@@ -177,7 +154,7 @@ export const getUserThreadsAction = withValidation(
   'getUserThreadsAction',
   async ({ userId, limit, offset }) => {
     const result = await getUserThreads(userId, limit || 20, offset || 0);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return { data: result, error: null };
   }
 );
 
@@ -187,14 +164,14 @@ export const updateProfilePrivacyAction = withValidation(
   async ({ privacy }) => {
     const session = await requireSession();
     await updateProfilePrivacy(session.user.id, privacy);
-    revalidatePath(ROUTES.DASHBOARD_SETTINGS);
-    revalidatePath(ROUTES.USER_PROFILE(session.user.id));
-    return { data: null, error: null, ok: true, errorCode: null };
+    revalidatePath('/dashboard/settings');
+    revalidatePath(`/user/${session.user.id}`);
+    return { data: null, error: null };
   }
 );
 
 export const updateUserPreferencesAction = withValidation(
-  updateUserPreferencesSchema,
+  userPreferencesSchema.partial(),
   'updateUserPreferencesAction',
   async (preferences) => {
     const session = await requireSession();
@@ -215,7 +192,7 @@ export const updateUserPreferencesAction = withValidation(
       data: { preferences: newPrefs },
     });
 
-    revalidatePath(ROUTES.DASHBOARD_SETTINGS);
-    return { data: null, error: null, ok: true, errorCode: null };
+    revalidatePath('/dashboard/settings');
+    return { data: null, error: null };
   }
 );

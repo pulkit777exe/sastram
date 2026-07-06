@@ -14,17 +14,6 @@ import { searchUsersAction } from '@/modules/search/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2 } from 'lucide-react';
 
-type SearchUserResult = {
-  id: string;
-  name: string | null;
-  email: string;
-  image: string | null;
-  bio: string | null;
-  followerCount: number;
-  followingCount: number;
-  reputationPoints: number;
-};
-
 export function SearchDialog({
   open,
   onOpenChange,
@@ -34,7 +23,7 @@ export function SearchDialog({
 }) {
   const router = useRouter();
   const [query, setQuery] = React.useState('');
-  const [data, setData] = React.useState<SearchUserResult[]>([]);
+  const [data, setData] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
@@ -100,7 +89,7 @@ export function SearchDialog({
               >
                 <div className="flex items-center gap-2 w-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.image ?? undefined} />
+                    <AvatarImage src={user.image} />
                     <AvatarFallback>
                       {(user.name?.[0] || user.email[0]).toUpperCase()}
                     </AvatarFallback>

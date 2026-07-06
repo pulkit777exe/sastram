@@ -1,48 +1,21 @@
 'use server';
 
-import nodemailer from 'nodemailer';
-import fs from 'fs/promises';
-import path from 'path';
-import sanitizeHtml from 'sanitize-html';
 import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
 import { DEFAULT_JOB_OPTIONS, getEmailQueue, type EmailJobData } from '@/lib/infrastructure/bullmq';
-import { escapeHtml } from '@/lib/utils/escape';
+import { getResendClient } from '@/lib/config/resend';
 
 const env = getEnv();
-
-const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_SECURE,
-  auth: env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
-});
-
-// In-memory cache for email templates — loaded on first access.
-const _templateCache = new Map<string, string>();
-
-async function loadRawTemplate(templateName: string): Promise<string> {
-  const templatePath = path.join(process.cwd(), 'lib', 'templates', 'email', templateName);
-  return fs.readFile(templatePath, 'utf-8');
-}
-
-async function getCachedTemplate(templateName: string): Promise<string> {
-  const cached = _templateCache.get(templateName);
-  if (cached) return cached;
-
-  const html = await loadRawTemplate(templateName);
-  _templateCache.set(templateName, html);
-  return html;
-}
 
 interface EmailOptions {
   to: string | string[];
   subject: string;
-  html: string;
   text?: string;
   from?: string;
   type?: string;
   metadata?: Record<string, unknown>;
+  templateId?: string;
+  data?: Record<string, string>;
 }
 
 async function enqueueEmailJob(payload: EmailJobData) {
@@ -59,20 +32,22 @@ async function enqueueEmailJob(payload: EmailJobData) {
 export async function sendEmail({
   to,
   subject,
-  html,
   text,
-  from = env.SMTP_FROM,
+  from = env.RESEND_FROM,
   type = 'generic',
   metadata,
+  templateId,
+  data,
 }: EmailOptions) {
   const job = await enqueueEmailJob({
     to,
     subject,
-    html,
     text,
     from,
     type,
     metadata,
+    templateId,
+    data,
   });
 
   return { id: String(job.id) };
@@ -81,24 +56,39 @@ export async function sendEmail({
 export async function sendEmailNow({
   to,
   subject,
-  html,
   text,
-  from = env.SMTP_FROM,
+  from = env.RESEND_FROM,
+  templateId,
+  data,
 }: EmailJobData) {
   try {
-    const info = await transporter.sendMail({
+    const resend = getResendClient();
+    const toAddresses = Array.isArray(to) ? to : [to];
+
+    const payload: Record<string, unknown> = {
       from,
-      to: Array.isArray(to) ? to.join(', ') : to,
+      to: toAddresses,
       subject,
-      html,
-      text: text || html.replace(/<[^>]*>/g, ''),
-    });
+    };
+
+    if (templateId && data) {
+      payload.template = { id: templateId, variables: data };
+    } else if (text) {
+      payload.text = text;
+    }
+
+    const { data: result, error } = await resend.emails.send(payload as any);
+
+    if (error) {
+      logger.error('Resend API error', error);
+      throw new Error(error.message);
+    }
 
     logger.info(
-      `Email sent successfully to ${Array.isArray(to) ? to.join(', ') : to} (messageId: ${info.messageId})`
+      `Email sent successfully to ${toAddresses.join(', ')} (id: ${result?.id})`
     );
 
-    return { id: info.messageId };
+    return { id: result?.id || 'unknown' };
   } catch (error) {
     logger.error('Error sending email', error);
     throw error;
@@ -138,20 +128,20 @@ export async function sendOTPEmail(
   };
 
   const config = typeConfig[type];
-  const html = await loadTemplate('otp-email.html', {
-    title: config.title,
-    subtitle: config.subtitle,
-    action: config.action,
-    otp,
-    appUrl: env.NEXT_PUBLIC_APP_URL,
-  });
 
   return sendEmail({
     to,
     subject: config.subject,
-    html,
     type: `otp-${type}`,
     metadata: { otpType: type },
+    templateId: env.RESEND_TEMPLATE_OTP,
+    data: {
+      title: config.title,
+      subtitle: config.subtitle,
+      action: config.action,
+      otp,
+      appUrl: env.NEXT_PUBLIC_APP_URL,
+    },
   });
 }
 
@@ -163,41 +153,34 @@ export async function sendNewsletterDigest(
   messageCount?: number,
   participantCount?: number
 ) {
-  const cleanSummary = sanitizeHtml(summary, {
-    allowedTags: ['h3', 'p', 'ul', 'li', 'strong', 'em', 'b', 'i'],
-    allowedAttributes: {},
-  });
-
-  const html = await loadTemplate('newsletter-digest.html', {
-    threadName,
-    summary: cleanSummary,
-    threadUrl,
-    messageCount: String(messageCount || 0),
-    participantCount: String(participantCount || 0),
-    unsubscribeUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?tab=newsletters`,
-  });
-
   return sendEmail({
     to,
     subject: `Thread Digest: ${threadName}`,
-    html,
     type: 'newsletter-digest',
     metadata: { threadName, threadUrl },
+    templateId: env.RESEND_TEMPLATE_THREAD_SUMMARY,
+    data: {
+      threadName,
+      summary,
+      threadUrl,
+      messageCount: String(messageCount || 0),
+      participantCount: String(participantCount || 0),
+      managePreferencesUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?tab=newsletters`,
+    },
   });
 }
 
 export async function sendWelcomeEmail(to: string, name: string) {
-  const html = await loadTemplate('welcome.html', {
-    name,
-    dashboardUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard`,
-  });
-
   return sendEmail({
     to,
     subject: 'Welcome to Sastram!',
-    html,
     type: 'welcome',
     metadata: { name },
+    templateId: env.RESEND_TEMPLATE_WELCOME,
+    data: {
+      name,
+      dashboardUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard`,
+    },
   });
 }
 
@@ -208,19 +191,12 @@ export async function sendMentionNotification(
   messagePreview: string,
   threadUrl: string
 ) {
-  const html = await loadTemplate('mention-notification.html', {
-    mentionerName,
-    threadName,
-    messagePreview,
-    threadUrl,
-  });
-
   return sendEmail({
     to,
     subject: `${mentionerName} mentioned you in ${threadName}`,
-    html,
     type: 'mention-notification',
     metadata: { mentionerName, threadName, threadUrl },
+    text: `${mentionerName} mentioned you in ${threadName}: ${messagePreview} — ${threadUrl}`,
   });
 }
 
@@ -229,17 +205,12 @@ export async function sendFollowNotification(
   followerName: string,
   followerUrl: string
 ) {
-  const html = await loadTemplate('follow-notification.html', {
-    followerName,
-    followerUrl,
-  });
-
   return sendEmail({
     to,
     subject: `${followerName} started following you`,
-    html,
     type: 'follow-notification',
     metadata: { followerName, followerUrl },
+    text: `${followerName} started following you — ${followerUrl}`,
   });
 }
 
@@ -250,51 +221,30 @@ export async function sendThreadInvitation(
   message: string | null,
   threadUrl: string
 ) {
-  const html = await loadTemplate('thread-invitation.html', {
-    inviterName,
-    threadName,
-    message: message || "You've been invited to join this discussion!",
-    threadUrl,
-  });
-
   return sendEmail({
     to,
     subject: `${inviterName} invited you to join ${threadName}`,
-    html,
     type: 'thread-invitation',
     metadata: { inviterName, threadName, threadUrl },
+    templateId: env.RESEND_TEMPLATE_INVITATION,
+    data: {
+      inviterName,
+      threadName,
+      message: message || "You've been invited to join this discussion!",
+      threadUrl,
+    },
   });
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
-  const html = await loadTemplate('password-reset.html', {
-    resetUrl,
-  });
-
   return sendEmail({
     to,
     subject: 'Reset your password',
-    html,
     type: 'password-reset',
     metadata: { resetUrl },
+    templateId: env.RESEND_TEMPLATE_PASSWORD_RESET,
+    data: {
+      resetUrl,
+    },
   });
-}
-
-async function loadTemplate(
-  templateName: string,
-  variables: Record<string, string>
-): Promise<string> {
-  try {
-    let html = await getCachedTemplate(templateName);
-
-    for (const [key, value] of Object.entries(variables)) {
-      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      html = html.replace(new RegExp(`{{${escapedKey}}}`, 'g'), escapeHtml(value));
-    }
-
-    return html;
-  } catch (error) {
-    logger.error(`Failed to load email template: ${templateName}`, error);
-    throw error;
-  }
 }

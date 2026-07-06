@@ -124,6 +124,7 @@ model User {
   followerCount    Int            @default(0)
   followingCount   Int            @default(0)
   isPro            Boolean        @default(false)
+  welcomeEmailSent Boolean        @default(false)
   lastSeenAt       DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt

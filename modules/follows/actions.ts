@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
@@ -12,7 +13,6 @@ import {
   isFollowing as isFollowingRepo,
 } from './repository';
 import { createNotification } from '@/modules/notifications';
-import { ROUTES } from '@/lib/config/routes';
 import { createServerAction } from '@/lib/utils/server-action';
 import { userIdSchema } from '@/lib/utils/validation-common';
 
@@ -38,7 +38,7 @@ export const followUser = createServerAction(
     const session = await requireSession();
 
     if (session.user.id === userId) {
-      return { data: null, error: 'Cannot follow yourself', ok: false, errorCode: 'VALIDATION_ERROR' };
+      return { data: null, error: 'Cannot follow yourself' };
     }
 
     const targetUser = await prisma.user.findUnique({
@@ -47,7 +47,7 @@ export const followUser = createServerAction(
     });
 
     if (!targetUser) {
-      return { data: null, error: 'User not found', ok: false, errorCode: 'NOT_FOUND' };
+      return { data: null, error: 'User not found' };
     }
 
     await followUserRepo(session.user.id, userId);
@@ -63,10 +63,10 @@ export const followUser = createServerAction(
       },
     });
 
-    revalidatePath(ROUTES.USER_PROFILE(userId));
-    revalidatePath(ROUTES.DASHBOARD);
+    revalidatePath(`/user/${userId}`);
+    revalidatePath('/dashboard');
 
-    return { data: null, error: null, ok: true, errorCode: null };
+    return { data: null, error: null };
   }
 );
 
@@ -76,10 +76,10 @@ export const unfollowUser = createServerAction(
     const session = await requireSession();
     await unfollowUserRepo(session.user.id, userId);
 
-    revalidatePath(ROUTES.USER_PROFILE(userId));
-    revalidatePath(ROUTES.DASHBOARD);
+    revalidatePath(`/user/${userId}`);
+    revalidatePath('/dashboard');
 
-    return { data: null, error: null, ok: true, errorCode: null };
+    return { data: null, error: null };
   }
 );
 
@@ -87,7 +87,7 @@ export const getFollowers = createServerAction(
   { schema: getFollowersSchema, actionName: 'getFollowers' },
   async ({ userId, limit, offset }) => {
     const result = await getFollowersRepo(userId, limit, offset);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return { data: result, error: null };
   }
 );
 
@@ -95,7 +95,7 @@ export const getFollowing = createServerAction(
   { schema: getFollowingSchema, actionName: 'getFollowing' },
   async ({ userId, limit, offset }) => {
     const result = await getFollowingRepo(userId, limit, offset);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return { data: result, error: null };
   }
 );
 
@@ -104,6 +104,6 @@ export const checkFollowingStatus = createServerAction(
   async ({ userId }) => {
     const session = await requireSession();
     const isFollowing = await isFollowingRepo(session.user.id, userId);
-    return { data: { isFollowing }, error: null, ok: true, errorCode: null };
+    return { data: { isFollowing }, error: null };
   }
 );

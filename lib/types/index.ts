@@ -1,24 +1,142 @@
-/**
- * Re-export barrel for types used across multiple modules.
- *
- * Canonical definitions live in their owning module:
- *   - Message, Sender, Attachment, Reaction, ReadReceipt → modules/messages/types
- *   - Conversation → modules/chat/types
- *   - TypingIndicator, WebSocketEventType → modules/ws/types
- *
- * Import from the owning module directly when possible.
- * This barrel exists so cross-cutting code (hooks, components, tests)
- * can import shared types from a single stable path.
- */
+export interface User {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+}
 
-export type {
-  Sender,
-  Attachment,
-  Message,
-  Reaction,
-  ReadReceipt,
-} from '@/modules/messages/types';
+export interface Sender {
+  id: string;
+  name: string | null;
+  image: string | null;
+}
 
-export type { Conversation } from '@/modules/chat/types';
+export interface Attachment {
+  id: string;
+  name: string | null;
+  url: string;
+  type: string;
+  size: number | null;
+  messageId?: string;
+}
 
-export type { TypingIndicator, WebSocketEventType } from '@/modules/ws/types';
+export interface Message {
+  id: string;
+  content: string;
+  sectionId: string;
+  senderId: string;
+  parentId: string | null;
+  depth: number;
+  isEdited: boolean;
+  isPinned: boolean;
+  likeCount: number;
+  replyCount: number;
+  isAiResponse: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+
+  sender: Sender;
+  section: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  attachments: Attachment[];
+  reactions?: Reaction[];
+  readReceipts?: ReadReceipt[];
+  replies?: Message[];
+}
+
+export interface Topic {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  createdAt: Date;
+}
+
+export interface WebSocketMessage {
+  type: WebSocketEventType;
+  payload: {
+    sectionId: string;
+    [key: string]: unknown;
+  };
+}
+
+export type WebSocketEventType =
+  | 'NEW_MESSAGE'
+  | 'MESSAGE_DELETED'
+  | 'MESSAGE_EDITED'
+  | 'USER_TYPING'
+  | 'USER_STOPPED_TYPING'
+  | 'MESSAGE_QUEUED'
+  | 'MENTION_NOTIFICATION'
+  | 'REACTION_UPDATE'
+  | 'PIN_UPDATE';
+
+export interface TypingIndicator {
+  userId: string;
+  userName: string;
+  sectionId?: string;
+  timestamp?: number;
+}
+
+export interface MentionData {
+  messageId: string;
+  mentionedUserId: string;
+  mentionedBy: string;
+  mentionedByName: string;
+  sectionId: string;
+  content: string;
+  parentId?: string;
+}
+
+export interface Conversation {
+  id: string;
+  name: string;
+  avatar: string;
+  lastMessage: string;
+  timestamp: string;
+  unread: number;
+  online: boolean;
+  type: 'channel' | 'dm';
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  content: string;
+  timestamp: string;
+  avatar: string | null;
+  isOwn: boolean;
+  status: 'sent' | 'delivered' | 'read';
+  attachments?: Attachment[];
+}
+
+export interface AttachmentInput {
+  url: string;
+  type: string;
+  name: string | null;
+  size: number | null;
+}
+
+export interface Reaction {
+  id: string;
+  emoji: string;
+  messageId: string;
+  userId: string;
+  createdAt: Date;
+}
+
+export interface ReadReceipt {
+  id: string;
+  lastReadMessageId: string;
+  userId: string;
+  readAt: Date;
+}
+
+export type ActionResponse<T = unknown> = {
+  data: T | null;
+  error: string | null;
+};

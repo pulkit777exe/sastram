@@ -1,16 +1,15 @@
 'use server';
 
-import { requireSession } from '@/modules/auth';
+import { auth } from '@/lib/services/auth';
+import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { filterBadLanguage } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
 import { getMemberRole } from '@/modules/members';
-import { logAction } from '@/modules/audit';
+import { logAction } from '@/modules/audit/repository';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
-import { prismaErrorMessage } from '@/lib/utils/errors';
-import { sanitizeUserContent } from '@/lib/services/content-safety';
-import { ROUTES } from '@/lib/config/routes';
 import {
   editMessageSchema,
   pinMessageSchema,
@@ -19,32 +18,23 @@ import {
 
 export const editMessage = createServerAction(
   { schema: editMessageSchema, actionName: 'editMessage' },
-  async ({ messageId, content: rawContent }) => {
-    const session = await requireSession(false);
+  async ({ messageId, content }) => {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
-    const { sanitized: content } = sanitizeUserContent(rawContent);
+    if (!session?.user) {
+      return { data: null, error: 'Authentication required', errorCode: 'AUTH_REQUIRED', ok: false };
+    }
 
     try {
       const message = await prisma.message.findUnique({
         where: { id: messageId },
-        select: { senderId: true, content: true, threadId: true },
+        select: { senderId: true, content: true, sectionId: true },
       });
 
       if (!message) {
         return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
-      }
-
-      // Check thread membership
-      if (message.threadId) {
-        const membership = await getMemberRole(message.threadId, session.user.id);
-        if (!membership || membership.status !== 'ACTIVE') {
-          return {
-            data: null,
-            error: 'You are not a member of this thread',
-            errorCode: 'FORBIDDEN',
-            ok: false,
-          };
-        }
       }
 
       if (message.senderId !== session.user.id) {
@@ -63,22 +53,19 @@ export const editMessage = createServerAction(
         },
       });
 
+      const safeContent = filterBadLanguage(content);
       await prisma.message.update({
         where: { id: messageId },
         data: {
-          content,
+          content: safeContent,
           isEdited: true,
         },
       });
 
-      infraMessageSideEffects.emitMessageEdited(message.threadId, messageId, content);
-
-      revalidatePath(ROUTES.DASHBOARD_THREADS);
+      revalidatePath('/dashboard/threads');
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[editMessage]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
     }
   }
@@ -87,15 +74,21 @@ export const editMessage = createServerAction(
 export const pinMessage = createServerAction(
   { schema: pinMessageSchema, actionName: 'pinMessage' },
   async ({ messageId }) => {
-    const session = await requireSession(false);
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return { data: null, error: 'Authentication required', errorCode: 'AUTH_REQUIRED', ok: false };
+    }
 
     try {
       const message = await prisma.message.findUnique({
         where: { id: messageId },
         select: {
           isPinned: true,
-          threadId: true,
-          thread: {
+          sectionId: true,
+          section: {
             select: { slug: true },
           },
         },
@@ -105,7 +98,7 @@ export const pinMessage = createServerAction(
         return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
       }
 
-      const memberRole = await getMemberRole(message.threadId, session.user.id);
+      const memberRole = await getMemberRole(message.sectionId, session.user.id);
       if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
         return {
           data: null,
@@ -120,7 +113,7 @@ export const pinMessage = createServerAction(
       const previouslyPinned = shouldPin
         ? await prisma.message.findFirst({
             where: {
-              threadId: message.threadId,
+              sectionId: message.sectionId,
               isPinned: true,
               id: { not: messageId },
             },
@@ -131,7 +124,7 @@ export const pinMessage = createServerAction(
       await prisma.$transaction(async (tx) => {
         if (shouldPin) {
           await tx.message.updateMany({
-            where: { threadId: message.threadId, isPinned: true },
+            where: { sectionId: message.sectionId, isPinned: true },
             data: { isPinned: false },
           });
         }
@@ -149,21 +142,19 @@ export const pinMessage = createServerAction(
         userId: session.user.id,
       });
 
-      infraMessageSideEffects.emitPinUpdate(message.threadId, { messageId, isPinned: shouldPin });
+      infraMessageSideEffects.emitPinUpdate(message.sectionId, { messageId, isPinned: shouldPin });
 
       if (previouslyPinned?.id) {
-        infraMessageSideEffects.emitPinUpdate(message.threadId, {
+        infraMessageSideEffects.emitPinUpdate(message.sectionId, {
           messageId: previouslyPinned.id,
           isPinned: false,
         });
       }
 
-      revalidatePath(ROUTES.THREAD(message.thread?.slug ?? ''));
+      revalidatePath(`/dashboard/threads/thread/${message.section?.slug}`);
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[pinMessage]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
     }
   }
@@ -173,31 +164,6 @@ export const getMessageEditHistory = createServerAction(
   { schema: getMessageEditHistorySchema, actionName: 'getMessageEditHistory' },
   async ({ messageId }) => {
     try {
-      const session = await requireSession();
-
-      // Get message to find threadId
-      const message = await prisma.message.findUnique({
-        where: { id: messageId },
-        select: { threadId: true },
-      });
-
-      if (!message) {
-        return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
-      }
-
-      // Check thread membership
-      if (message.threadId) {
-        const membership = await getMemberRole(message.threadId, session.user.id);
-        if (!membership || membership.status !== 'ACTIVE') {
-          return {
-            data: null,
-            error: 'You are not a member of this thread',
-            errorCode: 'FORBIDDEN',
-            ok: false,
-          };
-        }
-      }
-
       const edits = await prisma.messageEdit.findMany({
         where: { messageId },
         orderBy: { editedAt: 'desc' },
@@ -206,8 +172,6 @@ export const getMessageEditHistory = createServerAction(
       return { data: edits ?? [], error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[getMessageEditHistory]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, errorCode: null, ok: false };
       return {
         data: null,
         error: 'Something went wrong',

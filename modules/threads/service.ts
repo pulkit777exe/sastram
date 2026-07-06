@@ -1,31 +1,11 @@
-import { type Community, type Message, type UserStatus, type Attachment, type AttachmentType } from '@prisma/client';
+import { type Community, type UserStatus } from '@prisma/client';
 import type {
   ThreadDetail,
   ThreadRecord,
   ThreadSummary,
-  CommunitySummary,
   ThreadDNA,
-  AttachmentInfo,
 } from './types';
-
-function formatAttachmentSize(size: bigint | null): string | null {
-  if (size === null) return null;
-  const bytes = Number(size);
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function mapAttachment(att: Attachment): AttachmentInfo {
-  return {
-    id: att.id,
-    url: att.url,
-    type: att.type as string,
-    name: att.name ?? null,
-    mimeType: null,
-    size: att.size != null ? Number(att.size) : null,
-  };
-}
+import type { CommunitySummary } from '@/modules/communities/types';
 
 export function buildThreadDTO(
   thread: ThreadRecord,
@@ -61,59 +41,59 @@ export function buildThreadDetailDTO(
   messageCount: number,
   activeUsers: number,
   memberCount: number,
+  summary?: string | null,
   subscriptionCount?: number
 ): ThreadDetail {
   return {
     ...buildThreadDTO(thread, messageCount, activeUsers, memberCount),
-    aiSummary: thread.aiSummary ?? null,
+    aiSummary: summary ?? thread.aiSummary ?? null,
     resolutionScore: thread.resolutionScore,
     threadDna: thread.threadDna ? (thread.threadDna as unknown as ThreadDNA) : undefined,
     lastVerifiedAt: thread.lastVerifiedAt,
     isOutdated: thread.isOutdated,
     subscriptionCount,
     messages:
-      thread.messages?.map((message) => {
-        const msg = message as Message & {
-          sender?: { id: string; name: string | null; image: string | null; status: UserStatus } | null;
-          attachments?: Attachment[];
-        };
-        return {
-          id: msg.id,
-          content: msg.content,
-          threadId: msg.threadId,
-          senderId: msg.senderId,
-          parentId: msg.parentId ?? null,
-          senderName: msg.sender?.name || 'Anonymous',
-          senderImage: msg.sender?.image,
-          createdAt: msg.createdAt,
-          updatedAt: msg.updatedAt,
-          deletedAt: msg.deletedAt ?? null,
-          depth: msg.depth ?? 0,
-          isEdited: msg.isEdited ?? false,
-          isPinned: msg.isPinned ?? false,
-          likeCount: msg.likeCount ?? 0,
-          replyCount: msg.replyCount ?? 0,
-          isAiResponse: msg.isAiResponse ?? false,
-          sender: msg.sender
-            ? {
-                id: msg.sender.id,
-                name: msg.sender.name,
-                image: msg.sender.image,
-                status: msg.sender.status || ('ACTIVE' as UserStatus),
-              }
-            : {
-                id: msg.senderId,
-                name: null,
-                image: null,
-                status: 'ACTIVE' as UserStatus,
-              },
-          attachments: msg.attachments?.map(mapAttachment) ?? [],
-        };
-      }) ?? [],
+      thread.messages?.map((message) => ({
+        id: message.id,
+        content: message.content,
+        senderId: message.senderId,
+        sectionId: message.sectionId,
+        parentId: message.parentId ?? null,
+        createdAt: message.createdAt,
+        updatedAt: message.updatedAt,
+        deletedAt: message.deletedAt ?? null,
+        depth: message.depth ?? 0,
+        isEdited: message.isEdited ?? false,
+        isPinned: message.isPinned ?? false,
+        likeCount: message.likeCount ?? 0,
+        replyCount: message.replyCount ?? 0,
+        isAiResponse: message.isAiResponse ?? false,
+        sender: message.sender
+          ? {
+              id: message.sender.id,
+              name: message.sender.name,
+              image: message.sender.image,
+              status: (message.sender.status as UserStatus) || 'ACTIVE',
+            }
+          : {
+              id: message.senderId,
+              name: null,
+              image: null,
+              status: 'ACTIVE' as UserStatus,
+            },
+        attachments:
+          message.attachments?.map((att) => ({
+            id: att.id,
+            url: att.url,
+            type: att.type,
+            name: att.name ?? null,
+            size: att.size ?? null,
+          })) ?? [],
+      })) ?? [],
   };
 }
 
-export function buildCommunityDTO(community: Community, threadCount: number, memberCount: number | null = null): CommunitySummary {
+export function buildCommunityDTO(community: Community, threadCount: number): CommunitySummary {
   return {
     id: community.id,
     slug: community.slug,
@@ -121,7 +101,6 @@ export function buildCommunityDTO(community: Community, threadCount: number, mem
     description: community.description,
     visibility: community.visibility,
     threadCount,
-    memberCount,
     createdAt: community.createdAt,
   };
 }

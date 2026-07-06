@@ -1,0 +1,4 @@
+/**
+ * Topic domain types
+ */
+export {};

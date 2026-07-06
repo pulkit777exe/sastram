@@ -2,7 +2,7 @@ import { requireSession, type SessionPayload } from '@/modules/auth/session';
 import type { Role } from '@prisma/client';
 import type { AuthPolicyRole } from './types';
 
-const MODERATION_ROLES: ReadonlySet<Role> = new Set(['ADMIN', 'MODERATOR']);
+const MODERATION_ROLES: ReadonlySet<string> = new Set(['ADMIN', 'MODERATOR']);
 
 export function hasAnyRole(
   role: Role | null | undefined,

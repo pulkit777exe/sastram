@@ -2,13 +2,6 @@
  * Bookmarks domain types
  */
 
-export interface Bookmark {
-  id: string;
-  userId: string;
-  threadId: string;
-  createdAt: Date;
-}
-
 export interface BookmarkedThreadsResponse {
   bookmarks: Array<{
     id: string;

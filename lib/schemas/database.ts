@@ -1,49 +1,10 @@
 import { z } from 'zod';
 
-/**
- * Message creation schema
- */
-export const createMessageSchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Message cannot be empty')
-    .max(10000, 'Message must be less than 10000 characters')
-    .refine((val) => val.trim().length > 0, 'Message cannot be only whitespace')
-    .refine((val) => !val.includes('\x00'), 'Message cannot contain null bytes'),
-  threadId: z.string().cuid('Invalid thread ID'),
-  parentId: z.string().cuid('Invalid parent message ID').optional(),
-  mentions: z.array(z.string().cuid('Invalid user ID')).optional(),
-});
+// Re-export from modules/messages/schemas for backward compatibility
+export { attachmentInputSchema, createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
 
 /**
- * Attachment input schema
- */
-export const attachmentInputSchema = z.object({
-  url: z
-    .string()
-    .url('Invalid attachment URL')
-    .refine(
-      (val) => !val.includes('..') && !val.includes('\\'),
-      'Invalid path in URL'
-    )
-    .refine(
-      (val) => /^(https?|data:)/.test(val),
-      'URL must start with https:// or data:'
-    ),
-  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
-  name: z.string().nullable(),
-  size: z.number().int().positive('File size must be positive').nullable(),
-});
-
-/**
- * Message with attachments schema
- */
-export const createMessageWithAttachmentsSchema = createMessageSchema.extend({
-  attachments: z.array(attachmentInputSchema).max(10, 'Maximum 10 attachments allowed').optional(),
-});
-
-/**
- * Thread creation schema
+ * Thread/Section creation schema
  */
 export const createThreadSchema = z.object({
   name: z
@@ -100,8 +61,6 @@ export const updateCommunitySchema = z.object({
   description: z.string().max(280).optional(),
 });
 
-
-
 /**
  * Newsletter subscription schema
  */
@@ -116,7 +75,7 @@ export const newsletterSubscriptionSchema = z.object({
  */
 export const messageQueueSchema = z.object({
   userId: z.string().cuid('Invalid user ID'),
-  threadId: z.string().cuid('Invalid thread ID'),
+  sectionId: z.string().cuid('Invalid section ID'),
   messageId: z.string().cuid('Invalid message ID'),
   delivered: z.boolean().default(false),
 });
@@ -129,11 +88,18 @@ export const mentionDataSchema = z.object({
   mentionedUserId: z.string().cuid('Invalid user ID'),
   mentionedBy: z.string().cuid('Invalid user ID'),
   mentionedByName: z.string(),
-  threadId: z.string().cuid('Invalid thread ID'),
+  sectionId: z.string().cuid('Invalid section ID'),
   content: z.string(),
   parentId: z.string().cuid('Invalid parent message ID').optional(),
 });
 
-export type AttachmentInput = z.infer<typeof attachmentInputSchema>;
-
-
+/**
+ * Type exports
+ */
+export type CreateThread = z.infer<typeof createThreadSchema>;
+export type UpdateThread = z.infer<typeof updateThreadSchema>;
+export type CreateCommunity = z.infer<typeof createCommunitySchema>;
+export type UpdateCommunity = z.infer<typeof updateCommunitySchema>;
+export type NewsletterSubscription = z.infer<typeof newsletterSubscriptionSchema>;
+export type MessageQueue = z.infer<typeof messageQueueSchema>;
+export type MentionData = z.infer<typeof mentionDataSchema>;

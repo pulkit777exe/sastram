@@ -1,5 +1,5 @@
-import type { ReportCategory, ReportStatus } from '@/lib/config/constants';
-import type { UserStatus } from '@prisma/client';
+import type { ReportCategory } from '@/lib/config/constants';
+import type { ReportStatus, UserStatus } from '@prisma/client';
 
 /**
  * Report domain types
@@ -26,7 +26,7 @@ export interface Report {
       email: string;
       image: string | null;
     };
-    thread: {
+    section: {
       id: string;
       name: string;
       slug: string;
@@ -85,7 +85,7 @@ export interface ReportWithContext extends Report {
   } | null;
   similarReports: Array<{
     id: string;
-    category: ReportCategory;
+    category: string;
     status: ReportStatus;
     createdAt: Date;
   }>;
@@ -105,7 +105,7 @@ export interface ReportQueueItem {
       id: string;
       name: string | null;
     };
-    thread: {
+    section: {
       name: string;
       slug: string;
     };

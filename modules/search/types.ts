@@ -1,0 +1,4 @@
+/**
+ * Search domain types
+ */
+export {};

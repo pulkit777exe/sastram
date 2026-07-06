@@ -4,9 +4,7 @@ import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { revalidatePath } from 'next/cache';
-import { computeHasMore } from '@/lib/db/pagination';
 import { createNotification } from '@/modules/notifications';
-import { del } from '@vercel/blob';
 import {
   applyModerationRateLimit,
   requireModerationSession,
@@ -23,7 +21,6 @@ import {
   getModerationQueueSchema,
 } from './schemas';
 import { createServerAction } from '@/lib/utils/server-action';
-import type { ActionErrorCode } from '@/lib/actions/result';
 import type { Prisma } from '@prisma/client';
 
 const bulkDeleteSchema = z.object({
@@ -47,16 +44,16 @@ const deleteThreadSchema = z.object({
 
 export const deleteMessageAction = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessageAction' },
-  async ({ messageId, threadSlug, reason }) => {
+  async ({ messageId, sectionSlug, reason }) => {
     const session = await requireModerationSession();
 
     await applyModerationRateLimit(session.user.id);
 
     const message = await validateEntityForDeletion('message', messageId) as {
       id: string;
-      threadId: string;
+      sectionId: string;
       senderId: string;
-      thread: { name: string; slug: string };
+      section: { name: string; slug: string };
     };
 
     await prisma.$transaction(async (tx) => {
@@ -65,8 +62,8 @@ export const deleteMessageAction = createServerAction(
         data: { deletedAt: new Date() },
       });
 
-      await tx.thread.update({
-        where: { id: message.threadId },
+      await tx.section.update({
+        where: { id: message.sectionId },
         data: { messageCount: { decrement: 1 } },
       });
 
@@ -78,32 +75,21 @@ export const deleteMessageAction = createServerAction(
           message: reason
             ? `Your message was deleted by a moderator. Reason: ${reason}`
             : 'Your message was deleted by a moderator.',
-          data: { messageId, threadSlug, deletedBy: session.user.id },
+          data: { messageId, sectionSlug, deletedBy: session.user.id },
         },
       });
     });
 
     await executeMessageDeletionEffects({
       messageId,
-      threadId: message.threadId,
-      threadSlug,
+      sectionId: message.sectionId,
+      sectionSlug,
       moderatorId: session.user.id,
       reason,
       originalAuthor: message.senderId,
     });
 
-    // Delete blob files for this message's attachments (best-effort)
-    const attachments = await prisma.attachment.findMany({
-      where: { messageId },
-      select: { url: true },
-    });
-    if (attachments.length > 0) {
-      await Promise.allSettled(
-        attachments.map((att) => del(att.url).catch(() => {}))
-      );
-    }
-
-    return { ok: true, data: null, error: null, errorCode: null };
+    return { data: null, error: null };
   }
 );
 
@@ -116,7 +102,7 @@ export const bulkDeleteMessages = createServerAction(
     const result = await prisma.$transaction(async (tx) => {
       const messages = await tx.message.findMany({
         where: { id: { in: messageIds } },
-        select: { id: true, threadId: true, senderId: true },
+        select: { id: true, sectionId: true, senderId: true },
       });
 
       if (messages.length === 0) {
@@ -129,52 +115,36 @@ export const bulkDeleteMessages = createServerAction(
       });
 
       const sectionCounts = messages.reduce((acc, msg) => {
-        acc[msg.threadId] = (acc[msg.threadId] || 0) + 1;
+        acc[msg.sectionId] = (acc[msg.sectionId] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      for (const [threadId, count] of Object.entries(sectionCounts)) {
-        await tx.thread.update({
-          where: { id: threadId },
+      for (const [sectionId, count] of Object.entries(sectionCounts)) {
+        await tx.section.update({
+          where: { id: sectionId },
           data: { messageCount: { decrement: count } },
         });
       }
 
       const uniqueSenders = [...new Set(messages.map((m) => m.senderId))];
-      const senderMessageCounts = Object.entries(
-        messages.reduce(
-          (acc, m) => {
-            acc[m.senderId] = (acc[m.senderId] || 0) + 1;
-            return acc;
-          },
-          {} as Record<string, number>,
-        )
-      );
 
-      await tx.notification.createMany({
-        data: senderMessageCounts.map(([senderId, count]) => ({
-          userId: senderId,
-          type: 'SYSTEM',
-          title: 'Messages Deleted',
-          message: reason
-            ? `${count} of your messages were deleted by a moderator. Reason: ${reason}`
-            : `${count} of your messages were deleted by a moderator.`,
-        })),
-      });
+      for (const senderId of uniqueSenders) {
+        const userMessageCount = messages.filter((m) => m.senderId === senderId).length;
+
+        await tx.notification.create({
+          data: {
+            userId: senderId,
+            type: 'SYSTEM',
+            title: 'Messages Deleted',
+            message: reason
+              ? `${userMessageCount} of your messages were deleted by a moderator. Reason: ${reason}`
+              : `${userMessageCount} of your messages were deleted by a moderator.`,
+          },
+        });
+      }
 
       return { deletedCount: messages.length };
     });
-
-    // Delete blob files for deleted messages' attachments (best-effort)
-    const attachments = await prisma.attachment.findMany({
-      where: { messageId: { in: messageIds } },
-      select: { url: true },
-    });
-    if (attachments.length > 0) {
-      await Promise.allSettled(
-        attachments.map((att) => del(att.url).catch(() => {}))
-      );
-    }
 
     await executeModerationAuditAndRevalidate({
       action: 'MESSAGE_DELETED',
@@ -185,7 +155,7 @@ export const bulkDeleteMessages = createServerAction(
       paths: ['/dashboard/admin/moderation'],
     });
 
-    return { ok: true, data: { deletedCount: result.deletedCount }, error: null, errorCode: null };
+    return { data: { deletedCount: result.deletedCount }, error: null };
   }
 );
 
@@ -201,7 +171,7 @@ export const banUser = createServerAction(
     const targetUser = await validateModerationTarget(
       userId,
       session.user.id,
-      session.user.role
+      session.user.role || 'ADMIN'
     );
 
     const existingBan = await prisma.userBan.findFirst({
@@ -215,22 +185,20 @@ export const banUser = createServerAction(
 
     if (existingBan) {
       return {
-        ok: false,
         data: null,
         error: threadId ? 'User is already banned from this thread' : 'User is already globally banned',
-        errorCode: 'CONFLICT',
       };
     }
 
     const thread = threadId
-      ? await prisma.thread.findUnique({
+      ? await prisma.section.findUnique({
           where: { id: threadId },
           select: { id: true, name: true },
         })
       : null;
 
     if (threadId && !thread) {
-      return { ok: false, data: null, error: 'Thread not found', errorCode: 'NOT_FOUND' };
+      return { data: null, error: 'Thread not found' };
     }
 
     const ban = await prisma.$transaction(async (tx) => {
@@ -294,7 +262,7 @@ export const banUser = createServerAction(
       paths: ['/dashboard/admin/moderation', '/dashboard'],
     });
 
-    return { ok: true, data: { banId: ban.id, expiresAt: ban.expiresAt }, error: null, errorCode: null };
+    return { data: { banId: ban.id, expiresAt: ban.expiresAt }, error: null };
   }
 );
 
@@ -365,7 +333,7 @@ export const unbanUser = createServerAction(
       paths: ['/dashboard/admin/moderation'],
     });
 
-    return { ok: true, data: null, error: null, errorCode: null };
+    return { data: null, error: null };
   }
 );
 
@@ -377,7 +345,7 @@ export const getBannedUsers = createServerAction(
     const limit = Math.min(filters.limit || 50, 100);
     const offset = filters.offset || 0;
 
-    const whereClause: { isActive?: boolean; threadId?: string } = {};
+    const whereClause: Prisma.UserBanWhereInput = {};
     if (filters.isActive !== undefined) whereClause.isActive = filters.isActive;
     if (filters.threadId) whereClause.threadId = filters.threadId;
 
@@ -403,12 +371,10 @@ export const getBannedUsers = createServerAction(
           total: totalCount,
           limit,
           offset,
-          hasMore: computeHasMore(offset, limit, totalCount),
+          hasMore: offset + limit < totalCount,
         },
       },
       error: null,
-      ok: true,
-      errorCode: null,
     };
   }
 );
@@ -425,14 +391,14 @@ export const deleteCommunity = createServerAction(
       slug: string;
     };
 
-    const threadCount = await prisma.thread.count({
+    const sectionCount = await prisma.section.count({
       where: { communityId },
     });
 
     await prisma.community.delete({ where: { id: communityId } });
 
     await executeModerationAuditAndRevalidate({
-      action: 'THREAD_DELETED',
+      action: 'SECTION_DELETED',
       entityType: 'Community',
       entityId: communityId,
       userId: session.user.id,
@@ -440,12 +406,12 @@ export const deleteCommunity = createServerAction(
         reason,
         communityTitle: community.title,
         communitySlug: community.slug,
-        affectedThreads: threadCount,
+        affectedSections: sectionCount,
       },
       paths: ['/dashboard', '/dashboard/admin/moderation'],
     });
 
-    return { data: { affectedThreads: threadCount }, error: null, ok: true, errorCode: null };
+    return { data: { affectedSections: sectionCount }, error: null };
   }
 );
 
@@ -455,7 +421,7 @@ export const deleteThread = createServerAction(
     const session = await requireModerationSession();
     await applyModerationRateLimit(session.user.id);
 
-    const thread = await validateEntityForDeletion('thread', threadId) as {
+    const thread = await validateEntityForDeletion('section', threadId) as {
       id: string;
       name: string;
       slug: string;
@@ -463,13 +429,13 @@ export const deleteThread = createServerAction(
       memberCount: number;
     };
 
-    const members = await prisma.threadMember.findMany({
-      where: { threadId: threadId, status: 'ACTIVE' },
+    const members = await prisma.sectionMember.findMany({
+      where: { sectionId: threadId, status: 'ACTIVE' },
       select: { userId: true },
     });
 
     await prisma.$transaction(async (tx) => {
-      await tx.thread.delete({ where: { id: threadId } });
+      await tx.section.delete({ where: { id: threadId } });
 
       if (members.length > 0) {
         await tx.notification.createMany({
@@ -487,8 +453,8 @@ export const deleteThread = createServerAction(
     });
 
     await executeModerationAuditAndRevalidate({
-      action: 'THREAD_DELETED',
-      entityType: 'Thread',
+      action: 'SECTION_DELETED',
+      entityType: 'Section',
       entityId: threadId,
       userId: session.user.id,
       details: {
@@ -502,7 +468,7 @@ export const deleteThread = createServerAction(
       paths: ['/dashboard', '/dashboard/threads', '/dashboard/admin/moderation'],
     });
 
-    return { data: { notifiedMembers: members.length }, error: null, ok: true, errorCode: null };
+    return { data: { notifiedMembers: members.length }, error: null };
   }
 );
 
@@ -516,7 +482,7 @@ export const getMessageDetails = createServerAction(
       include: {
         sender: { select: { id: true, name: true, email: true, image: true, role: true, status: true, createdAt: true } },
         attachments: true,
-        thread: { select: { id: true, name: true, slug: true } },
+        section: { select: { id: true, name: true, slug: true } },
         parent: { select: { id: true, content: true, sender: { select: { name: true } } } },
         reactions: { include: { user: { select: { name: true, image: true } } } },
         reports: {
@@ -529,7 +495,7 @@ export const getMessageDetails = createServerAction(
     });
 
     if (!message) {
-      return { data: null, error: 'Message not found', ok: false, errorCode: 'NOT_FOUND' };
+      return { data: null, error: 'Message not found' };
     }
 
     const recentMessages = await prisma.message.count({
@@ -544,8 +510,6 @@ export const getMessageDetails = createServerAction(
     return {
       data: { message, context: { recentMessages24h: recentMessages, activeBans: senderBans } },
       error: null,
-      ok: true,
-      errorCode: null,
     };
   }
 );
@@ -558,8 +522,8 @@ export const getModerationQueue = createServerAction(
     const limit = Math.min(filters.limit || 20, 100);
     const offset = filters.offset || 0;
 
-    const whereClause: { status?: 'PENDING' | { in: 'PENDING'[] } } = {
-      status: filters.status || { in: ['PENDING'] },
+    const whereClause: Prisma.ReportWhereInput = {
+      status: filters.status || { in: ['PENDING'] as const },
     };
 
     const [reports, totalCount] = await Promise.all([
@@ -567,7 +531,7 @@ export const getModerationQueue = createServerAction(
         where: whereClause,
         include: {
           message: {
-            select: { id: true, content: true, createdAt: true, sender: { select: { id: true, name: true, email: true, image: true } }, thread: { select: { name: true, slug: true } } },
+            select: { id: true, content: true, createdAt: true, sender: { select: { id: true, name: true, email: true, image: true } }, section: { select: { name: true, slug: true } } },
           },
           reporter: { select: { id: true, name: true, email: true } },
         },
@@ -581,11 +545,9 @@ export const getModerationQueue = createServerAction(
     return {
       data: {
         reports,
-        pagination: { total: totalCount, limit, offset, hasMore: computeHasMore(offset, limit, totalCount) },
+        pagination: { total: totalCount, limit, offset, hasMore: offset + limit < totalCount },
       },
       error: null,
-      ok: true,
-      errorCode: null,
     };
   }
 );

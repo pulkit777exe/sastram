@@ -1,11 +1,42 @@
 import { z } from 'zod';
 
 /**
+ * Attachment input schema
+ */
+export const attachmentInputSchema = z.object({
+  url: z
+    .string()
+    .url('Invalid attachment URL')
+    .refine(
+      (val) => !val.includes('..') && !val.includes('\\'),
+      'Invalid path in URL'
+    )
+    .refine(
+      (val) => /^(https?|data:)/.test(val),
+      'URL must start with https:// or data:'
+    ),
+  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
+  name: z.string().nullable(),
+  size: z.number().int().positive('File size must be positive').nullable(),
+});
+
+/**
  * Message validation schemas
  */
 
-export { createMessageSchema } from '@/lib/schemas/database';
-export { createMessageWithAttachmentsSchema } from '@/lib/schemas/database';
+export const createMessageSchema = z.object({
+  content: z
+    .string()
+    .min(1, 'Message cannot be empty')
+    .max(10000, 'Message must be less than 10000 characters'),
+  sectionId: z.string().cuid('Invalid section ID'),
+  parentId: z.string().cuid('Invalid parent message ID').optional(),
+  mentions: z.array(z.string().cuid()).optional(),
+});
+
+export const createMessageWithAttachmentsSchema = createMessageSchema.extend({
+  attachments: z.array(attachmentInputSchema).max(10, 'Maximum 10 attachments allowed').optional(),
+});
 
 export const editMessageSchema = z.object({
   messageId: z.string().cuid('Invalid message ID'),
@@ -28,7 +59,7 @@ export const getMessageEditHistorySchema = z.object({
 });
 
 export const searchMentionUsersSchema = z.object({
-  threadId: z.string().cuid('Invalid thread ID'),
+  sectionId: z.string().cuid('Invalid section ID'),
   query: z
     .string()
     .trim()
@@ -36,4 +67,5 @@ export const searchMentionUsersSchema = z.object({
     .max(50, 'Query must be less than 50 characters'),
 });
 
-
+export type CreateMessage = z.infer<typeof createMessageSchema>;
+export type CreateMessageWithAttachments = z.infer<typeof createMessageWithAttachmentsSchema>;

@@ -30,11 +30,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Trash2, Shield, Crown } from 'lucide-react';
-import { toasts } from '@/lib/utils/toast';
+import { toast } from 'sonner';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import { getThreadMembersAction, manageThreadMemberAction } from '@/modules/threads/actions';
-import type { ThreadMember } from '@/modules/threads/types';
-import type { ThreadRole } from '@prisma/client';
+import type { ThreadMember } from '@/modules/members/types';
+import { SectionRole } from '@prisma/client';
 
 interface ThreadAccessModalProps {
   threadId: string;
@@ -47,7 +47,7 @@ type ConfirmActionState = {
   type: 'update_role' | 'remove';
   userId: string;
   userName: string;
-  role?: ThreadRole;
+  role?: SectionRole;
 } | null;
 
 export function ThreadAccessModal({
@@ -69,14 +69,14 @@ export function ThreadAccessModal({
         const result = await getThreadMembersAction(threadId);
         if (cancelled) return;
         if (result?.error) {
-          toasts.error(result.error);
+          toast.error(result.error);
           setMembers([]);
         } else {
           setMembers(result?.data ?? []);
         }
       } catch {
         if (cancelled) return;
-        toasts.error('Failed to load members');
+        toast.error('Failed to load members');
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -88,7 +88,7 @@ export function ThreadAccessModal({
     };
   }, [isOpen, threadId]);
 
-  const handleRoleChangeRequest = (userId: string, userName: string, newRole: ThreadRole) => {
+  const handleRoleChangeRequest = (userId: string, userName: string, newRole: SectionRole) => {
     setConfirmAction({
       type: 'update_role',
       userId,
@@ -118,10 +118,10 @@ export function ThreadAccessModal({
           role: confirmAction.role,
         });
         if (result?.error) {
-          toasts.error(result.error);
+          toast.error(result.error);
           return;
         }
-        toasts.success(`Role updated for ${confirmAction.userName}`);
+        toast.success(`Role updated for ${confirmAction.userName}`);
         setMembers((prev) =>
           prev.map((m) =>
             m.userId === confirmAction.userId ? { ...m, role: confirmAction.role! } : m
@@ -134,14 +134,14 @@ export function ThreadAccessModal({
           action: 'remove',
         });
         if (result?.error) {
-          toasts.error(result.error);
+          toast.error(result.error);
           return;
         }
-        toasts.success(`${confirmAction.userName} removed from thread`);
+        toast.success(`${confirmAction.userName} removed from thread`);
         setMembers((prev) => prev.filter((m) => m.userId !== confirmAction.userId));
       }
     } catch (error) {
-      toasts.error(error instanceof Error ? error.message : 'Failed to execute action');
+      toast.error(error instanceof Error ? error.message : 'Failed to execute action');
     } finally {
       setConfirmAction(null);
     }
@@ -206,7 +206,7 @@ export function ThreadAccessModal({
                                   handleRoleChangeRequest(
                                     member.userId,
                                     userName,
-                                    val as ThreadRole
+                                    val as SectionRole
                                   )
                                 }
                               >

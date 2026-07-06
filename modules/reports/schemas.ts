@@ -17,7 +17,7 @@ export const createReportSchema = z.object({
 
 export const updateReportStatusSchema = z.object({
   reportId: z.string().cuid('Invalid report ID'),
-  status: z.enum([REPORT_STATUS.RESOLVED, REPORT_STATUS.DISMISSED] as [
+  status: z.enum([REPORT_STATUS.PENDING, REPORT_STATUS.RESOLVED, REPORT_STATUS.DISMISSED] as [
     string,
     ...string[],
   ]),
