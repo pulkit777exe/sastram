@@ -37,6 +37,7 @@ function validateAndLog(
   event:
     | 'NEW_MESSAGE'
     | 'MESSAGE_DELETED'
+    | 'MESSAGE_EDITED'
     | 'MENTION_NOTIFICATION'
     | 'REACTION_UPDATE'
     | 'PIN_UPDATE',
@@ -47,11 +48,13 @@ function validateAndLog(
       ? websocketSchemas.newMessage
       : event === 'MESSAGE_DELETED'
         ? websocketSchemas.messageDeleted
-        : event === 'MENTION_NOTIFICATION'
-          ? websocketSchemas.mentionNotification
-          : event === 'REACTION_UPDATE'
-            ? websocketSchemas.reactionUpdate
-            : websocketSchemas.pinUpdate;
+        : event === 'MESSAGE_EDITED'
+          ? websocketSchemas.messageEdited
+          : event === 'MENTION_NOTIFICATION'
+            ? websocketSchemas.mentionNotification
+            : event === 'REACTION_UPDATE'
+              ? websocketSchemas.reactionUpdate
+              : websocketSchemas.pinUpdate;
 
   const result = parser.safeParse({ type: event, payload });
   if (result.success) return true;
@@ -105,6 +108,21 @@ export function emitMessageDeleted(threadId: string, messageId: string, deletedB
     payload,
   }).catch((err) => {
     logger.error('[emitMessageDeleted] Redis publish failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
+}
+
+export function emitMessageEdited(threadId: string, messageId: string, content: string): void {
+  const payload = { threadId, messageId, content };
+  if (!validateAndLog('MESSAGE_EDITED', payload)) return;
+
+  void publishThreadEvent(threadId, {
+    type: 'MESSAGE_EDITED',
+    threadId,
+    payload,
+  }).catch((err) => {
+    logger.error('[emitMessageEdited] Redis publish failed', {
       error: err instanceof Error ? err.message : String(err),
     });
   });

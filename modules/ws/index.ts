@@ -1,6 +1,7 @@
 export {
   emitThreadMessage,
   emitMessageDeleted,
+  emitMessageEdited,
   emitPinUpdate,
   emitReactionUpdate,
   emitTypingIndicator,

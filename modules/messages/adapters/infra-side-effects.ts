@@ -1,6 +1,7 @@
 import {
   emitThreadMessage,
   emitMessageDeleted,
+  emitMessageEdited,
   emitPinUpdate,
   emitReactionUpdate,
   emitMentionNotification,
@@ -13,6 +14,7 @@ export const infraMessageSideEffects: MessageSideEffectsPort = {
   emitThreadMessage,
   emitMentionNotification,
   emitMessageDeleted,
+  emitMessageEdited,
   emitPinUpdate,
   async sendMentionEmail({ toEmail, mentionedByName, threadName, contentPreview, threadUrl }) {
     await sendMentionNotification(toEmail, mentionedByName, threadName, contentPreview, threadUrl);

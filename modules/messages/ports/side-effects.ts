@@ -35,6 +35,7 @@ export interface MessageSideEffectsPort {
   emitThreadMessage: (threadId: string, payload: MessageBroadcastPayload) => void;
   emitMentionNotification: (threadId: string, payload: MentionNotificationPayload) => void;
   emitMessageDeleted: (threadId: string, messageId: string, userId?: string) => void;
+  emitMessageEdited: (threadId: string, messageId: string, content: string) => void;
   emitPinUpdate: (threadId: string, payload: { messageId: string; isPinned: boolean }) => void;
   sendMentionEmail: (args: {
     toEmail: string;

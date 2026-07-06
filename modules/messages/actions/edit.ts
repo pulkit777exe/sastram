@@ -71,6 +71,8 @@ export const editMessage = createServerAction(
         },
       });
 
+      infraMessageSideEffects.emitMessageEdited(message.threadId, messageId, content);
+
       revalidatePath(ROUTES.DASHBOARD_THREADS);
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {

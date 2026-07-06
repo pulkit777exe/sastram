@@ -23,6 +23,7 @@ export interface RedisThreadEvent {
   type:
     | 'NEW_MESSAGE'
     | 'MESSAGE_DELETED'
+    | 'MESSAGE_EDITED'
     | 'PIN_UPDATE'
     | 'AI_RESPONSE_READY'
     | 'REACTION_UPDATE'

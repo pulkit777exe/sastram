@@ -5,7 +5,7 @@ import { createThreadSocket } from '@/lib/services/thread-socket';
 import type { Message } from '@/lib/types/index';
 
 const VALID_WS_TYPES = new Set([
-  'NEW_MESSAGE', 'MESSAGE_DELETED', 'PIN_UPDATE', 'REACTION_UPDATE',
+  'NEW_MESSAGE', 'MESSAGE_DELETED', 'MESSAGE_EDITED', 'PIN_UPDATE', 'REACTION_UPDATE',
   'USER_TYPING', 'USER_STOPPED_TYPING',
 ]);
 
@@ -33,6 +33,7 @@ interface UseThreadWebSocketOptions {
   currentUserId: string;
   onNewMessage?: (message: Message) => void;
   onMessageDeleted?: (messageId: string) => void;
+  onMessageEdited?: (messageId: string, content: string) => void;
   onPinUpdate?: (messageId: string, isPinned: boolean) => void;
   onTypingUpdate?: (typers: TypingUser[]) => void;
   onAiComplete?: (parentMessageId: string) => void;
@@ -44,6 +45,7 @@ export function useThreadWebSocket({
   currentUserId,
   onNewMessage,
   onMessageDeleted,
+  onMessageEdited,
   onPinUpdate,
   onTypingUpdate,
   onAiComplete,
@@ -62,6 +64,7 @@ export function useThreadWebSocket({
   const callbacksRef = useRef({
     onNewMessage,
     onMessageDeleted,
+    onMessageEdited,
     onPinUpdate,
     onTypingUpdate,
     onAiComplete,
@@ -71,6 +74,7 @@ export function useThreadWebSocket({
     callbacksRef.current = {
       onNewMessage,
       onMessageDeleted,
+      onMessageEdited,
       onPinUpdate,
       onTypingUpdate,
       onAiComplete,
@@ -190,6 +194,12 @@ export function useThreadWebSocket({
           case 'MESSAGE_DELETED': {
             const { messageId } = msg.payload as { messageId: string };
             callbacksRef.current.onMessageDeleted?.(messageId);
+            break;
+          }
+
+          case 'MESSAGE_EDITED': {
+            const { messageId, content } = msg.payload as { messageId: string; content: string };
+            callbacksRef.current.onMessageEdited?.(messageId, content);
             break;
           }
 

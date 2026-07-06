@@ -55,6 +55,15 @@ const messageDeletedPayloadSchema = basePayloadSchema.extend({
 });
 
 /**
+ * MESSAGE_EDITED event payload
+ */
+const messageEditedPayloadSchema = basePayloadSchema.extend({
+  threadId: z.string().cuid(),
+  messageId: z.string().cuid(),
+  content: z.string(),
+});
+
+/**
  * USER_TYPING event payload
  */
 const userTypingPayloadSchema = basePayloadSchema.extend({
@@ -127,6 +136,10 @@ export const websocketMessageSchema = z.discriminatedUnion('type', [
     payload: messageDeletedPayloadSchema,
   }),
   z.object({
+    type: z.literal('MESSAGE_EDITED'),
+    payload: messageEditedPayloadSchema,
+  }),
+  z.object({
     type: z.literal('USER_TYPING'),
     payload: userTypingPayloadSchema,
   }),
@@ -172,6 +185,10 @@ export const websocketSchemas = {
   messageDeleted: z.object({
     type: z.literal('MESSAGE_DELETED'),
     payload: messageDeletedPayloadSchema,
+  }),
+  messageEdited: z.object({
+    type: z.literal('MESSAGE_EDITED'),
+    payload: messageEditedPayloadSchema,
   }),
   userTyping: z.object({
     type: z.literal('USER_TYPING'),

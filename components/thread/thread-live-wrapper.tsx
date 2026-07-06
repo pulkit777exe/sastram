@@ -279,6 +279,14 @@ export function ThreadLiveWrapper({
     );
   }, []);
 
+  const handleWsMessageEdited = useCallback((messageId: string, content: string) => {
+    setLiveMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, content, isEdited: true, updatedAt: new Date() } : m
+      )
+    );
+  }, []);
+
   const handleTypingUpdate = useCallback((typers: TypingUser[]) => {
     setTypingUsers(typers);
   }, []);
@@ -299,6 +307,7 @@ export function ThreadLiveWrapper({
     currentUserId: currentUser.id,
     onNewMessage: handleWsNewMessage,
     onMessageDeleted: handleWsMessageDeleted,
+    onMessageEdited: handleWsMessageEdited,
     onPinUpdate: handleWsPinUpdate,
     onTypingUpdate: handleTypingUpdate,
     onAiComplete: handleAiComplete,
