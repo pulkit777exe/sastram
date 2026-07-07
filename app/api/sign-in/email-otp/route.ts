@@ -16,7 +16,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
   }
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: 400 });
+  }
+
   const validation = signInOtpSchema.safeParse(body);
   if (!validation.success) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues), { status: 400 });
@@ -27,7 +33,7 @@ export async function POST(request: NextRequest) {
       body: validation.data,
     });
     return NextResponse.json(ok(data));
-  } catch (error) {
+  } catch {
     return NextResponse.json(fail('AUTH_REQUIRED', 'Invalid email or OTP'), { status: 401 });
   }
 }

@@ -3,6 +3,13 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail } from '@/lib/utils/api-response';
 import { submitAppeal } from '@/modules/appeals/actions';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { logger } from '@/lib/infrastructure/logger';
+import { z } from 'zod';
+
+const submitAppealSchema = z.object({
+  reason: z.string().min(1, 'reason is required').max(2000),
+  reportId: z.string().optional(),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,16 +26,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-
-    if (!body.reason) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'reason is required'), { status: 400 });
+    const validation = submitAppealSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues), { status: 400 });
     }
 
-    // Create FormData object from request body
+    const { reason, reportId } = validation.data;
+
     const formData = new FormData();
-    formData.append('reason', body.reason);
-    if (body.reportId) {
-      formData.append('reportId', body.reportId);
+    formData.append('reason', reason);
+    if (reportId) {
+      formData.append('reportId', reportId);
     }
 
     const result = await submitAppeal(formData);
@@ -37,9 +45,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('INTERNAL_ERROR', result.error), { status: 500 });
     }
 
-    return NextResponse.json(ok({ appeal: { reason: body.reason, reportId: body.reportId } }));
+    return NextResponse.json(ok({ appeal: { reason, reportId } }));
   } catch (error) {
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to submit appeal', error), {
+    logger.error('[appeals/submit] POST failed', error);
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to submit appeal'), {
       status: 500,
     });
   }

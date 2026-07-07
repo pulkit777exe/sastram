@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireModerator, requireAdmin } from '@/lib/middleware/moderation';
 import { ok, fail } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
+import { z } from 'zod';
+
+const moderationActionSchema = z.enum(['ALLOW', 'BLOCK', 'REVIEW', 'FLAG']);
+const moderationSeveritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+const moderationCategorySchema = z.enum(['SPAM', 'HARASSMENT', 'MISINFORMATION', 'ADULT_CONTENT', 'OTHER']);
+
+const createRuleSchema = z.object({
+  pattern: z.string().min(1, 'Pattern is required'),
+  category: moderationCategorySchema,
+  action: moderationActionSchema,
+  severity: moderationSeveritySchema.default('MEDIUM'),
+});
+
+const updateRuleSchema = z.object({
+  id: z.string().min(1, 'ID is required'),
+  pattern: z.string().min(1).optional(),
+  category: moderationCategorySchema.optional(),
+  action: moderationActionSchema.optional(),
+  severity: moderationSeveritySchema.optional(),
+});
 
 export async function GET() {
   try {
@@ -61,33 +82,38 @@ export function validateRegexPattern(pattern: string): { valid: boolean; error?:
 }
 
 export async function POST(request: NextRequest) {
+  let session;
   try {
-    const session = await requireAdmin();
-    const body = await request.json();
+    session = await requireAdmin();
+  } catch {
+    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
+  }
 
-    if (!body.pattern || !body.category || !body.action) {
+  try {
+    const body = await request.json();
+    const validation = createRuleSchema.safeParse(body);
+
+    if (!validation.success) {
       return NextResponse.json(
-        fail('VALIDATION_ERROR', 'pattern, category and action are required'),
+        fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues),
         { status: 400 }
       );
     }
 
-    const regexValidation = validateRegexPattern(body.pattern);
+    const { pattern, category, action, severity } = validation.data;
+
+    const regexValidation = validateRegexPattern(pattern);
     if (!regexValidation.valid) {
       return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: 400 });
     }
 
     const newRule = await prisma.moderationRule.create({
-      data: {
-        pattern: body.pattern,
-        action: body.action,
-        category: body.category,
-        severity: body.severity || 'MEDIUM',
-      },
+      data: { pattern, category, action, severity },
     });
 
     return NextResponse.json(ok({ rule: newRule }));
   } catch (error) {
+    logger.error('[moderation/rules] POST failed', { userId: session.user.id, error });
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to create rule'), {
       status: 500,
     });
@@ -95,28 +121,40 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  let session;
   try {
-    await requireAdmin();
-    const body = await request.json();
+    session = await requireAdmin();
+  } catch {
+    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
+  }
 
-    if (!body.id) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'id is required'), { status: 400 });
+  try {
+    const body = await request.json();
+    const validation = updateRuleSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues),
+        { status: 400 }
+      );
     }
 
-    if (body.pattern) {
-      const regexValidation = validateRegexPattern(body.pattern);
+    const { id, pattern, category, action, severity } = validation.data;
+
+    if (pattern) {
+      const regexValidation = validateRegexPattern(pattern);
       if (!regexValidation.valid) {
         return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: 400 });
       }
     }
 
     const updatedRule = await prisma.moderationRule.update({
-      where: { id: body.id },
+      where: { id },
       data: {
-        pattern: body.pattern,
-        action: body.action,
-        category: body.category,
-        severity: body.severity,
+        pattern,
+        action,
+        category,
+        severity,
         updatedAt: new Date(),
       },
     });
@@ -126,6 +164,7 @@ export async function PUT(request: NextRequest) {
     if (error instanceof Error && error.message.includes('NotFound')) {
       return NextResponse.json(fail('NOT_FOUND', 'Rule not found'), { status: 404 });
     }
+    logger.error('[moderation/rules] PUT failed', { userId: session.user.id, error });
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to update rule'), {
       status: 500,
     });
@@ -133,16 +172,23 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  let session;
   try {
-    await requireAdmin();
+    session = await requireAdmin();
+  } catch {
+    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
+  }
+
+  try {
     const body = await request.json();
 
-    if (!body.id) {
+    const idValidation = z.object({ id: z.string().min(1) }).safeParse(body);
+    if (!idValidation.success) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'id is required'), { status: 400 });
     }
 
     await prisma.moderationRule.delete({
-      where: { id: body.id },
+      where: { id: idValidation.data.id },
     });
 
     return NextResponse.json(ok({ success: true }));
@@ -150,6 +196,7 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof Error && error.message.includes('NotFound')) {
       return NextResponse.json(fail('NOT_FOUND', 'Rule not found'), { status: 404 });
     }
+    logger.error('[moderation/rules] DELETE failed', { userId: session.user.id, error });
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to delete rule'), {
       status: 500,
     });

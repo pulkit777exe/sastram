@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ModerationDashboard } from '@/lib/services/moderation';
 import { requireModerator } from '@/lib/middleware/moderation';
 import { ok, fail } from '@/lib/utils/api-response';
+import { logger } from '@/lib/infrastructure/logger';
 
 const dashboard = new ModerationDashboard();
 
@@ -18,7 +19,8 @@ export async function GET(request: NextRequest) {
     const queue = await dashboard.getQueue({ status });
     return NextResponse.json(ok({ items: queue }));
   } catch (error) {
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load moderation queue', error), {
+    logger.error('[moderation/queue] GET failed', error);
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load moderation queue'), {
       status: 500,
     });
   }
