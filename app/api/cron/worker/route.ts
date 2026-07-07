@@ -59,6 +59,27 @@ async function drainQueue(queueName: string, handler: (job: Job) => Promise<unkn
   return { processed, failed, total: jobs.length };
 }
 
+async function drainAllQueues() {
+  const results: Record<string, { processed: number; failed: number; total: number }> = {};
+  let totalProcessed = 0;
+  let totalFailed = 0;
+
+  for (const [queueName, handler] of Object.entries(queueHandlers)) {
+    try {
+      const result = await drainQueue(queueName, handler);
+      results[queueName] = result;
+      totalProcessed += result.processed;
+      totalFailed += result.failed;
+    } catch (error) {
+      logger.error(`[Worker] ${queueName} drain failed:`, error);
+      results[queueName] = { processed: 0, failed: 1, total: 0 };
+      totalFailed++;
+    }
+  }
+
+  return { results, totalProcessed, totalFailed };
+}
+
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
   if (authError) {
@@ -68,11 +89,24 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const queue = url.searchParams.get('queue');
 
-  if (!queue || !queueHandlers[queue]) {
+  // No queue param → drain all queues (single daily cron)
+  if (!queue) {
+    try {
+      const { results, totalProcessed, totalFailed } = await drainAllQueues();
+      logger.info('[Worker] All queues drained', { totalProcessed, totalFailed });
+      return NextResponse.json(ok({ queues: results, totalProcessed, totalFailed }));
+    } catch (error) {
+      logger.error('[Worker] drain-all failed:', error);
+      return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to drain queues'), { status: 500 });
+    }
+  }
+
+  if (!queueHandlers[queue]) {
     return NextResponse.json(
       ok({
         availableQueues: Object.keys(queueHandlers),
         usage: '/api/cron/worker?queue=THREAD_SUMMARY',
+        hint: 'Omit queue param to drain all queues',
       })
     );
   }
