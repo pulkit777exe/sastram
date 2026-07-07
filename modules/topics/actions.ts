@@ -27,7 +27,7 @@ export const createTopic = createServerAction(
       return { data: null, error: 'Something went wrong' };
     }
 
-    const section = await prisma.section.create({
+    const section = await prisma.thread.create({
       data: {
         name: title,
         description: description,

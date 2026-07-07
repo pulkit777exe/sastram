@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { clientLogger } from '@/lib/utils/client-logger';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -72,7 +73,7 @@ function ForgotPasswordEmailForm({
       toasts.sent();
       onSuccess();
     } catch (error) {
-      console.error('[forgot-password:request]', error);
+      clientLogger.error('ForgotPassword', 'Request OTP failed', error);
       toasts.networkError();
       setIsSubmitting(false);
     }
@@ -185,7 +186,7 @@ function ForgotPasswordOtpForm({
       window.sessionStorage.setItem('forgot_password_otp', code);
       onSuccess();
     } catch (error) {
-      console.error('[forgot-password:verify]', error);
+      clientLogger.error('ForgotPassword', 'Verify OTP failed', error);
       toasts.networkError();
       setIsSubmitting(false);
     }
@@ -255,7 +256,7 @@ function ForgotPasswordOtpForm({
       toasts.sent();
       setIsSubmitting(false);
     } catch (error) {
-      console.error('[forgot-password:resend]', error);
+      clientLogger.error('ForgotPassword', 'Resend OTP failed', error);
       toasts.networkError();
       setIsSubmitting(false);
     }
@@ -396,7 +397,7 @@ function ForgotPasswordResetForm({
       toasts.success('Password updated. Please sign in.');
       router.replace('/login');
     } catch (error) {
-      console.error('[forgot-password:reset]', error);
+      clientLogger.error('ForgotPassword', 'Reset password failed', error);
       toasts.networkError();
       setIsSubmitting(false);
     }

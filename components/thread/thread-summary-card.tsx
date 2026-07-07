@@ -81,9 +81,6 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         // "waiting" | "active" | "delayed" → keep polling
       } catch {
         // Network error during poll — keep trying until timeout
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[ThreadSummaryCard] Poll request failed, retrying...');
-        }
       }
     }, POLL_INTERVAL_MS);
     

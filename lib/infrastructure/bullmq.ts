@@ -9,7 +9,7 @@ export interface JobMessageData {
   createdAt: Date;
   updatedAt: Date;
   senderId: string;
-  sectionId: string;
+  threadId: string;
   parentId: string | null;
   depth: number;
   isAiResponse: boolean;
@@ -119,7 +119,6 @@ export interface EmailJobData {
 export interface AIInlineJobData {
   messageId: string;
   threadId: string;
-  sectionId: string;
   query: string;
   userId: string;
 }
@@ -436,10 +435,10 @@ export async function handleEmailJob(job: Job<EmailJobData>) {
 
 export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   logger.info(`Processing AI inline job ${job.id}`);
-  const { messageId, sectionId, query } = job.data;
+  const { messageId, threadId, query } = job.data;
 
-  if (!messageId || !sectionId || !query) {
-    throw new Error('Missing required fields: messageId, sectionId, query');
+  if (!messageId || !threadId || !query) {
+    throw new Error('Missing required fields: messageId, threadId, query');
   }
 
   const { prisma } = await import('@/lib/infrastructure/prisma');
@@ -451,7 +450,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
     select: {
       id: true,
       depth: true,
-      sectionId: true,
+      threadId: true,
     },
   });
 
@@ -461,7 +460,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   }
 
   const recentMessages = await prisma.message.findMany({
-    where: { sectionId, deletedAt: null },
+    where: { threadId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: 8,
     select: {
@@ -503,7 +502,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   const aiMessage = await prisma.message.create({
     data: {
       content: '',
-      sectionId,
+      threadId,
       senderId: aiUser.id,
       parentId: parentMessage.id,
       depth: Math.min((parentMessage.depth ?? 0) + 1, 4),
@@ -514,7 +513,7 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
       replyCount: 0,
     },
     include: {
-      section: {
+      thread: {
         select: {
           id: true,
           name: true,
@@ -525,14 +524,14 @@ export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
   });
 
   // Emit initial empty message to notify clients
-  emitThreadMessage(sectionId, {
+  emitThreadMessage(threadId, {
     id: aiMessage.id,
     content: '',
     senderId: aiUser.id,
     senderName: aiUser.name,
-    senderAvatar: aiUser.image ?? null,
+    senderImage: aiUser.image ?? null,
+    threadId,
     createdAt: aiMessage.createdAt,
-    sectionId,
     parentId: aiMessage.parentId ?? null,
     depth: aiMessage.depth ?? 0,
     likeCount: 0,
@@ -567,14 +566,14 @@ ${context}`,
         }
 
         // Emit update event with the new content
-        emitThreadMessage(sectionId, {
+        emitThreadMessage(threadId, {
           id: aiMessage.id,
           content: fullContent.slice(0, 2000),
           senderId: aiUser.id,
           senderName: aiUser.name ?? 'Sastram AI',
-          senderAvatar: aiUser.image ?? null,
+          senderImage: aiUser.image ?? null,
           createdAt: aiMessage.createdAt,
-          sectionId,
+          threadId,
           parentId: aiMessage.parentId ?? null,
           depth: aiMessage.depth ?? 0,
           likeCount: 0,
@@ -598,14 +597,14 @@ ${context}`,
       content: fullContent.slice(0, 50), 
       isComplete: true 
     });
-    emitThreadMessage(sectionId, {
+    emitThreadMessage(threadId, {
       id: aiMessage.id,
       content: fullContent.slice(0, 2000),
       senderId: aiUser.id,
       senderName: aiUser.name ?? 'Sastram AI',
-      senderAvatar: aiUser.image ?? null,
+      senderImage: aiUser.image ?? null,
       createdAt: aiMessage.createdAt,
-      sectionId,
+      threadId,
       parentId: aiMessage.parentId ?? null,
       depth: aiMessage.depth ?? 0,
       likeCount: 0,
@@ -622,14 +621,14 @@ ${context}`,
       where: { id: aiMessage.id },
       data: { content: errorMessage },
     });
-    emitThreadMessage(sectionId, {
+    emitThreadMessage(threadId, {
       id: aiMessage.id,
       content: errorMessage,
       senderId: aiUser.id,
       senderName: aiUser.name ?? 'Sastram AI',
-      senderAvatar: aiUser.image ?? null,
+      senderImage: aiUser.image ?? null,
       createdAt: aiMessage.createdAt,
-      sectionId,
+      threadId,
       parentId: aiMessage.parentId ?? null,
       depth: aiMessage.depth ?? 0,
       likeCount: 0,
@@ -667,7 +666,7 @@ async function handleGenerateThreadSummary(threadId: string, messages: JobMessag
   logger.info(`Generating thread summary for thread: ${threadId}`);
   const summary = await aiService.generateThreadSummary(messages);
 
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { aiSummary: summary },
   });
@@ -682,7 +681,7 @@ async function handleGenerateThreadDNA(threadId: string, messages: JobMessageDat
   logger.info(`Generating thread DNA for thread: ${threadId}`);
   const threadDNA = await aiService.generateThreadDNA(messages);
 
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { threadDna: threadDNA },
   });
@@ -697,7 +696,7 @@ async function handleCalculateResolutionScore(threadId: string, messages: JobMes
   logger.info(`Calculating resolution score for thread: ${threadId}`);
   const score = await aiService.calculateResolutionScore(messages);
 
-  await prisma.section.update({
+  await prisma.thread.update({
     where: { id: threadId },
     data: { resolutionScore: score },
   });
@@ -713,7 +712,7 @@ async function handleDetectConflicts(threadId: string, messages: JobMessageData[
   const conflictResult = await aiService.detectConflicts(messages);
 
   if (conflictResult.hasConflict) {
-    await prisma.section.update({
+    await prisma.thread.update({
       where: { id: threadId },
       data: {
         isOutdated: true,

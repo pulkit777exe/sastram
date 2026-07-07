@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils/cn';
 
 interface TagChipProps {
   tag: {
-    id: string;
+    id?: string;
     name: string;
-    slug: string;
-    color: string;
+    slug?: string;
+    color?: string;
   };
   onRemove?: () => void;
   clickable?: boolean;
@@ -24,9 +24,9 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
         clickable && !onRemove && 'hover:opacity-80'
       )}
       style={{
-        backgroundColor: `${tag.color}20`,
-        color: tag.color,
-        border: `1px solid ${tag.color}40`,
+        backgroundColor: `${tag.color ?? '#3736fc'}20`,
+        color: tag.color ?? '#3736fc',
+        border: `1px solid ${tag.color ?? '#3736fc'}40`,
       }}
     >
       <span>#{tag.name}</span>
@@ -45,7 +45,7 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
   );
 
   if (clickable && !onRemove) {
-    return <Link href={`/dashboard/tags/${tag.slug}`}>{content}</Link>;
+    return <Link href={`/dashboard/tags/${tag.slug ?? tag.name}`}>{content}</Link>;
   }
 
   return content;

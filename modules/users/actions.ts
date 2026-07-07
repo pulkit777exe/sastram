@@ -184,7 +184,7 @@ export const updateUserPreferencesAction = withValidation(
     const existingPrefs = parseUserPreferences(user?.preferences);
     const newPrefs: UserPreferences = {
       ...existingPrefs,
-      ...preferences,
+      ...(preferences as Partial<UserPreferences>),
     };
 
     await prisma.user.update({

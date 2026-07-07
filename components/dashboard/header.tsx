@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Search, Command, Bell } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { usePathname } from 'next/navigation';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import dynamic from 'next/dynamic';

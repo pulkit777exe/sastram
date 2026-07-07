@@ -136,3 +136,5 @@ export const isMember = cache(async (threadId: string, userId: string) => {
   const member = await getMemberRole(threadId, userId);
   return member?.status === 'ACTIVE';
 });
+
+export const getSectionMembers = getThreadMembers;

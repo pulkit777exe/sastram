@@ -89,7 +89,7 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   it('returns second page with hasMore=true', async function () {
     const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
     const firstPage = await getThreadMessagesPaginated(testThreadId, null, 50);
-    const secondPage = await getThreadMessagesPaginated(testThreadId, firstPage.nextCursor, 50);
+    const secondPage = await getThreadMessagesPaginated(testThreadId, firstPage.nextCursor ?? undefined, 50);
     expect(secondPage.hasMore).to.be.true;
     expect(secondPage.messages).to.have.lengthOf(50);
     // Second page messages should be older than first page
@@ -101,8 +101,8 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   it('returns last page with hasMore=false', async function () {
     const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
     const firstPage = await getThreadMessagesPaginated(testThreadId, null, 50);
-    const secondPage = await getThreadMessagesPaginated(testThreadId, firstPage.nextCursor, 50);
-    const lastPage = await getThreadMessagesPaginated(testThreadId, secondPage.nextCursor, 50);
+    const secondPage = await getThreadMessagesPaginated(testThreadId, firstPage.nextCursor ?? undefined, 50);
+    const lastPage = await getThreadMessagesPaginated(testThreadId, secondPage.nextCursor ?? undefined, 50);
     expect(lastPage.hasMore).to.be.false;
     expect(lastPage.nextCursor).to.be.null;
     expect(lastPage.messages).to.have.lengthOf(20);

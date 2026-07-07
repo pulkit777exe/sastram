@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2, Ban, AlertTriangle, Users, MessageSquare } from 'lucide-react';
+import { Trash2, Ban, Users, MessageSquare } from 'lucide-react';
 import { deleteThread, deleteCommunity, banUser } from '@/modules/moderation/actions';
 import { toasts } from '@/lib/utils/toast';
 import type { ThreadSummary } from '@/modules/threads/types';

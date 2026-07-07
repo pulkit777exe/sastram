@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import type { Prisma, SectionRole } from '@prisma/client';
+import type { Prisma, ThreadRole } from '@prisma/client';
 import { dedupe } from '@/lib/dedupe';
 
 export type ThreadMessageReactionAggregate = {
@@ -10,7 +10,7 @@ export type ThreadMessageReactionAggregate = {
 export type ThreadMessage = {
   id: string;
   body: string;
-  sectionId: string;
+  threadId: string;
   senderId: string;
   parentId: string | null;
   depth: number;
@@ -63,7 +63,7 @@ type ThreadMember = {
     name: string | null;
     image: string | null;
   };
-  role: SectionRole;
+  role: ThreadRole;
 };
 
 type ThreadPoll = {
@@ -86,6 +86,8 @@ export type ThreadWithFullContext = {
   isOutdated: boolean;
   threadDna: Prisma.JsonValue | null;
   createdAt: Date;
+  updatedAt: Date;
+  lastVerifiedAt: Date | null;
   author: {
     id: string;
     name: string | null;
@@ -115,6 +117,8 @@ type ThreadRow = {
   isOutdated: boolean;
   threadDna: Prisma.JsonValue | null;
   createdAt: Date;
+  updatedAt: Date;
+  lastVerifiedAt: Date | null;
   author: {
     id: string;
     name: string | null;
@@ -129,6 +133,83 @@ type ThreadRow = {
   is_bookmarked: boolean | null;
   is_subscribed: boolean | null;
 };
+
+export type PaginatedMessagesResult = {
+  messages: ThreadMessage[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  totalCount: number;
+};
+
+export async function getThreadMessagesPaginated(
+  threadId: string,
+  cursor?: string | null,
+  limit: number = 50
+): Promise<PaginatedMessagesResult> {
+  const where: Record<string, unknown> = {
+    threadId,
+    deletedAt: null,
+  };
+
+  if (cursor) {
+    const cursorMessage = await prisma.message.findUnique({
+      where: { id: cursor },
+      select: { createdAt: true },
+    });
+    if (cursorMessage) {
+      (where as Record<string, unknown>).createdAt = { gt: cursorMessage.createdAt };
+    }
+  }
+
+  const [messages, totalCount] = await Promise.all([
+    prisma.message.findMany({
+      where,
+      include: {
+        sender: { select: { id: true, name: true, image: true } },
+        reactions: { select: { emoji: true } },
+        attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+    }),
+    prisma.message.count({ where: { threadId, deletedAt: null } }),
+  ]);
+
+  const hasMore = messages.length > limit;
+  const sliced = hasMore ? messages.slice(0, limit) : messages;
+  const nextCursor = hasMore && sliced.length > 0 ? sliced[sliced.length - 1].id : null;
+
+  return {
+    messages: sliced.map((m) => ({
+      id: m.id,
+      body: m.content,
+      threadId: m.threadId,
+      senderId: m.senderId,
+      parentId: m.parentId,
+      depth: m.depth,
+      createdAt: m.createdAt,
+      isEdited: m.isEdited,
+      isPinned: m.isPinned,
+      isAI: m.isAiResponse,
+      deletedAt: m.deletedAt,
+      likeCount: m.likeCount,
+      replyCount: m.replyCount,
+      author: m.sender ?? { id: '', name: null, image: null },
+      reactions: [],
+      _count: { replies: m.replyCount },
+      attachments: m.attachments.map((a) => ({
+        id: a.id,
+        url: a.url,
+        type: a.type,
+        name: a.name,
+        size: a.size !== null ? Number(a.size) : null,
+      })),
+    })),
+    hasMore,
+    nextCursor,
+    totalCount,
+  };
+}
 
 export async function getThreadWithFullContext(
   slug: string,
@@ -147,6 +228,8 @@ export async function getThreadWithFullContext(
         s."isOutdated" as "isOutdated",
         s."threadDna" as "threadDna",
         s."createdAt" as "createdAt",
+        s."updatedAt" as "updatedAt",
+        s."lastVerifiedAt" as "lastVerifiedAt",
         json_build_object(
           'id', u.id,
           'name', u.name,
@@ -166,7 +249,7 @@ export async function getThreadWithFullContext(
           SELECT 1 FROM "thread_subscriptions" ts
           WHERE ts."threadId" = s.id AND ts."userId" = ${userId} AND ts."isActive" = true
         ) as is_subscribed
-      FROM "sections" s
+      FROM "threads" s
       JOIN "users" u ON u.id = s."createdBy"
       LEFT JOIN LATERAL (
         SELECT json_agg(
@@ -183,9 +266,9 @@ export async function getThreadWithFullContext(
             'role', sm.role
           )
         ) as members
-        FROM "section_members" sm
+        FROM "thread_members" sm
         JOIN "users" mu ON mu.id = sm."userId"
-        WHERE sm."sectionId" = s.id AND sm.status = 'ACTIVE'
+        WHERE sm."threadId" = s.id AND sm.status = 'ACTIVE'
       ) members ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(mrow.message ORDER BY mrow.created_at) as messages
@@ -195,7 +278,7 @@ export async function getThreadWithFullContext(
             json_build_object(
               'id', m.id,
               'body', m.content,
-              'sectionId', m."sectionId",
+              'threadId', m."threadId",
               'senderId', m."senderId",
               'parentId', m."parentId",
               'depth', m.depth,
@@ -231,7 +314,7 @@ export async function getThreadWithFullContext(
             FROM "attachments" a
             WHERE a."messageId" = m.id
           ) a ON true
-          WHERE m."sectionId" = s.id
+          WHERE m."threadId" = s.id
         ) mrow
       ) msgs ON true
       LEFT JOIN LATERAL (
@@ -248,8 +331,8 @@ export async function getThreadWithFullContext(
       ) poll ON true
       LEFT JOIN LATERAL (
         SELECT
-          (SELECT COUNT(*)::int FROM "messages" m2 WHERE m2."sectionId" = s.id AND m2."deletedAt" IS NULL) as message_count,
-          (SELECT COUNT(*)::int FROM "section_members" sm2 WHERE sm2."sectionId" = s.id AND sm2.status = 'ACTIVE') as member_count
+          (SELECT COUNT(*)::int FROM "messages" m2 WHERE m2."threadId" = s.id AND m2."deletedAt" IS NULL) as message_count,
+          (SELECT COUNT(*)::int FROM "thread_members" sm2 WHERE sm2."threadId" = s.id AND sm2.status = 'ACTIVE') as member_count
       ) counts ON true
       WHERE s.slug = ${slug}
       LIMIT 1
@@ -271,6 +354,8 @@ export async function getThreadWithFullContext(
       isOutdated: row.isOutdated,
       threadDna: row.threadDna ?? null,
       createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      lastVerifiedAt: row.lastVerifiedAt ?? null,
       author: row.author,
       messages: (row.messages ?? []) as ThreadMessage[],
       tags: (row.tags ?? []) as ThreadTag[],

@@ -3,7 +3,6 @@
 import { useCallback, useState } from 'react';
 import { Loader2, PlusCircle, FileIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { toasts } from '@/lib/utils/toast';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 
 interface ReplyBoxProps {

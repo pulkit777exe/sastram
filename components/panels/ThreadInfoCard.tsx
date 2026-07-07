@@ -91,8 +91,8 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
 
       {thread.tags.length > 0 && (
         <div className="mt-[12px] flex flex-wrap gap-[6px]">
-          {thread.tags.map((tag) => (
-            <TagChip key={tag.tag.id} tag={tag.tag} clickable={false} />
+          {thread.tags.map((tag, index) => (
+            <TagChip key={tag.tag.name ?? index} tag={tag.tag} clickable={false} />
           ))}
         </div>
       )}

@@ -43,59 +43,39 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
   const canManagePoll =
     thread.createdBy === session.user.id || ['ADMIN', 'MODERATOR'].includes(session.user.role);
 
-  // ── MESSAGE MAPPING ──────────────────────────────────────────────────
-  // ThreadMessage shape from getThreadWithFullContext:
-  //   { id, content (or body), senderId, parentId, depth, isEdited,
-  //     isPinned, likeCount, replyCount, createdAt, deletedAt,
-  //     attachments, author? / sender? }
-  //
-  // TypeScript errors showed:
-  //   - sender doesn't exist → use senderId + look up name from thread members
-  //     OR the DTO uses `author` — check getThreadWithFullContext return type
-  //   - isAiResponse doesn't exist on ThreadMessage → access safely
-
-  const allMessages: Message[] = thread.messages.map((m) => {
-    // The DTO may expose author as `author` not `sender` — access both
-    const raw = m as any;
-    const senderName: string = raw.sender?.name ?? raw.author?.name ?? 'Anonymous';
-    const senderImage: string | null = raw.sender?.image ?? raw.author?.image ?? null;
-    const messageContent: string = raw.content ?? raw.body ?? '';
-    const isAiResponse: boolean = raw.isAiResponse ?? raw.isAI ?? false;
-
-    return {
-      id: m.id,
-      content: messageContent,
-      createdAt: m.createdAt,
-      senderId: m.senderId,
-      parentId: m.parentId ?? null,
-      sectionId: thread.id,
-      depth: m.depth ?? 0,
-      isEdited: m.isEdited ?? false,
-      isPinned: m.isPinned ?? false,
-      likeCount: m.likeCount ?? 0,
-      replyCount: m.replyCount ?? 0,
-      isAiResponse,
-      updatedAt: m.createdAt,
-      deletedAt: m.deletedAt ?? null,
-      sender: {
-        id: m.senderId,
-        name: senderName,
-        image: senderImage,
-      },
-      attachments: (m.attachments ?? []).map((att) => ({
-        id: att.id,
-        name: att.name ?? null,
-        url: att.url,
-        type: att.type,
-        size: att.size ?? null,
-      })),
-      section: {
-        id: thread.id,
-        name: thread.name,
-        slug: thread.slug,
-      },
-    };
-  });
+  const allMessages: Message[] = thread.messages.map((m) => ({
+    id: m.id,
+    content: m.body,
+    createdAt: m.createdAt,
+    senderId: m.senderId,
+    parentId: m.parentId ?? null,
+    threadId: thread.id,
+    depth: m.depth ?? 0,
+    isEdited: m.isEdited ?? false,
+    isPinned: m.isPinned ?? false,
+    likeCount: m.likeCount ?? 0,
+    replyCount: m.replyCount ?? 0,
+    isAiResponse: m.isAI,
+    updatedAt: m.createdAt,
+    deletedAt: m.deletedAt ?? null,
+    sender: {
+      id: m.author.id,
+      name: m.author.name ?? 'Anonymous',
+      image: m.author.image ?? null,
+    },
+    attachments: (m.attachments ?? []).map((att) => ({
+      id: att.id,
+      name: att.name ?? null,
+      url: att.url,
+      type: att.type,
+      size: att.size ?? null,
+    })),
+    thread: {
+      id: thread.id,
+      name: thread.name,
+      slug: thread.slug,
+    },
+  }));
 
   // ── UNREAD CALCULATION ────────────────────────────────────────────────
   // ReadReceipt actual shape (from TS error):
@@ -152,6 +132,9 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
           threadId={thread.id}
           initialUnreadCount={initialUnreadCount}
           initialFirstUnreadMessageId={firstUnreadMessageId}
+          hasMoreMessages={false}
+          nextCursor={null}
+          totalMessageCount={thread._count.messages}
           poll={
             thread.poll
               ? {
@@ -170,6 +153,10 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
             image: session.user.image ?? null,
             role: session.user.role,
           }}
+          title={thread.name}
+          slug={thread.slug}
+          memberCount={thread._count.members}
+          initialFrequency={subscription?.frequency ?? null}
         />
       </main>
 

@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface DayDividerProps {
   date: Date | string;
 }

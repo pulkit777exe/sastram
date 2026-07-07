@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { BarChart2, X, Plus } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils/cn';
 import { createPollAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
 

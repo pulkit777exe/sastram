@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { clientLogger } from '@/lib/utils/client-logger';
 import {
   CommandDialog,
   CommandEmpty,
@@ -42,11 +43,11 @@ export function SearchDialog({
         } else {
           setData([]);
           if (res?.error) {
-            console.error(res.error);
+            clientLogger.error('SearchDialog', 'User search failed', res.error);
           }
         }
       } catch (error) {
-        console.error(error);
+        clientLogger.error('SearchDialog', 'User search error', error);
         setData([]);
       } finally {
         setLoading(false);

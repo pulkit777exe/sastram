@@ -30,7 +30,7 @@ export const editMessage = createServerAction(
     try {
       const message = await prisma.message.findUnique({
         where: { id: messageId },
-        select: { senderId: true, content: true, sectionId: true },
+        select: { senderId: true, content: true, threadId: true },
       });
 
       if (!message) {
@@ -87,8 +87,8 @@ export const pinMessage = createServerAction(
         where: { id: messageId },
         select: {
           isPinned: true,
-          sectionId: true,
-          section: {
+          threadId: true,
+          thread: {
             select: { slug: true },
           },
         },
@@ -98,7 +98,7 @@ export const pinMessage = createServerAction(
         return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
       }
 
-      const memberRole = await getMemberRole(message.sectionId, session.user.id);
+      const memberRole = await getMemberRole(message.threadId, session.user.id);
       if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
         return {
           data: null,
@@ -113,7 +113,7 @@ export const pinMessage = createServerAction(
       const previouslyPinned = shouldPin
         ? await prisma.message.findFirst({
             where: {
-              sectionId: message.sectionId,
+              threadId: message.threadId,
               isPinned: true,
               id: { not: messageId },
             },
@@ -124,7 +124,7 @@ export const pinMessage = createServerAction(
       await prisma.$transaction(async (tx) => {
         if (shouldPin) {
           await tx.message.updateMany({
-            where: { sectionId: message.sectionId, isPinned: true },
+            where: { threadId: message.threadId, isPinned: true },
             data: { isPinned: false },
           });
         }
@@ -142,16 +142,16 @@ export const pinMessage = createServerAction(
         userId: session.user.id,
       });
 
-      infraMessageSideEffects.emitPinUpdate(message.sectionId, { messageId, isPinned: shouldPin });
+      infraMessageSideEffects.emitPinUpdate(message.threadId, { messageId, isPinned: shouldPin });
 
       if (previouslyPinned?.id) {
-        infraMessageSideEffects.emitPinUpdate(message.sectionId, {
+        infraMessageSideEffects.emitPinUpdate(message.threadId, {
           messageId: previouslyPinned.id,
           isPinned: false,
         });
       }
 
-      revalidatePath(`/dashboard/threads/thread/${message.section?.slug}`);
+      revalidatePath(`/dashboard/threads/thread/${message.thread?.slug}`);
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[pinMessage]', error);

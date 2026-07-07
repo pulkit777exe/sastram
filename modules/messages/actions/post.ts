@@ -17,7 +17,7 @@ import { queueAiInlineIfRequested } from './ai-inline';
 
 export async function postMessage(formData: FormData) {
   const content = formData.get('content') as string;
-  const sectionId = formData.get('sectionId') as string;
+  const sectionId = formData.get('threadId') as string;
   const parentId = formData.get('parentId') as string | null;
   const mentionsRaw = formData.get('mentions') as string | null;
 
@@ -38,7 +38,7 @@ export async function postMessage(formData: FormData) {
 
   const validation = createMessageWithAttachmentsSchema.safeParse({
     content,
-    sectionId,
+    threadId: sectionId,
     parentId: parentId || undefined,
     mentions,
   });
@@ -60,8 +60,8 @@ export async function postMessage(formData: FormData) {
     };
   }
 
-  const isMember = await prisma.sectionMember.findUnique({
-    where: { sectionId_userId: { sectionId, userId: session.user.id } },
+  const isMember = await prisma.threadMember.findUnique({
+    where: { threadId_userId: { threadId: sectionId, userId: session.user.id } },
   });
   if (!isMember) {
     return {
@@ -96,7 +96,7 @@ export async function postMessage(formData: FormData) {
 
   try {
     const moderationResult = await moderateIncomingMessage({
-      sectionId,
+      threadId: sectionId,
       authorId: session.user.id,
       content: safeContent,
       parentId,
@@ -114,7 +114,7 @@ export async function postMessage(formData: FormData) {
     const message = await prisma.message.findUnique({
       where: { id: moderationResult.messageId! },
       include: {
-        section: {
+        thread: {
           select: {
             id: true,
             name: true,
@@ -143,7 +143,7 @@ export async function postMessage(formData: FormData) {
 
     await createMentionsForMessage({
       messageId: message.id,
-      sectionId,
+      threadId: sectionId,
       mentions,
       mentionedBy: {
         id: session.user.id,
@@ -152,7 +152,7 @@ export async function postMessage(formData: FormData) {
       },
       content: message.content,
       parentId: message.parentId ?? null,
-      sectionSlug: message.section?.slug ?? null,
+      threadSlug: message.thread?.slug ?? null,
       sideEffects: infraMessageSideEffects,
     });
 
@@ -161,9 +161,9 @@ export async function postMessage(formData: FormData) {
       content: message.content,
       senderId: session.user.id,
       senderName: message.sender?.name || session.user.email,
-      senderAvatar: message.sender?.image ?? session.user.image,
+      senderImage: message.sender?.image ?? session.user.image,
       createdAt: message.createdAt,
-      sectionId,
+      threadId: sectionId,
       parentId: message.parentId ?? null,
       depth: message.depth ?? 0,
       likeCount: 0,
@@ -184,13 +184,13 @@ export async function postMessage(formData: FormData) {
     const { aiInlineQueued, aiInlineLimited } = await queueAiInlineIfRequested({
       content: safeContent,
       userId: session.user.id,
-      sectionId,
+      threadId: sectionId,
       messageId: message.id,
       sideEffects: infraMessageSideEffects,
     });
 
-    if (message.section?.slug) {
-      revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
+    if (message.thread?.slug) {
+      revalidatePath(`/dashboard/threads/thread/${message.thread.slug}`);
     }
     revalidatePath('/dashboard');
 
@@ -200,8 +200,8 @@ export async function postMessage(formData: FormData) {
       entityType: 'Message',
       entityId: message.id,
       metadata: {
-        sectionId,
-        threadName: message.section?.slug,
+        threadId: sectionId,
+        threadName: message.thread?.slug,
       },
     });
 

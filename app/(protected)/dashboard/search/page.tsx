@@ -12,7 +12,7 @@ import {
   searchUsersAction,
 } from '@/modules/search/actions';
 import Link from 'next/link';
-import type { SearchThreadResult, SearchMessageResult, SearchUserResult } from '@/modules/search/repository';
+import type { SearchThreadResult, SearchMessageResult, SearchUserResult } from '@/modules/search/types';
 
 type SearchType = 'all' | 'threads' | 'messages' | 'users';
 

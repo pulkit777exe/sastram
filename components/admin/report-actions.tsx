@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Eye, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { updateReportStatusAction } from '@/modules/reports/actions';
 import { toasts } from '@/lib/utils/toast';
 import { ReportStatus } from '@/lib/config/constants';

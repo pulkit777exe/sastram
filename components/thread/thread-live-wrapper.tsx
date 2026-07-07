@@ -5,7 +5,6 @@ import { CommentTree } from '@/components/thread/comment-tree';
 import { PostMessageForm } from '@/components/chat/post-message-form';
 import { useThreadWebSocket, type TypingUser } from '@/hooks/useThreadWebSocket';
 import type { Message } from '@/lib/types/index';
-import TimeAgo from '@/components/ui/TimeAgo';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
 import { loadThreadMessages, backfillThreadMessages } from '@/modules/threads/actions';

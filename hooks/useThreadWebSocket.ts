@@ -153,7 +153,6 @@ export function useThreadWebSocket({
               likeCount: (payload.likeCount as number) ?? 0,
               replyCount: 0,
               isAiResponse,
-              truncated,
               deletedAt: null,
               sender: sender
                 ? {
@@ -166,6 +165,7 @@ export function useThreadWebSocket({
                     name: isAiResponse ? 'Sastram AI' : 'User',
                     image: null,
                   },
+              thread: { id: payload.threadId as string, name: '', slug: '' },
               attachments: Array.isArray(payload.attachments)
                 ? (
                     payload.attachments as Array<{
@@ -183,7 +183,6 @@ export function useThreadWebSocket({
                     size: a.size ?? null,
                   }))
                 : [],
-              thread: { id: payload.threadId as string, name: '', slug: '' },
             };
 
             // Deliver message or streaming content update

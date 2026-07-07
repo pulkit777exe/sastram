@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { clientLogger } from '@/lib/utils/client-logger';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 
@@ -38,7 +39,7 @@ export function AppealMessageModal({ messageId, isOpen, onClose }: AppealMessage
       setReason('');
       onClose();
     } catch (error) {
-      console.error(error);
+      clientLogger.error('AppealModal', 'Failed to submit appeal', error);
       toasts.error('Failed to submit appeal');
     } finally {
       setLoading(false);

@@ -22,7 +22,7 @@ export function buildCommunityDTO(
     createdAt: Date;
   },
   threadCount: number,
-  memberCount: number | null = null
+  memberCount: number | undefined = undefined
 ): CommunitySummary {
   return {
     id: community.id,

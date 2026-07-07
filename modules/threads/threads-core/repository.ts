@@ -189,6 +189,7 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
     row._count.messages,
     activeUsers,
     row._count.members,
+    row.aiSummary,
     row._count.subscriptions
   );
 });

@@ -20,7 +20,7 @@ import {
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import type { Message } from '@/lib/types/index';
 import { InlinePollButton } from '@/components/thread/inline-poll-button';
-import { MentionSuggest, type MentionCandidate } from '@/components/chat/mention-suggest';
+import { MentionSuggest } from '@/components/chat/mention-suggest';
 import { cn } from '@/lib/utils/cn';
 
 const COMMON_EMOJIS = [

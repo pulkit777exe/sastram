@@ -1,17 +1,19 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 
-export async function searchThreads(query: string, limit: number = 20, offset: number = 0) {
+export async function searchThreads(query: string, limit: number = 20, offset: number = 0, threadIds?: string[]) {
   try {
+    const where = {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' as const } },
+        { description: { contains: query, mode: 'insensitive' as const } },
+        { aiSummary: { contains: query, mode: 'insensitive' as const } },
+      ],
+      ...(threadIds && threadIds.length > 0 ? { id: { in: threadIds } } : {}),
+    };
     const [threads, total] = await Promise.all([
-      prisma.section.findMany({
-        where: {
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-            { aiSummary: { contains: query, mode: 'insensitive' } },
-          ],
-        },
+      prisma.thread.findMany({
+        where,
         include: {
           creator: {
             select: {
@@ -32,15 +34,7 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
         take: limit,
         skip: offset,
       }),
-      prisma.section.count({
-        where: {
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-            { aiSummary: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-      }),
+      prisma.thread.count({ where }),
     ]);
 
     const safeThreads = threads ?? [];
@@ -64,7 +58,8 @@ export async function searchMessages(
   query: string,
   threadId?: string,
   limit: number = 20,
-  offset: number = 0
+  offset: number = 0,
+  threadIds?: string[]
 ) {
   try {
     const where: any = {
@@ -73,7 +68,7 @@ export async function searchMessages(
     };
 
     if (threadId) {
-      where.sectionId = threadId;
+      where.threadId = threadId;
     }
 
     const [messages, total] = await Promise.all([
@@ -88,7 +83,7 @@ export async function searchMessages(
               image: true,
             },
           },
-          section: {
+          thread: {
             select: {
               id: true,
               name: true,

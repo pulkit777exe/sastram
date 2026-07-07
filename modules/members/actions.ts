@@ -4,59 +4,59 @@ import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
-import { SectionRole } from '@prisma/client';
+import { ThreadRole } from '@prisma/client';
 import {
   addMember,
   removeMember,
   updateMemberRole,
-  getSectionMembers,
+  getThreadMembers,
   getMemberRole,
 } from '@/modules/members/repository';
 import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
 
 const joinSectionSchema = z.object({
-  sectionId: z.string().cuid(),
+  threadId: z.string().cuid(),
 });
 
 const leaveSectionSchema = z.object({
-  sectionId: z.string().cuid(),
+  threadId: z.string().cuid(),
 });
 
 const inviteMemberSchema = z.object({
-  sectionId: z.string().cuid(),
+  threadId: z.string().cuid(),
   email: z.string().email(),
-  role: z.nativeEnum(SectionRole).optional().default('MEMBER'),
+  role: z.nativeEnum(ThreadRole).optional().default('MEMBER'),
 });
 
 const updateMemberRoleSchema = z.object({
-  sectionId: z.string().cuid(),
+  threadId: z.string().cuid(),
   userId: z.string().cuid(),
-  role: z.nativeEnum(SectionRole),
+  role: z.nativeEnum(ThreadRole),
 });
 
 const removeMemberSchema = z.object({
-  sectionId: z.string().cuid(),
+  threadId: z.string().cuid(),
   userId: z.string().cuid(),
 });
 
 const getSectionMembersSchema = z.object({
-  sectionId: z.string().cuid(),
+  threadId: z.string().cuid(),
 });
 
 export const joinSection = createServerAction(
   { schema: joinSectionSchema, actionName: 'joinSection' },
-  async ({ sectionId }) => {
+  async ({ threadId }) => {
     const session = await requireSession();
-    const existing = await getMemberRole(sectionId, session.user.id);
+    const existing = await getMemberRole(threadId, session.user.id);
     if (existing && existing.status === 'ACTIVE') {
       return { data: null, error: 'Already a member' };
     }
 
-    await addMember(sectionId, session.user.id, 'MEMBER');
+    await addMember(threadId, session.user.id, 'MEMBER');
 
-    await prisma.section.update({
-      where: { id: sectionId },
+    await prisma.thread.update({
+      where: { id: threadId },
       data: { memberCount: { increment: 1 } },
     });
 
@@ -67,12 +67,12 @@ export const joinSection = createServerAction(
 
 export const leaveSection = createServerAction(
   { schema: leaveSectionSchema, actionName: 'leaveSection' },
-  async ({ sectionId }) => {
+  async ({ threadId }) => {
     const session = await requireSession();
-    await removeMember(sectionId, session.user.id);
+    await removeMember(threadId, session.user.id);
 
-    await prisma.section.update({
-      where: { id: sectionId },
+    await prisma.thread.update({
+      where: { id: threadId },
       data: { memberCount: { decrement: 1 } },
     });
 
@@ -83,9 +83,9 @@ export const leaveSection = createServerAction(
 
 export const inviteMember = createServerAction(
   { schema: inviteMemberSchema, actionName: 'inviteMember' },
-  async ({ sectionId, email, role }) => {
+  async ({ threadId, email, role }) => {
     const session = await requireSession();
-    const memberRole = await getMemberRole(sectionId, session.user.id);
+    const memberRole = await getMemberRole(threadId, session.user.id);
     if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
       return { data: null, error: 'Insufficient permissions' };
     }
@@ -98,7 +98,7 @@ export const inviteMember = createServerAction(
       return { data: null, error: 'User not found' };
     }
 
-    await addMember(sectionId, user.id, role);
+    await addMember(threadId, user.id, role);
 
     await createNotification({
       userId: user.id,
@@ -114,14 +114,14 @@ export const inviteMember = createServerAction(
 
 export const updateMemberRoleAction = createServerAction(
   { schema: updateMemberRoleSchema, actionName: 'updateMemberRoleAction' },
-  async ({ sectionId, userId, role }) => {
+  async ({ threadId, userId, role }) => {
     const session = await requireSession();
-    const memberRole = await getMemberRole(sectionId, session.user.id);
+    const memberRole = await getMemberRole(threadId, session.user.id);
     if (!memberRole || memberRole.role !== 'OWNER') {
       return { data: null, error: 'Only section owners can change roles' };
     }
 
-    await updateMemberRole(sectionId, userId, role);
+    await updateMemberRole(threadId, userId, role);
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
   }
@@ -129,17 +129,17 @@ export const updateMemberRoleAction = createServerAction(
 
 export const removeMemberAction = createServerAction(
   { schema: removeMemberSchema, actionName: 'removeMemberAction' },
-  async ({ sectionId, userId }) => {
+  async ({ threadId, userId }) => {
     const session = await requireSession();
-    const memberRole = await getMemberRole(sectionId, session.user.id);
+    const memberRole = await getMemberRole(threadId, session.user.id);
     if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
       return { data: null, error: 'Insufficient permissions' };
     }
 
-    await removeMember(sectionId, userId);
+    await removeMember(threadId, userId);
 
-    await prisma.section.update({
-      where: { id: sectionId },
+    await prisma.thread.update({
+      where: { id: threadId },
       data: { memberCount: { decrement: 1 } },
     });
 
@@ -150,8 +150,8 @@ export const removeMemberAction = createServerAction(
 
 export const getSectionMembersAction = createServerAction(
   { schema: getSectionMembersSchema, actionName: 'getSectionMembersAction' },
-  async ({ sectionId }) => {
-    const members = await getSectionMembers(sectionId);
+  async ({ threadId }) => {
+    const members = await getThreadMembers(threadId);
     return { data: members, error: null };
   }
 );

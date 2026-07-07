@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Search, BookOpen, Code2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PastSearch } from '@/modules/ai-search/types';
 import { TimeAgo } from '@/components/ui/TimeAgo';

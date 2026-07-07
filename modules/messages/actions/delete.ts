@@ -18,7 +18,7 @@ export const deleteMessage = createServerAction(
     try {
       const message = await prisma.message.findUnique({
         where: { id: messageId },
-        include: { section: true },
+        include: { thread: true },
       });
 
       if (!message) {
@@ -26,8 +26,8 @@ export const deleteMessage = createServerAction(
       }
 
       let canDelete = message.senderId === session.user.id;
-      if (!canDelete && message.sectionId) {
-        const memberRole = await getMemberRole(message.sectionId, session.user.id);
+      if (!canDelete && message.threadId) {
+        const memberRole = await getMemberRole(message.threadId, session.user.id);
         if (memberRole && ['OWNER', 'MODERATOR'].includes(memberRole.role)) {
           canDelete = true;
         }
@@ -54,12 +54,12 @@ export const deleteMessage = createServerAction(
         userId: session.user.id,
       });
 
-      if (message.section?.slug) {
-        revalidatePath(`/dashboard/threads/thread/${message.section.slug}`);
+      if (message.thread?.slug) {
+        revalidatePath(`/dashboard/threads/thread/${message.thread.slug}`);
       }
 
-      if (message.sectionId) {
-        infraMessageSideEffects.emitMessageDeleted(message.sectionId, messageId, session.user.id);
+      if (message.threadId) {
+        infraMessageSideEffects.emitMessageDeleted(message.threadId, messageId, session.user.id);
       }
 
       return { data: null, error: null, errorCode: null, ok: true };

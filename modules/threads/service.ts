@@ -57,7 +57,7 @@ export function buildThreadDetailDTO(
         id: message.id,
         content: message.content,
         senderId: message.senderId,
-        sectionId: message.sectionId,
+        threadId: message.threadId,
         parentId: message.parentId ?? null,
         createdAt: message.createdAt,
         updatedAt: message.updatedAt,

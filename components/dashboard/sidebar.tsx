@@ -23,6 +23,7 @@ import {
   Tags,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { clientLogger } from '@/lib/utils/client-logger';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import Link from 'next/link';
@@ -114,7 +115,7 @@ export function Sidebar({
       await signOut();
       router.push('/login?reason=logged_out');
     } catch (error) {
-      console.error('Logout failed:', error);
+      clientLogger.error('Sidebar', 'Logout failed', error);
     }
   };
 

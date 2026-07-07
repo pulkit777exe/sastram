@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from '
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp, Reply, Pin, Edit2, Trash2 } from 'lucide-react';
+import { ThumbsUp } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
 import { toggleReaction } from '@/modules/reactions/actions';

@@ -138,8 +138,9 @@ function makeNode(overrides: Partial<MessageNode> & { id: string }): MessageNode
     replyCount: 0,
     isAiResponse: false,
     deletedAt: null,
-    sender: { id: 'u1', name: 'Test', image: null, status: 'ACTIVE' as const },
+    sender: { id: 'u1', name: 'Test', image: null },
     threadId: 't1',
+    thread: { id: 't1', name: 'Test Thread', slug: 'test-thread' },
     attachments: [],
     children: [],
     isCollapsed: false,
@@ -282,6 +283,7 @@ describe('ThreadLiveWrapper', () => {
       content: 'This is pinned',
       senderId: 'user-1',
       threadId: 'section-1',
+      parentId: null,
       createdAt: new Date('2024-01-01'),
       updatedAt: new Date('2024-01-01'),
       isEdited: false,
@@ -290,6 +292,10 @@ describe('ThreadLiveWrapper', () => {
       likeCount: 0,
       replyCount: 0,
       isAiResponse: false,
+      deletedAt: null,
+      sender: { id: 'user-1', name: 'User', image: null },
+      thread: { id: 'section-1', name: 'Test', slug: 'test' },
+      attachments: [],
     } as Message;
     render(
       <MockNextJsProvider>

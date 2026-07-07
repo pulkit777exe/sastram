@@ -44,16 +44,16 @@ const deleteThreadSchema = z.object({
 
 export const deleteMessageAction = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessageAction' },
-  async ({ messageId, sectionSlug, reason }) => {
+  async ({ messageId, threadSlug, reason }) => {
     const session = await requireModerationSession();
 
     await applyModerationRateLimit(session.user.id);
 
     const message = await validateEntityForDeletion('message', messageId) as {
       id: string;
-      sectionId: string;
+      threadId: string;
       senderId: string;
-      section: { name: string; slug: string };
+      thread: { name: string; slug: string };
     };
 
     await prisma.$transaction(async (tx) => {
@@ -62,8 +62,8 @@ export const deleteMessageAction = createServerAction(
         data: { deletedAt: new Date() },
       });
 
-      await tx.section.update({
-        where: { id: message.sectionId },
+      await tx.thread.update({
+        where: { id: message.threadId },
         data: { messageCount: { decrement: 1 } },
       });
 
@@ -75,15 +75,15 @@ export const deleteMessageAction = createServerAction(
           message: reason
             ? `Your message was deleted by a moderator. Reason: ${reason}`
             : 'Your message was deleted by a moderator.',
-          data: { messageId, sectionSlug, deletedBy: session.user.id },
+          data: { messageId, threadSlug, deletedBy: session.user.id },
         },
       });
     });
 
     await executeMessageDeletionEffects({
       messageId,
-      sectionId: message.sectionId,
-      sectionSlug,
+      threadId: message.threadId,
+      threadSlug,
       moderatorId: session.user.id,
       reason,
       originalAuthor: message.senderId,
@@ -102,7 +102,7 @@ export const bulkDeleteMessages = createServerAction(
     const result = await prisma.$transaction(async (tx) => {
       const messages = await tx.message.findMany({
         where: { id: { in: messageIds } },
-        select: { id: true, sectionId: true, senderId: true },
+        select: { id: true, threadId: true, senderId: true },
       });
 
       if (messages.length === 0) {
@@ -115,13 +115,13 @@ export const bulkDeleteMessages = createServerAction(
       });
 
       const sectionCounts = messages.reduce((acc, msg) => {
-        acc[msg.sectionId] = (acc[msg.sectionId] || 0) + 1;
+        acc[msg.threadId] = (acc[msg.threadId] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      for (const [sectionId, count] of Object.entries(sectionCounts)) {
-        await tx.section.update({
-          where: { id: sectionId },
+      for (const [threadId, count] of Object.entries(sectionCounts)) {
+        await tx.thread.update({
+          where: { id: threadId },
           data: { messageCount: { decrement: count } },
         });
       }
@@ -191,7 +191,7 @@ export const banUser = createServerAction(
     }
 
     const thread = threadId
-      ? await prisma.section.findUnique({
+      ? await prisma.thread.findUnique({
           where: { id: threadId },
           select: { id: true, name: true },
         })
@@ -391,7 +391,7 @@ export const deleteCommunity = createServerAction(
       slug: string;
     };
 
-    const sectionCount = await prisma.section.count({
+    const sectionCount = await prisma.thread.count({
       where: { communityId },
     });
 
@@ -429,13 +429,13 @@ export const deleteThread = createServerAction(
       memberCount: number;
     };
 
-    const members = await prisma.sectionMember.findMany({
-      where: { sectionId: threadId, status: 'ACTIVE' },
+    const members = await prisma.threadMember.findMany({
+      where: { threadId: threadId, status: 'ACTIVE' },
       select: { userId: true },
     });
 
     await prisma.$transaction(async (tx) => {
-      await tx.section.delete({ where: { id: threadId } });
+      await tx.thread.delete({ where: { id: threadId } });
 
       if (members.length > 0) {
         await tx.notification.createMany({
@@ -482,7 +482,7 @@ export const getMessageDetails = createServerAction(
       include: {
         sender: { select: { id: true, name: true, email: true, image: true, role: true, status: true, createdAt: true } },
         attachments: true,
-        section: { select: { id: true, name: true, slug: true } },
+        thread: { select: { id: true, name: true, slug: true } },
         parent: { select: { id: true, content: true, sender: { select: { name: true } } } },
         reactions: { include: { user: { select: { name: true, image: true } } } },
         reports: {
@@ -531,7 +531,7 @@ export const getModerationQueue = createServerAction(
         where: whereClause,
         include: {
           message: {
-            select: { id: true, content: true, createdAt: true, sender: { select: { id: true, name: true, email: true, image: true } }, section: { select: { name: true, slug: true } } },
+            select: { id: true, content: true, createdAt: true, sender: { select: { id: true, name: true, email: true, image: true } }, thread: { select: { name: true, slug: true } } },
           },
           reporter: { select: { id: true, name: true, email: true } },
         },

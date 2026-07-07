@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function UnreadDivider() {
   return (
     <div className="flex items-center gap-2.5 my-3" role="separator" aria-label="New messages indicator">

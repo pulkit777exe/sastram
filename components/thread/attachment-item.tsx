@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useCallback } from 'react';
 import { FileIcon, Download } from 'lucide-react';
 import Image from 'next/image';
 import type { Attachment } from '@/lib/types/index';

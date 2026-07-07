@@ -144,10 +144,10 @@ function ReportCard({ report }: { report: Report }) {
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Thread:</span>
                 <Link
-                  href={`/dashboard/threads/thread/${report.message.section.slug}`}
+                  href={`/dashboard/threads/thread/${report.message.thread.slug}`}
                   className="text-indigo-500 hover:text-indigo-600 underline"
                 >
-                  {report.message.section.name}
+                  {report.message.thread.name}
                 </Link>
               </div>
             </div>
@@ -159,7 +159,7 @@ function ReportCard({ report }: { report: Report }) {
           <p className="text-sm text-foreground">{report.message.content}</p>
         </div>
 
-        {report.status === 'PENDING' && <ReportActions reportId={report.id} />}
+        {report.status === 'PENDING' && <ReportActions reportId={report.id} currentStatus={report.status} />}
 
         {report.resolvedBy && (
           <div className="mt-4 pt-4 border-t border-border">

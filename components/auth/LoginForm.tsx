@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { clientLogger } from '@/lib/utils/client-logger';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -162,7 +163,7 @@ function UserAuthForm({
         router.push(redirectTarget);
       }
     } catch (error) {
-      console.error(`${mode === 'signup' ? 'Signup' : 'Login'} failed:`, error);
+      clientLogger.error('LoginForm', `${mode === 'signup' ? 'Signup' : 'Login'} failed`, error);
       setError(
         (error instanceof Error ? error.message : String(error)) ||
           `${mode === 'signup' ? 'Signup' : 'Login'} failed. Please try again.`
@@ -186,7 +187,7 @@ function UserAuthForm({
         return;
       }
     } catch (error) {
-      console.error('Social login failed:', error);
+      clientLogger.error('LoginForm', 'Social login failed', error);
       setError(
         (error instanceof Error ? error.message : String(error)) ||
           'Social login failed. Please try again.'
@@ -218,7 +219,7 @@ function UserAuthForm({
       setCountdown(60);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
-      console.error('Send OTP error:', err);
+      clientLogger.error('LoginForm', 'Send OTP error', err);
       setError('Failed to send verification code. Please try again.');
     } finally {
       setLoadingState(null);
@@ -256,7 +257,7 @@ function UserAuthForm({
 
       router.push(redirectTarget);
     } catch (err) {
-      console.error('Verify OTP error:', err);
+      clientLogger.error('LoginForm', 'Verify OTP error', err);
       toasts.serverError();
       setError('Verification failed. Please try again.');
       setLoadingState(null);

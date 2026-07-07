@@ -3,10 +3,8 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { FollowButton } from './follow-button';
 import { UserStats } from './user-stats';
-import { cn } from '@/lib/utils/cn';
 
 interface ProfileHeaderProps {
   user: {

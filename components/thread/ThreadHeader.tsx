@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import type { ThreadWithFullContext } from '@/modules/threads/queries';
 import TimeAgo from './TimeAgo';
 import { BookmarkButton } from './bookmark-button';

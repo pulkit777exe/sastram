@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMessages, sendMessage } from '@/modules/chat/actions';
-import type { AttachmentInput } from '@/lib/schemas/database';
+import type { AttachmentInput } from '@/modules/messages/schemas';
 import { toasts } from '@/lib/utils/toast';
 import type { ActionResult } from '@/lib/utils/server-action';
 

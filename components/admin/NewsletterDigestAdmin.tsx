@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { clientLogger } from '@/lib/utils/client-logger';
 import { Badge } from '@/components/ui/badge';
 import {
   Mail,
@@ -49,7 +50,7 @@ export function NewsletterDigestAdmin({ digests, totalSubscribers }: NewsletterD
       await fetch('/api/newsletter/generate', { method: 'POST' });
       toasts.success('Newsletter digests generated and sent successfully!');
     } catch (error) {
-      console.error('Failed to generate digests:', error);
+      clientLogger.error('NewsletterDigest', 'Failed to generate digests', error);
       toasts.error('Failed to generate newsletter digests');
     } finally {
       setIsGenerating(false);
