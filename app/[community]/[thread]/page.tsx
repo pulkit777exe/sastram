@@ -1,12 +1,33 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { getSession } from '@/modules/auth/session';
 import { getThreadWithFullContext, getThreadMessagesPaginated } from '@/modules/threads';
 import ThreadHeader from '@/components/thread/ThreadHeader';
-import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
+import dynamic from 'next/dynamic';
 import ReplyBox from '@/components/thread/ReplyBox';
 import RightPanel from '@/components/panels/RightPanel';
 import AcceptedAnswerBanner from '@/components/thread/AcceptedAnswerBanner';
 import type { Message } from '@/lib/types/index';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const ThreadLiveWrapper = dynamic(() => import('@/components/thread/thread-live-wrapper').then(m => ({ default: m.ThreadLiveWrapper })), {
+  loading: () => (
+    <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 p-6 space-y-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-start gap-3">
+            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  ),
+});
 
 const INITIAL_MESSAGE_LIMIT = 50;
 
@@ -17,103 +38,107 @@ interface ThreadPageParams {
   };
 }
 
-export default async function ThreadPage({ params }: ThreadPageParams) {
-  const { thread: slug } = await params;
-  const session = await getSession();
-  if (!session) return null;
-
-  const thread = await getThreadWithFullContext(slug, session.user.id);
+async function ThreadContent({ slug, userId }: { slug: string; userId: string }) {
+  const thread = await getThreadWithFullContext(slug, userId);
 
   if (!thread) {
     notFound();
   }
 
-  const isBookmarked = thread.isBookmarked;
-  const isSubscribed = thread.isSubscribed;
-
-  // Fetch only the most recent N messages for initial load (instead of all 500)
   const paginatedResult = await getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT);
 
-  const allMessages: Message[] = paginatedResult.messages.map((m) => {
-    const raw = m as { sender?: { name?: string; image?: string }; author?: { name?: string; image?: string }; content?: string; body?: string; isAiResponse?: boolean; isAI?: boolean; id: string; createdAt: Date; senderId: string; parentId?: string | null; depth?: number; isEdited?: boolean; isPinned?: boolean; likeCount?: number; replyCount?: number; deletedAt?: Date | null; attachments?: Array<{ id: string; name?: string | null; url: string; type: string; size?: number | null }> };
-    const senderName: string = raw.sender?.name ?? raw.author?.name ?? 'Anonymous';
-    const senderImage: string | null = raw.sender?.image ?? raw.author?.image ?? null;
-    const messageContent: string = raw.content ?? raw.body ?? '';
-    const isAiResponse: boolean = raw.isAiResponse ?? raw.isAI ?? false;
+  const allMessages: Message[] = paginatedResult.messages.map((m) => ({
+    id: m.id,
+    content: m.body,
+    createdAt: m.createdAt,
+    senderId: m.senderId,
+    parentId: m.parentId ?? null,
+    threadId: thread.id,
+    depth: m.depth ?? 0,
+    isEdited: m.isEdited ?? false,
+    isPinned: m.isPinned ?? false,
+    likeCount: m.likeCount ?? 0,
+    replyCount: m.replyCount ?? 0,
+    isAiResponse: m.isAI,
+    updatedAt: m.createdAt,
+    deletedAt: m.deletedAt ?? null,
+    sender: {
+      id: m.author.id,
+      name: m.author.name ?? 'Anonymous',
+      image: m.author.image ?? null,
+    },
+    attachments: (m.attachments ?? []).map((att) => ({
+      id: att.id,
+      name: att.name ?? null,
+      url: att.url,
+      type: att.type,
+      size: att.size ?? null,
+    })),
+    thread: {
+      id: thread.id,
+      name: thread.name,
+      slug: thread.slug,
+    },
+  }));
 
-    return {
-      id: raw.id,
-      content: messageContent,
-      createdAt: raw.createdAt,
-      senderId: raw.senderId,
-      parentId: raw.parentId ?? null,
-      threadId: thread.id,
-      depth: raw.depth ?? 0,
-      isEdited: raw.isEdited ?? false,
-      isPinned: raw.isPinned ?? false,
-      likeCount: raw.likeCount ?? 0,
-      replyCount: raw.replyCount ?? 0,
-      isAiResponse,
-      updatedAt: raw.createdAt,
-      deletedAt: raw.deletedAt ?? null,
-      sender: {
-        id: raw.senderId,
-        name: senderName,
-        image: senderImage,
-      },
-      attachments: (raw.attachments ?? []).map((att) => ({
-        id: att.id,
-        name: att.name ?? null,
-        url: att.url,
-        type: att.type,
-        size: att.size ?? null,
-      })),
-      thread: {
-        id: thread.id,
-        name: thread.name,
-        slug: thread.slug,
-      },
-    };
-  });
+  return (
+    <>
+      <ThreadHeader thread={thread} isBookmarked={thread.isBookmarked} isSubscribed={thread.isSubscribed} />
+      <div className="mt-2 flex-1 rounded-[10px] bg-(--surface) p-5">
+        <AcceptedAnswerBanner answer={null} />
+        <ThreadLiveWrapper
+          threadId={thread.id}
+          messages={allMessages}
+          initialUnreadCount={0}
+          initialFirstUnreadMessageId={null}
+          hasMoreMessages={paginatedResult.hasMore}
+          nextCursor={paginatedResult.nextCursor}
+          totalMessageCount={paginatedResult.totalCount}
+          poll={null}
+          canManagePoll={false}
+          title={thread.name ?? thread.slug}
+          slug={thread.slug}
+          memberCount={thread._count?.members ?? 0}
+          initialFrequency={null}
+          currentUser={{
+            id: userId,
+            name: '',
+            image: null,
+            role: 'USER',
+          }}
+        />
+      </div>
+      <div className="mt-3 rounded-[12px] bg-(--surface) p-4 shadow-sm">
+        <ReplyBox threadId={thread.id} onSuccess={() => {}} />
+      </div>
+    </>
+  );
+}
+
+async function ThreadSidebar({ slug, userId }: { slug: string; userId: string }) {
+  const thread = await getThreadWithFullContext(slug, userId);
+  if (!thread) return null;
+  return <RightPanel thread={thread} />;
+}
+
+export default async function ThreadPage({ params }: ThreadPageParams) {
+  const { thread: slug } = await params;
+  const session = await getSession();
+  if (!session) return null;
 
   return (
     <div className="h-full w-full bg-(--bg) text-(--text)">
       <div className="grid h-full grid-cols-[minmax(0,1fr)_300px] gap-6 p-6">
         <main className="flex min-w-0 flex-col gap-4 overflow-y-auto">
-          <ThreadHeader thread={thread} isBookmarked={isBookmarked} isSubscribed={isSubscribed} />
-
-          <div className="mt-2 flex-1 rounded-[10px] bg-(--surface) p-5">
-            <AcceptedAnswerBanner answer={null} />
-            <ThreadLiveWrapper
-              threadId={thread.id}
-              messages={allMessages}
-              initialUnreadCount={0}
-              initialFirstUnreadMessageId={null}
-              hasMoreMessages={paginatedResult.hasMore}
-              nextCursor={paginatedResult.nextCursor}
-              totalMessageCount={paginatedResult.totalCount}
-              poll={null}
-              canManagePoll={false}
-              title={thread.name ?? thread.slug}
-              slug={thread.slug}
-              memberCount={thread._count?.members ?? 0}
-              initialFrequency={null}
-              currentUser={{
-                id: session.user.id,
-                name: session.user.name ?? '',
-                image: session.user.image ?? null,
-                role: session.user.role,
-              }}
-            />
-          </div>
-
-          <div className="mt-3 rounded-[12px] bg-(--surface) p-4 shadow-sm">
-            <ReplyBox threadId={thread.id} onSuccess={() => {}} />
-          </div>
+          <Suspense fallback={<Skeleton className="h-12 w-full rounded-[10px]" />}>
+            <ThreadContent slug={slug} userId={session.user.id} />
+          </Suspense>
         </main>
 
         <aside className="hidden h-full min-h-0 flex-col gap-4 md:flex">
-          <RightPanel thread={thread} />
+          <Suspense fallback={<Skeleton className="h-full w-[300px] rounded-[10px]" />}>
+            <ThreadSidebar slug={slug} userId={session.user.id} />
+          </Suspense>
         </aside>
       </div>
     </div>
