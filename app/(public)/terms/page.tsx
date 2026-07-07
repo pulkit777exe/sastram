@@ -1,5 +1,11 @@
 import { FileText } from 'lucide-react';
 import { SerifHeading } from '@/components/layout/serif-heading';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service — Sastram',
+  description: 'Sastram Terms of Service and usage policies.',
+};
 
 export default function TermsPage() {
   return (

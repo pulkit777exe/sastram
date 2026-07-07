@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { toasts } from '@/lib/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, KeyRound } from 'lucide-react';
@@ -51,7 +50,7 @@ export function SearchPage() {
   const addPastSearch = useCallback(
     (query: string, resultCount: number) => {
       const newSearch: PastSearch = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         query,
         timestamp: Date.now(),
         resultCount,

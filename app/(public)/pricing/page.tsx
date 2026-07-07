@@ -1,6 +1,12 @@
 import { Check } from 'lucide-react';
 import Link from 'next/link';
 import { SerifHeading } from '@/components/layout/serif-heading';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Pricing — Sastram',
+  description: 'Simple, transparent pricing for Sastram. Free to start, Pro for power users.',
+};
 
 export default function PricingPage() {
   return (
