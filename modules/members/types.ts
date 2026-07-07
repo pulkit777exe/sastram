@@ -1,4 +1,4 @@
-import type { SectionRole, MemberStatus, UserStatus } from '@prisma/client';
+import type { ThreadRole, MemberStatus, UserStatus } from '@prisma/client';
 
 /**
  * Member domain types
@@ -7,8 +7,8 @@ import type { SectionRole, MemberStatus, UserStatus } from '@prisma/client';
 export interface ThreadMember {
   id: string;
   userId: string;
-  sectionId: string;
-  role: SectionRole;
+  threadId: string;
+  role: ThreadRole;
   status: MemberStatus;
   joinedAt: Date;
   user: {

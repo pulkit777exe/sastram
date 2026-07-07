@@ -1,13 +1,17 @@
-export type UserPreferences = {
-  theme: 'light' | 'dark' | 'system';
-  emailDigest: 'daily' | 'weekly' | 'never';
-  pushEnabled: boolean;
-  mentionEmails: boolean;
-  replyEmails: boolean;
-  showOnlineStatus: boolean;
-  publicActivityFeed: boolean;
-  aiSummaryEnabled: boolean;
-};
+import { z } from 'zod';
+
+export const userPreferencesSchema = z.object({
+  theme: z.enum(['light', 'dark', 'system']),
+  emailDigest: z.enum(['daily', 'weekly', 'never']),
+  pushEnabled: z.boolean(),
+  mentionEmails: z.boolean(),
+  replyEmails: z.boolean(),
+  showOnlineStatus: z.boolean(),
+  publicActivityFeed: z.boolean(),
+  aiSummaryEnabled: z.boolean(),
+});
+
+export type UserPreferences = z.infer<typeof userPreferencesSchema>;
 
 const VALID_THEMES = new Set(['light', 'dark', 'system']);
 const VALID_DIGESTS = new Set(['daily', 'weekly', 'never']);

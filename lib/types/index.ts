@@ -23,7 +23,7 @@ export interface Attachment {
 export interface Message {
   id: string;
   content: string;
-  sectionId: string;
+  threadId: string;
   senderId: string;
   parentId: string | null;
   depth: number;
@@ -32,12 +32,13 @@ export interface Message {
   likeCount: number;
   replyCount: number;
   isAiResponse: boolean;
+  truncated?: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
 
   sender: Sender;
-  section: {
+  thread: {
     id: string;
     name: string;
     slug: string;

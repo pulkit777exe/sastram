@@ -1,16 +1,16 @@
 import type {
-  Section,
+  Thread,
   Community,
-  SectionVisibility,
-  SectionRole,
+  ThreadVisibility,
+  ThreadRole,
 } from '@prisma/client';
 import type { MessageWithDetails } from '@/modules/messages/types';
 
 // Base thread record with all relations
-export type ThreadRecord = Section & {
+export type ThreadRecord = Thread & {
   community?: Community | null;
   creator?: import('@prisma/client').User | null;
-  members?: import('@prisma/client').SectionMember[];
+  members?: import('@prisma/client').ThreadMember[];
   messages?: (import('@prisma/client').Message & {
     sender?: import('@prisma/client').User | null;
     reactions?: import('@prisma/client').Reaction[];
@@ -26,7 +26,7 @@ export interface ThreadSummary {
   slug: string;
   name: string;
   description?: string | null;
-  visibility: SectionVisibility;
+  visibility: ThreadVisibility;
   community?: {
     id: string;
     title: string;
@@ -63,7 +63,7 @@ export interface ThreadDetail extends ThreadSummary {
   messages: MessageWithDetails[];
   aiSummary?: string | null;
   subscriptionCount?: number;
-  userRole?: SectionRole | null;
+  userRole?: ThreadRole | null;
   isSubscribed?: boolean;
   unreadCount?: number;
   resolutionScore?: number | null;
@@ -75,7 +75,7 @@ export interface ThreadDetail extends ThreadSummary {
 // Thread filters
 export interface ThreadFilters {
   communityId?: string;
-  visibility?: SectionVisibility;
+  visibility?: ThreadVisibility;
   search?: string;
   sortBy?: 'recent' | 'popular' | 'active' | 'oldest';
   page?: number;
@@ -88,7 +88,7 @@ export interface CreateThreadInput {
   slug: string;
   description?: string;
   summary?: string;
-  visibility?: SectionVisibility;
+  visibility?: ThreadVisibility;
   communityId?: string;
 }
 
@@ -96,7 +96,7 @@ export interface UpdateThreadInput {
   name?: string;
   description?: string;
   summary?: string;
-  visibility?: SectionVisibility;
+  visibility?: ThreadVisibility;
 }
 
 export interface CreateMessageInput {

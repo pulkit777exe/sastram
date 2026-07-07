@@ -29,7 +29,7 @@ export const createMessageSchema = z.object({
     .string()
     .min(1, 'Message cannot be empty')
     .max(10000, 'Message must be less than 10000 characters'),
-  sectionId: z.string().cuid('Invalid section ID'),
+  threadId: z.string().cuid('Invalid thread ID'),
   parentId: z.string().cuid('Invalid parent message ID').optional(),
   mentions: z.array(z.string().cuid()).optional(),
 });
@@ -59,7 +59,7 @@ export const getMessageEditHistorySchema = z.object({
 });
 
 export const searchMentionUsersSchema = z.object({
-  sectionId: z.string().cuid('Invalid section ID'),
+  threadId: z.string().cuid('Invalid thread ID'),
   query: z
     .string()
     .trim()
@@ -67,5 +67,6 @@ export const searchMentionUsersSchema = z.object({
     .max(50, 'Query must be less than 50 characters'),
 });
 
+export type AttachmentInput = z.infer<typeof attachmentInputSchema>;
 export type CreateMessage = z.infer<typeof createMessageSchema>;
 export type CreateMessageWithAttachments = z.infer<typeof createMessageWithAttachmentsSchema>;

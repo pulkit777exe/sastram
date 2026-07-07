@@ -61,8 +61,6 @@ const envSchema = z.object({
   WEBSOCKET_URL: z.string().url('WEBSOCKET_URL must be a valid URL').optional(),
 
   // Security / sessions
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
-  SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
   CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters').optional(),
 
   // Feature flags
@@ -80,6 +78,22 @@ const envSchema = z.object({
   MAX_MESSAGES_PER_MINUTE: z.coerce.number().int().positive().default(20),
   MAX_MESSAGES_PER_HOUR: z.coerce.number().int().positive().default(200),
   MODERATION_WEBHOOK_URL: z.url().optional(),
+
+  // AI model configuration
+  AI_ANALYSIS_MESSAGE_LIMIT: z.coerce.number().int().positive().default(200),
+  GEMINI_FLASH_MODEL: z.string().default('gemini-2.0-flash'),
+  GEMINI_PRO_MODEL: z.string().default('gemini-2.0-pro'),
+  GEMINI_LITE_MODEL: z.string().default('gemini-2.0-flash-lite'),
+  GEMINI_SEARCH_MODEL: z.string().default('gemini-2.0-flash'),
+  OPENAI_MODEL: z.string().default('gpt-4o'),
+  OPENAI_API_KEY: z.string().optional(),
+
+  // AI search
+  SASTRAM_EXA_KEY: z.string().optional(),
+  SASTRAM_TAVILY_KEY: z.string().optional(),
+
+  // Server
+  HOSTNAME: z.string().default('localhost'),
 });
 
 /**
