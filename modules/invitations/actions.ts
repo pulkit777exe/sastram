@@ -27,7 +27,7 @@ export async function inviteFriendToThread(formData: FormData) {
     }
 
     // Check if thread exists
-    const thread = await prisma.section.findUnique({
+    const thread = await prisma.thread.findUnique({
       where: { id: parsed.data.threadId },
       select: { id: true, slug: true, name: true },
     });

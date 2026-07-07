@@ -69,6 +69,10 @@ export interface FileValidationResult {
 
 import { FILE_LIMITS } from '@/lib/config/constants';
 
+export function filterBadLanguage(content: string): string {
+  return sanitizeUserContent(content).sanitized;
+}
+
 export function validateFile(file: File): FileValidationResult {
   const MAX_SIZE = FILE_LIMITS.MAX_SIZE_BYTES;
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];

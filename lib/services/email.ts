@@ -4,6 +4,7 @@ import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
 import { DEFAULT_JOB_OPTIONS, getEmailQueue, type EmailJobData } from '@/lib/infrastructure/bullmq';
 import { getResendClient } from '@/lib/config/resend';
+import type { CreateEmailOptions } from 'resend';
 
 const env = getEnv();
 
@@ -65,19 +66,13 @@ export async function sendEmailNow({
     const resend = getResendClient();
     const toAddresses = Array.isArray(to) ? to : [to];
 
-    const payload: Record<string, unknown> = {
-      from,
-      to: toAddresses,
-      subject,
-    };
+    const baseOpts = { from, to: toAddresses, subject };
 
-    if (templateId && data) {
-      payload.template = { id: templateId, variables: data };
-    } else if (text) {
-      payload.text = text;
-    }
+    const payload: CreateEmailOptions = templateId && data
+      ? { ...baseOpts, template: { id: templateId, variables: data } }
+      : { ...baseOpts, text: text ?? '' };
 
-    const { data: result, error } = await resend.emails.send(payload as any);
+    const { data: result, error } = await resend.emails.send(payload);
 
     if (error) {
       logger.error('Resend API error', error);

@@ -1,5 +1,5 @@
 import { logger } from '@/lib/infrastructure/logger';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { del } from '@vercel/blob';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (orphanedAttachments.length === 0) {
-      return ok({ deleted: 0, blobsRemoved: 0, message: 'No orphaned attachments found' });
+      return NextResponse.json(ok({ deleted: 0, blobsRemoved: 0, message: 'No orphaned attachments found' }));
     }
 
     // Delete blobs (best-effort)
@@ -49,9 +49,9 @@ export async function GET(req: NextRequest) {
       recordsDeleted: totalDeleted,
     });
 
-    return ok({ deleted: totalDeleted, blobsRemoved: totalBlobsRemoved });
+    return NextResponse.json(ok({ deleted: totalDeleted, blobsRemoved: totalBlobsRemoved }));
   } catch (error) {
     logger.error('[cleanup-blobs]', error);
-    return fail('INTERNAL_ERROR', 'Failed to cleanup blobs');
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to cleanup blobs'));
   }
 }

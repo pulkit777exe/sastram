@@ -5,6 +5,7 @@ import { sendNewsletterDigest } from '@/lib/services/email';
 import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { ok, fail } from '@/lib/utils/api-response';
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
@@ -103,9 +104,9 @@ export async function GET(req: NextRequest) {
       results.processed++;
     }
 
-    return NextResponse.json({ success: true, results });
+    return NextResponse.json(ok({ results }));
   } catch (error) {
     logger.error('Daily digest cron error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Daily digest failed'), { status: 500 });
   }
 }
