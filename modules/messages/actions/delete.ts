@@ -18,7 +18,12 @@ export const deleteMessage = createServerAction(
     try {
       const message = await prisma.message.findUnique({
         where: { id: messageId },
-        include: { thread: true },
+        select: {
+          id: true,
+          senderId: true,
+          threadId: true,
+          thread: { select: { slug: true } },
+        },
       });
 
       if (!message) {

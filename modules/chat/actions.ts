@@ -61,6 +61,7 @@ export async function getConversations(): Promise<{ data: Conversation[] | null;
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
+          select: { content: true, createdAt: true },
         },
       },
     });

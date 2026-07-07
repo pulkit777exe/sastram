@@ -320,6 +320,7 @@ model Message {
 
   @@index([threadId])
   @@index([threadId, createdAt])
+  @@index([threadId, senderId, createdAt])
   @@index([senderId])
   @@index([parentId]) // critical for tree building
   @@index([parentId, threadId]) // critical for tree building
@@ -652,6 +653,7 @@ model UserActivity {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([userId, type, createdAt])
   @@index([type])
   @@index([entityType, entityId])
   @@map("user_activities")
