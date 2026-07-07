@@ -21,7 +21,8 @@ export async function unbookmarkThread(userId: string, threadId: string) {
       },
     });
     return { id: '' };
-  } catch {
+  } catch (err) {
+    logger.error('[bookmarks] unbookmarkThread failed', { userId, threadId, error: err });
     return null;
   }
 }

@@ -40,7 +40,8 @@ export async function removeTagFromThread(threadId: string, tagId: string) {
       },
     });
     return { id: '' };
-  } catch {
+  } catch (err) {
+    logger.error('[tags] removeTagFromThread failed', { threadId, tagId, error: err });
     return null;
   }
 }

@@ -3,6 +3,7 @@ import { ok, fail } from '@/lib/utils/api-response';
 import { searchThreads, searchMessages, searchUsers } from '@/modules/search/repository';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSessionOrThrow } from '@/modules/auth/session';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     const isAuth = error instanceof Error && error.message.includes('Unauthorized');
+    if (!isAuth) logger.error('[search] GET failed', error);
     return NextResponse.json(
       fail(isAuth ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', isAuth ? 'Unauthorized' : 'Search failed'),
       { status: isAuth ? 401 : 500 }

@@ -44,6 +44,7 @@ export async function getAiSpendUsage(): Promise<{ used: number; limit: number; 
     const used = (await r.get(key)) as number | null;
     return { used: used ?? 0, limit: DAILY_LIMIT, date };
   } catch {
+    logger.warn('[ai-spend-cap] Failed to read spend from Redis, returning zero', { key });
     return { used: 0, limit: DAILY_LIMIT, date };
   }
 }

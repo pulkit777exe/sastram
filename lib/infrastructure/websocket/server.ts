@@ -470,6 +470,7 @@ export function initWebSocketServer(server: HTTPServer) {
         const parsed = JSON.parse(message) as { sourceInstance?: string };
         if (parsed.sourceInstance === INSTANCE_ID) return;
       } catch {
+        logger.debug('[ws] Failed to parse Redis pub/sub message', { channel });
         return;
       }
 

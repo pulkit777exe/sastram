@@ -7,6 +7,7 @@ import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { put } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import { detectMimeTypeFromFile, getFileCategory, getExtensionFromMime } from '@/lib/utils/file-upload';
+import { logger } from '@/lib/infrastructure/logger';
 
 function errorCodeToStatus(errorCode: string | null): number {
   switch (errorCode) {
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(ok({ message: resultData.message }));
   } catch (error) {
     const isAuth = error instanceof Error && error.message.includes('Unauthorized');
+    if (!isAuth) logger.error('[messages] POST failed', error);
     return NextResponse.json(
       fail(isAuth ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', isAuth ? 'Unauthorized' : 'Failed to post message'),
       { status: isAuth ? 401 : 500 }

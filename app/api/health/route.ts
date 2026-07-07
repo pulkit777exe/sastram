@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/config/env";
+import { logger } from "@/lib/infrastructure/logger";
 
 export async function GET() {
   const checks = {
@@ -18,7 +19,8 @@ export async function GET() {
     const { prisma } = await import("@/lib/infrastructure/prisma");
     await prisma.$queryRaw`SELECT 1`;
     checks.services.database = "ok";
-  } catch {
+  } catch (err) {
+    logger.error("[health] database check failed", err);
     checks.services.database = "error";
   }
 
@@ -31,7 +33,8 @@ export async function GET() {
     } else {
       checks.services.redis = "not_configured";
     }
-  } catch {
+  } catch (err) {
+    logger.error("[health] redis check failed", err);
     checks.services.redis = "error";
   }
 
@@ -41,7 +44,8 @@ export async function GET() {
         ? env.GEMINI_API_KEY
         : env.OPENAI_API_KEY;
     checks.services.ai = aiKey ? "configured" : "not_configured";
-  } catch {
+  } catch (err) {
+    logger.error("[health] ai config check failed", err);
     checks.services.ai = "error";
   }
 

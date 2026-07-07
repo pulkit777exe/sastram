@@ -132,8 +132,8 @@ Schema: { "type": string, "primaryDomain": string, "suggestedSources": string[],
     // Parse JSON, stripping any markdown code fences
     const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
     return JSON.parse(cleaned) as QueryClassification;
-  } catch {
-    // Fallback classification
+  } catch (err) {
+    logger.warn('[ai-search] classifyQuery failed, using fallback', { query, error: err });
     return {
       type: 'technical',
       primaryDomain: 'programming',

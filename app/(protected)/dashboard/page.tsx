@@ -3,8 +3,10 @@ import type { ReactNode } from 'react';
 import { Users, MessageSquare, Star, ChevronDown, TrendingUp } from 'lucide-react';
 import { Prisma } from '@prisma/client';
 import { isAdmin, getSession } from '@/modules/auth/session';
+import { logger } from '@/lib/infrastructure/logger';
 import { listThreads } from '@/modules/threads/repository';
 import { listCommunities } from '@/modules/communities/repository';
+import type { CommunitySummary } from '@/modules/communities/types';
 import { TopicGrid } from '@/components/dashboard/topic-grid';
 import { Card, CardContent } from '@/components/ui/card';
 import { ThreadInsights } from '@/components/dashboard/thread-insights';
@@ -118,7 +120,7 @@ async function DashboardMetrics({
   communities,
 }: {
   topicThreads: { id: string; messageCount: number }[];
-  communities: { id: string; title: string; description: string | null; threadCount: number }[];
+  communities: CommunitySummary[];
 }) {
   const totalMessages = topicThreads.reduce((acc, t) => acc + t.messageCount, 0);
 
@@ -149,7 +151,7 @@ async function DashboardMetrics({
 async function CommunitiesSection({
   communities,
 }: {
-  communities: { id: string; title: string; description: string | null; threadCount: number }[];
+  communities: CommunitySummary[];
 }) {
   return (
     <section className="space-y-4">
@@ -218,7 +220,7 @@ async function TopicGridWithData({
             },
           })
           .catch((err) => {
-            console.error('[dashboard.readReceipts]', err);
+            logger.error('[dashboard.readReceipts]', err);
             return [];
           })
       : [],

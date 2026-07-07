@@ -125,8 +125,8 @@ export async function POST(request: NextRequest) {
           },
         });
       }
-    } catch {
-      // Cache miss is non-critical, continue
+    } catch (err) {
+      logger.debug('[forum-search] Cache read failed, proceeding without cache', { error: err });
     }
 
     // 8. Execute the search pipeline
