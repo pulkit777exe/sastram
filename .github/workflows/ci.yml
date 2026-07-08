@@ -49,6 +49,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm build
