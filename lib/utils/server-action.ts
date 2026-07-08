@@ -1,6 +1,22 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 import { actionFailure, type ActionErrorCode } from '@/lib/actions/result';
+import { AppError } from './errors';
+
+/**
+ * Detect Next.js redirect errors so they aren't swallowed
+ */
+function isRedirectError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const error = err as Record<string, unknown>;
+  if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+    return true;
+  }
+  if (err instanceof Error && err.message?.includes('NEXT_REDIRECT')) {
+    return true;
+  }
+  return false;
+}
 
 /**
  * Server action result type
@@ -54,6 +70,29 @@ export function createServerAction<In, Out = unknown>(
     try {
       return await handler(validatedArgs);
     } catch (error) {
+      if (isRedirectError(error)) {
+        throw error;
+      }
+
+      if (error instanceof AppError) {
+        return {
+          ok: false,
+          data: null,
+          error: error.message,
+          errorCode: error.code as ActionErrorCode,
+        };
+      }
+
+      if (error instanceof Error) {
+        logger.error(`[${actionName}]`, error);
+        return {
+          ok: false,
+          data: null,
+          error: error.message || 'Something went wrong',
+          errorCode: 'INTERNAL_ERROR',
+        };
+      }
+
       logger.error(`[${actionName}]`, error);
       return {
         ok: false,

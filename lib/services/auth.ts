@@ -37,16 +37,37 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
   },
-  socialProviders: {
-    google: {
-      clientId: env.GOOGLE_CLIENT_ID || '',
-      clientSecret: env.GOOGLE_CLIENT_SECRET || '',
-    },
-    github: {
-      clientId: env.GITHUB_CLIENT_ID || '',
-      clientSecret: env.GITHUB_CLIENT_SECRET || '',
-    },
+  advancedCookies: {
+    useSecureCookies: process.env.NODE_ENV === 'production',
   },
+  socialProviders: (() => {
+    const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
+
+    const googleId = env.GOOGLE_CLIENT_ID?.trim();
+    const googleSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+    const githubId = env.GITHUB_CLIENT_ID?.trim();
+    const githubSecret = env.GITHUB_CLIENT_SECRET?.trim();
+
+    if (googleId || googleSecret) {
+      if (!googleId || !googleSecret) {
+        throw new Error('Google OAuth requires both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
+      }
+      socialProviders.google = { clientId: googleId, clientSecret: googleSecret };
+    }
+
+    if (githubId || githubSecret) {
+      if (!githubId || !githubSecret) {
+        throw new Error('GitHub OAuth requires both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET');
+      }
+      socialProviders.github = { clientId: githubId, clientSecret: githubSecret };
+    }
+
+    if (process.env.NODE_ENV === 'production' && Object.keys(socialProviders).length === 0) {
+      logger.warn('No social providers configured - only email OTP authentication available');
+    }
+
+    return socialProviders;
+  })(),
   plugins: [
     oAuthProxy({
       currentURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
@@ -58,23 +79,24 @@ export const auth = betterAuth({
           return;
         }
 
-        logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
+        if (process.env.NODE_ENV !== 'production') {
+          logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
+        }
 
-        const isDevelopment = process.env.NODE_ENV === 'development';
-
-        if (isDevelopment) {
+        if (process.env.NODE_ENV === 'development') {
           return;
         }
 
         try {
           logger.info(`Sending ${type} OTP to ${email}`);
-          // Dynamic import to avoid bundling fs in client
           const { sendOTPEmail } = await import('@/lib/services/email');
           await sendOTPEmail(email, otp, type);
           logger.info(`Successfully sent ${type} OTP to ${email}`);
         } catch (error) {
           logger.error(`Failed to send ${type} OTP to ${email}:`, error);
-          logger.info(`[DEV FALLBACK] ${type} OTP for ${email}: ${otp}`);
+          if (process.env.NODE_ENV !== 'production') {
+            logger.info(`[DEV FALLBACK] ${type} OTP for ${email}: ${otp}`);
+          }
         }
       },
     }),
