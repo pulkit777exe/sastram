@@ -2,9 +2,7 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import {
   QUEUE_NAMES,
-  DEFAULT_JOB_OPTIONS,
   AIJobType,
-  FAILED_QUEUE_NAME,
 } from '@/lib/queue/config';
 
 describe('Queue Config', () => {
@@ -26,36 +24,9 @@ describe('Queue Config', () => {
     });
   });
 
-  describe('DEFAULT_JOB_OPTIONS', () => {
-    it('should have 3 retry attempts', () => {
-      expect(DEFAULT_JOB_OPTIONS.attempts).to.equal(3);
-    });
-
-    it('should have exponential backoff with 2s delay', () => {
-      expect(DEFAULT_JOB_OPTIONS.backoff).to.deep.equal({
-        type: 'exponential',
-        delay: 2000,
-      });
-    });
-
-    it('should remove completed jobs after 100', () => {
-      expect(DEFAULT_JOB_OPTIONS.removeOnComplete).to.deep.equal({ count: 100 });
-    });
-
-    it('should keep 500 failed jobs', () => {
-      expect(DEFAULT_JOB_OPTIONS.removeOnFail).to.deep.equal({ count: 500 });
-    });
-  });
-
   describe('AIJobType', () => {
     it('should have 7 AI job types', () => {
       expect(Object.keys(AIJobType).length).to.equal(7);
-    });
-  });
-
-  describe('FAILED_QUEUE_NAME', () => {
-    it('should be failed-jobs', () => {
-      expect(FAILED_QUEUE_NAME).to.equal('failed-jobs');
     });
   });
 });

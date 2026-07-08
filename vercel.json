@@ -1,9 +1,10 @@
 {
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
-    {
-      "path": "/api/cron/worker",
-      "schedule": "0 6 * * *"
-    },
     {
       "path": "/api/cron/update-threads",
       "schedule": "0 3 * * *"

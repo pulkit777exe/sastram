@@ -19,25 +19,12 @@ describe('GET /api/ai/jobs', () => {
     stubs = [];
   });
 
-  it('returns 401 when unauthenticated', async () => {
-    restoreStubs(...stubs);
-    stubs = [];
-    stubs.push(stubHeaders());
-    stubs.push(...stubAuth(null));
-
+  it('returns 501 - job status tracking not available with QStash', async () => {
     const res = await GET()(mockRequest('/api/ai/jobs'));
     const body = await res.json();
 
-    expect(res.status).to.equal(401);
-    expect(body.error?.code).to.equal('AUTH_REQUIRED');
-  });
-
-  it('returns 400 when jobId is missing', async () => {
-    const res = await GET()(mockRequest('/api/ai/jobs'));
-    const body = await res.json();
-
-    expect(res.status).to.equal(400);
-    expect(body.error?.code).to.equal('VALIDATION_ERROR');
+    expect(res.status).to.equal(501);
+    expect(body.error?.code).to.equal('NOT_IMPLEMENTED');
   });
 });
 
@@ -54,24 +41,11 @@ describe('DELETE /api/ai/jobs', () => {
     stubs = [];
   });
 
-  it('returns 401 when unauthenticated', async () => {
-    restoreStubs(...stubs);
-    stubs = [];
-    stubs.push(stubHeaders());
-    stubs.push(...stubAuth(null));
-
+  it('returns 501 - job cancellation not available with QStash', async () => {
     const res = await DELETE()(mockRequest('/api/ai/jobs', { method: 'DELETE' }));
     const body = await res.json();
 
-    expect(res.status).to.equal(401);
-    expect(body.error?.code).to.equal('AUTH_REQUIRED');
-  });
-
-  it('returns 400 when jobId is missing', async () => {
-    const res = await DELETE()(mockRequest('/api/ai/jobs', { method: 'DELETE' }));
-    const body = await res.json();
-
-    expect(res.status).to.equal(400);
-    expect(body.error?.code).to.equal('VALIDATION_ERROR');
+    expect(res.status).to.equal(501);
+    expect(body.error?.code).to.equal('NOT_IMPLEMENTED');
   });
 });

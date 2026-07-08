@@ -1,4 +1,3 @@
-import type { Job } from 'bullmq';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
@@ -9,8 +8,8 @@ import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { NotificationType } from '@prisma/client';
 import { notifyMultipleUsers } from '@/modules/notifications';
 import { emitThreadMessage } from '@/modules/ws';
-import { getAiInsightNotificationsQueue } from '../queue';
-import { DEFAULT_JOB_OPTIONS, AIJobType } from '../config';
+import { enqueueJob } from '@/lib/services/queue';
+import { AIJobType } from '../config';
 import type {
   ThreadSummaryJobData,
   ThreadDnaJobData,
@@ -31,27 +30,27 @@ async function assertSpendCapAvailable(): Promise<void> {
   }
 }
 
-export async function handleThreadSummaryJob(job: Job<ThreadSummaryJobData>) {
-  logger.info(`[worker:ai] thread-summary job ${job.id}`);
-  const { threadId, messages } = job.data;
+export async function handleThreadSummaryJob(data: ThreadSummaryJobData) {
+  logger.info(`[worker:ai] thread-summary job`);
+  const { threadId, messages } = data;
   if (!threadId || !messages) {
     throw new Error('Missing required fields: threadId and messages');
   }
   return generateThreadSummary(threadId, messages);
 }
 
-export async function handleThreadDnaJob(job: Job<ThreadDnaJobData>) {
-  logger.info(`[worker:ai] thread-dna job ${job.id}`);
-  const { threadId, messages } = job.data;
+export async function handleThreadDnaJob(data: ThreadDnaJobData) {
+  logger.info(`[worker:ai] thread-dna job`);
+  const { threadId, messages } = data;
   if (!threadId || !messages) {
     throw new Error('Missing required fields: threadId and messages');
   }
   return generateThreadDNA(threadId, messages);
 }
 
-export async function handleResolutionScoreJob(job: Job<ResolutionScoreJobData>) {
-  logger.info(`[worker:ai] resolution-score job ${job.id}`);
-  const { threadId, messages, subscriberIds, threadName, oldScore, isOutdated, cronJob } = job.data;
+export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
+  logger.info(`[worker:ai] resolution-score job`);
+  const { threadId, messages, subscriberIds, threadName, oldScore, isOutdated, cronJob } = data;
   if (!threadId || !messages) {
     throw new Error('Missing required fields: threadId and messages');
   }
@@ -65,27 +64,23 @@ export async function handleResolutionScoreJob(job: Job<ResolutionScoreJobData>)
     oldScore != null &&
     Math.abs(resolutionScore - oldScore) >= 20
   ) {
-    await getAiInsightNotificationsQueue().add(
-      AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
-      {
-        subscriberIds,
-        threadId,
-        threadName,
-        oldScore,
-        newScore: resolutionScore,
-        isOutdated,
-        cronJob,
-      } satisfies AIInsightNotificationJobData,
-      DEFAULT_JOB_OPTIONS,
-    );
+    await enqueueJob(AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS, {
+      subscriberIds,
+      threadId,
+      threadName,
+      oldScore,
+      newScore: resolutionScore,
+      isOutdated,
+      cronJob,
+    });
   }
 
   return { resolutionScore };
 }
 
-export async function handleConflictDetectionJob(job: Job<ConflictDetectionJobData>) {
-  logger.info(`[worker:ai] conflict-detection job ${job.id}`);
-  const { threadId, messages, subscriberIds, threadName, oldScore, cronJob } = job.data;
+export async function handleConflictDetectionJob(data: ConflictDetectionJobData) {
+  logger.info(`[worker:ai] conflict-detection job`);
+  const { threadId, messages, subscriberIds, threadName, oldScore, cronJob } = data;
   if (!threadId || !messages) {
     throw new Error('Missing required fields: threadId and messages');
   }
@@ -98,37 +93,33 @@ export async function handleConflictDetectionJob(job: Job<ConflictDetectionJobDa
     subscriberIds.length > 0 &&
     typeof threadName === 'string'
   ) {
-    await getAiInsightNotificationsQueue().add(
-      AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
-      {
-        subscriberIds,
-        threadId,
-        threadName,
-        oldScore: oldScore ?? undefined,
-        isOutdated: true,
-        conflictResult,
-        cronJob,
-      } satisfies AIInsightNotificationJobData,
-      DEFAULT_JOB_OPTIONS,
-    );
+    await enqueueJob(AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS, {
+      subscriberIds,
+      threadId,
+      threadName,
+      oldScore: oldScore ?? undefined,
+      isOutdated: true,
+      conflictResult,
+      cronJob,
+    });
   }
 
   return { conflictResult };
 }
 
-export async function handleDailyDigestJob(job: Job<DailyDigestJobData>) {
-  logger.info(`[worker:ai] daily-digest job ${job.id}`);
-  const { messages, subscriberIds } = job.data;
+export async function handleDailyDigestJob(data: DailyDigestJobData) {
+  logger.info(`[worker:ai] daily-digest job`);
+  const { messages, subscriberIds } = data;
   if (!messages || !subscriberIds) {
     throw new Error('Missing required fields: messages and subscriberIds');
   }
   return generateDailyDigest(messages, subscriberIds);
 }
 
-export async function handleAIInsightNotificationsJob(job: Job<AIInsightNotificationJobData>) {
-  logger.info(`[worker:ai] ai-insight-notifications job ${job.id}`);
+export async function handleAIInsightNotificationsJob(data: AIInsightNotificationJobData) {
+  logger.info(`[worker:ai] ai-insight-notifications job`);
   const { subscriberIds, threadId, threadName, oldScore, newScore, isOutdated, conflictResult } =
-    job.data;
+    data;
   if (!subscriberIds || !threadId || !threadName) {
     throw new Error('Missing required fields: subscriberIds, threadId, and threadName');
   }
@@ -153,19 +144,19 @@ function isStale(updatedAt: Date, resolutionScore: number | null): boolean {
   return resolutionScore === null || resolutionScore < RESOLUTION_SCORE_THRESHOLD;
 }
 
-export async function handleStalenessCheckJob(job: Job<StalenessCheckJobData>) {
-  const { threadId, cronJob } = job.data;
+export async function handleStalenessCheckJob(data: StalenessCheckJobData) {
+  const { threadId, cronJob } = data;
 
   if (!cronJob && !threadId) {
     throw new Error('Missing required fields: threadId or cronJob must be provided');
   }
 
   if (cronJob && !threadId) {
-    logger.info(`[worker:ai] staleness-check batch job ${job.id}`);
+    logger.info(`[worker:ai] staleness-check batch job`);
     return handleStalenessBatchCheck();
   }
 
-  logger.info(`[worker:ai] staleness-check job ${job.id} for thread ${threadId}`);
+  logger.info(`[worker:ai] staleness-check for thread ${threadId}`);
 
   const thread = await prisma.thread.findUnique({
     where: { id: threadId! },
@@ -232,13 +223,13 @@ async function handleStalenessBatchCheck() {
   return { handled: true, checked, updated };
 }
 
-export async function handleAIInlineJob(job: Job<AIInlineJobData>) {
-  logger.info(`[worker:ai] ai-inline job ${job.id}`);
-  const { messageId, threadId, query } = job.data;
+export async function handleAIInlineJob(data: AIInlineJobData) {
+  logger.info(`[worker:ai] ai-inline job`);
+  const { messageId, threadId, query } = data;
   if (!messageId || !threadId || !query) {
     throw new Error('Missing required fields: messageId, threadId, query');
   }
-  return generateAIInlineResponse(job.id, messageId, threadId, query);
+  return generateAIInlineResponse(messageId, threadId, query);
 }
 
 async function generateThreadSummary(threadId: string, messages: JobMessageData[]) {
@@ -382,7 +373,6 @@ async function sendAIInsightNotifications(
 }
 
 async function generateAIInlineResponse(
-  jobId: string | undefined,
   messageId: string,
   threadId: string,
   query: string,
@@ -395,7 +385,7 @@ async function generateAIInlineResponse(
   });
 
   if (!parentMessage) {
-    logger.error('[worker:ai] Parent message not found', { messageId, jobId });
+    logger.error('[worker:ai] Parent message not found', { messageId });
     return { queued: false, handled: false, error: 'Parent message not found' };
   }
 
@@ -417,7 +407,6 @@ async function generateAIInlineResponse(
   let isRetry = false;
 
   if (existingAiMessage) {
-    // Reuse existing message — this is a retry
     logger.info(`[worker:ai] Reusing existing AI message ${existingAiMessage.id} for parent ${messageId} (retry)`);
     aiMessage = existingAiMessage;
     isRetry = true;
@@ -440,10 +429,10 @@ async function generateAIInlineResponse(
       data: { content: errorMessage },
     });
     emitAiMessage(threadId, { ...aiMessage, content: errorMessage }, aiUser, true);
-    throw error; // BullMQ will retry with exponential backoff (configured 3 attempts)
+    throw error;
   }
 
-  logger.info(`[worker:ai] AI inline job complete: ${jobId}`);
+  logger.info(`[worker:ai] AI inline job complete`);
   return { queued: true, handled: true, aiMessageId: aiMessage.id };
 }
 

@@ -1,9 +1,8 @@
-import type { Job } from 'bullmq';
 import { logger } from '@/lib/infrastructure/logger';
 import type { EmailJobData } from '../types';
 
-export async function handleEmailJob(job: Job<EmailJobData>) {
-  logger.info(`[worker:email] Processing job ${job.id}`);
+export async function handleEmailJob(data: EmailJobData) {
+  logger.info(`[worker:email] Processing email job`);
   const { sendEmailNow } = await import('@/lib/services/email');
-  return sendEmailNow(job.data);
+  return sendEmailNow(data);
 }
