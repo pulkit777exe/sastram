@@ -63,6 +63,13 @@ jobs:
           GEMINI_API_KEY: skip
           OPENAI_API_KEY: skip
           REDIS_URL: redis://localhost:6379
+          RESEND_API_KEY: re_ci_placeholder_key
+          RESEND_FROM: "CI <ci@test.local>"
+          RESEND_TEMPLATE_OTP: ci_placeholder
+          RESEND_TEMPLATE_INVITATION: ci_placeholder
+          RESEND_TEMPLATE_THREAD_SUMMARY: ci_placeholder
+          RESEND_TEMPLATE_PASSWORD_RESET: ci_placeholder
+          RESEND_TEMPLATE_WELCOME: ci_placeholder
       - run: pnpm test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
@@ -73,6 +80,13 @@ jobs:
           GEMINI_API_KEY: skip
           OPENAI_API_KEY: skip
           REDIS_URL: redis://localhost:6379
+          RESEND_API_KEY: re_ci_placeholder_key
+          RESEND_FROM: "CI <ci@test.local>"
+          RESEND_TEMPLATE_OTP: ci_placeholder
+          RESEND_TEMPLATE_INVITATION: ci_placeholder
+          RESEND_TEMPLATE_THREAD_SUMMARY: ci_placeholder
+          RESEND_TEMPLATE_PASSWORD_RESET: ci_placeholder
+          RESEND_TEMPLATE_WELCOME: ci_placeholder
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
         env:
@@ -84,4 +98,11 @@ jobs:
           GEMINI_API_KEY: skip
           OPENAI_API_KEY: skip
           REDIS_URL: redis://localhost:6379
+          RESEND_API_KEY: re_ci_placeholder_key
+          RESEND_FROM: "CI <ci@test.local>"
+          RESEND_TEMPLATE_OTP: ci_placeholder
+          RESEND_TEMPLATE_INVITATION: ci_placeholder
+          RESEND_TEMPLATE_THREAD_SUMMARY: ci_placeholder
+          RESEND_TEMPLATE_PASSWORD_RESET: ci_placeholder
+          RESEND_TEMPLATE_WELCOME: ci_placeholder
           CI: true
