@@ -5,34 +5,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', '@tanstack/react-virtual', 'date-fns', 'framer-motion'],
   },
-  async headers() {
-    const cspDirectives = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https: http:",
-      "font-src 'self' data:",
-      `connect-src 'self' ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'} wss: ws: https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io`,
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "upgrade-insecure-requests",
-    ].join('; ');
 
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Content-Security-Policy', value: cspDirectives },
-        ],
-      },
-    ];
-  },
   images: {
     remotePatterns: [
       {
@@ -73,7 +46,6 @@ const nextConfig: NextConfig = {
         'url',
         // Server-only npm packages that depend on Node built-ins
         'resend',
-        'bullmq',
         'ioredis',
         'native-dns',
         '@prisma/client',

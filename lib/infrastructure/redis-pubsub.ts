@@ -31,7 +31,7 @@ export interface RedisThreadEvent {
     | 'USER_STOPPED_TYPING'
     | 'MENTION_NOTIFICATION'
     | 'NOTIFICATION_COUNT_UPDATE';
-  threadId: string;
+  threadId?: string;
   payload: Record<string, unknown>;
   sourceInstance?: string;
 }

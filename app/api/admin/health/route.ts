@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/moderation';
-import { getWsStats } from '@/lib/infrastructure/websocket/server';
 import { ok, fail } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic';
@@ -11,8 +10,6 @@ export async function GET() {
   } catch {
     return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
   }
-
-  const ws = getWsStats();
 
   const memory = process.memoryUsage();
   const now = Date.now();
@@ -29,7 +26,6 @@ export async function GET() {
         heapTotal: Math.round(memory.heapTotal / 1024 / 1024) + ' MB',
         heapUsed: Math.round(memory.heapUsed / 1024 / 1024) + ' MB',
       },
-      websocket: ws,
     })
   );
 }

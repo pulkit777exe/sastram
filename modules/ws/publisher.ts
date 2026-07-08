@@ -1,6 +1,4 @@
-import { publishThreadEvent } from '@/lib/infrastructure/redis-pubsub';
 import { logger } from '@/lib/infrastructure/logger';
-import { websocketSchemas } from '@/lib/schemas/websocket';
 import type { MentionNotificationPayload } from '@/modules/messages/ports/side-effects';
 
 export interface ThreadMessagePayload {
@@ -22,161 +20,35 @@ export interface ThreadMessagePayload {
   attachments: unknown[];
 }
 
-interface ReactionUpdatePayload {
-  messageId: string;
-  reactionType: string;
-  count: number;
-}
-
-interface PinUpdatePayload {
-  messageId: string;
-  isPinned: boolean;
-}
-
-function validateAndLog(
-  event:
-    | 'NEW_MESSAGE'
-    | 'MESSAGE_DELETED'
-    | 'MESSAGE_EDITED'
-    | 'MENTION_NOTIFICATION'
-    | 'REACTION_UPDATE'
-    | 'PIN_UPDATE',
-  payload: unknown
-): boolean {
-  const parser =
-    event === 'NEW_MESSAGE'
-      ? websocketSchemas.newMessage
-      : event === 'MESSAGE_DELETED'
-        ? websocketSchemas.messageDeleted
-        : event === 'MESSAGE_EDITED'
-          ? websocketSchemas.messageEdited
-          : event === 'MENTION_NOTIFICATION'
-            ? websocketSchemas.mentionNotification
-            : event === 'REACTION_UPDATE'
-              ? websocketSchemas.reactionUpdate
-              : websocketSchemas.pinUpdate;
-
-  const result = parser.safeParse({ type: event, payload });
-  if (result.success) return true;
-
-  logger.error(`[${event}] payload validation failed`, {
-    issues: result.error.issues,
-  });
-  return false;
-}
-
 export function emitThreadMessage(threadId: string, message: ThreadMessagePayload): void {
-  // Fire-and-forget — streaming callbacks can't await
-  const payload = {
-    ...message,
-    // Serialize Date to ISO string for safe JSON transport
-    createdAt:
-      message.createdAt instanceof Date ? message.createdAt.toISOString() : message.createdAt,
-    senderImage: message.senderImage ?? null,
-    parentId: message.parentId ?? undefined,
-    depth: message.depth ?? 0,
-    likeCount: message.likeCount ?? 0,
-    replyCount: message.replyCount ?? 0,
-    isAiResponse: message.isAiResponse ?? false,
-    reactions: message.reactions ?? [],
-    attachments: message.attachments ?? [],
-    isComplete: message.isComplete ?? false,
-  };
-
-  if (!validateAndLog('NEW_MESSAGE', payload)) return;
-
-  void publishThreadEvent(threadId, {
-    type: 'NEW_MESSAGE',
-    threadId,
-    payload,
-  }).catch((err) => {
-    logger.error('[emitThreadMessage] Redis publish failed', {
-      error: err instanceof Error ? err.message : String(err),
-      threadId,
-      messageId: message.id,
-    });
-  });
+  logger.debug('[ws:noop] emitThreadMessage', { threadId, messageId: message.id });
 }
 
 export function emitMessageDeleted(threadId: string, messageId: string, deletedBy?: string): void {
-  const payload = { messageId, ...(deletedBy ? { deletedBy } : {}) };
-  if (!validateAndLog('MESSAGE_DELETED', payload)) return;
-
-  void publishThreadEvent(threadId, {
-    type: 'MESSAGE_DELETED',
-    threadId,
-    payload,
-  }).catch((err) => {
-    logger.error('[emitMessageDeleted] Redis publish failed', {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  });
+  logger.debug('[ws:noop] emitMessageDeleted', { threadId, messageId, deletedBy });
 }
 
 export function emitMessageEdited(threadId: string, messageId: string, content: string): void {
-  const payload = { threadId, messageId, content };
-  if (!validateAndLog('MESSAGE_EDITED', payload)) return;
-
-  void publishThreadEvent(threadId, {
-    type: 'MESSAGE_EDITED',
-    threadId,
-    payload,
-  }).catch((err) => {
-    logger.error('[emitMessageEdited] Redis publish failed', {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  });
+  logger.debug('[ws:noop] emitMessageEdited', { threadId, messageId });
 }
 
 export function emitPinUpdate(
   threadId: string,
-  messageIdOrPayload: string | PinUpdatePayload,
+  messageIdOrPayload: string | { messageId: string; isPinned: boolean },
   isPinned?: boolean
 ): void {
-  const payload =
-    typeof messageIdOrPayload === 'string'
-      ? { messageId: messageIdOrPayload, isPinned: Boolean(isPinned) }
-      : messageIdOrPayload;
-
-  if (!validateAndLog('PIN_UPDATE', payload)) return;
-
-  void publishThreadEvent(threadId, {
-    type: 'PIN_UPDATE',
-    threadId,
-    payload: { ...payload },
-  }).catch((err) => {
-    logger.error('[emitPinUpdate] Redis publish failed', {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  });
+  const messageId = typeof messageIdOrPayload === 'string' ? messageIdOrPayload : messageIdOrPayload.messageId;
+  logger.debug('[ws:noop] emitPinUpdate', { threadId, messageId });
 }
 
 export function emitReactionUpdate(
   threadId: string,
-  messageIdOrPayload: string | ReactionUpdatePayload,
+  messageIdOrPayload: string | { messageId: string; reactionType: string; count: number },
   emoji?: string,
   count?: number
 ): void {
-  const payload =
-    typeof messageIdOrPayload === 'string'
-      ? {
-          messageId: messageIdOrPayload,
-          reactionType: emoji ?? '',
-          count: count ?? 0,
-        }
-      : messageIdOrPayload;
-
-  if (!validateAndLog('REACTION_UPDATE', payload)) return;
-
-  void publishThreadEvent(threadId, {
-    type: 'REACTION_UPDATE',
-    threadId,
-    payload: { ...payload },
-  }).catch((err) => {
-    logger.error('[emitReactionUpdate] Redis publish failed', {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  });
+  const messageId = typeof messageIdOrPayload === 'string' ? messageIdOrPayload : messageIdOrPayload.messageId;
+  logger.debug('[ws:noop] emitReactionUpdate', { threadId, messageId });
 }
 
 export function emitTypingIndicator(
@@ -185,35 +57,12 @@ export function emitTypingIndicator(
   userName: string,
   isTyping: boolean
 ): void {
-  void publishThreadEvent(threadId, {
-    type: isTyping ? 'USER_TYPING' : 'USER_STOPPED_TYPING',
-    threadId,
-    payload: { userId, userName, threadId },
-  }).catch((err) => {
-    logger.error('[emitTypingIndicator] Redis publish failed', {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  });
+  // no-op: typing indicators disabled without WebSocket
 }
 
 export function emitMentionNotification(
   threadId: string,
   payload: MentionNotificationPayload
 ): void {
-  const normalizedPayload = {
-    ...payload,
-    parentId: payload.parentId ?? undefined,
-  };
-
-  if (!validateAndLog('MENTION_NOTIFICATION', normalizedPayload)) return;
-
-  void publishThreadEvent(threadId, {
-    type: 'MENTION_NOTIFICATION',
-    threadId,
-    payload: normalizedPayload,
-  }).catch((err) => {
-    logger.error('[emitMentionNotification] Redis publish failed', {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  });
+  logger.debug('[ws:noop] emitMentionNotification', { threadId });
 }

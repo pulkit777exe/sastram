@@ -63,31 +63,19 @@ type BootstrapContextValue = {
 const BootstrapContext = createContext<BootstrapContextValue | null>(null);
 
 // ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-const WS_INITIAL_DELAY_MS = 1_000;
-const WS_MAX_DELAY_MS = 30_000;
-const WS_MAX_ATTEMPTS = 10;
-
-// ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
 export function BootstrapProvider({ children }: { children: React.ReactNode }) {
-  // --- notification state (changes on every WS message) ---
+  // --- notification state ---
   const [unreadNotificationCount, setUnreadNotificationCountRaw] = useState(0);
 
-  // --- shell state (does NOT change on WS messages) ---
+  // --- shell state ---
   const [shellData, setShellData] = useState<BootstrapShellData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const router = useRouter();
   const mountedRef = useRef(true);
-
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectAttemptRef = useRef(0);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const shouldReconnectRef = useRef(true);
 
   const isPublicPage = useCallback(() => {
     if (typeof window === 'undefined') return false;
@@ -155,98 +143,6 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       mountedRef.current = false;
     };
   }, [fetchBootstrap]);
-
-  // ---------------------------------------------------------------------------
-  // WebSocket — only touches notification context
-  // ---------------------------------------------------------------------------
-  const connectWebSocketRef = useRef<((userId: string) => void) | null>(null);
-
-  const connectWebSocket = useCallback((userId: string) => {
-    if (typeof window === 'undefined') return;
-    if (!shouldReconnectRef.current) return;
-    if (reconnectAttemptRef.current >= WS_MAX_ATTEMPTS) {
-      return;
-    }
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const url = `${protocol}://${window.location.host}/api/ws/notifications?userId=${userId}`;
-
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(url);
-    } catch {
-      return;
-    }
-
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      reconnectAttemptRef.current = 0;
-    };
-
-    ws.onmessage = (event: MessageEvent) => {
-      try {
-        const message = JSON.parse(event.data as string) as {
-          type: string;
-          payload: { unreadCount: number };
-        };
-        if (message.type === 'NOTIFICATION_COUNT_UPDATE') {
-          setUnreadNotificationCountRaw(message.payload.unreadCount);
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    ws.onerror = () => {
-      // handled in onclose
-    };
-
-    ws.onclose = (event: CloseEvent) => {
-      if (event.code === 1000 || event.code === 1001) return;
-      if (!shouldReconnectRef.current) return;
-      if (!mountedRef.current) return;
-
-      reconnectAttemptRef.current += 1;
-      const delay = Math.min(
-        WS_INITIAL_DELAY_MS * Math.pow(2, reconnectAttemptRef.current - 1),
-        WS_MAX_DELAY_MS
-      );
-
-      reconnectTimerRef.current = setTimeout(() => {
-        if (mountedRef.current && shouldReconnectRef.current) {
-          connectWebSocketRef.current?.(userId);
-        }
-      }, delay);
-    };
-  }, []);
-
-  useEffect(() => {
-    connectWebSocketRef.current = connectWebSocket;
-  }, [connectWebSocket]);
-
-  useEffect(() => {
-    if (!shellData?.user?.id) return;
-
-    shouldReconnectRef.current = true;
-    connectWebSocket(shellData.user.id);
-
-    return () => {
-      shouldReconnectRef.current = false;
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close(1000, 'Component unmounted');
-        wsRef.current = null;
-      }
-    };
-  }, [shellData?.user?.id, connectWebSocket]);
 
   // ---------------------------------------------------------------------------
   // Notification mutators (stable — no deps that change)

@@ -28,7 +28,9 @@ function isPublicPath(pathname: string): boolean {
   });
 }
 
-const SECURITY_HEADERS = {
+const isProd = process.env.NODE_ENV === 'production';
+
+const SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -36,14 +38,15 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+    `script-src 'self' 'unsafe-inline'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https: http:",
-    "connect-src 'self' https:",
+    "connect-src 'self' https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io wss: ws:",
     "font-src 'self' data: https://fonts.gstatic.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    "upgrade-insecure-requests",
   ].join('; '),
 };
 
@@ -103,6 +106,37 @@ export default async function proxy(request: NextRequest) {
       const response = NextResponse.json({ error: 'Too Many Requests' }, { status: 429 });
       response.headers.set('x-request-id', requestId);
       return applySecurityHeaders(response);
+    }
+  }
+
+  const unsafeMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
+  if (unsafeMethods.includes(request.method)) {
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    const appUrl = new URL(env.NEXT_PUBLIC_APP_URL);
+
+    const checkOrigin = (headerValue: string | null): boolean => {
+      if (!headerValue) return true;
+      try {
+        const headerUrl = new URL(headerValue);
+        return headerUrl.host === appUrl.host;
+      } catch {
+        return false;
+      }
+    };
+
+    if (origin && !checkOrigin(origin)) {
+      return NextResponse.json(
+        { error: 'CSRF validation failed: Origin mismatch' },
+        { status: 403 }
+      );
+    }
+
+    if (!origin && referer && !checkOrigin(referer)) {
+      return NextResponse.json(
+        { error: 'CSRF validation failed: Referer mismatch' },
+        { status: 403 }
+      );
     }
   }
 

@@ -1,7 +1,6 @@
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
-import { initWebSocketServer } from './lib/infrastructure/websocket/server';
 import { logger } from './lib/infrastructure/logger';
 import { getEnv } from './lib/config/env';
 
@@ -34,10 +33,7 @@ app.prepare().then(() => {
     }
   });
 
-  initWebSocketServer(server);
-
   server.listen(port, () => {
     logger.info(`Server ready on http://${hostname}:${port}`);
-    logger.info(`WebSocket server ready on ws://${hostname}:${port}/api/ws`);
   });
 });
