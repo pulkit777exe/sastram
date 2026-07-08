@@ -11,7 +11,8 @@ const envSchema = z.object({
   // Server configuration
   PORT: z.string().default('3000').transform(Number),
 
-  // Database
+  // Database — Neon serverless requires pgbouncer=true for connection pooling.
+  // Without it, each serverless function opens a direct connection, exhausting Neon's limit.
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
 
   // Redis (rate limiting, queues, caching)
@@ -63,9 +64,21 @@ const envSchema = z.object({
   // Security / sessions
   CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters').optional(),
 
+  // QStash (background jobs)
+  QSTASH_URL: z.string().url('QSTASH_URL must be a valid URL').optional(),
+  QSTASH_TOKEN: z.string().optional(),
+  QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
+  QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
+
   // Feature flags
-  RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
+  RATE_LIMIT_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(v => v === true || v === 'true' || v === '1').default(true),
   CONTENT_MODERATION_ENABLED: z.coerce.boolean().default(false),
+
+  // Sentry
+  SENTRY_DSN: z.string().optional(),
+  SENTRY_ORG: z.string().optional(),
+  SENTRY_PROJECT: z.string().optional(),
+  SENTRY_AUTH_TOKEN: z.string().optional(),
 
   // Logging
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -128,6 +141,21 @@ export function getEnv(): Env {
   }
 
   cachedEnv = result.data;
+
+  // Warn if Neon pooling is misconfigured in production
+  if (
+    cachedEnv.NODE_ENV === 'production' &&
+    !cachedEnv.DATABASE_URL.includes('pgbouncer=true')
+  ) {
+    console.warn(
+      '[env] WARNING: DATABASE_URL does not contain pgbouncer=true.\n' +
+        'Neon free tier has limited direct connections. Without pgbouncer, each serverless\n' +
+        'function creates a direct connection which will exhaust your connection limit.\n' +
+        'Append ?pgbouncer=true to your DATABASE_URL in the Neon console, or set\n' +
+        'DATABASE_URL to the pooled connection string and DATABASE_URL_UNPOOLED for direct access.',
+    );
+  }
+
   return cachedEnv;
 }
 

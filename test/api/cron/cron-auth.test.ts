@@ -51,12 +51,20 @@ describe('CRON Auth Verification', () => {
   });
 
   it('returns null when CRON_SECRET is not set (dev mode)', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (process.env as any).NODE_ENV = 'development';
     delete process.env.CRON_SECRET;
 
-    const { verifyCronAuth } = require('@/lib/utils/cron-auth');
-    const req = mockRequest('/api/cron/update-threads');
-    const result = verifyCronAuth(req);
+    try {
+      const { verifyCronAuth } = require('@/lib/utils/cron-auth');
+      const req = mockRequest('/api/cron/update-threads');
+      const result = verifyCronAuth(req);
 
-    expect(result).to.be.null;
+      expect(result).to.be.null;
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (process.env as any).NODE_ENV = originalEnv;
+    }
   });
 });

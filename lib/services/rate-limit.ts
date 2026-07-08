@@ -136,3 +136,7 @@ export async function rateLimit(
 }
 
 export const messageLimiter: RateLimiter = getOrCreateLimiter('message');
+
+export function resetRateLimiters(): void {
+  _limiters.clear();
+}

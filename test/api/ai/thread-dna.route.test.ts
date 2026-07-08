@@ -3,15 +3,37 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import { mockRequest, stubAuth, stubHeaders, restoreStubs } from '../helpers';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { resetRateLimiters } from '@/lib/services/rate-limit';
 
+const quotaModulePath = require.resolve('@/lib/services/ai-analysis-quota');
+const spendCapModulePath = require.resolve('@/lib/services/ai-spend-cap');
 const POST = () => require('@/app/api/ai/thread-dna/route').POST;
 
 describe('POST /api/ai/thread-dna', () => {
   let stubs: sinon.SinonStub[] = [];
 
   beforeEach(() => {
+    resetRateLimiters();
     stubs.push(stubHeaders());
     stubs.push(...stubAuth());
+
+    require.cache[quotaModulePath] = {
+      id: quotaModulePath, filename: quotaModulePath, loaded: true, exports: {
+        consumeAiAnalysisQuota: async () => ({ allowed: true, remaining: 29 }),
+      },
+    } as NodeModule;
+    require.cache[spendCapModulePath] = {
+      id: spendCapModulePath, filename: spendCapModulePath, loaded: true, exports: {
+        checkAiSpendCap: async () => ({ allowed: true }),
+      },
+    } as NodeModule;
+  });
+
+  afterEach(() => {
+    restoreStubs(...stubs);
+    stubs = [];
+    delete require.cache[quotaModulePath];
+    delete require.cache[spendCapModulePath];
   });
 
   afterEach(() => {
