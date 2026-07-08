@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Users, MessageSquare, Star, ChevronDown, TrendingUp } from 'lucide-react';
 import { Prisma } from '@prisma/client';
@@ -16,6 +17,11 @@ import { cn } from '@/lib/utils/cn';
 import { prisma } from '@/lib/infrastructure/prisma';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+
+export const metadata: Metadata = {
+  title: 'Dashboard - Sastram',
+  description: 'Your Sastram dashboard with threads, messages, and activity.',
+};
 
 function parseTagFilter(raw: string | string[] | undefined): string[] {
   if (!raw) return [];

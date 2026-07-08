@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, Check, X, KeyRound } from 'lucide-react';
 
 interface ApiKeysModalProps {
@@ -38,6 +38,7 @@ const KEY_CONFIGS = [
 ];
 
 export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
   const [keys, setKeys] = useState<Record<string, string>>(() => {
     if (typeof window === 'undefined') return {};
     const loaded: Record<string, string> = {};
@@ -48,6 +49,41 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
     return loaded;
   });
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const modalElement = modalRef.current;
+    if (!modalElement) return;
+
+    const focusableElements = modalElement.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstElement = focusableElements[0] as HTMLElement;
+    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+    firstElement?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement?.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement?.focus();
+            e.preventDefault();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleKeyChange = (id: string, value: string) => {
     const updated = { ...keys, [id]: value };
@@ -85,7 +121,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div ref={modalRef} className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
@@ -95,6 +131,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
           <button
             onClick={onClose}
             className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-foreground/5 transition-colors"
+            aria-label="Close API Keys Configuration"
           >
             <X size={16} />
           </button>

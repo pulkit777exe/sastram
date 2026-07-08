@@ -34,9 +34,14 @@ export function TimeAgo({ date, className }: TimeAgoProps) {
   }, [date]);
 
   return (
-    <span className={className} suppressHydrationWarning>
+    <time
+      dateTime={parseTimestamp(date).toISOString()}
+      className={className}
+      suppressHydrationWarning
+      title={label}
+    >
       {label}
-    </span>
+    </time>
   );
 }
 

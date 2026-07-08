@@ -7,6 +7,12 @@ import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import type { BookmarkedThreadsResponse } from '@/modules/bookmarks/types';
 import { ROUTES } from '@/lib/config/routes';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Bookmarks - Sastram',
+  description: 'Your saved and bookmarked threads.',
+};
 
 export default async function BookmarksPage() {
   const session = await getSession();

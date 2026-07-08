@@ -2,6 +2,7 @@ allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': true
   '@sentry/cli': true
+  '@upstash/qstash-cli': true
   esbuild: true
   msgpackr-extract: true
   prisma: true

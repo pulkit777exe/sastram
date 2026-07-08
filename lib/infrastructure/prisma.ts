@@ -21,8 +21,11 @@ function resolveConnectionString(): string {
 
   if (process.env.NODE_ENV === 'production' && !pooledUrl.includes('pgbouncer=true')) {
     logger.warn(
-      '[prisma] DATABASE_URL does not contain pgbouncer=true — connections bypass Neon pool. ' +
-      'Use a pooled connection string or set DATABASE_URL_UNPOOLED for direct connections.',
+      '[prisma] DATABASE_URL does not contain pgbouncer=true — connections bypass Neon pool.\n' +
+      'Neon free tier has limited direct connections (~20). Without pgbouncer, each serverless\n' +
+      'function opens a direct connection, which will exhaust your limit under concurrent load.\n' +
+      'Fix: Append ?pgbouncer=true to your DATABASE_URL in the Neon console,\n' +
+      'or set DATABASE_URL to the pooled string and DATABASE_URL_UNPOOLED for direct access.',
     );
   }
 

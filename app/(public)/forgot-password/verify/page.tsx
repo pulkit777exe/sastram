@@ -164,6 +164,7 @@ export default function ForgotPasswordVerifyPage() {
               type="text"
               inputMode="numeric"
               maxLength={6}
+              aria-label={`Digit ${index + 1} of verification code`}
               className="w-10 h-12 text-center rounded-xl"
               value={digit}
               disabled={isSubmitting}

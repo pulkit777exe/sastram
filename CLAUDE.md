@@ -1,10 +1,10 @@
 # Sastram — Discussion and Research Platform
 
-Personal project, open sourced. Built with Next.js, Prisma, WebSockets, and AI.
+Personal project, open sourced. Built with Next.js, Prisma, and AI.
 
 ## Overview
 
-Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, PostgreSQL (Neon), WebSocket real-time chat, Better Auth authentication, and AI integration.
+Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, PostgreSQL (Neon), serverless architecture, Better Auth authentication, and AI integration.
 
 ## Tech Stack
 
@@ -14,7 +14,6 @@ Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, Postgr
 - **ORM**: Prisma 7+
 - **Auth**: Better Auth
 - **AI**: Google Gemini / OpenAI GPT
-- **Real-time**: Custom WebSocket infrastructure
 - **Styling**: Tailwind CSS + shadcn/ui components
 
 ## Commands
@@ -22,17 +21,13 @@ Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, Postgr
 ```bash
 # Development
 pnpm dev              # Next.js dev server
-pnpm dev:server       # Custom server (runs WebSocket server)
-pnpm dev:worker      # BullMQ worker process (standalone, hot-reload)
-pnpm start:server    # Production server (includes WebSocket)
-pnpm start:worker    # Production worker process
 
 # Build & Deploy
 pnpm build           # Prisma generate + Next build
 pnpm start           # Production server
 
 # Testing & Linting
-pnpm test            # Mocha tests (257 passing)
+pnpm test            # Mocha tests (199 passing)
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
 pnpm lint:fix      # ESLint fix
@@ -83,18 +78,13 @@ pnpm db:studio   # Prisma studio
 - **Rate Limit** (`lib/services/rate-limit.ts`): Redis-based rate limiting with in-memory fallback
 - **Moderation** (`lib/services/moderation.ts`): Regex-based content filtering + AI inline
 
-### WebSocket
+### Background Jobs
 
-- Server: `lib/infrastructure/websocket/server.ts`
-- Client: `lib/infrastructure/websocket/client.ts`
-- State is **in-memory** — single server only (see `shared/ARCHITECTURE.md` for scaling limitations)
-
-### BullMQ Job Queues
-
-- `lib/infrastructure/bullmq.ts` — defines 9 queue names and job handlers
-- Worker runs as separate process (`worker/index.ts`) via `pnpm dev:worker`
+- QStash webhook callback at `app/api/jobs/route.ts`
+- Job handlers in `lib/queue/workers/ai.worker.ts` and `email.worker.ts`
+- Vercel Cron for scheduled tasks (update-threads, cleanup-blobs)
 - Jobs: thread summary, thread DNA, resolution score, conflict detection, daily digest, AI inline, email, staleness check, AI insight notifications
-- Jobs retry 3x with exponential backoff
+- Jobs retry 3x via QStash
 
 ### API Routes
 
@@ -120,26 +110,27 @@ pnpm db:studio   # Prisma studio
 
 ## Test Coverage
 
-- **Current**: 257 tests in 9 files (api-response, content-safety, error-handling, logger, queue-config, search-fts, simple, utils, websocket)
-- **Missing**: API endpoint tests, BullMQ job tests
+- **Current**: 199 tests in 9 files (api-response, content-safety, error-handling, logger, queue-config, search-fts, simple, utils)
+- **Missing**: API endpoint tests
 
 ## Architecture Notes
 
 - Server actions use `createServerAction` from `lib/utils/server-action.ts`
 - Auth handled manually inside action handlers via `requireSession()`
 - `Result<T, E>` type and `safeAction` wrapper removed — use `{ data, error, errorCode, ok }` return objects
-- WebSocket state is in-memory (see `shared/ARCHITECTURE.md` for scaling limitations)
-- BullMQ worker runs as a separate process, not in the Next.js server
 
 ## Environment Variables
 
 Required in `.env`:
 - `DATABASE_URL` - PostgreSQL connection (Neon)
-- `REDIS_URL` - Redis for BullMQ and rate limiting
+- `REDIS_URL` - Redis for rate limiting and caching
 - `BETTER_AUTH_SECRET` - Auth secret (32+ chars)
 - `BETTER_AUTH_URL` - Auth base URL
 - `NEXT_PUBLIC_APP_URL` - Public URL
 - `CRON_SECRET` - Bearer token for cron endpoints (min 32 chars)
+- `QSTASH_TOKEN` - Upstash QStash token for background jobs
+- `QSTASH_CURRENT_SIGNING_KEY` - QStash signing key for request verification
+- `QSTASH_NEXT_SIGNING_KEY` - QStash next signing key for key rotation
 - `GEMINI_API_KEY` or `OPENAI_API_KEY` - AI provider
 - `RATE_LIMIT_ENABLED` - Set to `false` to disable rate limiting
 
@@ -151,8 +142,3 @@ Optional:
 ## CI
 
 GitHub Actions workflow in `.github/workflows/ci.yml` — runs typecheck, lint, and tests with a PostgreSQL service container.
-
-## Known Issues
-
-1. WebSocket state is in-memory — does not work across multiple server instances
-2. BullMQ Redis URL parsing only supports `REDIS_URL` / `UPSTASH_REDIS_REST_URL` — standalone `REDIS_HOST`/`REDIS_PORT` fallback lacks TLS support for Upstash

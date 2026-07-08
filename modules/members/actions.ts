@@ -14,6 +14,7 @@ import {
 } from '@/modules/members/repository';
 import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
+import { AppError } from '@/lib/utils/errors';
 
 const joinSectionSchema = z.object({
   threadId: z.string().cuid(),
@@ -48,16 +49,36 @@ export const joinSection = createServerAction(
   { schema: joinSectionSchema, actionName: 'joinSection' },
   async ({ threadId }) => {
     const session = await requireSession();
-    const existing = await getMemberRole(threadId, session.user.id);
-    if (existing && existing.status === 'ACTIVE') {
-      return { data: null, error: 'Already a member' };
-    }
 
-    await addMember(threadId, session.user.id, 'MEMBER');
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.threadMember.findUnique({
+        where: { threadId_userId: { threadId, userId: session.user.id } },
+      });
 
-    await prisma.thread.update({
-      where: { id: threadId },
-      data: { memberCount: { increment: 1 } },
+      if (existing?.status === 'ACTIVE') {
+        throw new AppError('Already a member', 'ALREADY_MEMBER');
+      }
+
+      if (existing) {
+        await tx.threadMember.update({
+          where: { threadId_userId: { threadId, userId: session.user.id } },
+          data: { status: 'ACTIVE', role: 'MEMBER' },
+        });
+      } else {
+        await tx.threadMember.create({
+          data: {
+            threadId,
+            userId: session.user.id,
+            role: 'MEMBER',
+            status: 'ACTIVE',
+          },
+        });
+      }
+
+      await tx.thread.update({
+        where: { id: threadId },
+        data: { memberCount: { increment: 1 } },
+      });
     });
 
     revalidatePath('/dashboard/threads');
@@ -69,12 +90,32 @@ export const leaveSection = createServerAction(
   { schema: leaveSectionSchema, actionName: 'leaveSection' },
   async ({ threadId }) => {
     const session = await requireSession();
-    await removeMember(threadId, session.user.id);
 
-    await prisma.thread.update({
-      where: { id: threadId },
-      data: { memberCount: { decrement: 1 } },
+    const affected = await prisma.$transaction(async (tx) => {
+      const existing = await tx.threadMember.findUnique({
+        where: { threadId_userId: { threadId, userId: session.user.id } },
+      });
+
+      if (!existing || existing.status !== 'ACTIVE') {
+        return false;
+      }
+
+      await tx.threadMember.update({
+        where: { threadId_userId: { threadId, userId: session.user.id } },
+        data: { status: 'LEFT' },
+      });
+
+      await tx.thread.update({
+        where: { id: threadId },
+        data: { memberCount: { decrement: 1 } },
+      });
+
+      return true;
     });
+
+    if (!affected) {
+      return { data: null, error: 'You are not an active member' };
+    }
 
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };
@@ -136,12 +177,31 @@ export const removeMemberAction = createServerAction(
       return { data: null, error: 'Insufficient permissions' };
     }
 
-    await removeMember(threadId, userId);
+    const affected = await prisma.$transaction(async (tx) => {
+      const existing = await tx.threadMember.findUnique({
+        where: { threadId_userId: { threadId, userId } },
+      });
 
-    await prisma.thread.update({
-      where: { id: threadId },
-      data: { memberCount: { decrement: 1 } },
+      if (!existing || existing.status !== 'ACTIVE') {
+        return false;
+      }
+
+      await tx.threadMember.update({
+        where: { threadId_userId: { threadId, userId } },
+        data: { status: 'LEFT' },
+      });
+
+      await tx.thread.update({
+        where: { id: threadId },
+        data: { memberCount: { decrement: 1 } },
+      });
+
+      return true;
     });
+
+    if (!affected) {
+      return { data: null, error: 'User is not an active member' };
+    }
 
     revalidatePath('/dashboard/threads');
     return { data: null, error: null };

@@ -26,9 +26,9 @@ accumulates knowledge. More users = better answers for the next user.
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend:** Next.js App Router (API routes + Server Actions), Node.js
 - **Database:** PostgreSQL via Prisma ORM (Neon serverless), 33 models
-- **Real-time:** WebSockets (custom server at `lib/infrastructure/websocket/`)
+- **Real-time:** Background Jobs: Upstash QStash + Vercel Cron
 - **Authentication:** Better Auth (email OTP + Google + GitHub)
-- **Cache / Queue:** Upstash Redis + BullMQ (9 queues, 7 AI job types)
+- **Cache / Rate Limit:** Upstash Redis
 - **File Storage:** Vercel Blob Storage (`lib/services/blob.ts`)
 - **Email:** Nodemailer (SMTP) — `lib/services/email.ts`
 - **AI — Search:** Exa API + Tavily API (via `modules/ai-search/service.ts`)
@@ -49,19 +49,16 @@ Browser Client
 │   ├── modules/ (domain logic — 29 modules)
 │   │   │
 │   │   ├── Prisma → PostgreSQL (Neon)
-│   │   ├── Upstash Redis (cache + rate limit + typing indicators)
-│   │   ├── BullMQ → worker/index.ts (AI job queue, separate process)
+│   │   ├── Upstash Redis (cache + rate limit)
+│   │   ├── QStash → background jobs (thread summary, DNA, score, conflicts)
+│   │   ├── Vercel Cron → scheduled tasks (daily digest, staleness check)
 │   │   ├── Vercel Blob (file storage)
 │   │   ├── Gemini / Exa / Tavily (AI)
 │   │   └── Nodemailer (SMTP email)
 │   │
 │   └── API Routes (29 REST endpoints)
 │
-├── WebSocket → lib/infrastructure/websocket/server.ts
-│   │
-│   └── modules/ws/ (Redis-backed pub/sub for cross-instance delivery)
-│
-└── Worker → worker/index.ts (BullMQ worker process, separate from Next.js)
+└── SSE → AI reply streaming (app/api/threads/[threadId]/ai-reply/stream)
 ```
 
 ---
@@ -118,7 +115,7 @@ sastram/
 │       ├── cron/
 │       │   ├── update-threads/           # Daily AI metadata refresh
 │       │   ├── daily-digest/             # Email digest trigger
-│       │   └── worker/                   # Cron-triggered inline BullMQ worker
+│       │   └── jobs/                     # QStash webhook callback
 │       └── v1/moderation/               # Moderation API (queue, stats, rules, appeals)
 │
 ├── components/
@@ -136,11 +133,11 @@ sastram/
 │   └── ui/                               # shadcn/ui + TimeAgo, ErrorBoundary, LoadingVideo, ThemeToggle
 │
 ├── hooks/
-│   ├── useThreadWebSocket.ts             # Thread WebSocket (messages, typing, reactions, pins)
+│   ├── useThreadWebSocket.ts             # Thread polling hook
 │   ├── useMessages.ts                    # React Query: conversation messages
 │   ├── useConversations.ts              # React Query: chat conversations
 │   ├── use-debounce.ts                   # Generic debounce hook
-│   └── chat/use-websocket.ts            # Chat-specific WebSocket hook
+│   └── chat/use-websocket.ts            # Chat polling hook
 │
 ├── stores/
 │   └── thread-view-store.ts             # useSyncExternalStore: current thread slug
@@ -183,9 +180,6 @@ sastram/
 │   │   ├── permissions.ts                # Role-based access control
 │   │   └── routes.ts                     # Route constants
 │   ├── infrastructure/
-│   │   ├── websocket/
-│   │   │   ├── server.ts                 # WebSocket server (auth, thread channels, Redis typing)
-│   │   │   └── client.ts                 # WebSocket client (createThreadSocket)
 │   │   ├── bullmq.ts                     # Backward-compatible re-export barrel
 │   │   ├── logger.ts                     # Structured logger with request IDs
 │   │   ├── prisma.ts                     # Prisma Client (Neon adapter)
@@ -196,8 +190,6 @@ sastram/
 │   ├── queue/
 │   │   ├── config.ts                     # QUEUE_NAMES (9), DEFAULT_JOB_OPTIONS, AIJobType enum (7)
 │   │   ├── types.ts                      # Job data interfaces (ThreadSummaryJobData, etc.)
-│   │   ├── queue.ts                      # Queue factory functions
-│   │   ├── connection.ts                # Redis connection for BullMQ
 │   │   └── workers/
 │   │       ├── ai.worker.ts              # AI job handlers (summary, DNA, score, conflicts, inline, staleness)
 │   │       └── email.worker.ts           # Email job handler
@@ -218,8 +210,7 @@ sastram/
 │   │   ├── content-safety.ts            # Profanity filtering, file validation
 │   │   ├── email.ts                      # Nodemailer SMTP (sendEmail, sendOTPEmail, etc.)
 │   │   ├── moderation.ts                 # Regex + AI content moderation
-│   │   ├── rate-limit.ts                 # Redis-based rate limiting with buckets
-│   │   └── thread-socket.ts             # Re-export of createThreadSocket
+│   │   └── rate-limit.ts                 # Redis-based rate limiting with buckets
 │   ├── middleware/
 │   │   └── moderation.ts                # requireModerator(), requireAdmin()
 │   ├── actions/
@@ -241,9 +232,6 @@ sastram/
 │   │   └── pagination.ts                # Cursor-based pagination
 │   ├── dedupe.ts                         # In-flight request deduplication
 │   └── sanitize.ts                       # API key validation, input sanitization
-│
-├── worker/
-│   └── index.ts                          # BullMQ worker process (separate from Next.js)
 │
 ├── prisma/
 │   ├── schema.prisma                     # 33 models
@@ -291,7 +279,7 @@ modules/{feature}/
 
 ### Thread
 The central entity. Stores AI metadata directly:
-- `resolutionScore: Int?` — 0-100, calculated by BullMQ job
+- `resolutionScore: Int?` — 0-100, calculated by QStash job
 - `isOutdated: Boolean` — set by staleness detection cron
 - `aiSummary: String?` — cached summary, regenerated via LangChain
 - `threadDna: Json?` — `{ questionType, expertiseLevel, topics[], readTimeMinutes, hasResolution }`
@@ -368,9 +356,9 @@ The central entity. Stores AI metadata directly:
 | Virtual scrolling | `@tanstack/react-virtual` in `message-list.tsx` |
 | Load older messages | `thread-live-wrapper.tsx:loadMoreMessages` (cursor pagination) |
 | Pinned message banner | `thread-live-wrapper.tsx` lines 379-399 |
-| Thread DNA analysis | `POST /api/ai/thread-dna` → BullMQ → `Thread.threadDna` |
-| Resolution score | `POST /api/ai/resolution-score` → BullMQ → `Thread.resolutionScore` |
-| Thread summary (LangChain) | `POST /api/ai/thread-summary` → BullMQ → `Thread.aiSummary` |
+| Thread DNA analysis | `POST /api/ai/thread-dna` → QStash → `Thread.threadDna` |
+| Resolution score | `POST /api/ai/resolution-score` → QStash → `Thread.resolutionScore` |
+| Thread summary (LangChain) | `POST /api/ai/thread-summary` → QStash → `Thread.aiSummary` |
 | Thread tagging (backend) | `modules/tags/actions.ts` (CRUD, thread-tag associations) |
 | Thread invitations (backend) | `modules/invitations/actions.ts` |
 | Thread membership | `modules/members/actions.ts` (join, leave, invite, role management) |
@@ -391,7 +379,7 @@ The central entity. Stores AI metadata directly:
 | Message attachments | `app/api/messages/route.ts` (multipart upload) |
 | @mentions | `modules/messages/actions/mentions.ts` (create, search, notify) |
 | Mention autocomplete | `components/chat/mention-suggest.tsx` (debounced search) |
-| @ai inline responses | `modules/messages/actions/ai-inline.ts` → BullMQ job |
+| @ai inline responses | `modules/messages/actions/ai-inline.ts` → QStash job |
 | AI inline pending status | `thread-live-wrapper.tsx` (2-min timeout, pending/failed tracking) |
 | "Edited" label | `message-list.tsx` line 304-306 |
 | Deleted placeholder | `message-list.tsx` lines 230-248 ("This message was deleted") |
@@ -400,22 +388,10 @@ The central entity. Stores AI metadata directly:
 
 | Feature | Implementation |
 |---------|---------------|
-| WebSocket server | `lib/infrastructure/websocket/server.ts` (auth, thread channels) |
-| WebSocket client | `lib/infrastructure/websocket/client.ts` |
-| Thread-scoped connections | `ws://host/ws/thread/{threadId}` |
-| Notifications channel | `ws://host/ws/notifications` |
-| Redis-backed typing indicators | `server.ts` lines 40-142 (5s TTL) |
-| Typing indicator UI | `thread-live-wrapper.tsx` lines 496-517 (bouncing dots) |
-| Cross-instance delivery | `modules/ws/publisher.ts` + Redis pub/sub |
-| Message events | NEW_MESSAGE, MESSAGE_DELETED, MESSAGE_EDITED |
-| Typing events | USER_TYPING, USER_STOPPED_TYPING |
-| Reaction events | REACTION_UPDATE |
-| Pin events | PIN_UPDATE |
-| Mention events | MENTION_NOTIFICATION |
-| Error events | ERROR |
-| Exponential backoff reconnect | `useThreadWebSocket.ts` lines 101-104 (1s→30s cap) |
-| Heartbeat / keepalive | `server.ts` lines 446-455 (30s ping) |
-| Per-user connection limit | MAX_CONNECTIONS_PER_USER = 10 |
+| SSE streaming | `app/api/threads/[threadId]/ai-reply/stream/route.ts` |
+| AI reply tokens | Streamed via Server-Sent Events |
+| Message updates | Client-side polling |
+| Typing indicators | Not implemented (forum-style platform) |
 
 ### Chat
 
@@ -424,7 +400,7 @@ The central entity. Stores AI metadata directly:
 | Chat conversations | `app/chat/page.tsx` + `modules/chat/actions.ts` |
 | Create conversation | `modules/chat/actions.ts:createConversation` |
 | Send/receive messages | `hooks/useMessages.ts` (React Query) |
-| Chat WebSocket | `hooks/chat/use-websocket.ts` |
+| Chat polling | `hooks/chat/use-websocket.ts` |
 | Conversation list | `hooks/useConversations.ts` |
 
 ### AI-Powered Features
@@ -444,27 +420,29 @@ The central entity. Stores AI metadata directly:
 | Resolution score | 0-100 with confidence decay over time |
 | Conflict detection | AI identifies contradictory facts in threads |
 | Thread summary (LangChain) | Map-reduce: split → parallel summarize → combine |
-| AI inline (@ai) | User types @ai in message → queued BullMQ job → streaming response |
+| AI inline (@ai) | User types @ai in message → QStash job → streaming response |
 | Staleness detection | 30-day threshold, checks if thread needs updating |
 | AI insight notifications | Score change ≥20pts or conflict detected → notify subscribers |
 
-### Background Jobs (BullMQ — 9 queues, 7 AI job types)
+### Background Jobs (QStash + Vercel Cron)
 
-**Worker process:** `worker/index.ts` (separate from Next.js, runs via `pnpm dev:worker`)
+**QStash jobs** are triggered by API routes and enqueued via `lib/services/queue.ts`.
 
-| Queue | Job Type | Trigger | Result |
-|-------|----------|---------|--------|
-| `thread-summary` | GENERATE_THREAD_SUMMARY | 50+ messages or manual | `Thread.aiSummary` |
-| `thread-dna` | GENERATE_THREAD_DNA | 3rd message posted | `Thread.threadDna` |
-| `resolution-score` | CALCULATE_RESOLUTION_SCORE | 5+ messages or daily cron | `Thread.resolutionScore` |
-| `conflict-detection` | DETECT_CONFLICTS | New message arrives | Notification to subscribers |
-| `daily-digest` | GENERATE_DAILY_DIGEST | Daily cron | Email via Nodemailer |
-| `ai-insight-notifications` | SEND_AI_INSIGHT_NOTIFICATIONS | Score change / conflict | Notification table |
-| `ai-inline` | GENERATE_AI_INLINE | @ai in message | Streaming AI response |
-| `staleness-check` | (batch) | Daily cron | `Thread.isOutdated` flag |
-| `email` | (email jobs) | Various | Nodemailer send |
+**Vercel Cron** runs scheduled tasks via `vercel.json`.
 
-**Job options:** 3 retries, exponential backoff (2s base), 100 completed / 500 failed retained.
+| Job | Trigger | Result |
+|-----|---------|--------|
+| Thread summary | 50+ messages or manual | `Thread.aiSummary` |
+| Thread DNA | 3rd message posted | `Thread.threadDna` |
+| Resolution score | 5+ messages or daily cron | `Thread.resolutionScore` |
+| Conflict detection | New message arrives | Notification to subscribers |
+| Daily digest | Daily cron (3 AM UTC) | Email via Nodemailer |
+| AI insight notifications | Score change / conflict | Notification table |
+| AI inline | @ai in message | Streaming AI response |
+| Staleness check | Daily cron | `Thread.isOutdated` flag |
+| Email | Various | Nodemailer send |
+
+**Job options:** 3 retries via QStash.
 
 ### Moderation & Administration
 
@@ -588,19 +566,19 @@ Never logged, never stored in DB.
 ```
 Message posted
 ↓
-├── 3rd message → generateThreadDNA (BullMQ)
+├── 3rd message → generateThreadDNA (QStash)
 │   → Gemini Flash → Thread.threadDna
 │
-├── 50+ messages → generateThreadSummary (BullMQ)
+├── 50+ messages → generateThreadSummary (QStash)
 │   → LangChain map-reduce → Thread.aiSummary
 │
-├── 5+ messages → calculateResolutionScore (BullMQ)
+├── 5+ messages → calculateResolutionScore (QStash)
 │   → Gemini Flash + confidence decay → Thread.resolutionScore
 │
-├── New message → detectConflicts (BullMQ)
+├── New message → detectConflicts (QStash)
 │   → Gemini Flash → Notification to subscribers
 │
-└── Daily cron → stalenessCheck (BullMQ)
+└── Daily cron → stalenessCheck (QStash)
     → Check Thread.updatedAt vs threshold → Thread.isOutdated
 ```
 
@@ -624,25 +602,13 @@ Fallback: basic 12K-char prompt if LangChain fails
 
 ## Real-time Architecture
 
-WebSocket server authenticated, scoped per thread. Redis-backed typing indicators with 5s TTL. Cross-instance delivery via Redis pub/sub.
+This is a serverless, forum-style platform. There are no persistent WebSocket connections.
 
-**Event types (from `modules/ws/types.ts`):**
+- **AI reply streaming**: GET endpoint at `/api/threads/[threadId]/ai-reply/stream` uses Server-Sent Events
+- **Message updates**: Clients poll for new messages (not implemented yet - forum-style, no real-time needed)
+- **Typing indicators**: Not implemented (forum-style platform)
 
-```typescript
-type WebSocketEventType =
-  | 'NEW_MESSAGE'              // New message posted to thread
-  | 'MESSAGE_DELETED'          // Message deleted
-  | 'MESSAGE_EDITED'           // Message edited
-  | 'USER_TYPING'              // User started typing (Redis TTL: 5s)
-  | 'USER_STOPPED_TYPING'      // User stopped typing
-  | 'MESSAGE_QUEUED'           // Message queued (moderation hold)
-  | 'MENTION_NOTIFICATION'     // User was mentioned
-  | 'REACTION_UPDATE'          // Reaction added/removed
-  | 'PIN_UPDATE'               // Message pinned/unpinned
-```
-
-**Rule:** WebSocket events carry complete payloads.
-They never trigger a refetch. If payload is incomplete, fix the payload.
+Background jobs are processed via Upstash QStash webhooks and Vercel Cron.
 
 ---
 
@@ -662,61 +628,25 @@ They never trigger a refetch. If payload is incomplete, fix the payload.
 - Internal DB errors never leaked to client error messages
 - Rate limiting on all AI endpoints (Upstash Redis)
 - Per-user daily AI search quota (20/day)
-- WebSocket auth via session cookie before upgrade
-- Per-user WebSocket connection limit (MAX_CONNECTIONS_PER_USER = 10)
 - Thread visibility enforcement (PRIVATE/RESTRICTED membership checks)
 
 ---
 
 ## Deployment
 
-- **Host:** Vercel (serverless) or custom server (`pnpm dev:server`)
+- **Host:** Vercel (serverless)
 - **Database:** Neon PostgreSQL (serverless)
 - **Redis:** Upstash (serverless)
 - **Storage:** Vercel Blob
 - **CI/CD:** GitHub Actions → auto-deploy on main
-- **Worker:** Separate process (`pnpm dev:worker`) for BullMQ jobs
 
 ### Commands
 
 ```bash
-pnpm dev            # Next.js dev server (no WebSocket)
-pnpm dev:server     # Custom server with WebSocket (port 3001)
-pnpm dev:worker     # BullMQ worker process (hot-reload)
+pnpm dev            # Next.js dev server
 pnpm build          # Prisma generate + Next build
 pnpm start          # Production server
-pnpm start:server   # Production with WebSocket
-pnpm start:worker   # Production worker
 pnpm test           # Mocha unit tests
 pnpm typecheck      # TypeScript check
 pnpm lint           # ESLint
 ```
-
----
-
-## Known Scaling Limitations
-
-### WebSocket In-Memory State
-
-The WebSocket server (`lib/infrastructure/websocket/server.ts`) stores connection state in-memory:
-
-```typescript
-const threadChannels = new Map<string, ThreadChannel>();        // thread → subscribers
-const connectionsByUserId = new Map<string, Set<WebSocket>>();   // userId → connections
-```
-
-Typing indicators are Redis-backed (5s TTL), but thread/user channel subscriptions are local.
-
-**Impact:** With multiple server instances, WebSocket messages only reach subscribers on the same process.
-
-**Workaround for 10x scale:** The Redis pub/sub adapter (`lib/infrastructure/redis-pubsub.ts`) already handles cross-instance message delivery for thread and user events. Channel subscriptions just need to be moved to Redis.
-
-**Current scope:** Single-instance or <1,000 concurrent WebSocket connections.
-
-### Database Connection Pooling (Neon Serverless)
-
-Neon serverless drivers use HTTP-based connections for cold starts. Under high concurrency, connection pool exhaustion can cause latency spikes.
-
-### BullMQ Job Payload Size
-
-Thread summary jobs serialize all messages into the Redis job payload. For threads with 200 messages, this can be large. Consider fetching messages from DB in the worker instead of passing through the queue.

@@ -221,27 +221,36 @@ export const sendMessage = withValidation(
         return { data: null, error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
       }
 
-      const message = await prisma.message.create({
-        data: {
-          content: content || '',
-          threadId: conversationId,
-          senderId: session.user.id,
-          attachments: {
-            create:
-              attachments?.map((att) => ({
-                url: att.url,
-                type: att.type as 'FILE' | 'IMAGE' | 'GIF',
-                name: att.name,
-                size: att.size ? Number(att.size) : null,
-              })) || [],
+      const message = await prisma.$transaction(async (tx) => {
+        const msg = await tx.message.create({
+          data: {
+            content: content || '',
+            threadId: conversationId,
+            senderId: session.user.id,
+            attachments: {
+              create:
+                attachments?.map((att) => ({
+                  url: att.url,
+                  type: att.type as 'FILE' | 'IMAGE' | 'GIF',
+                  name: att.name,
+                  size: att.size ? Number(att.size) : null,
+                })) || [],
+            },
           },
-        },
-        include: {
-          sender: {
-            select: { id: true, name: true, email: true, image: true },
+          include: {
+            sender: {
+              select: { id: true, name: true, email: true, image: true },
+            },
+            attachments: true,
           },
-          attachments: true,
-        },
+        });
+
+        await tx.thread.update({
+          where: { id: conversationId },
+          data: { messageCount: { increment: 1 } },
+        });
+
+        return msg;
       });
 
       emitThreadMessage(conversationId, {

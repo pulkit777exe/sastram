@@ -1,24 +1,11 @@
-'use client';
+import LoginPageClient from './LoginPageClient';
+import type { Metadata } from 'next';
 
-import { useState } from 'react';
-import { LoginForm } from '@/components/auth';
-import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
+export const metadata: Metadata = {
+  title: 'Sign In - Sastram',
+  description: 'Log in to your Sastram account.',
+};
 
 export default function LoginPage() {
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [email, setEmail] = useState('');
-
-  return (
-    <>
-      <LoginForm
-        onForgotPassword={() => setShowForgotPassword(true)}
-        onEmailChange={setEmail}
-      />
-      <ForgotPasswordModal
-        open={showForgotPassword}
-        onOpenChange={setShowForgotPassword}
-        initialEmail={email}
-      />
-    </>
-  );
+  return <LoginPageClient />;
 }

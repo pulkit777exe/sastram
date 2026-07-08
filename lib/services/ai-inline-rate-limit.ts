@@ -25,6 +25,6 @@ export async function consumeAiInlineQuota(params: {
     };
   } catch (error) {
     logger.error('[consumeAiInlineQuota]', error);
-    return { allowed: true, used: 0 };
+    return { allowed: false, used: 0 };
   }
 }

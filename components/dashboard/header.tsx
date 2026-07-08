@@ -73,7 +73,12 @@ export function DashboardHeader() {
               </Badge>
             )}
           </Link>
-          <div className="relative hidden md:block cursor-pointer" onClick={() => setOpen(true)}>
+          <button
+            type="button"
+            className="relative hidden md:block cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-brand/20 rounded-full"
+            onClick={() => setOpen(true)}
+            aria-label="Search users"
+          >
             <AnimatedIcon
               icon={Search}
               className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
@@ -85,7 +90,7 @@ export function DashboardHeader() {
               <AnimatedIcon icon={Command} className="h-3 w-3" />
               <span>K</span>
             </div>
-          </div>
+          </button>
         </div>
       </header>
       <SearchDialog open={open} onOpenChange={setOpen} />

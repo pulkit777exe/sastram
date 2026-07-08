@@ -21,7 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </aside>
 
         <div className="flex flex-1 flex-col bg-card rounded-2xl border border-border overflow-hidden">
-          <main className="flex-1 overflow-y-auto p-8 text-foreground">{children}</main>
+          <main id="main-content" className="flex-1 overflow-y-auto p-8 text-foreground">{children}</main>
         </div>
       </div>
     </DashboardProviders>

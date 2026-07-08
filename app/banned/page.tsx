@@ -4,6 +4,12 @@ import { redirect } from 'next/navigation';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { PublicNavbar } from '@/components/layout/public-navbar';
 import { SerifHeading } from '@/components/layout/serif-heading';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Account Suspended - Sastram',
+  description: 'Your account has been suspended.',
+};
 
 export default async function BannedPage() {
   const session = await getSession();

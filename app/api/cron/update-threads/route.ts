@@ -2,21 +2,15 @@ import { logger } from '@/lib/infrastructure/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { env } from '@/lib/config/env';
-import {
-  AIJobType,
-  DEFAULT_JOB_OPTIONS,
-  getAiInsightNotificationsQueue,
-  getConflictDetectionQueue,
-  getDailyDigestQueue,
-  getResolutionScoreQueue,
-  getThreadDnaQueue,
-} from '@/lib/infrastructure/bullmq';
+import { AIJobType } from '@/lib/queue/config';
+import { enqueueJob, getDailyQstashCount } from '@/lib/services/queue';
 import { updateAllThreadRelations } from '@/modules/threads';
 import { prewarmFollowUpQueries } from '@/modules/ai-search';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 25;
+const QSTASH_GUARD_THRESHOLD = 400;
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
@@ -24,13 +18,13 @@ export async function GET(req: NextRequest) {
     return authError;
   }
 
-  try {
-    const threadDnaQueue = getThreadDnaQueue();
-    const resolutionScoreQueue = getResolutionScoreQueue();
-    const conflictDetectionQueue = getConflictDetectionQueue();
-    const dailyDigestQueue = getDailyDigestQueue();
-    const aiInsightNotificationsQueue = getAiInsightNotificationsQueue();
+  const dailyCount = await getDailyQstashCount();
+  if (dailyCount > QSTASH_GUARD_THRESHOLD) {
+    logger.warn(`[cron/update-threads] Daily QStash count (${dailyCount}) exceeds guard threshold (${QSTASH_GUARD_THRESHOLD}), skipping`);
+    return NextResponse.json(ok({ processed: 0, jobsAdded: 0, skipped: true, dailyCount }));
+  }
 
+  try {
     let totalProcessed = 0;
     let totalJobsAdded = 0;
     let cursor: string | undefined;
@@ -40,7 +34,7 @@ export async function GET(req: NextRequest) {
       const threads = await prisma.thread.findMany({
         where: {
           updatedAt: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           },
           ...(cursor ? { id: { gt: cursor } } : {}),
         },
@@ -48,9 +42,16 @@ export async function GET(req: NextRequest) {
           messages: {
             take: env.AI_ANALYSIS_MESSAGE_LIMIT,
             orderBy: { createdAt: 'desc' },
-            include: { sender: { select: { name: true } } },
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              sender: { select: { name: true } },
+            },
           },
-          subscriptions: true,
+          subscriptions: {
+            select: { userId: true },
+          },
         },
         orderBy: { id: 'asc' },
         take: BATCH_SIZE,
@@ -69,43 +70,22 @@ export async function GET(req: NextRequest) {
           .map((sub) => sub.userId);
         const isOutdated = thread.updatedAt < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const oldScore = thread.resolutionScore;
-        const ts = Date.now();
 
-        const jobs: Promise<unknown>[] = [
-          threadDnaQueue.add(
-            AIJobType.GENERATE_THREAD_DNA,
-            { threadId: thread.id, messages, cronJob: true },
-            { ...DEFAULT_JOB_OPTIONS, jobId: `generate-dna-${thread.id}-${ts}` }
-          ),
-          resolutionScoreQueue.add(
-            AIJobType.CALCULATE_RESOLUTION_SCORE,
-            { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, isOutdated, cronJob: true },
-            { ...DEFAULT_JOB_OPTIONS, jobId: `resolution-score-${thread.id}-${ts}` }
-          ),
-          conflictDetectionQueue.add(
-            AIJobType.DETECT_CONFLICTS,
-            { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, cronJob: true },
-            { ...DEFAULT_JOB_OPTIONS, jobId: `conflict-detection-${thread.id}-${ts}` }
-          ),
+        const jobs: Promise<void>[] = [
+          enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages, cronJob: true }),
+          enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, isOutdated, cronJob: true }),
+          enqueueJob(AIJobType.DETECT_CONFLICTS, { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, cronJob: true }),
         ];
 
         if (subscriberIds.length > 0) {
           jobs.push(
-            dailyDigestQueue.add(
-              AIJobType.GENERATE_DAILY_DIGEST,
-              { messages, subscriberIds, cronJob: true },
-              { ...DEFAULT_JOB_OPTIONS, jobId: `generate-digest-${thread.id}-${ts}` }
-            )
+            enqueueJob(AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true }),
           );
         }
 
         if (subscriberIds.length > 0 && isOutdated) {
           jobs.push(
-            aiInsightNotificationsQueue.add(
-              AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS,
-              { subscriberIds, threadId: thread.id, threadName: thread.name, oldScore: oldScore ?? undefined, isOutdated, cronJob: true },
-              { ...DEFAULT_JOB_OPTIONS, jobId: `send-notifications-${thread.id}-${ts}` }
-            )
+            enqueueJob(AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS, { subscriberIds, threadId: thread.id, threadName: thread.name, oldScore: oldScore ?? undefined, isOutdated, cronJob: true }),
           );
         }
 

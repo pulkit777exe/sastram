@@ -1,9 +1,15 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import { getSession } from '@/modules/auth/session';
 import { getNotifications } from '@/modules/notifications/actions';
 import { NotificationList } from '@/components/notifications/notification-list';
 import { Bell } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+
+export const metadata: Metadata = {
+  title: 'Notifications - Sastram',
+  description: 'View your notifications and updates.',
+};
 
 function NotificationListSkeleton() {
   return (

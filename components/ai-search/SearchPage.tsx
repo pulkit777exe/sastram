@@ -107,13 +107,16 @@ export function SearchPage() {
       try {
         const response = await fetch('/api/ai/forum-search', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-exa-key': keys.exa,
-            'x-tavily-key': keys.tavily,
-            'x-gemini-key': keys.gemini,
-          },
-          body: JSON.stringify({ query: trimmed, config }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: trimmed,
+            config,
+            keys: {
+              exa: keys.exa || undefined,
+              tavily: keys.tavily || undefined,
+              gemini: keys.gemini || undefined,
+            },
+          }),
           signal: controller.signal,
         });
 

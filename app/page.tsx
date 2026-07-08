@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/modules/auth';
 import dynamic from 'next/dynamic';
+import type { Metadata } from 'next';
 
 const LandingPage = dynamic(() => import('@/components/landing/LandingPage').then(m => ({ default: m.LandingPage })), {
   loading: () => (
@@ -9,6 +10,16 @@ const LandingPage = dynamic(() => import('@/components/landing/LandingPage').the
     </div>
   ),
 });
+
+export const metadata: Metadata = {
+  title: 'Sastram - AI-Powered Discussion & Research Platform',
+  description: 'A modern forum with integrated AI research capabilities. Discuss topics, get AI-powered answers, and resolve questions together.',
+  openGraph: {
+    title: 'Sastram - AI-Powered Discussion Platform',
+    description: 'A modern forum with integrated AI research capabilities.',
+    type: 'website',
+  },
+};
 
 export default async function Home() {
   const session = await getSession();

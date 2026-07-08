@@ -91,9 +91,13 @@ export async function prewarmFollowUpQueries(): Promise<{
           { lastPrewarmedAt: { lt: new Date(Date.now() - PREWARM_CONFIG.cooldownPeriod) } },
         ],
       },
-      include: {
-        results: true,
+      select: {
+        id: true,
+        query: true,
+        queryType: true,
       },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     });
 
     // Filter by query length

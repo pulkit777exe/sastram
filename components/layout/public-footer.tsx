@@ -48,7 +48,7 @@ export function PublicFooter() {
             <div className="space-y-2 text-white/60">
               <span className="block">Next.js 16</span>
               <span className="block">Prisma + PostgreSQL</span>
-              <span className="block">WebSockets + BullMQ</span>
+              <span className="block">Upstash Redis + QStash</span>
             </div>
           </div>
         </div>

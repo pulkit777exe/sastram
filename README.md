@@ -1,7 +1,7 @@
 <p align="center">
   <samp>
     <b>Sastram</b> · discussion and research platform<br>
-    <sub>personal project · open source · built with next.js, prisma, websockets, ai</sub>
+    <sub>personal project · open source · built with next.js, prisma, ai</sub>
   </samp>
 </p>
 
@@ -11,11 +11,11 @@
 
 ---
 
-An application with real-time chat forum like, AI-powered search, newsletters, and moderation. Originally a personal project, now open source.
+An application with forum-like AI-powered search, newsletters, and moderation. Originally a personal project, now open source.
 
 ## Tech
 
-next.js, typescript, prisma (postgresql/neon), better-auth, websocket, bullmq (redis), google gemini / openai, tailwind css, shadcn/ui, tanstack query, zustand
+next.js, typescript, prisma (postgresql/neon), better-auth, upstash redis, qstash, google gemini / openai, tailwind css, shadcn/ui, tanstack query, zustand
 
 ## Quick start
 
@@ -33,7 +33,7 @@ pnpm dev
 docker compose up
 ```
 
-Starts PostgreSQL, Redis, the Next.js app, WebSocket server, and BullMQ worker in one command. See [CONTRIBUTING.md](./CONTRIBUTING.md) for environment setup.
+Starts PostgreSQL, Redis, the Next.js app, and background job processing in one command. See [CONTRIBUTING.md](./CONTRIBUTING.md) for environment setup.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup and [CLAUDE.md](./CLAUDE.md) for architecture details.
 
@@ -41,9 +41,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup and [CLAUDE.md](./CLAUDE
 
 - `/app` — Next.js App Router pages & API routes
 - `/modules` — Domain logic (auth, threads, messages, search, moderation, chat, ai, etc.)
-- `/lib` — Core services, infrastructure (prisma, websocket, bullmq, rate-limit)
+- `/lib` — Core services, infrastructure (prisma, redis, qstash, rate-limit)
 - `/components` — shadcn/ui primitives + feature components
-- `/worker` — Standalone BullMQ worker
 
 MIT &mdash; see [LICENSE](./LICENSE).<br>
 Contributions welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md).

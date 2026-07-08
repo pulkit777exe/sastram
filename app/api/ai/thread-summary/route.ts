@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { requireSessionOrThrow, requireThreadMembershipOrThrow } from '@/modules/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { AIJobType, DEFAULT_JOB_OPTIONS, getThreadSummaryQueue } from '@/lib/infrastructure/bullmq';
+import { AIJobType } from '@/lib/queue/config';
+import { enqueueJob } from '@/lib/services/queue';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { consumeAiAnalysisQuota } from '@/lib/services/ai-analysis-quota';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
@@ -79,17 +80,9 @@ export async function POST(req: NextRequest) {
 
     const messages = thread.messages;
 
-    const threadSummaryQueue = getThreadSummaryQueue();
-    const job = await threadSummaryQueue.add(
-      AIJobType.GENERATE_THREAD_SUMMARY,
-      { threadId, messages, userId: session.user.id },
-      {
-        ...DEFAULT_JOB_OPTIONS,
-        jobId: `generate-summary-${threadId}`,
-      }
-    );
+    await enqueueJob(AIJobType.GENERATE_THREAD_SUMMARY, { threadId, messages, userId: session.user.id });
 
-    return NextResponse.json(ok({ jobId: job.id, status: 'pending', message: 'Summary generation started' }));
+    return NextResponse.json(ok({ status: 'pending', message: 'Summary generation started' }));
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Unauthorized')) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });

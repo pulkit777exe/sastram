@@ -2,9 +2,11 @@
 
 import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
-import { DEFAULT_JOB_OPTIONS, getEmailQueue, type EmailJobData } from '@/lib/infrastructure/bullmq';
+import { enqueueJob } from '@/lib/services/queue';
+import { AIJobType } from '@/lib/queue/config';
 import { getResendClient } from '@/lib/config/resend';
 import type { CreateEmailOptions } from 'resend';
+import type { EmailJobData } from '@/lib/queue/types';
 
 const env = getEnv();
 
@@ -20,14 +22,13 @@ interface EmailOptions {
 }
 
 async function enqueueEmailJob(payload: EmailJobData) {
-  const emailQueue = getEmailQueue();
-  const job = await emailQueue.add(payload.type || 'email', payload, DEFAULT_JOB_OPTIONS);
+  await enqueueJob('email', payload as unknown as Record<string, unknown>);
 
   logger.info(
-    `Queued email job ${job.id} (${payload.type || 'email'}) for ${Array.isArray(payload.to) ? payload.to.join(', ') : payload.to}`
+    `Queued email job (${payload.type || 'email'}) for ${Array.isArray(payload.to) ? payload.to.join(', ') : payload.to}`
   );
 
-  return job;
+  return { id: `email-${Date.now()}` };
 }
 
 export async function sendEmail({

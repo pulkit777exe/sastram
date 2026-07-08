@@ -4,8 +4,8 @@ import { buildThreadDTO } from '@/modules/threads/service';
 import type { ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { getThreadDnaQueue, getResolutionScoreQueue } from '@/lib/queue/queue';
-import { AIJobType, DEFAULT_JOB_OPTIONS } from '@/lib/queue/config';
+import { AIJobType } from '@/lib/queue/config';
+import { enqueueJob } from '@/lib/services/queue';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
 
 type ThreadStorageWithCommunityAndMessages = Prisma.ThreadGetPayload<{
@@ -31,6 +31,7 @@ export async function createThread(payload: {
       communityId: payload.communityId,
       slug: payload.slug,
       createdBy: payload.createdBy,
+      messageCount: payload.initialMessage ? 1 : 0,
       members: {
         create: {
           userId: payload.createdBy,
@@ -83,16 +84,8 @@ export async function createThread(payload: {
     // Enqueue background jobs for AI analysis instead of blocking the response
     try {
       await Promise.all([
-        getThreadDnaQueue().add(
-          AIJobType.GENERATE_THREAD_DNA,
-          { threadId: thread.id, messages: initialMessages },
-          DEFAULT_JOB_OPTIONS
-        ),
-        getResolutionScoreQueue().add(
-          AIJobType.CALCULATE_RESOLUTION_SCORE,
-          { threadId: thread.id, messages: initialMessages },
-          DEFAULT_JOB_OPTIONS
-        ),
+        enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages: initialMessages }),
+        enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, { threadId: thread.id, messages: initialMessages }),
       ]);
     } catch (error) {
       logger.error('Failed to enqueue thread AI jobs:', error);

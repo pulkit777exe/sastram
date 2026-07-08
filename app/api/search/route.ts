@@ -4,6 +4,7 @@ import { searchThreads, searchMessages, searchUsers } from '@/modules/search/rep
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSessionOrThrow } from '@/modules/auth/session';
 import { logger } from '@/lib/infrastructure/logger';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,6 +31,11 @@ export async function GET(request: NextRequest) {
     }
 
     const session = await requireSessionOrThrow();
+
+    const rateLimitResult = await rateLimit(`search:${session.user.id}`);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
+    }
 
     const memberships = await prisma.threadMember.findMany({
       where: { userId: session.user.id },

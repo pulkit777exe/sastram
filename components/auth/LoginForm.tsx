@@ -448,6 +448,7 @@ function UserAuthForm({
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={6}
+                    aria-label={`Digit ${index + 1} of verification code`}
                     value={digit}
                     onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
                     onKeyDown={(e) => handleOTPKeyDown(index, e)}

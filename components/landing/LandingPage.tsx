@@ -73,7 +73,7 @@ const featureRows = [
     visual: 'search' as const,
     quote: {
       source: 'Background jobs',
-      text: 'BullMQ workers handle thread summaries, conflict detection, and daily digests without blocking your users.',
+      text: 'QStash handles thread summaries, conflict detection, and daily digests serverlessly without blocking your users.',
     },
   },
 ];

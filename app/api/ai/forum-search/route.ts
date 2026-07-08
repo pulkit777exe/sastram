@@ -67,10 +67,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    // 5. Extract and validate API keys from headers
-    const exaKey = request.headers.get('x-exa-key') || process.env.SASTRAM_EXA_KEY || '';
-    const tavilyKey = request.headers.get('x-tavily-key') || process.env.SASTRAM_TAVILY_KEY || '';
-    const geminiKey = request.headers.get('x-gemini-key') || process.env.SASTRAM_GEMINI_KEY || '';
+    // 5. Parse request body
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON in request body'), { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    const parsedBody = body as { query?: string; config?: unknown; keys?: { exa?: string; tavily?: string; gemini?: string } };
+    const keys = parsedBody.keys;
+
+    // 6. Extract and validate API keys from body, falling back to env vars
+    const exaKey = keys?.exa || process.env.SASTRAM_EXA_KEY || '';
+    const tavilyKey = keys?.tavily || process.env.SASTRAM_TAVILY_KEY || '';
+    const geminiKey = keys?.gemini || process.env.SASTRAM_GEMINI_KEY || '';
 
     if (!exaKey || !tavilyKey || !geminiKey) {
       const missing = [];
@@ -93,14 +104,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('VALIDATION_ERROR', `Invalid API key format for: ${invalid.join(', ')}. Please check your keys.`), { status: 400, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    // 6. Parse and validate request body
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON in request body'), { status: 400, headers: { 'Cache-Control': 'no-store' } });
-    }
-
+    // 7. Validate request body shape
     const validation = searchRequestSchema.safeParse(body);
     if (!validation.success) {
       const firstError = validation.error.issues[0];
@@ -114,7 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Query is too short after sanitization. Please try a different search.'), { status: 400, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    // 7. Check cache
+    // 8. Check cache
     try {
       const cached = await getCachedResult(query);
       if (cached) {
@@ -129,19 +133,19 @@ export async function POST(request: NextRequest) {
       logger.debug('[forum-search] Cache read failed, proceeding without cache', { error: err });
     }
 
-    // 8. Execute the search pipeline
+    // 9. Execute the search pipeline
     const result = await executeAISearch(query, config, {
       exa: exaKey,
       tavily: tavilyKey,
       gemini: geminiKey,
     });
 
-    // 9. Validate result shape
+    // 10. Validate result shape
     if (!result.synthesis || !Array.isArray(result.sources)) {
       return NextResponse.json(fail('INTERNAL_ERROR', 'Search produced an unexpected result. Please try again.'), { status: 500, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    // 10. Cache the result (async, non-blocking)
+    // 11. Cache the result (async, non-blocking)
     cacheResult(query, result, result.synthesis.queryType).catch(() => {});
 
     return NextResponse.json(ok(result), {

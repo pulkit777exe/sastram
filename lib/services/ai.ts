@@ -238,7 +238,7 @@ export class GeminiService implements AIService {
       return parseThreadDNA(result.response.text());
     } catch (error) {
       logger.error('[GeminiService.generateThreadDNA]', { error });
-      // Throw so BullMQ retries — do not silently return default
+      // Throw so QStash retries — do not silently return default
       throw error;
     } finally {
       clear();

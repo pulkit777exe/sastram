@@ -24,7 +24,7 @@ interface NotificationFilters {
   offset?: number;
 }
 
-import { publishUserEvent } from '@/lib/infrastructure/websocket';
+import { publishUserEvent } from '@/lib/infrastructure/redis-pubsub';
 
 async function getBulkUnreadCounts(userIds: string[]): Promise<Map<string, number>> {
   if (userIds.length === 0) return new Map();
