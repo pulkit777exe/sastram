@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Loader2, PlusCircle, FileIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
+import { useAIReplyStream } from '@/hooks/useAIReplyStream';
 
 interface ReplyBoxProps {
   threadId: string;
@@ -21,6 +22,22 @@ export default function ReplyBox({
   onTypingStop,
 }: ReplyBoxProps) {
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const accumulatedRef = useRef('');
+
+  const { startStream, stopStream } = useAIReplyStream({
+    threadId,
+    onToken: useCallback((token: string) => {
+      accumulatedRef.current += token;
+    }, []),
+    onDone: useCallback(() => {
+      setIsAiLoading(false);
+      accumulatedRef.current = '';
+    }, []),
+    onError: useCallback(() => {
+      setIsAiLoading(false);
+      accumulatedRef.current = '';
+    }, []),
+  });
 
   const {
     content,
@@ -49,24 +66,12 @@ export default function ReplyBox({
     onTypingStop,
   });
 
-  const handleAiReply = useCallback(async () => {
+  const handleAiReply = useCallback(() => {
     if (isAiLoading) return;
     setIsAiLoading(true);
-
-    try {
-      await fetch(`/api/threads/${threadId}/ai-reply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          threadId,
-        }),
-      });
-    } finally {
-      setIsAiLoading(false);
-    }
-  }, [isAiLoading, threadId]);
+    accumulatedRef.current = '';
+    startStream();
+  }, [isAiLoading, startStream]);
 
   return (
     <div className="flex flex-col gap-3">

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { enqueueInlineJob } from '@/lib/infrastructure/bullmq';
+import { enqueueInlineJob } from '@/lib/services/queue';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
 import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
@@ -7,6 +7,7 @@ import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { z } from 'zod';
+import { AIJobType } from '@/lib/queue/config';
 
 const aiReplyParamsSchema = z.object({
   threadId: z.string().cuid(),
