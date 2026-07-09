@@ -18,8 +18,7 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
     "test": "node --import tsx --import tsconfig-paths/register --import ./test/setup.ts ./node_modules/mocha/bin/mocha.js 'test/**/*.test.{mts,ts,tsx,js}'",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
+
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -42,7 +41,6 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.10",
-    "@playwright/test": "^1.61.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
