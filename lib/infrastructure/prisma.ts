@@ -12,22 +12,23 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function resolveConnectionString(): string {
-  const pooledUrl = process.env.DATABASE_URL;
+  let pooledUrl = process.env.DATABASE_URL;
   if (!pooledUrl) {
     throw new Error('DATABASE_URL is not defined in environment variables');
   }
 
-  const unpooledUrl = process.env.DATABASE_URL_UNPOOLED;
-
+  // In production (Vercel), Neon serverless requires pgbouncer=true for connection pooling.
+  // Auto-append if missing to prevent connection limit exhaustion.
   if (process.env.NODE_ENV === 'production' && !pooledUrl.includes('pgbouncer=true')) {
+    const separator = pooledUrl.includes('?') ? '&' : '?';
+    pooledUrl = `${pooledUrl}${separator}pgbouncer=true`;
     logger.warn(
-      '[prisma] DATABASE_URL does not contain pgbouncer=true — connections bypass Neon pool.\n' +
-      'Neon free tier has limited direct connections (~20). Without pgbouncer, each serverless\n' +
-      'function opens a direct connection, which will exhaust your limit under concurrent load.\n' +
-      'Fix: Append ?pgbouncer=true to your DATABASE_URL in the Neon console,\n' +
-      'or set DATABASE_URL to the pooled string and DATABASE_URL_UNPOOLED for direct access.',
+      '[prisma] Auto-appended pgbouncer=true to DATABASE_URL.\n' +
+      'Consider setting DATABASE_URL to the pooled string in your Vercel env vars directly.',
     );
   }
+
+  const unpooledUrl = process.env.DATABASE_URL_UNPOOLED;
 
   return pooledUrl.includes('pgbouncer=true') && unpooledUrl ? unpooledUrl : pooledUrl;
 }
