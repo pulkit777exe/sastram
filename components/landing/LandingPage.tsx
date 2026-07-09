@@ -346,7 +346,7 @@ export function LandingPage({ user }: LandingPageProps) {
             <FadeIn delay={0.16}>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all text-sm"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-all text-sm"
               >
                 Start for free
                 <ArrowRight size={15} />
@@ -423,7 +423,7 @@ export function LandingPage({ user }: LandingPageProps) {
 
         {/* Metrics split section */}
         <section className="grid grid-cols-1 md:grid-cols-2 min-h-[480px]">
-          <div className="bg-zinc-950 text-white px-8 md:px-14 py-16 flex flex-col justify-center">
+          <div className="bg-secondary text-secondary-foreground px-8 md:px-14 py-16 flex flex-col justify-center">
             <FadeIn>
               <h2 className="text-3xl md:text-4xl tracking-tight mb-8 leading-tight">
                 <SerifHeading>Highest quality discussions at every scale</SerifHeading>
@@ -435,8 +435,8 @@ export function LandingPage({ user }: LandingPageProps) {
                   { icon: Shield, label: 'Safety', desc: 'Moderation and membership by default' },
                 ].map(({ icon: Icon, label, desc }) => (
                   <div key={label} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-background/10 flex items-center justify-center flex-none">
-                      <Icon size={15} className="text-white/80" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-none">
+                      <Icon size={15} className="text-secondary-foreground/80" />
                     </div>
                     <div>
                       <p className="font-medium text-[14px]">{label}</p>
@@ -558,7 +558,7 @@ export function LandingPage({ user }: LandingPageProps) {
               ].map((s, i) => (
                 <FadeIn key={s.step} delay={i * 0.08}>
                   <div className="p-6 rounded-2xl border border-border bg-background h-full">
-                    <div className="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center text-[12px] font-bold mb-4">
+                    <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-[12px] font-bold mb-4">
                       {s.step}
                     </div>
                     <s.icon size={18} className="text-brand mb-3" />
@@ -577,7 +577,7 @@ export function LandingPage({ user }: LandingPageProps) {
         </section>
 
         {/* Security section */}
-        <section className="bg-zinc-950 text-white py-24 px-6">
+        <section className="bg-secondary text-secondary-foreground py-24 px-6">
           <div className="max-w-5xl mx-auto">
             <FadeIn className="mb-14 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight">
@@ -588,8 +588,8 @@ export function LandingPage({ user }: LandingPageProps) {
               {securityFeatures.map((f, i) => (
                 <FadeIn key={f.title} delay={i * 0.08}>
                   <div className="text-center md:text-left">
-                    <div className="w-10 h-10 rounded-xl bg-background/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
-                      <f.icon size={18} className="text-white/80" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
+                      <f.icon size={18} className="text-secondary-foreground/80" />
                     </div>
                     <h3 className="font-semibold text-[15px] mb-2">{f.title}</h3>
                     <p className="text-[13px] text-muted-foreground leading-relaxed">{f.description}</p>
@@ -612,7 +612,7 @@ export function LandingPage({ user }: LandingPageProps) {
             </p>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 px-7 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all text-sm"
+              className="inline-flex items-center gap-2 px-7 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-all text-sm"
             >
               Get started free
               <ArrowRight size={15} />
