@@ -118,6 +118,9 @@ async function ThreadContent({
     };
   });
 
+  // getThreadMessagesPaginated returns DESC (newest first); reverse to ASC for rendering
+  allMessages.reverse();
+
   const unreadMessages = paginatedResult.messages.filter((message) => {
     if (message.senderId === session.user.id) return false;
     return true;
