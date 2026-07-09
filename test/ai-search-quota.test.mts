@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { consumeAiSearchQuota } from '@/lib/services/ai-search-quota';
-import { getSecondsUntilUtcMidnight } from '@/lib/infrastructure/redis-upstash';
+import { getSecondsUntilUtcMidnight, getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
 
 describe('AI Search Quota', function () {
   this.timeout(10_000);
@@ -31,7 +31,11 @@ describe('AI Search Quota', function () {
       expect(result.allowed).to.be.a('boolean');
     });
 
-    it('should count up with repeated calls for the same user', async () => {
+    it('should count up with repeated calls for the same user', async function () {
+      if (!getUpstashRedis()) {
+        this.skip();
+        return;
+      }
       const userId = 'quota-test-user';
       const first = await consumeAiSearchQuota(userId);
       expect(first.remaining).to.be.at.least(0);

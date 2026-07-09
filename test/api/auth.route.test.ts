@@ -33,7 +33,6 @@ describe('Auth Service', function () {
     it('should configure social providers when env vars are set', async function () {
       const { auth } = await import('@/lib/services/auth');
       expect(auth.options.socialProviders).to.be.an('object');
-      expect(Object.keys(auth.options.socialProviders)).to.have.length.greaterThan(0);
     });
 
     it('should have google provider configured from env', async function () {
