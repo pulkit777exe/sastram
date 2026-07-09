@@ -111,7 +111,8 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
       if (!mountedRef.current) return;
 
       if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
+        const errorData = (await response.json()) as { message?: string };
+        throw new Error(errorData.message || `Request failed: ${response.status}`);
       }
 
       const data = (await response.json()) as { jobId?: string };
@@ -122,11 +123,12 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         setIsLoading(false);
         isLoadingRef.current = false;
       }
-    } catch {
+    } catch (error) {
       if (!mountedRef.current) return;
       setIsLoading(false);
       isLoadingRef.current = false;
-      toasts.error('Failed to generate summary. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to generate summary. Please try again.';
+      toasts.error(message);
     }
   }, [threadId, startPolling]);
 

@@ -80,10 +80,14 @@ async function runJobInline(jobType: string, payload: Record<string, unknown>) {
   try {
     // Dynamic import to avoid circular dependencies
     const { handleAIInlineJob } = await import('@/lib/queue/workers/ai.worker');
+    const { handleEmailJob } = await import('@/lib/queue/workers/email.worker');
 
     switch (jobType) {
       case AIJobType.GENERATE_AI_INLINE:
         await handleAIInlineJob(payload as unknown as AIInlineJobData);
+        break;
+      case 'email':
+        await handleEmailJob(payload as unknown as import('@/lib/queue/types').EmailJobData);
         break;
       default:
         logger.warn(`[queue] No inline handler for job type: ${jobType}, skipping`);

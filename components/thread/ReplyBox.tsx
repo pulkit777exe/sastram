@@ -1,10 +1,8 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
 import { Loader2, PlusCircle, FileIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
-import { useAIReplyStream } from '@/hooks/useAIReplyStream';
 
 interface ReplyBoxProps {
   threadId: string;
@@ -21,24 +19,6 @@ export default function ReplyBox({
   onTypingStart,
   onTypingStop,
 }: ReplyBoxProps) {
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const accumulatedRef = useRef('');
-
-  const { startStream, stopStream } = useAIReplyStream({
-    threadId,
-    onToken: useCallback((token: string) => {
-      accumulatedRef.current += token;
-    }, []),
-    onDone: useCallback(() => {
-      setIsAiLoading(false);
-      accumulatedRef.current = '';
-    }, []),
-    onError: useCallback(() => {
-      setIsAiLoading(false);
-      accumulatedRef.current = '';
-    }, []),
-  });
-
   const {
     content,
     selectedFile,
@@ -65,13 +45,6 @@ export default function ReplyBox({
     onTypingStart,
     onTypingStop,
   });
-
-  const handleAiReply = useCallback(() => {
-    if (isAiLoading) return;
-    setIsAiLoading(true);
-    accumulatedRef.current = '';
-    startStream();
-  }, [isAiLoading, startStream]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -140,14 +113,12 @@ export default function ReplyBox({
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
-              onClick={handleAiReply}
+              onClick={handleAtAi}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-[999px] border border-border px-2.5 py-1 text-[12px] font-medium',
                 'text-(--blue) hover:bg-(--blue-dim)'
               )}
-              disabled={isAiLoading}
             >
-              {isAiLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <span>@ai</span>
             </button>
           </div>

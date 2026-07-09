@@ -8,8 +8,8 @@ export async function consumeAiAnalysisQuota(
 ): Promise<{ allowed: boolean; remaining: number }> {
   const r = getUpstashRedis();
   if (!r) {
-    logger.warn('[consumeAiAnalysisQuota] Redis unavailable, denying quota (fail-closed)');
-    return { allowed: false, remaining: 0 };
+    logger.warn('[consumeAiAnalysisQuota] Redis unavailable, allowing quota (fail-open)');
+    return { allowed: true, remaining: DAILY_LIMIT };
   }
 
   const date = new Date().toISOString().slice(0, 10);

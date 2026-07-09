@@ -446,6 +446,75 @@ export function ThreadLiveWrapper({
     };
   }, []);
 
+  // Poll for new messages (AI responses, other users' messages) since WebSocket is not connected
+  useEffect(() => {
+    const pollTimer = setInterval(async () => {
+      try {
+        const since = lastMessageTimestampRef.current;
+        const result = await backfillThreadMessages(threadId, since);
+        if (!result?.ok || !result.data?.messages?.length) return;
+
+        const newMessages: Message[] = result.data.messages.map((m: any) => ({
+          id: m.id,
+          content: m.body ?? m.content ?? '',
+          createdAt: m.createdAt,
+          senderId: m.senderId,
+          parentId: m.parentId ?? null,
+          threadId,
+          depth: m.depth ?? 0,
+          isEdited: m.isEdited ?? false,
+          isPinned: m.isPinned ?? false,
+          likeCount: m.likeCount ?? 0,
+          replyCount: m.replyCount ?? 0,
+          isAiResponse: m.isAI ?? m.isAiResponse ?? false,
+          updatedAt: m.createdAt,
+          deletedAt: m.deletedAt ?? null,
+          sender: {
+            id: m.sender?.id ?? m.senderId,
+            name: m.sender?.name ?? 'Anonymous',
+            image: m.sender?.image ?? null,
+          },
+          attachments: (m.attachments ?? []).map((att: any) => ({
+            id: att.id,
+            name: att.name ?? null,
+            url: att.url,
+            type: att.type,
+            size: att.size ?? null,
+          })),
+          thread: { id: threadId, name: title, slug },
+        }));
+
+        let hasNew = false;
+        setLiveMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const toAdd = newMessages.filter((m) => !existingIds.has(m.id));
+          if (toAdd.length === 0) return prev;
+          hasNew = true;
+          const merged = [...prev, ...toAdd].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          lastMessageTimestampRef.current = new Date(
+            merged[merged.length - 1].createdAt
+          ).toISOString();
+          return merged;
+        });
+
+        if (hasNew) {
+          // Defer status clears to avoid state updates during render
+          for (const msg of newMessages) {
+            if (msg.isAiResponse && msg.parentId) {
+              setTimeout(() => clearAiStatus(msg.parentId!), 0);
+            }
+          }
+        }
+      } catch {
+        // Silent — poll is best-effort
+      }
+    }, 10_000);
+
+    return () => clearInterval(pollTimer);
+  }, [threadId, title, slug, clearAiStatus]);
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Fixed header */}

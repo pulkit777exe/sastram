@@ -1,261 +1,120 @@
-import { notFound } from 'next/navigation';
-import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
-import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
-import { InviteFriendButton } from '@/components/thread/invite-friend-button';
-import { Hash, Users, MessageSquare, ShieldCheck, TrendingUp, Activity } from 'lucide-react';
-import type { Message } from '@/lib/types/index';
-import { isAdmin, requireSession } from '@/modules/auth/session';
-import { getThreadWithFullContext } from '@/modules/threads';
+import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Hash, Users, MessageSquare, Clock } from 'lucide-react';
+import { requireSession } from '@/modules/auth/session';
+import { listThreads } from '@/modules/threads/repository';
+import type { ThreadSummary } from '@/modules/threads/types';
 import TimeAgo from '@/components/ui/TimeAgo';
-import { ThreadManagementControls } from '@/components/thread/thread-management-controls';
-import ThreadDnaCard from '@/components/panels/ThreadDnaCard';
-import { parseThreadDna } from '@/lib/schemas/thread-dna';
-import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
-import { getThreadReadReceipt } from '@/modules/read-receipts/repository';
-import { prisma } from '@/lib/infrastructure/prisma';
+import { CreateThreadDialog } from '@/components/create-thread-dialog';
+import { listCommunities } from '@/modules/communities/repository';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function ThreadPage({ params }: { params: { slug: string } }) {
-  const { slug } = await params;
-  const session = await requireSession();
+export const metadata: Metadata = {
+  title: 'Threads - Sastram',
+  description: 'Browse and manage your threads.',
+};
 
-  // Fetch thread first — readReceipt and subscription both need thread.id
-  const thread = await getThreadWithFullContext(slug, session.user.id);
-  if (!thread) notFound();
-
-  // Fetch dependent data in parallel
-  const [readReceipt, subscription] = await Promise.all([
-    getThreadReadReceipt(thread.id, session.user.id),
-    // Inline query — avoids creating a repository function for a single
-    // select used only in this page
-    prisma.threadSubscription.findUnique({
-      where: {
-        threadId_userId: {
-          threadId: thread.id,
-          userId: session.user.id,
-        },
-      },
-      select: { frequency: true },
-    }),
-  ]);
-
-  const threadDna = parseThreadDna(thread.threadDna);
-  const canManagePoll =
-    thread.createdBy === session.user.id || ['ADMIN', 'MODERATOR'].includes(session.user.role);
-
-  const allMessages: Message[] = thread.messages.map((m) => ({
-    id: m.id,
-    content: m.body,
-    createdAt: m.createdAt,
-    senderId: m.senderId,
-    parentId: m.parentId ?? null,
-    threadId: thread.id,
-    depth: m.depth ?? 0,
-    isEdited: m.isEdited ?? false,
-    isPinned: m.isPinned ?? false,
-    likeCount: m.likeCount ?? 0,
-    replyCount: m.replyCount ?? 0,
-    isAiResponse: m.isAI,
-    updatedAt: m.createdAt,
-    deletedAt: m.deletedAt ?? null,
-    sender: {
-      id: m.author.id,
-      name: m.author.name ?? 'Anonymous',
-      image: m.author.image ?? null,
-    },
-    attachments: (m.attachments ?? []).map((att) => ({
-      id: att.id,
-      name: att.name ?? null,
-      url: att.url,
-      type: att.type,
-      size: att.size ?? null,
-    })),
-    thread: {
-      id: thread.id,
-      name: thread.name,
-      slug: thread.slug,
-    },
-  }));
-
-  // ── UNREAD CALCULATION ────────────────────────────────────────────────
-  // ReadReceipt actual shape (from TS error):
-  //   { id, threadId, userId, lastReadMessageId, readAt, createdAt, updatedAt }
-  // Field is `readAt` (not `lastReadAt`) and key is `threadId` (not `sectionId`)
-
-  const unreadMessages = thread.messages.filter((message) => {
-    if (message.senderId === session.user.id) return false;
-    if (!readReceipt?.readAt) return true;
-    return message.createdAt > readReceipt.readAt;
-  });
-
-  const initialUnreadCount = unreadMessages.length;
-  const firstUnreadMessageId = unreadMessages[0]?.id ?? null;
-
+function ThreadListSkeleton() {
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background">
-      <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
-        <header className="flex h-18 items-center justify-between px-6 border-b border-border/60 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 z-10">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center shadow-sm">
-              <Hash size={20} strokeWidth={2.5} />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <h1 className="text-lg font-bold tracking-tight text-foreground">{thread.name}</h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-                  Live Discussion
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex border rounded-full px-3 py-1 items-center gap-1.5 cursor-help transition-colors hover:bg-indigo-50 text-indigo-600">
-              <TrendingUp size={13} />
-              <span className="text-xs font-semibold">Trending Topic</span>
-            </div>
-            <ThreadManagementControls
-              threadId={thread.id}
-              creatorId={thread.createdBy}
-              currentUserId={session.user.id}
-              threadName={thread.name}
-            />
-          </div>
-        </header>
-
-        <ThreadLiveWrapper
-          messages={allMessages}
-          threadId={thread.id}
-          initialUnreadCount={initialUnreadCount}
-          initialFirstUnreadMessageId={firstUnreadMessageId}
-          hasMoreMessages={false}
-          nextCursor={null}
-          totalMessageCount={thread._count.messages}
-          poll={
-            thread.poll
-              ? {
-                  id: thread.poll.id,
-                  question: thread.poll.question,
-                  options: thread.poll.options as string[],
-                  isActive: thread.poll.isActive,
-                  expiresAt: thread.poll.expiresAt,
-                }
-              : null
-          }
-          canManagePoll={canManagePoll}
-          currentUser={{
-            id: session.user.id,
-            name: session.user.name ?? 'User',
-            image: session.user.image ?? null,
-            role: session.user.role,
-          }}
-          title={thread.name}
-          slug={thread.slug}
-          memberCount={thread._count.members}
-          initialFrequency={subscription?.frequency ?? null}
-        />
-      </main>
-
-      <aside className="w-[320px] hidden xl:flex flex-col overflow-y-auto bg-background/50">
-        <div className="p-6 border-b border-border/60">
-          <div className="flex items-center gap-2 mb-6">
-            <Activity size={14} />
-            <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
-              Thread Details
-            </p>
-          </div>
-
-          <h2 className="text-xl font-bold mb-3 text-foreground">{thread.name}</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-8">{thread.description}</p>
-
-          <div className="grid grid-cols-2 gap-3 mb-8">
-            <StatCard icon={<Users size={16} />} label="Members" value={thread._count.members} />
-            <StatCard
-              icon={<MessageSquare size={16} />}
-              label="Messages"
-              value={thread._count.messages}
-            />
-          </div>
-
-          <ThreadSubscribeButton
-            initialFrequency={subscription?.frequency ?? null}
-            threadName={thread.name}
-            threadId={thread.id}
-            slug={thread.slug}
-          />
-
-          <div className="mt-3">
-            <InviteFriendButton threadId={thread.id} threadName={thread.name} />
+    <div className="space-y-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-border/60">
+          <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-1/3" />
           </div>
         </div>
-
-        <div className="p-6 space-y-6">
-          <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
-
-          {threadDna && <ThreadDnaCard dna={threadDna} />}
-
-          {thread.isOutdated && (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-              <p className="text-[10px] text-amber-600 font-medium mb-2 uppercase tracking-wider">
-                Stale Content Warning
-              </p>
-              <p className="text-xs text-amber-800">
-                This thread may contain outdated information that contradicts newer content.
-              </p>
-            </div>
-          )}
-
-          <div>
-            <p className="text-[10px] text-zinc-400 font-medium mb-2 uppercase tracking-wider">
-              Created
-            </p>
-            <p className="text-xs text-zinc-600 font-medium">
-              <TimeAgo date={thread.createdAt} />
-            </p>
-          </div>
-        </div>
-
-        {isAdmin(session.user) && (
-          <div className="p-6 mt-auto border-t border-border/60">
-            <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck size={14} className="text-zinc-500" />
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                Admin Controls
-              </span>
-            </div>
-            <Link
-              href={`/dashboard/admin?threadId=${thread.id}`}
-              className="flex items-center justify-center w-full py-2.5 text-xs font-medium border rounded-lg hover:text-zinc-900 transition-all shadow-sm"
-            >
-              Manage Thread
-            </Link>
-          </div>
-        )}
-      </aside>
+      ))}
     </div>
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-}) {
+function ThreadRow({ thread }: { thread: ThreadSummary }) {
   return (
-    <div className="flex flex-col p-3 rounded-xl border border-border/60 bg-card/50">
-      <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
-        {icon}
-        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+    <Link
+      href={`/dashboard/threads/${thread.slug}`}
+      className="flex items-start gap-3 p-4 rounded-xl border border-border/60 hover:bg-accent/50 transition-colors group"
+    >
+      <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+        <Hash size={14} className="text-brand" />
       </div>
-      <span className="text-lg font-bold text-foreground tabular-nums">{value}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-brand transition-colors">
+            {thread.name}
+          </h3>
+          {thread.community && (
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {thread.community.title}
+            </span>
+          )}
+        </div>
+        {thread.description && (
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{thread.description}</p>
+        )}
+        <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <MessageSquare size={10} />
+            {thread.messageCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <Users size={10} />
+            {thread.memberCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock size={10} />
+            <TimeAgo date={thread.updatedAt} />
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+async function ThreadList({ userId }: { userId: string }) {
+  const { threads } = await listThreads({ memberUserId: userId, pageSize: 50 });
+
+  if (threads.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Hash size={32} className="mx-auto text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-muted-foreground">No threads yet</p>
+        <p className="text-xs text-muted-foreground mt-1">Create a thread to get started.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {threads.map((thread) => (
+        <ThreadRow key={thread.id} thread={thread} />
+      ))}
+    </div>
+  );
+}
+
+export default async function ThreadsPage() {
+  const session = await requireSession();
+  const communities = await listCommunities();
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Threads</h1>
+          <p className="text-sm text-muted-foreground mt-1">Your discussions and topics.</p>
+        </div>
+        <CreateThreadDialog
+          communities={communities.map((c) => ({ id: c.id, title: c.title }))}
+        />
+      </div>
+
+      <Suspense fallback={<ThreadListSkeleton />}>
+        <ThreadList userId={session.user.id} />
+      </Suspense>
     </div>
   );
 }

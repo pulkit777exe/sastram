@@ -25,7 +25,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { usePathname, useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { LucideIcon } from 'lucide-react';
@@ -33,6 +33,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { useNotification } from '@/components/bootstrap-provider';
 import { signOut } from '@/lib/services/auth-client';
+import { useTheme } from 'next-themes';
 
 export function Sidebar({
   name,
@@ -57,6 +58,12 @@ export function Sidebar({
 
   const { unreadNotificationCount } = useNotification();
   const unreadCount = unreadNotificationCount ?? 0;
+  const { theme } = useTheme();
+  const [logoSrc, setLogoSrc] = useState('/sastram-image-light.png');
+
+  useEffect(() => {
+    setLogoSrc(theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png');
+  }, [theme]);
 
   const hideTimeout = useRef<number | null>(null);
 
@@ -170,7 +177,7 @@ export function Sidebar({
       <div className="p-4 flex items-center justify-between">
         {!isCollapsed && (
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Sastram" width={20} height={20} className="rounded-md" />
+            <Image src={logoSrc} alt="Sastram" width={20} height={20} className="rounded-md" />
             <span className="font-semibold text-base text-foreground tracking-tight">Sastram</span>
           </Link>
         )}

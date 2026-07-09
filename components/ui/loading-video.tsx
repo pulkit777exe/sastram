@@ -1,6 +1,6 @@
 'use client';
 import { useTheme } from 'next-themes';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 
 interface LoadingVideoProps {
@@ -12,10 +12,11 @@ export function LoadingVideo({ className, fullScreen = false }: LoadingVideoProp
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  if (!mounted) {
+  useEffect(() => {
     setMounted(true);
-    return null;
-  }
+  }, []);
+
+  if (!mounted) return null;
 
   const videoSrc = theme === 'dark' ? '/sastram-video-dark.mp4' : '/sastram-video-light.mp4';
 

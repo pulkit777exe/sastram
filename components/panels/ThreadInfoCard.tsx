@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useSyncExternalStore } from 'react';
+import { useRef, useEffect, useSyncExternalStore, useCallback } from 'react';
 import type { ThreadWithFullContext } from '@/modules/threads';
 import { TagChip } from '@/components/thread/tag-chip';
 
@@ -8,13 +8,18 @@ interface ThreadInfoCardProps {
   thread: ThreadWithFullContext;
 }
 
+let cachedSnapshot = Date.now();
+
 function subscribeToClock(cb: () => void) {
-  const id = setInterval(cb, 60000);
+  const id = setInterval(() => {
+    cachedSnapshot = Date.now();
+    cb();
+  }, 60000);
   return () => clearInterval(id);
 }
 
 function getClockSnapshot() {
-  return Date.now();
+  return cachedSnapshot;
 }
 
 function DigitGroup({ value }: { value: number }) {
