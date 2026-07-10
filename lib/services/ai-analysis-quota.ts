@@ -1,5 +1,5 @@
 import { logger } from '@/lib/infrastructure/logger';
-import { getUpstashRedis, getSecondsUntilUtcMidnight, ATOMIC_INCR_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCR_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
 
 const DAILY_LIMIT = 30;
 
@@ -16,11 +16,15 @@ export async function consumeAiAnalysisQuota(
   const key = `ai_analysis:${userId}:${date}`;
 
   try {
-    const used = (await r.eval(ATOMIC_INCR_EXPIRE_LUA, [key], [getSecondsUntilUtcMidnight()])) as number;
+    const result = (await r.eval(CHECK_AND_INCR_EXPIRE_LUA, [key], [DAILY_LIMIT, getSecondsUntilUtcMidnight()])) as number;
+
+    if (result === -1) {
+      return { allowed: false, remaining: 0 };
+    }
 
     return {
-      allowed: used <= DAILY_LIMIT,
-      remaining: Math.max(0, DAILY_LIMIT - used),
+      allowed: true,
+      remaining: Math.max(0, DAILY_LIMIT - result),
     };
   } catch (error) {
     logger.error('[consumeAiAnalysisQuota] Redis error', error);

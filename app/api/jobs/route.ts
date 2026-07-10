@@ -76,5 +76,5 @@ async function handleJob(request: NextRequest) {
 
 // Use the SDK's built-in signature verification for Next.js App Router
 export const POST = verifySignatureAppRouter(handleJob, {
-  devMode: true,
+  devMode: process.env.NODE_ENV !== 'production',
 });

@@ -1,9 +1,13 @@
 import { logger } from '@/lib/infrastructure/logger';
-import { getUpstashRedis, getSecondsUntilUtcMidnight, ATOMIC_INCR_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCR_EXPIRE_LUA, ATOMIC_INCR_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
 
 const DAILY_LIMIT = 200;
 const SPEND_KEY = 'ai_global_spend';
 
+/**
+ * Check if the global AI spend cap has been reached without incrementing the counter.
+ * Use this for read-only checks (e.g., API route pre-flight).
+ */
 export async function checkAiSpendCap(): Promise<{ allowed: boolean; remaining: number }> {
   const r = getUpstashRedis();
   if (!r) {
@@ -15,18 +19,46 @@ export async function checkAiSpendCap(): Promise<{ allowed: boolean; remaining: 
   const key = `${SPEND_KEY}:${date}`;
 
   try {
-    const used = (await r.eval(ATOMIC_INCR_EXPIRE_LUA, [key], [getSecondsUntilUtcMidnight()])) as number;
-
-    if (used > DAILY_LIMIT) {
-      logger.warn(`[checkAiSpendCap] Daily spend cap exceeded: ${used}/${DAILY_LIMIT}`);
-    }
-
+    const used = (await r.get<number>(key)) ?? 0;
     return {
-      allowed: used <= DAILY_LIMIT,
+      allowed: used < DAILY_LIMIT,
       remaining: Math.max(0, DAILY_LIMIT - used),
     };
   } catch (error) {
     logger.error('[checkAiSpendCap] Redis error', error);
+    return { allowed: true, remaining: -1 };
+  }
+}
+
+/**
+ * Atomically check the spend cap and increment the counter if under limit.
+ * Returns allowed: false without incrementing if the cap is already reached.
+ * Use this before executing AI work to avoid double-counting.
+ */
+export async function consumeSpendCap(): Promise<{ allowed: boolean; remaining: number }> {
+  const r = getUpstashRedis();
+  if (!r) {
+    logger.warn('[consumeSpendCap] Redis unavailable, allowing request (fail-open for spend cap)');
+    return { allowed: true, remaining: -1 };
+  }
+
+  const date = new Date().toISOString().slice(0, 10);
+  const key = `${SPEND_KEY}:${date}`;
+
+  try {
+    const result = (await r.eval(CHECK_AND_INCR_EXPIRE_LUA, [key], [DAILY_LIMIT, getSecondsUntilUtcMidnight()])) as number;
+
+    if (result === -1) {
+      logger.warn(`[consumeSpendCap] Daily spend cap reached: ${DAILY_LIMIT}/${DAILY_LIMIT}`);
+      return { allowed: false, remaining: 0 };
+    }
+
+    return {
+      allowed: true,
+      remaining: Math.max(0, DAILY_LIMIT - result),
+    };
+  } catch (error) {
+    logger.error('[consumeSpendCap] Redis error', error);
     return { allowed: true, remaining: -1 };
   }
 }

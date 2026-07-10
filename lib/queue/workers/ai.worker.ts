@@ -4,7 +4,7 @@ import { aiService } from '@/lib/services/ai';
 import { applyConfidenceDecay } from '@/lib/utils/confidence-decay';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 import { sanitizeUserContent, sanitizeHtmlContent } from '@/lib/services/content-safety';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { NotificationType } from '@prisma/client';
 import { notifyMultipleUsers } from '@/modules/notifications';
 import { emitThreadMessage } from '@/modules/ws';
@@ -24,7 +24,7 @@ import type {
 } from '../types';
 
 async function assertSpendCapAvailable(): Promise<void> {
-  const cap = await checkAiSpendCap();
+  const cap = await consumeSpendCap();
   if (!cap.allowed) {
     throw new Error('AI spend cap exceeded — job skipped until UTC midnight reset');
   }

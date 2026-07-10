@@ -78,7 +78,8 @@ export function validateFile(file: File): FileValidationResult {
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
 
   if (file.size > MAX_SIZE) {
-    return { isValid: false, error: 'File size exceeds 4.5MB limit.' };
+    const maxSizeMB = (MAX_SIZE / (1024 * 1024)).toFixed(1);
+    return { isValid: false, error: `File size exceeds ${maxSizeMB}MB limit.` };
   }
 
   if (!ALLOWED_TYPES.includes(file.type)) {

@@ -16,10 +16,18 @@ export async function requireModerator() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true },
+    select: { role: true, status: true },
   });
 
-  if (!user || (user.role !== Role.MODERATOR && user.role !== Role.ADMIN)) {
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+
+  if (user.status === 'BANNED') {
+    throw new Error('Forbidden: user is banned');
+  }
+
+  if (user.role !== Role.MODERATOR && user.role !== Role.ADMIN) {
     throw new Error('Moderator access required');
   }
 
@@ -37,10 +45,18 @@ export async function requireAdmin() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true },
+    select: { role: true, status: true },
   });
 
-  if (!user || user.role !== Role.ADMIN) {
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+
+  if (user.status === 'BANNED') {
+    throw new Error('Forbidden: user is banned');
+  }
+
+  if (user.role !== Role.ADMIN) {
     throw new Error('Admin access required');
   }
 

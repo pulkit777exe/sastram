@@ -5,12 +5,20 @@ import { getUpstashRedis, ATOMIC_INCR_EXPIRE_LUA, getSecondsUntilUtcMidnight } f
 import type { AIInlineJobData } from '@/lib/queue/types';
 
 const QSTASH_CONFIGURED = !!(process.env.QSTASH_TOKEN && process.env.QSTASH_URL);
-const client = QSTASH_CONFIGURED
-  ? new Client({
+let client: Client | null = null;
+if (QSTASH_CONFIGURED) {
+  try {
+    client = new Client({
       token: process.env.QSTASH_TOKEN!,
       baseUrl: process.env.QSTASH_URL!,
-    })
-  : null;
+    });
+  } catch (error) {
+    logger.error(
+      '[queue] QSTASH_URL or QSTASH_TOKEN is invalid — Client initialization failed. All jobs will run inline in degraded mode.',
+      error,
+    );
+  }
+}
 
 const DAILY_CAP = 450;
 const CRITICAL_JOBS = new Set<string>(['email']);
@@ -71,8 +79,8 @@ export async function enqueueJob(jobType: string, payload: Record<string, unknow
       retries: getRetries(jobType),
     });
   } catch (error) {
-    logger.error(`[queue] QStash publish failed for ${jobType}, falling back to inline execution`, error);
-    await runJobInline(jobType, payload);
+    logger.error(`[queue] QStash publish failed for ${jobType}`, error);
+    throw error;
   }
 }
 
@@ -90,7 +98,7 @@ async function runJobInline(jobType: string, payload: Record<string, unknown>) {
         await handleEmailJob(payload as unknown as import('@/lib/queue/types').EmailJobData);
         break;
       default:
-        logger.warn(`[queue] No inline handler for job type: ${jobType}, skipping`);
+        logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${(payload as Record<string, unknown>)?.id ?? 'unknown'}`);
     }
   } catch (error) {
     logger.error(`[queue] Inline job execution failed: ${jobType}`, error);

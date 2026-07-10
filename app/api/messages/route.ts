@@ -23,7 +23,7 @@ function errorCodeToStatus(errorCode: string | null): number {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await requireSessionOrThrow(false);
+    const session = await requireSessionOrThrow();
 
     const rateLimitResult = await rateLimit({ key: `message:${session.user.id}`, type: 'message' });
     if (!rateLimitResult.success) {
