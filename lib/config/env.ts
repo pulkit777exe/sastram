@@ -142,19 +142,7 @@ export function getEnv(): Env {
 
   cachedEnv = result.data;
 
-  // Warn if Neon pooling is misconfigured in production
-  if (
-    cachedEnv.NODE_ENV === 'production' &&
-    !cachedEnv.DATABASE_URL.includes('pgbouncer=true')
-  ) {
-    console.warn(
-      '[env] WARNING: DATABASE_URL does not contain pgbouncer=true.\n' +
-        'Neon free tier has limited direct connections. Without pgbouncer, each serverless\n' +
-        'function creates a direct connection which will exhaust your connection limit.\n' +
-        'Append ?pgbouncer=true to your DATABASE_URL in the Neon console, or set\n' +
-        'DATABASE_URL to the pooled connection string and DATABASE_URL_UNPOOLED for direct access.',
-    );
-  }
+
 
   return cachedEnv;
 }

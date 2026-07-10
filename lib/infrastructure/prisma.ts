@@ -22,9 +22,8 @@ function resolveConnectionString(): string {
   if (process.env.NODE_ENV === 'production' && !pooledUrl.includes('pgbouncer=true')) {
     const separator = pooledUrl.includes('?') ? '&' : '?';
     pooledUrl = `${pooledUrl}${separator}pgbouncer=true`;
-    logger.warn(
-      '[prisma] Auto-appended pgbouncer=true to DATABASE_URL.\n' +
-      'Consider setting DATABASE_URL to the pooled string in your Vercel env vars directly.',
+    logger.info(
+      '[prisma] Auto-appended pgbouncer=true to DATABASE_URL for Neon serverless pooling.',
     );
   }
 
