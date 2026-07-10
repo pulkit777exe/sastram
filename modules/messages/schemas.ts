@@ -12,8 +12,8 @@ export const attachmentInputSchema = z.object({
       'Invalid path in URL'
     )
     .refine(
-      (val) => /^(https?|data:)/.test(val),
-      'URL must start with https:// or data:'
+      (val) => /^https:\/\//.test(val),
+      'URL must start with https://'
     ),
   type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
   name: z.string().nullable(),

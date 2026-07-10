@@ -23,7 +23,7 @@ export async function inviteFriendToThread(formData: FormData) {
     });
 
     if (!session?.user) {
-      return { data: null, error: 'Something went wrong' };
+      return { data: null, error: 'Authentication required' };
     }
 
     // Check if thread exists
@@ -34,6 +34,15 @@ export async function inviteFriendToThread(formData: FormData) {
 
     if (!thread) {
       return { data: null, error: 'Thread not found' };
+    }
+
+    // Check that the sender is a member of the thread
+    const membership = await prisma.threadMember.findUnique({
+      where: { threadId_userId: { threadId: parsed.data.threadId, userId: session.user.id } },
+    });
+
+    if (!membership) {
+      return { data: null, error: 'You are not a member of this thread' };
     }
 
     // Check if invitation already exists

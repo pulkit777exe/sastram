@@ -160,23 +160,18 @@ export const getNotificationById = cache(async (notificationId: string) => {
   );
 });
 
-export async function markAsRead(notificationId: string, userId?: string) {
-  const where: Prisma.NotificationWhereUniqueInput = { id: notificationId };
+export async function markAsRead(notificationId: string, userId: string) {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+    select: { userId: true },
+  });
 
-  // Optional: verify the notification belongs to the user
-  if (userId) {
-    const notification = await prisma.notification.findUnique({
-      where: { id: notificationId },
-      select: { userId: true },
-    });
-
-    if (!notification || notification.userId !== userId) {
-      throw new Error('Notification not found or unauthorized');
-    }
+  if (!notification || notification.userId !== userId) {
+    throw new Error('Notification not found or unauthorized');
   }
 
   return prisma.notification.update({
-    where,
+    where: { id: notificationId },
     data: {
       isRead: true,
     },

@@ -97,6 +97,19 @@ export const searchMentionUsers = createServerAction(
     const session = await requireSession(false);
 
     try {
+      const membership = await prisma.threadMember.findUnique({
+        where: { threadId_userId: { threadId, userId: session.user.id } },
+      });
+
+      if (!membership) {
+        return {
+          data: null,
+          error: 'Forbidden',
+          errorCode: 'FORBIDDEN',
+          ok: false,
+        };
+      }
+
       const users = await prisma.user.findMany({
         where: {
           id: { not: session.user.id },

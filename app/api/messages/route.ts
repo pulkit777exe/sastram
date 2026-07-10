@@ -6,7 +6,7 @@ import { rateLimit } from '@/lib/services/rate-limit';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { put } from '@vercel/blob';
 import { randomUUID } from 'crypto';
-import { detectMimeTypeFromFile, getFileCategory, getExtensionFromMime } from '@/lib/utils/file-upload';
+import { detectMimeTypeFromFile, getFileCategory, getExtensionFromMime, validateFileUpload } from '@/lib/utils/file-upload';
 import { logger } from '@/lib/infrastructure/logger';
 
 function errorCodeToStatus(errorCode: string | null): number {
@@ -59,6 +59,17 @@ export async function POST(request: NextRequest) {
     if (existingAttachments) {
       postFormData.append('attachments', existingAttachments);
     } else if (files.length > 0) {
+      if (files.length > 10) {
+        return NextResponse.json(fail('VALIDATION_ERROR', 'Maximum 10 files allowed'), { status: 400 });
+      }
+
+      for (const file of files) {
+        const validation = validateFileUpload(file);
+        if (!validation.valid) {
+          return NextResponse.json(fail('VALIDATION_ERROR', validation.error!), { status: 400 });
+        }
+      }
+
       // Upload raw files and convert to attachment metadata
       const uploadedAttachments = await Promise.all(
         files.map(async (file) => {

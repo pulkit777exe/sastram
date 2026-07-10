@@ -20,7 +20,7 @@ export const fileUploadSchema = z.object({
 
 export const uploadedFileSchema = z.object({
   url: z.string().url(),
-  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
+  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO', 'PDF']),
   name: z.string(),
   size: z.number().int().positive(),
 });

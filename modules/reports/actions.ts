@@ -51,12 +51,22 @@ export async function createReport(data: {
       select: {
         id: true,
         senderId: true,
+        threadId: true,
         thread: { select: { name: true, slug: true } },
       },
     });
 
     if (!message) {
       return { data: null, error: 'Message not found', ok: false, errorCode: 'NOT_FOUND' };
+    }
+
+    // Verify the reporter is a member of the thread
+    const membership = await prisma.threadMember.findUnique({
+      where: { threadId_userId: { threadId: message.threadId, userId: session.user.id } },
+    });
+
+    if (!membership) {
+      return { data: null, error: 'You are not a member of this thread', ok: false, errorCode: 'FORBIDDEN' };
     }
 
     try {

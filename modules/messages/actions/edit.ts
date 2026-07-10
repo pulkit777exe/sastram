@@ -163,7 +163,32 @@ export const pinMessage = createServerAction(
 export const getMessageEditHistory = createServerAction(
   { schema: getMessageEditHistorySchema, actionName: 'getMessageEditHistory' },
   async ({ messageId }) => {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return { data: null, error: 'Authentication required', errorCode: 'AUTH_REQUIRED', ok: false };
+    }
+
     try {
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        select: { threadId: true },
+      });
+
+      if (!message) {
+        return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+      }
+
+      const membership = await prisma.threadMember.findUnique({
+        where: { threadId_userId: { threadId: message.threadId, userId: session.user.id } },
+      });
+
+      if (!membership) {
+        return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
+      }
+
       const edits = await prisma.messageEdit.findMany({
         where: { messageId },
         orderBy: { editedAt: 'desc' },

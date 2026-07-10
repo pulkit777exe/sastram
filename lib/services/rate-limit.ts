@@ -30,6 +30,7 @@ class InMemoryRateLimiter implements RateLimiter {
   private duration: number;
   private lastCleanup: number = Date.now();
   private readonly CLEANUP_INTERVAL = 60000; // Clean up every minute
+  private readonly MAX_IDENTIFIERS = 10000; // Cap tracked identifiers to prevent memory exhaustion
 
   constructor(maxPoints: number, duration: number) {
     this.maxPoints = maxPoints;
@@ -55,6 +56,11 @@ class InMemoryRateLimiter implements RateLimiter {
 
   async check(identifier: string): Promise<RateLimitResult> {
     this.cleanup();
+    
+    // If we've hit the cap, reject unknown identifiers to prevent memory exhaustion
+    if (!this.requests.has(identifier) && this.requests.size >= this.MAX_IDENTIFIERS) {
+      return { success: false, remaining: 0, reset: Date.now() + this.duration * 1000 };
+    }
     
     const now = Date.now();
     const requests = this.requests.get(identifier) || [];

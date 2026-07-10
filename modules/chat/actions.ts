@@ -14,6 +14,8 @@ import { withValidation } from '@/lib/utils/server-action';
 import { ROUTES } from '@/lib/config/routes';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { requireThreadMembership } from '@/modules/auth';
+import { filterBadLanguage } from '@/lib/services/content-safety';
+import { messageLimiter } from '@/lib/services/rate-limit';
 
 const createConversationSchema = z.object({
   name: z.string().min(1),
@@ -34,7 +36,7 @@ const messagesQuerySchema = z.object({
 
 const sendMessageSchema = z
   .object({
-    content: z.string().optional(),
+    content: z.string().max(10000, 'Message must be less than 10000 characters').optional(),
     conversationId: z.string().cuid(),
     attachments: z.array(attachmentInputSchema).optional(),
   })
@@ -106,6 +108,13 @@ export const createConversation = withValidation(
             description,
             createdBy: session.user.id,
             slug: buildThreadSlug(name),
+            members: {
+              create: {
+                userId: session.user.id,
+                role: 'OWNER',
+                status: 'ACTIVE',
+              },
+            },
           },
         });
 
@@ -221,10 +230,21 @@ export const sendMessage = withValidation(
         return { data: null, error: 'Access denied', errorCode: 'FORBIDDEN', ok: false };
       }
 
+      try {
+        const rateLimitResult = await messageLimiter.check(session.user.id);
+        if (!rateLimitResult.success) {
+          return { data: null, error: 'Rate limit exceeded. Please slow down.', errorCode: 'RATE_LIMITED', ok: false };
+        }
+      } catch {
+        return { data: null, error: 'Rate limit exceeded. Please slow down.', errorCode: 'RATE_LIMITED', ok: false };
+      }
+
+      const safeContent = content ? filterBadLanguage(content) : '';
+
       const message = await prisma.$transaction(async (tx) => {
         const msg = await tx.message.create({
           data: {
-            content: content || '',
+            content: safeContent || '',
             threadId: conversationId,
             senderId: session.user.id,
             attachments: {

@@ -73,7 +73,15 @@ export async function postMessage(formData: FormData) {
   }
 
   try {
-    await messageLimiter.check(session.user.id);
+    const rateLimitResult = await messageLimiter.check(session.user.id);
+    if (!rateLimitResult.success) {
+      return {
+        data: null,
+        error: 'Rate limit exceeded. Please slow down.',
+        errorCode: 'RATE_LIMITED',
+        ok: false,
+      };
+    }
   } catch {
     return {
       data: null,
