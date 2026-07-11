@@ -1,7 +1,7 @@
 import { withRetry } from '@/lib/utils/retry';
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
-import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { getEnv } from '@/lib/config/env';
 import { threadDnaSchema, type ThreadDNA } from '@/lib/schemas/thread-dna';
 import { getLangChainService, type LangChainAIService } from './ai-langchain';
@@ -21,6 +21,12 @@ const conflictSchema = z.object({
 });
 
 export type ConflictResult = z.infer<typeof conflictSchema>;
+
+export const AI_NOT_CONFIGURED_SENTINEL = '__AI_NOT_CONFIGURED__';
+
+export function isAiNotConfigured(value: string): boolean {
+  return value === AI_NOT_CONFIGURED_SENTINEL;
+}
 
 const DEFAULT_THREAD_DNA: ThreadDNA = {
   questionType: 'other',
@@ -138,14 +144,15 @@ export interface AIService {
 }
 
 export class GeminiService implements AIService {
-  private flashModel: GenerativeModel;
-  private proModel: GenerativeModel;
+  private ai: GoogleGenAI;
+  private flashModel: string;
+  private proModel: string;
 
   constructor(apiKey: string) {
-    const genAI = new GoogleGenerativeAI(apiKey);
+    this.ai = new GoogleGenAI({ apiKey });
     const env = getEnv();
-    this.flashModel = genAI.getGenerativeModel({ model: env.GEMINI_FLASH_MODEL });
-    this.proModel = genAI.getGenerativeModel({ model: env.GEMINI_PRO_MODEL });
+    this.flashModel = env.GEMINI_FLASH_MODEL;
+    this.proModel = env.GEMINI_PRO_MODEL;
   }
 
   async generateStreamingResponse(
@@ -153,20 +160,20 @@ export class GeminiService implements AIService {
     onChunk: (chunk: string) => void
   ): Promise<void> {
     const controller = new AbortController();
-    // Stall-based timeout: abort if no chunk arrives for 30s
     let stallTimer = setTimeout(() => controller.abort(), 30_000);
-    // Hard total timeout: abort after 90s regardless of chunk cadence
     const totalTimer = setTimeout(() => controller.abort(), 90_000);
     const resetTimer = () => {
       clearTimeout(stallTimer);
       stallTimer = setTimeout(() => controller.abort(), 30_000);
     };
     try {
-      const result = await this.flashModel.generateContentStream(content, {
-        signal: controller.signal,
+      const result = await this.ai.models.generateContentStream({
+        model: this.flashModel,
+        contents: content,
+        config: { abortSignal: controller.signal },
       });
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
+      for await (const chunk of result) {
+        const text = chunk.text;
         if (text) onChunk(text);
         resetTimer();
       }
@@ -190,15 +197,17 @@ export class GeminiService implements AIService {
     try {
       const result = await withRetry(
         (retrySignal) =>
-          this.flashModel.generateContent(prompt, {
-            signal: retrySignal,
+          this.ai.models.generateContent({
+            model: this.flashModel,
+            contents: prompt,
+            config: { abortSignal: retrySignal },
           }),
         3,
         300,
         15_000,
         signal
       );
-      return result.response.text();
+      return result.text ?? '';
     } catch (error) {
       logger.warn('[GeminiService.generateSummary] AI failed, returning fallback', { error });
       return 'Summary unavailable.';
@@ -227,18 +236,19 @@ export class GeminiService implements AIService {
     try {
       const result = await withRetry(
         (retrySignal) =>
-          this.flashModel.generateContent(prompt, {
-            signal: retrySignal,
+          this.ai.models.generateContent({
+            model: this.flashModel,
+            contents: prompt,
+            config: { abortSignal: retrySignal },
           }),
         3,
         300,
         15_000,
         signal
       );
-      return parseThreadDNA(result.response.text());
+      return parseThreadDNA(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.generateThreadDNA]', { error });
-      // Throw so QStash retries — do not silently return default
       throw error;
     } finally {
       clear();
@@ -258,15 +268,17 @@ export class GeminiService implements AIService {
     try {
       const result = await withRetry(
         (retrySignal) =>
-          this.flashModel.generateContent(prompt, {
-            signal: retrySignal,
+          this.ai.models.generateContent({
+            model: this.flashModel,
+            contents: prompt,
+            config: { abortSignal: retrySignal },
           }),
         3,
         300,
         15_000,
         signal
       );
-      return parseResolutionScore(result.response.text());
+      return parseResolutionScore(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.calculateResolutionScore]', { error });
       throw error;
@@ -283,15 +295,17 @@ export class GeminiService implements AIService {
     try {
       const result = await withRetry(
         (retrySignal) =>
-          this.flashModel.generateContent(prompt, {
-            signal: retrySignal,
+          this.ai.models.generateContent({
+            model: this.flashModel,
+            contents: prompt,
+            config: { abortSignal: retrySignal },
           }),
         3,
         300,
         15_000,
         signal
       );
-      return parseConflict(result.response.text());
+      return parseConflict(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.detectConflicts]', { error });
       throw error;
@@ -314,16 +328,17 @@ export class GeminiService implements AIService {
     try {
       const result = await withRetry(
         (retrySignal) =>
-          this.proModel.generateContent(prompt, {
-            signal: retrySignal,
+          this.ai.models.generateContent({
+            model: this.proModel,
+            contents: prompt,
+            config: { abortSignal: retrySignal },
           }),
         3,
         300,
         15_000,
         signal
       );
-      return result.response
-        .text()
+      return (result.text ?? '')
         .replace(/```html\n?/g, '')
         .replace(/```\n?/g, '');
     } catch (error) {
@@ -348,15 +363,17 @@ export class GeminiService implements AIService {
     try {
       const result = await withRetry(
         (retrySignal) =>
-          this.flashModel.generateContent(prompt, {
-            signal: retrySignal,
+          this.ai.models.generateContent({
+            model: this.flashModel,
+            contents: prompt,
+            config: { abortSignal: retrySignal },
           }),
         3,
         300,
         10_000,
         signal
       );
-      const text = result.response.text();
+      const text = result.text ?? '';
       const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
       return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;
     } catch (error) {
@@ -619,13 +636,13 @@ class AIServiceFactory {
 
 class NoOpAIService implements AIService {
   async generateSummary() {
-    return "Summary unavailable (AI not configured).";
+    return AI_NOT_CONFIGURED_SENTINEL;
   }
   async generateThreadSummary() {
-    return "Summary unavailable (AI not configured).";
+    return AI_NOT_CONFIGURED_SENTINEL;
   }
   async generateDailyDigest() {
-    return "<p>AI digest not available.</p>";
+    return AI_NOT_CONFIGURED_SENTINEL;
   }
   async generateThreadDNA() {
     return DEFAULT_THREAD_DNA;
@@ -637,7 +654,7 @@ class NoOpAIService implements AIService {
     return { hasConflict: false };
   }
   async generateStreamingResponse(_content: string, onChunk: (chunk: string) => void) {
-    onChunk("(AI not configured)");
+    onChunk(AI_NOT_CONFIGURED_SENTINEL);
   }
   async classifyToxicity() {
     return 0;

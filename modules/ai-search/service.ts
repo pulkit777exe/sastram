@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { v4 as uuidv4 } from 'uuid';
 import { withRetry } from '@/lib/utils/retry';
 import { logger } from '@/lib/infrastructure/logger';
@@ -104,8 +104,8 @@ function isOutdated(publishedDate?: string): boolean {
 }
 
 async function classifyQuery(query: string, geminiKey: string): Promise<QueryClassification> {
-  const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({ model: getEnv().GEMINI_LITE_MODEL });
+  const ai = new GoogleGenAI({ apiKey: geminiKey });
+  const model = getEnv().GEMINI_LITE_MODEL;
 
   const prompt = `Classify this forum search query into ONE category:
 - factual: has a single correct answer
@@ -126,9 +126,13 @@ Schema: { "type": string, "primaryDomain": string, "suggestedSources": string[],
 
   try {
     const result = await withRetry((signal) =>
-      model.generateContent(prompt, { signal, timeout: 15_000 })
+      ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: { abortSignal: signal },
+      })
     );
-    const text = result.response.text().trim();
+    const text = (result.text ?? '').trim();
     // Parse JSON, stripping any markdown code fences
     const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
     return JSON.parse(cleaned) as QueryClassification;
@@ -342,10 +346,8 @@ async function crossReference(
 
   if (ranked.length >= 2) {
     try {
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({
-        model: getEnv().GEMINI_LITE_MODEL,
-      });
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      const model = getEnv().GEMINI_LITE_MODEL;
 
       const sourceSummaries = ranked
         .slice(0, 8)
@@ -364,9 +366,13 @@ Only flag real factual conflicts, not opinion differences.
 No markdown, valid JSON only.`;
 
       const result = await withRetry((signal) =>
-        model.generateContent(conflictPrompt, { signal, timeout: 15_000 })
+        ai.models.generateContent({
+          model,
+          contents: conflictPrompt,
+          config: { abortSignal: signal },
+        })
       );
-      const text = result.response.text().trim();
+      const text = (result.text ?? '').trim();
       const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
       conflictData = JSON.parse(cleaned) as ConflictInfo;
     } catch (err) {
@@ -386,8 +392,8 @@ async function synthesize(
   geminiKey: string,
   tavilyAnswer?: string
 ): Promise<SynthesisResult> {
-  const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({ model: getEnv().GEMINI_SEARCH_MODEL });
+  const ai = new GoogleGenAI({ apiKey: geminiKey });
+  const model = getEnv().GEMINI_SEARCH_MODEL;
 
   const sourcesText = sources
     .slice(0, 8)
@@ -428,9 +434,13 @@ Return plain text with light markdown (bold, bullets only). No headers with #.`;
 
   try {
     const result = await withRetry((signal) =>
-      model.generateContent(synthesisPrompt, { signal, timeout: 15_000 })
+      ai.models.generateContent({
+        model,
+        contents: synthesisPrompt,
+        config: { abortSignal: signal },
+      })
     );
-    const content = result.response.text().trim();
+    const content = (result.text ?? '').trim();
 
     // Calculate confidence score
     let confidence = 50;
