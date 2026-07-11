@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/services/auth';
 import { headers } from 'next/headers';
-import { aiService } from '@/lib/services/ai';
+import { aiService, isAiNotConfigured } from '@/lib/services/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { sanitizeHtmlContent } from '@/lib/services/content-safety';
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -59,7 +59,11 @@ export async function processPendingDigests() {
     let summary: string;
     try {
       const rawSummary = await aiService.generateSummary(content);
-      summary = sanitizeHtmlContent(rawSummary);
+      if (isAiNotConfigured(rawSummary)) {
+        summary = '<p><em>AI features aren\'t configured for this deployment.</em></p>';
+      } else {
+        summary = sanitizeHtmlContent(rawSummary);
+      }
     } catch (error) {
       logger.error(`Failed to generate AI summary for thread ${digest.threadId}:`, error);
       summary = `This thread had ${transcript.length} messages from ${uniqueParticipants.size} participants. Join the discussion to see what's happening!`;

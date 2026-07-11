@@ -17,7 +17,7 @@ import { queueAiInlineIfRequested } from './ai-inline';
 
 export async function postMessage(formData: FormData) {
   const content = formData.get('content') as string;
-  const sectionId = formData.get('threadId') as string;
+  const threadId = formData.get('threadId') as string;
   const parentId = formData.get('parentId') as string | null;
   const mentionsRaw = formData.get('mentions') as string | null;
 
@@ -38,7 +38,7 @@ export async function postMessage(formData: FormData) {
 
   const validation = createMessageWithAttachmentsSchema.safeParse({
     content,
-    threadId: sectionId,
+    threadId: threadId,
     parentId: parentId || undefined,
     mentions,
   });
@@ -61,12 +61,12 @@ export async function postMessage(formData: FormData) {
   }
 
   const isMember = await prisma.threadMember.findUnique({
-    where: { threadId_userId: { threadId: sectionId, userId: session.user.id } },
+    where: { threadId_userId: { threadId: threadId, userId: session.user.id } },
   });
   if (!isMember) {
     return {
       data: null,
-      error: 'You are not a member of this section',
+      error: 'You are not a member of this thread',
       errorCode: 'FORBIDDEN',
       ok: false,
     };
@@ -104,7 +104,7 @@ export async function postMessage(formData: FormData) {
 
   try {
     const moderationResult = await moderateIncomingMessage({
-      threadId: sectionId,
+      threadId: threadId,
       authorId: session.user.id,
       content: safeContent,
       parentId,
@@ -151,7 +151,7 @@ export async function postMessage(formData: FormData) {
 
     await createMentionsForMessage({
       messageId: message.id,
-      threadId: sectionId,
+      threadId: threadId,
       mentions,
       mentionedBy: {
         id: session.user.id,
@@ -171,7 +171,7 @@ export async function postMessage(formData: FormData) {
       senderName: message.sender?.name || session.user.email,
       senderImage: message.sender?.image ?? session.user.image,
       createdAt: message.createdAt,
-      threadId: sectionId,
+      threadId: threadId,
       parentId: message.parentId ?? null,
       depth: message.depth ?? 0,
       likeCount: 0,
@@ -187,12 +187,12 @@ export async function postMessage(formData: FormData) {
       })),
     };
 
-    infraMessageSideEffects.emitThreadMessage(sectionId, payload);
+    infraMessageSideEffects.emitThreadMessage(threadId, payload);
 
     const { aiInlineQueued, aiInlineLimited } = await queueAiInlineIfRequested({
       content: safeContent,
       userId: session.user.id,
-      threadId: sectionId,
+      threadId: threadId,
       messageId: message.id,
       sideEffects: infraMessageSideEffects,
     });
@@ -208,7 +208,7 @@ export async function postMessage(formData: FormData) {
       entityType: 'Message',
       entityId: message.id,
       metadata: {
-        threadId: sectionId,
+        threadId: threadId,
         threadName: message.thread?.slug,
       },
     });

@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
         '@prisma/adapter-neon',
         '@neondatabase/serverless',
         'ws',
-        '@google/generative-ai',
+        '@google/genai',
         'better-auth',
         '@upstash/ratelimit',
         '@upstash/redis',

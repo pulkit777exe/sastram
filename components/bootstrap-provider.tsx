@@ -19,7 +19,6 @@ export type BootstrapUser = {
   image: string | null;
   role: string;
   reputationPoints: number;
-  isPro: boolean;
 };
 
 export type BootstrapData = {

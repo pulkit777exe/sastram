@@ -5,6 +5,8 @@ import { Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils';
+import { isAiNotConfigured } from '@/lib/services/ai';
+import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface ThreadSummaryCardProps {
   threadId: string;
@@ -169,9 +171,13 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
             <div className="h-3 bg-muted rounded w-4/6" />
           </div>
         ) : summary ? (
-          <div className="prose prose-sm prose-neutral max-w-none">
-            <p className="text-xs text-brand/80 leading-relaxed">{summary}</p>
-          </div>
+          isAiNotConfigured(summary) ? (
+            <AiNotConfiguredNotice />
+          ) : (
+            <div className="prose prose-sm prose-neutral max-w-none">
+              <p className="text-xs text-brand/80 leading-relaxed">{summary}</p>
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center justify-center py-2 text-center">
             <p className="text-xs text-muted-foreground mb-3">

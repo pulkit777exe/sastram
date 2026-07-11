@@ -17,6 +17,7 @@ interface ThreadDataContextValue {
   onCancelReply: () => void;
   onToggleCollapse: (messageId: string) => void;
   onMessagePosted: (message: Message) => void;
+  onOptimisticMessage?: (message: Message) => void;
   onFocusBranch: (messageId: string) => void;
   onMessageUpdate: (messageId: string, updates: Partial<Message>) => void;
   onTypingStart?: () => void;

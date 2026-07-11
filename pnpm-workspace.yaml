@@ -1,27 +1,10 @@
 allowBuilds:
-  '@prisma/engines': true
-  '@scarf/scarf': true
-  '@sentry/cli': true
-  '@upstash/qstash-cli': true
-  esbuild: true
-  msgpackr-extract: true
-  prisma: true
-  sharp: true
-  unrs-resolver: true
-minimumReleaseAgeExclude:
-  - diff@8.0.3
-  - serialize-javascript@7.0.3
-  - '@hono/node-server@1.19.13'
-  - postcss@8.5.10
-  - next@16.2.5
-  - next@16.2.6
-  - serialize-javascript@7.0.5
-overrides:
-  '@hono/node-server@<1.19.13': ^1.19.13
-  diff@>=6.0.0 <8.0.3: ^8.0.3
-  ioredis@<5.11.1: ^5.11.1
-  next@>=16.0.0 <16.2.5: ^16.2.5
-  next@>=16.0.0 <16.2.6: ^16.2.6
-  postcss@<8.5.10: ^8.5.10
-  serialize-javascript@<=7.0.2: ^7.0.3
-  serialize-javascript@>=5.0.0 <7.0.5: ^7.0.5
+  '@google/genai': false
+  '@prisma/engines': set this to true or false
+  '@sentry/cli': set this to true or false
+  '@upstash/qstash-cli': set this to true or false
+  esbuild: set this to true or false
+  prisma: set this to true or false
+  protobufjs: false
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false

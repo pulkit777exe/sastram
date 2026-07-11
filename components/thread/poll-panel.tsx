@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { createPollAction, closePollAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
 import { ChevronDown, BarChart3, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import type { PollResults } from '@/modules/polls/types';
 
 type PollShape = {
   id: string;
@@ -24,13 +25,15 @@ interface PollPanelProps {
   threadId: string;
   initialPoll: Omit<PollShape, 'threadId'> | null;
   canManagePoll: boolean;
+  pollResults?: PollResults | null;
+  pollRefreshKey?: number;
 }
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
 const EMPTY_OPTIONS: string[] = ['', ''];
 
-export function PollPanel({ threadId, initialPoll, canManagePoll }: PollPanelProps) {
+export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, pollRefreshKey }: PollPanelProps) {
   const [poll, setPoll] = useState<PollShape | null>(
     initialPoll ? { ...initialPoll, threadId } : null
   );
@@ -40,6 +43,25 @@ export function PollPanel({ threadId, initialPoll, canManagePoll }: PollPanelPro
   const [options, setOptions] = useState<string[]>(EMPTY_OPTIONS);
   const [expiresAt, setExpiresAt] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync internal poll state when parent provides fresh data (from poll tick)
+  useEffect(() => {
+    if (initialPoll) {
+      setPoll((prev) => {
+        const next = { ...initialPoll, threadId };
+        // Only update if data actually changed to avoid unnecessary re-renders
+        if (
+          prev &&
+          prev.id === next.id &&
+          prev.isActive === next.isActive &&
+          prev.expiresAt === next.expiresAt
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    }
+  }, [initialPoll, threadId]);
 
   const trimmedOptions = useMemo(
     () => options.map((o) => o.trim()).filter((o) => o.length > 0),
@@ -193,7 +215,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll }: PollPanelPro
             <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
               {poll ? (
                 <div className="space-y-3">
-                  <PollDisplay poll={poll} />
+                  <PollDisplay poll={poll} pollResults={pollResults} refreshKey={pollRefreshKey} />
                   {canManagePoll && poll.isActive && (
                     <Button
                       size="sm"

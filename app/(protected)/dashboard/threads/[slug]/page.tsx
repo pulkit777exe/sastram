@@ -150,8 +150,10 @@ async function ThreadContent({
           : null
       }
       canManagePoll={
-        thread.createdBy === session.user.id ||
-        ['ADMIN', 'MODERATOR'].includes(session.user.role)
+        thread.members?.some(
+          (m: { user: { id: string }; role: string }) =>
+            m.user.id === session.user.id && ['OWNER', 'MODERATOR'].includes(m.role)
+        ) ?? false
       }
       currentUser={{
         id: session.user.id,
@@ -264,6 +266,16 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
   const thread = await getThreadWithFullContext(slug, session.user.id);
   if (!thread) notFound();
 
+  const subscription = await prisma.threadSubscription.findUnique({
+    where: {
+      threadId_userId: {
+        threadId: thread.id,
+        userId: session.user.id,
+      },
+    },
+    select: { frequency: true },
+  });
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
@@ -278,7 +290,7 @@ export default async function ThreadPage({ params }: { params: { slug: string } 
                 role: session.user.role,
               },
             }}
-            subscription={null}
+            subscription={subscription}
           />
         </Suspense>
       </main>

@@ -13,6 +13,8 @@ import { useNotification } from '@/components/bootstrap-provider';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
+import { isAiNotConfigured } from '@/lib/services/ai';
+import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface NotificationItem {
   id: string;
@@ -274,9 +276,13 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                             <TimeAgo date={notification.createdAt} />
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {notification.message}
-                        </p>
+                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {isAiNotConfigured(notification.message) ? (
+                            <AiNotConfiguredNotice className="border-0 bg-transparent p-0" />
+                          ) : (
+                            notification.message
+                          )}
+                        </div>
                       </div>
                       {!notification.isRead && (
                         <div className="mt-2 w-2 h-2 rounded-full bg-brand shrink-0" />

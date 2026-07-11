@@ -32,6 +32,8 @@ import type { Attachment } from '@/lib/types/index';
 import { countDescendants } from '@/modules/messages/service';
 import { ReportButton } from './report-button';
 import { useThreadDataContext, useThreadUIStateContext } from './thread-context';
+import { isAiNotConfigured } from '@/lib/services/ai';
+import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 const MAX_VISUAL_DEPTH = 4;
 const INDENT_PX = 20;
@@ -127,6 +129,7 @@ export const CommentNode = React.memo(function CommentNode({
     onCancelReply,
     onToggleCollapse,
     onMessagePosted,
+    onOptimisticMessage,
     onFocusBranch,
     onMessageUpdate,
     onTypingStart,
@@ -342,7 +345,11 @@ export const CommentNode = React.memo(function CommentNode({
                 </div>
               ) : (
                 <div className="text-foreground/80 text-[14px] leading-relaxed whitespace-pre-wrap wrap-break-word">
-                  {renderMentionContent(node.content)}
+                  {node.isAiResponse && isAiNotConfigured(node.content) ? (
+                    <AiNotConfiguredNotice />
+                  ) : (
+                    renderMentionContent(node.content)
+                  )}
                 </div>
               )}
 
@@ -524,6 +531,7 @@ export const CommentNode = React.memo(function CommentNode({
           visualDepth={depth + 1}
           onCancel={onCancelReply}
           onMessagePosted={onMessagePosted}
+          onOptimisticMessage={onOptimisticMessage}
           onTypingStart={onTypingStart}
           onTypingStop={onTypingStop}
         />

@@ -28,6 +28,7 @@ interface InlineReplyBoxProps {
   visualDepth: number;
   onCancel: () => void;
   onMessagePosted: (message: Message) => void;
+  onOptimisticMessage?: (message: Message) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
 }
@@ -39,6 +40,7 @@ export function InlineReplyBox({
   visualDepth,
   onCancel,
   onMessagePosted,
+  onOptimisticMessage,
   onTypingStart,
   onTypingStop,
 }: InlineReplyBoxProps) {
@@ -58,7 +60,9 @@ export function InlineReplyBox({
     threadId,
     parentId: parentMessage.id,
     depth: replyDepth,
+    currentUser: currentUser ? { ...currentUser, name: currentUser.name ?? '' } : undefined,
     onMessagePosted,
+    onOptimisticMessage,
     onTypingStart,
     onTypingStop,
   });

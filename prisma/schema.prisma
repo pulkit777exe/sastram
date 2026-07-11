@@ -123,7 +123,6 @@ model User {
   reputationPoints Int            @default(0)
   followerCount    Int            @default(0)
   followingCount   Int            @default(0)
-  isPro            Boolean        @default(false)
   welcomeEmailSent Boolean        @default(false)
   lastSeenAt       DateTime?
   createdAt        DateTime       @default(now())

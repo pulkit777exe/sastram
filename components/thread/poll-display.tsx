@@ -19,6 +19,10 @@ interface PollDisplayProps {
     isActive: boolean;
     expiresAt: Date | null;
   };
+  /** Fresh results from parent's poll tick — skips internal fetch when provided. */
+  pollResults?: PollResults | null;
+  /** Increment to trigger a re-fetch of results. */
+  refreshKey?: number;
 }
 
 function PollSkeleton({ optionCount }: { optionCount: number }) {
@@ -37,13 +41,12 @@ function PollSkeleton({ optionCount }: { optionCount: number }) {
   );
 }
 
-export function PollDisplay({ poll }: PollDisplayProps) {
+export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [results, setResults] = useState<PollResults | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
-  const [now] = useState(() => Date.now());
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -55,6 +58,14 @@ export function PollDisplay({ poll }: PollDisplayProps) {
 
   const loadPollData = useCallback(async () => {
     if (!mountedRef.current) return;
+
+    // If parent provides fresh results (from poll tick), use them directly
+    if (pollResults) {
+      setResults(pollResults);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -84,10 +95,10 @@ export function PollDisplay({ poll }: PollDisplayProps) {
         setIsLoading(false);
       }
     }
-  }, [poll.id]); // poll.id is stable — only re-creates if poll changes
+  }, [poll.id, pollResults]);
 
   // loadPollData is now stable (useCallback with [poll.id])
-  // so this effect only runs once per poll.id change
+  // so this effect only runs once per poll.id change or refreshKey bump
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -96,7 +107,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     return () => {
       cancelled = true;
     };
-  }, [loadPollData]);
+  }, [loadPollData, refreshKey]);
 
   const handleVote = async (optionIndex: number) => {
     if (hasVoted || isVoting) return;
@@ -123,7 +134,7 @@ export function PollDisplay({ poll }: PollDisplayProps) {
     }
   };
 
-  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= now;
+  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now();
   const showResults = hasVoted || !poll.isActive || isExpired;
 
   if (isLoading) {

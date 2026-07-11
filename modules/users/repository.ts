@@ -75,7 +75,6 @@ export const getUserBootstrapProfile = cache(async (userId: string) => {
         image: true,
         role: true,
         reputationPoints: true,
-        isPro: true,
       },
     })
   );

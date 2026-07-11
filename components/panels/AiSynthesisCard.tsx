@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { isAiNotConfigured } from '@/lib/services/ai';
+import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface AiSource {
   source: string;
@@ -28,7 +30,7 @@ export default function AiSynthesisCard({
 }: AiSynthesisCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
-  const hasSummary = summary !== null && summary.length > 0;
+  const hasSummary = summary !== null && summary.length > 0 && !isAiNotConfigured(summary);
   const isGenerating = !hasSummary && messageCount >= 5;
 
   const handleTransfer = () => {
@@ -74,7 +76,9 @@ export default function AiSynthesisCard({
       </div>
 
       <div className="space-y-[10px] text-[13px] text-muted-foreground">
-        {isGenerating ? (
+        {summary !== null && isAiNotConfigured(summary) ? (
+          <AiNotConfiguredNotice />
+        ) : isGenerating ? (
           <div className="flex items-center gap-[8px]">
             <Loader2 className="h-[14px] w-[14px] animate-spin text-(--blue)" />
             <p className="text-[13px] text-muted-foreground">Summary generating...</p>

@@ -39,12 +39,10 @@ export function Sidebar({
   name,
   email,
   role,
-  isPro = false,
 }: {
   name: string;
   email: string;
   role: string;
-  isPro?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -255,33 +253,15 @@ export function Sidebar({
             <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false}></NavItem>
           </nav>
 
-          {isPro ? (
-            <div className="m-3 p-4 bg-linear-to-br from-brand/10 to-brand/70/10 border border-brand/20 rounded-xl">
-              <div className="flex items-center gap-2 text-foreground">
-                <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
-                <p className="text-sm font-semibold">Pro Member</p>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                You have access to all premium features.
-              </p>
+          <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
+            <div className="flex items-center gap-2 mb-1 text-foreground">
+              <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
+              <p className="text-sm font-semibold">Boost with AI</p>
             </div>
-          ) : (
-            <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
-              <div className="flex items-center gap-2 mb-1 text-foreground">
-                <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
-                <p className="text-sm font-semibold">Boost with AI</p>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-4">
-                AI-powered replies and tools that save hours.
-              </p>
-              <Link
-                href="/pricing"
-                className="block w-full text-center text-white bg-brand hover:bg-brand/90 text-xs font-semibold py-2 rounded-lg transition-all shadow-lg shadow-brand/20"
-              >
-                Upgrade to Pro
-              </Link>
-            </div>
-          )}
+            <p className="text-[11px] text-muted-foreground">
+              AI-powered replies and tools that save hours.
+            </p>
+          </div>
         </>
       )}
 

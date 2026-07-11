@@ -19,7 +19,7 @@ Sastram is an AI-powered discussion and research platform. Users create threads 
 | Cache/Queue | Upstash Redis | 1.38.0 |
 | Job Queue | Upstash QStash | 2.11.1 |
 | Rate Limiting | Upstash RateLimit | 2.0.8 |
-| AI (primary) | Google Gemini | via `@google/generative-ai` 0.24.1 |
+| AI (primary) | Google Gemini | via `@google/genai | 0.24.1 |
 | AI (alternative) | OpenAI | via LangChain |
 | AI orchestration | LangChain | 1.5.0 |
 | Email | Resend | 6.17.1 |

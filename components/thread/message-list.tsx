@@ -16,6 +16,8 @@ import { AttachmentItem } from './attachment-item';
 import { renderContent } from '@/lib/utils/render-content';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { isAiNotConfigured } from '@/lib/services/ai';
+import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface MessageListProps {
   firstUnreadMessageId: string | null;
@@ -183,6 +185,7 @@ const MessageRow = React.memo(function MessageRow({
     onReply,
     onCancelReply,
     onMessagePosted,
+    onOptimisticMessage,
     onMessageUpdate,
     onTypingStart,
     onTypingStop,
@@ -352,7 +355,11 @@ const MessageRow = React.memo(function MessageRow({
             </div>
           ) : (
             <div className="text-foreground/80 text-[13px] leading-relaxed whitespace-pre-wrap wrap-break-word">
-              {renderContent(message.content)}
+              {message.isAiResponse && isAiNotConfigured(message.content) ? (
+                <AiNotConfiguredNotice />
+              ) : (
+                renderContent(message.content)
+              )}
             </div>
           )}
 
@@ -473,6 +480,7 @@ const MessageRow = React.memo(function MessageRow({
             visualDepth={1}
             onCancel={onCancelReply}
             onMessagePosted={onMessagePosted}
+            onOptimisticMessage={onOptimisticMessage}
             onTypingStart={onTypingStart}
             onTypingStop={onTypingStop}
           />
