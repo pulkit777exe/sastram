@@ -17,6 +17,11 @@ interface UseMessageComposerOptions {
     messageId: string;
     userName: string;
   } | null;
+  currentUser?: {
+    id: string;
+    name: string;
+    image: string | null;
+  };
   onMessagePosted?: (message: Message) => void;
   onOptimisticMessage?: (message: Message) => void;
   onMessageError?: (tempId: string) => void;
@@ -83,6 +88,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     parentId,
     depth = 0,
     replyTo,
+    currentUser,
     onMessagePosted,
     onOptimisticMessage,
     onMessageError,
@@ -297,7 +303,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         id: tempId,
         content: messageContent,
         threadId,
-        senderId: '',
+        senderId: currentUser?.id ?? '',
         parentId: parentId ?? replyTo?.messageId ?? null,
         depth,
         isEdited: false,
@@ -308,7 +314,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
-        sender: { id: '', name: null, image: null },
+        sender: { id: currentUser?.id ?? '', name: currentUser?.name ?? null, image: currentUser?.image ?? null },
         thread: { id: threadId, name: '', slug: '' },
         attachments: [],
       };
@@ -421,6 +427,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       parentId,
       replyTo,
       depth,
+      currentUser,
       mentionedUserIds,
       onOptimisticMessage,
       onMessagePosted,

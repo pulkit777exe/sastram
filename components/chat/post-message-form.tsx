@@ -34,6 +34,12 @@ const COMMON_EMOJIS = [
 
 interface PostMessageFormProps {
   threadId: string;
+  currentUser?: {
+    id: string;
+    name: string;
+    image: string | null;
+    role?: string;
+  };
   onMessagePosted?: (message: Message) => void;
   onOptimisticMessage?: (message: Message) => void;
   onMessageError?: (tempId: string) => void;
@@ -52,6 +58,7 @@ interface PostMessageFormProps {
 
 export function PostMessageForm({
   threadId,
+  currentUser,
   onMessagePosted,
   onOptimisticMessage,
   onMessageError,
@@ -105,6 +112,7 @@ export function PostMessageForm({
     onCancelReply,
     onTypingStart,
     onTypingStop,
+    currentUser,
   });
 
   const formRef = useRef<HTMLFormElement>(null);

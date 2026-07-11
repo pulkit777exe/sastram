@@ -8,6 +8,8 @@ import type { Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
 import { loadThreadMessages, backfillThreadMessages } from '@/modules/threads/actions';
+import { getPollResultsAction, getPollByThreadAction } from '@/modules/polls/actions';
+import type { PollResults } from '@/modules/polls/types';
 import { toasts } from '@/lib/utils/toast';
 import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
@@ -70,6 +72,8 @@ export function ThreadLiveWrapper({
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [displayedCount, setDisplayedCount] = useState(messages.length);
+  const [pollResults, setPollResults] = useState<PollResults | null>(null);
+  const [pollRefreshKey, setPollRefreshKey] = useState(0);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,6 +82,8 @@ export function ThreadLiveWrapper({
   const ownPendingIds = useRef<Set<string>>(new Set());
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const isLoadingMoreRef = useRef(false);
+  const currentPollRef = useRef(currentPoll);
+  currentPollRef.current = currentPoll;
   const lastMessageTimestampRef = useRef<string>(
     messages.length > 0 ? new Date(messages[messages.length - 1].createdAt).toISOString() : new Date().toISOString()
   );
@@ -385,14 +391,18 @@ export function ThreadLiveWrapper({
     (newMessage: Message) => {
       ownPendingIds.current.add(newMessage.id);
       setLiveMessages((prev) => {
-        // Replace optimistic message if it exists
-        const idx = prev.findIndex((m) => m.id === newMessage.id);
+        // Remove any pending optimistic message (temp ID) for this sender+parent
+        const cleaned = prev.filter(
+          (m) => !ownPendingIds.current.has(m.id) || m.id === newMessage.id
+        );
+        // Replace if already exists
+        const idx = cleaned.findIndex((m) => m.id === newMessage.id);
         if (idx !== -1) {
-          const updated = [...prev];
+          const updated = [...cleaned];
           updated[idx] = newMessage;
           return updated;
         }
-        return [...prev, newMessage];
+        return [...cleaned, newMessage];
       });
       emitTypingStop();
       if (hasAiMention(newMessage.content)) {
@@ -446,13 +456,53 @@ export function ThreadLiveWrapper({
     };
   }, []);
 
-  // Poll for new messages (AI responses, other users' messages) since WebSocket is not connected
+  // Poll for new messages (AI responses, other users' messages) since WebSocket is not connected.
+  // Adaptive: pauses when tab hidden, backs off when quiet, resets on new messages.
   useEffect(() => {
-    const pollTimer = setInterval(async () => {
+    const BASE_INTERVAL = 20_000;
+    const MAX_INTERVAL = 60_000;
+    const BACKOFF_MULTIPLIER = 2;
+    const BACKOFF_THRESHOLD = 3; // consecutive empty polls before backing off
+
+    let currentInterval = BASE_INTERVAL;
+    let emptyPollCount = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    async function poll() {
       try {
         const since = lastMessageTimestampRef.current;
         const result = await backfillThreadMessages(threadId, since);
-        if (!result?.ok || !result.data?.messages?.length) return;
+
+        // Piggyback poll vote refresh on every message poll tick
+        if (currentPollRef.current) {
+          try {
+            const pollId = currentPollRef.current.id;
+            const [freshPollResult, freshResultsResult] = await Promise.all([
+              getPollByThreadAction(threadId),
+              getPollResultsAction(pollId),
+            ]);
+            if (freshPollResult?.data) {
+              const freshPoll = freshPollResult.data;
+              setCurrentPoll((prev) =>
+                prev ? { ...prev, isActive: freshPoll.isActive, expiresAt: freshPoll.expiresAt } : prev
+              );
+            }
+            if (freshResultsResult?.data) {
+              setPollResults(freshResultsResult.data);
+              setPollRefreshKey((k) => k + 1);
+            }
+          } catch {
+            // Poll refresh is best-effort — don't block message polling
+          }
+        }
+
+        if (!result?.ok || !result.data?.messages?.length) {
+          emptyPollCount++;
+          if (emptyPollCount >= BACKOFF_THRESHOLD) {
+            currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL);
+          }
+          return;
+        }
 
         const newMessages: Message[] = result.data.messages.map((m: any) => ({
           id: m.id,
@@ -500,19 +550,52 @@ export function ThreadLiveWrapper({
         });
 
         if (hasNew) {
+          // Reset backoff on new message
+          emptyPollCount = 0;
+          currentInterval = BASE_INTERVAL;
           // Defer status clears to avoid state updates during render
           for (const msg of newMessages) {
             if (msg.isAiResponse && msg.parentId) {
               setTimeout(() => clearAiStatus(msg.parentId!), 0);
             }
           }
+        } else {
+          emptyPollCount++;
+          if (emptyPollCount >= BACKOFF_THRESHOLD) {
+            currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL);
+          }
         }
       } catch {
         // Silent — poll is best-effort
       }
-    }, 10_000);
+    }
 
-    return () => clearInterval(pollTimer);
+    function startTimer() {
+      if (timer) clearInterval(timer);
+      timer = setInterval(poll, currentInterval);
+    }
+
+    // Page Visibility API: pause when hidden, immediate poll + resume on visible
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        poll(); // immediate poll on foreground
+        startTimer(); // restart with current interval
+      } else {
+        if (timer) clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    // Start initial poll and timer
+    poll();
+    startTimer();
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      if (timer) clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [threadId, title, slug, clearAiStatus]);
 
   return (
@@ -588,7 +671,13 @@ export function ThreadLiveWrapper({
           </div>
           {currentPoll && (
             <div className="mb-4">
-              <PollPanel threadId={threadId} initialPoll={currentPoll} canManagePoll={canManagePoll} />
+              <PollPanel
+                threadId={threadId}
+                initialPoll={currentPoll}
+                canManagePoll={canManagePoll}
+                pollResults={pollResults}
+                pollRefreshKey={pollRefreshKey}
+              />
             </div>
           )}
         </div>
@@ -634,6 +723,7 @@ export function ThreadLiveWrapper({
                 threadId={threadId}
                 currentUser={currentUser}
                 aiInlineStatus={aiInlineStatus}
+                onOptimisticMessage={handleOptimisticMessage}
                 onTypingStart={emitTypingStart}
                 onTypingStop={emitTypingStop}
                 firstUnreadMessageId={firstUnreadMessageId}
@@ -694,6 +784,7 @@ export function ThreadLiveWrapper({
         <div className="max-w-4xl mx-auto">
           <PostMessageForm
             threadId={threadId}
+            currentUser={currentUser}
             onMessagePosted={handleMessagePosted}
             onOptimisticMessage={handleOptimisticMessage}
             onMessageError={handleMessageError}

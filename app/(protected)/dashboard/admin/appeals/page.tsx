@@ -9,7 +9,7 @@ export default async function AppealsPage() {
   assertAdmin(session.user);
 
   const appealsResult = await getAppeals();
-  const appeals = appealsResult.data ?? [];
+  const appeals = appealsResult.data?.appeals ?? [];
 
   return (
     <div className="space-y-6">

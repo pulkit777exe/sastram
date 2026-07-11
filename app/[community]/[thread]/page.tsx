@@ -9,6 +9,7 @@ import RightPanel from '@/components/panels/RightPanel';
 import AcceptedAnswerBanner from '@/components/thread/AcceptedAnswerBanner';
 import type { Message } from '@/lib/types/index';
 import { Skeleton } from '@/components/ui/skeleton';
+import { prisma } from '@/lib/infrastructure/prisma';
 
 const ThreadLiveWrapper = dynamic(() => import('@/components/thread/thread-live-wrapper').then(m => ({ default: m.ThreadLiveWrapper })), {
   loading: () => (
@@ -38,14 +39,25 @@ interface ThreadPageParams {
   };
 }
 
-async function ThreadContent({ slug, userId }: { slug: string; userId: string }) {
+async function ThreadContent({ slug, userId, user }: { slug: string; userId: string; user: { name: string | null; image: string | null; role: string } }) {
   const thread = await getThreadWithFullContext(slug, userId);
 
   if (!thread) {
     notFound();
   }
 
-  const paginatedResult = await getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT);
+  const [paginatedResult, subscription] = await Promise.all([
+    getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT),
+    prisma.threadSubscription.findUnique({
+      where: {
+        threadId_userId: {
+          threadId: thread.id,
+          userId,
+        },
+      },
+      select: { frequency: true },
+    }),
+  ]);
 
   const allMessages: Message[] = paginatedResult.messages.map((m) => ({
     id: m.id,
@@ -99,12 +111,12 @@ async function ThreadContent({ slug, userId }: { slug: string; userId: string })
           title={thread.name ?? thread.slug}
           slug={thread.slug}
           memberCount={thread._count?.members ?? 0}
-          initialFrequency={null}
+          initialFrequency={(subscription?.frequency as 'DAILY' | 'WEEKLY' | 'NEVER') ?? null}
           currentUser={{
             id: userId,
-            name: '',
-            image: null,
-            role: 'USER',
+            name: user.name ?? '',
+            image: user.image ?? null,
+            role: user.role,
           }}
         />
       </div>
@@ -131,7 +143,7 @@ export default async function ThreadPage({ params }: ThreadPageParams) {
       <div className="grid h-full grid-cols-[minmax(0,1fr)_300px] gap-6 p-6">
         <main className="flex min-w-0 flex-col gap-4 overflow-y-auto">
           <Suspense fallback={<Skeleton className="h-12 w-full rounded-[10px]" />}>
-            <ThreadContent slug={slug} userId={session.user.id} />
+            <ThreadContent slug={slug} userId={session.user.id} user={{ name: session.user.name, image: session.user.image, role: session.user.role ?? 'USER' }} />
           </Suspense>
         </main>
 
