@@ -76,16 +76,29 @@ export const submitAppeal = withValidation(
 );
 
 export const getAppeals = withValidation(
-  z.object({}),
+  z.object({
+    limit: z.number().int().min(1).max(100).optional(),
+    offset: z.number().int().min(0).optional(),
+  }),
   'getAppeals',
-  async () => {
+  async (filters) => {
     await requireModerationRole();
 
-    const appeals = await prisma.report.findMany({
-      where: { status: 'PENDING', category: 'OTHER', details: { startsWith: 'APPEAL:' } },
-      include: { reporter: { select: { id: true, name: true, email: true, image: true } } },
-      orderBy: { createdAt: 'asc' },
-    });
+    const limit = Math.min(filters.limit || 50, 100);
+    const offset = filters.offset || 0;
+
+    const whereClause = { status: 'PENDING' as const, category: 'OTHER' as const, details: { startsWith: 'APPEAL:' } };
+
+    const [appeals, totalCount] = await Promise.all([
+      prisma.report.findMany({
+        where: whereClause,
+        include: { reporter: { select: { id: true, name: true, email: true, image: true } } },
+        orderBy: { createdAt: 'asc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.report.count({ where: whereClause }),
+    ]);
 
     const reporterIds = appeals.map((a) => a.reporterId);
     const allBans = await prisma.userBan.findMany({
@@ -110,7 +123,7 @@ export const getAppeals = withValidation(
       };
     });
 
-    return { data: appealsWithBanInfo, error: null, ok: true, errorCode: null };
+    return { data: { appeals: appealsWithBanInfo, pagination: { total: totalCount, limit, offset, hasMore: offset + limit < totalCount } }, error: null, ok: true, errorCode: null };
   }
 );
 

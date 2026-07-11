@@ -119,29 +119,36 @@ export const bulkDeleteMessages = createServerAction(
         return acc;
       }, {} as Record<string, number>);
 
-      for (const [threadId, count] of Object.entries(sectionCounts)) {
-        await tx.thread.update({
-          where: { id: threadId },
-          data: { messageCount: { decrement: count } },
-        });
-      }
+      // Batch thread count updates using Promise.all instead of sequential loop
+      await Promise.all(
+        Object.entries(sectionCounts).map(([threadId, count]) =>
+          tx.thread.update({
+            where: { id: threadId },
+            data: { messageCount: { decrement: count } },
+          })
+        )
+      );
 
+      // Batch notification creation using createMany
       const uniqueSenders = [...new Set(messages.map((m) => m.senderId))];
-
+      const senderMessageCounts = new Map<string, number>();
       for (const senderId of uniqueSenders) {
-        const userMessageCount = messages.filter((m) => m.senderId === senderId).length;
-
-        await tx.notification.create({
-          data: {
-            userId: senderId,
-            type: 'SYSTEM',
-            title: 'Messages Deleted',
-            message: reason
-              ? `${userMessageCount} of your messages were deleted by a moderator. Reason: ${reason}`
-              : `${userMessageCount} of your messages were deleted by a moderator.`,
-          },
-        });
+        senderMessageCounts.set(
+          senderId,
+          messages.filter((m) => m.senderId === senderId).length
+        );
       }
+
+      await tx.notification.createMany({
+        data: uniqueSenders.map((senderId) => ({
+          userId: senderId,
+          type: 'SYSTEM' as const,
+          title: 'Messages Deleted',
+          message: reason
+            ? `${senderMessageCounts.get(senderId)} of your messages were deleted by a moderator. Reason: ${reason}`
+            : `${senderMessageCounts.get(senderId)} of your messages were deleted by a moderator.`,
+        })),
+      });
 
       return { deletedCount: messages.length };
     });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { aiService } from '@/lib/services/ai';
+import { aiService, isAiNotConfigured } from '@/lib/services/ai';
 import { sendNewsletterDigest } from '@/lib/services/email';
 import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay } from 'date-fns';
@@ -18,29 +18,53 @@ export async function GET(req: NextRequest) {
     const start = startOfDay(today);
     const end = endOfDay(today);
 
-    // 1. Get all active subscriptions
-    const subscriptions = await prisma.threadSubscription.findMany({
-      where: {
-        isActive: true,
-        frequency: 'DAILY', // Currently we only support daily
-      },
-      include: {
-        thread: {
-          include: {
-            messages: {
-              where: {
-                createdAt: {
-                  gte: start,
-                  lte: end,
+    // 1. Get all active subscriptions (paginated to avoid unbounded queries)
+    const BATCH_SIZE = 100;
+    let cursor: string | undefined;
+    const allSubscriptions: Awaited<ReturnType<typeof fetchBatch>> = [];
+
+    async function fetchBatch(after?: string) {
+      return prisma.threadSubscription.findMany({
+        where: {
+          isActive: true,
+          frequency: 'DAILY',
+        },
+        include: {
+          thread: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              messages: {
+                where: {
+                  createdAt: { gte: start, lte: end },
                 },
+                select: {
+                  id: true,
+                  content: true,
+                  senderId: true,
+                  createdAt: true,
+                  depth: true,
+                  sender: { select: { id: true, name: true } },
+                },
+                orderBy: { createdAt: 'asc' as const },
               },
-              include: { sender: true },
-              orderBy: { createdAt: 'asc' },
             },
           },
         },
-      },
-    });
+        take: BATCH_SIZE,
+        ...(after ? { cursor: { id: after }, skip: 1 } : {}),
+        orderBy: { id: 'asc' as const },
+      });
+    }
+
+    do {
+      const batch = await fetchBatch(cursor);
+      allSubscriptions.push(...batch);
+      cursor = batch.length === BATCH_SIZE ? batch[batch.length - 1].id : undefined;
+    } while (cursor);
+
+    const subscriptions = allSubscriptions;
 
     const results = {
       processed: 0,
@@ -73,6 +97,9 @@ export async function GET(req: NextRequest) {
         }
 
         summaryHtml = await threadSummaries.get(thread.id);
+        if (isAiNotConfigured(summaryHtml)) {
+          summaryHtml = '<p><em>AI features aren\'t configured for this deployment.</em></p>';
+        }
       } catch (err) {
         logger.error(`Failed to generate summary for thread ${thread.id}:`, err);
         results.errors++;

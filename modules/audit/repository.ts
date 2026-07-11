@@ -97,7 +97,7 @@ export async function getUserActivities(filters?: UserActivityFilters) {
   );
 }
 
-export async function getEntityHistory(entityType: string, entityId: string) {
+export async function getEntityHistory(entityType: string, entityId: string, limit = 50, offset = 0) {
   return safeList('[getEntityHistory]', () =>
     prisma.userActivity.findMany({
       where: {
@@ -117,6 +117,8 @@ export async function getEntityHistory(entityType: string, entityId: string) {
       orderBy: {
         createdAt: 'desc',
       },
+      take: limit,
+      skip: offset,
     })
   );
 }

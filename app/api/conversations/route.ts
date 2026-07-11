@@ -14,15 +14,24 @@ const createConversationSchema = z.object({
 const getHandler = withErrorHandling(async (req: NextRequest) => {
   const session = await requireSessionOrThrow();
 
+  const url = new URL(req.url);
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
+  const offset = parseInt(url.searchParams.get('offset') || '0');
+
   const threads = await prisma.thread.findMany({
     where: {
       members: { some: { userId: session.user.id } },
     },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      updatedAt: true,
       messages: {
         orderBy: { createdAt: 'desc' },
         take: 1,
-        include: {
+        select: {
+          content: true,
+          createdAt: true,
           sender: {
             select: {
               name: true,
@@ -36,6 +45,8 @@ const getHandler = withErrorHandling(async (req: NextRequest) => {
       },
     },
     orderBy: { updatedAt: 'desc' },
+    take: limit,
+    skip: offset,
   });
 
   const conversations = threads.map((thread) => {
