@@ -52,7 +52,7 @@ describe('CRON Auth Verification', () => {
 
   it('returns null when CRON_SECRET is not set (dev mode)', async () => {
     const originalEnv = process.env.NODE_ENV;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (process.env as any).NODE_ENV = 'development';
     delete process.env.CRON_SECRET;
 
@@ -63,7 +63,7 @@ describe('CRON Auth Verification', () => {
 
       expect(result).to.be.null;
     } finally {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (process.env as any).NODE_ENV = originalEnv;
     }
   });

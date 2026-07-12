@@ -133,7 +133,7 @@ describe('Auth Service', function () {
 
     it('should log OTP in development mode', async function () {
       const originalEnv = process.env.NODE_ENV;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (process.env as any).NODE_ENV = 'development';
 
       try {
@@ -155,14 +155,14 @@ describe('Auth Service', function () {
           }
         }
       } finally {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         (process.env as any).NODE_ENV = originalEnv;
       }
     });
 
     it('should not log OTP in production mode', async function () {
       const originalEnv = process.env.NODE_ENV;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (process.env as any).NODE_ENV = 'production';
 
       try {
@@ -184,7 +184,7 @@ describe('Auth Service', function () {
           }
         }
       } finally {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         (process.env as any).NODE_ENV = originalEnv;
       }
     });
