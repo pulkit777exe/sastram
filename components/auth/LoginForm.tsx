@@ -60,10 +60,23 @@ function UserAuthForm({
 
   const redirectTarget = React.useMemo(() => {
     const candidate = searchParams.get('redirect');
-    if (!candidate || !candidate.startsWith('/')) {
-      return '/dashboard';
+    if (candidate && candidate.startsWith('/')) {
+      return candidate;
     }
-    return candidate;
+
+    if (typeof window !== 'undefined' && document.referrer) {
+      try {
+        const referrerUrl = new URL(document.referrer);
+        if (referrerUrl.pathname.startsWith('/') && referrerUrl.pathname !== '/login') {
+          const search = referrerUrl.search;
+          return referrerUrl.pathname + (search || '');
+        }
+      } catch {
+        // Invalid referrer URL — fall through to default
+      }
+    }
+
+    return '/dashboard';
   }, [searchParams]);
 
   useEffect(() => {

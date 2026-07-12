@@ -45,7 +45,16 @@ export async function inviteFriendToThread(formData: FormData) {
       return { data: null, error: 'You are not a member of this thread' };
     }
 
-    // Check if invitation already exists
+    // Clear any declined/expired invitations so the user can be re-invited
+    await prisma.threadInvitation.deleteMany({
+      where: {
+        threadId: parsed.data.threadId,
+        email: parsed.data.email,
+        status: { in: ['DECLINED', 'EXPIRED'] },
+      },
+    });
+
+    // Check if a pending invitation already exists
     const existingInvitation = await prisma.threadInvitation.findUnique({
       where: {
         threadId_email: {
@@ -88,7 +97,7 @@ export async function inviteFriendToThread(formData: FormData) {
 
     const { sendThreadInvitation } = await import('@/lib/services/email');
 
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/thread/${thread.slug}?invite=${invitation.id}`;
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invitations/accept?id=${invitation.id}`;
     await sendThreadInvitation(
       invitation.email,
       session.user.name || 'Someone',
@@ -97,7 +106,7 @@ export async function inviteFriendToThread(formData: FormData) {
       inviteUrl
     ).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
 
-    revalidatePath(`/dashboard/threads/thread/${thread.slug}`);
+    revalidatePath(`/dashboard/threads/${thread.slug}`);
     return { data: invitation, error: null };
   } catch (error) {
     logger.error('[inviteFriendToThread]', error);
