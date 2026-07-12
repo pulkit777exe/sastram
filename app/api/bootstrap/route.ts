@@ -4,7 +4,6 @@ import { ok, fail } from '@/lib/utils/api-response';
 import { getUserBootstrapProfile } from '@/modules/users/repository';
 import { getUnreadCount } from '@/modules/notifications/repository';
 import { getUserActivity } from '@/modules/activity/repository';
-import { getUserReputation } from '@/modules/reputation/repository';
 import { getJoinedCommunities } from '@/modules/communities/repository';
 
 export async function GET(request: NextRequest) {
@@ -17,12 +16,11 @@ export async function GET(request: NextRequest) {
   const userId = session.user.id;
 
   try {
-    const [user, unreadNotificationCount, activity, reputation, joinedCommunities] =
+    const [user, unreadNotificationCount, activity, joinedCommunities] =
       await Promise.all([
         getUserBootstrapProfile(userId),
         getUnreadCount(userId),
         getUserActivity(userId, 5, 0),
-        getUserReputation(userId),
         getJoinedCommunities(userId),
       ]);
 
@@ -36,14 +34,9 @@ export async function GET(request: NextRequest) {
         name: user.name,
         image: user.image ?? null,
         role: user.role,
-        reputationPoints: user.reputationPoints ?? 0,
       },
       unreadNotificationCount,
       recentActivity: activity.activities.slice(0, 5),
-      reputation: {
-        points: reputation.points,
-        level: reputation.level,
-      },
       joinedCommunities,
     }));
   } catch (error) {

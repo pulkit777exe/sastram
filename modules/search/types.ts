@@ -46,5 +46,4 @@ export type SearchUserResult = {
   bio: string | null;
   followerCount: number;
   followingCount: number;
-  reputationPoints: number;
 };

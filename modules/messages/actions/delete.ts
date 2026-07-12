@@ -75,7 +75,7 @@ export const deleteMessage = createServerAction(
       });
 
       if (message.thread?.slug) {
-        revalidatePath(`/dashboard/threads/thread/${message.thread.slug}`);
+        revalidatePath(`/dashboard/threads/${message.thread.slug}`);
       }
 
       if (message.threadId) {

@@ -80,6 +80,11 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   }
 
   const score = await aiService.calculateResolutionScore(messages);
+
+  if (score === null) {
+    return NextResponse.json(ok({ score: null }));
+  }
+
   const { decayedScore } = applyConfidenceDecay(score, thread.updatedAt);
 
   await prisma.thread.update({

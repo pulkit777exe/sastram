@@ -7,6 +7,9 @@ import { threadDnaSchema, type ThreadDNA } from '@/lib/schemas/thread-dna';
 import { getLangChainService, type LangChainAIService } from './ai-langchain';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 
+export { AI_NOT_CONFIGURED_SENTINEL, isAiNotConfigured } from './ai-sentinel';
+import { AI_NOT_CONFIGURED_SENTINEL, isAiNotConfigured } from './ai-sentinel';
+
 interface MessageInput {
   content: string;
   sender?: { name: string | null } | null;
@@ -21,12 +24,6 @@ const conflictSchema = z.object({
 });
 
 export type ConflictResult = z.infer<typeof conflictSchema>;
-
-export const AI_NOT_CONFIGURED_SENTINEL = '__AI_NOT_CONFIGURED__';
-
-export function isAiNotConfigured(value: string): boolean {
-  return value === AI_NOT_CONFIGURED_SENTINEL;
-}
 
 const DEFAULT_THREAD_DNA: ThreadDNA = {
   questionType: 'other',
@@ -117,11 +114,11 @@ function parseConflict(text: string): ConflictResult {
   }
 }
 
-function parseResolutionScore(text: string): number {
+function parseResolutionScore(text: string): number | null {
   const score = parseInt(text.trim(), 10);
   if (isNaN(score)) {
-    logger.warn('[parseResolutionScore] Non-integer response from AI', { text });
-    return 50;
+    logger.warn('[parseResolutionScore] Non-integer response from AI — treating as unavailable', { text });
+    return null;
   }
   return Math.max(0, Math.min(100, score));
 }
@@ -137,7 +134,7 @@ export interface AIService {
   generateThreadSummary(messages: MessageInput[]): Promise<string>;
   generateDailyDigest(messages: MessageInput[]): Promise<string>;
   generateThreadDNA(messages: MessageInput[]): Promise<ThreadDNA>;
-  calculateResolutionScore(messages: MessageInput[]): Promise<number>;
+  calculateResolutionScore(messages: MessageInput[]): Promise<number | null>;
   detectConflicts(messages: MessageInput[]): Promise<ConflictResult>;
   generateStreamingResponse(content: string, onChunk: (chunk: string) => void): Promise<void>;
   classifyToxicity(content: string): Promise<number>;
@@ -255,7 +252,7 @@ export class GeminiService implements AIService {
     }
   }
 
-  async calculateResolutionScore(messages: MessageInput[]): Promise<number> {
+  async calculateResolutionScore(messages: MessageInput[]): Promise<number | null> {
     const content = buildMessageContent(messages);
     const prompt =
       'Calculate a resolution score (0-100) for this thread. Consider: ' +
@@ -559,7 +556,7 @@ export class OpenAIService implements AIService {
     }
   }
 
-  async calculateResolutionScore(messages: MessageInput[]): Promise<number> {
+  async calculateResolutionScore(messages: MessageInput[]): Promise<number | null> {
     try {
       const text = await this.callOpenAI(
         'Calculate a resolution score 0-100 for a discussion thread. ' +
@@ -648,7 +645,7 @@ class NoOpAIService implements AIService {
     return DEFAULT_THREAD_DNA;
   }
   async calculateResolutionScore() {
-    return 50;
+    return null;
   }
   async detectConflicts() {
     return { hasConflict: false };

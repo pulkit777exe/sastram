@@ -22,7 +22,6 @@ export default async function PublicProfilePage({ params }: { params: { userId: 
       image: true,
       avatarUrl: true,
       bannerUrl: true,
-      reputationPoints: true,
       followerCount: true,
       followingCount: true,
       createdAt: true,
@@ -60,7 +59,6 @@ export default async function PublicProfilePage({ params }: { params: { userId: 
         twitter: null,
         github: null,
         bannerUrl: null,
-        reputationPoints: 0,
         followerCount: 0,
         followingCount: 0,
       };

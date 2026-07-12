@@ -3,6 +3,7 @@ import { postMessage } from '@/modules/messages/actions';
 import { ok, fail } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth/session';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { trackNeonRequest } from '@/lib/services/usage-check';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { put } from '@vercel/blob';
 import { randomUUID } from 'crypto';
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await postMessage(postFormData);
+    void trackNeonRequest(); // best-effort usage tracking
 
     if (!result || !result.ok) {
       const errorCode = (result && 'errorCode' in result && result.errorCode) || 'INTERNAL_ERROR';

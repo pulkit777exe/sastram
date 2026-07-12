@@ -115,20 +115,6 @@ export const communitySummarySchema = z.object({
 });
 
 /**
- * Conversation schemas
- */
-export const conversationSchema = z.object({
-  id: z.string().cuid(),
-  name: z.string(),
-  avatar: z.string().url(),
-  lastMessage: z.string(),
-  timestamp: z.string(),
-  unread: z.number().int().nonnegative(),
-  online: z.boolean(),
-  type: z.enum(['channel', 'dm']),
-});
-
-/**
  * Standardized API error response
  */
 export const apiErrorSchema = z.object({
@@ -192,6 +178,5 @@ export type ThreadSummary = z.infer<typeof threadSummarySchema>;
 export type ThreadDetail = z.infer<typeof threadDetailSchema>;
 export type CreateCommunityRequest = z.infer<typeof createCommunityRequestSchema>;
 export type CommunitySummary = z.infer<typeof communitySummarySchema>;
-export type Conversation = z.infer<typeof conversationSchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;
 export type PaginationParams = z.infer<typeof paginationParamsSchema>;

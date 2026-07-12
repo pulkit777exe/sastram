@@ -59,7 +59,6 @@ export interface ReportWithContext extends Report {
     name: string | null;
     email: string;
     createdAt: Date;
-    reputationPoints: number;
     totalReports: number;
   };
   reportedUserProfile: {
@@ -68,7 +67,6 @@ export interface ReportWithContext extends Report {
     email: string;
     createdAt: Date;
     status: UserStatus;
-    reputationPoints: number;
     trustScore: number;
     violationHistory: Array<{
       id: string;

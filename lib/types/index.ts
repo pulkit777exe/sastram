@@ -69,19 +69,10 @@ export type WebSocketEventType =
   | 'NEW_MESSAGE'
   | 'MESSAGE_DELETED'
   | 'MESSAGE_EDITED'
-  | 'USER_TYPING'
-  | 'USER_STOPPED_TYPING'
   | 'MESSAGE_QUEUED'
   | 'MENTION_NOTIFICATION'
   | 'REACTION_UPDATE'
   | 'PIN_UPDATE';
-
-export interface TypingIndicator {
-  userId: string;
-  userName: string;
-  sectionId?: string;
-  timestamp?: number;
-}
 
 export interface MentionData {
   messageId: string;
@@ -91,28 +82,6 @@ export interface MentionData {
   sectionId: string;
   content: string;
   parentId?: string;
-}
-
-export interface Conversation {
-  id: string;
-  name: string;
-  avatar: string;
-  lastMessage: string;
-  timestamp: string;
-  unread: number;
-  online: boolean;
-  type: 'channel' | 'dm';
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: string;
-  content: string;
-  timestamp: string;
-  avatar: string | null;
-  isOwn: boolean;
-  status: 'sent' | 'delivered' | 'read';
-  attachments?: Attachment[];
 }
 
 export interface AttachmentInput {

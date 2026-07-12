@@ -4,10 +4,11 @@ import { logger } from '@/lib/infrastructure/logger';
 import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { aiService } from '@/lib/services/ai';
+import { aiService, isAiNotConfigured } from '@/lib/services/ai';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 import { emitThreadMessage } from '@/modules/ws';
+import { trackNeonRequest } from '@/lib/services/usage-check';
 import { z } from 'zod';
 
 const TIMEOUT_MS = 50_000;
@@ -136,11 +137,12 @@ export async function GET(
       isAiResponse: true,
       isEdited: false,
       isPinned: false,
-      likeCount: 0,
+      likeCount:0,
       replyCount: 0,
     },
     select: { id: true },
   });
+  void trackNeonRequest(); // best-effort usage tracking
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -180,7 +182,7 @@ export async function GET(
             send('token', { content: chunk });
 
             const now = Date.now();
-            if (now - lastDbUpdateTime >= DB_THROTTLE_MS) {
+            if (now - lastDbUpdateTime >= DB_THROTTLE_MS && !isAiNotConfigured(fullContent)) {
               lastDbUpdateTime = now;
               const sliced = fullContent.slice(0, MAX_CONTENT_CHARS);
               prisma.message.update({
@@ -188,7 +190,7 @@ export async function GET(
                 data: { content: sliced },
               }).catch((err) => logger.error('[ai-reply-stream] DB write failed', { error: err }));
             }
-            if (now - lastEmitTime >= 100) {
+            if (now - lastEmitTime >= 100 && !isAiNotConfigured(fullContent)) {
               lastEmitTime = now;
               emitThreadMessage(threadId, {
                 id: aiMessage.id,
@@ -213,6 +215,16 @@ export async function GET(
         );
 
         clearTimeout(timeout);
+
+        if (isAiNotConfigured(fullContent)) {
+          const fallbackContent = 'AI features are not configured. Please set an API key to enable AI responses.';
+          await prisma.message.update({
+            where: { id: aiMessage.id },
+            data: { content: fallbackContent },
+          });
+          send('done', { messageId: aiMessage.id, truncated: false });
+          return;
+        }
 
         const truncated = fullContent.length > MAX_CONTENT_CHARS;
         const finalContent = fullContent.slice(0, MAX_CONTENT_CHARS);

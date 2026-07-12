@@ -236,7 +236,6 @@ export async function getReportWithContext(reportId: string) {
                 image: true,
                 status: true,
                 createdAt: true,
-                reputationPoints: true,
               },
             },
             thread: {
@@ -255,7 +254,6 @@ export async function getReportWithContext(reportId: string) {
             name: true,
             email: true,
             createdAt: true,
-            reputationPoints: true,
           },
         },
       },
@@ -352,7 +350,6 @@ export async function getReportWithContext(reportId: string) {
           email: report.message.sender.email,
           createdAt: report.message.sender.createdAt,
           status: report.message.sender.status,
-          reputationPoints: report.message.sender.reputationPoints,
           trustScore: Math.round(trustScore),
           violationHistory: violationHistory.map((v) => ({
             id: v.id,

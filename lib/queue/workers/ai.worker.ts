@@ -58,6 +58,7 @@ export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
   const resolutionScore = await calculateResolutionScore(threadId, messages);
 
   if (
+    resolutionScore !== null &&
     Array.isArray(subscriberIds) &&
     subscriberIds.length > 0 &&
     typeof threadName === 'string' &&
@@ -265,6 +266,11 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
       select: { updatedAt: true },
     }),
   ]);
+
+  if (score === null) {
+    logger.info(`Resolution score unavailable (AI not configured) for ${threadId}, skipping DB write`);
+    return null;
+  }
 
   const { decayedScore, ageDays } = applyConfidenceDecay(score, thread?.updatedAt ?? new Date());
   if (ageDays >= 30) {

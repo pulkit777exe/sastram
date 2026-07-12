@@ -151,7 +151,7 @@ export const pinMessage = createServerAction(
         });
       }
 
-      revalidatePath(`/dashboard/threads/thread/${message.thread?.slug}`);
+      revalidatePath(`/dashboard/threads/${message.thread?.slug}`);
       return { data: null, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[pinMessage]', error);

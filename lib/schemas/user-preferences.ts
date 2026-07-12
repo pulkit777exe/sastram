@@ -6,7 +6,6 @@ export const userPreferencesSchema = z.object({
   pushEnabled: z.boolean(),
   mentionEmails: z.boolean(),
   replyEmails: z.boolean(),
-  showOnlineStatus: z.boolean(),
   publicActivityFeed: z.boolean(),
   aiSummaryEnabled: z.boolean(),
 });
@@ -22,7 +21,6 @@ const DEFAULTS: UserPreferences = {
   pushEnabled: true,
   mentionEmails: true,
   replyEmails: true,
-  showOnlineStatus: true,
   publicActivityFeed: true,
   aiSummaryEnabled: true,
 };
@@ -40,7 +38,6 @@ export function parseUserPreferences(value: unknown): UserPreferences {
     pushEnabled: typeof v.pushEnabled === 'boolean' ? v.pushEnabled : DEFAULTS.pushEnabled,
     mentionEmails: typeof v.mentionEmails === 'boolean' ? v.mentionEmails : DEFAULTS.mentionEmails,
     replyEmails: typeof v.replyEmails === 'boolean' ? v.replyEmails : DEFAULTS.replyEmails,
-    showOnlineStatus: typeof v.showOnlineStatus === 'boolean' ? v.showOnlineStatus : DEFAULTS.showOnlineStatus,
     publicActivityFeed: typeof v.publicActivityFeed === 'boolean' ? v.publicActivityFeed : DEFAULTS.publicActivityFeed,
     aiSummaryEnabled: typeof v.aiSummaryEnabled === 'boolean' ? v.aiSummaryEnabled : DEFAULTS.aiSummaryEnabled,
   };

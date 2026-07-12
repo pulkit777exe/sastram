@@ -4,6 +4,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { env } from '@/lib/config/env';
 import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob, getDailyQstashCount } from '@/lib/services/queue';
+import { checkAndLogUsage } from '@/lib/services/usage-check';
 import { updateAllThreadRelations } from '@/modules/threads';
 import { prewarmFollowUpQueries } from '@/modules/ai-search';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
@@ -103,6 +104,9 @@ export async function GET(req: NextRequest) {
 
     const relationsResult = await updateAllThreadRelations();
     const prewarmResult = await prewarmFollowUpQueries();
+
+    // Best-effort usage tripwire — logs warnings if approaching free-tier limits
+    await checkAndLogUsage();
 
     return NextResponse.json(
       ok({

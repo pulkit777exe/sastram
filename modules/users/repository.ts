@@ -20,7 +20,6 @@ export const getPublicProfile = cache(async (userId: string, viewerId?: string) 
       image: true,
       bannerUrl: true,
       profilePrivacy: true,
-      reputationPoints: true,
       followerCount: true,
       followingCount: true,
       role: true,
@@ -74,7 +73,6 @@ export const getUserBootstrapProfile = cache(async (userId: string) => {
         name: true,
         image: true,
         role: true,
-        reputationPoints: true,
       },
     })
   );

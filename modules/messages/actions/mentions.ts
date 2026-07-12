@@ -127,7 +127,7 @@ export const searchMentionUsers = createServerAction(
           email: true,
           image: true,
         },
-        orderBy: { reputationPoints: 'desc' },
+        orderBy: { followerCount: 'desc' },
         take: 5,
       });
 
