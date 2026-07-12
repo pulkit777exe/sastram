@@ -68,6 +68,13 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
     [options]
   );
 
+  const isEffectivelyActive = useMemo(() => {
+    if (!poll) return false;
+    if (!poll.isActive) return false;
+    if (poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now()) return false;
+    return true;
+  }, [poll]);
+
   const isFormValid =
     question.trim().length > 0 &&
     trimmedOptions.length >= MIN_OPTIONS &&
@@ -168,7 +175,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
           <span
             className={cn(
               'h-1.5 w-1.5 rounded-full shrink-0',
-              poll?.isActive
+              isEffectivelyActive
                 ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
                 : 'bg-muted-foreground/40'
             )}
@@ -188,7 +195,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
           {poll && (
             <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
               <BarChart3 size={10} />
-              {poll.isActive ? 'Active' : 'Closed'}
+              {isEffectivelyActive ? 'Active' : 'Closed'}
             </span>
           )}
 
@@ -216,7 +223,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
               {poll ? (
                 <div className="space-y-3">
                   <PollDisplay poll={poll} pollResults={pollResults} refreshKey={pollRefreshKey} />
-                  {canManagePoll && poll.isActive && (
+                  {canManagePoll && isEffectivelyActive && (
                     <Button
                       size="sm"
                       variant="outline"
