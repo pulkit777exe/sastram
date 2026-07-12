@@ -18,14 +18,12 @@ export type BootstrapUser = {
   name: string | null;
   image: string | null;
   role: string;
-  reputationPoints: number;
 };
 
 export type BootstrapData = {
   user: BootstrapUser;
   unreadNotificationCount: number;
   recentActivity: UserActivity[];
-  reputation: { points: number; level: number };
   joinedCommunities: Community[];
 };
 
@@ -55,7 +53,6 @@ type BootstrapContextValue = {
   error: Error | null;
   setData: (data: BootstrapData) => void;
   updateUser: (user: Partial<BootstrapUser>) => void;
-  updateReputation: (points: number, level: number) => void;
   invalidate: () => Promise<void>;
 };
 
@@ -171,10 +168,6 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     setShellData((prev) => (prev ? { ...prev, user: { ...prev.user, ...user } } : prev));
   }, []);
 
-  const updateReputation = useCallback((points: number, level: number) => {
-    setShellData((prev) => (prev ? { ...prev, reputation: { points, level } } : prev));
-  }, []);
-
   const invalidate = useCallback(async () => {
     await fetchBootstrap();
   }, [fetchBootstrap]);
@@ -204,10 +197,9 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
       error,
       setData,
       updateUser,
-      updateReputation,
       invalidate,
     }),
-    [shellData, isLoading, error, setData, updateUser, updateReputation, invalidate]
+    [shellData, isLoading, error, setData, updateUser, invalidate]
   );
 
   return (
@@ -230,7 +222,7 @@ export function useNotification() {
   return ctx;
 }
 
-/** Bootstrap shell data (user, reputation, communities). Does NOT update on WS messages. */
+/** Bootstrap shell data (user, communities). Does NOT update on WS messages. */
 export function useBootstrap() {
   const ctx = useContext(BootstrapContext);
   if (!ctx) {

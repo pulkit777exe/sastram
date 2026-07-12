@@ -20,8 +20,6 @@ interface ThreadDataContextValue {
   onOptimisticMessage?: (message: Message) => void;
   onFocusBranch: (messageId: string) => void;
   onMessageUpdate: (messageId: string, updates: Partial<Message>) => void;
-  onTypingStart?: () => void;
-  onTypingStop?: () => void;
 }
 
 // UI state context: frequently-changing data (messages, reply state, animations)

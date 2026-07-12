@@ -1,28 +1,20 @@
 'use client';
 
-import { Trophy, Users, UserCheck, MessageSquare } from 'lucide-react';
+import { Users, UserCheck, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface UserStatsProps {
-  reputationPoints: number;
   followerCount: number;
   followingCount: number;
   threadsCount: number;
 }
 
 export function UserStats({
-  reputationPoints,
   followerCount,
   followingCount,
   threadsCount,
 }: UserStatsProps) {
   const stats = [
-    {
-      label: 'Reputation',
-      value: reputationPoints,
-      icon: Trophy,
-      color: 'text-yellow-500',
-    },
     {
       label: 'Followers',
       value: followerCount,
@@ -44,7 +36,7 @@ export function UserStats({
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div className="grid grid-cols-3 gap-4">
       {stats.map((stat, index) => (
         <div
           key={stat.label}

@@ -36,8 +36,6 @@ interface CommentTreeProps {
   };
   aiInlineStatus?: Record<string, 'pending' | 'failed'>;
   onOptimisticMessage?: (message: Message) => void;
-  onTypingStart?: () => void;
-  onTypingStop?: () => void;
   firstUnreadMessageId: string | null;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
@@ -48,8 +46,6 @@ export function CommentTree({
   currentUser,
   aiInlineStatus = {},
   onOptimisticMessage,
-  onTypingStart,
-  onTypingStop,
   firstUnreadMessageId,
   scrollContainerRef,
 }: CommentTreeProps) {
@@ -167,13 +163,11 @@ export function CommentTree({
       onOptimisticMessage,
       onFocusBranch: handleFocusBranch,
       onMessageUpdate: handleMessageUpdate,
-      onTypingStart,
-      onTypingStop,
     }),
     [
       threadId, currentUser, scrollContainerRef,
       handleReply, handleCancelReply, toggleCollapse, handleMessagePosted,
-      onOptimisticMessage, handleFocusBranch, handleMessageUpdate, onTypingStart, onTypingStop,
+      onOptimisticMessage, handleFocusBranch, handleMessageUpdate,
     ]
   );
 

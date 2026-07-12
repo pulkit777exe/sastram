@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommentTree } from '@/components/thread/comment-tree';
 import { PostMessageForm } from '@/components/chat/post-message-form';
-import { useThreadWebSocket, type TypingUser } from '@/hooks/useThreadWebSocket';
+import { useThreadWebSocket } from '@/hooks/useThreadWebSocket';
 import type { Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
@@ -61,7 +61,6 @@ export function ThreadLiveWrapper({
   initialFrequency,
 }: ThreadLiveWrapperProps) {
   const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
-  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed'>>({});
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(initialFirstUnreadMessageId);
@@ -300,10 +299,6 @@ export function ThreadLiveWrapper({
     );
   }, []);
 
-  const handleTypingUpdate = useCallback((typers: TypingUser[]) => {
-    setTypingUsers(typers);
-  }, []);
-
   const handleReactionUpdate = useCallback(
     (update: { messageId: string; reactionType: string; count: number }) => {
       setLiveMessages((prev) =>
@@ -374,14 +369,13 @@ export function ThreadLiveWrapper({
     }
   }, [threadId, title, slug]);
 
-  const { emitTypingStart, emitTypingStop } = useThreadWebSocket({
+  useThreadWebSocket({
     threadId,
     currentUserId: currentUser.id,
     onNewMessage: handleWsNewMessage,
     onMessageDeleted: handleWsMessageDeleted,
     onMessageEdited: handleWsMessageEdited,
     onPinUpdate: handleWsPinUpdate,
-    onTypingUpdate: handleTypingUpdate,
     onAiComplete: handleAiComplete,
     onReconnect: handleReconnect,
     onReactionUpdate: handleReactionUpdate,
@@ -404,21 +398,19 @@ export function ThreadLiveWrapper({
         }
         return [...cleaned, newMessage];
       });
-      emitTypingStop();
       if (hasAiMention(newMessage.content)) {
         setAiPending(newMessage.id);
       }
     },
-    [emitTypingStop, hasAiMention, setAiPending]
+    [hasAiMention, setAiPending]
   );
 
   const handleOptimisticMessage = useCallback(
     (optimisticMsg: Message) => {
       ownPendingIds.current.add(optimisticMsg.id);
       setLiveMessages((prev) => [...prev, optimisticMsg]);
-      emitTypingStop();
     },
-    [emitTypingStop]
+    []
   );
 
   const handleMessageError = useCallback((tempId: string) => {
@@ -724,37 +716,12 @@ export function ThreadLiveWrapper({
                 currentUser={currentUser}
                 aiInlineStatus={aiInlineStatus}
                 onOptimisticMessage={handleOptimisticMessage}
-                onTypingStart={emitTypingStart}
-                onTypingStop={emitTypingStop}
                 firstUnreadMessageId={firstUnreadMessageId}
                 scrollContainerRef={scrollContainerRef}
               />
             </ErrorBoundary>
           )}
         </div>
-      </div>
-
-      {/* Fixed typing indicator at bottom */}
-      <div className="h-7 px-6 flex items-center gap-2 flex-shrink-0">
-        {typingUsers.length > 0 && (
-          <div className="max-w-4xl mx-auto flex items-center gap-1.5 w-full">
-            <div className="flex gap-0.5 shrink-0 mr-0.5">
-              {[0, 120, 240].map((delay) => (
-                <span
-                  key={delay}
-                  className="w-1 h-1 rounded-full bg-brand animate-bounce"
-                  style={{ animationDelay: `${delay}ms` }}
-                />
-              ))}
-            </div>
-            <span className="text-[11px] text-muted-foreground/70">
-              <span className="font-semibold text-brand">
-                {typingUsers.length === 1 ? typingUsers[0].userName : 'Several people'}
-              </span>
-              {typingUsers.length === 1 ? ' is' : ' are'} typing…
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Scroll-to-bottom floating button */}
@@ -788,8 +755,6 @@ export function ThreadLiveWrapper({
             onMessagePosted={handleMessagePosted}
             onOptimisticMessage={handleOptimisticMessage}
             onMessageError={handleMessageError}
-            onTypingStart={emitTypingStart}
-            onTypingStop={emitTypingStop}
             canManagePoll={canManagePoll}
             showPoll={showPoll}
             onTogglePoll={setShowPoll}

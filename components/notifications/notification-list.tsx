@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MessageSquare, AtSign, Heart, Bell, Reply, Pin, CheckCheck, Inbox } from 'lucide-react';
+import { MessageSquare, AtSign, Bell, Reply, Pin, CheckCheck, Inbox } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import {
   getNotifications,
@@ -33,7 +33,6 @@ interface NotificationListProps {
 const TYPE_ICONS: Record<string, typeof Bell> = {
   MENTION: AtSign,
   REPLY: Reply,
-  REACTION: Heart,
   NEW_MESSAGE: MessageSquare,
   PINNED: Pin,
   DEFAULT: Bell,

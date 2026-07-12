@@ -8,16 +8,12 @@ interface ReplyBoxProps {
   threadId: string;
   parentId?: string;
   onSuccess?: () => void;
-  onTypingStart?: () => void;
-  onTypingStop?: () => void;
 }
 
 export default function ReplyBox({
   threadId,
   parentId,
   onSuccess,
-  onTypingStart,
-  onTypingStop,
 }: ReplyBoxProps) {
   const {
     content,
@@ -42,8 +38,6 @@ export default function ReplyBox({
     threadId,
     parentId,
     onSuccess,
-    onTypingStart,
-    onTypingStop,
   });
 
   return (
@@ -133,9 +127,6 @@ export default function ReplyBox({
           onChange={handleChange}
           onKeyDown={(e) => {
             handleKeyDown(e);
-            if (e.key === 'Enter' && !e.shiftKey) {
-              onTypingStop?.();
-            }
           }}
           onBlur={handleBlur}
           placeholder="Add your reply. Press Ctrl+Enter or Cmd+Enter to submit."

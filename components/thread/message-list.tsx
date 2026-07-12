@@ -187,8 +187,6 @@ const MessageRow = React.memo(function MessageRow({
     onMessagePosted,
     onOptimisticMessage,
     onMessageUpdate,
-    onTypingStart,
-    onTypingStop,
   } = useThreadDataContext();
   const { activeReplyId, aiInlineStatus } = useThreadUIStateContext();
 
@@ -481,8 +479,6 @@ const MessageRow = React.memo(function MessageRow({
             onCancel={onCancelReply}
             onMessagePosted={onMessagePosted}
             onOptimisticMessage={onOptimisticMessage}
-            onTypingStart={onTypingStart}
-            onTypingStop={onTypingStop}
           />
         </div>
       )}

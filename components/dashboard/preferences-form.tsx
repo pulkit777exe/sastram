@@ -247,20 +247,6 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="online-status" className="text-base font-medium text-foreground">
-                Show Online Status
-              </Label>
-              <p className="text-sm text-muted-foreground">Let others see when you are active.</p>
-            </div>
-            <Switch
-              id="online-status"
-              checked={prefs.showOnlineStatus}
-              onCheckedChange={(enabled) => void updatePreference('showOnlineStatus', enabled)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
               <Label htmlFor="public-activity" className="text-base font-medium text-foreground">
                 Public Activity Feed
               </Label>

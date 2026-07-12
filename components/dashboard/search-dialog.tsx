@@ -101,11 +101,9 @@ export function SearchDialog({
                       <span className="text-xs text-muted-foreground">{user.email}</span>
                     )}
                   </div>
-                  {user.reputationPoints > 0 && (
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {user.reputationPoints} rep
-                    </span>
-                  )}
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {user.email}
+                  </span>
                 </div>
               </CommandItem>
             ))}

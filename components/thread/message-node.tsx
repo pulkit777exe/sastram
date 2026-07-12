@@ -132,8 +132,6 @@ export const CommentNode = React.memo(function CommentNode({
     onOptimisticMessage,
     onFocusBranch,
     onMessageUpdate,
-    onTypingStart,
-    onTypingStop,
   } = useThreadDataContext();
   const {
     activeReplyId,
@@ -532,8 +530,6 @@ export const CommentNode = React.memo(function CommentNode({
           onCancel={onCancelReply}
           onMessagePosted={onMessagePosted}
           onOptimisticMessage={onOptimisticMessage}
-          onTypingStart={onTypingStart}
-          onTypingStop={onTypingStop}
         />
       )}
 

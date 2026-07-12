@@ -18,7 +18,6 @@ interface ProfileHeaderProps {
     github: string | null;
     image: string | null;
     bannerUrl: string | null;
-    reputationPoints: number;
     followerCount: number;
     followingCount: number;
     createdAt: Date;
@@ -158,7 +157,6 @@ export function ProfileHeader({
             style={{ animationDelay: '600ms' }}
           >
             <UserStats
-              reputationPoints={user.reputationPoints}
               followerCount={followerCount}
               followingCount={user.followingCount}
               threadsCount={0} // Will be fetched separately

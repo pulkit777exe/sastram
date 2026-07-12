@@ -29,8 +29,6 @@ interface InlineReplyBoxProps {
   onCancel: () => void;
   onMessagePosted: (message: Message) => void;
   onOptimisticMessage?: (message: Message) => void;
-  onTypingStart?: () => void;
-  onTypingStop?: () => void;
 }
 
 export function InlineReplyBox({
@@ -41,8 +39,6 @@ export function InlineReplyBox({
   onCancel,
   onMessagePosted,
   onOptimisticMessage,
-  onTypingStart,
-  onTypingStop,
 }: InlineReplyBoxProps) {
   const replyDepth = Math.min(parentMessage.depth + 1, MAX_VISUAL_DEPTH);
 
@@ -63,8 +59,6 @@ export function InlineReplyBox({
     currentUser: currentUser ? { ...currentUser, name: currentUser.name ?? '' } : undefined,
     onMessagePosted,
     onOptimisticMessage,
-    onTypingStart,
-    onTypingStop,
   });
 
   const wrapRef = useRef<HTMLDivElement>(null);
