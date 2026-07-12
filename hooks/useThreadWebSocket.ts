@@ -1,13 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Message } from '@/lib/types/index';
-
-/** @deprecated Typing indicators are not available without WebSocket. */
-export interface TypingUser {
-  userId: string;
-  userName: string;
-}
 
 export interface ReactionUpdate {
   messageId: string;
@@ -22,7 +16,6 @@ interface UseThreadWebSocketOptions {
   onMessageDeleted?: (messageId: string) => void;
   onMessageEdited?: (messageId: string, content: string) => void;
   onPinUpdate?: (messageId: string, isPinned: boolean) => void;
-  onTypingUpdate?: (typers: TypingUser[]) => void;
   onAiComplete?: (parentMessageId: string) => void;
   onReactionUpdate?: (update: ReactionUpdate) => void;
   onReconnect?: () => void;
@@ -35,7 +28,6 @@ export function useThreadWebSocket({
   onMessageDeleted,
   onMessageEdited,
   onPinUpdate,
-  onTypingUpdate,
   onAiComplete,
   onReactionUpdate,
   onReconnect,
@@ -48,7 +40,6 @@ export function useThreadWebSocket({
     onMessageDeleted,
     onMessageEdited,
     onPinUpdate,
-    onTypingUpdate,
     onAiComplete,
     onReactionUpdate,
     onReconnect,
@@ -59,7 +50,6 @@ export function useThreadWebSocket({
       onMessageDeleted,
       onMessageEdited,
       onPinUpdate,
-      onTypingUpdate,
       onAiComplete,
       onReactionUpdate,
       onReconnect,
@@ -73,15 +63,5 @@ export function useThreadWebSocket({
     };
   }, []);
 
-  /** @deprecated Typing indicators not available without WebSocket. */
-  const emitTypingStart = useCallback(() => {
-    // no-op
-  }, []);
-
-  /** @deprecated Typing indicators not available without WebSocket. */
-  const emitTypingStop = useCallback(() => {
-    // no-op
-  }, []);
-
-  return { emitTypingStart, emitTypingStop, typers: [] as TypingUser[] };
+  // Typing indicators removed — no WebSocket server for real-time typing
 }

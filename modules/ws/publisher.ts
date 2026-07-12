@@ -51,15 +51,6 @@ export function emitReactionUpdate(
   logger.debug('[ws:noop] emitReactionUpdate', { threadId, messageId });
 }
 
-export function emitTypingIndicator(
-  threadId: string,
-  userId: string,
-  userName: string,
-  isTyping: boolean
-): void {
-  // no-op: typing indicators disabled without WebSocket
-}
-
 export function emitMentionNotification(
   threadId: string,
   payload: MentionNotificationPayload

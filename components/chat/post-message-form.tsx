@@ -48,8 +48,6 @@ interface PostMessageFormProps {
     userName: string;
   } | null;
   onCancelReply?: () => void;
-  onTypingStart?: () => void;
-  onTypingStop?: () => void;
   canManagePoll?: boolean;
   showPoll?: boolean;
   onTogglePoll?: (show: boolean) => void;
@@ -64,8 +62,6 @@ export function PostMessageForm({
   onMessageError,
   replyTo,
   onCancelReply,
-  onTypingStart,
-  onTypingStop,
   canManagePoll,
   showPoll: showPollProp,
   onTogglePoll,
@@ -110,8 +106,6 @@ export function PostMessageForm({
     onOptimisticMessage,
     onMessageError,
     onCancelReply,
-    onTypingStart,
-    onTypingStop,
     currentUser,
   });
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Activity, RefreshCw, Wifi, Server, HardDrive, Users } from 'lucide-react';
+import { RefreshCw, Server, HardDrive } from 'lucide-react';
 
 interface HealthData {
   timestamp: string;
@@ -14,12 +14,6 @@ interface HealthData {
     rss: string;
     heapTotal: string;
     heapUsed: string;
-  };
-  websocket: {
-    totalConnections: number;
-    connectedUsers: number;
-    activeThreadRooms: number;
-    activeTypingUsers: number;
   };
 }
 
@@ -69,10 +63,24 @@ export default function AdminHealthPage() {
     };
 
     doFetch();
-    const interval = setInterval(doFetch, 30000);
+
+    let interval = setInterval(doFetch, 30000);
+
+    // Pause polling when tab is hidden to save resources
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        doFetch(); // immediate refresh on foreground
+        interval = setInterval(doFetch, 30000);
+      } else {
+        clearInterval(interval);
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
@@ -99,8 +107,8 @@ export default function AdminHealthPage() {
       )}
 
       {!data && !error && loading && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
+        <div className="grid gap-6 md:grid-cols-2">
+          {[1, 2].map((i) => (
             <Card key={i} className="rounded-3xl">
               <CardContent className="p-6">
                 <div className="skeleton h-4 w-24 mb-3" />
@@ -114,7 +122,7 @@ export default function AdminHealthPage() {
       {data && (
         <>
           {/* System Info */}
-          <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <section className="grid gap-6 md:grid-cols-2">
             <Card className="rounded-3xl">
               <CardHeader className="flex flex-row items-center gap-3 pb-2">
                 <Server className="w-5 h-5 text-muted-foreground" />
@@ -142,72 +150,7 @@ export default function AdminHealthPage() {
                 </p>
               </CardContent>
             </Card>
-
-            <Card className="rounded-3xl">
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <Wifi className="w-5 h-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  WS Connections
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-foreground">{data.websocket.totalConnections}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {data.websocket.connectedUsers} authenticated users
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-3xl">
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <Activity className="w-5 h-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Active Rooms
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-foreground">{data.websocket.activeThreadRooms}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {data.websocket.activeTypingUsers} typing now
-                </p>
-              </CardContent>
-            </Card>
           </section>
-
-          {/* WebSocket Detail */}
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                WebSocket Detail
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <tr>
-                      <th className="pb-3">Metric</th>
-                      <th className="pb-3 text-right">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {[
-                      { label: 'Total Connections', value: data.websocket.totalConnections },
-                      { label: 'Authenticated Users', value: data.websocket.connectedUsers },
-                      { label: 'Active Thread Rooms', value: data.websocket.activeThreadRooms },
-                      { label: 'Users Typing Now', value: data.websocket.activeTypingUsers },
-                    ].map((row) => (
-                      <tr key={row.label} className="text-foreground">
-                        <td className="py-3 text-muted-foreground">{row.label}</td>
-                        <td className="py-3 text-right font-semibold">{row.value}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
 
           <p className="text-xs text-muted-foreground text-right">
             Last updated: {new Date(data.timestamp).toLocaleTimeString()}

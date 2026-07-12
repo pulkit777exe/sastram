@@ -27,8 +27,6 @@ interface UseMessageComposerOptions {
   onMessageError?: (tempId: string) => void;
   onSuccess?: () => void;
   onCancelReply?: () => void;
-  onTypingStart?: () => void;
-  onTypingStop?: () => void;
 }
 
 interface UseMessageComposerReturn {
@@ -94,8 +92,6 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     onMessageError,
     onSuccess,
     onCancelReply,
-    onTypingStart,
-    onTypingStop,
   } = options;
 
   // Content
@@ -314,7 +310,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
-        sender: { id: currentUser?.id ?? '', name: currentUser?.name ?? null, image: currentUser?.image ?? null },
+        sender: { id: currentUser?.id ?? '', name: currentUser?.name || 'You', image: currentUser?.image ?? null },
         thread: { id: threadId, name: '', slug: '' },
         attachments: [],
       };
@@ -476,12 +472,9 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         void handleSubmit();
-        onTypingStop?.();
       } else if (e.key === 'Escape' && replyTo) {
         onCancelReply?.();
         closeMentions();
-      } else {
-        onTypingStart?.();
       }
     },
     [
@@ -493,8 +486,6 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       handleSubmit,
       replyTo,
       onCancelReply,
-      onTypingStart,
-      onTypingStop,
     ]
   );
 
@@ -505,14 +496,13 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       const caret = e.target.selectionStart ?? nextValue.length;
       setContent(nextValue);
       detectMentionQuery(nextValue, caret);
-      onTypingStart?.();
     },
-    [detectMentionQuery, onTypingStart]
+    [detectMentionQuery]
   );
 
   const handleBlur = useCallback(() => {
-    onTypingStop?.();
-  }, [onTypingStop]);
+    // no-op: typing indicators removed
+  }, []);
 
   // --- Cleanup ---
   const cleanup = useCallback(() => {

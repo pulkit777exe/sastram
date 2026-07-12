@@ -52,7 +52,6 @@ enum MemberStatus {
 enum NotificationType {
   REPLY
   MENTION
-  REACTION
   INVITATION
   SYSTEM
   AI_INSIGHT
@@ -120,7 +119,6 @@ model User {
   status           UserStatus     @default(ACTIVE)
   role             Role           @default(USER)
   profilePrivacy   ProfilePrivacy @default(PUBLIC)
-  reputationPoints Int            @default(0)
   followerCount    Int            @default(0)
   followingCount   Int            @default(0)
   welcomeEmailSent Boolean        @default(false)
@@ -143,8 +141,6 @@ model User {
   followers     UserFollow[]         @relation("Follower")
   following     UserFollow[]         @relation("Following")
   bookmarks     UserBookmark[]
-  reputation    UserReputation?
-  badges        UserBadgeEarned[]
   activities    UserActivity[]
   pollVotes     PollVote[]
   readReceipts  ReadReceipt[]
@@ -600,46 +596,8 @@ model PollVote {
   @@map("poll_votes")
 }
 
-model UserReputation {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  points    Int      @default(0)
-  level     Int      @default(1)
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_reputation")
-}
-
-model UserBadge {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String
-  icon        String?
-  color       String   @default("#3736fc")
-  criteria    Json
-  createdAt   DateTime @default(now())
-
-  earnedBy UserBadgeEarned[]
-
-  @@map("user_badges")
-}
-
-model UserBadgeEarned {
-  userId   String
-  badgeId  String
-  earnedAt DateTime @default(now())
-
-  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge UserBadge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-
-  @@id([userId, badgeId])
-  @@map("user_badges_earned")
-}
-
 // Single activity table replaces AuditLog + UserActivity
-// type examples: 'MESSAGE_CREATED', 'THREAD_JOINED', 'AI_SEARCH', 'BADGE_EARNED'
+// type examples: 'MESSAGE_CREATED', 'THREAD_JOINED', 'AI_SEARCH'
 model UserActivity {
   id         String   @id @default(cuid())
   userId     String

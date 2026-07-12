@@ -13,7 +13,6 @@ export const ROUTES = {
   ADMIN_MODERATION: '/dashboard/admin/moderation',
   ADMIN_APPEALS: '/dashboard/admin/appeals',
 
-  CHAT: '/chat',
   BANNED: '/banned',
 
   THREAD: (slug: string) => `/dashboard/threads/${slug}`,
@@ -24,7 +23,6 @@ export const ROUTES = {
     AUTH: '/api/auth',
     THREADS: '/api/threads',
     UPLOAD: '/api/upload',
-    CONVERSATIONS: '/api/conversations',
     NEWSLETTER_GENERATE: '/api/newsletter/generate',
   },
 } as const;

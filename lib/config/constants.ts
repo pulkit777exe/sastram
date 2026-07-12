@@ -90,7 +90,6 @@ export type MemberStatus = (typeof MEMBER_STATUS)[keyof typeof MEMBER_STATUS];
 export const NOTIFICATION_TYPES = {
   REPLY: 'REPLY',
   MENTION: 'MENTION',
-  REACTION: 'REACTION',
   INVITATION: 'INVITATION',
   SYSTEM: 'SYSTEM',
   AI_INSIGHT: 'AI_INSIGHT',

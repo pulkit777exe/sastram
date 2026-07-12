@@ -2,6 +2,13 @@ import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
 const nextConfig: NextConfig = {
+  redirects: async () => [
+    {
+      source: '/dashboard/threads/thread/:slug',
+      destination: '/dashboard/threads/:slug',
+      permanent: true,
+    },
+  ],
   experimental: {
     optimizePackageImports: ['lucide-react', '@tanstack/react-virtual', 'date-fns', 'framer-motion'],
   },
