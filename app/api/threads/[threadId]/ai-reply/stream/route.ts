@@ -127,20 +127,39 @@ export async function GET(
     select: { depth: true },
   });
 
-  const aiMessage = await prisma.message.create({
-    data: {
-      content: '',
-      threadId,
-      senderId: aiUser.id,
-      parentId: parentMessage.id,
-      depth: Math.min((parentMsg?.depth ?? 0) + 1, 4),
-      isAiResponse: true,
-      isEdited: false,
-      isPinned: false,
-      likeCount:0,
-      replyCount: 0,
-    },
-    select: { id: true },
+  // Atomic: create AI message + bump parent replyCount + bump thread messageCount.
+  // Matches the pattern used by moderation.ts:337-361 for user-posted replies so
+  // both paths keep denormalized counters in sync with a single transaction.
+  const aiMessage = await prisma.$transaction(async (tx) => {
+    const msg = await tx.message.create({
+      data: {
+        content: '',
+        threadId,
+        senderId: aiUser.id,
+        parentId: parentMessage.id,
+        depth: Math.min((parentMsg?.depth ?? 0) + 1, 4),
+        isAiResponse: true,
+        isEdited: false,
+        isPinned: false,
+        likeCount: 0,
+        replyCount: 0,
+      },
+      select: { id: true },
+    });
+
+    if (parentMessage.id) {
+      await tx.message.update({
+        where: { id: parentMessage.id },
+        data: { replyCount: { increment: 1 } },
+      });
+    }
+
+    await tx.thread.update({
+      where: { id: threadId },
+      data: { messageCount: { increment: 1 } },
+    });
+
+    return msg;
   });
   void trackNeonRequest(); // best-effort usage tracking
 

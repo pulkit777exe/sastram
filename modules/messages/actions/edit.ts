@@ -1,9 +1,8 @@
 'use server';
 
-import { auth } from '@/lib/services/auth';
-import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { requireSession } from '@/modules/auth/session';
 import { logger } from '@/lib/infrastructure/logger';
 import { filterBadLanguage } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
@@ -19,13 +18,7 @@ import {
 export const editMessage = createServerAction(
   { schema: editMessageSchema, actionName: 'editMessage' },
   async ({ messageId, content }) => {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: null, error: 'Authentication required', errorCode: 'AUTH_REQUIRED', ok: false };
-    }
+    const session = await requireSession();
 
     try {
       const message = await prisma.message.findUnique({
@@ -74,13 +67,7 @@ export const editMessage = createServerAction(
 export const pinMessage = createServerAction(
   { schema: pinMessageSchema, actionName: 'pinMessage' },
   async ({ messageId }) => {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: null, error: 'Authentication required', errorCode: 'AUTH_REQUIRED', ok: false };
-    }
+    const session = await requireSession();
 
     try {
       const message = await prisma.message.findUnique({
@@ -163,13 +150,7 @@ export const pinMessage = createServerAction(
 export const getMessageEditHistory = createServerAction(
   { schema: getMessageEditHistorySchema, actionName: 'getMessageEditHistory' },
   async ({ messageId }) => {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: null, error: 'Authentication required', errorCode: 'AUTH_REQUIRED', ok: false };
-    }
+    const session = await requireSession();
 
     try {
       const message = await prisma.message.findUnique({

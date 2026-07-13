@@ -24,6 +24,21 @@ export async function createThread(payload: {
   createdBy: string;
   initialMessage?: string;
 }): Promise<ThreadSummary> {
+  // Option A: set memberCount: 1 directly in the nested create rather than wrapping
+  // in a transaction and issuing a separate increment-update. This is structurally
+  // different from join/leave (modules/members/actions.ts:78-81,108-111) which uses
+  // tx.thread.update({ memberCount: { increment/decrement: 1 } }) — and that's
+  // correct. Join/leave is a state transition on an existing thread where the prior
+  // count is unknown; creation is declaring the initial state of a brand-new row.
+  // Setting it to 1 directly expresses the invariant ("a new thread starts with
+  // exactly 1 member: the OWNER"), avoids an extra round-trip on the project's
+  // highest-frequency write path, and keeps single-query atomicity.
+  //
+  // NOTE on _count.members vs. Thread.memberCount: both answer "how many members"
+  // but are maintained independently. _count is a live COUNT(*) from ThreadMember
+  // rows; memberCount is denormalized for read perf. This dual-answer is exactly
+  // what caused the memberCount drift surfaced by the reconciliation cron — and is
+  // the reason we validate it periodically instead of trusting the denorm blindly.
   const thread = await prisma.thread.create({
     data: {
       name: payload.name,
@@ -32,6 +47,7 @@ export async function createThread(payload: {
       slug: payload.slug,
       createdBy: payload.createdBy,
       messageCount: payload.initialMessage ? 1 : 0,
+      memberCount: 1,
       members: {
         create: {
           userId: payload.createdBy,
@@ -103,8 +119,12 @@ export async function createThread(payload: {
 }
 
 export async function deleteThread(threadId: string): Promise<void> {
-  await prisma.thread.delete({
+  // Soft-delete: set deletedAt instead of hard-deleting. The purge cron
+  // (app/api/cron/update-threads/route.ts) hard-removes the row + cascade
+  // once deletedAt is older than the retention window.
+  await prisma.thread.update({
     where: { id: threadId },
+    data: { deletedAt: new Date() },
   });
 }
 

@@ -198,8 +198,8 @@ export const banUser = createServerAction(
     }
 
     const thread = threadId
-      ? await prisma.thread.findUnique({
-          where: { id: threadId },
+      ? await prisma.thread.findFirst({
+          where: { id: threadId, deletedAt: null },
           select: { id: true, name: true },
         })
       : null;
@@ -399,10 +399,16 @@ export const deleteCommunity = createServerAction(
     };
 
     const sectionCount = await prisma.thread.count({
-      where: { communityId },
+      where: { communityId, deletedAt: null },
     });
 
-    await prisma.community.delete({ where: { id: communityId } });
+    // Soft-delete: set deletedAt instead of hard-deleting. The purge cron
+    // (app/api/cron/update-threads/route.ts) hard-removes the row and its
+    // cascade once deletedAt is older than the retention window.
+    await prisma.community.update({
+      where: { id: communityId },
+      data: { deletedAt: new Date() },
+    });
 
     await executeModerationAuditAndRevalidate({
       action: 'SECTION_DELETED',
@@ -414,6 +420,7 @@ export const deleteCommunity = createServerAction(
         communityTitle: community.title,
         communitySlug: community.slug,
         affectedSections: sectionCount,
+        softDelete: true,
       },
       paths: ['/dashboard', '/dashboard/admin/moderation'],
     });
@@ -441,8 +448,14 @@ export const deleteThread = createServerAction(
       select: { userId: true },
     });
 
+    // Soft-delete: set deletedAt instead of hard-deleting. The purge cron
+    // (app/api/cron/update-threads/route.ts) hard-removes the row + cascade
+    // once deletedAt is older than the retention window.
     await prisma.$transaction(async (tx) => {
-      await tx.thread.delete({ where: { id: threadId } });
+      await tx.thread.update({
+        where: { id: threadId },
+        data: { deletedAt: new Date() },
+      });
 
       if (members.length > 0) {
         await tx.notification.createMany({
@@ -471,6 +484,7 @@ export const deleteThread = createServerAction(
         messageCount: thread.messageCount,
         memberCount: thread.memberCount,
         notifiedMembers: members.length,
+        softDelete: true,
       },
       paths: ['/dashboard', '/dashboard/threads', '/dashboard/admin/moderation'],
     });

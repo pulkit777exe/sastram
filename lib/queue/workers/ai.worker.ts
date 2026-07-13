@@ -159,8 +159,8 @@ export async function handleStalenessCheckJob(data: StalenessCheckJobData) {
 
   logger.info(`[worker:ai] staleness-check for thread ${threadId}`);
 
-  const thread = await prisma.thread.findUnique({
-    where: { id: threadId! },
+  const thread = await prisma.thread.findFirst({
+    where: { id: threadId!, deletedAt: null },
     select: { id: true, updatedAt: true, resolutionScore: true, isOutdated: true },
   });
 
@@ -199,6 +199,7 @@ async function handleStalenessBatchCheck() {
           { resolutionScore: null },
           { resolutionScore: { lt: RESOLUTION_SCORE_THRESHOLD } },
         ],
+        deletedAt: null,
         ...(cursor ? { id: { gt: cursor } } : {}),
       },
       select: { id: true },
@@ -261,8 +262,8 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
   await assertSpendCapAvailable();
   const [score, thread] = await Promise.all([
     aiService.calculateResolutionScore(messages),
-    prisma.thread.findUnique({
-      where: { id: threadId },
+    prisma.thread.findFirst({
+      where: { id: threadId, deletedAt: null },
       select: { updatedAt: true },
     }),
   ]);
@@ -480,22 +481,41 @@ async function createAiMessage(
   depth: number,
   senderId: string,
 ) {
-  return prisma.message.create({
-    data: {
-      content: '',
-      threadId,
-      senderId,
-      parentId,
-      depth: Math.min(depth, 4),
-      isAiResponse: true,
-      isEdited: false,
-      isPinned: false,
-      likeCount: 0,
-      replyCount: 0,
-    },
-    include: {
-      thread: { select: { id: true, name: true, slug: true } },
-    },
+  // Atomic: create AI message + bump parent replyCount + bump thread messageCount.
+  // Matches the pattern used by moderation.ts:337-361 for user-posted replies so
+  // both paths keep denormalized counters in sync with a single transaction.
+  return prisma.$transaction(async (tx) => {
+    const msg = await tx.message.create({
+      data: {
+        content: '',
+        threadId,
+        senderId,
+        parentId,
+        depth: Math.min(depth, 4),
+        isAiResponse: true,
+        isEdited: false,
+        isPinned: false,
+        likeCount: 0,
+        replyCount: 0,
+      },
+      include: {
+        thread: { select: { id: true, name: true, slug: true } },
+      },
+    });
+
+    if (parentId) {
+      await tx.message.update({
+        where: { id: parentId },
+        data: { replyCount: { increment: 1 } },
+      });
+    }
+
+    await tx.thread.update({
+      where: { id: threadId },
+      data: { messageCount: { increment: 1 } },
+    });
+
+    return msg;
   });
 }
 

@@ -73,6 +73,11 @@ export const voteOnPollAction = withValidation(
         return { data: null, error: 'Voting is closed for this poll', ok: false, errorCode: 'CONFLICT' };
       }
 
+      const memberRole = await getMemberRole(poll.threadId, session.user.id);
+      if (!memberRole) {
+        return { data: null, error: 'You are not a member of this thread', ok: false, errorCode: 'FORBIDDEN' };
+      }
+
       await voteOnPollRepo(pollId, session.user.id, optionIndex);
 
       if (poll.thread?.slug) {

@@ -1,9 +1,8 @@
 'use server';
 
-import { auth } from '@/lib/services/auth';
-import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { requireSession } from '@/modules/auth/session';
 import { logger } from '@/lib/infrastructure/logger';
 import { filterBadLanguage } from '@/lib/services/content-safety';
 import { createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
@@ -47,18 +46,7 @@ export async function postMessage(formData: FormData) {
     return { data: null, error: 'Invalid input', errorCode: 'VALIDATION_ERROR', ok: false };
   }
 
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return {
-      data: null,
-      error: 'Authentication required',
-      errorCode: 'AUTH_REQUIRED',
-      ok: false,
-    };
-  }
+  const session = await requireSession();
 
   const isMember = await prisma.threadMember.findUnique({
     where: { threadId_userId: { threadId: threadId, userId: session.user.id } },

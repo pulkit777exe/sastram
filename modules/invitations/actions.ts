@@ -3,8 +3,7 @@
 import { logger } from '@/lib/infrastructure/logger';
 
 import { prisma } from '@/lib/infrastructure/prisma';
-import { auth } from '@/lib/services/auth';
-import { headers } from 'next/headers';
+import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { inviteFriendSchema } from './schemas';
 
@@ -18,17 +17,11 @@ export async function inviteFriendToThread(formData: FormData) {
   }
 
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return { data: null, error: 'Authentication required' };
-    }
+    const session = await requireSession();
 
     // Check if thread exists
-    const thread = await prisma.thread.findUnique({
-      where: { id: parsed.data.threadId },
+    const thread = await prisma.thread.findFirst({
+      where: { id: parsed.data.threadId, deletedAt: null },
       select: { id: true, slug: true, name: true },
     });
 
