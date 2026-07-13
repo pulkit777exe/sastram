@@ -15,19 +15,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { toasts } from '@/lib/utils/toast';
+import { validatePassword } from '@/lib/utils/password-validation';
 
 interface ForgotPasswordModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialEmail?: string;
-}
-
-function hasNumber(value: string) {
-  return /\d/.test(value);
-}
-
-function hasSpecial(value: string) {
-  return /[^A-Za-z0-9]/.test(value);
 }
 
 function ForgotPasswordEmailForm({
@@ -343,20 +336,10 @@ function ForgotPasswordResetForm({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validation = useMemo(() => {
-    const minLength = password.length >= 8;
-    const includesNumber = hasNumber(password);
-    const includesSpecial = hasSpecial(password);
-    const matches = password.length > 0 && password === confirmPassword;
-
-    return {
-      minLength,
-      includesNumber,
-      includesSpecial,
-      matches,
-      valid: minLength && includesNumber && includesSpecial && matches,
-    };
-  }, [password, confirmPassword]);
+  const validation = useMemo(
+    () => validatePassword(password, confirmPassword),
+    [password, confirmPassword]
+  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
