@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toasts } from '@/lib/utils/toast';
+import { clientLogger } from '@/lib/utils/client-logger';
 import { SerifHeading } from '@/components/layout/serif-heading';
 
 export default function ForgotPasswordPage() {
@@ -35,7 +36,7 @@ export default function ForgotPasswordPage() {
       toasts.sent();
       router.push(`/forgot-password/verify?email=${encodeURIComponent(email)}`);
     } catch (error) {
-      console.error('[forgot-password:request]', error);
+      clientLogger.error('ForgotPassword', 'Request OTP failed', error);
       toasts.networkError();
       setIsSubmitting(false);
     }
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
     <main className="flex flex-1 items-center justify-center py-16 px-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-8 space-y-5 shadow-sm"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-8 space-y-5 shadow-linear-sm"
       >
         <div className="space-y-1">
           <SerifHeading as="h1" className="text-2xl tracking-tight block">
