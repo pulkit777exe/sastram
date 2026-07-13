@@ -311,7 +311,7 @@ export function Sidebar({
           <div
             ref={menuRef}
             className={cn(
-              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-10',
+              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-border rounded-lg shadow-linear-lg overflow-hidden z-10',
               profileMenuClosing ? 'is-closing' : 'is-open'
             )}
             data-origin="bottom-left"
@@ -388,7 +388,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge }: 
       className={cn(
         'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
         active
-          ? 'bg-brand/5 text-brand shadow-sm border-r-2 border-brand'
+          ? 'bg-brand/5 text-brand shadow-linear-sm border-r-2 border-brand'
           : 'text-muted-foreground hover:text-foreground hover:bg-accent',
         collapsed && 'justify-center'
       )}
@@ -430,7 +430,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge }: 
       )}
 
       {active && !collapsed && !badge && (
-        <div className="ml-auto w-2 h-2 rounded-full bg-brand shadow-[0_0_8px_rgba(55,54,252,0.5)]" />
+        <div className="ml-auto w-2 h-2 rounded-full bg-brand shadow-linear-sm" />
       )}
     </Link>
   );

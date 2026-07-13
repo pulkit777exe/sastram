@@ -53,7 +53,7 @@ export function AppealMessageModal({ messageId, isOpen, onClose }: AppealMessage
           <DialogTitle>Appeal moderation decision</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted-foreground">
             Explain why you believe this message should be reinstated. A moderator will review your
             appeal.
           </p>

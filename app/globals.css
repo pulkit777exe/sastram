@@ -6,61 +6,70 @@
 :root {
   --light-primary: #ffffff;
   --light-secondary: #f4f4f5;
-  --text-primary: #000000;
+  --text-primary: #0e0e10;
   --text-secondary: #3736fc;
-  --dark-primary: #000000;
-  --dark-secondary: #18181b;
+  --dark-primary: #08090a;
+  --dark-secondary: #131316;
   --text-primary-hover: #27272a;
-  --text-secondary-hover: #476ab3;
+  --text-secondary-hover: #4f4eff;
   --radius: 0.75rem;
 
-  /* Brand Color */
+  /* Brand Color — unchanged, this is Sastram's identity */
   --brand: #3736fc;
+  --brand-hover: #2c2be0;
 
-  /* Light Mode - Pure White Background */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0 0 0);
+  /* Light Mode — layered cool-neutral surfaces, not pure white */
+  --background: oklch(0.99 0.002 264);
+  --foreground: oklch(0.16 0.006 264);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0 0 0);
+  --card-foreground: oklch(0.16 0.006 264);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
-  --primary: oklch(0 0 0);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0 0 0);
+  --popover-foreground: oklch(0.16 0.006 264);
+  --primary: oklch(0.16 0.006 264);
+  --primary-foreground: oklch(0.99 0.002 264);
+  --secondary: oklch(0.965 0.003 264);
+  --secondary-foreground: oklch(0.16 0.006 264);
+  --muted: oklch(0.965 0.003 264);
+  --muted-foreground: oklch(0.5 0.012 264);
+  --accent: oklch(0.955 0.014 264);
+  --accent-foreground: oklch(0.16 0.006 264);
+  --destructive: oklch(0.62 0.21 25);
+  --border: oklch(0.91 0.005 264);
+  --input: oklch(0.91 0.005 264);
+  --ring: oklch(0.45 0.19 264);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0 0 0);
-  --sidebar-primary: oklch(0 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0 0 0);
+  --sidebar: oklch(0.975 0.003 264);
+  --sidebar-foreground: oklch(0.16 0.006 264);
+  --sidebar-primary: oklch(0.16 0.006 264);
+  --sidebar-primary-foreground: oklch(0.99 0.002 264);
+  --sidebar-accent: oklch(0.955 0.014 264);
+  --sidebar-accent-foreground: oklch(0.16 0.006 264);
+  --sidebar-border: oklch(0.91 0.005 264);
+  --sidebar-ring: oklch(0.45 0.19 264);
+
+  /* Soft layered shadows — Linear leans on shadow for elevation instead of
+     hard borders. Additive, doesn't replace --border, just softens it. */
+  --shadow-xs: 0 1px 2px rgba(15, 15, 20, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 15, 20, 0.06), 0 1px 2px rgba(15, 15, 20, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 15, 20, 0.08), 0 2px 6px rgba(15, 15, 20, 0.04);
+  --shadow-lg: 0 16px 40px rgba(15, 15, 20, 0.1), 0 4px 10px rgba(15, 15, 20, 0.05);
+  --shadow-xl: 0 20px 50px rgba(15, 15, 20, 0.15), 0 8px 16px rgba(15, 15, 20, 0.08);
 
   /* Sastram thread page design system */
   --blue: #3736fc;
   --blue-light: #eeeeff;
   --blue-dim: rgba(55, 54, 252, 0.08);
-  --bg: #f4f4f5;
+  --bg: #fafafb;
   --surface: #ffffff;
-  --text: #18181b;
-  --muted: #71717a;
-  --green: #16a34a;
-  --amber: #f59e0b;
-  --red: #ef4444;
+  --text: #0e0e10;
+  --muted: #6b6b76;
+  --green: #1a9c5c;
+  --amber: #d99a1b;
+  --red: #e5484d;
 
   /* transitions-dev: universal custom properties */
   --resize-dur: 300ms;
@@ -186,47 +195,53 @@
 }
 
 .dark {
-  /* Dark Mode - Pure Black Background */
-  --background: oklch(0 0 0);
-  --foreground: oklch(1 0 0);
-  --card: oklch(0 0 0);
-  --card-foreground: oklch(1 0 0);
-  --popover: oklch(0 0 0);
-  --popover-foreground: oklch(1 0 0);
-  --primary: oklch(1 0 0);
-  --primary-foreground: oklch(0 0 0);
-  --secondary: oklch(0.15 0 0);
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.15 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.15 0 0);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.2 0 0);
-  --ring: oklch(1 0 0);
+  --background: oklch(0.1 0.004 264);
+  --foreground: oklch(0.97 0.002 264);
+  --card: oklch(0.145 0.005 264);
+  --card-foreground: oklch(0.97 0.002 264);
+  --popover: oklch(0.145 0.005 264);
+  --popover-foreground: oklch(0.97 0.002 264);
+  --primary: oklch(0.97 0.002 264);
+  --primary-foreground: oklch(0.1 0.004 264);
+  --secondary: oklch(0.185 0.006 264);
+  --secondary-foreground: oklch(0.97 0.002 264);
+  --muted: oklch(0.185 0.006 264);
+  --muted-foreground: oklch(0.63 0.014 264);
+  --accent: oklch(0.21 0.02 264);
+  --accent-foreground: oklch(0.97 0.002 264);
+  --destructive: oklch(0.69 0.19 22);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.58 0.2 264);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0 0 0);
-  --sidebar-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(1 0 0);
-  --sidebar-primary-foreground: oklch(0 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(1 0 0);
+  --sidebar: oklch(0.085 0.004 264);
+  --sidebar-foreground: oklch(0.97 0.002 264);
+  --sidebar-primary: oklch(0.97 0.002 264);
+  --sidebar-primary-foreground: oklch(0.1 0.004 264);
+  --sidebar-accent: oklch(0.21 0.02 264);
+  --sidebar-accent-foreground: oklch(0.97 0.002 264);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.58 0.2 264);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.35);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.4);
 
   /* Sastram thread page design system — dark */
-  --blue-dim: rgba(55, 54, 252, 0.15);
-  --bg: #1c1c1e;
-  --surface: #1c1c1e;
-  --text: #e4e4e7;
-  --green: #22c55e;
-  --amber: #fbbf24;
-  --red: #f87171;
+  --blue-dim: rgba(55, 54, 252, 0.18);
+  --bg: #08090a;
+  --surface: #131316;
+  --text: #f2f2f4;
+  --muted: #8a8f98;
+  --green: #3dd68c;
+  --amber: #f2b544;
+  --red: #f2555a;
 }
 
 @layer base {
@@ -283,6 +298,15 @@
   }
 }
 
+/* style elevation utilities — optional, additive.
+   Apply to cards/modals/popovers where you want shadow-based elevation
+   instead of (or in addition to) a visible border. */
+.shadow-linear-xs { box-shadow: var(--shadow-xs); }
+.shadow-linear-sm { box-shadow: var(--shadow-sm); }
+.shadow-linear-md { box-shadow: var(--shadow-md); }
+.shadow-linear-lg { box-shadow: var(--shadow-lg); }
+.shadow-linear-xl { box-shadow: var(--shadow-xl); }
+
 @keyframes skeleton-pulse {
   0%,
   100% {
@@ -294,13 +318,19 @@
 }
 
 .skeleton {
-  background: #e4e4e7;
+  background: var(--secondary);
   border-radius: 4px;
   animation: skeleton-pulse 1.5s ease infinite;
 }
 
+/* Admin header gradient — shared across admin/dashboard pages */
+.admin-header-gradient {
+  background: var(--foreground);
+  background: radial-gradient(circle at top, oklch(0.18 0.01 264), oklch(0.06 0.004 264));
+}
+
 .bg-thread-cover {
-  background-image: radial-gradient(circle at 1px 1px, rgba(24, 24, 27, 0.08) 1px, transparent 0);
+  background-image: radial-gradient(circle at 1px 1px, rgba(24, 24, 27, 0.06) 1px, transparent 0);
   background-size: 20px 20px;
 }
 
@@ -337,10 +367,6 @@
 .landing-marquee-track:hover {
   animation-play-state: paused;
 }
-
-/* ==============================
-   transitions.dev — CSS classes
-   ============================== */
 
 /* 01 — Card resize */
 .t-resize {
@@ -457,12 +483,14 @@
 .t-dropdown[data-origin="bottom-left"]   { transform-origin: bottom left; }
 .t-dropdown[data-origin="bottom-center"] { transform-origin: bottom center; }
 .t-dropdown[data-origin="bottom-right"]  { transform-origin: bottom right; }
-.t-dropdown.is-open {
+.t-dropdown.is-open,
+.t-dropdown[data-state="open"] {
   transform: scale(1);
   opacity: 1;
   pointer-events: auto;
 }
-.t-dropdown.is-closing {
+.t-dropdown.is-closing,
+.t-dropdown[data-state="closed"] {
   transform: scale(var(--dropdown-closing-scale));
   opacity: 0;
   pointer-events: none;
@@ -482,12 +510,14 @@
     opacity   var(--modal-open-dur) var(--modal-ease);
   will-change: transform, opacity;
 }
-.t-modal.is-open {
+.t-modal.is-open,
+.t-modal[data-state="open"] {
   transform: scale(1);
   opacity: 1;
   pointer-events: auto;
 }
-.t-modal.is-closing {
+.t-modal.is-closing,
+.t-modal[data-state="closed"] {
   transform: scale(var(--modal-scale-close));
   opacity: 0;
   pointer-events: none;

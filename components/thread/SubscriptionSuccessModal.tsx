@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, Mail, Sparkles, CheckCircle2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -17,6 +17,8 @@ export function SubscriptionSuccessModal({
   threadName,
 }: SubscriptionSuccessModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 0);
@@ -25,6 +27,8 @@ export function SubscriptionSuccessModal({
 
   useEffect(() => {
     if (isOpen && mounted) {
+      setIsClosing(false);
+      setVisible(true);
       const duration = 2000;
       const end = Date.now() + duration;
 
@@ -59,112 +63,110 @@ export function SubscriptionSuccessModal({
     }
   }, [isOpen, mounted]);
 
-  if (!mounted) return null;
+  useEffect(() => {
+    if (!isOpen && visible) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setVisible(false);
+        setIsClosing(false);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, visible]);
+
+  if (!mounted || !visible) return null;
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+    <>
+      <div
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-200 ${isClosing ? 'opacity-0' : 'opacity-100'}`}
+        onClick={onClose}
+      />
+
+      <div className={`t-modal ${isClosing ? '' : 'is-open'} fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md`}>
+        <div className="bg-card rounded-2xl border border-border shadow-linear-md overflow-hidden text-foreground">
+          <button
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-          />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
+            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors z-10"
           >
-            <div className="bg-card rounded-2xl border border-border shadow-2xl overflow-hidden text-foreground">
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            <X className="w-5 h-5" />
+          </button>
 
-              {/* Content */}
-              <div className="p-8 text-center">
-                {/* Success icon */}
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{
-                    type: 'spring',
-                    damping: 15,
-                    stiffness: 200,
-                    delay: 0.1,
-                  }}
-                  className="mx-auto w-20 h-20 rounded-full bg-linear-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-6 shadow-lg shadow-green-500/30"
-                >
-                  <CheckCircle2 className="w-10 h-10 text-white" />
-                </motion.div>
+          {/* Content */}
+          <div className="p-8 text-center">
+            {/* Success icon */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{
+                type: 'spring',
+                damping: 15,
+                stiffness: 200,
+                delay: 0.1,
+              }}
+              className="mx-auto w-20 h-20 rounded-full bg-linear-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-6 shadow-lg shadow-green-500/30"
+            >
+              <CheckCircle2 className="w-10 h-10 text-white" />
+            </motion.div>
 
-                <motion.h2
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-2xl font-bold text-foreground mb-2"
-                >
-                  You&apos;re Subscribed!
-                </motion.h2>
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl font-bold text-foreground mb-2"
+            >
+              You&apos;re Subscribed!
+            </motion.h2>
 
-                <motion.p
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  className="text-muted-foreground mb-6"
-                >
-                  You&apos;ll now receive AI-powered summaries for{' '}
-                  <span className="text-foreground font-medium">{threadName}</span>
-                </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="text-muted-foreground mb-6"
+            >
+              You&apos;ll now receive AI-powered summaries for{' '}
+              <span className="text-foreground font-medium">{threadName}</span>
+            </motion.p>
 
-                {/* What to expect */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-muted rounded-xl p-4 mb-6 text-left"
-                >
-                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-brand" />
-                    What to expect
-                  </h3>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
-                      <span>Daily AI-generated summary of key discussions</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Bell className="w-4 h-4 text-muted-foreground mt-0.5" />
-                      <span>Important updates and highlights</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5" />
-                      <span>Unsubscribe anytime from settings</span>
-                    </li>
-                  </ul>
-                </motion.div>
+            {/* What to expect */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-muted rounded-xl p-4 mb-6 text-left"
+            >
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-brand" />
+                What to expect
+              </h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
+                  <span>Daily AI-generated summary of key discussions</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Bell className="w-4 h-4 text-muted-foreground mt-0.5" />
+                  <span>Important updates and highlights</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5" />
+                  <span>Unsubscribe anytime from settings</span>
+                </li>
+              </ul>
+            </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35 }}
-                >
-                  <Button onClick={onClose} className="font-medium rounded-xl">
-                    Got it!
-                  </Button>
-                </motion.div>
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <Button onClick={onClose} className="font-medium rounded-xl">
+                Got it!
+              </Button>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

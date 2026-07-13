@@ -128,7 +128,7 @@ function MosaicTile({ className }: { className?: string }) {
       className={`absolute rounded-sm opacity-60 blur-[0.5px] ${className}`}
       style={{
         backgroundImage:
-          'linear-gradient(135deg, #3736fc 0%, #5b5af8 40%, #16a34a 70%, #3736fc 100%)',
+          'linear-gradient(135deg, var(--brand) 0%, #5b5af8 40%, var(--green) 70%, var(--brand) 100%)',
       }}
     />
   );
@@ -143,7 +143,7 @@ function DashboardPreview() {
   ];
 
   return (
-    <div className="w-full bg-background rounded-xl border border-border shadow-2xl shadow-black/8 overflow-hidden text-left">
+    <div className="w-full bg-background rounded-xl border border-border shadow-linear-xl overflow-hidden text-left">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/80">
         <div className="flex gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
@@ -218,7 +218,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
             />
           ))}
         </div>
-        <div className="relative bg-background/90 backdrop-blur rounded-xl border border-white/60 p-4 shadow-lg">
+        <div className="relative bg-background/90 backdrop-blur rounded-xl border border-white/60 p-4 shadow-linear-lg">
           <div className="space-y-2">
             {['How do we handle concurrent edits?', 'WebSocket reconnect logic?'].map((msg, i) => (
               <div key={i} className="flex gap-2 items-start">
@@ -268,7 +268,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
           {'  '}
           <span className="text-emerald-400">&quot;streaming&quot;</span>
           <span className="text-muted-foreground">: </span>
-          <span className="text-[#818cf8]">true</span>
+          <span className="text-brand">true</span>
           <span className="text-muted-foreground">,</span>
           {'\n'}
           {'  '}

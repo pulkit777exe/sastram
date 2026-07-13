@@ -120,8 +120,8 @@ export function SynthesisCard({
                     confidence > 70
                       ? 'var(--color-foreground)'
                       : confidence > 40
-                        ? 'hsl(35, 90%, 55%)'
-                        : 'hsl(0, 70%, 55%)',
+                        ? 'var(--amber)'
+                        : 'var(--red)',
                 }}
               />
             </div>

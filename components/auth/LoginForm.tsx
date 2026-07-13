@@ -671,7 +671,7 @@ function UserAuthForm({
             setMode(mode === 'signin' ? 'signup' : 'signin');
             setError(null);
           }}
-          className="text-zinc-500 transition-colors"
+          className="text-muted-foreground transition-colors"
         >
           {mode === 'signin' ? (
             <>

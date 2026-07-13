@@ -172,7 +172,7 @@ export function PostMessageForm({
 
       {selectedFile && (
         <div
-          className={`absolute ${replyTo ? '-top-20' : '-top-11'} left-0 bg-muted/90 backdrop-blur border border-border px-3 py-1.5 rounded-t-xl text-xs flex items-center gap-2 shadow-sm z-10`}
+          className={`absolute ${replyTo ? '-top-20' : '-top-11'} left-0 bg-muted/90 backdrop-blur border border-border px-3 py-1.5 rounded-t-xl text-xs flex items-center gap-2 shadow-linear-sm z-10`}
         >
           <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="truncate max-w-[200px] text-foreground font-medium">{selectedFile.name}</span>
@@ -191,7 +191,7 @@ export function PostMessageForm({
 
       <div
         className={cn(
-          "flex flex-col border border-border/80 rounded-2xl bg-card hover:border-brand/20 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-sm overflow-hidden",
+          "flex flex-col border border-border/80 rounded-2xl bg-card hover:border-brand/20 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-linear-sm overflow-hidden",
           replyTo && "rounded-t-none border-t-0"
         )}
       >
@@ -245,7 +245,7 @@ export function PostMessageForm({
                 <SmilePlus className="h-4 w-4" />
               </Button>
               {emojiOpen && (
-                <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 rounded-xl border border-border/80 bg-popover p-2.5 shadow-xl">
+                <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 rounded-xl border border-border/80 bg-popover p-2.5 shadow-linear-xl">
                   <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
                     {COMMON_EMOJIS.map((emoji) => (
                       <button
@@ -271,7 +271,7 @@ export function PostMessageForm({
             </div>
           </div>
 
-          <Button type="submit" disabled={isSubmitting || !content.trim()} size="sm" className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-sm font-semibold transition-all">
+          <Button type="submit" disabled={isSubmitting || !content.trim()} size="sm" className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-linear-sm font-semibold transition-all">
             {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             <span>Send</span>
           </Button>

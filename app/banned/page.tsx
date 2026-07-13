@@ -36,7 +36,7 @@ export default async function BannedPage() {
         }}
       />
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-card border border-border rounded-2xl p-8 shadow-xl space-y-6 text-center">
+        <div className="max-w-md w-full bg-card border border-border rounded-2xl p-8 shadow-linear-xl space-y-6 text-center">
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500 text-3xl">
             Restricted
           </div>

@@ -26,7 +26,7 @@ Authentication components:
 Dashboard-specific components:
 - Sidebar, Header
 - StatsCard, TopicCard, TopicGrid
-- ThreadInsights, SearchDialog
+- SearchDialog
 - ProfileView, SettingsForm
 - PreferencesForm, NewsletterManagement
 - MessageGrid, CreateTopicButton

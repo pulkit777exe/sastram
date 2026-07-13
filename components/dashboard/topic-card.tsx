@@ -25,7 +25,7 @@ export function TopicCard({
   tags,
 }: TopicCardProps) {
   return (
-    <div className="group relative flex flex-col justify-between h-full rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(99,102,241,0.05)]">
+    <div className="group relative flex flex-col justify-between h-full rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:shadow-linear-sm">
       <div>
         <div className="flex items-center justify-between mb-4">
           <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:text-brand group-hover:bg-brand/90/10 transition-colors">

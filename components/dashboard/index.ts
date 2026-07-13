@@ -9,5 +9,4 @@ export * from './settings-form';
 export * from './settings-tabs';
 export * from './sidebar';
 export * from './stats-card';
-export * from './thread-insights';
 export * from './topic-grid';

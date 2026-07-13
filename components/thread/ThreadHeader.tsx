@@ -40,7 +40,7 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
   const resolution = getResolutionState(thread.resolutionScore);
 
   return (
-    <header className="rounded-[10px] bg-(--surface) p-[20px] shadow-sm">
+    <header className="rounded-[10px] bg-(--surface) p-[20px] shadow-linear-sm">
       <div className="mt-[16px] flex items-start justify-between gap-[16px]">
         <div className="min-w-0 flex-1">
           <div className="inline-flex items-center gap-[8px] rounded-[999px] bg-(--blue-dim) px-[10px] py-[4px]">

@@ -227,7 +227,7 @@ export function AdminModerationPanel({ threads: initialThreads, communities: ini
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Permanently delete a thread and all its messages.
+            Soft-delete a thread. Hidden immediately, permanently purged 30 days later.
           </p>
           <Dialog open={deleteThreadDialogOpen} onOpenChange={setDeleteThreadDialogOpen}>
             <DialogTrigger asChild>
@@ -240,7 +240,9 @@ export function AdminModerationPanel({ threads: initialThreads, communities: ini
               <DialogHeader>
                 <DialogTitle>Delete Thread</DialogTitle>
                 <DialogDescription>
-                  This action cannot be undone. All messages in this thread will be deleted.
+                  The thread will be soft-deleted and hidden from all listings immediately.
+                  It is permanently purged 30 days after deletion.
+                  There is no recovery UI in this build — once purged, the data is gone.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -297,7 +299,7 @@ export function AdminModerationPanel({ threads: initialThreads, communities: ini
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Permanently delete a community and all its threads.
+            Soft-delete a community and all its threads. Hidden immediately, permanently purged 30 days later.
           </p>
           <Dialog open={deleteCommunityDialogOpen} onOpenChange={setDeleteCommunityDialogOpen}>
             <DialogTrigger asChild>
@@ -310,7 +312,9 @@ export function AdminModerationPanel({ threads: initialThreads, communities: ini
               <DialogHeader>
                 <DialogTitle>Delete Community</DialogTitle>
                 <DialogDescription>
-                  This action cannot be undone. All threads in this community will be deleted.
+                  The community (and all its threads) will be soft-deleted and hidden from all
+                  listings immediately. All content is permanently purged 30 days after deletion.
+                  There is no recovery UI in this build — once purged, the data is gone.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">

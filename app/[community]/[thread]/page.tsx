@@ -120,7 +120,7 @@ async function ThreadContent({ slug, userId, user }: { slug: string; userId: str
           }}
         />
       </div>
-      <div className="mt-3 rounded-[12px] bg-(--surface) p-4 shadow-sm">
+      <div className="mt-3 rounded-[12px] bg-(--surface) p-4 shadow-linear-sm">
         <ReplyBox threadId={thread.id} onSuccess={() => {}} />
       </div>
     </>

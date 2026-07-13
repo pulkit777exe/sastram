@@ -151,7 +151,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-400 hover:text-brand"
+            className="h-6 w-6 text-muted-foreground hover:text-brand"
             onClick={() => void requestSummary()}
             disabled={isLoading}
             title="Refresh summary"

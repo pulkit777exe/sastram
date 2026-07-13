@@ -436,7 +436,7 @@ const MessageRow = React.memo(function MessageRow({
         )}
 
         {showDeleteConfirm && (
-          <div className="absolute right-4 top-2 bg-background border border-border shadow-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
+          <div className="absolute right-4 top-2 bg-background border border-border shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
             <span className="font-medium text-destructive">Delete message?</span>
             <Button
               size="sm"

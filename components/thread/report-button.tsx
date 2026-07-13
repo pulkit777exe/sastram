@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,6 +24,7 @@ import { Flag, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { createReport } from '@/modules/reports/actions';
 import { toasts } from '@/lib/utils/toast';
 import { REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
+import { cn } from '@/lib/utils/cn';
 
 interface ReportButtonProps {
   messageId: string;
@@ -42,13 +43,28 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [reportId, setReportId] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const triggerShake = () => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const input = wrap.querySelector('.t-input');
+    if (!input) return;
+    input.classList.remove('is-shaking');
+    void (input as HTMLElement).offsetWidth;
+    input.classList.add('is-shaking');
+    setTimeout(() => input.classList.remove('is-shaking'), 300);
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!category) {
-      toasts.error('Please select a report category');
+      setCategoryError(true);
+      triggerShake();
       return;
     }
+    setCategoryError(false);
 
     setIsSubmitting(true);
     const result = await createReport({
@@ -159,22 +175,27 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
                 <Label htmlFor="category" className="text-foreground">
                   What&apos;s the issue? <span className="text-destructive">*</span>
                 </Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger id="category" className="bg-muted border-border text-foreground">
-                    <SelectValue placeholder="Select a reason" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
-                    {reportCategories.map((cat) => (
-                      <SelectItem
-                        key={cat.value}
-                        value={cat.value}
-                        className="text-popover-foreground"
-                      >
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div ref={wrapRef} className={cn('t-input-wrap', categoryError && 'is-error')}>
+                  <div className={cn('t-input', categoryError && 'is-error')}>
+                    <Select value={category} onValueChange={(v) => { setCategory(v); setCategoryError(false); }}>
+                      <SelectTrigger id="category" className="bg-muted border-border text-foreground">
+                        <SelectValue placeholder="Select a reason" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        {reportCategories.map((cat) => (
+                          <SelectItem
+                            key={cat.value}
+                            value={cat.value}
+                            className="text-popover-foreground"
+                          >
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="t-error-msg text-[11px] text-red-500 mt-1">Please select a report category</p>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="details" className="text-foreground">

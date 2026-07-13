@@ -76,7 +76,7 @@ export function SourceCard({
 
   return (
     <div
-      className={`bg-card border border-border rounded-xl p-4 transition-all duration-500 ease-out hover:border-foreground/20 hover:shadow-sm group ${
+      className={`bg-card border border-border rounded-xl p-4 transition-all duration-500 ease-out hover:border-foreground/20 hover:shadow-linear-sm group ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
       }`}
     >
@@ -140,8 +140,8 @@ export function SourceCard({
                 confidence > 70
                   ? 'var(--color-foreground)'
                   : confidence > 40
-                    ? 'hsl(35, 90%, 55%)'
-                    : 'hsl(0, 70%, 55%)',
+                    ? 'var(--amber)'
+                    : 'var(--red)',
             }}
           />
         </div>

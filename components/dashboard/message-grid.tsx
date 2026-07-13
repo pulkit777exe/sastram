@@ -32,14 +32,10 @@ export function MessageGrid({ messages }: MessageGridProps) {
 
   return (
     <div className="grid gap-4">
-      {messages.map((message, index) => (
-        <div
-          key={message.id}
-          className="animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both"
-          style={{ animationDelay: `${index * 100}ms` }}
-        >
+      {messages.map((message) => (
+        <div key={message.id}>
           <Link href={ROUTES.THREAD(message.section.slug)}>
-            <div className="group flex flex-col gap-2 rounded-xl bg-card border border-border p-5 shadow-sm transition-all hover:shadow-md hover:border-brand/20 hover:bg-muted/50">
+            <div className="group flex flex-col gap-2 rounded-xl bg-card border border-border p-5 shadow-linear-sm transition-all hover:shadow-linear-md hover:border-brand/20 hover:bg-muted/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-brand">

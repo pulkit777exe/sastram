@@ -91,26 +91,26 @@ export function CreateTopicButton() {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold tracking-tight">Create New Topic</DialogTitle>
-          <DialogDescription className="text-zinc-500">
+          <DialogDescription className="text-muted-foreground">
             Start a new discussion thread. It will appear on the global feed.
           </DialogDescription>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-zinc-500">
+            <Label htmlFor="title" className="text-muted-foreground">
               Title
             </Label>
             <Input id="title" name="title" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-zinc-500">
+            <Label htmlFor="description" className="text-muted-foreground">
               Description
             </Label>
             <Textarea id="description" name="description" className="min-h-[100px]" required />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="tags" className="text-zinc-500">
+            <Label htmlFor="tags" className="text-muted-foreground">
               Tags (up to 5)
             </Label>
             <Input

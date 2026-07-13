@@ -19,29 +19,28 @@ export function UserStats({
       label: 'Followers',
       value: followerCount,
       icon: Users,
-      color: 'text-blue-500',
+      color: 'text-brand',
     },
     {
       label: 'Following',
       value: followingCount,
       icon: UserCheck,
-      color: 'text-green-500',
+      color: 'text-brand',
     },
     {
       label: 'Threads',
       value: threadsCount,
       icon: MessageSquare,
-      color: 'text-purple-500',
+      color: 'text-brand',
     },
   ];
 
   return (
     <div className="grid grid-cols-3 gap-4">
-      {stats.map((stat, index) => (
+      {stats.map((stat) => (
         <div
           key={stat.label}
-          className="rounded-lg border bg-card p-4 text-center animate-in fade-in slide-in-from-bottom-2 duration-400 fill-mode-both"
-          style={{ animationDelay: `${700 + index * 100}ms` }}
+          className="rounded-lg border bg-card p-4 text-center"
         >
           <stat.icon className={cn('h-5 w-5 mx-auto mb-2', stat.color)} />
           <div className="text-2xl font-bold text-foreground">{stat.value}</div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -176,7 +176,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
             className={cn(
               'h-1.5 w-1.5 rounded-full shrink-0',
               isEffectivelyActive
-                ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                ? 'bg-emerald-500 shadow-linear-sm'
                 : 'bg-muted-foreground/40'
             )}
           />
@@ -199,27 +199,18 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
             </span>
           )}
 
-          <motion.div
-            animate={{ rotate: isCollapsed ? -90 : 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          <div
+            className="transition-transform duration-200 ease-in-out"
+            style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
           >
             <ChevronDown size={15} className="text-muted-foreground/60" />
-          </motion.div>
+          </div>
         </div>
       </button>
 
       {/* ── Collapsible body ── */}
-      <AnimatePresence initial={false}>
-        {!isCollapsed && (
-          <motion.div
-            key="poll-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
+      <div className="t-panel-slide" data-open={isCollapsed ? 'false' : 'true'}>
+        <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
               {poll ? (
                 <div className="space-y-3">
                   <PollDisplay poll={poll} pollResults={pollResults} refreshKey={pollRefreshKey} />
@@ -357,9 +348,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
     </div>
   );
 }

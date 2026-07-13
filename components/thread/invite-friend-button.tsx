@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { UserPlus, Mail } from 'lucide-react';
 import { inviteFriendToThread } from '@/modules/invitations/actions';
 import { toasts } from '@/lib/utils/toast';
+import { cn } from '@/lib/utils/cn';
 
 
 interface InviteFriendButtonProps {
@@ -29,13 +30,29 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const triggerShake = () => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const input = wrap.querySelector('.t-input');
+    if (!input) return;
+    input.classList.remove('is-shaking');
+    void (input as HTMLElement).offsetWidth;
+    input.classList.add('is-shaking');
+    setTimeout(() => input.classList.remove('is-shaking'), 300);
+  };
+
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
 
     if (!email.trim()) {
-      toasts.error('Please enter an email address');
+      setEmailError(true);
+      triggerShake();
       return;
     }
+    setEmailError(false);
 
     setIsSubmitting(true);
     const formData = new FormData();
@@ -81,17 +98,20 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="friend@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+              <div ref={wrapRef} className={cn('t-input-wrap', emailError && 'is-error')}>
+                <div className={cn('t-input relative', emailError && 'is-error')}>
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="friend@example.com"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setEmailError(false); }}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+                <p className="t-error-msg text-[11px] text-red-500 mt-1">Please enter an email address</p>
               </div>
             </div>
             <div className="space-y-2">

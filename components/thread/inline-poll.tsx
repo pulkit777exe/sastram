@@ -90,7 +90,7 @@ const validOptions = options.filter(option => option.trim().length > 0);
   if (!isOpen) return null;
 
   return (
-    <div className="space-y-4 p-4 bg-card rounded-lg shadow-lg border border-border">
+    <div className="space-y-4 p-4 bg-card rounded-lg shadow-linear-lg border border-border">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Create a Poll</h3>
         <Button 

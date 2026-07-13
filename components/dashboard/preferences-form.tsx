@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Sun, Moon, Monitor, Bell, Mail, Sparkles } from 'lucide-react';
+import { Sun, Moon, Monitor, Bell, Mail, Sparkles, Shield } from 'lucide-react';
 import { updateUserPreferencesAction } from '@/modules/users/actions';
 import { toasts } from '@/lib/utils/toast';
 import { useMemo, useState } from 'react';
@@ -54,9 +54,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
 
   return (
     <div className="grid gap-6">
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
             <Monitor className="h-5 w-5" />
           </div>
           <div>
@@ -102,9 +102,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '100ms' }}>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
             <Mail className="h-5 w-5" />
           </div>
           <div>
@@ -137,9 +137,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '200ms' }}>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 text-green-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
             <Bell className="h-5 w-5" />
           </div>
           <div>
@@ -201,9 +201,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '300ms' }}>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
@@ -231,10 +231,10 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '400ms' }}>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
-            <Monitor className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+            <Shield className="h-5 w-5" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-foreground">Privacy</h2>

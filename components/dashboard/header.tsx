@@ -68,7 +68,7 @@ export function DashboardHeader() {
           >
             <Bell className="h-5 w-5 text-muted-foreground" />
             {unreadCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center p-0 bg-red-500 text-white text-[10px]">
+              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center p-0 bg-destructive text-white text-[10px]">
                 {unreadLabel}
               </Badge>
             )}

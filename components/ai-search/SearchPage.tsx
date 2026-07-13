@@ -192,7 +192,7 @@ export function SearchPage() {
             <span>AI-Powered</span>
           </div>
           <h1 className="text-4xl font-bold tracking-tight">AI Search</h1>
-          <p className="text-zinc-500 max-w-md">
+          <p className="text-muted-foreground max-w-md">
             Search across Reddit, Hacker News, ArchWiki, Stack Overflow & more — powered by Exa,
             Tavily, and Gemini.
           </p>
@@ -213,7 +213,7 @@ export function SearchPage() {
             <KeyRound size={14} />
             API Keys
             {hasKeys && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
             )}
           </button>
         </div>
@@ -233,7 +233,7 @@ export function SearchPage() {
               <h2 className="text-2xl font-bold tracking-tight mb-2">
                 What do you want to search?
               </h2>
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-muted-foreground">
                 AI synthesizes answers from multiple sources with confidence scoring.
               </p>
             </div>

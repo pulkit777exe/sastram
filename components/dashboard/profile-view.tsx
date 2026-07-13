@@ -22,9 +22,9 @@ export function ProfileView({ user }: ProfileViewProps) {
   return (
     <div className="space-y-8">
       <div
-        className="flex flex-col items-center md:flex-row md:items-start gap-6 rounded-2xl border border-border bg-card p-8 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both"
+        className="flex flex-col items-center md:flex-row md:items-start gap-6 rounded-2xl border border-border bg-card p-8 shadow-linear-xl animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both"
       >
-        <Avatar className="h-32 w-32 border-4 border-background shadow-2xl">
+        <Avatar className="h-32 w-32 border-4 border-background shadow-linear-xl">
           <AvatarImage src={user.image || ''} />
           <AvatarFallback className="text-4xl bg-muted text-muted-foreground">
             {user.name?.[0] || 'U'}
@@ -50,10 +50,7 @@ export function ProfileView({ user }: ProfileViewProps) {
         </div>
       </div>
 
-      <div
-        className="grid gap-4 md:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both"
-        style={{ animationDelay: '100ms' }}
-      >
+      <div className="grid gap-4 md:grid-cols-2">
         <StatCard
           title="Total Messages"
           value={user._count.messages}

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { User, Bell, Upload, Image as ImageIcon, X } from 'lucide-react';
+import { User, Bell, Upload, Image as ImageIcon, X, Shield } from 'lucide-react';
 import {
   updateUserProfile,
   uploadAvatar,
@@ -167,9 +167,9 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
   return (
     <div className="grid gap-6">
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
             <User className="h-5 w-5" />
           </div>
           <div>
@@ -388,9 +388,9 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </form>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '100ms' }}>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
             <Bell className="h-5 w-5" />
           </div>
           <div>
@@ -425,10 +425,10 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both" style={{ animationDelay: '200ms' }}>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 text-green-500">
-            <User className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+            <Shield className="h-5 w-5" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-foreground">Profile Privacy</h2>

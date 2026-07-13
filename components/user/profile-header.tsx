@@ -62,11 +62,8 @@ export function ProfileHeader({
       {/* Profile Content */}
       <div className="relative px-6 pb-6">
         {/* Avatar */}
-        <div
-          className="relative -mt-16 mb-4 animate-in fade-in zoom-in-90 duration-400 fill-mode-both"
-          style={{ animationDelay: '200ms' }}
-        >
-          <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+        <div className="relative -mt-16 mb-4">
+          <Avatar className="h-32 w-32 border-4 border-background shadow-linear-lg">
             <AvatarImage src={avatarUrl || undefined} alt={displayName} />
             <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
               {initials}
@@ -77,27 +74,18 @@ export function ProfileHeader({
         {/* User Info */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex-1 space-y-2">
-            <h1
-              className="text-3xl font-bold text-foreground animate-in fade-in slide-in-from-left-4 duration-400 fill-mode-both"
-              style={{ animationDelay: '300ms' }}
-            >
+            <h1 className="text-3xl font-bold text-foreground">
               {displayName}
             </h1>
 
             {!limitedView && user.bio && (
-              <p
-                className="text-muted-foreground animate-in fade-in duration-400 fill-mode-both"
-                style={{ animationDelay: '400ms' }}
-              >
+              <p className="text-muted-foreground">
                 {user.bio}
               </p>
             )}
 
             {!limitedView && (
-              <div
-                className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground animate-in fade-in duration-400 fill-mode-both"
-                style={{ animationDelay: '500ms' }}
-              >
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 {user.location && (
                   <span className="flex items-center gap-1">📍 {user.location}</span>
                 )}
@@ -141,10 +129,7 @@ export function ProfileHeader({
 
           {/* Actions */}
           {!isOwnProfile && !limitedView && (
-            <div
-              className="animate-in fade-in slide-in-from-right-4 duration-400 fill-mode-both"
-              style={{ animationDelay: '300ms' }}
-            >
+            <div>
               <FollowButton userId={user.id} isFollowing={isFollowing} onFollowChange={(delta) => setFollowerCount((prev) => Math.max(0, prev + delta))} />
             </div>
           )}
@@ -152,10 +137,7 @@ export function ProfileHeader({
 
         {/* Stats */}
         {!limitedView && (
-          <div
-            className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-400 fill-mode-both"
-            style={{ animationDelay: '600ms' }}
-          >
+          <div className="mt-6">
             <UserStats
               followerCount={followerCount}
               followingCount={user.followingCount}

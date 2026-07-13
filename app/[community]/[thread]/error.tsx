@@ -12,7 +12,7 @@ export default function ThreadError({ error, reset }: ThreadErrorProps) {
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-(--bg)">
-      <div className="max-w-[420px] rounded-[12px] bg-(--surface) p-[24px] text-center shadow-sm">
+      <div className="max-w-[420px] rounded-[12px] bg-(--surface) p-[24px] text-center shadow-linear-sm">
         <h1 className="font-['Syne'] text-[22px] font-extrabold text-(--text)">
           This thread couldn&apos;t be loaded
         </h1>

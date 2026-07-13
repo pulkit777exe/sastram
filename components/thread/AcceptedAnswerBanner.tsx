@@ -8,7 +8,7 @@ export default function AcceptedAnswerBanner({ answer }: AcceptedAnswerBannerPro
   if (!answer) return null;
 
   return (
-    <div className="mb-[16px] rounded-[10px] border border-[rgba(22,163,74,0.2)] bg-[rgba(22,163,74,0.06)] p-[12px]">
+    <div className="mb-[16px] rounded-[10px] border border-green/20 bg-green/[0.06] p-[12px]">
       <div className="flex items-center justify-between gap-[8px]">
         <div>
           <p className="font-['Syne'] text-[13px] font-bold uppercase tracking-[0.16em] text-(--green)">

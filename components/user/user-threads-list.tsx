@@ -32,12 +32,8 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
 
   return (
     <div className="grid gap-4">
-      {threads.map((thread, index) => (
-        <div
-          key={thread.id}
-          className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both"
-          style={{ animationDelay: `${index * 50}ms` }}
-        >
+      {threads.map((thread) => (
+        <div key={thread.id}>
           <Link
             href={ROUTES.THREAD(thread.slug)}
             className="block rounded-lg border bg-card p-4 hover:bg-accent transition-colors"

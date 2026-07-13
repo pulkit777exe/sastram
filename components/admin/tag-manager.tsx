@@ -32,11 +32,12 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newColor, setNewColor] = useState('#3b82f6');
+  const [newColor, setNewColor] = useState('#3736fc');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteClosing, setDeleteClosing] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
   const [mergeSource, setMergeSource] = useState('');
   const [mergeTarget, setMergeTarget] = useState('');
@@ -59,7 +60,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
 
     setTags((prev) => [optimisticTag, ...prev]);
     setNewName('');
-    setNewColor('#3b82f6');
+    setNewColor('#3736fc');
     setShowCreate(false);
     toasts.success('Tag created');
 
@@ -408,8 +409,15 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
 
       {/* Delete confirmation */}
       {deletingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <Card className="w-full max-w-sm mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${deleteClosing ? 'opacity-0' : 'opacity-100'}`}
+            onClick={() => {
+              setDeleteClosing(true);
+              setTimeout(() => { setDeletingId(null); setDeleteClosing(false); }, 150);
+            }}
+          />
+          <Card className={`t-modal ${deleteClosing ? '' : 'is-open'} relative w-full max-w-sm mx-4 z-10`}>
             <CardContent className="pt-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center shrink-0">
@@ -425,7 +433,10 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button onClick={() => setDeletingId(null)} size="sm" variant="outline">
+                <Button onClick={() => {
+                  setDeleteClosing(true);
+                  setTimeout(() => { setDeletingId(null); setDeleteClosing(false); }, 150);
+                }} size="sm" variant="outline">
                   Cancel
                 </Button>
                 <Button onClick={handleDelete} size="sm" variant="destructive">

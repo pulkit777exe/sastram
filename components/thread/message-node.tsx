@@ -227,7 +227,7 @@ export const CommentNode = React.memo(function CommentNode({
         <button
           onClick={() => onToggleCollapse(node.id)}
           className="absolute left-0 top-0 bottom-0 w-0.5 cursor-pointer z-10
-                     bg-[rgba(55,54,252,0.15)] hover:bg-[rgba(55,54,252,0.4)]
+                     bg-brand/15 hover:bg-brand/40
                      transition-colors duration-150 rounded-full"
           style={{ marginLeft: '-11px' }}
           aria-label={isCollapsed ? 'Expand thread' : 'Collapse thread'}
@@ -281,7 +281,7 @@ export const CommentNode = React.memo(function CommentNode({
                   </span>
                 )}
                 {node.isAiResponse && (
-                  <span className="bg-violet-100 text-violet-700 text-[9px] px-1.5 py-px rounded-full font-medium">
+                  <span className="bg-brand/10 text-brand text-[9px] px-1.5 py-px rounded-full font-medium">
                     AI
                   </span>
                 )}
@@ -353,13 +353,13 @@ export const CommentNode = React.memo(function CommentNode({
 
               {aiStatus === 'pending' && !node.isAiResponse && (
                 <div className="mt-2 space-y-2 animate-pulse">
-                  <div className="h-3 w-full bg-blue-500/20 rounded" />
-                  <div className="h-3 w-5/6 bg-blue-500/20 rounded" />
-                  <div className="h-3 w-4/5 bg-blue-500/20 rounded" />
+                  <div className="h-3 w-full bg-brand/20 rounded" />
+                  <div className="h-3 w-5/6 bg-brand/20 rounded" />
+                  <div className="h-3 w-4/5 bg-brand/20 rounded" />
                 </div>
               )}
               {aiStatus === 'failed' && !node.isAiResponse && (
-                <p className="text-[11px] text-amber-600 mt-1">
+                <p className="text-[11px] text-amber mt-1">
                   AI couldn&apos;t process this. Try rephrasing your question.
                 </p>
               )}

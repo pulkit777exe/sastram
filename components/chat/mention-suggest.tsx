@@ -34,7 +34,7 @@ export function MentionSuggest({
   return (
     <div
       ref={listRef}
-      className="absolute bottom-13 left-4 z-30 w-[280px] rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
+      className="absolute bottom-13 left-4 z-30 w-[280px] rounded-xl border border-border bg-popover shadow-linear-xl overflow-hidden"
     >
       <div className="max-h-56 overflow-y-auto py-1.5">
         {candidates.map((candidate, index) => (

@@ -96,7 +96,7 @@ export function SearchBox({ onSearch, isLoading, compact = false }: SearchBoxPro
 
       {/* Search input container */}
       <div
-        className={`relative bg-card border border-border shadow-sm hover:shadow-md transition-shadow duration-300 ${
+        className={`relative bg-card border border-border shadow-linear-sm hover:shadow-linear-md transition-shadow duration-300 ${
           compact ? 'rounded-xl' : 'rounded-2xl'
         }`}
       >
@@ -149,7 +149,7 @@ export function SearchBox({ onSearch, isLoading, compact = false }: SearchBoxPro
                 <ChevronDown size={12} />
               </button>
               {activeDropdown === 'exa' && (
-                <div className="absolute bottom-full mb-1 right-0 bg-popover border border-border rounded-lg shadow-lg py-1 z-50 min-w-[120px]">
+                <div className="absolute bottom-full mb-1 right-0 bg-popover border border-border rounded-lg shadow-linear-lg py-1 z-50 min-w-[120px]">
                   {EXA_MODES.map((m) => (
                     <button
                       key={m.value}
@@ -180,7 +180,7 @@ export function SearchBox({ onSearch, isLoading, compact = false }: SearchBoxPro
                 <ChevronDown size={12} />
               </button>
               {activeDropdown === 'tavily' && (
-                <div className="absolute bottom-full mb-1 right-0 bg-popover border border-border rounded-lg shadow-lg py-1 z-50 min-w-[120px]">
+                <div className="absolute bottom-full mb-1 right-0 bg-popover border border-border rounded-lg shadow-linear-lg py-1 z-50 min-w-[120px]">
                   {TAVILY_MODES.map((m) => (
                     <button
                       key={m.value}
@@ -208,7 +208,7 @@ export function SearchBox({ onSearch, isLoading, compact = false }: SearchBoxPro
               aria-label="Submit search"
               className={`p-2 rounded-xl transition-all duration-200 cursor-pointer ${
                 query.trim().length >= 3 && !isLoading
-                  ? 'bg-foreground text-background hover:opacity-90 shadow-sm'
+                  ? 'bg-foreground text-background hover:opacity-90 shadow-linear-sm'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               }`}
             >

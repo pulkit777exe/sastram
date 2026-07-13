@@ -29,7 +29,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
 
   return (
     <div className="flex items-center gap-2 p-2 rounded-lg border transition-colors group">
-      <div className="p-1.5 rounded-md border shadow-sm text-muted-foreground">
+      <div className="p-1.5 rounded-md border shadow-linear-sm text-muted-foreground">
         <FileIcon size={14} />
       </div>
       <div className="max-w-[120px]">

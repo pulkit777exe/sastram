@@ -39,6 +39,8 @@ const KEY_CONFIGS = [
 
 export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [visible, setVisible] = useState(false);
   const [keys, setKeys] = useState<Record<string, string>>(() => {
     if (typeof window === 'undefined') return {};
     const loaded: Record<string, string> = {};
@@ -51,7 +53,25 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (isOpen) {
+      setIsClosing(false);
+      setVisible(true);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen && visible) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setVisible(false);
+        setIsClosing(false);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, visible]);
+
+  useEffect(() => {
+    if (!visible) return;
     const modalElement = modalRef.current;
     if (!modalElement) return;
 
@@ -108,7 +128,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
     handleKeyChange(id, '');
   };
 
-  if (!isOpen) return null;
+  if (!visible) return null;
 
   return (
     <div
@@ -118,10 +138,16 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
       aria-label="API Keys configuration"
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isClosing ? 'opacity-0' : 'opacity-100'}`}
+        onClick={onClose}
+      />
 
       {/* Modal */}
-      <div ref={modalRef} className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div
+        ref={modalRef}
+        className={`t-modal ${isClosing ? 'is-closing' : 'is-open'} relative bg-card border border-border rounded-2xl shadow-linear-md w-full max-w-md mx-4 overflow-hidden`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">

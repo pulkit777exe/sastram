@@ -32,7 +32,7 @@ export function MessageActions({
   return (
     <div
       className={cn(
-        "absolute right-3 -top-4 flex items-center gap-0 bg-background border border-border/80 shadow-lg rounded-xl p-0.5 transition-all duration-100 z-20",
+        "absolute right-3 -top-4 flex items-center gap-0 bg-background border border-border/80 shadow-linear-lg rounded-xl p-0.5 transition-all duration-100 z-20",
         className
       )}
     >

@@ -144,7 +144,7 @@ export default function ForgotPasswordVerifyPage() {
 
   return (
     <main className="flex flex-1 items-center justify-center py-16 px-6">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 space-y-5 shadow-sm">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 space-y-5 shadow-linear-sm">
         <div className="space-y-1 text-center">
           <SerifHeading as="h1" className="text-2xl tracking-tight block">
             Verify Reset Code

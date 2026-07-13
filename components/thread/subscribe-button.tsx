@@ -138,7 +138,7 @@ export function ThreadSubscribeButton({
       {isOpen && (
         <div
           className={cn(
-            't-dropdown absolute left-0 right-0 mt-2 rounded-lg border border-border bg-popover shadow-lg z-20',
+            't-dropdown absolute left-0 right-0 mt-2 rounded-lg border border-border bg-popover shadow-linear-lg z-20',
             isClosing ? 'is-closing' : 'is-open'
           )}
           data-origin="top-left"
