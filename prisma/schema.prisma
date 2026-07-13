@@ -212,11 +212,11 @@ model Community {
   slug        String              @unique
   description String?
   visibility  CommunityVisibility @default(PUBLIC)
-  // Settings: { allowPolls, requireApproval, aiSummaryEnabled }
   settings    Json                @default("{}")
   createdBy   String
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+  deletedAt   DateTime?
 
   creator  User     @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   threads  Thread[]
@@ -244,6 +244,7 @@ model Thread {
   isOutdated      Boolean   @default(false)
   aiSummary       String?   @db.Text
   threadDna       Json?
+  deletedAt       DateTime?
 
   creator       User                 @relation("ThreadCreator", fields: [createdBy], references: [id])
   community     Community?           @relation(fields: [communityId], references: [id])
@@ -264,6 +265,7 @@ model Thread {
   @@index([communityId])
   @@index([createdBy])
   @@index([resolutionScore])
+  @@index([visibility, communityId, updatedAt])
   @@map("threads")
 }
 
@@ -282,6 +284,7 @@ model ThreadMember {
   @@index([threadId])
   @@index([threadId, status])
   @@index([userId])
+  @@index([userId, status])
   @@map("thread_members")
 }
 
@@ -440,6 +443,7 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
+  @@index([userId, createdAt])
   @@index([createdAt])
   @@map("notifications")
 }
@@ -596,8 +600,6 @@ model PollVote {
   @@map("poll_votes")
 }
 
-// Single activity table replaces AuditLog + UserActivity
-// type examples: 'MESSAGE_CREATED', 'THREAD_JOINED', 'AI_SEARCH'
 model UserActivity {
   id         String   @id @default(cuid())
   userId     String
@@ -634,7 +636,6 @@ model ThreadInvitation {
   @@map("thread_invitations")
 }
 
-// Groups a user's search session (one query = one session)
 model AiSearchSession {
   id              String   @id @default(cuid())
   userId          String
@@ -677,7 +678,6 @@ model AiSearchResult {
   @@map("ai_search_results")
 }
 
-// Cross-thread semantic relationships (powers "Related Resolutions")
 model ThreadRelation {
   id             String   @id @default(cuid())
   sourceThreadId String

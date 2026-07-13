@@ -9,6 +9,8 @@ import { updateAllThreadRelations } from '@/modules/threads';
 import { prewarmFollowUpQueries } from '@/modules/ai-search';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
+import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
+import { reconcileCounters } from '@/lib/services/counter-reconciliation';
 
 const BATCH_SIZE = 25;
 const QSTASH_GUARD_THRESHOLD = 400;
@@ -37,6 +39,7 @@ export async function GET(req: NextRequest) {
           updatedAt: {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           },
+          deletedAt: null,
           ...(cursor ? { id: { gt: cursor } } : {}),
         },
         include: {
@@ -108,12 +111,26 @@ export async function GET(req: NextRequest) {
     // Best-effort usage tripwire — logs warnings if approaching free-tier limits
     await checkAndLogUsage();
 
+    // Phase 1 / Soft-delete retention purge — bounded batches; only fires when there's
+    // expired soft-deleted rows. Same wall-clock budget concern as the rest of the cron.
+    const purgeResult = await purgeSoftDeleted();
+
+    // Phase 2 / Counter reconciliation — report-only by default. Full-table scans of
+    // Thread + active Message rows; bounded by current prod volume.
+    const reconciliationResult = await reconcileCounters();
+
     return NextResponse.json(
       ok({
         processed: totalProcessed,
         jobsAdded: totalJobsAdded,
         relationsUpdated: relationsResult.updated,
         prewarmedQueries: prewarmResult.prewarmed,
+        purgedThreads: purgeResult.threads,
+        purgedCommunities: purgeResult.communities,
+        reconciliation: {
+          scanned: reconciliationResult.scanned,
+          driftsFound: reconciliationResult.drifts.length,
+        },
       })
     );
   } catch (error) {

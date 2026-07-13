@@ -9,7 +9,6 @@ const PUBLIC_PATHS = [
   '/terms',
   '/login',
   '/forgot-password',
-  '/chat',
   '/api-docs',
   '/banned',
   '/api/auth',
