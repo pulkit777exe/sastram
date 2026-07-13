@@ -84,6 +84,7 @@ export const getUserThreads = cache(async (userId: string, limit: number = 20, o
       prisma.thread.findMany({
         where: {
           createdBy: userId,
+          deletedAt: null,
         },
         select: {
           id: true,
@@ -109,6 +110,7 @@ export const getUserThreads = cache(async (userId: string, limit: number = 20, o
       prisma.thread.count({
         where: {
           createdBy: userId,
+          deletedAt: null,
         },
       }),
     ]);

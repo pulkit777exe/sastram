@@ -153,7 +153,7 @@ export async function getTagBySlug(slug: string) {
 
 export async function getThreadsByTag(tagId: string, memberUserIds?: string[]) {
   try {
-    const where: Record<string, unknown> = { tags: { some: { tagId } } };
+    const where: Record<string, unknown> = { tags: { some: { tagId } }, deletedAt: null };
     if (memberUserIds && memberUserIds.length > 0) {
       where.members = { some: { userId: { in: memberUserIds }, status: 'ACTIVE' } };
     }

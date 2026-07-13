@@ -9,6 +9,7 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
         { description: { contains: query, mode: 'insensitive' as const } },
         { aiSummary: { contains: query, mode: 'insensitive' as const } },
       ],
+      deletedAt: null,
       ...(threadIds && threadIds.length > 0 ? { id: { in: threadIds } } : {}),
     };
     const [threads, total] = await Promise.all([
@@ -65,6 +66,8 @@ export async function searchMessages(
     const where: any = {
       deletedAt: null,
       content: { contains: query, mode: 'insensitive' },
+      // Exclude messages from soft-deleted threads — the thread is invisible everywhere else.
+      thread: { deletedAt: null },
     };
 
     if (threadId) {

@@ -1,17 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/services/auth';
+import { NextResponse } from 'next/server';
+import { requireSessionOrThrow } from '@/modules/auth/session';
 import { ok, fail } from '@/lib/utils/api-response';
 import { getUserBootstrapProfile } from '@/modules/users/repository';
 import { getUnreadCount } from '@/modules/notifications/repository';
 import { getUserActivity } from '@/modules/activity/repository';
 import { getJoinedCommunities } from '@/modules/communities/repository';
 
-export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session?.user) {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: 401 });
-  }
+export async function GET() {
+  const session = await requireSessionOrThrow();
 
   const userId = session.user.id;
 

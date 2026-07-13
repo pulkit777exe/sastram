@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Thread needs at least 50 messages before a summary can be generated.'), { status: 400 });
     }
 
-    const thread = await prisma.thread.findUnique({
-      where: { id: threadId },
+    const thread = await prisma.thread.findFirst({
+      where: { id: threadId, deletedAt: null },
       include: {
         messages: {
           take: getEnv().AI_ANALYSIS_MESSAGE_LIMIT,

@@ -335,6 +335,7 @@ export async function getThreadWithFullContext(
           (SELECT COUNT(*)::int FROM "thread_members" sm2 WHERE sm2."threadId" = s.id AND sm2.status = 'ACTIVE') as member_count
       ) counts ON true
       WHERE s.slug = ${slug}
+        AND s."deletedAt" IS NULL
       LIMIT 1
     `;
 

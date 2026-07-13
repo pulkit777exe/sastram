@@ -60,8 +60,8 @@ export async function createMentionsForMessage(args: {
     });
   }
 
-  const thread = await prisma.thread.findUnique({
-    where: { id: args.threadId },
+  const thread = await prisma.thread.findFirst({
+    where: { id: args.threadId, deletedAt: null },
     select: { name: true, slug: true },
   });
 

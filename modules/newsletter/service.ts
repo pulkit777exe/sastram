@@ -72,8 +72,8 @@ export async function processPendingDigests() {
     const subscribers = await listThreadSubscribers(digest.threadId);
 
     // Get thread info for email
-    const thread = await prisma.thread.findUnique({
-      where: { id: digest.threadId },
+    const thread = await prisma.thread.findFirst({
+      where: { id: digest.threadId, deletedAt: null },
       select: { name: true, slug: true, messageCount: true },
     });
 

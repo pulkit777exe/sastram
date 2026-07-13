@@ -53,8 +53,8 @@ export async function findRelatedThreads(threadId: string): Promise<
   }>
 > {
   try {
-    const thread = await prisma.thread.findUnique({
-      where: { id: threadId },
+    const thread = await prisma.thread.findFirst({
+      where: { id: threadId, deletedAt: null },
       select: {
         threadDna: true,
       },
@@ -70,6 +70,7 @@ export async function findRelatedThreads(threadId: string): Promise<
       where: {
         id: { not: threadId },
         threadDna: { not: Prisma.DbNull },
+        deletedAt: null,
       },
       select: {
         id: true,
@@ -204,6 +205,7 @@ export async function updateAllThreadRelations(): Promise<{
         updatedAt: {
           gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         },
+        deletedAt: null,
       },
       select: {
         id: true,

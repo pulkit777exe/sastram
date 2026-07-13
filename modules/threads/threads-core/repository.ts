@@ -36,7 +36,7 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
   const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, threadIds } = params;
   const skip = (page - 1) * pageSize;
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { deletedAt: null };
   if (memberUserId) {
     where.members = { some: { userId: memberUserId } };
   }
@@ -149,6 +149,7 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
   const row = await prisma.thread.findFirst({
     where: {
       slug,
+      deletedAt: null,
     },
     include: {
       community: true,

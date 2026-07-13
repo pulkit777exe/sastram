@@ -170,8 +170,8 @@ export const manageThreadMemberAction = createServerAction(
     try {
       const session = await requireSession();
 
-      const thread = await prisma.thread.findUnique({
-        where: { id: threadId },
+      const thread = await prisma.thread.findFirst({
+        where: { id: threadId, deletedAt: null },
         select: { createdBy: true, slug: true },
       });
 

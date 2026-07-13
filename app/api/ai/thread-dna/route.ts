@@ -56,8 +56,8 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   }
 
   // Fetch thread and messages
-  const thread = await prisma.thread.findUnique({
-    where: { id: threadId },
+  const thread = await prisma.thread.findFirst({
+    where: { id: threadId, deletedAt: null },
     include: {
       messages: {
         take: Math.min(parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10) || 50, 100),

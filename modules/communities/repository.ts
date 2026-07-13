@@ -40,6 +40,7 @@ export const listCommunities = cache(async (): Promise<CommunitySummary[]> => {
   try {
     const communities = await dedupe('communities:list', () =>
       prisma.community.findMany({
+        where: { deletedAt: null },
         include: {
           _count: {
             select: {
@@ -67,6 +68,7 @@ export const getJoinedCommunities = cache(async (userId: string) => {
     const communities = await dedupe(`communities:joined:${userId}`, () =>
       prisma.community.findMany({
         where: {
+          deletedAt: null,
           threads: {
             some: {
               members: {

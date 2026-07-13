@@ -72,8 +72,9 @@ export async function validateEntityForDeletion(
       });
       break;
     case 'section':
-      entity = await prisma.thread.findUnique({
-        where: { id: entityId },
+      // Exclude soft-deleted threads: deleting an already-deleted thread is a no-op error.
+      entity = await prisma.thread.findFirst({
+        where: { id: entityId, deletedAt: null },
         select: {
           id: true,
           name: true,
@@ -84,8 +85,9 @@ export async function validateEntityForDeletion(
       });
       break;
     case 'community':
-      entity = await prisma.community.findUnique({
-        where: { id: entityId },
+      // Exclude soft-deleted communities: deleting an already-deleted community is a no-op error.
+      entity = await prisma.community.findFirst({
+        where: { id: entityId, deletedAt: null },
         select: {
           id: true,
           title: true,
