@@ -51,7 +51,7 @@ export default function AISearchPage() {
           <span>AI Search</span>
         </div>
         <h1 className="text-4xl font-bold tracking-tight">Search with AI</h1>
-        <p className="text-zinc-500 mt-2">
+        <p className="text-muted-foreground mt-2">
           Search across Reddit, Hacker News, ArchWiki, Stack Overflow and more.
         </p>
       </div>

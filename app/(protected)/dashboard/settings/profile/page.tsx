@@ -15,14 +15,14 @@ export default async function ProfilePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-4 mb-4">
         <Link href="/dashboard/settings">
-          <Button variant="ghost" size="sm" className="text-zinc-500">
+          <Button variant="ghost" size="sm" className="text-muted-foreground">
             <ArrowLeft size={16} className="mr-2" />
             Back to Settings
           </Button>
         </Link>
       </div>
 
-      <Card className="rounded-2xl border p-8 shadow-sm">
+      <Card className="rounded-2xl border p-8 shadow-linear-sm">
         <CardContent className="flex flex-col gap-6 p-0 md:flex-row md:items-center">
           <div className="flex h-20 w-20 items-center justify-center bg-secondary overflow-hidden rounded-full">
             {user.image ? (
@@ -36,7 +36,7 @@ export default async function ProfilePage() {
           <div className="flex-1">
             <p className="text-sm uppercase tracking-widest">Profile</p>
             <h1 className="mt-2 text-2xl font-semibold">{user.name || 'Unnamed'}</h1>
-            <p className="text-zinc-500">{user.email}</p>
+            <p className="text-muted-foreground">{user.email}</p>
             <p className="mt-2 inline-flex rounded-full bg-brand/10 text-brand px-3 py-1 text-xs uppercase tracking-wide border border-brand/20">
               {user.role}
             </p>
@@ -57,14 +57,14 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border p-6 shadow-sm">
+      <Card className="rounded-2xl border p-6 shadow-linear-sm">
         <CardContent className="space-y-4 p-0">
           <h2 className="text-lg font-semibold">Account Information</h2>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted-foreground">
             Manage your profile settings, newsletter subscriptions, and preferences from the
             Settings page.
           </p>
-          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-zinc-600">
+          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
             <Link
               href="/dashboard/settings"
               className="text-brand hover:text-brand/80 underline"

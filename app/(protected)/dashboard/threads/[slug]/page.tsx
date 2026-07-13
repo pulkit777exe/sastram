@@ -198,7 +198,7 @@ async function ThreadSidebar({
       <div className="p-6 border-b border-border/60">
         <div className="flex items-center gap-2 mb-6">
           <Activity size={14} />
-          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
             Thread Details
           </p>
         </div>
@@ -230,10 +230,10 @@ async function ThreadSidebar({
         )}
 
         <div className="rounded-[10px] border border-border bg-card p-4">
-          <p className="text-[10px] text-zinc-400 font-bold mb-2 uppercase tracking-wider">
+          <p className="text-[10px] text-muted-foreground font-bold mb-2 uppercase tracking-wider">
             Created
           </p>
-          <p className="text-xs text-zinc-600 font-medium">
+          <p className="text-xs text-foreground font-medium">
             <TimeAgo date={thread.createdAt} />
           </p>
         </div>
@@ -242,14 +242,14 @@ async function ThreadSidebar({
       {isAdmin(session.user) && (
         <div className="p-6 mt-auto border-t border-border/60">
           <div className="flex items-center gap-2 mb-4">
-            <ShieldCheck size={14} className="text-zinc-500" />
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+            <ShieldCheck size={14} className="text-muted-foreground" />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               Admin Controls
             </span>
           </div>
           <Link
             href={`/dashboard/admin?threadId=${thread.id}`}
-            className="flex items-center justify-center w-full py-2.5 text-xs font-medium border rounded-lg hover:text-zinc-900 transition-all shadow-sm"
+            className="flex items-center justify-center w-full py-2.5 text-xs font-medium border rounded-lg hover:text-foreground transition-all shadow-linear-sm"
           >
             Manage Thread
           </Link>

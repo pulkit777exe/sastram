@@ -5,12 +5,10 @@ import { Users, MessageSquare, Star, ChevronDown, TrendingUp } from 'lucide-reac
 import { Prisma } from '@prisma/client';
 import { isAdmin, getSession } from '@/modules/auth/session';
 import { logger } from '@/lib/infrastructure/logger';
-import { listThreads } from '@/modules/threads/repository';
 import { listCommunities } from '@/modules/communities/repository';
 import type { CommunitySummary } from '@/modules/communities/types';
 import { TopicGrid } from '@/components/dashboard/topic-grid';
 import { Card, CardContent } from '@/components/ui/card';
-import { ThreadInsights } from '@/components/dashboard/thread-insights';
 import { CreateTopicButton } from '@/components/dashboard/create-topic-button';
 import { CreateThreadDialog } from '@/components/create-thread-dialog';
 import { cn } from '@/lib/utils/cn';
@@ -182,7 +180,7 @@ async function CommunitiesSection({
               </p>
               <div className="mt-4 flex items-center gap-2">
                 <span className="text-xs font-medium">{community.threadCount} threads</span>
-                <div className="h-1 w-1 rounded-full bg-zinc-700" />
+                <div className="h-1 w-1 rounded-full bg-muted-foreground/50" />
                 <span className="text-xs font-medium">Updated today</span>
               </div>
             </CardContent>
@@ -283,14 +281,6 @@ async function TopicGridWithData({
   );
 }
 
-async function ThreadInsightsSection({
-  threads,
-}: {
-  threads: Awaited<ReturnType<typeof listThreads>>['threads'];
-}) {
-  return <ThreadInsights initialThreads={threads} />;
-}
-
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -301,8 +291,7 @@ export default async function DashboardPage({
   const session = await getSession();
   if (!session) return null;
 
-  const [{ threads }, communities, topicThreads] = await Promise.all([
-    listThreads(),
+  const [communities, topicThreads] = await Promise.all([
     listCommunities(),
     prisma.thread.findMany({
       where:
@@ -311,8 +300,9 @@ export default async function DashboardPage({
               AND: selectedTags.map((tagSlug) => ({
                 tags: { some: { tag: { slug: tagSlug } } },
               })),
+              deletedAt: null,
             }
-          : {},
+          : { deletedAt: null },
       select: {
         id: true,
         slug: true,
@@ -333,7 +323,7 @@ export default async function DashboardPage({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">Threads</h1>
-          <p className="text-zinc-500 mt-1">Manage and track your community discussions.</p>
+          <p className="text-muted-foreground mt-1">Manage and track your community discussions.</p>
         </div>
         <div className="flex gap-3">
           <div className="border rounded-lg px-4 py-2 flex items-center gap-2 cursor-pointer text-sm transition-colors">
@@ -376,9 +366,6 @@ export default async function DashboardPage({
         </div>
         <Suspense fallback={<TopicGridSkeleton />}>
           <TopicGridWithData topicThreads={topicThreads} userId={session.user.id} />
-        </Suspense>
-        <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
-          <ThreadInsightsSection threads={threads} />
         </Suspense>
       </section>
     </div>

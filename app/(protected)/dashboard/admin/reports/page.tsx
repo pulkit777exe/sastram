@@ -25,7 +25,7 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-8">
-      <header className="rounded-3xl border border-border bg-muted-foreground/10 p-8 text-foreground shadow-xl">
+      <header className="rounded-3xl border border-border bg-muted-foreground/10 p-8 text-foreground shadow-linear-xl">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>
         <h1 className="mt-3 text-3xl font-semibold">Reports Management</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">

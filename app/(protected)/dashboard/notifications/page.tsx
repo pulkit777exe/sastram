@@ -68,8 +68,8 @@ export default async function NotificationsPage() {
 
   if (!session?.user) {
     return (
-      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-zinc-500">
-        <Bell size={48} className="text-zinc-800" />
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-muted-foreground">
+        <Bell size={48} className="text-foreground" />
         <p>Please log in to view your notifications.</p>
       </div>
     );
@@ -83,7 +83,7 @@ export default async function NotificationsPage() {
           <span>Notifications</span>
         </div>
         <h1 className="text-4xl font-bold tracking-tight">Notifications</h1>
-        <p className="text-zinc-500 mt-2">Stay updated with mentions, replies, and activity.</p>
+        <p className="text-muted-foreground mt-2">Stay updated with mentions, replies, and activity.</p>
       </div>
 
       <Suspense fallback={<NotificationListSkeleton />}>

@@ -17,12 +17,12 @@ export default async function AdminTagsPage(props: {
 
   return (
     <div className="space-y-8">
-      <header className="rounded-4xl border border-slate-800 bg-[radial-gradient(circle_at_top,#101322,#050507)] p-8 text-white shadow-xl">
+      <header className="rounded-4xl border border-border admin-header-gradient p-8 text-white shadow-linear-xl">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs uppercase tracking-widest text-slate-400">Admin Workspace</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>
             <h1 className="mt-3 text-3xl font-semibold">Tag Management</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-300">
+            <p className="mt-2 max-w-2xl text-sm text-white/70">
               Create, edit, merge, and delete tags across all threads.
             </p>
           </div>
