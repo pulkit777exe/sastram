@@ -27,6 +27,11 @@ function isPublicPath(pathname: string): boolean {
   });
 }
 
+function isPublicThreadPath(pathname: string): boolean {
+  const segments = pathname.split('/').filter(Boolean);
+  return segments.length === 2;
+}
+
 const isProd = process.env.NODE_ENV === 'production';
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -82,7 +87,7 @@ export default async function proxy(request: NextRequest) {
   const isPublic = isPublicPath(pathname);
   const sessionCookie = request.cookies.get('better-auth.session_token');
 
-  if (!sessionCookie && !isPublic) {
+  if (!sessionCookie && !isPublic && !isPublicThreadPath(pathname)) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('reason', 'unauthorized');
     loginUrl.searchParams.set('redirect', `${pathname}${search}`);

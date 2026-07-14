@@ -81,6 +81,7 @@ export type ThreadWithFullContext = {
   slug: string;
   description: string | null;
   createdBy: string;
+  visibility: string;
   aiSummary: string | null;
   resolutionScore: number | null;
   isOutdated: boolean;
@@ -112,6 +113,7 @@ type ThreadRow = {
   slug: string;
   description: string | null;
   createdBy: string;
+  visibility: string;
   aiSummary: string | null;
   resolutionScore: number | null;
   isOutdated: boolean;
@@ -213,9 +215,10 @@ export async function getThreadMessagesPaginated(
 
 export async function getThreadWithFullContext(
   slug: string,
-  userId: string
+  userId?: string
 ): Promise<ThreadWithFullContext | null> {
-  return dedupe(`threads:full:${slug}:${userId}`, async () => {
+  const uid = userId ?? '';
+  return dedupe(`threads:full:${slug}:${uid}`, async () => {
     const rows = await prisma.$queryRaw<ThreadRow[]>`
       SELECT
         s.id,
@@ -223,6 +226,7 @@ export async function getThreadWithFullContext(
         s.slug,
         s.description as description,
         s."createdBy" as "createdBy",
+        s."visibility" as "visibility",
         s."aiSummary" as "aiSummary",
         s."resolutionScore" as "resolutionScore",
         s."isOutdated" as "isOutdated",
@@ -243,11 +247,11 @@ export async function getThreadWithFullContext(
         COALESCE(counts.member_count, 0) as member_count,
         EXISTS (
           SELECT 1 FROM "user_bookmarks" b
-          WHERE b."threadId" = s.id AND b."userId" = ${userId}
+          WHERE b."threadId" = s.id AND b."userId" = ${uid}
         ) as is_bookmarked,
         EXISTS (
           SELECT 1 FROM "thread_subscriptions" ts
-          WHERE ts."threadId" = s.id AND ts."userId" = ${userId} AND ts."isActive" = true
+          WHERE ts."threadId" = s.id AND ts."userId" = ${uid} AND ts."isActive" = true
         ) as is_subscribed
       FROM "threads" s
       JOIN "users" u ON u.id = s."createdBy"
@@ -350,6 +354,7 @@ export async function getThreadWithFullContext(
       slug: row.slug,
       description: row.description ?? null,
       createdBy: row.createdBy,
+      visibility: row.visibility,
       aiSummary: row.aiSummary ?? null,
       resolutionScore: row.resolutionScore ?? null,
       isOutdated: row.isOutdated,
