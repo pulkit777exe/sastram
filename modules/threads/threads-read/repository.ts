@@ -346,6 +346,15 @@ export async function getThreadWithFullContext(
     const row = rows[0];
     if (!row) return null;
 
+    if (row.visibility !== 'PUBLIC') {
+      if (!userId) return null;
+      const membership = await prisma.threadMember.findUnique({
+        where: { threadId_userId: { threadId: row.id, userId } },
+        select: { id: true },
+      });
+      if (!membership) return null;
+    }
+
     const aiSearchSession: ThreadAiSearchSession = null;
 
     return {

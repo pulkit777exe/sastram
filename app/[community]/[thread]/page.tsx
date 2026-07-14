@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSession } from '@/modules/auth/session';
 import { getThreadWithFullContext, getThreadMessagesPaginated } from '@/modules/threads';
@@ -133,7 +134,7 @@ async function ThreadSidebar({ slug, userId }: { slug: string; userId: string })
   return <RightPanel thread={thread} />;
 }
 
-async function PublicThreadContent({ slug }: { slug: string }) {
+async function PublicThreadContent({ slug, pathname }: { slug: string; pathname: string }) {
   const thread = await getThreadWithFullContext(slug);
 
   if (!thread || thread.visibility !== 'PUBLIC') {
@@ -203,15 +204,22 @@ async function PublicThreadContent({ slug }: { slug: string }) {
           }}
         />
       </div>
-      <div className="mt-3 rounded-[12px] bg-(--surface) p-4 shadow-linear-sm text-center text-sm text-muted-foreground">
-        Sign in to join the conversation.
+      <div className="mt-3 rounded-[12px] bg-(--surface) p-4 shadow-linear-sm text-center text-sm">
+        <Link
+          href={`/login?redirect=${encodeURIComponent(pathname)}`}
+          className="text-(--accent) hover:underline font-medium"
+        >
+          Sign in
+        </Link>
+        {' '}to join the conversation.
       </div>
     </>
   );
 }
 
 export default async function ThreadPage({ params }: ThreadPageParams) {
-  const { thread: slug } = await params;
+  const { community, thread: slug } = await params;
+  const pathname = `/${community}/${slug}`;
   const session = await getSession();
 
   if (session) {
@@ -244,7 +252,7 @@ export default async function ThreadPage({ params }: ThreadPageParams) {
       <div className="grid h-full grid-cols-[minmax(0,1fr)_300px] gap-6 p-6">
         <main className="flex min-w-0 flex-col gap-4 overflow-y-auto">
           <Suspense fallback={<Skeleton className="h-12 w-full rounded-[10px]" />}>
-            <PublicThreadContent slug={slug} />
+            <PublicThreadContent slug={slug} pathname={pathname} />
           </Suspense>
         </main>
 

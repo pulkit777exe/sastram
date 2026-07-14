@@ -60,7 +60,11 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
 export async function requireSession(checkBanStatus = true): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) {
-    redirect('/login?reason=session_expired');
+    const h = await headers();
+    const host = h.get('x-forwarded-host') || h.get('host') || '';
+    const proto = h.get('x-forwarded-proto') || 'https';
+    const url = host ? `${proto}://${host}${h.get('x-invoke-path') || '/'}` : '/';
+    redirect(`/login?reason=session_expired&redirect=${encodeURIComponent(url)}`);
   }
 
   if (checkBanStatus && session.user.status === 'BANNED') {
