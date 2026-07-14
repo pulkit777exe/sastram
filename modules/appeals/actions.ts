@@ -10,6 +10,7 @@ import { withValidation } from '@/lib/utils/server-action';
 import { getBannedUsersSchema } from '@/modules/moderation';
 import { ROUTES } from '@/lib/config/routes';
 import { requireModerationRole } from '@/modules/policy';
+import { createNotification } from '@/modules/notifications';
 
 const createAppealSchema = z.object({
   reason: z.string().min(10, 'Reason must be at least 10 characters long'),
@@ -19,6 +20,7 @@ const createAppealSchema = z.object({
 const resolveAppealSchema = z.object({
   appealId: z.string().cuid(),
   approved: z.boolean(),
+  response: z.string().min(1, 'Response is required').optional(),
 });
 
 export const submitAppeal = withValidation(
@@ -40,32 +42,59 @@ export const submitAppeal = withValidation(
       return { data: null, error: 'No active ban found to appeal', ok: false, errorCode: 'NOT_FOUND' };
     }
 
-    const sourceReport = reportId
-      ? await prisma.report.findUnique({ where: { id: reportId }, select: { messageId: true } })
-      : await prisma.report.findFirst({
-          where: { message: { senderId: session.user.id } },
-          orderBy: { createdAt: 'desc' },
-          select: { messageId: true },
-        });
+    let messageId: string | null = null;
 
-    if (!sourceReport?.messageId) {
-      return { data: null, error: 'No report found to appeal', ok: false, errorCode: 'NOT_FOUND' };
+    if (reportId) {
+      const report = await prisma.report.findUnique({
+        where: { id: reportId },
+        select: { messageId: true },
+      });
+      messageId = report?.messageId ?? null;
     }
 
-    const appealReport = await prisma.report.create({
+    if (!messageId) {
+      const banReport = await prisma.report.findFirst({
+        where: { message: { senderId: session.user.id } },
+        orderBy: { createdAt: 'desc' },
+        select: { messageId: true },
+      });
+      messageId = banReport?.messageId ?? null;
+    }
+
+    if (!messageId) {
+      const lastMessage = await prisma.message.findFirst({
+        where: { senderId: session.user.id },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
+      });
+      messageId = lastMessage?.id ?? null;
+    }
+
+    if (!messageId) {
+      return { data: null, error: 'No message found to appeal', ok: false, errorCode: 'NOT_FOUND' };
+    }
+
+    const existingAppeal = await prisma.appeal.findFirst({
+      where: { userId: session.user.id, status: 'PENDING' },
+    });
+
+    if (existingAppeal) {
+      return { data: null, error: 'You already have a pending appeal', ok: false, errorCode: 'CONFLICT' };
+    }
+
+    const appeal = await prisma.appeal.create({
       data: {
-        messageId: sourceReport.messageId,
-        reporterId: session.user.id,
-        category: 'OTHER',
-        details: `APPEAL: ${reason}`,
+        messageId,
+        userId: session.user.id,
         status: 'PENDING',
+        reason,
       },
     });
 
     await logAction({
       action: 'APPEAL_SUBMITTED',
-      entityType: 'Report',
-      entityId: appealReport.id,
+      entityType: 'Appeal',
+      entityId: appeal.id,
       userId: session.user.id,
       details: { reason, banId: activeBans[0].id },
     });
@@ -87,22 +116,24 @@ export const getAppeals = withValidation(
     const limit = Math.min(filters.limit || 50, 100);
     const offset = filters.offset || 0;
 
-    const whereClause = { status: 'PENDING' as const, category: 'OTHER' as const, details: { startsWith: 'APPEAL:' } };
+    const whereClause = { status: 'PENDING' as const };
 
     const [appeals, totalCount] = await Promise.all([
-      prisma.report.findMany({
+      prisma.appeal.findMany({
         where: whereClause,
-        include: { reporter: { select: { id: true, name: true, email: true, image: true } } },
+        include: {
+          user: { select: { id: true, name: true, email: true, image: true } },
+        },
         orderBy: { createdAt: 'asc' },
         take: limit,
         skip: offset,
       }),
-      prisma.report.count({ where: whereClause }),
+      prisma.appeal.count({ where: whereClause }),
     ]);
 
-    const reporterIds = appeals.map((a) => a.reporterId).filter((id): id is string => id !== null);
+    const userIds = appeals.map((a) => a.userId).filter((id): id is string => id !== null);
     const allBans = await prisma.userBan.findMany({
-      where: { userId: { in: reporterIds }, isActive: true },
+      where: { userId: { in: userIds }, isActive: true },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -114,28 +145,41 @@ export const getAppeals = withValidation(
     }
 
     const appealsWithBanInfo = appeals.map((appeal) => {
-      const activeBan = appeal.reporterId ? banMap.get(appeal.reporterId) : undefined;
+      const activeBan = appeal.userId ? banMap.get(appeal.userId) : undefined;
       return {
         ...appeal,
-        details: appeal.details?.replace(/^APPEAL:\s*/i, '') ?? null,
+        reporter: appeal.user,
         banReason: activeBan?.reason || 'Unknown',
         banDate: activeBan?.createdAt || new Date(),
       };
     });
 
-    return { data: { appeals: appealsWithBanInfo, pagination: { total: totalCount, limit, offset, hasMore: offset + limit < totalCount } }, error: null, ok: true, errorCode: null };
+    return {
+      data: {
+        appeals: appealsWithBanInfo,
+        pagination: {
+          total: totalCount,
+          limit,
+          offset,
+          hasMore: computeHasMore(offset, limit, totalCount),
+        },
+      },
+      error: null,
+      ok: true,
+      errorCode: null,
+    };
   }
 );
 
 export const resolveAppeal = withValidation(
   resolveAppealSchema,
   'resolveAppeal',
-  async ({ appealId, approved }) => {
+  async ({ appealId, approved, response }) => {
     const session = await requireModerationRole();
 
-    const appeal = await prisma.report.findUnique({
+    const appeal = await prisma.appeal.findUnique({
       where: { id: appealId },
-      include: { reporter: true },
+      include: { user: true },
     });
 
     if (!appeal) {
@@ -143,36 +187,53 @@ export const resolveAppeal = withValidation(
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.report.update({
+      await tx.appeal.update({
         where: { id: appealId },
-        data: { status: approved ? 'RESOLVED' : 'DISMISSED', resolvedBy: session.user.id },
+        data: {
+          status: approved ? 'APPROVED' : 'REJECTED',
+          moderatorId: session.user.id,
+          response: response ?? null,
+          resolvedAt: new Date(),
+        },
       });
 
       if (approved) {
         await tx.userBan.updateMany({
-          where: { userId: appeal.reporterId!, isActive: true },
+          where: { userId: appeal.userId!, isActive: true },
           data: { isActive: false },
         });
 
         const remainingBans = await tx.userBan.count({
-          where: { userId: appeal.reporterId!, isActive: true },
+          where: { userId: appeal.userId!, isActive: true },
         });
 
         if (remainingBans === 0) {
           await tx.user.update({
-            where: { id: appeal.reporterId! },
+            where: { id: appeal.userId! },
             data: { status: 'ACTIVE' },
           });
         }
       }
     });
 
+    if (appeal.userId) {
+      await createNotification({
+        userId: appeal.userId,
+        type: 'SYSTEM',
+        title: approved ? 'Appeal Approved' : 'Appeal Rejected',
+        message: approved
+          ? `Your appeal has been approved. ${response ?? 'Your account has been restored.'}`
+          : `Your appeal has been reviewed and rejected. ${response ?? 'No further action was taken.'}`,
+        data: { appealId },
+      });
+    }
+
     await logAction({
       action: 'APPEAL_RESOLVED',
-      entityType: 'Report',
+      entityType: 'Appeal',
       entityId: appealId,
       userId: session.user.id,
-      details: { approved, userId: appeal.reporterId },
+      details: { approved, userId: appeal.userId, response },
     });
 
     revalidatePath(ROUTES.ADMIN_APPEALS);

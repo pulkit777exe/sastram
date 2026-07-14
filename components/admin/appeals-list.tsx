@@ -32,7 +32,8 @@ interface Appeal {
     email: string;
     image: string | null;
   } | null;
-  details: string | null;
+  reason: string;
+  details?: string | null;
   status: string;
   createdAt: Date;
   banReason: string;
@@ -109,9 +110,9 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 </TableCell>
                 <TableCell
                   className="max-w-[300px] truncate text-sm italic text-muted-foreground"
-                  title={appeal.details || ''}
+                  title={appeal.reason}
                 >
-                  &quot;{appeal.details || 'No appeal reason provided'}&quot;
+                  &quot;{appeal.reason || 'No appeal reason provided'}&quot;
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
@@ -169,7 +170,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
 
                 <span className="text-muted-foreground">Appeal:</span>
                 <div className="p-3 bg-muted rounded-md text-xs italic">
-                  &quot;{selectedAppeal.details || 'No appeal reason provided'}&quot;
+                  &quot;{selectedAppeal.reason || 'No appeal reason provided'}&quot;
                 </div>
               </div>
             </div>

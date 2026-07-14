@@ -182,7 +182,7 @@ export async function getReportStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [total, pending, resolvedToday] = await Promise.all([
+    const [total, pending, resolvedToday, pendingByCategory, autoModCount] = await Promise.all([
       prisma.report.count(),
       prisma.report.count({ where: { status: 'PENDING' } }),
       prisma.report.count({
@@ -191,18 +191,46 @@ export async function getReportStats() {
           updatedAt: { gte: today },
         },
       }),
+      prisma.report.groupBy({
+        by: ['category'],
+        where: { status: 'PENDING' },
+        _count: true,
+      }),
+      prisma.report.count({
+        where: { status: 'PENDING', reporterId: null },
+      }),
     ]);
+
+    const categoryToSeverity: Record<string, string> = {
+      SPAM: 'low',
+      HARASSMENT: 'high',
+      MISINFORMATION: 'high',
+      ADULT_CONTENT: 'medium',
+      OTHER: 'low',
+    };
+
+    let critical = 0,
+      high = 0,
+      medium = 0,
+      low = 0;
+    for (const cat of pendingByCategory) {
+      const severity = categoryToSeverity[cat.category] || 'low';
+      if (severity === 'critical') critical += cat._count;
+      else if (severity === 'high') high += cat._count;
+      else if (severity === 'medium') medium += cat._count;
+      else low += cat._count;
+    }
 
     return {
       data: {
         total,
         pending,
-        critical: 0,
-        high: 0,
-        medium: 0,
-        low: 0,
+        critical,
+        high,
+        medium,
+        low,
         resolvedToday,
-        autoModActions: 0,
+        autoModActions: autoModCount,
       },
       error: null,
       ok: true,
