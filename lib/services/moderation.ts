@@ -3,6 +3,7 @@ import { env } from '@/lib/config/env';
 import { aiService } from '@/lib/services/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { messageLimiter } from '@/lib/services/rate-limit';
+import { createNotification } from '@/modules/notifications';
 import type { ReportCategory } from '@prisma/client';
 
 export type MessageLike = {
@@ -384,6 +385,26 @@ export class MessageService {
             status: 'PENDING',
           },
         });
+
+        try {
+          const mods = await prisma.user.findMany({
+            where: { role: { in: ['MODERATOR', 'ADMIN'] }, status: 'ACTIVE', deletedAt: null },
+            select: { id: true },
+          });
+          await Promise.all(
+            mods.map((mod) =>
+              createNotification({
+                userId: mod.id,
+                type: 'SYSTEM',
+                title: `Auto-mod flagged: ${result.action}`,
+                message: `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
+                data: { messageId: created.id, action: result.action, autoMod: true },
+              })
+            )
+          );
+        } catch (err) {
+          logger.error('[moderation] Failed to notify moderators', err);
+        }
       }
     } catch (error) {
       logger.error('Message processing error:', error);

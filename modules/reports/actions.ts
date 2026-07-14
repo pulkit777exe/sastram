@@ -13,6 +13,36 @@ import { requireReportsModeratorSession, assertCanReportOwnMessage } from './pol
 import { executeReportAuditAndRefresh } from './executors';
 import type { ReportCategory } from '@prisma/client';
 
+async function notifyModerators(opts: {
+  reportId: string;
+  category: string;
+  messagePreview: string;
+  threadName: string;
+  isAutoMod?: boolean;
+}) {
+  try {
+    const mods = await prisma.user.findMany({
+      where: { role: { in: ['MODERATOR', 'ADMIN'] }, status: 'ACTIVE', deletedAt: null },
+      select: { id: true },
+    });
+
+    const label = opts.isAutoMod ? 'Auto-mod flagged' : 'New report';
+    await Promise.all(
+      mods.map((mod) =>
+        createNotification({
+          userId: mod.id,
+          type: 'SYSTEM',
+          title: `${label}: ${opts.category}`,
+          message: `Reported in "${opts.threadName}": ${opts.messagePreview.substring(0, 120)}`,
+          data: { reportId: opts.reportId, autoMod: opts.isAutoMod ?? false },
+        })
+      )
+    );
+  } catch (error) {
+    logger.error('[notifyModerators] failed', error);
+  }
+}
+
 const reportFiltersSchema = z.object({
   status: z.string().optional(),
   limit: z.number().int().positive().max(100).optional(),
@@ -50,6 +80,7 @@ export async function createReport(data: {
       where: { id: validation.data.messageId },
       select: {
         id: true,
+        content: true,
         senderId: true,
         threadId: true,
         thread: { select: { name: true, slug: true } },
@@ -96,6 +127,13 @@ export async function createReport(data: {
         messageId: validation.data.messageId,
         category: validation.data.category,
       },
+    });
+
+    await notifyModerators({
+      reportId: report.id,
+      category: validation.data.category,
+      messagePreview: message.content ?? '',
+      threadName: message.thread.name,
     });
 
     return {
