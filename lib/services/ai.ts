@@ -6,6 +6,7 @@ import { getEnv } from '@/lib/config/env';
 import { threadDnaSchema, type ThreadDNA } from '@/lib/schemas/thread-dna';
 import { getLangChainService, type LangChainAIService } from './ai-langchain';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
+import { logAiUsage } from '@/lib/services/ai-usage-logger';
 
 export { AI_NOT_CONFIGURED_SENTINEL, isAiNotConfigured } from './ai-sentinel';
 import { AI_NOT_CONFIGURED_SENTINEL, isAiNotConfigured } from './ai-sentinel';
@@ -191,6 +192,7 @@ export class GeminiService implements AIService {
       '\n\nSummary:';
 
     const { signal, clear } = makeAbortController();
+    const start = Date.now();
     try {
       const result = await withRetry(
         (retrySignal) =>
@@ -204,6 +206,15 @@ export class GeminiService implements AIService {
         15_000,
         signal
       );
+      const latencyMs = Date.now() - start;
+      logAiUsage({
+        operation: 'generate-summary',
+        provider: 'gemini',
+        model: this.flashModel,
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+        latencyMs,
+      }).catch(() => {});
       return result.text ?? '';
     } catch (error) {
       logger.warn('[GeminiService.generateSummary] AI failed, returning fallback', { error });
@@ -230,6 +241,7 @@ export class GeminiService implements AIService {
     const prompt = `${THREAD_DNA_SYSTEM_PROMPT}\n\nMessages:\n${content}\n\nJSON:`;
 
     const { signal, clear } = makeAbortController();
+    const start = Date.now();
     try {
       const result = await withRetry(
         (retrySignal) =>
@@ -243,6 +255,15 @@ export class GeminiService implements AIService {
         15_000,
         signal
       );
+      const latencyMs = Date.now() - start;
+      logAiUsage({
+        operation: 'thread-dna',
+        provider: 'gemini',
+        model: this.flashModel,
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+        latencyMs,
+      }).catch(() => {});
       return parseThreadDNA(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.generateThreadDNA]', { error });
@@ -262,6 +283,7 @@ export class GeminiService implements AIService {
       '\n\nScore:';
 
     const { signal, clear } = makeAbortController();
+    const start = Date.now();
     try {
       const result = await withRetry(
         (retrySignal) =>
@@ -275,6 +297,15 @@ export class GeminiService implements AIService {
         15_000,
         signal
       );
+      const latencyMs = Date.now() - start;
+      logAiUsage({
+        operation: 'resolution-score',
+        provider: 'gemini',
+        model: this.flashModel,
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+        latencyMs,
+      }).catch(() => {});
       return parseResolutionScore(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.calculateResolutionScore]', { error });
@@ -289,6 +320,7 @@ export class GeminiService implements AIService {
     const prompt = `${CONFLICT_SYSTEM_PROMPT}\n\nMessages:\n${content}\n\nJSON:`;
 
     const { signal, clear } = makeAbortController();
+    const start = Date.now();
     try {
       const result = await withRetry(
         (retrySignal) =>
@@ -302,6 +334,15 @@ export class GeminiService implements AIService {
         15_000,
         signal
       );
+      const latencyMs = Date.now() - start;
+      logAiUsage({
+        operation: 'detect-conflicts',
+        provider: 'gemini',
+        model: this.flashModel,
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+        latencyMs,
+      }).catch(() => {});
       return parseConflict(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.detectConflicts]', { error });
@@ -322,6 +363,7 @@ export class GeminiService implements AIService {
       content;
 
     const { signal, clear } = makeAbortController();
+    const start = Date.now();
     try {
       const result = await withRetry(
         (retrySignal) =>
@@ -335,6 +377,15 @@ export class GeminiService implements AIService {
         15_000,
         signal
       );
+      const latencyMs = Date.now() - start;
+      logAiUsage({
+        operation: 'daily-digest',
+        provider: 'gemini',
+        model: this.proModel,
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+        latencyMs,
+      }).catch(() => {});
       return (result.text ?? '')
         .replace(/```html\n?/g, '')
         .replace(/```\n?/g, '');
@@ -357,6 +408,7 @@ export class GeminiService implements AIService {
       `Text to analyze:\n${wrapUserContent(content.substring(0, MAX_CONTENT_CHARS))}\n\nJSON:`;
 
     const { signal, clear } = makeAbortController();
+    const start = Date.now();
     try {
       const result = await withRetry(
         (retrySignal) =>
@@ -370,6 +422,15 @@ export class GeminiService implements AIService {
         10_000,
         signal
       );
+      const latencyMs = Date.now() - start;
+      logAiUsage({
+        operation: 'classify-toxicity',
+        provider: 'gemini',
+        model: this.flashModel,
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+        latencyMs,
+      }).catch(() => {});
       const text = result.text ?? '';
       const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
       return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;
@@ -398,9 +459,11 @@ export class OpenAIService implements AIService {
   private async callOpenAI(
     systemPrompt: string,
     userContent: string,
-    maxTokens: number
+    maxTokens: number,
+    operation: string = 'openai-call'
   ): Promise<string> {
     const { signal, clear } = makeAbortController();
+    const start = Date.now();
     try {
       const data = await withRetry(
         async (retrySignal) => {
@@ -431,6 +494,16 @@ export class OpenAIService implements AIService {
         15_000,
         signal
       );
+
+      const latencyMs = Date.now() - start;
+      logAiUsage({
+        operation,
+        provider: 'openai',
+        model: this.model,
+        inputTokens: data.usage?.prompt_tokens ?? 0,
+        outputTokens: data.usage?.completion_tokens ?? 0,
+        latencyMs,
+      }).catch(() => {});
 
       return data.choices[0]?.message?.content ?? '';
     } finally {
@@ -522,7 +595,8 @@ export class OpenAIService implements AIService {
       return await this.callOpenAI(
         'Summarize discussion threads. Focus on key points and decisions (200-300 words).',
         `Summarize:\n\n${content.substring(0, MAX_CONTENT_CHARS)}`,
-        500
+        500,
+        'generate-summary'
       );
     } catch (error) {
       logger.warn('[OpenAIService.generateSummary] AI failed, returning fallback', { error });
@@ -547,7 +621,8 @@ export class OpenAIService implements AIService {
       const text = await this.callOpenAI(
         THREAD_DNA_SYSTEM_PROMPT,
         `Messages:\n${buildMessageContent(messages)}`,
-        200
+        200,
+        'thread-dna'
       );
       return parseThreadDNA(text);
     } catch (error) {
@@ -563,7 +638,8 @@ export class OpenAIService implements AIService {
           'Consider: clear answer present, response depth, consensus, comprehensiveness. ' +
           'Return ONLY a single integer.',
         `Messages:\n${buildMessageContent(messages)}`,
-        10
+        10,
+        'resolution-score'
       );
       return parseResolutionScore(text);
     } catch (error) {
@@ -577,7 +653,8 @@ export class OpenAIService implements AIService {
       const text = await this.callOpenAI(
         CONFLICT_SYSTEM_PROMPT,
         `Messages:\n${buildIndexedContent(messages)}`,
-        200
+        200,
+        'detect-conflicts'
       );
       return parseConflict(text);
     } catch (error) {
@@ -593,7 +670,8 @@ export class OpenAIService implements AIService {
           'Sections: Key Discussions, Decisions Made, Open Questions. ' +
           'Use <h3> and <p>/<ul>. Professional and concise.',
         `Messages:\n${buildMessageContent(messages)}`,
-        800
+        800,
+        'daily-digest'
       );
       return text.replace(/```html\n?/g, '').replace(/```\n?/g, '');
     } catch (error) {
@@ -612,7 +690,8 @@ export class OpenAIService implements AIService {
           'Return ONLY a JSON object with a single field "toxicity" containing a number between 0 and 1, ' +
           'where 0 means completely safe and 1 means extremely toxic.',
         `Text to analyze:\n${wrapUserContent(content.substring(0, MAX_CONTENT_CHARS))}`,
-        50
+        50,
+        'classify-toxicity'
       );
       const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
       return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;

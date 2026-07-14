@@ -8,8 +8,10 @@ import {
   RunnableSequence,
   RunnablePassthrough,
 } from '@langchain/core/runnables';
+import type { LLMResult } from '@langchain/core/outputs';
 import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
+import { logAiUsage } from '@/lib/services/ai-usage-logger';
 
 const MAX_CHUNK_CHARS = 8000;
 const MAX_TOTAL_CHARS = 50000;
@@ -106,15 +108,41 @@ export class LangChainGeminiService implements LangChainAIService {
 
     const { mapChain, reduceChain } = createSummarizeChain(this.model);
 
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    const usageTracker = {
+      handleLLMEnd(output: LLMResult) {
+        const usage = output.llmOutput?.usage as Record<string, number> | undefined;
+        if (usage) {
+          totalInputTokens += usage.prompt_tokens ?? usage.input_tokens ?? 0;
+          totalOutputTokens += usage.completion_tokens ?? usage.output_tokens ?? 0;
+        }
+      },
+    };
+
+    const start = Date.now();
+
     const summaries = await Promise.all(
       limitedChunks.map((chunk) =>
-        mapChain.invoke({ context: chunk.pageContent })
+        mapChain.invoke({ context: chunk.pageContent }, { callbacks: [usageTracker] })
       )
     );
 
-    const combinedSummary = await reduceChain.invoke({
-      context: summaries.join('\n\n'),
-    });
+    const combinedSummary = await reduceChain.invoke(
+      { context: summaries.join('\n\n') },
+      { callbacks: [usageTracker] }
+    );
+
+    const latencyMs = Date.now() - start;
+    logAiUsage({
+      operation: 'thread-summary',
+      provider: 'gemini',
+      model: 'gemini-flash',
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      latencyMs,
+    }).catch(() => {});
 
     return combinedSummary;
   }
@@ -150,15 +178,41 @@ export class LangChainOpenAIService implements LangChainAIService {
 
     const { mapChain, reduceChain } = createSummarizeChain(this.model);
 
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    const usageTracker = {
+      handleLLMEnd(output: LLMResult) {
+        const usage = output.llmOutput?.usage as Record<string, number> | undefined;
+        if (usage) {
+          totalInputTokens += usage.prompt_tokens ?? usage.input_tokens ?? 0;
+          totalOutputTokens += usage.completion_tokens ?? usage.output_tokens ?? 0;
+        }
+      },
+    };
+
+    const start = Date.now();
+
     const summaries = await Promise.all(
       limitedChunks.map((chunk) =>
-        mapChain.invoke({ context: chunk.pageContent })
+        mapChain.invoke({ context: chunk.pageContent }, { callbacks: [usageTracker] })
       )
     );
 
-    const combinedSummary = await reduceChain.invoke({
-      context: summaries.join('\n\n'),
-    });
+    const combinedSummary = await reduceChain.invoke(
+      { context: summaries.join('\n\n') },
+      { callbacks: [usageTracker] }
+    );
+
+    const latencyMs = Date.now() - start;
+    logAiUsage({
+      operation: 'thread-summary',
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      latencyMs,
+    }).catch(() => {});
 
     return combinedSummary;
   }

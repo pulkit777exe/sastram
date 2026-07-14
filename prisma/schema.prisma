@@ -695,4 +695,24 @@ model ThreadRelation {
   @@map("thread_relations")
 }
 
+model AiUsageLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  operation    String
+  provider     String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  latencyMs    Int
+  costUsd      Decimal  @default(0) @db.Decimal(10, 6)
+  success      Boolean  @default(true)
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([operation])
+  @@index([createdAt])
+  @@index([costUsd])
+  @@map("ai_usage_logs")
+}
 
