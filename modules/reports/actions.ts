@@ -547,6 +547,9 @@ export async function resolveReport(data: {
           status: newStatus,
           resolution: parsed.data.note,
           resolvedBy: session.user.id,
+          ...(report.status === 'PENDING' && !report.firstResponseAt
+            ? { firstResponseAt: new Date() }
+            : {}),
         },
       });
 

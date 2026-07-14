@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Server, HardDrive } from 'lucide-react';
+import { RefreshCw, Server, HardDrive, AlertTriangle, Clock } from 'lucide-react';
 
 interface HealthData {
   timestamp: string;
@@ -17,8 +17,16 @@ interface HealthData {
   };
 }
 
+interface SlaData {
+  totalPending: number;
+  pendingOver24h: number;
+  pendingOver72h: number;
+  avgResponseTimeHours: number | null;
+}
+
 export default function AdminHealthPage() {
   const [data, setData] = useState<HealthData | null>(null);
+  const [slaData, setSlaData] = useState<SlaData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,12 +34,19 @@ export default function AdminHealthPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/health');
-      const json = await res.json();
-      if (json.error) {
-        setError(json.error.message || 'Failed to load health data');
+      const [healthRes, slaRes] = await Promise.all([
+        fetch('/api/admin/health'),
+        fetch('/api/admin/sla'),
+      ]);
+      const healthJson = await healthRes.json();
+      const slaJson = await slaRes.json();
+      if (healthJson.error) {
+        setError(healthJson.error.message || 'Failed to load health data');
       } else {
-        setData(json.data);
+        setData(healthJson.data);
+      }
+      if (!slaJson.error) {
+        setSlaData(slaJson.data);
       }
     } catch {
       setError('Failed to connect to health endpoint');
@@ -47,13 +62,20 @@ export default function AdminHealthPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/admin/health');
-        const json = await res.json();
+        const [healthRes, slaRes] = await Promise.all([
+          fetch('/api/admin/health'),
+          fetch('/api/admin/sla'),
+        ]);
+        const healthJson = await healthRes.json();
+        const slaJson = await slaRes.json();
         if (cancelled) return;
-        if (json.error) {
-          setError(json.error.message || 'Failed to load health data');
+        if (healthJson.error) {
+          setError(healthJson.error.message || 'Failed to load health data');
         } else {
-          setData(json.data);
+          setData(healthJson.data);
+        }
+        if (!slaJson.error) {
+          setSlaData(slaJson.data);
         }
       } catch {
         if (!cancelled) setError('Failed to connect to health endpoint');
@@ -151,6 +173,54 @@ export default function AdminHealthPage() {
               </CardContent>
             </Card>
           </section>
+
+          {/* Moderation SLA */}
+          {slaData && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Moderation SLA
+              </h2>
+              <div className="grid gap-6 md:grid-cols-4">
+                <Card className="rounded-3xl">
+                  <CardContent className="p-6">
+                    <p className="text-sm text-muted-foreground">Total Pending</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{slaData.totalPending}</p>
+                  </CardContent>
+                </Card>
+                <Card className={`rounded-3xl ${slaData.pendingOver24h > 0 ? 'border-yellow-200 bg-yellow-50' : ''}`}>
+                  <CardContent className="p-6">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      {slaData.pendingOver24h > 0 && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
+                      Pending &gt; 24h
+                    </p>
+                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver24h > 0 ? 'text-yellow-700' : 'text-foreground'}`}>
+                      {slaData.pendingOver24h}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card className={`rounded-3xl ${slaData.pendingOver72h > 0 ? 'border-red-200 bg-red-50' : ''}`}>
+                  <CardContent className="p-6">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      {slaData.pendingOver72h > 0 && <AlertTriangle className="w-4 h-4 text-red-600" />}
+                      Pending &gt; 72h
+                    </p>
+                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver72h > 0 ? 'text-red-700' : 'text-foreground'}`}>
+                      {slaData.pendingOver72h}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-3xl">
+                  <CardContent className="p-6">
+                    <p className="text-sm text-muted-foreground">Avg Response Time</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">
+                      {slaData.avgResponseTimeHours !== null ? `${slaData.avgResponseTimeHours}h` : 'N/A'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+          )}
 
           <p className="text-xs text-muted-foreground text-right">
             Last updated: {new Date(data.timestamp).toLocaleTimeString()}

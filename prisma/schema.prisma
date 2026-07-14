@@ -513,11 +513,13 @@ model Report {
   reporterId String?
   category   ReportCategory
   details    String?        @db.Text
-  status     ReportStatus   @default(PENDING)
-  resolvedBy String?
-  resolution String?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  status          ReportStatus   @default(PENDING)
+  resolvedBy      String?
+  resolution      String?
+  escalatedAt     DateTime?
+  firstResponseAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   reporter User?   @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
