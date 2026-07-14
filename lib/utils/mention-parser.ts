@@ -40,7 +40,8 @@ export async function resolveUserMentions(
   const emails = usernames.filter((u) => u.includes('@'));
   const names = usernames.filter((u) => !u.includes('@'));
 
-  const where: { OR: Array<Record<string, unknown>> } = {
+  const where: { AND: Array<Record<string, unknown>>; OR: Array<Record<string, unknown>> } = {
+    AND: [{ deletedAt: null }],
     OR: [],
   };
 

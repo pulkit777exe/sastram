@@ -54,8 +54,8 @@ export default async function ModerationPage() {
           <BannedUsersList
             bans={bannedUsersResult.data.bans.map((ban) => ({
               ...ban,
-              status: ban.user.status === 'BANNED' ? 'BANNED' : 'SUSPENDED',
-              bannedBy: { name: ban.issuer.name },
+              status: (ban.user?.status === 'BANNED' ? 'BANNED' : 'SUSPENDED') as 'BANNED' | 'SUSPENDED',
+              bannedBy: ban.issuer ? { name: ban.issuer.name } : { name: null },
             }))}
           />
         )}

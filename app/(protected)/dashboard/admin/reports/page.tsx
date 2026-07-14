@@ -132,13 +132,13 @@ function ReportCard({ report }: { report: Report }) {
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Reported by:</span>
                 <span className="text-foreground font-medium">
-                  {report.reporter.name || report.reporter.email}
+                  {report.reporter?.name || report.reporter?.email || 'Unknown'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Message from:</span>
                 <span className="text-foreground font-medium">
-                  {report.message.sender.name || report.message.sender.email}
+                  {report.message.sender?.name || report.message.sender?.email || 'Unknown'}
                 </span>
               </div>
               <div className="flex items-center gap-2">

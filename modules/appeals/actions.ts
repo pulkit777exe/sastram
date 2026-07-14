@@ -100,7 +100,7 @@ export const getAppeals = withValidation(
       prisma.report.count({ where: whereClause }),
     ]);
 
-    const reporterIds = appeals.map((a) => a.reporterId);
+    const reporterIds = appeals.map((a) => a.reporterId).filter((id): id is string => id !== null);
     const allBans = await prisma.userBan.findMany({
       where: { userId: { in: reporterIds }, isActive: true },
       orderBy: { createdAt: 'desc' },
@@ -108,13 +108,13 @@ export const getAppeals = withValidation(
 
     const banMap = new Map<string, (typeof allBans)[0]>();
     for (const ban of allBans) {
-      if (!banMap.has(ban.userId)) {
+      if (ban.userId && !banMap.has(ban.userId)) {
         banMap.set(ban.userId, ban);
       }
     }
 
     const appealsWithBanInfo = appeals.map((appeal) => {
-      const activeBan = banMap.get(appeal.reporterId);
+      const activeBan = appeal.reporterId ? banMap.get(appeal.reporterId) : undefined;
       return {
         ...appeal,
         details: appeal.details?.replace(/^APPEAL:\s*/i, '') ?? null,
@@ -150,17 +150,17 @@ export const resolveAppeal = withValidation(
 
       if (approved) {
         await tx.userBan.updateMany({
-          where: { userId: appeal.reporterId, isActive: true },
+          where: { userId: appeal.reporterId!, isActive: true },
           data: { isActive: false },
         });
 
         const remainingBans = await tx.userBan.count({
-          where: { userId: appeal.reporterId, isActive: true },
+          where: { userId: appeal.reporterId!, isActive: true },
         });
 
         if (remainingBans === 0) {
           await tx.user.update({
-            where: { id: appeal.reporterId },
+            where: { id: appeal.reporterId! },
             data: { status: 'ACTIVE' },
           });
         }

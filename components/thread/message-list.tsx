@@ -274,9 +274,9 @@ const MessageRow = React.memo(function MessageRow({
           <CompactTimestamp time={message.createdAt} />
         ) : (
           <Avatar className="w-8 h-8 mt-0.5 shrink-0 ring-1 ring-border/30">
-            <AvatarImage src={message.sender.image || ''} />
+            <AvatarImage src={message.sender?.image || ''} />
             <AvatarFallback className="bg-gradient-to-br from-brand/10 to-brand/5 text-brand text-xs font-bold">
-              {message.sender.name?.substring(0, 2).toUpperCase() || 'U'}
+              {message.sender?.name?.substring(0, 2).toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
         )}
@@ -285,7 +285,7 @@ const MessageRow = React.memo(function MessageRow({
           {!isCompact && (
             <div className="flex items-baseline gap-2 mb-0.5">
               <span className="text-[13px] font-semibold text-foreground leading-none">
-                {message.sender.name || 'Anonymous'}
+                {message.sender?.name || 'Anonymous'}
               </span>
               {isOwnMessage && (
                 <span className="bg-brand/15 dark:bg-brand/20 text-brand text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">

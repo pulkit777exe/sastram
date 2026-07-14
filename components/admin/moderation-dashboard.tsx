@@ -55,8 +55,8 @@ export function ModerationDashboard({
       id: r.message.id,
       content: r.message.content,
       sender: {
-        id: r.message.sender.id,
-        name: r.message.sender.name,
+        id: r.message.sender?.id ?? 'unknown',
+        name: r.message.sender?.name ?? null,
       },
       thread: {
         name: r.message.thread.name,

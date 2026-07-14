@@ -17,7 +17,7 @@ interface InlineReplyBoxProps {
     depth: number;
     sender: {
       name: string | null;
-    };
+    } | null;
   };
   threadId: string;
   currentUser: {
@@ -98,7 +98,7 @@ export function InlineReplyBox({
             <Reply size={11} />
             <span>Replying to</span>
             <span className="font-semibold text-brand dark:text-brand">
-              @{parentMessage.sender.name || 'Anonymous'}
+              @{parentMessage.sender?.name || 'Anonymous'}
             </span>
           </div>
           <button

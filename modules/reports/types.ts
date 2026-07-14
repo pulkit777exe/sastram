@@ -8,7 +8,7 @@ import type { ReportStatus, UserStatus } from '@prisma/client';
 export interface Report {
   id: string;
   messageId: string;
-  reporterId: string;
+  reporterId: string | null;
   category: ReportCategory;
   details: string | null;
   status: ReportStatus;
@@ -25,7 +25,7 @@ export interface Report {
       name: string | null;
       email: string;
       image: string | null;
-    };
+    } | null;
     thread: {
       id: string;
       name: string;
@@ -36,7 +36,7 @@ export interface Report {
     id: string;
     name: string | null;
     email: string;
-  };
+  } | null;
 }
 
 export interface ReportWithContext extends Report {

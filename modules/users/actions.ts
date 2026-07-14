@@ -196,3 +196,171 @@ export const updateUserPreferencesAction = withValidation(
     return { data: null, error: null };
   }
 );
+
+export const requestAccountDeletion = withValidation(
+  z.object({ password: z.string().min(1, 'Password is required') }),
+  'requestAccountDeletion',
+  async ({ password }) => {
+    const session = await requireSession();
+    const userId = session.user.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, password: true },
+    });
+
+    if (!user) {
+      return { data: null, error: 'User not found' };
+    }
+
+    if (user.password) {
+      const { verifyPassword } = await import('better-auth/crypto');
+      const valid = await verifyPassword({ password, hash: user.password });
+      if (!valid) {
+        return { data: null, error: 'Incorrect password' };
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          deletedAt: new Date(),
+          status: 'SUSPENDED',
+          email: `deleted-${userId}@sastram.com`,
+          name: null,
+          image: null,
+          bio: null,
+          location: null,
+          website: null,
+          github: null,
+          twitter: null,
+          avatarUrl: null,
+          bannerUrl: null,
+          preferences: {},
+        },
+      }),
+      prisma.message.updateMany({
+        where: { senderId: userId },
+        data: { senderId: { set: null } },
+      }),
+      prisma.thread.updateMany({
+        where: { createdBy: userId },
+        data: { createdBy: { set: null } },
+      }),
+      prisma.community.updateMany({
+        where: { createdBy: userId },
+        data: { createdBy: { set: null } },
+      }),
+      prisma.report.updateMany({
+        where: { reporterId: userId },
+        data: { reporterId: { set: null } },
+      }),
+      prisma.appeal.updateMany({
+        where: { moderatorId: userId },
+        data: { moderatorId: { set: null } },
+      }),
+      prisma.userBan.updateMany({
+        where: { userId: userId },
+        data: { userId: { set: null } },
+      }),
+      prisma.userBan.updateMany({
+        where: { bannedBy: userId },
+        data: { bannedBy: { set: null } },
+      }),
+    ]);
+
+    await prisma.session.deleteMany({ where: { userId } });
+
+    return { data: null, error: null };
+  }
+);
+
+export const exportUserData = createServerAction(
+  { schema: z.object({}), actionName: 'exportUserData' },
+  async () => {
+    const session = await requireSession();
+    const userId = session.user.id;
+
+    const [user, messages, threads, memberships, reports, activities] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          bio: true,
+          location: true,
+          website: true,
+          github: true,
+          twitter: true,
+          createdAt: true,
+          lastSeenAt: true,
+        },
+      }),
+      prisma.message.findMany({
+        where: { senderId: userId },
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          thread: { select: { id: true, name: true, slug: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.thread.findMany({
+        where: { createdBy: userId },
+        select: { id: true, name: true, slug: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.threadMember.findMany({
+        where: { userId },
+        select: {
+          role: true,
+          joinedAt: true,
+          thread: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+      prisma.report.findMany({
+        where: { reporterId: userId },
+        select: {
+          id: true,
+          category: true,
+          status: true,
+          details: true,
+          createdAt: true,
+        },
+      }),
+      prisma.userActivity.findMany({
+        where: { userId },
+        select: { type: true, entityType: true, entityId: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+    ]);
+
+    return {
+      data: {
+        profile: user,
+        messages: messages.map((m) => ({
+          id: m.id,
+          content: m.content,
+          createdAt: m.createdAt,
+          threadName: m.thread.name,
+          threadSlug: m.thread.slug,
+        })),
+        threads,
+        memberships: memberships.map((m) => ({
+          threadName: m.thread.name,
+          threadSlug: m.thread.slug,
+          role: m.role,
+          joinedAt: m.joinedAt,
+        })),
+        reports,
+        activities,
+        exportedAt: new Date().toISOString(),
+      },
+      error: null,
+    };
+  }
+);

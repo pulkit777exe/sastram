@@ -32,7 +32,7 @@ export function buildThreadDTO(
     latestMessage: null,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
-    createdBy: thread.createdBy,
+    createdBy: thread.createdBy ?? '',
   };
 }
 
@@ -76,7 +76,7 @@ export function buildThreadDetailDTO(
               status: (message.sender.status as UserStatus) || 'ACTIVE',
             }
           : {
-              id: message.senderId,
+              id: message.senderId ?? '',
               name: null,
               image: null,
               status: 'ACTIVE' as UserStatus,

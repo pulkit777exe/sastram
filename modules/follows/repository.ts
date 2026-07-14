@@ -219,6 +219,7 @@ export async function getMutualFollows(userId1: string, userId2: string) {
       (await prisma.user.findMany({
         where: {
           id: { in: mutualIds },
+          deletedAt: null,
         },
         select: {
           id: true,

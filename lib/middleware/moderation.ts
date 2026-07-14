@@ -15,7 +15,7 @@ export async function requireModerator() {
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: session.user.id, deletedAt: null },
     select: { role: true, status: true },
   });
 
@@ -44,7 +44,7 @@ export async function requireAdmin() {
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: session.user.id, deletedAt: null },
     select: { role: true, status: true },
   });
 

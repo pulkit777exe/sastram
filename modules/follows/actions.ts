@@ -42,7 +42,7 @@ export const followUser = createServerAction(
     }
 
     const targetUser = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: userId, deletedAt: null },
       select: { id: true, name: true, email: true },
     });
 

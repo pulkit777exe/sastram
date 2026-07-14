@@ -32,10 +32,10 @@ export interface BannedUser {
     email: string;
     image: string | null;
     status: string;
-  };
+  } | null;
   bannedBy: {
     name: string | null;
-  };
+  } | null;
   reason: string;
   status: 'BANNED' | 'SUSPENDED';
   createdAt: Date;
@@ -60,7 +60,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
 
   const filteredBans = bans.filter((ban) => {
     const matchesSearch =
-      (ban.user.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (ban.user?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       ban.reason.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesFilter =
@@ -127,15 +127,15 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={ban.user.image || undefined} />
-                        <AvatarFallback>{ban.user.name?.charAt(0) || 'U'}</AvatarFallback>
+                        <AvatarImage src={ban.user?.image || undefined} />
+                        <AvatarFallback>{ban.user?.name?.charAt(0) || 'U'}</AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="text-sm font-medium text-foreground">
-                          {ban.user.name || 'Unknown'}
+                          {ban.user?.name || 'Unknown'}
                         </p>
                         <p className="text-xs text-muted-foreground line-clamp-1">
-                          {ban.user.email}
+                          {ban.user?.email}
                         </p>
                       </div>
                     </div>
@@ -145,7 +145,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                   </TableCell>
                   <TableCell className="text-sm">{ban.reason}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {ban.bannedBy.name || 'System'}
+                    {ban.bannedBy?.name || 'System'}
                   </TableCell>
                   <TableCell>
                     <Badge

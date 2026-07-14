@@ -24,7 +24,7 @@ export interface Message {
   id: string;
   content: string;
   threadId: string;
-  senderId: string;
+  senderId: string | null;
   parentId: string | null;
   depth: number;
   isEdited: boolean;
@@ -37,7 +37,7 @@ export interface Message {
   updatedAt: Date;
   deletedAt: Date | null;
 
-  sender: Sender;
+  sender: Sender | null;
   thread: {
     id: string;
     name: string;

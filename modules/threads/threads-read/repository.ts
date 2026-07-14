@@ -11,7 +11,7 @@ export type ThreadMessage = {
   id: string;
   body: string;
   threadId: string;
-  senderId: string;
+  senderId: string | null;
   parentId: string | null;
   depth: number;
   createdAt: Date;
@@ -80,7 +80,7 @@ export type ThreadWithFullContext = {
   name: string;
   slug: string;
   description: string | null;
-  createdBy: string;
+  createdBy: string | null;
   visibility: string;
   aiSummary: string | null;
   resolutionScore: number | null;
@@ -112,7 +112,7 @@ type ThreadRow = {
   name: string;
   slug: string;
   description: string | null;
-  createdBy: string;
+  createdBy: string | null;
   visibility: string;
   aiSummary: string | null;
   resolutionScore: number | null;

@@ -124,6 +124,7 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
       prisma.user.findMany({
         where: {
           status: 'ACTIVE',
+          deletedAt: null,
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
             { email: { contains: query, mode: 'insensitive' } },
@@ -145,6 +146,7 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
       prisma.user.count({
         where: {
           status: 'ACTIVE',
+          deletedAt: null,
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
             { email: { contains: query, mode: 'insensitive' } },

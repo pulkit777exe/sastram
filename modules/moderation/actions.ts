@@ -130,7 +130,7 @@ export const bulkDeleteMessages = createServerAction(
       );
 
       // Batch notification creation using createMany
-      const uniqueSenders = [...new Set(messages.map((m) => m.senderId))];
+      const uniqueSenders = [...new Set(messages.map((m) => m.senderId).filter((id): id is string => id !== null))];
       const senderMessageCounts = new Map<string, number>();
       for (const senderId of uniqueSenders) {
         senderMessageCounts.set(
@@ -289,6 +289,10 @@ export const unbanUser = createServerAction(
         throw new Error('Ban not found');
       }
 
+      if (!ban.userId) {
+        throw new Error('Ban has no associated user');
+      }
+
       if (!ban.isActive) {
         throw new Error('Ban is already inactive');
       }
@@ -329,13 +333,13 @@ export const unbanUser = createServerAction(
     await executeModerationAuditAndRevalidate({
       action: 'USER_UNBANNED',
       entityType: 'User',
-      entityId: result.userId,
+      entityId: result.userId!,
       userId: session.user.id,
       details: {
         banId,
         wasGlobalBan: !result.threadId,
-        targetUserEmail: result.user.email,
-        targetUserName: result.user.name,
+        targetUserEmail: result.user?.email ?? 'unknown',
+        targetUserName: result.user?.name ?? 'unknown',
       },
       paths: ['/dashboard/admin/moderation'],
     });

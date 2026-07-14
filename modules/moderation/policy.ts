@@ -30,7 +30,7 @@ export async function validateModerationTarget(
   }
 
   const targetUser = await prisma.user.findUnique({
-    where: { id: targetUserId },
+    where: { id: targetUserId, deletedAt: null },
     select: {
       id: true,
       role: true,

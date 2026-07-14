@@ -21,7 +21,7 @@ export type ConversationContext = {
   recentHistory: Array<{
     id: string;
     content: string;
-    senderId: string;
+    senderId: string | null;
     createdAt: Date;
   }>;
   threadMetadata?: Record<string, unknown>;
@@ -39,7 +39,7 @@ export type ModerationResult = {
     id: string;
     content: string;
     threadId: string;
-    senderId: string;
+    senderId: string | null;
     parentId: string | null;
     depth: number;
     createdAt: Date;
@@ -161,7 +161,7 @@ export class MLClassifier {
       const threadText =
         context.recentHistory
           .slice(-10)
-          .map((m) => `User ${m.senderId}: ${m.content}`)
+          .map((m) => `User ${m.senderId ?? 'unknown'}: ${m.content}`)
           .join('\n') + `\nNew message: ${message.content}`;
 
       let toxicity = 0;
@@ -313,7 +313,7 @@ export class MessageService {
       id: string;
       content: string;
       threadId: string;
-      senderId: string;
+      senderId: string | null;
       parentId: string | null;
       depth: number;
       createdAt: Date;

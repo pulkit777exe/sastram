@@ -16,7 +16,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const uniqueSenders = replies.length > 0
-    ? Array.from(new Map(replies.map((r) => [r.senderId, r.sender])).values()).slice(0, 4)
+    ? Array.from(new Map(replies.filter((r): r is Message & { sender: NonNullable<Message['sender']> } => r.sender !== null).map((r) => [r.senderId, r.sender])).values()).slice(0, 4)
     : [];
 
   const visible = expanded ? replies : replies.slice(0, 3);
@@ -70,7 +70,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
         {lastReply && !expanded && (
           <span className="text-[11px] text-muted-foreground/70 truncate flex-1 min-w-0">
             <span className="font-medium text-foreground/60 mr-1">
-              {lastReply.sender.name?.split(' ')[0]}:
+              {lastReply.sender?.name?.split(' ')[0]}:
             </span>
             {lastReply.content.slice(0, 60)}{lastReply.content.length > 60 ? '…' : ''}
           </span>
@@ -174,14 +174,14 @@ function ReplyItem({
       onClick={() => onReplyClick?.(reply.id)}
     >
       <Avatar className="w-4 h-4 mt-0.5 shrink-0">
-        <AvatarImage src={reply.sender.image || ''} />
+        <AvatarImage src={reply.sender?.image || ''} />
         <AvatarFallback className="bg-brand/10 text-brand text-[7px] font-bold">
-          {reply.sender.name?.substring(0, 1).toUpperCase() || 'U'}
+          {reply.sender?.name?.substring(0, 1).toUpperCase() || 'U'}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0 leading-relaxed">
         <span className="font-semibold text-foreground/80 mr-1.5">
-          {reply.sender.name?.split(' ')[0] || 'Anonymous'}
+          {reply.sender?.name?.split(' ')[0] || 'Anonymous'}
         </span>
         <span className="text-muted-foreground/80">{reply.content}</span>
       </div>

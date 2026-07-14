@@ -47,7 +47,7 @@ export interface ThreadSummary {
   } | null;
   createdAt: Date;
   updatedAt: Date;
-  createdBy: string;
+  createdBy: string | null;
 }
 
 // Thread DNA metadata

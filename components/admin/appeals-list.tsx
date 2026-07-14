@@ -31,7 +31,7 @@ interface Appeal {
     name: string | null;
     email: string;
     image: string | null;
-  };
+  } | null;
   details: string | null;
   status: string;
   createdAt: Date;
@@ -92,12 +92,12 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={appeal.reporter.image || undefined} />
-                      <AvatarFallback>{appeal.reporter.name?.charAt(0) || 'U'}</AvatarFallback>
+                      <AvatarImage src={appeal.reporter?.image || undefined} />
+                      <AvatarFallback>{appeal.reporter?.name?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-sm">{appeal.reporter.name}</p>
-                      <p className="text-xs text-muted-foreground">{appeal.reporter.email}</p>
+                      <p className="font-medium text-sm">{appeal.reporter?.name}</p>
+                      <p className="text-xs text-muted-foreground">{appeal.reporter?.email}</p>
                     </div>
                   </div>
                 </TableCell>
@@ -162,7 +162,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
                 <span className="text-muted-foreground">User:</span>
-                <span className="font-medium">{selectedAppeal.reporter.name}</span>
+                <span className="font-medium">{selectedAppeal.reporter?.name}</span>
 
                 <span className="text-muted-foreground">Ban Reason:</span>
                 <span>{selectedAppeal.banReason}</span>

@@ -123,6 +123,7 @@ model User {
   followingCount   Int            @default(0)
   welcomeEmailSent Boolean        @default(false)
   lastSeenAt       DateTime?
+  deletedAt        DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -153,6 +154,7 @@ model User {
   @@index([email])
   @@index([status])
   @@index([lastSeenAt])
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -160,7 +162,7 @@ model Account {
   id           String    @id @default(cuid())
   accountId    String    @unique
   providerId   String
-  userId       String
+  userId      String
   accessToken  String?
   refreshToken String?
   idToken      String?
@@ -213,12 +215,12 @@ model Community {
   description String?
   visibility  CommunityVisibility @default(PUBLIC)
   settings    Json                @default("{}")
-  createdBy   String
+  createdBy   String?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   deletedAt   DateTime?
 
-  creator  User     @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  creator  User?     @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   threads  Thread[]
 
   @@index([slug])
@@ -235,7 +237,7 @@ model Thread {
   messageCount Int               @default(0)
   memberCount  Int               @default(0)
   communityId  String?
-  createdBy    String
+  createdBy    String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
@@ -246,7 +248,7 @@ model Thread {
   threadDna       Json?
   deletedAt       DateTime?
 
-  creator       User                 @relation("ThreadCreator", fields: [createdBy], references: [id])
+  creator       User?                @relation("ThreadCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   community     Community?           @relation(fields: [communityId], references: [id])
   messages      Message[]
   members       ThreadMember[]
@@ -292,7 +294,7 @@ model Message {
   id           String    @id @default(cuid())
   content      String    @db.Text
   threadId     String
-  senderId     String
+  senderId     String?
   parentId     String? // null = root post
   depth        Int       @default(0) // 0=root, 1=reply, 2=reply-to-reply, max 4
   isEdited     Boolean   @default(false)
@@ -305,7 +307,7 @@ model Message {
   deletedAt    DateTime? // soft delete — keep for tree integrity
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender      User             @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  sender      User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
   parent      Message?         @relation("MessageReplies", fields: [parentId], references: [id])
   replies     Message[]        @relation("MessageReplies")
   attachments Attachment[]
@@ -494,7 +496,7 @@ model Appeal {
   resolvedAt  DateTime?
 
   message   Message          @relation("MessageAppeal", fields: [messageId], references: [id], onDelete: Cascade)
-  user      User             @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  user      User?            @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: SetNull)
   moderator User?            @relation("AppealModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
 
   @@index([messageId])
@@ -508,7 +510,7 @@ model Appeal {
 model Report {
   id         String         @id @default(cuid())
   messageId  String
-  reporterId String
+  reporterId String?
   category   ReportCategory
   details    String?        @db.Text
   status     ReportStatus   @default(PENDING)
@@ -518,7 +520,7 @@ model Report {
   updatedAt  DateTime       @updatedAt
 
   message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  reporter User    @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporter User?   @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
 
   @@index([messageId])
   @@index([status])
@@ -528,16 +530,16 @@ model Report {
 
 model UserBan {
   id        String    @id @default(cuid())
-  userId    String
-  bannedBy  String
+  userId    String?
+  bannedBy  String?
   reason    String
   threadId  String? // null = site-wide ban
   isActive  Boolean   @default(true)
   expiresAt DateTime?
   createdAt DateTime  @default(now())
 
-  user   User     @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
-  issuer User     @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
+  user   User?    @relation("BannedUser", fields: [userId], references: [id], onDelete: SetNull)
+  issuer User?    @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: SetNull)
   thread Thread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])

@@ -244,14 +244,14 @@ export const CommentNode = React.memo(function CommentNode({
             <div className="flex items-center gap-2 mb-1.5 pl-1">
               <Reply size={11} className="text-muted-foreground/60 shrink-0" />
               <Avatar className="w-3.5 h-3.5 shrink-0">
-                <AvatarImage src={parentMessage.sender.image || ''} />
+                <AvatarImage src={parentMessage.sender?.image || ''} />
                 <AvatarFallback className="text-[7px]">
-                  {parentMessage.sender.name?.substring(0, 1).toUpperCase() || 'U'}
+                  {parentMessage.sender?.name?.substring(0, 1).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <span className="text-[11px] text-muted-foreground/70 truncate">
                 <span className="font-medium text-foreground/60">
-                  {parentMessage.sender.name || 'Anonymous'}
+                  {parentMessage.sender?.name || 'Anonymous'}
                 </span>
                 <span className="mx-1">·</span>
                 <span className="truncate max-w-[180px] inline-block align-bottom">
@@ -264,16 +264,16 @@ export const CommentNode = React.memo(function CommentNode({
 
           <div className="flex items-start gap-3">
             <Avatar className="w-8 h-8 shrink-0 border border-border/40">
-              <AvatarImage src={node.sender.image || ''} />
+              <AvatarImage src={node.sender?.image || ''} />
               <AvatarFallback className="bg-brand/10 text-brand text-xs font-bold">
-                {node.sender.name?.substring(0, 2).toUpperCase() || 'U'}
+                {node.sender?.name?.substring(0, 2).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
 
             <div className="flex-1 min-w-0 space-y-0.5">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-foreground text-sm">
-                  {node.sender.name || 'Anonymous'}
+                  {node.sender?.name || 'Anonymous'}
                 </span>
                 {isOwnMessage && (
                   <span className="bg-brand/15 text-brand text-[9px] px-1.5 py-px rounded-full font-medium">

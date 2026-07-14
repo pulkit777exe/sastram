@@ -389,7 +389,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
           id: msg.id,
           content: msg.content,
           threadId: msg.threadId,
-          senderId: msg.senderId,
+          senderId: msg.senderId ?? currentUser?.id ?? '',
           parentId: msg.parentId,
           depth: msg.depth,
           isEdited: false,
@@ -400,7 +400,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
           createdAt: msg.createdAt,
           updatedAt: msg.updatedAt,
           deletedAt: null,
-          sender: msg.sender ?? { id: msg.senderId, name: null, image: null },
+          sender: msg.sender ?? { id: msg.senderId ?? currentUser?.id ?? '', name: null, image: null },
           thread: msg.thread ?? { id: msg.threadId, name: '', slug: '' },
           attachments:
             msg.attachments?.map((att: { id: string; url: string; type: string; name: string | null; size: bigint | null }) => ({

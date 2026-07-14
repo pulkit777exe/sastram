@@ -1,6 +1,7 @@
 import { SettingsForm } from '@/components/dashboard/settings-form';
 import { NewsletterManagement } from '@/components/dashboard/newsletter-management';
 import { PreferencesForm } from '@/components/dashboard/preferences-form';
+import { AccountDangerZone } from '@/components/dashboard/account-danger-zone';
 import { getUserNewsletterSubscriptions } from '@/modules/newsletter/actions';
 import { SettingsTabs } from '@/components/dashboard/settings-tabs';
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -55,6 +56,7 @@ export default async function SettingsPage({
       {tab === 'profile' && user && <SettingsForm user={user} />}
       {tab === 'newsletters' && <NewsletterManagement subscriptions={subscriptions} />}
       {tab === 'preferences' && user && <PreferencesForm user={user} />}
+      {tab === 'account' && <AccountDangerZone />}
     </div>
   );
 }

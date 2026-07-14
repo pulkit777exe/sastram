@@ -70,7 +70,7 @@ export async function createReport(data: {
     }
 
     try {
-      assertCanReportOwnMessage(session.user.id, message.senderId);
+      assertCanReportOwnMessage(session.user.id, message.senderId ?? '');
     } catch (error) {
       if (error instanceof Error) {
         return { data: null, error: error.message, ok: false, errorCode: 'FORBIDDEN' };
@@ -283,7 +283,7 @@ export async function getReportWithContext(reportId: string) {
           take: 10,
         }),
         prisma.userBan.findMany({
-          where: { userId: report.message.senderId },
+          where: { userId: report.message.senderId! },
           select: {
             id: true,
             reason: true,
@@ -307,18 +307,18 @@ export async function getReportWithContext(reportId: string) {
           },
         }),
         prisma.userBan.count({
-          where: { userId: report.message.senderId },
+          where: { userId: report.message.senderId! },
         }),
         prisma.report.count({
           where: {
-            message: { senderId: report.message.senderId },
+            message: { senderId: report.message.senderId! },
             status: 'RESOLVED',
           },
         }),
       ]);
 
     const accountAgeDays = Math.floor(
-      (Date.now() - new Date(report.message.sender.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - new Date(report.message.sender?.createdAt ?? report.message.createdAt).getTime()) / (1000 * 60 * 60 * 24)
     );
 
     const trustScore = Math.max(
@@ -339,17 +339,17 @@ export async function getReportWithContext(reportId: string) {
             id: m.id,
             content: m.content,
             senderId: m.senderId,
-            senderName: m.sender.name,
+            senderName: m.sender?.name,
             createdAt: m.createdAt,
             isReported: m.id === report.messageId,
           })),
         },
         reportedUserProfile: {
-          id: report.message.sender.id,
-          name: report.message.sender.name,
-          email: report.message.sender.email,
-          createdAt: report.message.sender.createdAt,
-          status: report.message.sender.status,
+          id: report.message.sender?.id ?? 'unknown',
+          name: report.message.sender?.name ?? null,
+          email: report.message.sender?.email ?? 'unknown',
+          createdAt: report.message.sender?.createdAt ?? report.message.createdAt,
+          status: report.message.sender?.status ?? 'ACTIVE',
           trustScore: Math.round(trustScore),
           violationHistory: violationHistory.map((v) => ({
             id: v.id,
@@ -523,7 +523,7 @@ export async function resolveReport(data: {
         });
 
         await tx.user.update({
-          where: { id: report.message.senderId },
+          where: { id: report.message.senderId! },
           data: {
             status: parsed.data.action === 'BAN_USER' ? 'BANNED' : 'SUSPENDED',
           },
@@ -531,7 +531,7 @@ export async function resolveReport(data: {
       }
     });
 
-    if (parsed.data.action === 'WARN_USER') {
+    if (parsed.data.action === 'WARN_USER' && report.message.senderId) {
       await createNotification({
         userId: report.message.senderId,
         type: 'SYSTEM',
@@ -544,7 +544,7 @@ export async function resolveReport(data: {
       });
     }
 
-    if (parsed.data.action === 'BAN_USER' || parsed.data.action === 'SUSPEND_USER') {
+    if ((parsed.data.action === 'BAN_USER' || parsed.data.action === 'SUSPEND_USER') && report.message.senderId) {
       await createNotification({
         userId: report.message.senderId,
         type: 'SYSTEM',
@@ -559,7 +559,7 @@ export async function resolveReport(data: {
       });
     }
 
-    if (parsed.data.notifyReporter) {
+    if (parsed.data.notifyReporter && report.reporterId) {
       await createNotification({
         userId: report.reporterId,
         type: 'SYSTEM',

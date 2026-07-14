@@ -127,6 +127,7 @@ export async function GET(req: NextRequest) {
         prewarmedQueries: prewarmResult.prewarmed,
         purgedThreads: purgeResult.threads,
         purgedCommunities: purgeResult.communities,
+        purgedUsers: purgeResult.users,
         reconciliation: {
           scanned: reconciliationResult.scanned,
           driftsFound: reconciliationResult.drifts.length,

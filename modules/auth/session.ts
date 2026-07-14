@@ -30,7 +30,7 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
 
   try {
     const fullUser = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: user.id, deletedAt: null },
       select: {
         role: true,
         status: true,

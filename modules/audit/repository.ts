@@ -211,6 +211,7 @@ export async function getMostActiveUsers(limit = 10, startDate?: Date, endDate?:
     prisma.user.findMany({
       where: {
         id: { in: userIds },
+        deletedAt: null,
       },
       select: {
         id: true,

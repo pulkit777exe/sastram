@@ -7,7 +7,7 @@ import { computeHasMore } from '@/lib/db/pagination';
 
 export const getPublicProfile = cache(async (userId: string, viewerId?: string) => {
   const user = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: userId, deletedAt: null },
     select: {
       id: true,
       name: true,
@@ -67,7 +67,7 @@ export const getPublicProfile = cache(async (userId: string, viewerId?: string) 
 export const getUserBootstrapProfile = cache(async (userId: string) => {
   return dedupe(`users:bootstrap:${userId}`, () =>
     prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: userId, deletedAt: null },
       select: {
         id: true,
         name: true,

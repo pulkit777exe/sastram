@@ -69,7 +69,7 @@ export default async function BannedPage() {
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Issued By:</span>
-                <span>{ban.issuer.name || 'System'}</span>
+                <span>{ban.issuer?.name || 'System'}</span>
               </div>
             </div>
           )}

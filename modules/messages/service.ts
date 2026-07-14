@@ -42,7 +42,7 @@ export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
         replyCount: msg.replyCount ?? 0,
         isAiResponse: msg.isAiResponse ?? false,
         deletedAt: msg.deletedAt ?? null,
-        sender: msg.sender ?? { id: msg.senderId, name: null, image: null },
+        sender: msg.sender ?? { id: msg.senderId ?? '', name: null, image: null },
         thread: msg.thread ?? { id: msg.threadId, name: '', slug: '' },
         attachments: msg.attachments ?? [],
         children: [],

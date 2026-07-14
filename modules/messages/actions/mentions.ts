@@ -72,7 +72,7 @@ export async function createMentionsForMessage(args: {
   const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}`;
 
   const mentionedUsers = await prisma.user.findMany({
-    where: { id: { in: args.mentions } },
+    where: { id: { in: args.mentions }, deletedAt: null },
     select: { email: true },
   });
 

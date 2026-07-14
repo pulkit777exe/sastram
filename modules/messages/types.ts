@@ -20,7 +20,7 @@ export interface MessageWithDetails {
   content: string;
   createdAt: Date;
   updatedAt: Date;
-  senderId: string;
+  senderId: string | null;
   threadId: string;
   parentId: string | null;
   depth: number;
@@ -35,7 +35,7 @@ export interface MessageWithDetails {
     name: string | null;
     image: string | null;
     status: UserStatus;
-  };
+  } | null;
   attachments: AttachmentInfo[];
   reactions?: ReactionSummary[];
   replyCountDisplay?: number;
