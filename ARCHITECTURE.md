@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sastram is an AI-powered discussion and research platform. Users create threads in communities, post messages in a nested tree structure (depth up to 4), and AI assists with search, summarization, conflict detection, and inline responses. The system accumulates knowledge over time — threads gain resolution scores, DNA classification, and staleness tracking.
+Sastram is an AI-powered discussion and research platform. Users create threads in communities, post messages in a nested tree structure (depth up to 4), and AI assists with search, summarization, conflict detection, and inline responses. The system accumulates knowledge over time — threads gain resolution scores, DNA classification, and staleness tracking. Includes moderation pipeline with escalation, user account management (soft-delete, data export, GDPR), image NSFW filtering, and cost-tracked AI spend.
 
 ## Tech Stack
 
@@ -41,16 +41,19 @@ Browser
 │
 ├── HTTP / Server Actions ──→ Next.js App Router (app/)
 │   │
-│   ├── modules/ (30 domain modules)
+│   ├── modules/ (26 domain modules)
 │   │   ├── Prisma ──→ PostgreSQL (Neon)
-│   │   ├── Upstash Redis (rate limit, cache, spend cap)
+│   │   ├── Upstash Redis (rate limit, cache, spend cap, image quota)
 │   │   ├── QStash ──→ background jobs (webhook → app/api/jobs)
-│   │   ├── Vercel Cron ──→ scheduled tasks (update-threads, cleanup-blobs)
-│   │   ├── Vercel Blob (file uploads)
-│   │   ├── Gemini / OpenAI (AI features)
+│   │   ├── Vercel Cron ──→ scheduled tasks (update-threads, cleanup-blobs, SLA escalation)
+│   │   ├── Vercel Blob (file uploads) + NSFW moderation (Gemini multimodal)
+│   │   ├── Gemini / OpenAI (AI features, cost-tracked via AiUsageLog)
 │   │   └── Resend (transactional email)
 │   │
 │   └── API Routes (app/api/)
+│       ├── /api/admin/* — admin dashboard, SLA metrics
+│       ├── /api/cron/* — scheduled jobs (soft-delete purge, SLA escalation)
+│       └── /api/upload — image moderation + blob storage
 │
 └── SSE ──→ AI reply streaming (app/api/threads/[threadId]/ai-reply/stream)
 ```
@@ -68,7 +71,7 @@ sastram/
 │   ├── chat/               # Chat page
 │   └── [community]/[thread]/  # Public community thread view
 │
-├── modules/                # 30 domain modules (business logic)
+├── modules/                # 26 domain modules (business logic)
 │   ├── auth/               # Session, OAuth, OTP
 │   ├── threads/            # Thread CRUD, membership, slug routing
 │   ├── messages/           # Post, edit, pin, delete, @mentions, @ai inline
@@ -92,22 +95,22 @@ sastram/
 ├── components/             # UI components (shadcn/ui + feature components)
 ├── hooks/                  # React hooks (chat polling, debounce, AI reply stream)
 ├── stores/                 # Zustand stores (thread-view-store.ts)
-├── prisma/                 # schema.prisma (33 models), migrations, seed.ts
-├── test/                   # Mocha unit tests (23 test files)
+├── prisma/                 # schema.prisma (31 models), migrations, seed.ts
+├── test/                   # Mocha unit tests (40 test files)
 └── shared/                 # ARCHITECTURE.md, context.md
 ```
 
 ## Data Model
 
-**33 Prisma models** in `prisma/schema.prisma`. Database: PostgreSQL via Neon serverless.
+**31 Prisma models** in `prisma/schema.prisma`. Database: PostgreSQL via Neon serverless.
 
 ### Core Entities
 
-- **User** — email/password + OAuth, role (USER/MODERATOR/ADMIN), status (ACTIVE/SUSPENDED/BANNED), preferences as JSON, reputation points
-- **Thread** — the central entity. Stores AI metadata directly: `resolutionScore`, `aiSummary`, `threadDna` (JSON), `isOutdated`, `lastVerifiedAt`. Visibility: PUBLIC/PRIVATE/RESTRICTED
-- **Message** — nested tree via `parentId` + `depth` (0–4). `isAiResponse` for @ai messages. Soft-deleted via `deletedAt`. Denormalized `likeCount`/`replyCount`
+- **User** — email/password + OAuth, role (USER/MODERATOR/ADMIN), status (ACTIVE/SUSPENDED/BANNED), preferences as JSON, reputation points. Supports soft-delete via `deletedAt` — PII anonymized, FK ownership nullified, sessions invalidated, purged after 30 days.
+- **Thread** — the central entity. Stores AI metadata directly: `resolutionScore`, `aiSummary`, `threadDna` (JSON), `isOutdated`, `lastVerifiedAt`. Visibility: PUBLIC/PRIVATE/RESTRICTED. `createdBy` nullable (nullified on user deletion).
+- **Message** — nested tree via `parentId` + `depth` (0–4). `isAiResponse` for @ai messages. Soft-deleted via `deletedAt`. Denormalized `likeCount`/`replyCount`. `senderId` nullable (nullified on user deletion).
 - **ThreadMember** — membership with roles (OWNER/MODERATOR/MEMBER) and status (ACTIVE/INVITED/LEFT/REMOVED)
-- **Community** — groups threads, visibility: PUBLIC/PRIVATE/UNLISTED
+- **Community** — groups threads, visibility: PUBLIC/PRIVATE/UNLISTED. `createdBy` nullable.
 
 ### Supporting Entities
 
@@ -115,18 +118,21 @@ sastram/
 - **Reaction** — unique on (messageId, userId, emoji)
 - **ReadReceipt** — tracks last-read message per user per thread
 - **Notification** — typed (REPLY, MENTION, REACTION, INVITATION, SYSTEM, AI_INSIGHT)
-- **Report/Appeal/UserBan** — moderation pipeline
+- **Report** — `reporterId` nullable. Supports full resolution pipeline: DISMISS, REMOVE_MESSAGE, WARN_USER, SUSPEND_USER, BAN_USER. `firstResponseAt` tracks SLA response time. `escalatedAt` set by SLA escalation (>24h = notify moderators, >72h = alert admins).
+- **Appeal** — `userId` nullable. Links to Report (not stored as Report record). `moderatorId`/`response`/`resolvedAt` for resolution. Deactivates bans on approval.
+- **UserBan** — `userId`/`bannedBy` nullable
 - **ThreadInvitation** — email-based invitations with token
 - **ThreadSubscription** — newsletter frequency (DAILY/WEEKLY/NEVER)
 - **Poll/PollVote** — in-thread polls
 - **UserFollow/UserBookmark** — social features
 - **UserReputation/UserBadge/UserBadgeEarned** — gamification
-- **UserActivity** — unified activity/audit log
+- **UserActivity** — unified activity/audit log (CHECK constraint on `type` column)
 - **ThreadTag/ThreadTagRelation** — tagging system
 - **AiSearchSession/AiSearchResult** — AI search caching with TTL
 - **ThreadRelation** — cross-thread semantic similarity (0.0–1.0)
 - **MessageEdit/MessageMention/Attachment** — message metadata
-- **ModerationRule** — regex-based moderation rules
+- **ModerationRule** — regex-based moderation rules (CHECK constraints on `category`, `severity`, `action`)
+- **AiUsageLog** — per-request token counts and cost estimates (indexes on userId, operation, createdAt, costUsd)
 
 ### Key Relationships
 
@@ -218,9 +224,9 @@ Vercel Cron → /api/cron/update-threads (daily 3 AM UTC)
 | Service | Purpose | Where Used |
 |---------|---------|------------|
 | **Neon** | PostgreSQL hosting | `lib/infrastructure/prisma.ts` |
-| **Upstash Redis** | Rate limiting, QStash, spend caps, caching | `lib/infrastructure/redis-upstash.ts`, `lib/services/rate-limit.ts` |
+| **Upstash Redis** | Rate limiting, QStash, spend caps (dollar-based), caching | `lib/infrastructure/redis-upstash.ts`, `lib/services/rate-limit.ts` |
 | **Upstash QStash** | Background job queue | `lib/services/queue.ts`, `app/api/jobs/route.ts` |
-| **Google Gemini** | AI: search, summaries, DNA, conflict detection, toxicity | `lib/services/ai.ts`, `modules/ai-search/service.ts` |
+| **Google Gemini** | AI: search, summaries, DNA, conflict detection, toxicity, image moderation | `lib/services/ai.ts`, `modules/ai-search/service.ts` |
 | **OpenAI** | Alternative AI provider | `lib/services/ai.ts` (OpenAIService class) |
 | **LangChain** | Map-reduce thread summarization | `lib/services/ai-langchain.ts` |
 | **Exa API** | Neural search (forum/technical content) | `modules/ai-search/service.ts` |
@@ -272,9 +278,25 @@ Uses PostgreSQL 16 and Redis 7 service containers.
 
 5. **Inline fallback for QStash jobs**: When QStash is not configured (local dev), jobs run inline via dynamic import (`lib/services/queue.ts:runJobInline`). This avoids requiring QStash for development.
 
-6. **AI spend cap**: Global daily limit of 200 AI operations enforced via Redis atomic counter (`lib/services/ai-spend-cap.ts`). Fails open if Redis is unavailable.
+6. **AI spend cap**: Dollar-based daily limit of $5.00 enforced via Redis atomic float increment (`lib/services/ai-spend-cap.ts`). Uses `INCRBYFLOAT` Lua script for sub-cent increments. Fails open if Redis is unavailable.
 
 7. **Confidence decay on resolution scores**: Scores decay over time via `lib/utils/confidence-decay.ts`, applied during resolution score calculation. Threads older than 30 days with low scores are marked outdated.
+
+8. **User soft-delete**: Account deletion anonymizes PII, nullifies FK ownership (8 tables), revokes sessions, and marks `deletedAt`. A scheduled job purges soft-deleted users after 30 days. No admin recovery UI — explicit warnings on delete dialogs.
+
+9. **Appeal model integrity**: Appeals are stored in their own table with a foreign key to Report. The old pattern of creating Report records with `APPEAL:` prefix has been removed. Resolving an appeal deactivates the linked ban.
+
+10. **Moderator notification pipeline**: New reports and auto-mod flagged content create SYSTEM notifications for all active MODERATOR/ADMIN users via `notifyModerators()`.
+
+11. **Upload safety**: Filenames sanitized (path stripping, control chars, leading dots, 100-char truncation). Magic byte verification on avatar/banner uploads. Regex-based filename filtering for all attachments.
+
+12. **Image NSFW moderation**: Images are sent to Gemini's multimodal API for NSFW classification before blob storage. Per-user daily quota (50 images) and global dollar cap ($5/day) shared with all AI features.
+
+13. **Moderation SLA escalation**: Stale reports (pending >24h) re-notify moderators; >72h escalate to admins. `firstResponseAt` tracks actual response time. SLA metrics exposed at `/api/admin/sla`.
+
+14. **Visibility enforcement at data layer**: `getThreadWithFullContext` returns null for PRIVATE/RESTRICTED threads when user is not a member — authorization check moved from route handlers to the data layer.
+
+15. **Cost tracking**: All AI operations log to `AiUsageLog` with token counts and estimated costs. Enables future billing/alerting without re-architecting.
 
 ## Known Gaps, Tech Debt, and Contradictions
 
@@ -284,7 +306,7 @@ Uses PostgreSQL 16 and Redis 7 service containers.
 
 3. **`shared/ARCHITECTURE.md` inaccuracies**:
    - Claims "Nodemailer (SMTP)" — actual provider is Resend
-   - Claims "256+ passing" tests — 23 test files exist
+   - Claims "256+ passing" tests — 40 test files exist (tests may pass but count is different)
    - Claims "Playwright e2e tests" — no e2e directory or Playwright dependency
    - References `lib/infrastructure/bullmq.ts` — file does not exist
    - References `lib/templates/email-templates.ts` — directory does not exist
@@ -294,23 +316,34 @@ Uses PostgreSQL 16 and Redis 7 service containers.
 
 5. **Missing worker entry point**: `docker-compose.yml` references `worker/index.ts` in the worker service CMD, but this file does not exist in the repository root.
 
-6. **Test coverage limited**: 23 test files covering utilities, services, and some components. No API route tests. No integration tests with real DB (CI uses a test DB but tests are unit-level).
+6. **Test coverage gaps**: 40 test files covering utilities, services, API routes, and some components. No e2e/integration tests with real DB. No component storybook. Some API routes still have thin coverage.
+
+7. **No soft-delete recovery UI**: Account deletion is irreversible — explicit warnings in delete dialog. No admin tool to recover soft-deleted users (intentional by design).
+
+8. **Counter reconciliation report-only**: Thread message/like counters are checked on read but not auto-corrected (`COUNTER_RECONCILIATION_AUTO_CORRECT = false`). Auto-correction planned for after 30-day monitoring period.
 
 ## How to Verify This Document
 
 | Claim | Verification |
 |-------|-------------|
 | Next.js 16.2.9 | `package.json` line 115: `"next": "^16.2.9"` |
-| 33 Prisma models | `prisma/schema.prisma` — count model blocks |
+| 31 Prisma models | `prisma/schema.prisma` — count model blocks |
 | Better Auth 1.6.19 | `package.json` line 105: `"better-auth": "^1.6.19"` |
 | Resend for email | `lib/services/email.ts` line 8: `import type { CreateEmailOptions } from 'resend'` |
 | No e2e directory | `ls e2e/` returns "does not exist" |
 | WS publisher is no-op | `modules/ws/publisher.ts` line 24: `logger.debug('[ws:noop] emitThreadMessage'` |
 | QStash job queue | `lib/services/queue.ts` line 1: `import { Client } from '@upstash/qstash'` |
-| 30 domain modules | `ls modules/` — 30 entries |
+| 26 domain modules | `ls modules/` — 26 entries |
 | CI pipeline | `.github/workflows/ci.yml` — typecheck, lint, build, test |
-| AI spend cap 200/day | `lib/services/ai-spend-cap.ts` line 4: `const DAILY_LIMIT = 200` |
+| AI spend cap $5/day | `lib/services/ai-spend-cap.ts` line 4: `const DAILY_DOLLAR_LIMIT = 5.00` |
+| User soft-delete | `prisma/schema.prisma` — `User` model: `deletedAt DateTime?` |
+| Account deletion | `modules/users/actions.ts` — `requestAccountDeletion` |
+| Data export | `modules/users/actions.ts` — `exportUserData` |
+| Appeal table | `prisma/schema.prisma` — `Appeal` model with `userId?`, `reportId` |
+| SLA escalation | `lib/services/moderation-sla.ts` — `escalateStaleReports()` |
+| Image NSFW | `lib/services/ai.ts` — `moderateImageContent()` |
+| AiUsageLog | `prisma/schema.prisma` — `AiUsageLog` model with `costUsd` |
 
 ---
 
-Last verified: 2026-07-10, against commit a6c8167
+Last verified: 2026-07-13, against commit fe0432f

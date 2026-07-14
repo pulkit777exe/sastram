@@ -46,7 +46,7 @@ pnpm db:studio   # Prisma studio
 
 - `app/` - Next.js App Router pages and API routes
 - `lib/` - Core utilities, services, infrastructure
-- `modules/` - Domain modules (29 feature modules)
+- `modules/` - Domain modules (26 feature modules)
 - `components/` - UI components
 - `prisma/` - Database schema
 - `test/` - Mocha unit tests
@@ -54,29 +54,35 @@ pnpm db:studio   # Prisma studio
 
 ### Database Models
 
-33 models in `prisma/schema.prisma`:
-- User, Account, Session, Verification
+31 models in `prisma/schema.prisma`:
+- User (deletedAt), Account, Session, Verification
 - Community, Thread, ThreadMember
-- Message, MessageEdit, MessageMention, Attachment
+- Message (deletedAt, nullable senderId), MessageEdit, MessageMention, Attachment
 - Reaction, ReadReceipt
 - UserFollow, UserBookmark
 - Notification
 - ThreadSubscription
-- ModerationRule, Appeal, Report, UserBan
+- ModerationRule (CHECK constraints), Appeal (own table), Report (escalatedAt, firstResponseAt), UserBan
 - ThreadTag, ThreadTagRelation
 - Poll, PollVote
 - UserReputation, UserBadge, UserBadgeEarned
-- UserActivity
+- UserActivity (CHECK constraint)
 - ThreadInvitation
 - AiSearchSession, AiSearchResult
+- AiUsageLog (costUsd)
 - ThreadRelation
 
 ### Key Services
 
-- **AI** (`lib/services/ai.ts`): GeminiService, OpenAIService with summaries, thread DNA, resolution scores
+- **AI** (`lib/services/ai.ts`): GeminiService, OpenAIService with summaries, thread DNA, resolution scores, image NSFW moderation
 - **Auth** (`lib/services/auth.ts`): Better Auth with email OTP
 - **Rate Limit** (`lib/services/rate-limit.ts`): Redis-based rate limiting with in-memory fallback
-- **Moderation** (`lib/services/moderation.ts`): Regex-based content filtering + AI inline
+- **Moderation** (`lib/services/moderation.ts`): Regex-based content filtering + AI inline + moderator notifications
+- **AI Spend Cap** (`lib/services/ai-spend-cap.ts`): Dollar-based daily limit ($5.00) via Redis INCRBYFLOAT
+- **AI Usage Logger** (`lib/services/ai-usage-logger.ts`): Per-request token counts and cost estimates
+- **Image Moderation Quota** (`lib/services/image-moderation-quota.ts`): Per-user 50/day limit
+- **Moderation SLA** (`lib/services/moderation-sla.ts`): Stale report escalation (>24h/72h)
+- **Soft-Delete Purge** (`lib/services/soft-delete-purge.ts`): Purges soft-deleted users after 30 days
 
 ### Background Jobs
 
@@ -110,8 +116,8 @@ pnpm db:studio   # Prisma studio
 
 ## Test Coverage
 
-- **Current**: 199 tests in 9 files (api-response, content-safety, error-handling, logger, queue-config, search-fts, simple, utils)
-- **Missing**: API endpoint tests
+- **Current**: 40 test files covering utilities, services, API routes, and some components
+- **Missing**: e2e tests, integration tests with real DB, component storybook
 
 ## Architecture Notes
 
