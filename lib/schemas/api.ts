@@ -23,6 +23,7 @@ export const uploadedFileSchema = z.object({
   type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO', 'PDF']),
   name: z.string(),
   size: z.number().int().positive(),
+  flagged: z.boolean().optional(),
 });
 
 export const uploadResponseSchema = z.object({

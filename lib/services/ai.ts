@@ -130,6 +130,12 @@ function makeAbortController(): { signal: AbortSignal; clear: () => void } {
   return { signal: controller.signal, clear: () => clearTimeout(timer) };
 }
 
+export interface ImageModerationResult {
+  classification: 'SAFE' | 'NSFW' | 'UNKNOWN';
+  confidence: number;
+  reason: string;
+}
+
 export interface AIService {
   generateSummary(content: string): Promise<string>;
   generateThreadSummary(messages: MessageInput[]): Promise<string>;
@@ -139,6 +145,7 @@ export interface AIService {
   detectConflicts(messages: MessageInput[]): Promise<ConflictResult>;
   generateStreamingResponse(content: string, onChunk: (chunk: string) => void): Promise<void>;
   classifyToxicity(content: string): Promise<number>;
+  moderateImageContent(imageUrl: string): Promise<ImageModerationResult>;
 }
 
 export class GeminiService implements AIService {
@@ -441,6 +448,57 @@ export class GeminiService implements AIService {
       clear();
     }
   }
+
+  async moderateImageContent(imageUrl: string): Promise<ImageModerationResult> {
+    const prompt =
+      'Analyze this image for safety. Classify as SAFE, NSFW, or UNKNOWN. ' +
+      'NSFW includes explicit, violent, or disturbing content. ' +
+      'Respond with JSON: { "classification": string, "confidence": number (0-1), "reason": string }';
+
+    const { signal, clear } = makeAbortController();
+    const start = Date.now();
+    try {
+      const result = await withRetry(
+        (retrySignal) =>
+          this.ai.models.generateContent({
+            model: this.flashModel,
+            contents: [
+              { role: 'user', parts: [{ text: prompt }, { fileData: { mimeType: 'image/jpeg', fileUri: imageUrl } }] },
+            ],
+            config: { abortSignal: retrySignal },
+          }),
+        3,
+        300,
+        15_000,
+        signal
+      );
+      const latencyMs = Date.now() - start;
+      logAiUsage({
+        operation: 'moderate-image',
+        provider: 'gemini',
+        model: this.flashModel,
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+        latencyMs,
+      }).catch(() => {});
+
+      const text = cleanJsonText(result.text ?? '');
+      const parsed = JSON.parse(text);
+      const validClassifications = ['SAFE', 'NSFW', 'UNKNOWN'];
+      return {
+        classification: validClassifications.includes(parsed.classification)
+          ? parsed.classification
+          : 'UNKNOWN',
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
+        reason: typeof parsed.reason === 'string' ? parsed.reason : 'No reason provided',
+      };
+    } catch (error) {
+      logger.warn('[GeminiService.moderateImageContent] AI failed, returning UNKNOWN', { error });
+      return { classification: 'UNKNOWN', confidence: 0, reason: 'Image moderation unavailable' };
+    } finally {
+      clear();
+    }
+  }
 }
 
 export class OpenAIService implements AIService {
@@ -700,6 +758,10 @@ export class OpenAIService implements AIService {
       return 0;
     }
   }
+
+  async moderateImageContent(): Promise<ImageModerationResult> {
+    return { classification: 'UNKNOWN', confidence: 0, reason: 'OpenAI image moderation not implemented' };
+  }
 }
 
 class AIServiceFactory {
@@ -734,6 +796,9 @@ class NoOpAIService implements AIService {
   }
   async classifyToxicity() {
     return 0;
+  }
+  async moderateImageContent(): Promise<ImageModerationResult> {
+    return { classification: 'SAFE', confidence: 0, reason: 'AI service not configured' };
   }
 }
 

@@ -5,10 +5,13 @@ import { requireSessionOrThrow } from '@/modules/auth/session';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import { detectMimeTypeFromFile, getFileCategory, getExtensionFromMime, validateFileUpload } from '@/lib/utils/file-upload';
 import { logger } from '@/lib/infrastructure/logger';
+import { aiService } from '@/lib/services/ai';
+import { env } from '@/lib/config/env';
+import { consumeImageModerationQuota } from '@/lib/services/image-moderation-quota';
 
 function errorCodeToStatus(errorCode: string | null): number {
   switch (errorCode) {
@@ -79,6 +82,21 @@ export async function POST(request: NextRequest) {
           const ext = getExtensionFromMime(mimeForExt);
           const key = `${randomUUID()}.${ext}`;
           const blob = await put(key, file, { access: 'public', addRandomSuffix: false });
+
+          const fileCategory = getFileCategory(mimeForExt);
+          if (env.CONTENT_MODERATION_ENABLED && (fileCategory === 'IMAGE' || fileCategory === 'GIF')) {
+            const quota = await consumeImageModerationQuota();
+            if (!quota.allowed) {
+              await del(blob.url);
+              throw new Error('Daily image moderation limit reached. Please try again tomorrow.');
+            }
+            const modResult = await aiService.moderateImageContent(blob.url);
+            if (modResult.classification === 'NSFW') {
+              await del(blob.url);
+              throw new Error(`Image rejected: ${modResult.reason}`);
+            }
+          }
+
           return {
             url: blob.url,
             type: getFileCategory(mimeForExt),

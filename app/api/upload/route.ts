@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { validateFileUpload, getFileCategory, detectMimeTypeFromFile, getExtensionFromMime } from '@/lib/utils/file-upload';
 import { uploadResponseSchema } from '@/lib/schemas/api';
 import { logger } from '@/lib/infrastructure/logger';
@@ -7,6 +7,9 @@ import { randomUUID } from 'crypto';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth/session';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { aiService } from '@/lib/services/ai';
+import { env } from '@/lib/config/env';
+import { consumeImageModerationQuota } from '@/lib/services/image-moderation-quota';
 
 const handler = withErrorHandling(async (req: NextRequest) => {
   const session = await requireSessionOrThrow();
@@ -60,11 +63,29 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
       const type = getFileCategory(mimeForExt);
 
+      let flagged = false;
+      if (env.CONTENT_MODERATION_ENABLED && (type === 'IMAGE' || type === 'GIF')) {
+        const quota = await consumeImageModerationQuota();
+        if (!quota.allowed) {
+          await del(blob.url);
+          throw new Error('Daily image moderation limit reached. Please try again tomorrow.');
+        }
+        const result = await aiService.moderateImageContent(blob.url);
+        if (result.classification === 'NSFW') {
+          await del(blob.url);
+          throw new Error(`Image rejected: ${result.reason}`);
+        }
+        if (result.classification === 'UNKNOWN') {
+          flagged = true;
+        }
+      }
+
       return {
         url: blob.url,
         type,
         name: file.name,
         size: file.size,
+        ...(flagged && { flagged: true }),
       };
     })
   );
