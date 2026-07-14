@@ -7,6 +7,7 @@ import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { put } from '@vercel/blob';
 import { FILE_LIMITS } from '@/lib/config/constants';
+import { detectMimeTypeFromFile, getExtensionFromMime } from '@/lib/utils/file-upload';
 import { getPublicProfile, getUserThreads, updateProfilePrivacy } from './repository';
 import { ProfilePrivacy } from '@prisma/client';
 import {
@@ -69,10 +70,16 @@ export const uploadAvatar = withValidation(
       return { data: null, error: 'File size must be less than 4.5MB' };
     }
 
+    const detected = await detectMimeTypeFromFile(file);
+    if (detected && !allowedTypes.includes(detected)) {
+      return { data: null, error: 'File content does not match declared type' };
+    }
+
     try {
       const session = await requireSession();
+      const ext = getExtensionFromMime(detected || file.type);
       const blob = await put(
-        `avatars/${session.user.id}-${Date.now()}.${file.name.split('.').pop()}`,
+        `avatars/${session.user.id}-${Date.now()}.${ext}`,
         file,
         { access: 'public' }
       );
@@ -108,10 +115,16 @@ export const uploadBanner = withValidation(
       return { data: null, error: 'File size must be less than 4.5MB' };
     }
 
+    const detected = await detectMimeTypeFromFile(file);
+    if (detected && !allowedTypes.includes(detected)) {
+      return { data: null, error: 'File content does not match declared type' };
+    }
+
     try {
       const session = await requireSession();
+      const ext = getExtensionFromMime(detected || file.type);
       const blob = await put(
-        `banners/${session.user.id}-${Date.now()}.${file.name.split('.').pop()}`,
+        `banners/${session.user.id}-${Date.now()}.${ext}`,
         file,
         { access: 'public' }
       );

@@ -14,6 +14,7 @@ export type MessageLike = {
   parentId?: string | null;
   timestamp?: Date;
   metadata?: Record<string, unknown>;
+  attachments?: { name?: string | null; url: string; type: string }[];
 };
 
 export type ConversationContext = {
@@ -97,6 +98,28 @@ export class RegexFilter {
       } catch (error) {
         logger.warn(`Invalid regex pattern for rule ${ruleId}:`, error);
         continue;
+      }
+    }
+
+    if (message.attachments) {
+      for (const att of message.attachments) {
+        if (att.name) {
+          for (const [ruleId, { regex, action, severity, category }] of compiledRules) {
+            try {
+              if (regex.test(att.name)) {
+                return {
+                  success: false,
+                  action: action as 'BLOCK' | 'REVIEW' | 'FLAG',
+                  severity: severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
+                  reason: `Matched rule: ${category}`,
+                };
+              }
+            } catch (error) {
+              logger.warn(`Invalid regex pattern for rule ${ruleId}:`, error);
+              continue;
+            }
+          }
+        }
       }
     }
 

@@ -108,3 +108,13 @@ export function validateFileUpload(file: File): {
 
   return { valid: true };
 }
+
+export function sanitizeFilename(name: string): string {
+  return name
+    .replace(/[/\\]/g, '')
+    .replace(/[\x00-\x1f]/g, '')
+    .replace(/^[.\s]+/, '')
+    .replace(/[.\s]{2,}/g, '.')
+    .slice(0, 100)
+    .trim() || 'unnamed';
+}
