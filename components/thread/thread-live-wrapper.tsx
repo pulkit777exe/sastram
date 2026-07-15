@@ -40,7 +40,6 @@ interface ThreadLiveWrapperProps {
   };
   title: string;
   slug: string;
-  memberCount: number;
   initialFrequency: 'DAILY' | 'WEEKLY' | 'NEVER' | null;
 }
 
@@ -57,7 +56,6 @@ export function ThreadLiveWrapper({
   currentUser,
   title,
   slug,
-  memberCount,
   initialFrequency,
 }: ThreadLiveWrapperProps) {
   const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
@@ -595,7 +593,6 @@ export function ThreadLiveWrapper({
       {/* Fixed header */}
       <ThreadPageHeader
         title={title}
-        memberCount={memberCount}
         threadId={threadId}
         slug={slug}
         initialFrequency={initialFrequency}

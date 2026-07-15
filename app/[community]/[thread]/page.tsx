@@ -111,7 +111,6 @@ async function ThreadContent({ slug, userId, user }: { slug: string; userId: str
           canManagePoll={false}
           title={thread.name ?? thread.slug}
           slug={thread.slug}
-          memberCount={thread._count?.members ?? 0}
           initialFrequency={(subscription?.frequency as 'DAILY' | 'WEEKLY' | 'NEVER') ?? null}
           currentUser={{
             id: userId,
@@ -194,7 +193,6 @@ async function PublicThreadContent({ slug, pathname }: { slug: string; pathname:
           canManagePoll={false}
           title={thread.name ?? thread.slug}
           slug={thread.slug}
-          memberCount={thread._count?.members ?? 0}
           initialFrequency={null}
           currentUser={{
             id: '',

@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import type { Community, UserActivity } from '@prisma/client';
+import type { UserActivity } from '@prisma/client';
 
 export type BootstrapUser = {
   id: string;
@@ -24,7 +24,6 @@ export type BootstrapData = {
   user: BootstrapUser;
   unreadNotificationCount: number;
   recentActivity: UserActivity[];
-  joinedCommunities: Community[];
 };
 
 // Shell data excludes notification count — does NOT change on WS pushes.

@@ -64,10 +64,6 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
           <span>Messages</span>
           <DigitGroup value={thread._count.messages} />
         </div>
-        <div className="flex items-center justify-between">
-          <span>Participants</span>
-          <DigitGroup value={thread._count.members} />
-        </div>
 
         {thread.resolutionScore !== null && (
           <div className="mt-[4px] space-y-[2px]">

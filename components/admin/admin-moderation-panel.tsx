@@ -22,25 +22,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2, Ban, Users, MessageSquare } from 'lucide-react';
-import { deleteThread, deleteCommunity, banUser } from '@/modules/moderation/actions';
+import { Trash2, Ban, MessageSquare } from 'lucide-react';
+import { deleteThread, banUser } from '@/modules/moderation/actions';
 import { toasts } from '@/lib/utils/toast';
 import type { ThreadSummary } from '@/modules/threads/types';
-import type { CommunitySummary } from '@/modules/communities/types';
 
 interface AdminModerationPanelProps {
   threads: ThreadSummary[];
-  communities: CommunitySummary[];
 }
 
-export function AdminModerationPanel({ threads: initialThreads, communities: initialCommunities }: AdminModerationPanelProps) {
+export function AdminModerationPanel({ threads: initialThreads }: AdminModerationPanelProps) {
   const [threads, setThreads] = useState<ThreadSummary[]>(initialThreads);
-  const [communities, setCommunities] = useState<CommunitySummary[]>(initialCommunities);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [deleteThreadDialogOpen, setDeleteThreadDialogOpen] = useState(false);
-  const [deleteCommunityDialogOpen, setDeleteCommunityDialogOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<string>('');
-  const [selectedCommunity, setSelectedCommunity] = useState<string>('');
   const [banReason, setBanReason] = useState<string>('');
   const [banCustomReason, setBanCustomReason] = useState<string>('');
   const [banUserId, setBanUserId] = useState<string>('');
@@ -90,28 +85,6 @@ export function AdminModerationPanel({ threads: initialThreads, communities: ini
 
     if (result?.error) {
       setThreads(prev);
-      toasts.error(result.error);
-    }
-  }
-
-  async function handleDeleteCommunity() {
-    if (!selectedCommunity) {
-      toasts.error('Please select a community');
-      return;
-    }
-
-    const prev = communities;
-    const communityTitle = communities.find((c) => c.id === selectedCommunity)?.title ?? '';
-    setCommunities((p) => p.filter((c) => c.id !== selectedCommunity));
-    setDeleteCommunityDialogOpen(false);
-    setSelectedCommunity('');
-    setDeleteReason('');
-    toasts.success(`Community "${communityTitle}" deleted`);
-
-    const result = await deleteCommunity(selectedCommunity, deleteReason || undefined);
-
-    if (result?.error) {
-      setCommunities(prev);
       toasts.error(result.error);
     }
   }
@@ -283,78 +256,6 @@ export function AdminModerationPanel({ threads: initialThreads, communities: ini
                   disabled={!selectedThread}
                 >
                   Delete Thread
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="text-foreground flex items-center gap-2">
-            <Users className="h-5 w-5 text-purple-500" />
-            Delete Community
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Soft-delete a community and all its threads. Hidden immediately, permanently purged 30 days later.
-          </p>
-          <Dialog open={deleteCommunityDialogOpen} onOpenChange={setDeleteCommunityDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="destructive" className="w-full">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Community
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Delete Community</DialogTitle>
-                <DialogDescription>
-                  The community (and all its threads) will be soft-deleted and hidden from all
-                  listings immediately. All content is permanently purged 30 days after deletion.
-                  There is no recovery UI in this build — once purged, the data is gone.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="delete-community">Select Community</Label>
-                  <Select value={selectedCommunity} onValueChange={setSelectedCommunity}>
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Select community to delete" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {communities.map((community) => (
-                        <SelectItem key={community.id} value={community.id}>
-                          {community.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="delete-community-reason">Reason (Optional)</Label>
-                  <Textarea
-                    id="delete-community-reason"
-                    value={deleteReason}
-                    onChange={(e) => setDeleteReason(e.target.value)}
-                    placeholder="Reason for deletion..."
-                    rows={3}
-                    className="resize-none bg-background"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDeleteCommunityDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteCommunity}
-                  disabled={!selectedCommunity}
-                >
-                  Delete Community
                 </Button>
               </DialogFooter>
             </DialogContent>

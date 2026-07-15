@@ -150,10 +150,9 @@ async function ThreadContent({
           : null
       }
       canManagePoll={
-        thread.members?.some(
-          (m: { user: { id: string }; role: string }) =>
-            m.user.id === session.user.id && ['OWNER', 'MODERATOR'].includes(m.role)
-        ) ?? false
+        thread.createdBy === session.user.id ||
+        session.user.role === 'MODERATOR' ||
+        session.user.role === 'ADMIN'
       }
       currentUser={{
         id: session.user.id,
@@ -163,7 +162,6 @@ async function ThreadContent({
       }}
       title={thread.name}
       slug={thread.slug}
-      memberCount={thread._count.members}
       initialFrequency={(subscription?.frequency as 'DAILY' | 'WEEKLY' | 'NEVER') ?? null}
     />
   );

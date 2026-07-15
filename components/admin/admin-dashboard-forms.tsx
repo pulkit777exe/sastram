@@ -9,28 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
-import { createCommunityAction } from '@/modules/communities/actions';
 import { createThreadAction, deleteThreadAction } from '@/modules/threads/actions';
-import type { CommunitySummary } from '@/modules/communities/types';
 
 interface AdminDashboardFormsProps {
-  communitiesPromise: Promise<CommunitySummary[]>;
   threadsPromise: Promise<{ threads: import('@/modules/threads/types').ThreadSummary[] }>;
 }
 
-export function AdminDashboardForms({ communitiesPromise, threadsPromise }: AdminDashboardFormsProps) {
-  const communities = use(communitiesPromise);
+export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps) {
   const { threads } = use(threadsPromise);
   const [isPending, startTransition] = useTransition();
-
-  const handleCreateCommunity = async (formData: FormData) => {
-    const result = await createCommunityAction(formData);
-    if (result?.ok === false) {
-      toasts.error('Failed to create community.', result.error ?? undefined);
-    } else {
-      toasts.success('Community created.');
-    }
-  };
 
   const handleCreateThread = async (formData: FormData) => {
     const result = await createThreadAction(formData);
@@ -62,8 +49,8 @@ export function AdminDashboardForms({ communitiesPromise, threadsPromise }: Admi
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>
             <h1 className="mt-3 text-3xl font-semibold">Create and moderate</h1>
             <p className="mt-2 max-w-2xl text-sm text-white/70">
-              Launch new communities, spin up curated threads, and keep conversations clean. All
-              actions sync instantly with TanStack Query powered widgets.
+              Publish curated threads and keep conversations clean. Community containers were
+              removed; permissions now flow from thread creators and global moderator roles.
             </p>
           </div>
           <div className="flex gap-3">
@@ -83,45 +70,12 @@ export function AdminDashboardForms({ communitiesPromise, threadsPromise }: Admi
         </div>
       </header>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card className="rounded-3xl border-border">
-          <CardHeader>
-            <CardTitle>Create a community</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Communities are the containers for specialized conversations.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form action={handleCreateCommunity} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="community-title">Title</Label>
-                <Input
-                  id="community-title"
-                  name="title"
-                  placeholder="Neuro Ethics Council"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="community-description">Description</Label>
-                <Textarea
-                  id="community-description"
-                  name="description"
-                  placeholder="A calm, structured exchange on the ethics of AGI."
-                />
-              </div>
-              <Button type="submit" className="w-full rounded-2xl">
-                Save community
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
+      <section>
         <Card className="rounded-3xl border-border">
           <CardHeader>
             <CardTitle>Create a thread</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Threads inherit permissions from their parent community.
+              Threads are the top-level discussion surface.
             </p>
           </CardHeader>
           <CardContent>
@@ -143,22 +97,6 @@ export function AdminDashboardForms({ communitiesPromise, threadsPromise }: Admi
                   placeholder="Gather specs, blockers, open questions."
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="thread-community">Community</Label>
-                <select
-                  id="thread-community"
-                  name="communityId"
-                  className="w-full rounded-2xl border border-border bg-background p-2 text-sm text-foreground focus:border-brand focus:outline-none"
-                >
-                  <option value="">No parent community</option>
-                  {communities.map((community) => (
-                    <option key={community.id} value={community.id}>
-                      {community.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="border rounded-2xl p-4 space-y-3 bg-muted/50">
                 <div className="flex items-center gap-2">
                   <PlusCircle className="h-4 w-4 text-muted-foreground" />
@@ -216,7 +154,6 @@ export function AdminDashboardForms({ communitiesPromise, threadsPromise }: Admi
             <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="pb-3">Title</th>
-                <th className="pb-3">Community</th>
                 <th className="pb-3">Messages</th>
                 <th className="pb-3">Slug</th>
                 <th className="pb-3 text-right">Actions</th>
@@ -226,7 +163,6 @@ export function AdminDashboardForms({ communitiesPromise, threadsPromise }: Admi
               {threads.map((thread) => (
                 <tr key={thread.id} className="text-foreground">
                   <td className="py-3 font-medium">{thread.name}</td>
-                  <td className="py-3 text-muted-foreground">{thread.community?.title ?? '—'}</td>
                   <td className="py-3 text-muted-foreground">{thread.messageCount}</td>
                   <td className="py-3">
                     <a href={`/thread/${thread.slug}`} className="text-foreground underline">

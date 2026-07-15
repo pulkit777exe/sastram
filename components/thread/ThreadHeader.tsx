@@ -69,8 +69,6 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
 
             <div className="flex items-center gap-[12px] text-[11px] font-medium text-muted">
               <span>{thread._count.messages} messages</span>
-              <span>·</span>
-              <span>{thread._count.members} participants</span>
             </div>
           </div>
         </div>

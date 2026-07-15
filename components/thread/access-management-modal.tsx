@@ -8,33 +8,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Shield, Crown } from 'lucide-react';
+import { Loader2, Trash2, Crown, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { TimeAgo } from '@/components/ui/TimeAgo';
-import { getThreadMembersAction, manageThreadMemberAction } from '@/modules/threads/actions';
-import type { ThreadMember } from '@/modules/members/types';
-import { ThreadRole } from '@prisma/client';
+import {
+  listThreadInvitationsAction,
+  revokeThreadInvitationAction,
+  type ThreadInvitationView,
+} from '@/modules/invitations/actions';
 
 interface ThreadAccessModalProps {
   threadId: string;
@@ -43,22 +27,15 @@ interface ThreadAccessModalProps {
   onClose: () => void;
 }
 
-type ConfirmActionState = {
-  type: 'update_role' | 'remove';
-  userId: string;
-  userName: string;
-  role?: ThreadRole;
-} | null;
-
 export function ThreadAccessModal({
   threadId,
   creatorId,
   isOpen,
   onClose,
 }: ThreadAccessModalProps) {
-  const [members, setMembers] = useState<ThreadMember[]>([]);
+  const [invitations, setInvitations] = useState<ThreadInvitationView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [confirmAction, setConfirmAction] = useState<ConfirmActionState>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -66,17 +43,17 @@ export function ThreadAccessModal({
     (async () => {
       setLoading(true);
       try {
-        const result = await getThreadMembersAction(threadId);
+        const result = await listThreadInvitationsAction(threadId);
         if (cancelled) return;
         if (result?.error) {
           toast.error(result.error);
-          setMembers([]);
+          setInvitations([]);
         } else {
-          setMembers(result?.data ?? []);
+          setInvitations(result?.data ?? []);
         }
       } catch {
         if (cancelled) return;
-        toast.error('Failed to load members');
+        toast.error('Failed to load invitations');
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -88,184 +65,88 @@ export function ThreadAccessModal({
     };
   }, [isOpen, threadId]);
 
-  const handleRoleChangeRequest = (userId: string, userName: string, newRole: ThreadRole) => {
-    setConfirmAction({
-      type: 'update_role',
-      userId,
-      userName,
-      role: newRole,
-    });
-  };
-
-  const handleRemoveRequest = (userId: string, userName: string) => {
-    setConfirmAction({
-      type: 'remove',
-      userId,
-      userName,
-    });
-  };
-
-  const executeAction = async () => {
-    if (!confirmAction) return;
-
+  const handleRevoke = async (invitationId: string) => {
+    setRevokingId(invitationId);
     try {
-      if (confirmAction.type === 'update_role') {
-        if (!confirmAction.role) return;
-        const result = await manageThreadMemberAction({
-          threadId,
-          userId: confirmAction.userId,
-          action: 'update_role',
-          role: confirmAction.role,
-        });
-        if (result?.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success(`Role updated for ${confirmAction.userName}`);
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.userId === confirmAction.userId ? { ...m, role: confirmAction.role! } : m
-          )
-        );
-      } else if (confirmAction.type === 'remove') {
-        const result = await manageThreadMemberAction({
-          threadId,
-          userId: confirmAction.userId,
-          action: 'remove',
-        });
-        if (result?.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success(`${confirmAction.userName} removed from thread`);
-        setMembers((prev) => prev.filter((m) => m.userId !== confirmAction.userId));
+      const result = await revokeThreadInvitationAction(invitationId);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
       }
+      toast.success('Invitation revoked');
+      setInvitations((prev) => prev.filter((i) => i.id !== invitationId));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to execute action');
+      toast.error(error instanceof Error ? error.message : 'Failed to revoke invitation');
     } finally {
-      setConfirmAction(null);
+      setRevokingId(null);
     }
   };
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Manage Access</DialogTitle>
-            <DialogDescription>Control who has access to this thread.</DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            {loading ? (
-              <div className="flex justify-center p-8">
-                <Loader2 className="animate-spin text-muted-foreground" />
-              </div>
-            ) : members.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                No members found.
-              </div>
-            ) : (
-              <ScrollArea className="h-[350px] pr-4 -mr-4">
-                <div className="space-y-4 pr-4">
-                  {members.map((member) => {
-                    const isCreator = member.userId === creatorId;
-                    const userName = member.user.name || 'Anonymous';
-
-                    return (
-                      <div key={member.id} className="flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9 border">
-                            <AvatarImage src={member.user.image || undefined} />
-                            <AvatarFallback>
-                              {member.user.name?.[0]?.toUpperCase() || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium leading-none">{userName}</p>
-                              {isCreator && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px] h-4 px-1 flex gap-1"
-                                >
-                                  <Crown size={8} /> CREATOR
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Joined <TimeAgo date={member.joinedAt} />
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!isCreator ? (
-                            <>
-                              <Select
-                                value={member.role}
-                                onValueChange={(val) =>
-                                  handleRoleChangeRequest(
-                                    member.userId,
-                                    userName,
-                                    val as ThreadRole
-                                  )
-                                }
-                              >
-                                <SelectTrigger className="w-[110px] h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="MEMBER">Member</SelectItem>
-                                  <SelectItem value="MODERATOR">Moderator</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => handleRemoveRequest(member.userId, userName)}
-                              >
-                                <Trash2 size={14} />
-                              </Button>
-                            </>
-                          ) : (
-                            <div className="pr-2">
-                              <Shield size={14} className="text-muted-foreground/50" />
-                            </div>
-                          )}
-                        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Manage Access</DialogTitle>
+          <DialogDescription>
+            People with accepted or pending invitations to this thread.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="mt-4">
+          {loading ? (
+            <div className="flex justify-center p-8">
+              <Loader2 className="animate-spin text-muted-foreground" />
+            </div>
+          ) : invitations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              No invitations found.
+            </div>
+          ) : (
+            <ScrollArea className="h-[350px] pr-4 -mr-4">
+              <div className="space-y-4 pr-4">
+                {invitations.map((invitation) => (
+                  <div
+                    key={invitation.id}
+                    className="flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full border bg-(--blue-dim) flex items-center justify-center">
+                        <Mail size={14} className="text-(--blue)" />
                       </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmAction?.type === 'remove'
-                ? `You are about to remove ${confirmAction.userName} from this thread. They will lose access immediately.`
-                : `You are about to change ${confirmAction?.userName}'s role to ${confirmAction?.role}.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={executeAction}
-              className={
-                confirmAction?.type === 'remove' ? 'bg-destructive hover:bg-destructive/90' : ''
-              }
-            >
-              {confirmAction?.type === 'remove' ? 'Remove Member' : 'Update Role'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+                      <div>
+                        <p className="text-sm font-medium leading-none">{invitation.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Invited <TimeAgo date={invitation.createdAt} />
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] h-4 px-1 flex gap-1"
+                      >
+                        {invitation.status}
+                      </Badge>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={revokingId === invitation.id}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleRevoke(invitation.id)}
+                      >
+                        {revokingId === invitation.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

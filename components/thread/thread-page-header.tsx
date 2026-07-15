@@ -1,11 +1,10 @@
 import React from 'react';
-import { Hash, Users } from 'lucide-react';
+import { Hash } from 'lucide-react';
 import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
 import { InviteFriendButton } from '@/components/thread/invite-friend-button';
 
 interface ThreadPageHeaderProps {
   title: string;
-  memberCount: number;
   threadId: string;
   slug: string;
   initialFrequency: 'DAILY' | 'WEEKLY' | 'NEVER' | null;
@@ -13,7 +12,6 @@ interface ThreadPageHeaderProps {
 
 export function ThreadPageHeader({
   title,
-  memberCount,
   threadId,
   slug,
   initialFrequency,
@@ -31,8 +29,6 @@ export function ThreadPageHeader({
       </div>
 
       <div className="flex items-center gap-2">
-        <HeaderBtn icon={<Users size={13} />} label={`${memberCount} members`} />
-        
         <div className="h-8 min-w-[140px]">
           <ThreadSubscribeButton
             threadId={threadId}

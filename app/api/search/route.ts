@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { searchThreads, searchMessages, searchUsers } from '@/modules/search/repository';
-import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSessionOrThrow } from '@/modules/auth/session';
 import { logger } from '@/lib/infrastructure/logger';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -37,19 +36,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
     }
 
-    const memberships = await prisma.threadMember.findMany({
-      where: { userId: session.user.id },
-      select: { threadId: true },
-    });
-    const threadIds = memberships.map((m) => m.threadId);
-
     switch (type) {
       case 'threads': {
-        const result = await searchThreads(q, limit, offset, threadIds);
+        const result = await searchThreads(q, limit, offset);
         return NextResponse.json(ok(result));
       }
       case 'messages': {
-        const result = await searchMessages(q, threadId, limit, offset, threadIds);
+        const result = await searchMessages(q, threadId, limit, offset);
         return NextResponse.json(ok(result));
       }
       case 'users': {

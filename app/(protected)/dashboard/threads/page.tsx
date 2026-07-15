@@ -1,13 +1,12 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Hash, Users, MessageSquare, Clock } from 'lucide-react';
+import { Hash, MessageSquare, Clock } from 'lucide-react';
 import { requireSession } from '@/modules/auth/session';
 import { listThreads } from '@/modules/threads/repository';
 import type { ThreadSummary } from '@/modules/threads/types';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { CreateThreadDialog } from '@/components/create-thread-dialog';
-import { listCommunities } from '@/modules/communities/repository';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const metadata: Metadata = {
@@ -46,11 +45,6 @@ function ThreadRow({ thread }: { thread: ThreadSummary }) {
           <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-brand transition-colors">
             {thread.name}
           </h3>
-          {thread.community && (
-            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-              {thread.community.title}
-            </span>
-          )}
         </div>
         {thread.description && (
           <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{thread.description}</p>
@@ -59,10 +53,6 @@ function ThreadRow({ thread }: { thread: ThreadSummary }) {
           <span className="flex items-center gap-1">
             <MessageSquare size={10} />
             {thread.messageCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Users size={10} />
-            {thread.memberCount}
           </span>
           <span className="flex items-center gap-1">
             <Clock size={10} />
@@ -98,7 +88,6 @@ async function ThreadList({ userId }: { userId: string }) {
 
 export default async function ThreadsPage() {
   const session = await requireSession();
-  const communities = await listCommunities();
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -107,9 +96,7 @@ export default async function ThreadsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Threads</h1>
           <p className="text-sm text-muted-foreground mt-1">Your discussions and topics.</p>
         </div>
-        <CreateThreadDialog
-          communities={communities.map((c) => ({ id: c.id, title: c.title }))}
-        />
+        <CreateThreadDialog />
       </div>
 
       <Suspense fallback={<ThreadListSkeleton />}>

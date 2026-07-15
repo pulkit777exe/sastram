@@ -126,7 +126,6 @@ export async function GET(req: NextRequest) {
         relationsUpdated: relationsResult.updated,
         prewarmedQueries: prewarmResult.prewarmed,
         purgedThreads: purgeResult.threads,
-        purgedCommunities: purgeResult.communities,
         purgedUsers: purgeResult.users,
         reconciliation: {
           scanned: reconciliationResult.scanned,

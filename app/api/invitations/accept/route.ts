@@ -52,31 +52,6 @@ export async function POST(request: NextRequest) {
     }
 
     await prisma.$transaction(async (tx) => {
-      const existing = await tx.threadMember.findUnique({
-        where: { threadId_userId: { threadId: invitation.threadId, userId: session.user.id } },
-      });
-
-      if (!existing) {
-        await tx.threadMember.create({
-          data: {
-            threadId: invitation.threadId,
-            userId: session.user.id,
-            role: 'MEMBER',
-            status: 'ACTIVE',
-          },
-        });
-
-        await tx.thread.update({
-          where: { id: invitation.threadId },
-          data: { memberCount: { increment: 1 } },
-        });
-      } else if (existing.status !== 'ACTIVE') {
-        await tx.threadMember.update({
-          where: { threadId_userId: { threadId: invitation.threadId, userId: session.user.id } },
-          data: { status: 'ACTIVE', role: 'MEMBER' },
-        });
-      }
-
       await tx.threadInvitation.update({
         where: { id: invitationId },
         data: { status: 'ACCEPTED' },
