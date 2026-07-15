@@ -8,6 +8,7 @@ interface SearchBoxProps {
   onSearch: (query: string, config: SearchConfig) => void;
   isLoading: boolean;
   compact?: boolean;
+  initialQuery?: string;
 }
 
 const EXA_MODES = [
@@ -30,8 +31,8 @@ const SOURCE_FILTERS = [
   { value: 'docs', label: 'Official Docs' },
 ] as const;
 
-export function SearchBox({ onSearch, isLoading, compact = false }: SearchBoxProps) {
-  const [query, setQuery] = useState('');
+export function SearchBox({ onSearch, isLoading, compact = false, initialQuery = '' }: SearchBoxProps) {
+  const [query, setQuery] = useState(initialQuery);
   const [searchMode, setSearchMode] = useState<SearchConfig['searchMode']>('standard');
   const [exaMode, setExaMode] = useState<SearchConfig['exaMode']>('agentic');
   const [tavilyMode, setTavilyMode] = useState<SearchConfig['tavilyMode']>('search');

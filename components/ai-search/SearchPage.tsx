@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { toasts } from '@/lib/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, KeyRound } from 'lucide-react';
@@ -34,6 +35,9 @@ function loadPastSearches(): PastSearch[] {
 }
 
 export function SearchPage() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') ?? '';
+
   const [appState, setAppState] = useState<AppState>('idle');
   const [phase, setPhase] = useState<Phase>('classify');
   const [searchStartTime, setSearchStartTime] = useState(0);
@@ -238,7 +242,7 @@ export function SearchPage() {
               </p>
             </div>
 
-            <SearchBox onSearch={handleSearch} isLoading={false} compact={false} />
+            <SearchBox onSearch={handleSearch} isLoading={false} compact={false} initialQuery={initialQuery} />
 
             {/* Recent searches as pills */}
             {recentSearchPills.length > 0 && (

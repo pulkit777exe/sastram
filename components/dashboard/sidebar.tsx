@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Home,
   Bell,
   Settings,
   FileText,
@@ -107,7 +106,7 @@ export function Sidebar({
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/dashboard/threads?q=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(`/dashboard/ai-search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -121,11 +120,10 @@ export function Sidebar({
   };
 
   const navItems = [
-    { icon: Home, label: 'Home', href: '/dashboard' },
+    { icon: Sparkles, label: 'AI Search', href: '/dashboard/ai-search' },
     { icon: FileText, label: 'Threads', href: '/dashboard/threads' },
     { icon: Bookmark, label: 'Bookmarks', href: '/dashboard/bookmarks' },
     { icon: Search, label: 'Search', href: '/dashboard/search' },
-    { icon: Sparkles, label: 'Sastram AI', href: '/dashboard/ai-search' },
     { icon: Activity, label: 'Activity', href: '/dashboard/activity' },
     {
       icon: Bell,
@@ -210,7 +208,7 @@ export function Sidebar({
               />
               <input
                 type="text"
-                placeholder="Search threads..."
+                placeholder="Search with AI..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-muted border border-border rounded-md py-1.5 pl-9 pr-12 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand"
