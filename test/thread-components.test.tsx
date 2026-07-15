@@ -268,7 +268,6 @@ describe('ThreadLiveWrapper', () => {
           currentUser={{ id: 'user-1', name: 'Test', image: null }}
           title="Test Thread"
           slug="test-thread"
-          memberCount={5}
           initialFrequency={null}
         />
       </MockNextJsProvider>
@@ -312,7 +311,6 @@ describe('ThreadLiveWrapper', () => {
           currentUser={{ id: 'user-1', name: 'Test', image: null }}
           title="Test Thread"
           slug="test-thread"
-          memberCount={5}
           initialFrequency={null}
         />
       </MockNextJsProvider>

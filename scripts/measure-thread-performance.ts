@@ -78,7 +78,6 @@ async function measureThread(slug: string, userId: string) {
     console.log(`Avg message size:     ${avgMessageSize} bytes`);
     console.log(`Total reactions:      ${totalReactions}`);
     console.log(`Total attachments:    ${totalAttachments}`);
-    console.log(`Member count:         ${result.members.length}`);
 
     return {
       slug,
