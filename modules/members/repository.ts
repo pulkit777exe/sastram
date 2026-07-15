@@ -2,7 +2,6 @@ import { Role } from '@prisma/client';
 import { cache } from 'react';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { canAccessThread, canManageThread } from '@/lib/thread-access';
-import type { ThreadMember } from '@/modules/members/types';
 
 export async function addMember(threadId: string, userId: string, role = 'MEMBER') {
   void threadId;
@@ -24,7 +23,7 @@ export async function updateMemberRole(threadId: string, userId: string, role: s
   return { count: 0 };
 }
 
-export const getThreadMembers = cache(async (threadId: string): Promise<ThreadMember[]> => {
+export const getThreadMembers = cache(async (threadId: string): Promise<never[]> => {
   void threadId;
   return [];
 });
@@ -79,5 +78,3 @@ export const isMember = cache(async (threadId: string, userId: string) => {
   const member = await getMemberRole(threadId, userId);
   return member?.status === 'ACTIVE';
 });
-
-export const getSectionMembers = getThreadMembers;

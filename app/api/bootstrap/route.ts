@@ -4,7 +4,6 @@ import { ok, fail } from '@/lib/utils/api-response';
 import { getUserBootstrapProfile } from '@/modules/users/repository';
 import { getUnreadCount } from '@/modules/notifications/repository';
 import { getUserActivity } from '@/modules/activity/repository';
-import { getJoinedCommunities } from '@/modules/communities/repository';
 
 export async function GET() {
   const session = await requireSessionOrThrow();
@@ -12,12 +11,11 @@ export async function GET() {
   const userId = session.user.id;
 
   try {
-    const [user, unreadNotificationCount, activity, joinedCommunities] =
+    const [user, unreadNotificationCount, activity] =
       await Promise.all([
         getUserBootstrapProfile(userId),
         getUnreadCount(userId),
         getUserActivity(userId, 5, 0),
-        getJoinedCommunities(userId),
       ]);
 
     if (!user) {
@@ -33,7 +31,6 @@ export async function GET() {
       },
       unreadNotificationCount,
       recentActivity: activity.activities.slice(0, 5),
-      joinedCommunities,
     }));
   } catch (error) {
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load bootstrap data'), { status: 500 });

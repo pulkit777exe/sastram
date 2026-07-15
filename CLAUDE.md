@@ -54,9 +54,9 @@ pnpm db:studio   # Prisma studio
 
 ### Database Models
 
-31 models in `prisma/schema.prisma`:
+29 models in `prisma/schema.prisma`:
 - User (deletedAt), Account, Session, Verification
-- Community, Thread, ThreadMember
+- Thread (deletedAt, visibility, memberCount)
 - Message (deletedAt, nullable senderId), MessageEdit, MessageMention, Attachment
 - Reaction, ReadReceipt
 - UserFollow, UserBookmark
@@ -104,15 +104,16 @@ pnpm db:studio   # Prisma studio
 
 ## Authorization Patterns
 
-**All API routes and server actions must enforce membership checks.**
+**All API routes and server actions must enforce thread access checks.**
 
-- **ThreadMember** is the primary authorization primitive — user must have a `ThreadMember` record for the thread
-- Routes that read/write thread data: check `prisma.threadMember.findUnique({ where: { threadId_userId: { threadId, userId } } })`
-- `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check membership
-- Admin-only: `assertAdmin(session.user)` in thread actions, `requireAdmin()` / `requireModerator()` for API routes
-- Chat: `getConversations` / `getMessages` / `sendMessage` all require membership (modules/chat/actions.ts)
-- AI routes (`thread-dna`, `resolution-score`, `ai-reply`) require membership
-- Message posting requires membership
+- **Thread access model** is the primary authorization primitive — see `lib/thread-access.ts` (`requireThreadAccessOrThrow`, `requireThreadWriteOrThrow`, `canAccessThread`, `canManageThread`). There is no membership table; access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows.
+- **Visibility rule (private/restricted threads):** creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN. Public threads are readable by anyone; writes still require a session.
+- Routes/actions that read/write thread data must call `requireThreadAccessOrThrow(threadId, userId, role)` / `requireThreadWriteOrThrow(...)`.
+- `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check access.
+- Admin-only: `assertAdmin(session.user)` in thread actions, `requireAdmin()` / `requireModerator()` for API routes.
+- Chat: `getConversations` / `getMessages` / `sendMessage` all require thread access (modules/chat/actions.ts).
+- AI routes (`thread-dna`, `resolution-score`, `ai-reply`) require thread access.
+- Message posting requires thread access.
 
 ## Test Coverage
 

@@ -1,8 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
-import sinon from 'sinon';
 import { mockRequest, stubAuth, stubHeaders, restoreStubs } from './helpers';
-import { prisma } from '@/lib/infrastructure/prisma';
 
 const GET = () => require('@/app/api/search/route').GET;
 
@@ -12,7 +10,6 @@ describe('GET /api/search', () => {
   beforeEach(() => {
     stubs.push(stubHeaders());
     stubs.push(...stubAuth());
-    stubs.push(sinon.stub(prisma.threadMember, 'findMany').resolves([]));
   });
 
   afterEach(() => {
@@ -25,7 +22,6 @@ describe('GET /api/search', () => {
     stubs = [];
     stubs.push(stubHeaders());
     stubs.push(...stubAuth(null));
-    stubs.push(sinon.stub(prisma.threadMember, 'findMany').resolves([]));
 
     const res = await GET()(mockRequest('/api/search?q=test'));
     const body = await res.json();

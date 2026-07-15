@@ -33,10 +33,11 @@ export async function createThread(payload: {
   // highest-frequency write path, and keeps single-query atomicity.
   //
   // NOTE on _count.members vs. Thread.memberCount: both answer "how many members"
-  // but are maintained independently. _count is a live COUNT(*) from ThreadMember
-  // rows; memberCount is denormalized for read perf. This dual-answer is exactly
-  // what caused the memberCount drift surfaced by the reconciliation cron — and is
-  // the reason we validate it periodically instead of trusting the denorm blindly.
+  // but are maintained independently. _count is a live COUNT(*) from the
+  // invitation/access table; memberCount is denormalized for read perf. This
+  // dual-answer is exactly what caused the memberCount drift surfaced by the
+  // reconciliation cron — and is the reason we validate it periodically instead
+  // of trusting the denorm blindly.
   const thread = await prisma.thread.create({
     data: {
       name: payload.name,

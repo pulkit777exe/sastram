@@ -11,7 +11,6 @@ Domain modules implementing business logic, organized by feature. Each module ty
 
 ### Core Features
 - `modules/users/` - User CRUD, profiles, expertise
-- `modules/communities/` - Community management
 - `modules/threads/` - Thread/topic management
 - `modules/messages/` - Messages with tree threading
 

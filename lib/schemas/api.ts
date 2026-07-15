@@ -63,14 +63,6 @@ export const threadSummarySchema = z.object({
   slug: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
-  community: z
-    .object({
-      id: z.string().cuid(),
-      title: z.string(),
-      slug: z.string(),
-    })
-    .nullable()
-    .optional(),
   messageCount: z.number().int().nonnegative(),
   activeUsers: z.number().int().nonnegative(),
 });

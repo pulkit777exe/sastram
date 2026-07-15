@@ -58,7 +58,12 @@ describe('POST /api/ai/thread-dna', () => {
   });
 
   it('returns 403 when not a member', async () => {
-    stubs.push(sinon.stub(prisma.threadMember, 'findUnique').resolves(null));
+    stubs.push(sinon.stub(prisma.thread, 'findUnique').resolves({
+      id: 'thread-1',
+      createdBy: 'other-user',
+      visibility: 'PRIVATE',
+    } as never));
+    stubs.push(sinon.stub(prisma.threadInvitation, 'findFirst').resolves(null));
 
     const res = await POST()(mockRequest('/api/ai/thread-dna', {
       method: 'POST',

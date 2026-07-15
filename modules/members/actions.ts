@@ -105,8 +105,3 @@ export const removeMemberAction = createServerAction(
     return { data: null, error: null };
   }
 );
-
-export const getSectionMembersAction = createServerAction(
-  { schema: threadIdSchema, actionName: 'getSectionMembersAction' },
-  async () => ({ data: [], error: null })
-);
