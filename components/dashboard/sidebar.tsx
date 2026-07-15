@@ -57,11 +57,7 @@ export function Sidebar({
   const { unreadNotificationCount } = useNotification();
   const unreadCount = unreadNotificationCount ?? 0;
   const { theme } = useTheme();
-  const [logoSrc, setLogoSrc] = useState('/sastram-image-light.png');
-
-  useEffect(() => {
-    setLogoSrc(theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png');
-  }, [theme]);
+  const logoSrc = theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png';
 
   const hideTimeout = useRef<number | null>(null);
 

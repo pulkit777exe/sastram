@@ -9,70 +9,64 @@ describe('AI Service — classifyToxicity', function () {
   });
 
   describe('GeminiService — classifyToxicity parsing', function () {
-    it('parses valid JSON toxicity response', async function () {
-      const { GeminiService } = await import('@/lib/services/ai');
-      // Stub the flashModel to return a known response
+    function makeGeminiService() {
+      const { GeminiService } = require('@/lib/services/ai');
       const service = new (GeminiService as any)();
-      service.flashModel = {
-        generateContent: sinon.stub().resolves({
-          response: { text: () => '{"toxicity": 0.85}' },
-        }),
+      service.ai = {
+        models: {
+          generateContent: sinon.stub(),
+        },
       };
-      service.model = service.flashModel; // Also stub model for withRetry
+      return { service, stub: service.ai.models.generateContent };
+    }
+
+    it('parses valid JSON toxicity response', async function () {
+      const { service, stub } = makeGeminiService();
+      stub.resolves({
+        text: '{"toxicity": 0.85}',
+        usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0 },
+      });
 
       const score = await service.classifyToxicity('Hate speech content');
       expect(score).to.equal(0.85);
     });
 
     it('clamps score > 1 to 1', async function () {
-      const { GeminiService } = await import('@/lib/services/ai');
-      const service = new (GeminiService as any)();
-      service.flashModel = {
-        generateContent: sinon.stub().resolves({
-          response: { text: () => '{"toxicity": 1.5}' },
-        }),
-      };
-      service.model = service.flashModel;
+      const { service, stub } = makeGeminiService();
+      stub.resolves({
+        text: '{"toxicity": 1.5}',
+        usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0 },
+      });
 
       const score = await service.classifyToxicity('Toxic content');
       expect(score).to.equal(1);
     });
 
     it('clamps negative score to 0', async function () {
-      const { GeminiService } = await import('@/lib/services/ai');
-      const service = new (GeminiService as any)();
-      service.flashModel = {
-        generateContent: sinon.stub().resolves({
-          response: { text: () => '{"toxicity": -0.5}' },
-        }),
-      };
-      service.model = service.flashModel;
+      const { service, stub } = makeGeminiService();
+      stub.resolves({
+        text: '{"toxicity": -0.5}',
+        usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0 },
+      });
 
       const score = await service.classifyToxicity('Safe content');
       expect(score).to.equal(0);
     });
 
     it('returns 0 when AI call fails', async function () {
-      const { GeminiService } = await import('@/lib/services/ai');
-      const service = new (GeminiService as any)();
-      service.flashModel = {
-        generateContent: sinon.stub().rejects(new Error('API error')),
-      };
-      service.model = service.flashModel;
+      const { service, stub } = makeGeminiService();
+      stub.rejects(new Error('API error'));
 
       const score = await service.classifyToxicity('Any content');
       expect(score).to.equal(0);
     });
 
     it('returns 0 when response has no toxicity field', async function () {
-      const { GeminiService } = await import('@/lib/services/ai');
-      const service = new (GeminiService as any)();
-      service.flashModel = {
-        generateContent: sinon.stub().resolves({
-          response: { text: () => '{"result": "safe"}' },
-        }),
-      };
-      service.model = service.flashModel;
+      const { service, stub } = makeGeminiService();
+      stub.resolves({
+        text: '{"result": "safe"}',
+        usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0 },
+      });
 
       const score = await service.classifyToxicity('Content');
       expect(score).to.equal(0);

@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,12 +18,8 @@ interface PublicNavbarProps {
 
 export function PublicNavbar({ user = null }: PublicNavbarProps) {
   const { theme } = useTheme();
-  const [logoSrc, setLogoSrc] = useState('/sastram-image-light.png');
+  const logoSrc = theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png';
   const userInitial = user?.name?.[0] || user?.email?.[0] || 'U';
-
-  useEffect(() => {
-    setLogoSrc(theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png');
-  }, [theme]);
 
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border">

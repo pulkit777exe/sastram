@@ -17,7 +17,6 @@ export function SubscriptionSuccessModal({
   threadName,
 }: SubscriptionSuccessModalProps) {
   const [mounted, setMounted] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -27,8 +26,7 @@ export function SubscriptionSuccessModal({
 
   useEffect(() => {
     if (isOpen && mounted) {
-      setIsClosing(false);
-      setVisible(true);
+      const showTimer = setTimeout(() => setVisible(true), 0);
       const duration = 2000;
       const end = Date.now() + duration;
 
@@ -59,20 +57,23 @@ export function SubscriptionSuccessModal({
         frame();
       });
 
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+        clearTimeout(showTimer);
+      };
     }
   }, [isOpen, mounted]);
 
   useEffect(() => {
     if (!isOpen && visible) {
-      setIsClosing(true);
       const timer = setTimeout(() => {
         setVisible(false);
-        setIsClosing(false);
       }, 150);
       return () => clearTimeout(timer);
     }
   }, [isOpen, visible]);
+
+  const isClosing = !isOpen && visible;
 
   if (!mounted || !visible) return null;
 

@@ -134,7 +134,13 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     }
   };
 
-  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= now;
   const showResults = hasVoted || !poll.isActive || isExpired;
 
   if (isLoading) {

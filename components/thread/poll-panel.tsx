@@ -44,9 +44,16 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   const [expiresAt, setExpiresAt] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   // Sync internal poll state when parent provides fresh data (from poll tick)
   useEffect(() => {
-    if (initialPoll) {
+    if (!initialPoll) return;
+    const timer = setTimeout(() => {
       setPoll((prev) => {
         const next = { ...initialPoll, threadId };
         // Only update if data actually changed to avoid unnecessary re-renders
@@ -60,7 +67,8 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
         }
         return next;
       });
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [initialPoll, threadId]);
 
   const trimmedOptions = useMemo(
@@ -71,9 +79,9 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   const isEffectivelyActive = useMemo(() => {
     if (!poll) return false;
     if (!poll.isActive) return false;
-    if (poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now()) return false;
+    if (poll.expiresAt && new Date(poll.expiresAt).getTime() <= now) return false;
     return true;
-  }, [poll]);
+  }, [poll, now]);
 
   const isFormValid =
     question.trim().length > 0 &&

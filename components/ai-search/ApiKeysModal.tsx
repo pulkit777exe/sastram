@@ -39,7 +39,6 @@ const KEY_CONFIGS = [
 
 export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [isClosing, setIsClosing] = useState(false);
   const [visible, setVisible] = useState(false);
   const [keys, setKeys] = useState<Record<string, string>>(() => {
     if (typeof window === 'undefined') return {};
@@ -54,21 +53,21 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
 
   useEffect(() => {
     if (isOpen) {
-      setIsClosing(false);
-      setVisible(true);
+      const timer = setTimeout(() => setVisible(true), 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen && visible) {
-      setIsClosing(true);
       const timer = setTimeout(() => {
         setVisible(false);
-        setIsClosing(false);
       }, 150);
       return () => clearTimeout(timer);
     }
   }, [isOpen, visible]);
+
+  const isClosing = !isOpen && visible;
 
   useEffect(() => {
     if (!visible) return;
@@ -103,7 +102,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, visible]);
 
   const handleKeyChange = (id: string, value: string) => {
     const updated = { ...keys, [id]: value };
