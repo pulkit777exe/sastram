@@ -25,7 +25,7 @@ export default function ReplyBox({
     handleItalic,
     handleCode,
     handleLink,
-    handleAtAi,
+    handleAtSai,
     handleSubmit,
     isSubmitting,
     error,
@@ -107,13 +107,13 @@ export default function ReplyBox({
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
-              onClick={handleAtAi}
+              onClick={handleAtSai}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-[999px] border border-border px-2.5 py-1 text-[12px] font-medium',
                 'text-(--blue) hover:bg-(--blue-dim)'
               )}
             >
-              <span>@ai</span>
+              <span>@sai</span>
             </button>
           </div>
         </div>

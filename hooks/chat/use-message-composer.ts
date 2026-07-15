@@ -61,8 +61,8 @@ interface UseMessageComposerReturn {
   handleEmojiSelect: (emoji: string) => void;
   insertAtCursor: (text: string) => void;
 
-  // @ai
-  handleAtAi: () => void;
+  // @sai
+  handleAtSai: () => void;
 
   // Submit
   handleSubmit: (formData?: FormData) => Promise<void>;
@@ -258,7 +258,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     });
   }, [content]);
 
-  const handleAtAi = useCallback(() => insertAtCursor('@ai '), [insertAtCursor]);
+  const handleAtSai = useCallback(() => insertAtCursor('@sai '), [insertAtCursor]);
 
   // --- Emoji ---
   const handleEmojiSelect = useCallback(
@@ -546,8 +546,8 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     handleEmojiSelect,
     insertAtCursor,
 
-    // @ai
-    handleAtAi,
+    // @sai
+    handleAtSai,
 
     // Submit
     handleSubmit,

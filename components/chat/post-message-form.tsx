@@ -91,7 +91,7 @@ export function PostMessageForm({
     closeMentions,
     mentionListRef,
     handleEmojiSelect,
-    handleAtAi,
+    handleAtSai,
     handleSubmit,
     isSubmitting,
     canSubmit,
@@ -262,7 +262,7 @@ export function PostMessageForm({
               )}
             </div>
 
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtAi}>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtSai}>
               <AtSign className="h-4 w-4" />
             </Button>
 

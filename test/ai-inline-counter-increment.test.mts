@@ -45,7 +45,7 @@ describe('AI inline reply — counter increments', function () {
 
     const message = await prisma.message.create({
       data: {
-        content: '@ai What is new today?',
+        content: '@sai What is new today?',
         threadId: testThreadId,
         senderId: testUserId,
         depth: 0,

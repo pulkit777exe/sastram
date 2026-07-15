@@ -160,7 +160,7 @@ export function ThreadLiveWrapper({
 
   const pinnedMessage = useMemo(() => liveMessages.find((m) => m.isPinned) ?? null, [liveMessages]);
 
-  const hasAiMention = useCallback((content: string) => /\B@ai\b/i.test(content), []);
+  const hasAiMention = useCallback((content: string) => /\B@sai\b/i.test(content), []);
 
   const isAtBottom = useCallback(() => {
     const el = scrollContainerRef.current;

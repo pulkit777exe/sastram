@@ -2,7 +2,7 @@ import { consumeAiInlineQuota } from '@/lib/services/ai-inline-rate-limit';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 
 export function extractAiInlineQuery(content: string): string | null {
-  const match = content.match(/(?:^|\s)@ai\s+(.+)/i);
+  const match = content.match(/(?:^|\s)@sai\s+(.+)/i);
   if (!match || !match[1]) {
     return null;
   }

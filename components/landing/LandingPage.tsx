@@ -53,9 +53,9 @@ const featureRows = [
     },
   },
   {
-    title: 'Type @ai, get answers in-thread',
+    title: 'Type @sai, get answers in-thread',
     description:
-      'Mention @ai in any discussion and receive a streaming response posted directly into the conversation. No tab switching.',
+      'Mention @sai in any discussion and receive a streaming response posted directly into the conversation. No tab switching.',
     link: '#features',
     tag: 'AI-native',
     visual: 'ai' as const,
@@ -248,7 +248,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
             <div className="w-2 h-2 rounded-full bg-amber-500/80" />
             <div className="w-2 h-2 rounded-full bg-emerald-500/80" />
           </div>
-          <span className="text-muted-foreground text-[9px]">@ai mention handler</span>
+          <span className="text-muted-foreground text-[9px]">@sai mention handler</span>
         </div>
         <pre className="text-zinc-300 overflow-hidden">
           <span className="text-muted-foreground">{'{'}</span>
@@ -256,7 +256,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
           {'  '}
           <span className="text-emerald-400">&quot;mention&quot;</span>
           <span className="text-muted-foreground">: </span>
-          <span className="text-amber-300">&quot;@ai&quot;</span>
+          <span className="text-amber-300">&quot;@sai&quot;</span>
           <span className="text-muted-foreground">,</span>
           {'\n'}
           {'  '}
@@ -553,7 +553,7 @@ export function LandingPage({ user }: LandingPageProps) {
                   step: '03',
                   icon: Sparkles,
                   title: 'Let AI help',
-                  desc: 'Summaries, search, inline @ai answers, and daily digests.',
+                  desc: 'Summaries, search, inline @sai answers, and daily digests.',
                 },
               ].map((s, i) => (
                 <FadeIn key={s.step} delay={i * 0.08}>

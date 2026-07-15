@@ -42,7 +42,7 @@ export const toasts = {
     }),
   aiInlineRateLimit: () =>
     toast.error('AI mention limit reached.', {
-      description: 'You can use @ai 3 times per thread per day.',
+      description: 'You can use @sai 3 times per thread per day.',
     }),
   aiTimeout: () =>
     toast.error('AI request timed out.', {
