@@ -8,15 +8,13 @@ import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { createThread, deleteThread } from './threads-write/repository';
 import { listThreads } from './threads-core/repository';
-import { getThreadMembers, updateThreadMemberRole, removeThreadMember } from './threads-members/repository';
 import { getThreadMessagesPaginated } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
 import { ROUTES } from '@/lib/config/routes';
-import { ThreadRole } from '@prisma/client';
 import { createServerAction } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { prismaErrorMessage } from '@/lib/utils/errors';
-import { getMemberRole } from '@/modules/members';
+import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 
 /**
  * Parse a newline-separated string of poll options into a trimmed string array.
@@ -30,18 +28,10 @@ const pollOptionsFromString = z.string().transform(parsePollOptions);
 const threadSchema = z.object({
   title: z.string().min(3),
   description: z.string().max(480).optional().or(z.literal('')),
-  communityId: z.string().cuid().optional().or(z.literal('')),
   initialMessage: z.string().optional(),
   pollQuestion: z.string().min(1).max(500).optional().or(z.literal('')),
   pollOptions: pollOptionsFromString.optional().or(z.literal('')),
   pollExpiresAt: z.coerce.date().optional().or(z.literal('')),
-});
-
-const manageMemberSchema = z.object({
-  threadId: z.string().cuid(),
-  userId: z.string().cuid(),
-  action: z.enum(['update_role', 'remove']),
-  role: z.nativeEnum(ThreadRole).optional(),
 });
 
 /**
@@ -50,7 +40,7 @@ const manageMemberSchema = z.object({
  */
 export const createThreadAction = createServerAction(
   { schema: threadSchema, actionName: 'createThreadAction' },
-  async ({ title, description, communityId, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
+  async ({ title, description, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
     try {
       const session = await requireSession();
 
@@ -58,7 +48,6 @@ export const createThreadAction = createServerAction(
       const thread = await createThread({
         name: title,
         description,
-        communityId: communityId || null,
         slug,
         createdBy: session.user.id,
         initialMessage,
@@ -130,92 +119,6 @@ export const getDashboardThreads = createServerAction(
 );
 
 /**
- * Get members of a thread.
- */
-export const getThreadMembersAction = createServerAction(
-  { schema: threadIdSchema, actionName: 'getThreadMembersAction' },
-  async ({ threadId }) => {
-    try {
-      const session = await requireSession();
-      
-      // Check thread membership
-      const membership = await getMemberRole(threadId, session.user.id);
-      if (!membership || membership.status !== 'ACTIVE') {
-        return {
-          data: null,
-          error: 'You are not a member of this thread',
-          errorCode: 'FORBIDDEN',
-          ok: false,
-        };
-      }
-
-      const members = await getThreadMembers(threadId);
-      return { data: members, error: null, ok: true, errorCode: null };
-    } catch (error) {
-      logger.error('[getThreadMembersAction]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
-    }
-  }
-);
-
-/**
- * Update a thread member's role or remove them.
- * Only the thread creator or an admin can manage members.
- */
-export const manageThreadMemberAction = createServerAction(
-  { schema: manageMemberSchema, actionName: 'manageThreadMemberAction' },
-  async ({ threadId, userId, action, role }) => {
-    try {
-      const session = await requireSession();
-
-      const thread = await prisma.thread.findFirst({
-        where: { id: threadId, deletedAt: null },
-        select: { createdBy: true, slug: true },
-      });
-
-      if (!thread) {
-        return { data: null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' };
-      }
-
-      const isCreator = thread.createdBy === session.user.id;
-
-      if (!isCreator) {
-        try {
-          assertAdmin(session.user);
-        } catch (error) {
-          const prismaMsg = prismaErrorMessage(error);
-          if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'FORBIDDEN' };
-          return { data: null, error: 'Forbidden', ok: false, errorCode: 'FORBIDDEN' };
-        }
-      }
-
-      if (userId === session.user.id) {
-        return { data: null, error: 'Cannot manage your own membership', ok: false, errorCode: 'VALIDATION_ERROR' };
-      }
-
-      if (action === 'update_role') {
-        if (!role) {
-          return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' };
-        }
-        await updateThreadMemberRole(threadId, userId, role);
-      } else if (action === 'remove') {
-        await removeThreadMember(threadId, userId);
-      }
-
-      revalidatePath(ROUTES.THREAD(thread.slug));
-      return { data: null, error: null, ok: true, errorCode: null };
-    } catch (error) {
-      logger.error('[manageThreadMemberAction]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
-    }
-  }
-);
-
-/**
  * Load older messages for a thread using cursor-based pagination.
  */
 export const loadThreadMessages = createServerAction(
@@ -229,16 +132,7 @@ export const loadThreadMessages = createServerAction(
   async ({ threadId, cursor }) => {
     try {
       const session = await requireSession();
-
-      const membership = await getMemberRole(threadId, session.user.id);
-      if (!membership || membership.status !== 'ACTIVE') {
-        return {
-          data: null,
-          error: 'You are not a member of this thread',
-          errorCode: 'FORBIDDEN',
-          ok: false,
-        };
-      }
+      await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
       const result = await getThreadMessagesPaginated(threadId, cursor, 50);
 
@@ -273,16 +167,7 @@ export const backfillThreadMessages = createServerAction(
   async ({ threadId, since }) => {
     try {
       const session = await requireSession();
-
-      const membership = await getMemberRole(threadId, session.user.id);
-      if (!membership || membership.status !== 'ACTIVE') {
-        return {
-          data: null,
-          error: 'You are not a member of this thread',
-          errorCode: 'FORBIDDEN',
-          ok: false,
-        };
-      }
+      await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
       const sinceDate = new Date(since);
 

@@ -13,6 +13,7 @@ import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';
+import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 
 export async function postMessage(formData: FormData) {
   const content = formData.get('content') as string;
@@ -47,18 +48,7 @@ export async function postMessage(formData: FormData) {
   }
 
   const session = await requireSession();
-
-  const isMember = await prisma.threadMember.findUnique({
-    where: { threadId_userId: { threadId: threadId, userId: session.user.id } },
-  });
-  if (!isMember) {
-    return {
-      data: null,
-      error: 'You are not a member of this thread',
-      errorCode: 'FORBIDDEN',
-      ok: false,
-    };
-  }
+  await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
   try {
     const rateLimitResult = await messageLimiter.check(session.user.id);

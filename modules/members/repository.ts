@@ -1,135 +1,78 @@
-import { prisma } from '@/lib/infrastructure/prisma';
-import type { ThreadRole } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { cache } from 'react';
-import { dedupe } from '@/lib/dedupe';
-import { logger } from '@/lib/infrastructure/logger';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { canAccessThread, canManageThread } from '@/lib/thread-access';
+import type { ThreadMember } from '@/modules/members/types';
 
-export async function addMember(threadId: string, userId: string, role: ThreadRole = 'MEMBER') {
-  return prisma.threadMember.create({
-    data: {
-      threadId,
-      userId,
-      role,
-      status: 'ACTIVE',
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-        },
-      },
-    },
-  });
+export async function addMember(threadId: string, userId: string, role = 'MEMBER') {
+  void threadId;
+  void userId;
+  void role;
+  return null;
 }
 
 export async function removeMember(threadId: string, userId: string): Promise<{ count: number }> {
-  return prisma.threadMember.updateMany({
-    where: {
-      threadId,
-      userId,
-      status: 'ACTIVE',
-    },
-    data: {
-      status: 'LEFT',
-    },
-  });
+  void threadId;
+  void userId;
+  return { count: 0 };
 }
 
-export async function updateMemberRole(threadId: string, userId: string, role: ThreadRole) {
-  return prisma.threadMember.updateMany({
-    where: {
-      threadId,
-      userId,
-    },
-    data: {
-      role,
-    },
-  });
+export async function updateMemberRole(threadId: string, userId: string, role: string) {
+  void threadId;
+  void userId;
+  void role;
+  return { count: 0 };
 }
 
-export const getThreadMembers = cache(async (threadId: string) => {
-  try {
-    return (
-      (await dedupe(`members:thread:${threadId}`, () =>
-        prisma.threadMember.findMany({
-          where: {
-            threadId,
-            status: 'ACTIVE',
-          },
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-                lastSeenAt: true,
-              },
-            },
-          },
-          orderBy: [
-            { role: 'asc' }, // OWNER first, then MODERATOR, then MEMBER
-            { joinedAt: 'asc' },
-          ],
-        })
-      )) ?? []
-    );
-  } catch (error) {
-    logger.error('[getThreadMembers]', error);
-    return [];
-  }
+export const getThreadMembers = cache(async (threadId: string): Promise<ThreadMember[]> => {
+  void threadId;
+  return [];
 });
 
 export const getUserMemberships = cache(async (userId: string) => {
-  try {
-    return (
-      (await dedupe(`members:user:${userId}`, () =>
-        prisma.threadMember.findMany({
-          where: {
-            userId,
-            status: 'ACTIVE',
-          },
-          include: {
-            thread: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-          orderBy: {
-            joinedAt: 'desc',
-          },
-        })
-      )) ?? []
-    );
-  } catch (error) {
-    logger.error('[getUserMemberships]', error);
-    return [];
-  }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+      threads: {
+        where: { deletedAt: null },
+        select: { id: true, name: true, slug: true },
+        orderBy: { updatedAt: 'desc' },
+      },
+    },
+  });
+
+  return user?.threads ?? [];
 });
 
 export const getMemberRole = cache(async (threadId: string, userId: string) => {
-  const member = await dedupe(`members:role:${threadId}:${userId}`, () =>
-    prisma.threadMember.findUnique({
-      where: {
-        threadId_userId: {
-          threadId,
-          userId,
-        },
-      },
-      select: {
-        role: true,
-        status: true,
-      },
-    })
+  const [thread, user] = await Promise.all([
+    prisma.thread.findFirst({
+      where: { id: threadId, deletedAt: null },
+      select: { id: true, createdBy: true, visibility: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    }),
+  ]);
+
+  if (!thread || !user) {
+    return null;
+  }
+
+  if (canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility }, userId, user.role)) {
+    return { role: user.role === Role.USER ? 'OWNER' : 'MODERATOR', status: 'ACTIVE' } as const;
+  }
+
+  const allowed = await canAccessThread(
+    { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
+    userId,
+    user.role
   );
 
-  return member;
+  return allowed ? ({ role: 'MEMBER', status: 'ACTIVE' } as const) : null;
 });
 
 export const isMember = cache(async (threadId: string, userId: string) => {

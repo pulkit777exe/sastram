@@ -50,8 +50,7 @@ export const createThreadRequestSchema = z.object({
     .max(480, 'Description must be less than 480 characters')
     .optional()
     .or(z.literal('')),
-  communityId: z.string().cuid('Invalid community ID').optional().or(z.literal('')),
-// Optional poll fields
+  // Optional poll fields
   // pollOptions accepts a newline-separated string from the admin form textarea;
   // the thread action transforms it into an array.
   pollQuestion: z.string().min(1).max(500).optional(),
@@ -89,30 +88,6 @@ export const threadDetailSchema = threadSummarySchema.extend({
   ),
   aiSummary: z.string().nullable().optional(),
   subscriptionCount: z.number().int().nonnegative().optional(),
-});
-
-/**
- * Community schemas
- */
-export const createCommunityRequestSchema = z.object({
-  title: z
-    .string()
-    .min(3, 'Title must be at least 3 characters')
-    .max(100, 'Title must be less than 100 characters')
-    .refine((val) => val.trim() === val, 'Title cannot have leading or trailing whitespace'),
-  description: z
-    .string()
-    .max(280, 'Description must be less than 280 characters')
-    .optional()
-    .or(z.literal('')),
-});
-
-export const communitySummarySchema = z.object({
-  id: z.string().cuid(),
-  slug: z.string(),
-  title: z.string(),
-  description: z.string().nullable().optional(),
-  threadCount: z.number().int().nonnegative(),
 });
 
 /**
@@ -177,7 +152,5 @@ export type UploadResponse = z.infer<typeof uploadResponseSchema>;
 export type CreateThreadRequest = z.infer<typeof createThreadRequestSchema>;
 export type ThreadSummary = z.infer<typeof threadSummarySchema>;
 export type ThreadDetail = z.infer<typeof threadDetailSchema>;
-export type CreateCommunityRequest = z.infer<typeof createCommunityRequestSchema>;
-export type CommunitySummary = z.infer<typeof communitySummarySchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;
 export type PaginationParams = z.infer<typeof paginationParamsSchema>;

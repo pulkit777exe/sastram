@@ -7,8 +7,7 @@ import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/thread
 
 type ThreadStorageWithCommunityAndCount = Prisma.ThreadGetPayload<{
   include: {
-    community: true;
-    _count: { select: { messages: true; members: true } };
+    _count: { select: { messages: true } };
   };
 }>;
 
@@ -33,13 +32,10 @@ export interface PaginatedThreads {
 }
 
 export const listThreads = cache(async (params: ListThreadsParams = {}): Promise<PaginatedThreads> => {
-  const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, threadIds } = params;
+  const { page = 1, pageSize = 10, sortBy = 'recent', threadIds } = params;
   const skip = (page - 1) * pageSize;
 
   const where: Record<string, unknown> = { deletedAt: null };
-  if (memberUserId) {
-    where.members = { some: { userId: memberUserId } };
-  }
   if (threadIds && threadIds.length > 0) {
     where.id = { in: threadIds };
   }
@@ -52,17 +48,11 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
       prisma.thread.findMany({
         where,
         include: {
-          community: true,
           _count: {
             select: {
               messages: {
                 where: {
                   deletedAt: null,
-                },
-              },
-              members: {
-                where: {
-                  status: 'ACTIVE',
                 },
               },
             },
@@ -104,7 +94,7 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
         thread as unknown as ThreadRecord,
         thread._count.messages,
         uniqueActiveUsers,
-        thread._count.members
+        0
       );
     });
 
@@ -152,17 +142,11 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
       deletedAt: null,
     },
     include: {
-      community: true,
       _count: {
         select: {
           messages: {
             where: {
               deletedAt: null,
-            },
-          },
-          members: {
-            where: {
-              status: 'ACTIVE',
             },
           },
           subscriptions: true,
@@ -189,7 +173,7 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
     row as unknown as ThreadRecord,
     row._count.messages,
     activeUsers,
-    row._count.members,
+    0,
     row.aiSummary,
     row._count.subscriptions
   );

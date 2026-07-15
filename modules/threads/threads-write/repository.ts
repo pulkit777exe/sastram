@@ -8,18 +8,16 @@ import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
 
-type ThreadStorageWithCommunityAndMessages = Prisma.ThreadGetPayload<{
+type ThreadStorageWithMessages = Prisma.ThreadGetPayload<{
   include: {
-    community: true;
     messages: true;
-    _count: { select: { messages: true; members: true } };
+    _count: { select: { messages: true } };
   };
 }>;
 
 export async function createThread(payload: {
   name: string;
   description?: string | null;
-  communityId?: string | null;
   slug: string;
   createdBy: string;
   initialMessage?: string;
@@ -43,18 +41,9 @@ export async function createThread(payload: {
     data: {
       name: payload.name,
       description: payload.description,
-      communityId: payload.communityId,
       slug: payload.slug,
       createdBy: payload.createdBy,
       messageCount: payload.initialMessage ? 1 : 0,
-      memberCount: 1,
-      members: {
-        create: {
-          userId: payload.createdBy,
-          role: 'OWNER',
-          status: 'ACTIVE',
-        },
-      },
       messages: payload.initialMessage
         ? {
             create: {
@@ -71,12 +60,10 @@ export async function createThread(payload: {
         : undefined,
     },
     include: {
-      community: true,
       messages: true,
       _count: {
         select: {
           messages: true,
-          members: true,
         },
       },
     },
@@ -109,12 +96,12 @@ export async function createThread(payload: {
     }
   }
 
-  const typedThread = thread as ThreadStorageWithCommunityAndMessages;
+  const typedThread = thread as ThreadStorageWithMessages;
   return buildThreadDTO(
     typedThread as unknown as ThreadRecord,
     typedThread._count.messages,
     0,
-    typedThread._count.members
+    0
   );
 }
 

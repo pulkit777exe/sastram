@@ -1,105 +1,22 @@
-import { prisma } from '@/lib/infrastructure/prisma';
-import type { Prisma } from '@prisma/client';
 import { cache } from 'react';
 import type { CommunitySummary } from './types';
-import { dedupe } from '@/lib/dedupe';
-import { logger } from '@/lib/infrastructure/logger';
 
-// Using @ts-expect-error where Prisma's TypeScript has limitations
-type CommunityWithCount = Prisma.CommunityGetPayload<{
-  include: {
-    _count: { select: { threads: true } };
-  };
-}>;
-
-export function buildCommunityDTO(
-  community: {
-    id: string;
-    slug: string;
-    title: string;
-    description: string | null;
-    visibility: string;
-    createdAt: Date;
-  },
-  threadCount: number,
-  memberCount: number | undefined = undefined
-): CommunitySummary {
+export function buildCommunityDTO(): CommunitySummary {
   return {
-    id: community.id,
-    slug: community.slug,
-    title: community.title,
-    description: community.description,
-    visibility: community.visibility,
-    threadCount,
-    memberCount,
-    createdAt: community.createdAt,
+    id: 'removed',
+    slug: 'removed',
+    title: 'Removed',
+    description: null,
+    visibility: 'PUBLIC',
+    threadCount: 0,
+    createdAt: new Date(0),
   };
 }
 
-export const listCommunities = cache(async (): Promise<CommunitySummary[]> => {
-  try {
-    const communities = await dedupe('communities:list', () =>
-      prisma.community.findMany({
-        where: { deletedAt: null },
-        include: {
-          _count: {
-            select: {
-              threads: true,
-            },
-          },
-        },
-        orderBy: {
-          title: 'asc',
-        },
-      })
-    );
+export const listCommunities = cache(async (): Promise<CommunitySummary[]> => []);
 
-    return (communities ?? []).map((community: CommunityWithCount) =>
-      buildCommunityDTO(community, community._count.threads)
-    );
-  } catch (error) {
-    logger.error('[listCommunities]', error);
-    return [];
-  }
-});
+export const getJoinedCommunities = cache(async (_userId: string): Promise<CommunitySummary[]> => []);
 
-export const getJoinedCommunities = cache(async (userId: string) => {
-  try {
-    const communities = await dedupe(`communities:joined:${userId}`, () =>
-      prisma.community.findMany({
-        where: {
-          deletedAt: null,
-          threads: {
-            some: {
-              members: {
-                some: {
-                  userId,
-                  status: 'ACTIVE',
-                },
-              },
-            },
-          },
-        },
-        orderBy: { title: 'asc' },
-      })
-    );
-
-    return communities ?? [];
-  } catch (error) {
-    logger.error('[getJoinedCommunities]', error);
-    return [];
-  }
-});
-
-export async function createCommunity(payload: {
-  title: string;
-  description?: string | null;
-  slug: string;
-  createdBy: string;
-}): Promise<CommunitySummary> {
-  const community = await prisma.community.create({
-    data: payload,
-  });
-
-  return buildCommunityDTO(community, 0);
+export async function createCommunity(): Promise<CommunitySummary> {
+  throw new Error('Communities have been removed. Create threads directly.');
 }

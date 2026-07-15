@@ -9,6 +9,7 @@ import { createServerAction } from '@/lib/utils/server-action';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import {
   editMessageSchema,
   pinMessageSchema,
@@ -162,13 +163,7 @@ export const getMessageEditHistory = createServerAction(
         return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
       }
 
-      const membership = await prisma.threadMember.findUnique({
-        where: { threadId_userId: { threadId: message.threadId, userId: session.user.id } },
-      });
-
-      if (!membership) {
-        return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
-      }
+      await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
 
       const edits = await prisma.messageEdit.findMany({
         where: { messageId },

@@ -95,13 +95,6 @@ export const getUserThreads = cache(async (userId: string, limit: number = 20, o
           memberCount: true,
           createdAt: true,
           updatedAt: true,
-          community: {
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-            },
-          },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,

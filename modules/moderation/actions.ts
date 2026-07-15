@@ -32,11 +32,6 @@ const unbanSchema = z.object({
   banId: z.string().cuid(),
 });
 
-const deleteCommunitySchema = z.object({
-  communityId: z.string().cuid(),
-  reason: z.string().max(500).optional(),
-});
-
 const deleteThreadSchema = z.object({
   threadId: z.string().cuid(),
   reason: z.string().max(500).optional(),
@@ -390,49 +385,6 @@ export const getBannedUsers = createServerAction(
   }
 );
 
-export const deleteCommunity = createServerAction(
-  { schema: deleteCommunitySchema, actionName: 'deleteCommunity' },
-  async ({ communityId, reason }) => {
-    const session = await requireModerationSession();
-    await applyModerationRateLimit(session.user.id);
-
-    const community = await validateEntityForDeletion('community', communityId) as {
-      id: string;
-      title: string;
-      slug: string;
-    };
-
-    const sectionCount = await prisma.thread.count({
-      where: { communityId, deletedAt: null },
-    });
-
-    // Soft-delete: set deletedAt instead of hard-deleting. The purge cron
-    // (app/api/cron/update-threads/route.ts) hard-removes the row and its
-    // cascade once deletedAt is older than the retention window.
-    await prisma.community.update({
-      where: { id: communityId },
-      data: { deletedAt: new Date() },
-    });
-
-    await executeModerationAuditAndRevalidate({
-      action: 'SECTION_DELETED',
-      entityType: 'Community',
-      entityId: communityId,
-      userId: session.user.id,
-      details: {
-        reason,
-        communityTitle: community.title,
-        communitySlug: community.slug,
-        affectedSections: sectionCount,
-        softDelete: true,
-      },
-      paths: ['/dashboard', '/dashboard/admin/moderation'],
-    });
-
-    return { data: { affectedSections: sectionCount }, error: null };
-  }
-);
-
 export const deleteThread = createServerAction(
   { schema: deleteThreadSchema, actionName: 'deleteThread' },
   async ({ threadId, reason }) => {
@@ -444,34 +396,27 @@ export const deleteThread = createServerAction(
       name: string;
       slug: string;
       messageCount: number;
-      memberCount: number;
+      createdBy: string | null;
     };
 
-    const members = await prisma.threadMember.findMany({
-      where: { threadId: threadId, status: 'ACTIVE' },
-      select: { userId: true },
-    });
-
-    // Soft-delete: set deletedAt instead of hard-deleting. The purge cron
-    // (app/api/cron/update-threads/route.ts) hard-removes the row + cascade
-    // once deletedAt is older than the retention window.
+    // Soft-delete: set deletedAt instead of hard-deleting.
     await prisma.$transaction(async (tx) => {
       await tx.thread.update({
         where: { id: threadId },
         data: { deletedAt: new Date() },
       });
 
-      if (members.length > 0) {
-        await tx.notification.createMany({
-          data: members.map((member) => ({
-            userId: member.userId,
+      if (thread.createdBy) {
+        await tx.notification.create({
+          data: {
+            userId: thread.createdBy,
             type: 'SYSTEM',
             title: 'Thread Deleted',
             message: reason
-              ? `The thread "${thread.name}" has been deleted. Reason: ${reason}`
-              : `The thread "${thread.name}" has been deleted by a moderator.`,
+              ? `Your thread "${thread.name}" has been deleted. Reason: ${reason}`
+              : `Your thread "${thread.name}" has been deleted by a moderator.`,
             data: { threadId, threadName: thread.name, reason },
-          })),
+          },
         });
       }
     });
@@ -486,14 +431,12 @@ export const deleteThread = createServerAction(
         threadName: thread.name,
         threadSlug: thread.slug,
         messageCount: thread.messageCount,
-        memberCount: thread.memberCount,
-        notifiedMembers: members.length,
         softDelete: true,
       },
       paths: ['/dashboard', '/dashboard/threads', '/dashboard/admin/moderation'],
     });
 
-    return { data: { notifiedMembers: members.length }, error: null };
+    return { data: null, error: null };
   }
 );
 

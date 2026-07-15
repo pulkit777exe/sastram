@@ -9,6 +9,7 @@ import { addReaction, removeReaction, getMessageReactions } from '@/modules/reac
 import { emitReactionUpdate } from '@/modules/ws/publisher';
 import { createServerAction } from '@/lib/utils/server-action';
 import { messageIdSchema, threadIdSchema } from '@/lib/utils/validation-common';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 
 const toggleReactionSchema = z.object({
   messageId: z.string().cuid(),
@@ -33,12 +34,7 @@ export const toggleReaction = createServerAction(
       return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
     }
 
-    const isMember = await prisma.threadMember.findUnique({
-      where: { threadId_userId: { threadId: message.threadId, userId: session.user.id } },
-    });
-    if (!isMember) {
-      return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
-    }
+    await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
 
     const existing = await prisma.reaction.findFirst({
       where: { messageId, userId: session.user.id, emoji },
@@ -82,12 +78,7 @@ export const getReactionSummary = createServerAction(
       return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
     }
 
-    const isMember = await prisma.threadMember.findUnique({
-      where: { threadId_userId: { threadId: message.threadId, userId: session.user.id } },
-    });
-    if (!isMember) {
-      return { data: null, error: 'Forbidden', errorCode: 'FORBIDDEN', ok: false };
-    }
+    await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
 
     const reactions = await getMessageReactions(messageId, session.user.id);
     return { data: reactions, error: null };

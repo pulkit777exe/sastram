@@ -1,17 +1,16 @@
-import { type Community, type UserStatus } from '@prisma/client';
+import type { UserStatus } from '@prisma/client';
 import type {
   ThreadDetail,
   ThreadRecord,
   ThreadSummary,
   ThreadDNA,
 } from './types';
-import type { CommunitySummary } from '@/modules/communities/types';
 
 export function buildThreadDTO(
   thread: ThreadRecord,
   messageCount: number,
   activeUsers: number,
-  memberCount: number
+  _memberCount: number
 ): ThreadSummary {
   return {
     id: thread.id,
@@ -19,15 +18,7 @@ export function buildThreadDTO(
     name: thread.name,
     description: thread.description,
     visibility: thread.visibility,
-    community: thread.community
-      ? {
-          id: thread.community.id,
-          slug: thread.community.slug,
-          title: thread.community.title,
-        }
-      : null,
     messageCount,
-    memberCount,
     activeUsers,
     latestMessage: null,
     createdAt: thread.createdAt,
@@ -93,14 +84,4 @@ export function buildThreadDetailDTO(
   };
 }
 
-export function buildCommunityDTO(community: Community, threadCount: number): CommunitySummary {
-  return {
-    id: community.id,
-    slug: community.slug,
-    title: community.title,
-    description: community.description,
-    visibility: community.visibility,
-    threadCount,
-    createdAt: community.createdAt,
-  };
-}
+

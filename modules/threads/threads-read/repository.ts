@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import type { Prisma, ThreadRole } from '@prisma/client';
+import { Role, type Prisma } from '@prisma/client';
 import { dedupe } from '@/lib/dedupe';
+import { canAccessThread } from '@/lib/thread-access';
 
 export type ThreadMessageReactionAggregate = {
   type: string;
@@ -57,15 +58,6 @@ type ThreadAiSearchSession = {
   results: ThreadAiSource[];
 } | null;
 
-type ThreadMember = {
-  user: {
-    id: string;
-    name: string | null;
-    image: string | null;
-  };
-  role: ThreadRole;
-};
-
 type ThreadPoll = {
   id: string;
   question: string;
@@ -97,11 +89,9 @@ export type ThreadWithFullContext = {
   messages: ThreadMessage[];
   tags: ThreadTag[];
   aiSearchSession: ThreadAiSearchSession;
-  members: ThreadMember[];
   poll: ThreadPoll;
   _count: {
     messages: number;
-    members: number;
   };
   isBookmarked: boolean;
   isSubscribed: boolean;
@@ -127,11 +117,9 @@ type ThreadRow = {
     image: string | null;
   };
   tags: ThreadTag[] | null;
-  members: ThreadMember[] | null;
   messages: ThreadMessage[] | null;
   poll: ThreadPoll | null;
   message_count: number | null;
-  member_count: number | null;
   is_bookmarked: boolean | null;
   is_subscribed: boolean | null;
 };
@@ -240,11 +228,9 @@ export async function getThreadWithFullContext(
           'image', u.image
         ) as author,
         COALESCE(tags.tags, '[]'::json) as tags,
-        COALESCE(members.members, '[]'::json) as members,
         COALESCE(msgs.messages, '[]'::json) as messages,
         COALESCE(poll.poll, 'null'::json) as poll,
         COALESCE(counts.message_count, 0) as message_count,
-        COALESCE(counts.member_count, 0) as member_count,
         EXISTS (
           SELECT 1 FROM "user_bookmarks" b
           WHERE b."threadId" = s.id AND b."userId" = ${uid}
@@ -263,17 +249,6 @@ export async function getThreadWithFullContext(
         JOIN "thread_tags" tt ON tt.id = ttr."tagId"
         WHERE ttr."threadId" = s.id
       ) tags ON true
-      LEFT JOIN LATERAL (
-        SELECT json_agg(
-          json_build_object(
-            'user', json_build_object('id', mu.id, 'name', mu.name, 'image', mu.image),
-            'role', sm.role
-          )
-        ) as members
-        FROM "thread_members" sm
-        JOIN "users" mu ON mu.id = sm."userId"
-        WHERE sm."threadId" = s.id AND sm.status = 'ACTIVE'
-      ) members ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(mrow.message ORDER BY mrow.created_at) as messages
         FROM (
@@ -335,8 +310,7 @@ export async function getThreadWithFullContext(
       ) poll ON true
       LEFT JOIN LATERAL (
         SELECT
-          (SELECT COUNT(*)::int FROM "messages" m2 WHERE m2."threadId" = s.id AND m2."deletedAt" IS NULL) as message_count,
-          (SELECT COUNT(*)::int FROM "thread_members" sm2 WHERE sm2."threadId" = s.id AND sm2.status = 'ACTIVE') as member_count
+          (SELECT COUNT(*)::int FROM "messages" m2 WHERE m2."threadId" = s.id AND m2."deletedAt" IS NULL) as message_count
       ) counts ON true
       WHERE s.slug = ${slug}
         AND s."deletedAt" IS NULL
@@ -348,11 +322,16 @@ export async function getThreadWithFullContext(
 
     if (row.visibility !== 'PUBLIC') {
       if (!userId) return null;
-      const membership = await prisma.threadMember.findUnique({
-        where: { threadId_userId: { threadId: row.id, userId } },
-        select: { id: true },
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
       });
-      if (!membership) return null;
+      const allowed = await canAccessThread(
+        { threadId: row.id, createdBy: row.createdBy, visibility: row.visibility as never },
+        userId,
+        user?.role ?? Role.USER
+      );
+      if (!allowed) return null;
     }
 
     const aiSearchSession: ThreadAiSearchSession = null;
@@ -375,11 +354,9 @@ export async function getThreadWithFullContext(
       messages: (row.messages ?? []) as ThreadMessage[],
       tags: (row.tags ?? []) as ThreadTag[],
       aiSearchSession,
-      members: (row.members ?? []) as ThreadMember[],
       poll: (row.poll ?? null) as ThreadPoll,
       _count: {
         messages: row.message_count ?? 0,
-        members: row.member_count ?? 0,
       },
       isBookmarked: row.is_bookmarked ?? false,
       isSubscribed: row.is_subscribed ?? false,

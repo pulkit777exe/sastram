@@ -261,10 +261,6 @@ export const requestAccountDeletion = withValidation(
         where: { createdBy: userId },
         data: { createdBy: { set: null } },
       }),
-      prisma.community.updateMany({
-        where: { createdBy: userId },
-        data: { createdBy: { set: null } },
-      }),
       prisma.report.updateMany({
         where: { reporterId: userId },
         data: { reporterId: { set: null } },
@@ -295,7 +291,7 @@ export const exportUserData = createServerAction(
     const session = await requireSession();
     const userId = session.user.id;
 
-    const [user, messages, threads, memberships, reports, activities] = await Promise.all([
+    const [user, messages, threads, invitations, reports, activities] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -326,11 +322,11 @@ export const exportUserData = createServerAction(
         select: { id: true, name: true, slug: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.threadMember.findMany({
-        where: { userId },
+      prisma.threadInvitation.findMany({
+        where: { email: session.user.email },
         select: {
-          role: true,
-          joinedAt: true,
+          status: true,
+          createdAt: true,
           thread: { select: { id: true, name: true, slug: true } },
         },
       }),
@@ -363,11 +359,11 @@ export const exportUserData = createServerAction(
           threadSlug: m.thread.slug,
         })),
         threads,
-        memberships: memberships.map((m) => ({
+        invitations: invitations.map((m) => ({
           threadName: m.thread.name,
           threadSlug: m.thread.slug,
-          role: m.role,
-          joinedAt: m.joinedAt,
+          status: m.status,
+          createdAt: m.createdAt,
         })),
         reports,
         activities,

@@ -19,7 +19,6 @@ export const createThreadSchema = z.object({
     .refine((val) => !val.includes('--'), 'Slug cannot have consecutive hyphens'),
   description: z.string().max(480, 'Description must be less than 480 characters').optional(),
   createdBy: z.string().cuid('Invalid user ID'),
-  communityId: z.string().cuid('Invalid community ID').nullable().optional(),
 });
 
 export const updateThreadSchema = z.object({

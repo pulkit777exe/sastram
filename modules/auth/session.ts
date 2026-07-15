@@ -2,11 +2,16 @@ import { cache } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Role } from '@prisma/client';
-import type { ThreadMember, ThreadRole, User } from '@prisma/client';
+import type { User } from '@prisma/client';
 import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { AppError } from '@/lib/utils/errors';
+import {
+  requireThreadAccess as requireThreadAccessRedirect,
+  requireThreadAccessOrThrow,
+  requireThreadWriteOrThrow,
+} from '@/lib/thread-access';
 
 export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status'>;
 
@@ -76,7 +81,6 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
 
 /**
  * API route variant — throws an error instead of redirecting.
- * Use in API route handlers where redirect() is not available.
  */
 export async function requireSessionOrThrow(checkBanStatus = true): Promise<SessionPayload> {
   const session = await getSession();
@@ -91,60 +95,26 @@ export async function requireSessionOrThrow(checkBanStatus = true): Promise<Sess
   return session;
 }
 
-/**
- * Require that a user is a member of the given thread.
- * Returns the ThreadMember record if membership exists.
- * Throws (redirects to dashboard) if not a member.
- *
- * Usage in server actions:
- *   const membership = await requireThreadMembership(threadId, session.user.id);
- *
- * Usage in API routes (throws instead of redirecting):
- *   const membership = await requireThreadMembershipOrThrow(threadId, userId);
- */
+/** @deprecated Use requireThreadAccess — kept as alias during migration */
 export async function requireThreadMembership(
   threadId: string,
-  userId: string,
-  requiredRole?: ThreadRole
-): Promise<ThreadMember> {
-  const membership = await prisma.threadMember.findUnique({
-    where: { threadId_userId: { threadId, userId } },
-  });
-
-  if (!membership) {
-    redirect('/dashboard');
-  }
-
-  if (requiredRole && membership.role !== requiredRole) {
-    redirect('/dashboard');
-  }
-
-  return membership;
+  userId: string
+): Promise<void> {
+  await requireThreadAccessRedirect(threadId, userId);
 }
 
-/**
- * API route variant — throws an error instead of redirecting.
- * Use in API route handlers where redirect() is not available.
- */
+/** @deprecated Use requireThreadAccessOrThrow */
 export async function requireThreadMembershipOrThrow(
   threadId: string,
   userId: string,
-  requiredRole?: ThreadRole
-): Promise<ThreadMember> {
-  const membership = await prisma.threadMember.findUnique({
-    where: { threadId_userId: { threadId, userId } },
-  });
-
-  if (!membership) {
-    throw new AppError('Forbidden: not a member of this thread', 'FORBIDDEN', 403);
-  }
-
-  if (requiredRole && membership.role !== requiredRole) {
-    throw new AppError('Forbidden: insufficient role', 'FORBIDDEN', 403);
-  }
-
-  return membership;
+  _requiredRole?: never
+): Promise<void> {
+  const session = await getSession();
+  const role = session?.user.role ?? Role.USER;
+  await requireThreadAccessOrThrow(threadId, userId, role);
 }
+
+export { requireThreadAccessOrThrow, requireThreadWriteOrThrow };
 
 export function isAdmin(user: SessionUser | undefined | null): boolean {
   return user?.role === Role.ADMIN;

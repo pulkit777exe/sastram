@@ -154,9 +154,7 @@ export async function getTagBySlug(slug: string) {
 export async function getThreadsByTag(tagId: string, memberUserIds?: string[]) {
   try {
     const where: Record<string, unknown> = { tags: { some: { tagId } }, deletedAt: null };
-    if (memberUserIds && memberUserIds.length > 0) {
-      where.members = { some: { userId: { in: memberUserIds }, status: 'ACTIVE' } };
-    }
+    void memberUserIds;
 
     const threads = await prisma.thread.findMany({
       where,
@@ -167,7 +165,6 @@ export async function getThreadsByTag(tagId: string, memberUserIds?: string[]) {
         description: true,
         messageCount: true,
         memberCount: true,
-        community: { select: { title: true } },
         tags: { select: { tag: { select: { name: true, slug: true, color: true } } } },
         messages: { select: { senderId: true, createdAt: true } },
         _count: { select: { messages: true } },

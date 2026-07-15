@@ -1,6 +1,6 @@
 /**
  * Permission constants and helpers
- * Defines what actions different roles can perform
+ * Global User.role is the only role system (USER / MODERATOR / ADMIN).
  */
 
 import { USER_ROLES, type UserRole } from './constants';
@@ -13,15 +13,10 @@ export const PERMISSIONS = {
   DELETE_ANY_MESSAGE: [USER_ROLES.MODERATOR, USER_ROLES.ADMIN],
   PIN_MESSAGE: [USER_ROLES.MODERATOR, USER_ROLES.ADMIN],
 
-  // Thread permissions
-  CREATE_THREAD: [USER_ROLES.ADMIN],
-  DELETE_THREAD: [USER_ROLES.ADMIN],
-  EDIT_THREAD: [USER_ROLES.ADMIN],
-
-  // Community permissions
-  CREATE_COMMUNITY: [USER_ROLES.ADMIN],
-  DELETE_COMMUNITY: [USER_ROLES.ADMIN],
-  EDIT_COMMUNITY: [USER_ROLES.ADMIN],
+  // Thread permissions — creators manage their own threads; mods/admins manage all
+  CREATE_THREAD: [USER_ROLES.USER, USER_ROLES.MODERATOR, USER_ROLES.ADMIN],
+  DELETE_THREAD: [USER_ROLES.MODERATOR, USER_ROLES.ADMIN],
+  EDIT_THREAD: [USER_ROLES.MODERATOR, USER_ROLES.ADMIN],
 
   // Moderation permissions
   BAN_USER: [USER_ROLES.ADMIN],
@@ -56,4 +51,18 @@ export function canModerate(role: UserRole): boolean {
  */
 export function isAdmin(role: UserRole): boolean {
   return role === USER_ROLES.ADMIN;
+}
+
+/**
+ * Thread-level management: creator or platform mod/admin
+ */
+export function canManageThreadAsUser(
+  role: UserRole,
+  userId: string,
+  createdBy: string | null
+): boolean {
+  if (canModerate(role)) {
+    return true;
+  }
+  return createdBy !== null && createdBy === userId;
 }

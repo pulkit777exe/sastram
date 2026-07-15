@@ -4,7 +4,7 @@ import { logger } from '@/lib/infrastructure/logger';
 /**
  * Counter reconciliation policy.
  *
- * Reconciling denormalized counters (messageCount, memberCount, likeCount, replyCount,
+ * Reconciling denormalized counters (messageCount, likeCount, replyCount,
  * followerCount, followingCount) at write-time would multiply Neon query load on every post.
  * Instead, this runs as a once-a-day batch inside the `update-threads` cron.
  *
@@ -46,15 +46,6 @@ const COUNTERS: CounterFamily[] = [
     recompute: async (threadId: string) =>
       prisma.message.count({
         where: { threadId, deletedAt: null },
-      }),
-  },
-  {
-    table: 'threads',
-    counter: 'memberCount',
-    // Active members only (status = ACTIVE).
-    recompute: async (threadId: string) =>
-      prisma.threadMember.count({
-        where: { threadId, status: 'ACTIVE' },
       }),
   },
   {
@@ -109,24 +100,7 @@ export async function reconcileCounters(): Promise<{
     );
   }
 
-  // 2) Thread.memberCount
-  {
-    const threads = await prisma.thread.findMany({
-      where: { deletedAt: null },
-      select: { id: true, memberCount: true },
-    });
-    scanned += threads.length;
-    drifts.push(
-      ...(await compareAll(
-        'threads',
-        'memberCount',
-        threads as AnyRow[],
-        COUNTERS[1].recompute
-      ))
-    );
-  }
-
-  // 3) Message.likeCount — only scan messages in active threads
+  // 2) Message.likeCount — only scan messages in active threads
   {
     const messages = await prisma.message.findMany({
       where: { deletedAt: null, thread: { deletedAt: null } },
@@ -138,12 +112,12 @@ export async function reconcileCounters(): Promise<{
         'messages',
         'likeCount',
         messages as AnyRow[],
-        COUNTERS[2].recompute
+        COUNTERS[1].recompute
       ))
     );
   }
 
-  // 4) Message.replyCount — only scan root messages to bound the scan.
+  // 3) Message.replyCount — only scan root messages to bound the scan.
   {
     const messages = await prisma.message.findMany({
       where: {
@@ -159,7 +133,7 @@ export async function reconcileCounters(): Promise<{
         'messages',
         'replyCount',
         messages as AnyRow[],
-        COUNTERS[3].recompute
+        COUNTERS[2].recompute
       ))
     );
   }

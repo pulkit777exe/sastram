@@ -29,13 +29,7 @@ export async function createCommunityAction(formData: FormData) {
     const session = await requireSession();
     assertAdmin(session.user);
 
-    const slug = buildCommunitySlug(parsed.data.title);
-    await createCommunity({
-      title: parsed.data.title,
-      description: parsed.data.description,
-      slug,
-      createdBy: session.user.id,
-    });
+    await createCommunity();
 
     revalidatePath(ROUTES.DASHBOARD);
     return { data: null, error: null, ok: true, errorCode: null };

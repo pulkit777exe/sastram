@@ -12,6 +12,7 @@ import { requireRole } from '@/modules/policy';
 import { requireReportsModeratorSession, assertCanReportOwnMessage } from './policy';
 import { executeReportAuditAndRefresh } from './executors';
 import type { ReportCategory } from '@prisma/client';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 
 async function notifyModerators(opts: {
   reportId: string;
@@ -91,14 +92,7 @@ export async function createReport(data: {
       return { data: null, error: 'Message not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
-    // Verify the reporter is a member of the thread
-    const membership = await prisma.threadMember.findUnique({
-      where: { threadId_userId: { threadId: message.threadId, userId: session.user.id } },
-    });
-
-    if (!membership) {
-      return { data: null, error: 'You are not a member of this thread', ok: false, errorCode: 'FORBIDDEN' };
-    }
+    await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
 
     try {
       assertCanReportOwnMessage(session.user.id, message.senderId ?? '');

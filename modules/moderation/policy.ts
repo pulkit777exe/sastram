@@ -52,7 +52,7 @@ export async function validateModerationTarget(
 }
 
 export async function validateEntityForDeletion(
-  entityType: 'message' | 'section' | 'community',
+  entityType: 'message' | 'section',
   entityId: string
 ) {
   let entity: unknown;
@@ -81,17 +81,6 @@ export async function validateEntityForDeletion(
           slug: true,
           messageCount: true,
           memberCount: true,
-        },
-      });
-      break;
-    case 'community':
-      // Exclude soft-deleted communities: deleting an already-deleted community is a no-op error.
-      entity = await prisma.community.findFirst({
-        where: { id: entityId, deletedAt: null },
-        select: {
-          id: true,
-          title: true,
-          slug: true,
         },
       });
       break;

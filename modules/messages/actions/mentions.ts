@@ -5,6 +5,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { searchMentionUsersSchema } from '@/modules/messages/schemas';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { ROUTES } from '@/lib/config/routes';
 import { createBulkNotifications } from '@/modules/notifications/repository';
@@ -97,25 +98,11 @@ export const searchMentionUsers = createServerAction(
     const session = await requireSession(false);
 
     try {
-      const membership = await prisma.threadMember.findUnique({
-        where: { threadId_userId: { threadId, userId: session.user.id } },
-      });
-
-      if (!membership) {
-        return {
-          data: null,
-          error: 'Forbidden',
-          errorCode: 'FORBIDDEN',
-          ok: false,
-        };
-      }
+      await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 
       const users = await prisma.user.findMany({
         where: {
           id: { not: session.user.id },
-          memberships: {
-            some: { threadId },
-          },
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
             { email: { contains: query, mode: 'insensitive' } },
