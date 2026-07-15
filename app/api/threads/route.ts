@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await requireSessionOrThrow();
     const threads = await listThreads({ memberUserId: session.user.id });
-    return NextResponse.json(ok({ threads }, requestId));
+    return NextResponse.json(ok(threads, requestId));
   } catch (error) {
     const isAuth = error instanceof Error && error.message.includes('Unauthorized');
     if (!isAuth) logger.error('[threads] GET failed', error);

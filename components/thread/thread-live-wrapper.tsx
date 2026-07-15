@@ -80,7 +80,9 @@ export function ThreadLiveWrapper({
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const isLoadingMoreRef = useRef(false);
   const currentPollRef = useRef(currentPoll);
-  currentPollRef.current = currentPoll;
+  useEffect(() => {
+    currentPollRef.current = currentPoll;
+  });
   const lastMessageTimestampRef = useRef<string>(
     messages.length > 0 ? new Date(messages[messages.length - 1].createdAt).toISOString() : new Date().toISOString()
   );
