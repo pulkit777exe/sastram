@@ -24,29 +24,10 @@ enum ProfilePrivacy {
   FOLLOWERS_ONLY
 }
 
-enum CommunityVisibility {
-  PUBLIC
-  PRIVATE
-  UNLISTED
-}
-
 enum ThreadVisibility {
   PUBLIC
   PRIVATE
   RESTRICTED
-}
-
-enum ThreadRole {
-  OWNER
-  MODERATOR
-  MEMBER
-}
-
-enum MemberStatus {
-  ACTIVE
-  INVITED
-  LEFT
-  REMOVED
 }
 
 enum NotificationType {
@@ -129,11 +110,9 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
-  communities   Community[]          @relation("CommunityCreator")
   threads       Thread[]             @relation("ThreadCreator")
   messages      Message[]
   reactions     Reaction[]
-  memberships   ThreadMember[]
   notifications Notification[]
   reports       Report[]             @relation("Reporter")
   invitations   ThreadInvitation[]   @relation("InvitationSender")
@@ -208,26 +187,6 @@ model Verification {
   @@map("verifications")
 }
 
-model Community {
-  id          String              @id @default(cuid())
-  title       String
-  slug        String              @unique
-  description String?
-  visibility  CommunityVisibility @default(PUBLIC)
-  settings    Json                @default("{}")
-  createdBy   String?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  deletedAt   DateTime?
-
-  creator  User?     @relation("CommunityCreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  threads  Thread[]
-
-  @@index([slug])
-  @@index([visibility])
-  @@map("communities")
-}
-
 model Thread {
   id           String            @id @default(cuid())
   name         String
@@ -236,7 +195,6 @@ model Thread {
   visibility   ThreadVisibility @default(PUBLIC)
   messageCount Int               @default(0)
   memberCount  Int               @default(0)
-  communityId  String?
   createdBy    String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
@@ -249,9 +207,7 @@ model Thread {
   deletedAt       DateTime?
 
   creator       User?                @relation("ThreadCreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  community     Community?           @relation(fields: [communityId], references: [id])
   messages      Message[]
-  members       ThreadMember[]
   invitations   ThreadInvitation[]
   bans          UserBan[]
   bookmarks     UserBookmark[]
@@ -264,30 +220,10 @@ model Thread {
 
   @@index([slug])
   @@index([visibility])
-  @@index([communityId])
   @@index([createdBy])
   @@index([resolutionScore])
-  @@index([visibility, communityId, updatedAt])
+  @@index([visibility, updatedAt])
   @@map("threads")
-}
-
-model ThreadMember {
-  id        String       @id @default(cuid())
-  threadId  String
-  userId    String
-  role      ThreadRole   @default(MEMBER)
-  status    MemberStatus @default(ACTIVE)
-  joinedAt  DateTime     @default(now())
-
-  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([threadId, userId])
-  @@index([threadId])
-  @@index([threadId, status])
-  @@index([userId])
-  @@index([userId, status])
-  @@map("thread_members")
 }
 
 model Message {
