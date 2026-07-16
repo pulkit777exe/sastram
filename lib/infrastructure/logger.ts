@@ -25,7 +25,7 @@ const BEARER_RE = /\bBearer\s+[A-Za-z0-9_\-\.]{8,}/gi;
  * - `Authorization: Bearer ...` substrings in free-form text are replaced.
  * - Email values are partially masked to keep login flows debuggable without leaking addresses.
  */
-function scrub(value: unknown, seen: WeakSet<object> = new WeakSet()): unknown {
+export function scrub(value: unknown, seen: WeakSet<object> = new WeakSet()): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
     let out = value.replace(BEARER_RE, 'Bearer [REDACTED]');
@@ -65,7 +65,7 @@ function scrub(value: unknown, seen: WeakSet<object> = new WeakSet()): unknown {
   return result;
 }
 
-function safeContext(args: unknown[]): unknown {
+export function safeContext(args: unknown[]): unknown {
   if (args.length === 0) return {};
   try {
     const merged = Object.assign({}, ...args.filter((a) => a && typeof a === 'object'));
