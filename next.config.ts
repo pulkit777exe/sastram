@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
       destination: '/dashboard/threads/:slug',
       permanent: true,
     },
+    {
+      source: '/:community/:thread',
+      destination: '/thread/:thread',
+      permanent: true,
+    },
   ],
   experimental: {
     optimizePackageImports: ['lucide-react', '@tanstack/react-virtual', 'date-fns', 'framer-motion'],

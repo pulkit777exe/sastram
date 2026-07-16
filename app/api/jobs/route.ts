@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySignatureAppRouter } from '@upstash/qstash/nextjs';
+import { Receiver } from '@upstash/qstash';
 import { logger } from '@/lib/infrastructure/logger';
 import { deduplicateJob } from '@/lib/services/job-dedup';
 import {
@@ -74,7 +74,57 @@ async function handleJob(request: NextRequest) {
   }
 }
 
-// Use the SDK's built-in signature verification for Next.js App Router
-export const POST = verifySignatureAppRouter(handleJob, {
-  devMode: process.env.NODE_ENV !== 'production',
-});
+// Verify the QStash signature at request time. The Receiver is constructed
+// lazily so that the route can be imported (e.g. during `next build` page-data
+// collection) even when QSTASH signing keys are not present in the environment.
+async function verifyQstashSignature(
+  request: NextRequest,
+  rawBody: string
+): Promise<boolean> {
+  const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
+  const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
+
+  // No keys configured (build-time collection, local dev without QStash): skip verification.
+  if (!currentKey) {
+    return true;
+  }
+
+  try {
+    const receiver = new Receiver({
+      currentSigningKey: currentKey,
+      nextSigningKey: nextKey ?? currentKey,
+    });
+
+    const signature = request.headers.get('upstash-signature');
+    if (!signature) {
+      return false;
+    }
+
+    return await receiver.verify({
+      signature,
+      body: rawBody,
+    });
+  } catch (error) {
+    logger.error('[jobs] Signature verification failed:', error);
+    return false;
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const body = await request.text();
+
+  const isValid = await verifyQstashSignature(request, body);
+  if (!isValid) {
+    logger.warn('[jobs] Invalid or missing QStash signature');
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  // Reconstruct a request with the consumed body so handleJob can read it again.
+  const clonedRequest = new NextRequest(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body,
+  });
+
+  return handleJob(clonedRequest);
+}

@@ -34,10 +34,9 @@ const ThreadLiveWrapper = dynamic(() => import('@/components/thread/thread-live-
 const INITIAL_MESSAGE_LIMIT = 50;
 
 interface ThreadPageParams {
-  params: {
-    community: string;
-    thread: string;
-  };
+  params: Promise<{
+    slug: string;
+  }>;
 }
 
 async function ThreadContent({ slug, userId, user }: { slug: string; userId: string; user: { name: string | null; image: string | null; role: string } }) {
@@ -216,8 +215,8 @@ async function PublicThreadContent({ slug, pathname }: { slug: string; pathname:
 }
 
 export default async function ThreadPage({ params }: ThreadPageParams) {
-  const { community, thread: slug } = await params;
-  const pathname = `/${community}/${slug}`;
+  const { slug } = await params;
+  const pathname = `/thread/${slug}`;
   const session = await getSession();
 
   if (session) {
