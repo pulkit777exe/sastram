@@ -27,7 +27,6 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
           _count: {
             select: {
               messages: true,
-              members: true,
             },
           },
         },

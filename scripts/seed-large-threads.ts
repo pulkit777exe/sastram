@@ -90,12 +90,7 @@ async function main() {
         description: `Performance test thread with ${config.count} messages`,
         slug: `${slugify(config.name)}-${randomUUID()}`,
         createdBy: user.id,
-        members: {
-          create: [
-            { userId: user.id, role: 'OWNER', status: 'ACTIVE', joinedAt: new Date() },
-            { userId: user2.id, role: 'MEMBER', status: 'ACTIVE', joinedAt: new Date() },
-          ],
-        },
+        memberCount: 2,
       },
     });
 

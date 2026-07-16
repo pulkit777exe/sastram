@@ -219,16 +219,21 @@ export const requestAccountDeletion = withValidation(
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, password: true },
+      select: { email: true },
     });
 
     if (!user) {
       return { data: null, error: 'User not found' };
     }
 
-    if (user.password) {
+    const credentialAccount = await prisma.account.findFirst({
+      where: { userId, providerId: 'credential' },
+      select: { password: true },
+    });
+
+    if (credentialAccount?.password) {
       const { verifyPassword } = await import('better-auth/crypto');
-      const valid = await verifyPassword({ password, hash: user.password });
+      const valid = await verifyPassword({ password, hash: credentialAccount.password });
       if (!valid) {
         return { data: null, error: 'Incorrect password' };
       }
