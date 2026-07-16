@@ -16,7 +16,7 @@ import { AttachmentItem } from './attachment-item';
 import { renderContent } from '@/lib/utils/render-content';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { isAiNotConfigured } from '@/lib/services/ai';
+import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface MessageListProps {

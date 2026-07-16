@@ -5,7 +5,7 @@ import { Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils';
-import { isAiNotConfigured } from '@/lib/services/ai';
+import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface ThreadSummaryCardProps {

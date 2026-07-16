@@ -48,7 +48,7 @@ export function Sidebar({
         <>
           {/* Header */}
           <div className="px-4 pt-4 pb-2">
-            <h2 className="text-sm font-semibold text-foreground tracking-tight">Sastram AI</h2>
+            <h2 className="text-sm font-semibold text-foreground tracking-tight">Sai</h2>
           </div>
 
           {/* Nav items */}

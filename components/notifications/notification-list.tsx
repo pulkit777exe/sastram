@@ -13,7 +13,7 @@ import { useNotification } from '@/components/bootstrap-provider';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
-import { isAiNotConfigured } from '@/lib/services/ai';
+import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface NotificationItem {

@@ -25,7 +25,7 @@ export const toasts = {
     }),
 
   aiUnavailable: () =>
-    toast.error('AI search is temporarily unavailable.', {
+    toast.error('Sai search is temporarily unavailable.', {
       description: 'Try again in a moment. Your query has been saved.',
     }),
   exaRateLimited: () =>
@@ -37,15 +37,15 @@ export const toasts = {
       description: 'Tavily search failed. Using Exa results only.',
     }),
   geminiDown: () =>
-    toast.error('AI synthesis unavailable.', {
+    toast.error('Sai synthesis unavailable.', {
       description: 'Gemini is unreachable. Raw search results shown instead.',
     }),
   aiInlineRateLimit: () =>
-    toast.error('AI mention limit reached.', {
+    toast.error('Sai mention limit reached.', {
       description: 'You can use @sai 3 times per thread per day.',
     }),
   aiTimeout: () =>
-    toast.error('AI request timed out.', {
+    toast.error('Sai request timed out.', {
       description: 'The provider did not respond in time. Please try again.',
     }),
   partialResults: () => toast.info('Showing partial results - web search unavailable'),

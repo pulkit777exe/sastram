@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { isAiNotConfigured } from '@/lib/services/ai';
+import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface AiSource {
@@ -47,7 +47,7 @@ export default function AiSynthesisCard({
             <span className="relative h-[8px] w-[8px] rounded-full bg-(--blue)" />
           </span>
           <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-            AI synthesis
+            Sai synthesis
           </p>
         </div>
 
@@ -105,7 +105,7 @@ export default function AiSynthesisCard({
           </>
         ) : (
           <p className="text-[13px] text-(--text)">
-            AI will synthesize this thread once enough messages are available.
+            Sai will synthesize this thread once enough messages are available.
           </p>
         )}
 

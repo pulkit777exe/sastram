@@ -24,7 +24,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { LucideIcon } from 'lucide-react';
@@ -56,7 +56,12 @@ export function Sidebar({
   const { unreadNotificationCount } = useNotification();
   const unreadCount = unreadNotificationCount ?? 0;
   const { theme } = useTheme();
-  const logoSrc = theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png';
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const logoSrc = !mounted || theme !== 'dark' ? '/sastram-image-light.png' : '/sastram-image-dark.png';
 
   const hideTimeout = useRef<number | null>(null);
 
@@ -120,7 +125,7 @@ export function Sidebar({
   };
 
   const navItems = [
-    { icon: Sparkles, label: 'AI Search', href: '/dashboard/ai-search' },
+    { icon: Sparkles, label: 'Sai Search', href: '/dashboard/ai-search' },
     { icon: FileText, label: 'Threads', href: '/dashboard/threads' },
     { icon: Bookmark, label: 'Bookmarks', href: '/dashboard/bookmarks' },
     { icon: Search, label: 'Search', href: '/dashboard/search' },
@@ -169,7 +174,7 @@ export function Sidebar({
       <div className="p-4 flex items-center justify-between">
         {!isCollapsed && (
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image src={logoSrc} alt="Sastram" width={20} height={20} className="rounded-md" />
+            <Image src={logoSrc} alt="Sastram" width={20} height={20} className="rounded-md" unoptimized />
             <span className="font-semibold text-base text-foreground tracking-tight">Sastram</span>
           </Link>
         )}
@@ -208,7 +213,7 @@ export function Sidebar({
               />
               <input
                 type="text"
-                placeholder="Search with AI..."
+                placeholder="Search with Sai..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-muted border border-border rounded-md py-1.5 pl-9 pr-12 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand"
@@ -250,10 +255,10 @@ export function Sidebar({
           <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
             <div className="flex items-center gap-2 mb-1 text-foreground">
               <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
-              <p className="text-sm font-semibold">Boost with AI</p>
+              <p className="text-sm font-semibold">Boost with Sai</p>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              AI-powered replies and tools that save hours.
+              Sai-powered replies and tools that save hours.
             </p>
           </div>
         </>

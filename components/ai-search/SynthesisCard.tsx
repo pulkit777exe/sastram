@@ -79,7 +79,7 @@ export function SynthesisCard({
   if (!content) {
     return (
       <div className="bg-card border border-border rounded-2xl p-5 text-center text-sm text-muted-foreground">
-        No synthesis available. The AI may have encountered an issue.
+        No synthesis available. Sai may have encountered an issue.
       </div>
     );
   }
@@ -97,7 +97,7 @@ export function SynthesisCard({
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-brand" />
-          <span className="text-sm font-semibold text-foreground">AI Synthesis</span>
+          <span className="text-sm font-semibold text-foreground">Sai Synthesis</span>
           <span className="text-xs text-muted-foreground">
             · {sourceCount} source{sourceCount !== 1 ? 's' : ''}
           </span>

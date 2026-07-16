@@ -32,7 +32,7 @@ import type { Attachment } from '@/lib/types/index';
 import { countDescendants } from '@/modules/messages/service';
 import { ReportButton } from './report-button';
 import { useThreadDataContext, useThreadUIStateContext } from './thread-context';
-import { isAiNotConfigured } from '@/lib/services/ai';
+import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 const MAX_VISUAL_DEPTH = 4;

@@ -193,9 +193,9 @@ export function SearchPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
             <Sparkles size={14} />
-            <span>AI-Powered</span>
+            <span>Sai-Powered</span>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">AI Search</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Sai Search</h1>
           <p className="text-muted-foreground max-w-md">
             Search across Reddit, Hacker News, ArchWiki, Stack Overflow & more — powered by Exa,
             Tavily, and Gemini.
@@ -238,7 +238,7 @@ export function SearchPage() {
                 What do you want to search?
               </h2>
               <p className="text-sm text-muted-foreground">
-                AI synthesizes answers from multiple sources with confidence scoring.
+                Sai synthesizes answers from multiple sources with confidence scoring.
               </p>
             </div>
 

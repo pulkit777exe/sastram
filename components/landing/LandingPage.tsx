@@ -30,7 +30,7 @@ interface LandingPageProps {
 
 const capabilities = [
   'Real-time threads',
-  'AI @-mentions',
+  'Sai @-mentions',
   'Forum search',
   'Moderation',
   'Polls & votes',
@@ -57,7 +57,7 @@ const featureRows = [
     description:
       'Mention @sai in any discussion and receive a streaming response posted directly into the conversation. No tab switching.',
     link: '#features',
-    tag: 'AI-native',
+    tag: 'Sai-native',
     visual: 'ai' as const,
     quote: {
       source: 'Gemini & OpenAI',
@@ -67,7 +67,7 @@ const featureRows = [
   {
     title: 'Search, summarize, and moderate in one platform',
     description:
-      'AI forum search synthesizes results across threads. Background jobs generate summaries and digests while moderation runs automatically.',
+      'Sai forum search synthesizes results across threads. Background jobs generate summaries and digests while moderation runs automatically.',
     link: '#features',
     tag: 'Intelligence',
     visual: 'search' as const,
@@ -88,7 +88,7 @@ const securityFeatures = [
   {
     icon: Shield,
     title: 'Built-in moderation',
-    description: 'Regex rules, AI content filtering, reports, appeals, and ban management out of the box.',
+    description: 'Regex rules, Sai content filtering, reports, appeals, and ban management out of the box.',
   },
   {
     icon: Lock,
@@ -107,7 +107,7 @@ const useCases = [
     type: 'quote' as const,
     source: 'Research teams',
     quote:
-      'Organize long-form discussions with thread DNA, resolution scores, and AI summaries that capture what was actually decided.',
+      'Organize long-form discussions with thread DNA, resolution scores, and Sai summaries that capture what was actually decided.',
     author: 'Thread intelligence',
   },
   {
@@ -285,7 +285,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
   return (
     <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden border border-border bg-background p-5">
       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-        AI Search Results
+        Sai Search Results
       </p>
       <div className="space-y-3">
         {[
@@ -314,7 +314,7 @@ export function LandingPage({ user }: LandingPageProps) {
       {/* Announcement banner */}
       <div className="bg-brand/8 border-b border-brand/15 text-center py-2 px-4">
         <p className="text-[12px] text-muted-foreground">
-          Open source discussion platform with AI built into every thread.{' '}
+          Open source discussion platform with Sai built into every thread.{' '}
           <Link href="#features" className="text-brand font-medium hover:underline">
             Explore features →
           </Link>
@@ -334,12 +334,12 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <FadeIn>
               <h1 className="text-4xl md:text-[3.5rem] leading-[1.08] tracking-tight text-foreground mb-5">
-                <SerifHeading>Discussions, built for the AI era</SerifHeading>
+                <SerifHeading>Discussions, built for the Sai era</SerifHeading>
               </h1>
             </FadeIn>
             <FadeIn delay={0.08}>
               <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
-                The discussion platform where real-time threads, AI synthesis, and smart moderation
+                The discussion platform where real-time threads, Sai synthesis, and smart moderation
                 work together — not bolted on.
               </p>
             </FadeIn>
@@ -431,7 +431,7 @@ export function LandingPage({ user }: LandingPageProps) {
               <div className="space-y-5">
                 {[
                   { icon: Zap, label: 'Latency', desc: 'WebSocket delivery, not polling' },
-                  { icon: Sparkles, label: 'Intelligence', desc: 'AI woven into threads, not added on' },
+                  { icon: Sparkles, label: 'Intelligence', desc: 'Sai woven into threads, not added on' },
                   { icon: Shield, label: 'Safety', desc: 'Moderation and membership by default' },
                 ].map(({ icon: Icon, label, desc }) => (
                   <div key={label} className="flex items-start gap-3">
@@ -532,7 +532,7 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-4xl mx-auto">
             <FadeIn className="mb-14 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
-                <SerifHeading>Three steps to an AI-powered community</SerifHeading>
+                <SerifHeading>Three steps to a Sai-powered community</SerifHeading>
               </h2>
             </FadeIn>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -552,7 +552,7 @@ export function LandingPage({ user }: LandingPageProps) {
                 {
                   step: '03',
                   icon: Sparkles,
-                  title: 'Let AI help',
+                  title: 'Let Sai help',
                   desc: 'Summaries, search, inline @sai answers, and daily digests.',
                 },
               ].map((s, i) => (
@@ -607,7 +607,7 @@ export function LandingPage({ user }: LandingPageProps) {
               <SerifHeading>Discussions built for your community</SerifHeading>
             </h2>
             <p className="text-[15px] text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
-              Real-time threads, AI synthesis, and smart moderation — free to start, no credit card
+              Real-time threads, Sai synthesis, and smart moderation — free to start, no credit card
               required.
             </p>
             <Link
