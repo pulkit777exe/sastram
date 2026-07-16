@@ -207,8 +207,8 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">AI Features</h2>
-            <p className="text-sm text-muted-foreground">Configure AI-powered features.</p>
+            <h2 className="text-lg font-bold text-foreground">Sai Features</h2>
+            <p className="text-sm text-muted-foreground">Configure Sai-powered features.</p>
           </div>
         </div>
 
@@ -216,10 +216,10 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="ai-summary" className="text-base font-medium text-foreground">
-                AI Summaries
+                Sai Summaries
               </Label>
               <p className="text-sm text-muted-foreground">
-                Get AI-generated summaries of long threads.
+                Get Sai-generated summaries of long threads.
               </p>
             </div>
             <Switch

@@ -221,7 +221,7 @@ export function useNotification() {
   return ctx;
 }
 
-/** Bootstrap shell data (user, communities). Does NOT update on WS messages. */
+/** Bootstrap shell data (user). Does NOT update on WS messages. */
 export function useBootstrap() {
   const ctx = useContext(BootstrapContext);
   if (!ctx) {

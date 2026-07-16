@@ -21,8 +21,8 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: 'Sastram - A Modern AI Powered Forum',
-  description: 'Sastram is the modern forum for people with power of AI.',
+  title: 'Sastram - A Modern Sai Powered Forum',
+  description: 'Sastram is the modern forum for people with power of Sai.',
 };
 
 export default function RootLayout({

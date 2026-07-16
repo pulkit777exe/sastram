@@ -6,9 +6,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'AI Search — Sastram',
+  title: 'Sai Search — Sastram',
   description:
-    'Search across Reddit, Hacker News, ArchWiki, Stack Overflow and more with AI-powered synthesis.',
+    'Search across Reddit, Hacker News, ArchWiki, Stack Overflow and more with Sai-powered synthesis.',
 };
 
 function SearchPageSkeleton() {
@@ -48,9 +48,9 @@ export default function AISearchPage() {
       <div>
         <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
           <Search size={14} />
-          <span>AI Search</span>
+          <span>Sai Search</span>
         </div>
-        <h1 className="text-4xl font-bold tracking-tight">Search with AI</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Search with Sai</h1>
         <p className="text-muted-foreground mt-2">
           Search across Reddit, Hacker News, ArchWiki, Stack Overflow and more.
         </p>

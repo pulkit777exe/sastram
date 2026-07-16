@@ -143,7 +143,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-brand" />
           <span className="text-[10px] font-bold uppercase tracking-widest text-brand">
-            AI Summary
+            Sai Summary
           </span>
         </div>
 

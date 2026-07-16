@@ -351,7 +351,7 @@ The central entity. Stores AI metadata directly:
 | Delete thread (soft) | `modules/threads/actions.ts:deleteThreadAction` |
 | Thread list (dashboard) | `app/(protected)/dashboard/threads/page.tsx` |
 | Thread detail (by slug) | `app/(protected)/dashboard/threads/[slug]/page.tsx` |
-| Community thread view | `app/[community]/[thread]/page.tsx` |
+| Thread view (public/flat) | `app/thread/[slug]/page.tsx` |
 | Nested reply tree (depth 4) | `components/thread/comment-tree.tsx` + `message-list.tsx` |
 | Virtual scrolling | `@tanstack/react-virtual` in `message-list.tsx` |
 | Load older messages | `thread-live-wrapper.tsx:loadMoreMessages` (cursor pagination) |
@@ -505,8 +505,8 @@ The central entity. Stores AI metadata directly:
 
 | Feature | Implementation |
 |---------|---------------|
-| Create community | `modules/communities/actions.ts:createCommunityAction` |
-| Community pages | `app/[community]/[thread]/page.tsx` |
+| Create thread | `modules/threads/actions.ts:createThreadAction` |
+| Thread view (public/flat) | `app/thread/[slug]/page.tsx` |
 
 ### Email
 

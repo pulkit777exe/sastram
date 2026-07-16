@@ -63,7 +63,7 @@ export default function PricingPage() {
             <ul className="space-y-2 mb-4">
               {[
                 'Unlimited communities',
-                'AI search & suggestions',
+                'Sai search & suggestions',
                 'Advanced moderation',
                 'Priority support',
                 'Custom analytics',
