@@ -6,7 +6,12 @@ import { getUnreadCount } from '@/modules/notifications/repository';
 import { getUserActivity } from '@/modules/activity/repository';
 
 export async function GET() {
-  const session = await requireSessionOrThrow();
+  let session;
+  try {
+    session = await requireSessionOrThrow();
+  } catch {
+    return NextResponse.json(fail('AUTH_REQUIRED', 'No active session'), { status: 401 });
+  }
 
   const userId = session.user.id;
 
