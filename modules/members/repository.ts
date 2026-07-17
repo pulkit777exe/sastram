@@ -3,31 +3,6 @@ import { cache } from 'react';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { canAccessThread, canManageThread } from '@/lib/thread-access';
 
-export async function addMember(threadId: string, userId: string, role = 'MEMBER') {
-  void threadId;
-  void userId;
-  void role;
-  return null;
-}
-
-export async function removeMember(threadId: string, userId: string): Promise<{ count: number }> {
-  void threadId;
-  void userId;
-  return { count: 0 };
-}
-
-export async function updateMemberRole(threadId: string, userId: string, role: string) {
-  void threadId;
-  void userId;
-  void role;
-  return { count: 0 };
-}
-
-export const getThreadMembers = cache(async (threadId: string): Promise<never[]> => {
-  void threadId;
-  return [];
-});
-
 export const getUserMemberships = cache(async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },

@@ -62,31 +62,6 @@ export const BAN_REASONS = {
 
 export type BanReason = (typeof BAN_REASONS)[keyof typeof BAN_REASONS];
 
-export const SECTION_VISIBILITY = {
-  PUBLIC: 'PUBLIC',
-  PRIVATE: 'PRIVATE',
-  RESTRICTED: 'RESTRICTED',
-} as const;
-
-export type ThreadVisibility = (typeof SECTION_VISIBILITY)[keyof typeof SECTION_VISIBILITY];
-
-export const COMMUNITY_VISIBILITY = {
-  PUBLIC: 'PUBLIC',
-  PRIVATE: 'PRIVATE',
-  UNLISTED: 'UNLISTED',
-} as const;
-
-export type CommunityVisibility = (typeof COMMUNITY_VISIBILITY)[keyof typeof COMMUNITY_VISIBILITY];
-
-export const MEMBER_STATUS = {
-  ACTIVE: 'ACTIVE',
-  INVITED: 'INVITED',
-  LEFT: 'LEFT',
-  REMOVED: 'REMOVED',
-} as const;
-
-export type MemberStatus = (typeof MEMBER_STATUS)[keyof typeof MEMBER_STATUS];
-
 export const NOTIFICATION_TYPES = {
   REPLY: 'REPLY',
   MENTION: 'MENTION',

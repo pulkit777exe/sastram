@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 
-type ThreadStorageWithCommunityAndCount = Prisma.ThreadGetPayload<{
+type ThreadStorageWithCount = Prisma.ThreadGetPayload<{
   include: {
     _count: { select: { messages: true } };
   };
@@ -88,7 +88,7 @@ export const listThreads = cache(async (params: ListThreadsParams = {}): Promise
       }
     }
 
-    let mappedThreads = (threadRows ?? []).map((thread: ThreadStorageWithCommunityAndCount) => {
+    let mappedThreads = (threadRows ?? []).map((thread: ThreadStorageWithCount) => {
       const uniqueActiveUsers = activeUserMap.get(thread.id) ?? 0;
       return buildThreadDTO(
         thread as unknown as ThreadRecord,

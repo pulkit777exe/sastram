@@ -20,11 +20,4 @@ export function buildThreadSlug(title: string, existingId?: string): string {
   return `${base}-${suffix}`;
 }
 
-/**
- * Build a community slug
- */
-export function buildCommunitySlug(title: string): string {
-  const base = slugify(title);
-  const suffix = randomUUID();
-  return `${base}-${suffix}`;
-}
+
