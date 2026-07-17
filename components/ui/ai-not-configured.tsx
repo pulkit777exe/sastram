@@ -11,7 +11,7 @@ export function AiNotConfiguredNotice({ className }: { className?: string }) {
     >
       <AlertTriangle size={14} className="mt-0.5 shrink-0" />
       <p className="text-xs leading-relaxed">
-        AI features aren&apos;t configured for this deployment. Set{' '}
+        Sai features aren&apos;t configured for this deployment. Set{' '}
         <code className="font-mono text-[10px] bg-amber-100 dark:bg-amber-900/50 px-1 py-px rounded">
           GEMINI_API_KEY
         </code>{' '}

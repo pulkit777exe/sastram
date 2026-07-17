@@ -125,7 +125,7 @@ export function SubscriptionSuccessModal({
               transition={{ delay: 0.25 }}
               className="text-muted-foreground mb-6"
             >
-              You&apos;ll now receive AI-powered summaries for{' '}
+              You&apos;ll now receive Sai-powered summaries for{' '}
               <span className="text-foreground font-medium">{threadName}</span>
             </motion.p>
 
@@ -143,7 +143,7 @@ export function SubscriptionSuccessModal({
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <span>Daily AI-generated summary of key discussions</span>
+                  <span>Daily Sai-generated summary of key discussions</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Bell className="w-4 h-4 text-muted-foreground mt-0.5" />

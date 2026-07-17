@@ -282,8 +282,8 @@ export const CommentNode = React.memo(function CommentNode({
                 )}
                 {node.isAiResponse && (
                   <span className="bg-brand/10 text-brand text-[9px] px-1.5 py-px rounded-full font-medium">
-                    AI
-                  </span>
+                  Sai
+                </span>
                 )}
                 {node.isPinned && <span className="text-amber-500 text-[10px]">📌</span>}
                 <span className="text-[11px] text-muted-foreground/60 font-medium">
@@ -360,7 +360,7 @@ export const CommentNode = React.memo(function CommentNode({
               )}
               {aiStatus === 'failed' && !node.isAiResponse && (
                 <p className="text-[11px] text-amber mt-1">
-                  AI couldn&apos;t process this. Try rephrasing your question.
+                  Sai couldn&apos;t process this. Try rephrasing your question.
                 </p>
               )}
 

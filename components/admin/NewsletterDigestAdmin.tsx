@@ -153,7 +153,7 @@ export function NewsletterDigestAdmin({ digests, totalSubscribers }: NewsletterD
               <div>
                 <CardTitle className="text-foreground">Generate Newsletter Digests</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Trigger AI-powered digest generation for all pending threads
+                  Trigger Sai-powered digest generation for all pending threads
                 </p>
               </div>
             </div>

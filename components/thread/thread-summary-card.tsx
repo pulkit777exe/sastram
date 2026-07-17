@@ -181,7 +181,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         ) : (
           <div className="flex flex-col items-center justify-center py-2 text-center">
             <p className="text-xs text-muted-foreground mb-3">
-              Get a quick AI-powered summary of this thread.
+              Get a quick Sai-powered summary of this thread.
             </p>
             <Button
               size="sm"

@@ -155,7 +155,7 @@ export function ModerationQueue({
                   {report.aiConfidence !== null && (
                     <div className="mt-3 pt-3 border-t border-border">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">AI Confidence</span>
+                        <span className="text-muted-foreground">Sai Confidence</span>
                         <span
                           className={cn(
                             'font-medium',

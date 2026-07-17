@@ -294,7 +294,7 @@ const MessageRow = React.memo(function MessageRow({
               )}
               {message.isAiResponse && (
                 <span className="bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
-                  AI
+                  Sai
                 </span>
               )}
               {message.truncated && (
@@ -370,7 +370,7 @@ const MessageRow = React.memo(function MessageRow({
 
           {aiStatus === 'failed' && !message.isAiResponse && (
             <p className="text-[11px] text-amber-600 mt-1">
-              AI couldn&apos;t process this. Try rephrasing your question.
+              Sai couldn&apos;t process this. Try rephrasing your question.
             </p>
           )}
 

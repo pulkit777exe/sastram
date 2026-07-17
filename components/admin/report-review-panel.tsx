@@ -147,7 +147,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
                 <Eye className="w-3 h-3" />
-                AI Analysis
+                Sai Analysis
               </h4>
               <div className="bg-muted rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
