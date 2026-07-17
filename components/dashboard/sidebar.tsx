@@ -174,7 +174,7 @@ export function Sidebar({
       <div className="p-4 flex items-center justify-between">
         {!isCollapsed && (
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image src={logoSrc} alt="Sastram" width={20} height={20} className="rounded-md" unoptimized />
+            <Image src={logoSrc} alt="Sastram" width={20} height={20} className="rounded-md" unoptimized style={{ width: 'auto', height: 'auto' }} />
             <span className="font-semibold text-base text-foreground tracking-tight">Sastram</span>
           </Link>
         )}

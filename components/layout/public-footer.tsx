@@ -60,6 +60,7 @@ export function PublicFooter() {
               width={18}
               height={18}
               className="rounded brightness-0 invert"
+              style={{ width: 'auto', height: 'auto' }}
             />
             <span className="font-semibold text-sm">Sastram</span>
           </div>
