@@ -18,6 +18,10 @@ const envSchema = z.object({
   // Redis (rate limiting, queues, caching)
   REDIS_URL: z.url('REDIS_URL must be a valid URL').optional(),
 
+  // Upstash Redis REST (HTTP API — used by rate limiting and quota counters)
+  UPSTASH_REDIS_REST_URL: z.url('UPSTASH_REDIS_REST_URL must be a valid URL').optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
   // Better Auth
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
   BETTER_AUTH_URL: z.string().url('BETTER_AUTH_URL must be a valid URL'),
@@ -104,6 +108,7 @@ const envSchema = z.object({
   // AI search
   SASTRAM_EXA_KEY: z.string().optional(),
   SASTRAM_TAVILY_KEY: z.string().optional(),
+  SASTRAM_GEMINI_KEY: z.string().optional(),
 
   // Server
   HOSTNAME: z.string().default('localhost'),
