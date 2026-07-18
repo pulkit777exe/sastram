@@ -46,7 +46,7 @@ pnpm db:studio   # Prisma studio
 
 - `app/` - Next.js App Router pages and API routes
 - `lib/` - Core utilities, services, infrastructure
-- `modules/` - Domain modules (26 feature modules)
+- `modules/` - Domain modules (25 feature modules)
 - `components/` - UI components
 - `prisma/` - Database schema
 - `test/` - Mocha unit tests
@@ -111,7 +111,7 @@ pnpm db:studio   # Prisma studio
 - Routes/actions that read/write thread data must call `requireThreadAccessOrThrow(threadId, userId, role)` / `requireThreadWriteOrThrow(...)`.
 - `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check access.
 - Admin-only: `assertAdmin(session.user)` in thread actions, `requireAdmin()` / `requireModerator()` for API routes.
-- Chat: `getConversations` / `getMessages` / `sendMessage` all require thread access (modules/chat/actions.ts).
+- Chat (messages + websocket): posting and reading require thread access (modules/messages/actions.ts, modules/ws/).
 - AI routes (`thread-dna`, `resolution-score`, `ai-reply`) require thread access.
 - Message posting requires thread access.
 
@@ -130,7 +130,7 @@ pnpm db:studio   # Prisma studio
 
 Required in `.env`:
 - `DATABASE_URL` - PostgreSQL connection (Neon)
-- `REDIS_URL` - Redis for rate limiting and caching
+- `REDIS_URL` - Redis for caching/queues (optional; rate limiting also uses `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` and degrades gracefully without it)
 - `BETTER_AUTH_SECRET` - Auth secret (32+ chars)
 - `BETTER_AUTH_URL` - Auth base URL
 - `NEXT_PUBLIC_APP_URL` - Public URL

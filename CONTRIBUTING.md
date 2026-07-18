@@ -4,9 +4,23 @@ Thanks for your interest in contributing to Sastram.
 
 ## Getting Started
 
+### Option A — Docker (recommended for local dev)
+
+`docker compose up` starts PostgreSQL, Redis, and the Next.js app in one
+command. Copy `.env.sample` to `.env` first and fill at least the required
+values (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
+`NEXT_PUBLIC_APP_URL`, and the `RESEND_*` vars).
+
+### Option B — Local without Docker
+
 - Fork the repository
 - Run `pnpm install`
 - Copy `.env.sample` to `.env` and fill in the values
+- Provide your own PostgreSQL (e.g. free-tier Neon: append `?pgbouncer=true`
+  to `DATABASE_URL`) and Redis (e.g. free-tier Upstash — set
+  `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`). Without Redis, rate
+  limiting degrades to best-effort.
+- Run `pnpm db:migrate`
 - Run `pnpm dev` to start the development server
 - Run `pnpm test` to verify everything works
 
@@ -33,7 +47,7 @@ Thanks for your interest in contributing to Sastram.
 ```
 app/          — Next.js App Router pages and API routes
 lib/          — Core utilities, services, infrastructure
-modules/      — Domain modules (26 feature modules)
+modules/      — Domain modules (25 feature modules)
 components/   — UI components
 test/         — Mocha unit tests
 ```

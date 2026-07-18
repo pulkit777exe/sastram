@@ -40,7 +40,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup and [CLAUDE.md](./CLAUDE
 ## Project
 
 - `/app` — Next.js App Router pages & API routes
-- `/modules` — Domain logic (auth, threads, messages, search, moderation, chat, ai, etc.)
+- `/modules` — Domain logic (auth, threads, messages, search, moderation, ai, etc.)
 - `/lib` — Core services, infrastructure (prisma, redis, qstash, rate-limit)
 - `/components` — shadcn/ui primitives + feature components
 
