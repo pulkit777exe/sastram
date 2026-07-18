@@ -56,8 +56,15 @@ function useResolvedTheme(theme: Theme): ResolvedTheme {
 const SQUARE = 50;
 const RADIUS = 19;
 const REST_OFFSET = 28; // matches the static brand mark
-const APART_OFFSET = 56; // fully separated, no overlap
+// Keep both squares inside the 100x100 viewBox: the rightmost edge of B is
+// `25 + offset/2 + SQUARE`, the leftmost edge of A is `25 - offset/2`. Solving
+// for <= 100 and >= 0 gives offset <= 50; we use 46 to leave margin for the
+// rounded corners so nothing clips at full separation.
+const APART_OFFSET = 46; // fully separated, still within bounds
 const MERGED_OFFSET = 0; // fully coincident, reads as one solid square
+// Fraction of the cycle spent paused (still/merged) so the loader breathes
+// instead of oscillating restlessly.
+const HOLD_FRACTION = 0.18;
 
 function easeInOutQuint(t: number) {
   return t < 0.5 ? 16 * t ** 5 : 1 - Math.pow(-2 * t + 2, 5) / 2;
@@ -101,10 +108,15 @@ export function LogoLoader({ theme = 'light', size = 64, duration = 2.4, classNa
     const tick = (now: number) => {
       if (start === null) start = now;
       const t = ((now - start) % cycleMs) / cycleMs; // 0..1 through the cycle
-      const tri = t < 0.5 ? t * 2 : (1 - t) * 2; // 0 -> 1 -> 0 (apart -> merged -> apart)
-      const eased = easeInOutQuint(tri);
-      const offset = APART_OFFSET - eased * (APART_OFFSET - MERGED_OFFSET);
-      const scale = 1 + eased * 0.045; // subtle emphasis right at the merge
+
+      // Triangle wave 0 -> 1 -> 0 (apart -> merged -> apart)...
+      const triRaw = t < 0.5 ? t * 2 : (1 - t) * 2;
+      // ...eased, then clamped into a flat plateau at the top so the mark rests
+      // as one solid square for a beat instead of oscillating restlessly.
+      const eased = easeInOutQuint(triRaw);
+      const merged = eased >= 1 - HOLD_FRACTION ? 1 : eased / (1 - HOLD_FRACTION);
+      const offset = APART_OFFSET - merged * (APART_OFFSET - MERGED_OFFSET);
+      const scale = 1 + merged * 0.045; // subtle emphasis right at the merge
       applyFrame(offset, scale);
       raf = requestAnimationFrame(tick);
     };
