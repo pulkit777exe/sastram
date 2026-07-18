@@ -10,6 +10,7 @@ import { executeAISearch } from '@/modules/ai-search/service';
 import { AISearchError } from '@/modules/ai-search/service';
 import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
 import { consumeAiSearchQuota } from '@/lib/services/ai-search-quota';
+import { env } from '@/lib/config/env';
 
 export const maxDuration = 30;
 
@@ -80,9 +81,9 @@ export async function POST(request: NextRequest) {
     const keys = parsedBody.keys;
 
     // 6. Extract and validate API keys from body, falling back to env vars
-    const exaKey = keys?.exa || process.env.SASTRAM_EXA_KEY || '';
-    const tavilyKey = keys?.tavily || process.env.SASTRAM_TAVILY_KEY || '';
-    const geminiKey = keys?.gemini || process.env.SASTRAM_GEMINI_KEY || '';
+    const exaKey = keys?.exa || env.SASTRAM_EXA_KEY || '';
+    const tavilyKey = keys?.tavily || env.SASTRAM_TAVILY_KEY || '';
+    const geminiKey = keys?.gemini || env.SASTRAM_GEMINI_KEY || '';
 
     if (!exaKey || !tavilyKey || !geminiKey) {
       const missing = [];

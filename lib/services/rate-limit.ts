@@ -96,7 +96,7 @@ function getOrCreateLimiter(bucket: RateLimitBucket): RateLimiter {
   let limiter: RateLimiter;
 
   const redisConfigured = Boolean(
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
   );
 
   if (!env.RATE_LIMIT_ENABLED) {
