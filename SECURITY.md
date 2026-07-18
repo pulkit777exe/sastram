@@ -21,6 +21,12 @@ pinging a maintainer on the issue tracker.
 
 ## Out of Scope
 
-- Missing rate limits (we are aware)
 - Dependency CVEs (tracked via Dependabot)
 - Self-XSS
+
+## Known Limitations
+
+Rate limiting is **best-effort**. When Upstash Redis is unavailable, the
+limiter degrades to a per-serverless-instance in-memory limit (weaker than a
+shared global limit) rather than failing open. This is a documented tradeoff,
+not a vulnerability. See `lib/services/rate-limit.ts`.
