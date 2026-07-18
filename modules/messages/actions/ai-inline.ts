@@ -1,4 +1,6 @@
 import { consumeAiInlineQuota } from '@/lib/services/ai-inline-rate-limit';
+import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { AiCallPath, evaluateAiCostGate } from '@/lib/services/ai-cost-classification';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 
 export function extractAiInlineQuery(content: string): string | null {
@@ -30,6 +32,21 @@ export async function queueAiInlineIfRequested(args: {
   });
 
   if (!quota.allowed) {
+    return { aiInlineQueued: false, aiInlineLimited: true };
+  }
+
+  // Hard cost-aware gate: @sai inline is an EXPENSIVE synthesis. Pre-flight the
+  // global spend cap so we don't enqueue unaffordable work that would burn the
+  // LLM. checkAiSpendCap fails OPEN (Redis down) — for an expensive path that
+  // means we still enqueue, matching the existing best-effort tradeoff, but when
+  // Redis is healthy an exhausted cap is a hard stop here rather than at worker time.
+  const spendCap = await checkAiSpendCap();
+  const gate = evaluateAiCostGate({
+    path: AiCallPath.AI_INLINE_REPLY,
+    spendCapAllowed: spendCap.allowed,
+  });
+
+  if (!gate.allowed) {
     return { aiInlineQueued: false, aiInlineLimited: true };
   }
 
