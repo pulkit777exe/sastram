@@ -1,6 +1,6 @@
 [allowlist]
-  description = "Allowlisted secrets for testing only"
-  files = [".env", ".env.sample"]
+  description = "Allowlisted files: templates and test fixtures only, never a real .env"
+  paths = ['''\.env\.sample$''', '''\.env\.test$''']
 
 [[rules]]
   id = "neon-database-url"
