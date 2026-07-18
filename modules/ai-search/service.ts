@@ -16,6 +16,16 @@ import type {
 } from './types';
 
 
+export class AISearchError extends Error {
+  status: number;
+  constructor(message: string, status = 502) {
+    super(message);
+    this.name = 'AISearchError';
+    this.status = status;
+  }
+}
+
+
 const TIER_1_DOMAINS = [
   'wiki.archlinux.org',
   'developer.mozilla.org',
@@ -442,6 +452,10 @@ Return plain text with light markdown (bold, bullets only). No headers with #.`;
     );
     const content = (result.text ?? '').trim();
 
+    if (!content) {
+      throw new AISearchError('Synthesis produced no content from the model.', 502);
+    }
+
     // Calculate confidence score
     let confidence = 50;
     for (const s of sources.slice(0, 8)) {
@@ -467,14 +481,19 @@ Return plain text with light markdown (bold, bullets only). No headers with #.`;
     };
   } catch (error) {
     logger.error('Synthesis failed:', error);
-    return {
-      content: tavilyAnswer || 'Synthesis failed. Please check your Gemini API key and try again.',
-      confidence: tavilyAnswer ? 40 : 0,
-      queryType: classification.type,
-      sourceCount: sources.length,
-      conflictData,
-      processingTimeMs: 0,
-    };
+    const status =
+      error instanceof Error && 'status' in error
+        ? (error as { status?: number }).status ?? 502
+        : 502;
+    const isQuota =
+      status === 429 ||
+      (error instanceof Error && /quota|429|RESOURCE_EXHAUSTED/i.test(error.message));
+    throw new AISearchError(
+      isQuota
+        ? 'The AI provider is temporarily over quota. Please try again later.'
+        : 'Synthesis failed due to an AI provider error. Please try again.',
+      isQuota ? 503 : status
+    );
   }
 }
 

@@ -7,6 +7,7 @@ import { rateLimit } from '@/lib/services/rate-limit';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch } from '@/modules/ai-search/service';
+import { AISearchError } from '@/modules/ai-search/service';
 import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
 import { consumeAiSearchQuota } from '@/lib/services/ai-search-quota';
 
@@ -141,8 +142,14 @@ export async function POST(request: NextRequest) {
     });
 
     // 10. Validate result shape
-    if (!result.synthesis || !Array.isArray(result.sources)) {
-      return NextResponse.json(fail('INTERNAL_ERROR', 'Search produced an unexpected result. Please try again.'), { status: 500, headers: { 'Cache-Control': 'no-store' } });
+    if (
+      !result.synthesis ||
+      !Array.isArray(result.sources) ||
+      !result.synthesis.content ||
+      typeof result.synthesis.content !== 'string' ||
+      result.synthesis.content.trim().length === 0
+    ) {
+      return NextResponse.json(fail('INTERNAL_ERROR', 'Search produced an empty result. Please try again.'), { status: 500, headers: { 'Cache-Control': 'no-store' } });
     }
 
     // 11. Cache the result (async, non-blocking)
@@ -157,6 +164,18 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Log without exposing internals
     logger.error('AI Search error:', error instanceof Error ? error.message : 'Unknown error');
+
+    // Typed AI search failure (quota, provider error, synthesis failure)
+    if (error instanceof AISearchError) {
+      const message =
+        error.status === 503
+          ? 'The AI provider is temporarily unavailable (quota or rate limit). Please try again later.'
+          : 'The AI search could not be completed. Please try again.';
+      return NextResponse.json(fail('SERVICE_UNAVAILABLE', message), {
+        status: error.status,
+        headers: { 'Cache-Control': 'no-store' },
+      });
+    }
 
     // Check for specific error types
     if (error instanceof Error) {

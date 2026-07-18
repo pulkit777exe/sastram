@@ -1,6 +1,10 @@
+import { BrandLoader } from '@/components/ui/brand-loader';
+
 export default function Loading() {
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">
+      <BrandLoader size={48} label="Searching with Sai…" />
+
       <div className="space-y-2">
         <div className="skeleton h-8 w-1/3" />
         <div className="skeleton h-4 w-2/3" />

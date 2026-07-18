@@ -1,10 +1,10 @@
 allowBuilds:
-  '@google/genai': false
+  '@google/genai': true
   '@prisma/engines': true
   '@sentry/cli': true
   '@upstash/qstash-cli': true
   esbuild: true
   prisma: true
-  protobufjs: false
+  protobufjs: true
   sharp: true
   unrs-resolver: true

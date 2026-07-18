@@ -1,10 +1,9 @@
+import { BrandLoader } from '@/components/ui/brand-loader';
+
 export default function Loading() {
   return (
     <div className="container mx-auto py-8 px-4 space-y-8">
-      <div className="flex items-center gap-3">
-        <div className="skeleton h-6 w-6 rounded-full" />
-        <div className="skeleton h-7 w-40" />
-      </div>
+      <BrandLoader size={40} />
       <div className="grid lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <div className="skeleton h-5 w-40" />

@@ -35,7 +35,7 @@ export default function AiSynthesisCard({
 
   const handleTransfer = () => {
     const params = new URLSearchParams({ context: threadId });
-    router.push(`/ai-search?${params.toString()}`);
+    router.push(`/dashboard/sai-search?${params.toString()}`);
   };
 
   return (

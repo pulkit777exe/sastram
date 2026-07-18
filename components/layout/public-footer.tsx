@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import { Logo } from '@/components/logo';
 import { SerifHeading } from '@/components/layout/serif-heading';
 
 export function PublicFooter() {
@@ -54,14 +54,7 @@ export function PublicFooter() {
         </div>
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-white/20">
           <div className="flex items-center gap-2">
-            <Image
-              src="/logo.svg"
-              alt="Sastram"
-              width={18}
-              height={18}
-              className="rounded brightness-0 invert"
-              style={{ width: 'auto', height: 'auto' }}
-            />
+            <Logo className="h-4 w-4 shrink-0" />
             <span className="font-semibold text-sm">Sastram</span>
           </div>
           <p className="text-[12px] text-white/50">&copy; 2026 Sastram. Open source.</p>

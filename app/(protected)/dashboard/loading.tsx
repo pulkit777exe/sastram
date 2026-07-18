@@ -1,10 +1,9 @@
+import { BrandLoader } from '@/components/ui/brand-loader';
+
 export default function DashboardLoading() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="h-8 w-48 rounded animate-pulse" />
-        <div className="h-10 w-32 rounded-lg animate-pulse" />
-      </div>
+      <BrandLoader size={44} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (

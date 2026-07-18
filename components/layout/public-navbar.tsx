@@ -1,9 +1,7 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { useTheme } from 'next-themes';
+import { Logo } from '@/components/logo';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -18,20 +16,13 @@ interface PublicNavbarProps {
 }
 
 export function PublicNavbar({ user = null }: PublicNavbarProps) {
-  const { theme } = useTheme();
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
-  const logoSrc = !mounted || theme !== 'dark' ? '/sastram-image-light.png' : '/sastram-image-dark.png';
   const userInitial = user?.name?.[0] || user?.email?.[0] || 'U';
 
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
-          <Image src={logoSrc} alt="Sastram" width={22} height={22} priority sizes="22px" className="rounded-md" unoptimized style={{ width: 'auto', height: 'auto' }} />
+        <Link href="/" className="flex items-center gap-2" aria-label="Sastram home">
+          <Logo brand className="h-6 w-6 shrink-0" />
           <span className="font-semibold tracking-tight text-foreground">Sastram</span>
         </Link>
         <nav className="hidden md:flex items-center gap-7">

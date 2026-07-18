@@ -40,6 +40,19 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
       });
 
     const result = JSON.parse(cached.synthesis) as unknown as AISearchResponse;
+
+    // Guard against serving a previously cached degraded/error result.
+    if (
+      !result?.synthesis?.content ||
+      typeof result.synthesis.content !== 'string' ||
+      result.synthesis.content.trim().length === 0
+    ) {
+      logger.debug('[getCachedResult] cached entry has empty/invalid synthesis, treating as miss', {
+        cacheId: cached.id,
+      });
+      return null;
+    }
+
     result.synthesis.cachedAt = cached.createdAt.toISOString();
     return result;
   } catch (err) {
@@ -66,25 +79,31 @@ export async function cacheResult(
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   try {
-    // Get or create a single anonymous session for all cache entries
-    // Use a transaction to avoid race condition with concurrent requests
-    const anonymousSession = await prisma.$transaction(async (tx) => {
-      let session = await tx.aiSearchSession.findFirst({
-        where: { userId: 'anonymous' },
-      });
+    // Get or create a single anonymous session for all cache entries.
+    // Plain read-then-write (no transaction): the session is a singleton keyed
+    // by userId 'anonymous', and a rare duplicate-create is harmless. Using a
+    // transaction here held a pooled connection for the whole cascade and failed
+    // under load with "Unable to start a transaction in the given time."
+    let anonymousSession = await prisma.aiSearchSession.findFirst({
+      where: { userId: 'anonymous' },
+    });
 
-      if (!session) {
-        session = await tx.aiSearchSession.create({
+    if (!anonymousSession) {
+      try {
+        anonymousSession = await prisma.aiSearchSession.create({
           data: {
             userId: 'anonymous',
             query: '', // placeholder query
             queryHash: hashQuery(''), // hash of empty string
           },
         });
+      } catch (createErr) {
+        // Another request may have created it concurrently — fall back to read.
+        anonymousSession =
+          (await prisma.aiSearchSession.findFirst({ where: { userId: 'anonymous' } })) ?? null;
+        if (!anonymousSession) throw createErr;
       }
-
-      return session;
-    });
+    }
 
     await prisma.aiSearchResult.create({
       data: {

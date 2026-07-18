@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toasts } from '@/lib/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, KeyRound } from 'lucide-react';
+import { KeyRound } from 'lucide-react';
 import { SearchBox } from './SearchBox';
 import { PhaseTracker } from './PhaseTracker';
 import { SynthesisCard } from './SynthesisCard';
@@ -141,7 +141,13 @@ export function SearchPage() {
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
-          const msg = data.error || `Search failed (${response.status}). Please try again.`;
+          const errObj = data?.error;
+          const msg =
+            (errObj && typeof errObj === 'object' && typeof errObj.message === 'string'
+              ? errObj.message
+              : typeof errObj === 'string'
+                ? errObj
+                : null) || `Search failed (${response.status}). Please try again.`;
           setErrorMessage(msg);
           setAppState('error');
           toasts.error(msg);
@@ -186,42 +192,29 @@ export function SearchPage() {
 
   const recentSearchPills = useMemo(() => pastSearches.slice(0, 5), [pastSearches]);
 
-  return (
+   return (
     <div className="space-y-10">
-      {/* Header — matches Threads/Search page pattern */}
-      <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
-            <Sparkles size={14} />
-            <span>Sai-Powered</span>
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight">Sai Search</h1>
-          <p className="text-muted-foreground max-w-md">
-            Search across Reddit, Hacker News, ArchWiki, Stack Overflow & more — powered by Exa,
-            Tavily, and Gemini.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {appState === 'results' && (
-            <button
-              onClick={handleNewSearch}
-              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
-            >
-              New Search
-            </button>
-          )}
+      {/* Action buttons — header is rendered by the page wrapper */}
+      <div className="flex items-center gap-2 md:justify-end">
+        {appState === 'results' && (
           <button
-            onClick={() => setShowApiKeys(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+            onClick={handleNewSearch}
+            className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
           >
-            <KeyRound size={14} />
-            API Keys
-            {hasKeys && (
+            New Search
+          </button>
+        )}
+        <button
+          onClick={() => setShowApiKeys(true)}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+        >
+          <KeyRound size={14} />
+          API Keys
+          {hasKeys && (
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
             )}
           </button>
         </div>
-      </div>
 
       {/* Search area */}
       <AnimatePresence mode="wait">
