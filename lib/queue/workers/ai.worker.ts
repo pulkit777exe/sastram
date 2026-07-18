@@ -428,8 +428,6 @@ async function generateAIInlineResponse(
   threadId: string,
   query: string,
 ) {
-  await assertSpendCapAvailable();
-
   const parentMessage = await prisma.message.findUnique({
     where: { id: messageId },
     select: { id: true, depth: true, threadId: true },
@@ -440,65 +438,70 @@ async function generateAIInlineResponse(
     return { queued: false, handled: false, error: 'Parent message not found' };
   }
 
-  // Dedup: check if an AI response already exists for this parent message (e.g. from a previous job attempt)
-  const existingAiMessage = await prisma.message.findFirst({
-    where: {
-      threadId,
-      parentId: parentMessage.id,
-      isAiResponse: true,
-    },
-    select: { id: true, createdAt: true, parentId: true, depth: true, content: true },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  const context = await fetchThreadContext(threadId);
-  const aiUser = await getOrCreateAiUser();
-
-  let aiMessage: { id: string; content: string; createdAt: Date; parentId: string | null; depth: number };
-  let isRetry = false;
-
-  if (existingAiMessage) {
-    logger.info(`[worker:ai] Reusing existing AI message ${existingAiMessage.id} for parent ${messageId} (retry)`);
-    aiMessage = existingAiMessage;
-    isRetry = true;
-  } else {
-    aiMessage = await createAiMessage(threadId, parentMessage.id, (parentMessage.depth ?? 0) + 1, aiUser.id);
-  }
-
-  if (!isRetry) {
-    emitAiMessage(threadId, aiMessage, aiUser, false);
-  }
+  // The inline @sai reply is a best-effort, user-facing enhancement. Any failure
+  // along the way (spend cap, quota, auth, network) must NOT crash the job or
+  // leave a broken empty message — we write a clear placeholder and return 200 so
+  // QStash does not retry a failure the user has already seen.
+  let aiMessage: { id: string; content: string; createdAt: Date; parentId: string | null; depth: number } | null = null;
+  let aiUser: { id: string; name: string | null; image: string | null } | null = null;
 
   try {
+    await assertSpendCapAvailable();
+
+    // Dedup: check if an AI response already exists for this parent message (e.g. from a previous job attempt)
+    const existingAiMessage = await prisma.message.findFirst({
+      where: {
+        threadId,
+        parentId: parentMessage.id,
+        isAiResponse: true,
+      },
+      select: { id: true, createdAt: true, parentId: true, depth: true, content: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const context = await fetchThreadContext(threadId);
+    aiUser = await getOrCreateAiUser();
+
+    let isRetry = false;
+    if (existingAiMessage) {
+      logger.info(`[worker:ai] Reusing existing AI message ${existingAiMessage.id} for parent ${messageId} (retry)`);
+      aiMessage = existingAiMessage;
+      isRetry = true;
+    } else {
+      aiMessage = await createAiMessage(threadId, parentMessage.id, (parentMessage.depth ?? 0) + 1, aiUser.id);
+    }
+
+    if (!isRetry) {
+      emitAiMessage(threadId, aiMessage, aiUser, false);
+    }
+
     const { content: finalContent, truncated } = await streamAiResponse(threadId, query, context, aiMessage, aiUser);
     emitAiMessage(threadId, { ...aiMessage, content: finalContent }, aiUser, true, truncated);
   } catch (error) {
-    logger.error('[worker:ai] AI streaming error:', error);
+    logger.error('[worker:ai] AI inline generation failed:', error);
 
-    const isQuota =
-      error instanceof Error &&
-      (/429|quota|RESOURCE_EXHAUSTED/i.test(error.message) ||
-        (error as { status?: number }).status === 429);
-
-    const errorMessage = isQuota
+    const isCapOrQuota =
+      isQuotaError(error) || /spend cap/i.test(error instanceof Error ? error.message : '');
+    const errorMessage = isCapOrQuota
       ? "I'm temporarily over my AI quota, so I couldn't reply just now. Please try again later."
       : "Sorry, I couldn't generate a response right now. Please try again later.";
 
-    await prisma.message.update({
-      where: { id: aiMessage.id },
-      data: { content: errorMessage },
-    });
-    emitAiMessage(threadId, { ...aiMessage, content: errorMessage }, aiUser, true);
-
-    // A provider quota/rate-limit error is terminal for this attempt: the
-    // placeholder is already shown to the user, so rethrowing would only make
-    // QStash retry (and 500) on a failure that won't resolve immediately.
-    // Other unexpected errors still throw so they surface for investigation.
-    if (!isQuota) throw error;
+    if (aiMessage) {
+      await prisma.message.update({
+        where: { id: aiMessage.id },
+        data: { content: errorMessage },
+      });
+      emitAiMessage(
+        threadId,
+        { ...aiMessage, content: errorMessage },
+        aiUser ?? { id: 'ai@sastram.system', name: 'Sastram AI', image: null },
+        true,
+      );
+    }
   }
 
   logger.info(`[worker:ai] AI inline job complete`);
-  return { queued: true, handled: true, aiMessageId: aiMessage.id };
+  return { queued: true, handled: true, aiMessageId: aiMessage?.id };
 }
 
 async function fetchThreadContext(threadId: string): Promise<string> {
