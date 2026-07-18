@@ -32,11 +32,24 @@
 - `style: route env access through validated env object` — Phase 4 standards fix
 
 ## Pending (what's NOT done)
-- **Push to origin** — BLOCKED on owner sign-off (guardrail in `.opencode/opencode.json`).
 - **Backlog slices 1–5** (AFK, `ready-for-agent`): wire classifier to all AI gates,
   spend telemetry, moderation/image cap gap, enqueue-time gates, daily-digest/warming cap.
-- **UNKNOWN items needing owner evidence:** whether purge cron has actually RUN in prod
-  (Vercel logs); rate-limit runtime under real Redis outage (chaos test).
+
+## Two verification items — resolved vs still owner-evidence
+- **Rate-limit fail-open under Redis outage — RESOLVED (verified by test).**
+  Previously UNKNOWN. Now covered by `test/rate-limit.test.mts`:
+  `decideLimiterMode` asserts that "Redis configured but unavailable" => `in-memory`
+  (NOT `open`), and the in-memory fallback is proven to enforce limits. The real
+  outage path is the try/catch at rate-limit.ts:148-162. No longer an open question.
+- **Purge cron actual prod execution — STILL NEEDS OWNER EVIDENCE (not code).**
+  Wiring is verified in code: `app/api/cron/update-threads/route.ts:116` calls
+  `purgeSoftDeleted()`, registered in `vercel.json` (`0 3 * * *`), CRON_SECRET auth
+  via `lib/utils/cron-auth.ts`. What remains unconfirmed is whether Vercel has
+  **actually invoked** the cron in production. Owner action: open Vercel dashboard →
+  the project → Cron Jobs (or Function Logs filtered to `/api/cron/update-threads`)
+  and confirm at least one successful run since deploy. If none, the purge logic is
+  correct but dormant — not a security hole, just unproven. This requires owner
+  credentials; cannot be done by the agent.
 
 ## Founder decisions (resolved, not engineering)
 - D1: Keep `$5/day` global AI spend cap, no monetization (reversible).
