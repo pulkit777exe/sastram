@@ -82,8 +82,6 @@ class InMemoryRateLimiter implements RateLimiter {
   }
 }
 
-const inMemoryLimiter = new InMemoryRateLimiter(100, 60);
-
 // Memoized rate limiters — one instance per bucket name.
 // Prevents creating new Ratelimit objects on every check.
 const _limiters = new Map<RateLimitBucket, RateLimiter>();
@@ -97,10 +95,25 @@ function getOrCreateLimiter(bucket: RateLimitBucket): RateLimiter {
 
   let limiter: RateLimiter;
 
-  if (!r || !env.RATE_LIMIT_ENABLED) {
+  const redisConfigured = Boolean(
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  );
+
+  if (!env.RATE_LIMIT_ENABLED) {
     limiter = {
       check: async () => ({ success: true, remaining: config.points, reset: Date.now() + config.duration * 1000 }),
     };
+  } else if (!r) {
+    if (redisConfigured) {
+      logger.error(
+        `Rate limit: Redis is configured but the client could not be created for bucket "${bucket}". Degrading to per-instance in-memory limiting (weaker on serverless).`
+      );
+      limiter = new InMemoryRateLimiter(config.points, config.duration);
+    } else {
+      limiter = {
+        check: async () => ({ success: true, remaining: config.points, reset: Date.now() + config.duration * 1000 }),
+      };
+    }
   } else {
     const ratelimit = new Ratelimit({
       redis: r,
@@ -108,14 +121,19 @@ function getOrCreateLimiter(bucket: RateLimitBucket): RateLimiter {
       analytics: false,
     });
 
+    const fallback = new InMemoryRateLimiter(config.points, config.duration);
+
     limiter = {
       check: async (identifier: string) => {
         try {
           const result = await ratelimit.limit(identifier);
           return { success: result.success, remaining: result.remaining, reset: result.reset };
         } catch (error) {
-          logger.error(`Redis rate limit check failed for ${bucket}, falling back to in-memory:`, error);
-          return inMemoryLimiter.check(identifier);
+          logger.error(
+            `Rate limit: Redis check failed for bucket "${bucket}", degrading to per-instance in-memory limiting (weaker on serverless):`,
+            error
+          );
+          return fallback.check(identifier);
         }
       },
     };
