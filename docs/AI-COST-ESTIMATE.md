@@ -60,6 +60,16 @@ binding constraint. Raising the ceiling (to allow growth) is the founder-level
 monetization decision referenced in Phase 5 — current config prioritizes
 abuse-protection over scale.
 
+## Assumption: estimates are cache-miss worst case
+These per-user figures assume every call is a cache MISS (the user maxes their
+daily quotas). The only AI-search cache that exists is an exact normalized-query
+SHA-256 hash cache (`modules/ai-search/cache.ts`) — there is NO pgvector /
+semantic / embedding similarity cache. So repeat-identical queries are free, but
+semantically-similar queries are NOT deduplicated. The estimates are therefore
+conservative upper bounds and do NOT rely on any semantic cache existing. This
+is why founder decision D1 (keep the $5/day global cap, no monetization) holds:
+the cap is a hard $150/mo ceiling independent of caching.
+
 ## Risk note (UNKNOWN without telemetry)
 Actual per-call costs depend on token counts logged in `lib/services/ai-usage-logger.ts`.
 The estimates above use the static `ESTIMATED_COST_USD` table, not live token

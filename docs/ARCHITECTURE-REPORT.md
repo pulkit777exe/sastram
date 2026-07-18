@@ -115,7 +115,7 @@ Browser Client
 | UserBadge / UserBadgeEarned | Gamification |
 | UserActivity | Audit trail |
 | AiSearchSession / AiSearchResult | AI search history + cached synthesis |
-| ThreadRelation | Semantic similarity (pgvector, 0.0–1.0) |
+| ThreadRelation | Topic/type/expertise similarity (Jaccard index in app code, `modules/threads/threads-relations/repository.ts`, 0.0–1.0). NOT pgvector. |
 | ThreadInvitation | Token-based invites with expiry |
 | Notification | Typed notifications with JSON `data` payload |
 
@@ -511,7 +511,9 @@ PostgreSQL 16 service container
 - Avatar + banner upload UI (backend exists)
 
 **Low Priority (advanced):**
-- Semantic query cache (pgvector dedup)
+- Semantic query cache (pgvector dedup) — NOT BUILT. Current AI-search caching is an
+  exact normalized-query SHA-256 hash cache (modules/ai-search/cache.ts), which cuts
+  repeat-query cost but provides no semantic/embedding similarity.
 - Cross-thread knowledge links UI
 - Expert Passport UI
 - Thread merging suggestion
@@ -544,8 +546,10 @@ Dashboard initial load:    ≤ 2 DB queries
 Thread page load:          ≤ 1 DB query (full JOIN)
 Navigation between pages:  0 DB queries (context)
 WebSocket update:          0 DB queries (payload carries data)
-AI search cache hit:       0 external API calls
-AI search cache miss:      1 embed + 2 parallel calls + 1 write
+AI search cache hit:       0 external API calls (exact normalized-query SHA-256 match, see modules/ai-search/cache.ts)
+AI search cache miss:      2 parallel calls (classify + cross-reference) + 1 synthesize + 1 write
+                         NOTE: the cache is query-hash based — there is NO embedding step and NO pgvector.
+                         A "semantic" / pgvector similarity cache does NOT exist (see Low Priority list below).
 ```
 
 ### Caching Hierarchy
