@@ -31,7 +31,7 @@ This document provides a quick reference to the main features and functions avai
   - `modules/threads/repository.ts` - Data access
   - `modules/threads/service.ts` - Business logic
 - **API Routes:** `app/api/threads/route.ts`
-- **UI:** `app/(protected)/dashboard/threads/`, `components/dashboard/topic-grid.tsx`
+- **UI:** `app/(protected)/dashboard/threads/` (list), `app/thread/[slug]/page.tsx` (detail), `components/dashboard/topic-grid.tsx`
 
 ### Message Handling
 
@@ -207,8 +207,8 @@ This document provides a quick reference to the main features and functions avai
 
 ### External Services
 
-- **AI Integration:** `lib/services/ai.ts` (Google Gemini, OpenAI)
-- **Email:** `lib/services/auth.ts` (Resend)
+- **AI Integration:** `lib/services/ai.ts` (Google Gemini, OpenAI) — user-facing brand "Sai"
+- **Email:** `lib/services/email.ts` (Resend)
 - **File Storage:** `lib/services/blob.ts` (Vercel Blob)
 
 ## UI Components
@@ -238,27 +238,27 @@ This document provides a quick reference to the main features and functions avai
 
 - **Framework:** Mocha + Chai
 - **Location:** `test/`
-- **Script:** `npm run test`
+- **Script:** `pnpm test`
 
 ## Development & Deployment
 
 ### Development Server
 
-- **Command:** `npm run dev`
+- **Command:** `pnpm dev`
 - **Configuration:** `next.config.ts`
 
 ### Build & Deployment
 
-- **Build:** `npm run build`
-- **Start:** `npm run start`
+- **Build:** `pnpm build`
+- **Start:** `pnpm start`
 - **Server Configuration:** `server.ts`
 
 ### Database Management
 
-- **Generate Prisma Client:** `npm run db:generate`
-- **Push Changes:** `npm run db:push`
-- **Run Migrations:** `npm run db:migrate`
-- **Studio:** `npm run db:studio`
+- **Generate Prisma Client:** `pnpm db:generate`
+- **Push Changes:** `pnpm db:push`
+- **Run Migrations:** `pnpm db:migrate`
+- **Studio:** `pnpm db:studio`
 
 ## File Structure Summary
 

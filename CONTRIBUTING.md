@@ -33,8 +33,7 @@ Thanks for your interest in contributing to Sastram.
 ```
 app/          — Next.js App Router pages and API routes
 lib/          — Core utilities, services, infrastructure
-modules/      — Domain modules (50+ feature modules)
+modules/      — Domain modules (26 feature modules)
 components/   — UI components
 test/         — Mocha unit tests
-worker/       — Standalone BullMQ worker entry point
 ```

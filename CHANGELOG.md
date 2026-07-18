@@ -25,7 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Consolidate Upstash Redis singleton into `lib/infrastructure/redis-upstash.ts` — eliminated 4 duplicated Redis connection patterns
 - Add Lua script for atomic Redis INCR+EXPIRE operations — prevents orphan keys with no TTL on process crash
 - Memoize rate limiters by bucket name — one instance per bucket instead of creating new instances on every check
-- AI worker now throws error after writing error message to DB — BullMQ retries with exponential backoff instead of silently marking failed jobs as complete
+- AI worker now throws error after writing error message to DB — QStash retries with exponential backoff instead of silently marking failed jobs as complete
 - Change `topics/actions.ts` from `requireSession(false)` to `requireSession()` to prevent null crash for unauthenticated users
 - Check affected row count before decrementing `memberCount` in `leaveSection` and `removeMemberAction` — prevents negative counts
 - Add `select` to moderation rules loading — only fetch needed columns instead of full records
@@ -62,7 +62,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Testing
 
 - Add API route integration tests — 25 tests covering auth enforcement, input validation schemas, rate limiting configuration, CRON security, and moderation validation
-- Add BullMQ job handler tests — 11 tests for input validation across 8 job handlers
+- Add QStash job handler tests — 11 tests for input validation across 8 job handlers
 - Add component tests — 10 tests using React Testing Library for ErrorBoundary (5 tests) and OtpInput (5 tests)
 - Install React Testing Library, sinon, react, react-dom as dev dependencies
 - Update test script to include `.tsx` test files
@@ -98,7 +98,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Add membership scoping to search API — threads and messages now scoped to user's section memberships
 - Add membership check to `/api/ai/thread-summary` — prevents accessing summaries of sections user isn't a member of
-- Add ownership check to `DELETE /api/ai/jobs` — prevents users from cancelling other users' AI jobs
+- Add ownership check to `DELETE /api/jobs` — prevents users from cancelling other users' AI jobs
 - Add authentication to `getMessageEditHistory` action — prevents unauthenticated access to edit history
 - Add authentication to `getSectionMembersAction` — prevents unauthenticated member enumeration
 

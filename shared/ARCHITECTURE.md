@@ -30,7 +30,7 @@ accumulates knowledge. More users = better answers for the next user.
 - **Authentication:** Better Auth (email OTP + Google + GitHub)
 - **Cache / Rate Limit:** Upstash Redis
 - **File Storage:** Vercel Blob Storage (`lib/services/blob.ts`)
-- **Email:** Nodemailer (SMTP) — `lib/services/email.ts`
+- **Email:** Resend — `lib/services/email.ts`
 - **AI — Search:** Exa API + Tavily API (via `modules/ai-search/service.ts`)
 - **AI — Synthesis:** Google Gemini Flash (classify/DNA) + Pro (synthesis)
 - **AI — LangChain:** Map-reduce summarization via `lib/services/ai-langchain.ts`
@@ -54,7 +54,7 @@ Browser Client
 │   │   ├── Vercel Cron → scheduled tasks (daily digest, staleness check)
 │   │   ├── Vercel Blob (file storage)
 │   │   ├── Gemini / Exa / Tavily (AI)
-│   │   └── Nodemailer (SMTP email)
+│   │   └── Resend (email)
 │   │
 │   └── API Routes (29 REST endpoints)
 │
@@ -77,19 +77,19 @@ sastram/
 │   ├── (protected)/
 │   │   ├── dashboard/
 │   │   │   ├── page.tsx                  # Main dashboard
-│   │   │   ├── threads/                  # Thread list + detail ([slug])
+│   │   │   ├── threads/                  # Thread list
 │   │   │   ├── messages/                 # Messages/inbox
 │   │   │   ├── notifications/            # Notifications page
 │   │   │   ├── bookmarks/                # Bookmarked threads
 │   │   │   ├── search/                   # Local search
-│   │   │   ├── ai-search/                # AI-powered search
+│   │   │   ├── sai-search/               # AI-powered search (brand: Sai)
 │   │   │   ├── activity/                 # User activity feed
 │   │   │   ├── tags/                     # Tags browser ([slug])
 │   │   │   ├── settings/                 # Account settings + profile
 │   │   │   └── admin/                    # Admin (tags, moderation, reports, appeals, health)
 │   │   └── user/[userId]/                # Public user profile
 │   ├── chat/                             # Real-time chat
-│   ├── [community]/[thread]/             # Community thread view (public URL)
+│   ├── thread/[slug]/                    # Flat thread detail view (public URL)
 │   ├── banned/                           # Banned user page
 │   ├── api-docs/                         # API documentation page
 │   └── api/
@@ -101,8 +101,8 @@ sastram/
 │       │   ├── forum-search/             # AI search pipeline (Exa+Tavily+Gemini)
 │       │   ├── thread-summary/           # Thread summary generation
 │       │   ├── thread-dna/               # Thread DNA analysis
-│       │   ├── resolution-score/         # Resolution score calculation
-│       │   └── jobs/                     # AI job status + cancel
+│       │   └── resolution-score/         # Resolution score calculation
+│       ├── jobs/                         # QStash webhook callback (background AI/email jobs)
 │       ├── threads/                      # Thread REST + [threadId]/ai-reply
 │       ├── messages/                     # Message REST (POST)
 │       ├── conversations/                # Chat conversations (GET, POST)
@@ -160,7 +160,6 @@ sastram/
 │   ├── read-receipts/                    # Thread read tracking
 │   ├── tags/                             # Tag CRUD, thread-tag associations
 │   ├── topics/                           # Topic creation (thread categories)
-│   ├── communities/                      # Community groups
 │   ├── members/                          # Thread membership management
 │   ├── polls/                            # Poll creation, voting, results
 │   ├── invitations/                      # Thread invitations
@@ -208,7 +207,7 @@ sastram/
 │   │   ├── auth-client.ts               # Client-side auth
 │   │   ├── blob.ts                       # Vercel Blob storage wrapper
 │   │   ├── content-safety.ts            # Profanity filtering, file validation
-│   │   ├── email.ts                      # Nodemailer SMTP (sendEmail, sendOTPEmail, etc.)
+│   │   ├── email.ts                      # Resend (sendEmail, sendOTPEmail, etc.)
 │   │   ├── moderation.ts                 # Regex + AI content moderation
 │   │   └── rate-limit.ts                 # Redis-based rate limiting with buckets
 │   ├── middleware/
@@ -290,7 +289,7 @@ The central entity. Stores AI metadata directly:
 ### Message
 - `parentId: String?` — null = root post, enables tree structure
 - `depth: Int` — 0=root, max 4 for visual nesting
-- `isAiResponse: Boolean` — true for @ai inline responses
+- `isAiResponse: Boolean` — true for @sai inline responses
 - `isEdited: Boolean` — tracks edit history
 - `isPinned: Boolean` — pin status (one per thread)
 - `likeCount: Int` — denormalized, updated atomically
@@ -350,7 +349,7 @@ The central entity. Stores AI metadata directly:
 | Create thread | `modules/threads/actions.ts:createThreadAction` |
 | Delete thread (soft) | `modules/threads/actions.ts:deleteThreadAction` |
 | Thread list (dashboard) | `app/(protected)/dashboard/threads/page.tsx` |
-| Thread detail (by slug) | `app/(protected)/dashboard/threads/[slug]/page.tsx` |
+| Thread detail (by slug) | `app/thread/[slug]/page.tsx` |
 | Thread view (public/flat) | `app/thread/[slug]/page.tsx` |
 | Nested reply tree (depth 4) | `components/thread/comment-tree.tsx` + `message-list.tsx` |
 | Virtual scrolling | `@tanstack/react-virtual` in `message-list.tsx` |
@@ -379,7 +378,7 @@ The central entity. Stores AI metadata directly:
 | Message attachments | `app/api/messages/route.ts` (multipart upload) |
 | @mentions | `modules/messages/actions/mentions.ts` (create, search, notify) |
 | Mention autocomplete | `components/chat/mention-suggest.tsx` (debounced search) |
-| @ai inline responses | `modules/messages/actions/ai-inline.ts` → QStash job |
+| @sai inline responses | `modules/messages/actions/ai-inline.ts` → QStash job |
 | AI inline pending status | `thread-live-wrapper.tsx` (2-min timeout, pending/failed tracking) |
 | "Edited" label | `message-list.tsx` line 304-306 |
 | Deleted placeholder | `message-list.tsx` lines 230-248 ("This message was deleted") |
@@ -420,7 +419,7 @@ The central entity. Stores AI metadata directly:
 | Resolution score | 0-100 with confidence decay over time |
 | Conflict detection | AI identifies contradictory facts in threads |
 | Thread summary (LangChain) | Map-reduce: split → parallel summarize → combine |
-| AI inline (@ai) | User types @ai in message → QStash job → streaming response |
+| AI inline (@sai) | User types @sai in message → QStash job → streaming response (best-effort, graceful placeholder on failure) |
 | Staleness detection | 30-day threshold, checks if thread needs updating |
 | AI insight notifications | Score change ≥20pts or conflict detected → notify subscribers |
 
@@ -436,13 +435,13 @@ The central entity. Stores AI metadata directly:
 | Thread DNA | 3rd message posted | `Thread.threadDna` |
 | Resolution score | 5+ messages or daily cron | `Thread.resolutionScore` |
 | Conflict detection | New message arrives | Notification to subscribers |
-| Daily digest | Daily cron (3 AM UTC) | Email via Nodemailer |
+| Daily digest | Daily cron (3 AM UTC) | Email via Resend |
 | AI insight notifications | Score change / conflict | Notification table |
-| AI inline | @ai in message | Streaming AI response |
+| AI inline | @sai in message | Streaming AI response |
 | Staleness check | Daily cron | `Thread.isOutdated` flag |
-| Email | Various | Nodemailer send |
+| Email | Various | Resend send |
 
-**Job options:** 3 retries via QStash.
+**Job options:** critical jobs (email) retry 3× via QStash; AI jobs retry once. Provider quota/rate-limit failures are treated as terminal (no retry storm) — the inline @sai reply writes a graceful placeholder instead of rethrowing.
 
 ### Moderation & Administration
 
@@ -496,7 +495,7 @@ The central entity. Stores AI metadata directly:
 | Thread search | `modules/search/actions.ts:searchThreadsAction` |
 | Message search | `modules/search/actions.ts:searchMessagesAction` |
 | User search | `modules/search/actions.ts:searchUsersAction` |
-| AI-powered search | `app/(protected)/dashboard/ai-search/page.tsx` |
+| AI-powered search | `app/(protected)/dashboard/sai-search/page.tsx` |
 | Mention user search | `modules/messages/actions/mentions.ts:searchMentionUsers` |
 | Tags browser | `app/(protected)/dashboard/tags/[slug]/page.tsx` |
 | Related threads | `components/panels/RelatedThreadsCard.tsx` |
