@@ -430,13 +430,27 @@ async function generateAIInlineResponse(
     emitAiMessage(threadId, { ...aiMessage, content: finalContent }, aiUser, true, truncated);
   } catch (error) {
     logger.error('[worker:ai] AI streaming error:', error);
-    const errorMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
+
+    const isQuota =
+      error instanceof Error &&
+      (/429|quota|RESOURCE_EXHAUSTED/i.test(error.message) ||
+        (error as { status?: number }).status === 429);
+
+    const errorMessage = isQuota
+      ? "I'm temporarily over my AI quota, so I couldn't reply just now. Please try again later."
+      : "Sorry, I couldn't generate a response right now. Please try again later.";
+
     await prisma.message.update({
       where: { id: aiMessage.id },
       data: { content: errorMessage },
     });
     emitAiMessage(threadId, { ...aiMessage, content: errorMessage }, aiUser, true);
-    throw error;
+
+    // A provider quota/rate-limit error is terminal for this attempt: the
+    // placeholder is already shown to the user, so rethrowing would only make
+    // QStash retry (and 500) on a failure that won't resolve immediately.
+    // Other unexpected errors still throw so they surface for investigation.
+    if (!isQuota) throw error;
   }
 
   logger.info(`[worker:ai] AI inline job complete`);

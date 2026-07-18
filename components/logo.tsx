@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useTheme } from 'next-themes';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -43,7 +43,6 @@ export function Logo({ theme, brand = false, className }: LogoProps) {
 interface LogoLoaderProps {
   theme?: Theme;
   size?: number;
-  /** Full cycle duration in seconds: apart -> merged -> apart. Default 2.4s. */
   duration?: number;
   className?: string;
 }
@@ -64,23 +63,6 @@ function easeInOutQuint(t: number) {
   return t < 0.5 ? 16 * t ** 5 : 1 - Math.pow(-2 * t + 2, 5) / 2;
 }
 
-/**
- * Sastram mark, animated: two rounded squares drift apart, sweep together
- * into one merged form, then part again.
- *
- * Deliberately NOT driven by CSS @keyframes/classes. A private rAF loop per
- * instance writes x/y attributes straight to three refs each frame:
- *   - square A (gets the notch cut out of it via <mask>)
- *   - square B (drawn solid, always on top)
- *   - the mask's cutout twin of square B
- *
- * Because B's visible rect and its mask twin are set from the *same*
- * variable inside the *same* function call, they cannot drift apart at any
- * intermediate frame, regardless of browser quirks around animating
- * transforms on elements referenced inside <mask>. And because there are no
- * shared class names or @keyframes, N instances with N different `duration`
- * values are fully independent — nothing to collide over.
- */
 export function LogoLoader({ theme = 'light', size = 64, duration = 2.4, className }: LogoLoaderProps) {
   const resolved = useResolvedTheme(theme);
   const fill = THEME_COLORS[resolved];
@@ -162,7 +144,6 @@ export function LogoLoader({ theme = 'light', size = 64, duration = 2.4, classNa
         </mask>
       </defs>
 
-      {/* transform-origin expressed via style since this <g> has no fixed fill-box */}
       <g ref={pulseRef} style={{ transformOrigin: '50px 50px' }}>
         <rect
           ref={rectARef}

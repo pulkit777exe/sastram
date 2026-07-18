@@ -67,6 +67,18 @@ export async function sendEmailNow({
     const resend = getResendClient();
     const toAddresses = Array.isArray(to) ? to : [to];
 
+    // In non-production, Resend's test key only permits its own verification
+    // address, so real recipients (e.g. example.com) hard-fail with a 422.
+    // Skip the actual send in dev to avoid noisy job failures; the email is
+    // still "enqueued" and logged so the flow can be exercised end-to-end.
+    if (process.env.NODE_ENV !== 'production') {
+      logger.info(
+        `[email] Skipping real send in non-production to ${toAddresses.join(', ')} (subject: ${subject})`
+      );
+      return { id: 'dev-noop' };
+    }
+
+
     const baseOpts = { from, to: toAddresses, subject };
 
     const payload: CreateEmailOptions = templateId && data
