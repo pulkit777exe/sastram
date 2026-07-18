@@ -20,15 +20,15 @@
 
   /* Light Mode — layered cool-neutral surfaces, not pure white */
   --background: oklch(0.99 0.002 264);
-  --foreground: oklch(0.16 0.006 264);
+  --foreground: oklch(0.28 0.006 264);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.006 264);
+  --card-foreground: oklch(0.28 0.006 264);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.006 264);
+  --popover-foreground: oklch(0.28 0.006 264);
   --primary: oklch(0.16 0.006 264);
   --primary-foreground: oklch(0.99 0.002 264);
   --secondary: oklch(0.965 0.003 264);
-  --secondary-foreground: oklch(0.16 0.006 264);
+  --secondary-foreground: oklch(0.28 0.006 264);
   --muted: oklch(0.965 0.003 264);
   --muted-foreground: oklch(0.5 0.012 264);
   --accent: oklch(0.955 0.014 264);
@@ -65,7 +65,7 @@
   --blue-dim: rgba(55, 54, 252, 0.08);
   --bg: #fafafb;
   --surface: #ffffff;
-  --text: #0e0e10;
+  --text: #2c2c34;
   --muted: #6b6b76;
   --green: #1a9c5c;
   --amber: #d99a1b;
