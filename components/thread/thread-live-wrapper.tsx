@@ -162,6 +162,39 @@ export function ThreadLiveWrapper({
 
   const hasAiMention = useCallback((content: string) => /\B@sai\b/i.test(content), []);
 
+  const mapBackfillMessage = useCallback(
+    (m: any): Message => ({
+      id: m.id,
+      content: m.body ?? m.content ?? '',
+      createdAt: m.createdAt,
+      senderId: m.senderId,
+      parentId: m.parentId ?? null,
+      threadId,
+      depth: m.depth ?? 0,
+      isEdited: m.isEdited ?? false,
+      isPinned: m.isPinned ?? false,
+      likeCount: m.likeCount ?? 0,
+      replyCount: m.replyCount ?? 0,
+      isAiResponse: m.isAI ?? m.isAiResponse ?? false,
+      updatedAt: m.createdAt,
+      deletedAt: m.deletedAt ?? null,
+      sender: {
+        id: m.sender?.id ?? m.senderId,
+        name: m.sender?.name ?? 'Anonymous',
+        image: m.sender?.image ?? null,
+      },
+      attachments: (m.attachments ?? []).map((att: any) => ({
+        id: att.id,
+        name: att.name ?? null,
+        url: att.url,
+        type: att.type,
+        size: att.size ?? null,
+      })),
+      thread: { id: threadId, name: title, slug },
+    }),
+    [threadId, title, slug]
+  );
+
   const isAtBottom = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return true;
@@ -496,35 +529,9 @@ export function ThreadLiveWrapper({
           return;
         }
 
-        const newMessages: Message[] = result.data.messages.map((m: any) => ({
-          id: m.id,
-          content: m.body ?? m.content ?? '',
-          createdAt: m.createdAt,
-          senderId: m.senderId,
-          parentId: m.parentId ?? null,
-          threadId,
-          depth: m.depth ?? 0,
-          isEdited: m.isEdited ?? false,
-          isPinned: m.isPinned ?? false,
-          likeCount: m.likeCount ?? 0,
-          replyCount: m.replyCount ?? 0,
-          isAiResponse: m.isAI ?? m.isAiResponse ?? false,
-          updatedAt: m.createdAt,
-          deletedAt: m.deletedAt ?? null,
-          sender: {
-            id: m.sender?.id ?? m.senderId,
-            name: m.sender?.name ?? 'Anonymous',
-            image: m.sender?.image ?? null,
-          },
-          attachments: (m.attachments ?? []).map((att: any) => ({
-            id: att.id,
-            name: att.name ?? null,
-            url: att.url,
-            type: att.type,
-            size: att.size ?? null,
-          })),
-          thread: { id: threadId, name: title, slug },
-        }));
+        const newMessages: Message[] = result.data.messages.map((m: any) =>
+          mapBackfillMessage(m)
+        );
 
         let hasNew = false;
         setLiveMessages((prev) => {
@@ -588,7 +595,50 @@ export function ThreadLiveWrapper({
       if (timer) clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [threadId, title, slug, clearAiStatus]);
+  }, [threadId, title, slug, mapBackfillMessage, clearAiStatus]);
+
+  // Fast poll while an @sai reply is generating. The WebSocket runs in noop mode
+  // in dev, so real-time delivery is dropped and the 20s poll would make inline
+  // AI replies feel like they never arrived. Poll every 3s while any AI status is
+  // pending so the reply (or its quota message) surfaces promptly.
+  useEffect(() => {
+    const hasPending = Object.values(aiInlineStatus).includes('pending');
+    if (!hasPending) return;
+
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const fastPoll = async () => {
+      try {
+        const result = await backfillThreadMessages(threadId, lastMessageTimestampRef.current);
+        if (!result?.ok || !result.data?.messages?.length) return;
+        const incoming = result.data.messages.map((m: any) => mapBackfillMessage(m));
+        setLiveMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const toAdd = incoming.filter((m) => !existingIds.has(m.id));
+          if (toAdd.length === 0) return prev;
+          const merged = [...prev, ...toAdd].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          lastMessageTimestampRef.current = new Date(
+            merged[merged.length - 1].createdAt
+          ).toISOString();
+          return merged;
+        });
+        for (const msg of incoming) {
+          if (msg.isAiResponse && msg.parentId) {
+            setTimeout(() => clearAiStatus(msg.parentId!), 0);
+          }
+        }
+      } catch {
+        // best-effort
+      }
+    };
+
+    fastPoll();
+    timer = setInterval(fastPoll, 3000);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [aiInlineStatus, threadId, mapBackfillMessage, clearAiStatus]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
