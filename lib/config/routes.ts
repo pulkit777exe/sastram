@@ -15,8 +15,7 @@ export const ROUTES = {
 
   BANNED: '/banned',
 
-  THREAD: (slug: string) => `/dashboard/threads/${slug}`,
-  THREAD_BY_SLUG: (slug: string) => `/thread/${slug}`,
+  THREAD: (slug: string) => `/thread/${slug}`,
   USER_PROFILE: (userId: string) => `/user/${userId}`,
 
   API: {

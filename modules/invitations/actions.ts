@@ -95,7 +95,7 @@ export async function inviteFriendToThread(formData: FormData) {
       inviteUrl
     ).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
 
-    revalidatePath(`/dashboard/threads/${thread.slug}`);
+    revalidatePath(`/thread/${thread.slug}`);
     return { data: invitation, error: null };
   } catch (error) {
     logger.error('[inviteFriendToThread]', error);
@@ -176,7 +176,7 @@ export async function revokeThreadInvitationAction(invitationId: string) {
 
     await prisma.threadInvitation.delete({ where: { id: invitationId } });
 
-    revalidatePath(`/dashboard/threads/${thread.slug}`);
+    revalidatePath(`/thread/${thread.slug}`);
     return { data: { id: invitationId }, error: null };
   } catch (error) {
     logger.error('[revokeThreadInvitationAction]', error);

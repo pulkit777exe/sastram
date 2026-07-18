@@ -176,7 +176,7 @@ export async function postMessage(formData: FormData) {
     });
 
     if (message.thread?.slug) {
-      revalidatePath(`/dashboard/threads/${message.thread.slug}`);
+        revalidatePath(`/thread/${message.thread.slug}`);
     }
     revalidatePath('/dashboard');
 

@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
           sub.email,
           thread.name,
           summaryHtml,
-          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}`,
+          `${process.env.NEXT_PUBLIC_APP_URL}/thread/${thread.slug}`,
           messages.length,
           uniqueParticipants.size
         );
