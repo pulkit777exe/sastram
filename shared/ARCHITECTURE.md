@@ -25,7 +25,7 @@ accumulates knowledge. More users = better answers for the next user.
 
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend:** Next.js App Router (API routes + Server Actions), Node.js
-- **Database:** PostgreSQL via Prisma ORM (Neon serverless), 33 models
+- **Database:** PostgreSQL via Prisma ORM (Neon serverless), 29 models
 - **Real-time:** Background Jobs: Upstash QStash + Vercel Cron
 - **Authentication:** Better Auth (email OTP + Google + GitHub)
 - **Cache / Rate Limit:** Upstash Redis
@@ -56,7 +56,7 @@ Browser Client
 │   │   ├── Gemini / Exa / Tavily (AI)
 │   │   └── Resend (email)
 │   │
-│   └── API Routes (29 REST endpoints)
+│   └── API Routes (32 REST endpoints)
 │
 └── SSE → AI reply streaming (app/api/threads/[threadId]/ai-reply/stream)
 ```
@@ -233,7 +233,7 @@ sastram/
 │   └── sanitize.ts                       # API key validation, input sanitization
 │
 ├── prisma/
-│   ├── schema.prisma                     # 33 models
+│   ├── schema.prisma                     # 29 models
 │   ├── seed.ts                           # Database seed script
 │   └── migrations/                       # Database migrations
 │
@@ -274,7 +274,7 @@ modules/{feature}/
 
 ---
 
-## Data Model — Key Entities (33 Prisma models)
+## Data Model — Key Entities (29 Prisma models)
 
 ### Thread
 The central entity. Stores AI metadata directly:
@@ -412,7 +412,7 @@ The central entity. Stores AI metadata directly:
 | Source tier assignment | T1=official, T2=SO/HN, T3=Reddit, T4=blogs |
 | Synthesis (streamed) | Gemini Pro → ReadableStream response |
 | Confidence scoring | 0-100 based on tier mix, agreement, freshness |
-| Semantic cache | pgvector cosine similarity > 0.92 → skip API calls |
+| Semantic cache | SHA-256 query-hash cache (`modules/ai-search/cache.ts`) → exact-hash hit skips API calls. No embedding, no pgvector |
 | Daily search quota | 20 searches/user/day (`ai-search-quota.ts`) |
 | User-supplied API keys | localStorage only, sent in headers, never stored |
 | Thread DNA | questionType, expertiseLevel, topics[], readTimeMinutes |
@@ -547,14 +547,15 @@ Phase 4: Synthesis (Gemini Pro)
 → Max 400 words, cite tier inline [official] [community]
 → Confidence score (0-100, factors: tier mix, agreement, freshness)
 ↓
-Phase 5: Cache result (pgvector embedding + PostgreSQL)
+Phase 5: Cache result (SHA-256 query-hash in PostgreSQL — no embedding, no pgvector)
 → TTL: technical=6h, opinion=1h, news=15min
 ↓
 Stream response to client via ReadableStream
 ```
 
-**Semantic cache:** Before Phase 1, embed query and cosine-check
-pgvector. Similarity > 0.92 → serve cache instantly, skip all API calls.
+**Query cache:** Before Phase 1, hash the normalized query (SHA-256) and
+look it up in `modules/ai-search/cache.ts`. Exact-hash hit → serve cache
+instantly, skip all API calls. There is NO embedding step and NO pgvector.
 
 **API keys:** User supplies own Exa, Tavily, Gemini keys.
 Stored in localStorage only. Sent in request headers.
