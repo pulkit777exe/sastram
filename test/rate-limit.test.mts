@@ -1,6 +1,13 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { rateLimit, rateLimitConfig, messageLimiter } from '@/lib/services/rate-limit';
+import {
+  rateLimit,
+  rateLimitConfig,
+  messageLimiter,
+  decideLimiterMode,
+  InMemoryRateLimiter,
+  type RateLimitBucket,
+} from '@/lib/services/rate-limit';
 
 describe('Rate Limiting Service', () => {
   describe('rateLimitConfig', () => {
@@ -58,6 +65,53 @@ describe('Rate Limiting Service', () => {
       // Both should succeed (under limit)
       expect(r1.success).to.be.true;
       expect(r2.success).to.be.true;
+    });
+  });
+
+  describe('Redis outage degradation (verified, not just reviewed)', () => {
+    describe('decideLimiterMode — the failure-mode decision', () => {
+      const fakeRedis = {} as import('@upstash/redis').Redis;
+
+      it('disabled rate limiting => open (intentional, not an outage)', () => {
+        expect(decideLimiterMode(false, fakeRedis, true)).to.equal('open');
+        expect(decideLimiterMode(false, null, false)).to.equal('open');
+      });
+
+      it('Redis unconfigured and unavailable => open (fail open by design)', () => {
+        expect(decideLimiterMode(true, null, false)).to.equal('open');
+      });
+
+      it('Redis CONFIGURED but client unavailable => in-memory (NOT open)', () => {
+        // This is the real "Redis down / network partitioned" path. Must NOT
+        // be 'open' — otherwise rate limiting silently disappears.
+        expect(decideLimiterMode(true, null, true)).to.equal('in-memory');
+      });
+
+      it('Redis available => redis (real shared limiting)', () => {
+        expect(decideLimiterMode(true, fakeRedis, true)).to.equal('redis');
+      });
+    });
+
+    describe('in-memory fallback actually enforces limits', () => {
+      it('blocks after the bucket is exhausted (proves NOT fail-open)', async () => {
+        // The in-memory limiter IS the fallback used when Redis is down
+        // (mode 'in-memory'). Prove it enforces limits rather than allowing all.
+        const limiter = new InMemoryRateLimiter(20, 60); // message bucket: 20/min
+
+        const key = `test-outage-${Date.now()}`;
+        const first = await limiter.check(key);
+        expect(first.success).to.be.true;
+
+        let blockedAt = -1;
+        for (let i = 0; i < 25; i++) {
+          const res = await limiter.check(key);
+          if (!res.success) {
+            blockedAt = i;
+            break;
+          }
+        }
+        expect(blockedAt).to.be.greaterThan(0);
+      });
     });
   });
 });

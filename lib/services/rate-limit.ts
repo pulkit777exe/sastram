@@ -1,4 +1,5 @@
 import { Ratelimit } from '@upstash/ratelimit';
+import type { Redis } from '@upstash/redis';
 import { logger } from '@/lib/infrastructure/logger';
 import { env } from '@/lib/config/env';
 import { getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
@@ -24,7 +25,7 @@ type RateLimiter = {
   check: (identifier: string) => Promise<RateLimitResult>;
 };
 
-class InMemoryRateLimiter implements RateLimiter {
+export class InMemoryRateLimiter implements RateLimiter {
   private requests: Map<string, number[]> = new Map();
   private maxPoints: number;
   private duration: number;
@@ -86,37 +87,60 @@ class InMemoryRateLimiter implements RateLimiter {
 // Prevents creating new Ratelimit objects on every check.
 const _limiters = new Map<RateLimitBucket, RateLimiter>();
 
-function getOrCreateLimiter(bucket: RateLimitBucket): RateLimiter {
+export type LimiterMode = 'open' | 'in-memory' | 'redis';
+
+/**
+ * Pure decision: given the config, a (possibly null) Redis client, and whether
+ * Redis is configured, choose the limiter mode.
+ *
+ * - `open`: Redis not configured AND limiting disabled/intentionally off — allow all.
+ * - `in-memory`: Redis configured but unavailable (degrade, weaker on serverless).
+ * - `redis`: Redis available — real shared global limiting with in-memory fallback.
+ *
+ * This is extracted so the failure-mode decision is unit-testable without a live
+ * Redis or the @upstash/ratelimit network wrapper.
+ */
+export function decideLimiterMode(
+  rateLimitEnabled: boolean,
+  r: Redis | null,
+  redisConfigured: boolean
+): LimiterMode {
+  if (!rateLimitEnabled) return 'open';
+  if (!r) return redisConfigured ? 'in-memory' : 'open';
+  return 'redis';
+}
+
+export function getOrCreateLimiter(
+  bucket: RateLimitBucket,
+  redisClient: Redis | null = getUpstashRedis()
+): RateLimiter {
   const cached = _limiters.get(bucket);
   if (cached) return cached;
 
   const config = rateLimitConfig[bucket];
-  const r = getUpstashRedis();
-
-  let limiter: RateLimiter;
+  const r = redisClient;
 
   const redisConfigured = Boolean(
     env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
   );
 
-  if (!env.RATE_LIMIT_ENABLED) {
+  const mode = decideLimiterMode(env.RATE_LIMIT_ENABLED, r, redisConfigured);
+  let limiter: RateLimiter;
+
+  if (mode === 'open') {
     limiter = {
       check: async () => ({ success: true, remaining: config.points, reset: Date.now() + config.duration * 1000 }),
     };
-  } else if (!r) {
-    if (redisConfigured) {
-      logger.error(
-        `Rate limit: Redis is configured but the client could not be created for bucket "${bucket}". Degrading to per-instance in-memory limiting (weaker on serverless).`
-      );
-      limiter = new InMemoryRateLimiter(config.points, config.duration);
-    } else {
-      limiter = {
-        check: async () => ({ success: true, remaining: config.points, reset: Date.now() + config.duration * 1000 }),
-      };
-    }
+  } else if (mode === 'in-memory') {
+    logger.error(
+      `Rate limit: Redis is configured but the client could not be created for bucket "${bucket}". Degrading to per-instance in-memory limiting (weaker on serverless).`
+    );
+    limiter = new InMemoryRateLimiter(config.points, config.duration);
   } else {
+    // mode === 'redis' => r is non-null here.
+    const redis = r as Redis;
     const ratelimit = new Ratelimit({
-      redis: r,
+      redis,
       limiter: Ratelimit.slidingWindow(config.points, `${config.duration} s`),
       analytics: false,
     });
