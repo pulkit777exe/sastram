@@ -108,3 +108,20 @@ slice 1–5; slices 6–7 are owned by the founder.
   strangers" goal without the empty-room first impression. Broad public signups open
   after critical mass is reached.
 - **Acceptance criteria:** N/A (decision record, not code)
+
+---
+
+## Out-of-scope open list (NOT covered by the Phase 1–5 engagement)
+
+These were flagged in the STRATEGY-READOUT / architecture critical-issues review
+but are **explicitly outside** Phases 1–5 of this engagement. They are NOT "done",
+NOT verified by this work, and are recorded here as a separate, still-open list so
+they are not mistaken for closed. (See ARCHITECTURE-REPORT.md Critical Issues #1, #2.)
+
+| # | Issue | Why out of scope | State |
+|---|-------|------------------|-------|
+| O1 | **No CSP / security headers** — no `headers()` in `next.config.ts`; no CSP, HSTS, X-Frame-Options, Permissions-Policy. | Not part of Phase 1 secrets/launch-blockers or Phase 3 cost work. | Open. Owner should decide header policy before broad public launch. |
+| O2 | **WebSocket in-memory state** — thread channels / connections / typing indicators in `Map`s; multi-instance can't share. (Note: message *delivery* uses Redis pub/sub via `lib/infrastructure/redis-pubsub.ts`, so fan-out is multi-instance; per-connection subscription bookkeeping is the in-memory part.) | Not in Phase 1–5 scope; needs its own design decision (sticky sessions vs external store). | Open. Acceptable at single-instance / low-scale; revisit before horizontal scaling. |
+
+Neither O1 nor O2 was touched, fixed, or verified by the Phase 1–5 work. Treat
+them as a separate backlog from slices 1–5.

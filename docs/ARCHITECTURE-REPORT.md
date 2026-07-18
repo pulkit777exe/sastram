@@ -469,7 +469,7 @@ PostgreSQL 16 service container
 | 1 | **WebSocket in-memory state** — Thread channels, connections, and typing indicators stored in `Map` objects. Multiple server instances cannot communicate. | Real-time broken at scale | Documented, not fixed |
 | 2 | **No Content-Security-Policy header** — Missing from security headers in `next.config.ts`. XSS risk if any sanitization is bypassed. | Security | Not implemented |
 | 3 | **No CSRF token validation** on server actions — Relies on Next.js built-in SameSite cookie protections. | Security | Acceptable for current scope |
-| 4 | **`moderation.ts` FK violation** — `bannedBy: 'system'` is a string, not a valid User ID. Would fail foreign key constraint on `UserBan` creation. | Data integrity | Not fixed |
+| 4 | **`moderation.ts` FK violation (RESOLVED)** — Originally `bannedBy: 'system'` was a literal string, not a valid User ID, which would fail the FK on `UserBan`. Now `lib/services/moderation.ts:505-518` upserts a real `system@sastram.com` user and uses `systemUser.id`; the other two create paths use `session.user.id` (`modules/moderation/actions.ts:210`, `modules/reports/actions.ts:581`). No `bannedBy: 'system'` literal remains. | Data integrity | **Fixed (verified 2026-07-18)** |
 | 5 | **AI classifier fragility** — `MLClassifier.analyze()` uses `aiService.generateSummary()` for toxicity analysis. Creative but fragile — prompt changes could break classification. | Reliability | Not addressed |
 
 ### Architecture Gaps
