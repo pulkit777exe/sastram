@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    revalidatePath(`/thread/${invitation.thread.slug}`);
+    revalidatePath(`/dashboard/threads/${invitation.thread.slug}`);
     return NextResponse.json(ok({ threadSlug: invitation.thread.slug }));
   } catch (error) {
     logger.error('[invitations/accept]', error);

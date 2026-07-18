@@ -27,7 +27,7 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
         {related.map((thread) => {
           const dna = thread.threadDna as ThreadDNA | null;
           const topics = dna?.topics ?? [];
-          const href = `/thread/${thread.slug}`;
+          const href = `/dashboard/threads/${thread.slug}`;
 
           return (
             <Link

@@ -165,7 +165,7 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
                   <td className="py-3 font-medium">{thread.name}</td>
                   <td className="py-3 text-muted-foreground">{thread.messageCount}</td>
                   <td className="py-3">
-                    <a href={`/thread/${thread.slug}`} className="text-foreground underline">
+                    <a href={`/dashboard/threads/${thread.slug}`} className="text-foreground underline">
                       {thread.slug}
                     </a>
                   </td>

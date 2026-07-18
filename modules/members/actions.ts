@@ -65,7 +65,7 @@ export const inviteMember = createServerAction(
       });
     }
 
-    revalidatePath(`/thread/${thread.slug}`);
+    revalidatePath(`/dashboard/threads/${thread.slug}`);
     return { data: invitation, error: null };
   }
 );
@@ -101,7 +101,7 @@ export const removeMemberAction = createServerAction(
       where: { threadId, email: user.email },
     });
 
-    revalidatePath(`/thread/${thread.slug}`);
+    revalidatePath(`/dashboard/threads/${thread.slug}`);
     return { data: null, error: null };
   }
 );

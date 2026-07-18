@@ -34,7 +34,7 @@ function ThreadListSkeleton() {
 function ThreadRow({ thread }: { thread: ThreadSummary }) {
   return (
     <Link
-      href={`/thread/${thread.slug}`}
+      href={`/dashboard/threads/${thread.slug}`}
       className="flex items-start gap-3 p-4 rounded-xl border border-border/60 hover:bg-accent/50 transition-colors group"
     >
       <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">

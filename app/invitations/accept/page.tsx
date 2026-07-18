@@ -78,7 +78,7 @@ export default function InvitationAcceptPage() {
         if (slug) {
           setThreadSlug(slug);
           setStatus('done');
-          router.push(`/thread/${slug}`);
+          router.push(`/dashboard/threads/${slug}`);
         } else {
           setStatus('error');
           setError('Something went wrong — no thread slug returned.');
