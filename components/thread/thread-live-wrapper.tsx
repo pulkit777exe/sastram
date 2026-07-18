@@ -209,10 +209,10 @@ export function ThreadLiveWrapper({
       const result = await markThreadReadAction(threadId, latestId);
       isMarkingReadRef.current = false;
 
-      if (result.error) {
-        toasts.serverError();
-        return;
-      }
+      // Best-effort: a failed read-receipt must not surface a scary, repeating
+      // error toast to the user (the action logs server-side). Treat as done so
+      // it is not retried.
+      if (result.error) return;
 
       setUnreadCount(0);
       setFirstUnreadMessageId(null);

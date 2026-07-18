@@ -359,7 +359,7 @@ export const CommentNode = React.memo(function CommentNode({
                 </div>
               )}
               {aiStatus === 'failed' && !node.isAiResponse && (
-                <p className="text-[11px] text-amber mt-1">
+                <p className="text-[11px] text-amber-600 mt-1">
                   Sai couldn&apos;t process this. Try rephrasing your question.
                 </p>
               )}

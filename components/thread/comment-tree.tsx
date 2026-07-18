@@ -25,6 +25,25 @@ function findNodeById(nodes: MessageNode[], id: string): MessageNode | null {
   return null;
 }
 
+function collectAncestorIds(nodes: MessageNode[], id: string): string[] {
+  const path: string[] = [];
+  const walk = (current: MessageNode[], trail: string[]): boolean => {
+    for (const node of current) {
+      const nextTrail = [...trail, node.id];
+      if (node.id === id) {
+        path.push(...trail);
+        return true;
+      }
+      if (node.children.length > 0 && walk(node.children, nextTrail)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  walk(nodes, []);
+  return path;
+}
+
 interface CommentTreeProps {
   messages: Message[];
   threadId: string;
@@ -108,9 +127,29 @@ export function CommentTree({
     [threadId]
   );
 
-  const handleReply = useCallback((messageId: string) => {
-    setActiveReplyId((prev) => (prev === messageId ? null : messageId));
-  }, []);
+  const handleReply = useCallback(
+    (messageId: string) => {
+      // Expand any collapsed ancestors so the message (and its reply target)
+      // is visible before the reply box opens. The reply action is only
+      // triggered by the reply icon, so this just ensures the target is seen.
+      const ancestors = collectAncestorIds(tree, messageId);
+      if (ancestors.length > 0) {
+        setCollapsedIds((prev) => {
+          let changed = false;
+          const next = new Set(prev);
+          for (const id of ancestors) {
+            if (next.has(id)) {
+              next.delete(id);
+              changed = true;
+            }
+          }
+          return changed ? next : prev;
+        });
+      }
+      setActiveReplyId((prev) => (prev === messageId ? null : messageId));
+    },
+    [tree]
+  );
 
   const handleCancelReply = useCallback(() => {
     setActiveReplyId(null);
