@@ -5,6 +5,7 @@ import {
   handleError,
   prismaErrorMessage,
   isPrismaUniqueConstraintError,
+  isQuotaError,
 } from '../lib/utils/errors';
 
 describe('Error Handling', () => {
@@ -111,6 +112,29 @@ describe('Error Handling', () => {
       expect(isPrismaUniqueConstraintError({ code: 'P2025' })).to.be.false;
       expect(isPrismaUniqueConstraintError(new Error('fail'))).to.be.false;
       expect(isPrismaUniqueConstraintError(null)).to.be.false;
+    });
+  });
+
+  describe('isQuotaError', () => {
+    it('should detect 429 in message', () => {
+      expect(isQuotaError(new Error('Request failed with status 429'))).to.be.true;
+    });
+
+    it('should detect quota / RESOURCE_EXHAUSTED / rate limit', () => {
+      expect(isQuotaError(new Error('quota exceeded'))).to.be.true;
+      expect(isQuotaError(new Error('RESOURCE_EXHAUSTED'))).to.be.true;
+      expect(isQuotaError(new Error('rate limit hit'))).to.be.true;
+    });
+
+    it('should detect explicit 429 status', () => {
+      expect(isQuotaError(Object.assign(new Error('boom'), { status: 429 }))).to.be.true;
+    });
+
+    it('should return false for other errors and non-errors', () => {
+      expect(isQuotaError(new Error('unexpected token'))).to.be.false;
+      expect(isQuotaError(Object.assign(new Error('boom'), { status: 500 }))).to.be.false;
+      expect(isQuotaError(null)).to.be.false;
+      expect(isQuotaError('string')).to.be.false;
     });
   });
 });

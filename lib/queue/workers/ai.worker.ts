@@ -6,6 +6,7 @@ import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-bound
 import { sanitizeUserContent, sanitizeHtmlContent } from '@/lib/services/content-safety';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { NotificationType } from '@prisma/client';
+import { isQuotaError } from '@/lib/utils/errors';
 import { notifyMultipleUsers } from '@/modules/notifications';
 import { emitThreadMessage } from '@/modules/ws';
 import { enqueueJob } from '@/lib/services/queue';
@@ -89,7 +90,7 @@ export async function handleConflictDetectionJob(data: ConflictDetectionJobData)
   const { conflictResult } = await detectConflicts(threadId, messages);
 
   if (
-    conflictResult.hasConflict &&
+    conflictResult?.hasConflict &&
     Array.isArray(subscriberIds) &&
     subscriberIds.length > 0 &&
     typeof threadName === 'string'
@@ -234,11 +235,40 @@ export async function handleAIInlineJob(data: AIInlineJobData) {
   return generateAIInlineResponse(messageId, threadId, query);
 }
 
+/**
+ * Runs an AI generation step. Provider quota/rate-limit errors (429) are treated
+ * as terminal: the failure is logged and the job returns without rethrowing, so
+ * `/api/jobs` responds 200 and QStash does NOT retry a failure that won't resolve
+ * within the retry window (avoiding a 3x retry storm that only amplifies the
+ * limit). Any other error still propagates so it surfaces for investigation.
+ */
+async function runAiGeneration<T>(
+  label: string,
+  threadId: string,
+  fn: () => Promise<T>,
+): Promise<{ ok: true; value: T } | { ok: false; skipped: true }> {
+  try {
+    const value = await fn();
+    return { ok: true, value };
+  } catch (error) {
+    if (isQuotaError(error)) {
+      logger.warn(`[worker:ai] ${label} skipped for thread ${threadId} (AI quota/rate-limit)`, {
+        error: error instanceof Error ? error.message : error,
+      });
+      return { ok: false, skipped: true };
+    }
+    throw error;
+  }
+}
+
 async function generateThreadSummary(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread summary for thread: ${threadId}`);
   await assertSpendCapAvailable();
-  const rawSummary = await aiService.generateThreadSummary(messages);
-  const { sanitized: summary } = sanitizeUserContent(rawSummary);
+  const result = await runAiGeneration('thread-summary', threadId, () =>
+    aiService.generateThreadSummary(messages),
+  );
+  if (!result.ok) return { summary: null, skipped: true };
+  const { sanitized: summary } = sanitizeUserContent(result.value);
   await prisma.thread.update({
     where: { id: threadId },
     data: { aiSummary: summary },
@@ -249,29 +279,35 @@ async function generateThreadSummary(threadId: string, messages: JobMessageData[
 async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread DNA for thread: ${threadId}`);
   await assertSpendCapAvailable();
-  const threadDNA = await aiService.generateThreadDNA(messages);
+  const result = await runAiGeneration('thread-dna', threadId, () =>
+    aiService.generateThreadDNA(messages),
+  );
+  if (!result.ok) return { threadDNA: null, skipped: true };
   await prisma.thread.update({
     where: { id: threadId },
-    data: { threadDna: threadDNA },
+    data: { threadDna: result.value },
   });
-  return { threadDNA };
+  return { threadDNA: result.value };
 }
 
 async function calculateResolutionScore(threadId: string, messages: JobMessageData[]) {
   logger.info(`Calculating resolution score for thread: ${threadId}`);
   await assertSpendCapAvailable();
-  const [score, thread] = await Promise.all([
+  const result = await runAiGeneration('resolution-score', threadId, () =>
     aiService.calculateResolutionScore(messages),
-    prisma.thread.findFirst({
-      where: { id: threadId, deletedAt: null },
-      select: { updatedAt: true },
-    }),
-  ]);
+  );
+  if (!result.ok) return null;
+  const score = result.value;
 
   if (score === null) {
     logger.info(`Resolution score unavailable (AI not configured) for ${threadId}, skipping DB write`);
     return null;
   }
+
+  const thread = await prisma.thread.findFirst({
+    where: { id: threadId, deletedAt: null },
+    select: { updatedAt: true },
+  });
 
   const { decayedScore, ageDays } = applyConfidenceDecay(score, thread?.updatedAt ?? new Date());
   if (ageDays >= 30) {
@@ -288,7 +324,11 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
 async function detectConflicts(threadId: string, messages: JobMessageData[]) {
   logger.info(`Detecting conflicts for thread: ${threadId}`);
   await assertSpendCapAvailable();
-  const conflictResult = await aiService.detectConflicts(messages);
+  const result = await runAiGeneration('conflict-detection', threadId, () =>
+    aiService.detectConflicts(messages),
+  );
+  if (!result.ok) return { conflictResult: null, skipped: true };
+  const conflictResult = result.value;
   if (conflictResult.hasConflict) {
     await prisma.thread.update({
       where: { id: threadId },
@@ -304,8 +344,12 @@ async function detectConflicts(threadId: string, messages: JobMessageData[]) {
 async function generateDailyDigest(messages: JobMessageData[], subscriberIds: string[]) {
   logger.info(`Generating daily digest for ${subscriberIds.length} subscribers`);
   await assertSpendCapAvailable();
-  const rawDigest = await aiService.generateDailyDigest(messages);
-  const digest = sanitizeHtmlContent(rawDigest);
+  // Daily digest has no threadId scope; use a stable placeholder for logging.
+  const result = await runAiGeneration('daily-digest', 'global', () =>
+    aiService.generateDailyDigest(messages),
+  );
+  if (!result.ok) return { digestLength: 0, skipped: true };
+  const digest = sanitizeHtmlContent(result.value);
   await notifyMultipleUsers(subscriberIds, NotificationType.AI_INSIGHT, 'Daily Digest', digest, {
     type: 'daily_digest',
   });

@@ -50,6 +50,23 @@ export function isPrismaUniqueConstraintError(err: unknown): boolean {
 }
 
 /**
+ * Provider-side quota / rate-limit errors (HTTP 429). These are transient with
+ * respect to the provider's own limits but not something a retry will fix within
+ * the same job attempt — the AI spend cap / model quota resets on its own clock.
+ * Treating them as terminal prevents background-job retry storms (which only
+ * amplify the rate limit and pollute logs).
+ */
+const QUOTA_PATTERN = /429|quota|RESOURCE_EXHAUSTED|rate.?limit/i;
+
+export function isQuotaError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  if (QUOTA_PATTERN.test(err.message)) return true;
+  const status = (err as { status?: unknown }).status;
+  if (typeof status === 'number' && status === 429) return true;
+  return false;
+}
+
+/**
  * Handle errors consistently, translating Prisma errors to user-facing messages.
  */
 export function handleError(error: unknown): {
