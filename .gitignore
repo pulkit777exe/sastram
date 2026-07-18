@@ -50,6 +50,12 @@ UBIQUITOUS_LANGUAGE.md
 CONTEXT.md
 TODOS.md
 docs
+# Track contributor-facing architecture doc despite docs/ being ignored
+!docs/
+docs/*
+!docs/ARCHITECTURE-REPORT.md
+!UBIQUITOUS_LANGUAGE.md
+
 e2e/.env.e2e
 # Playwright E2E auth state (contains session cookie)
 test/e2e/.auth/
