@@ -789,7 +789,7 @@ export function ThreadLiveWrapper({
             title="Scroll to bottom"
           >
             {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center px-1 border-2 border-background">
+              <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-brand text-white text-[9px] font-bold flex items-center justify-center px-1 border-2 border-background">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
