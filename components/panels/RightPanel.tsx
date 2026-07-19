@@ -26,7 +26,7 @@ export default function RightPanel({ thread }: RightPanelProps) {
         messageCount={thread._count.messages}
       />
       <RelatedThreadsCard threadId={thread.id} />
-      <ParticipantsCard thread={thread} />
+      <ParticipantsCard threadId={thread.id} ownerId={thread.createdBy} />
     </div>
   );
 }

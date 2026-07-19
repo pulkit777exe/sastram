@@ -14,7 +14,7 @@ import { toasts } from '@/lib/utils/toast';
 import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2, Pin } from 'lucide-react';
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
@@ -654,13 +654,16 @@ export function ThreadLiveWrapper({
       {pinnedMessage && (
         <div className="border-b border-amber-100 bg-amber-50/60 px-6 py-2.5 flex-shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 flex items-start gap-2">
+              <Pin size={13} className="text-amber-600 mt-0.5 shrink-0" />
+              <div className="min-w-0">
               <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
-                📌 Pinned Message
+                Pinned Message
               </p>
               <p className="mt-0.5 truncate text-xs text-amber-900/90 font-medium">
                 {pinnedMessage.content}
               </p>
+              </div>
             </div>
             <button
               type="button"
@@ -726,14 +729,14 @@ export function ThreadLiveWrapper({
         <div className="max-w-4xl mx-auto">
           {liveMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-gradient-to-br from-brand/10 to-brand/5 border border-brand/15 dark:from-brand/20 dark:to-brand/10 dark:border-brand/30 shadow-linear-sm">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-brand/10 border border-brand/15 dark:bg-brand/20 dark:border-brand/30 shadow-linear-sm">
                 <svg className="w-8 h-8 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-3.037-.476 4.5 4.5 0 01-5.014-4.986L3 20.25l3.5-1.75A8.956 8.956 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
                 </svg>
               </div>
               <h3 className="text-foreground font-semibold text-base mb-1.5">No messages yet</h3>
               <p className="text-muted-foreground/70 text-sm max-w-[260px] leading-relaxed">
-                Be the first to share something — ask a question, share a thought, or just say hi! 👋
+                Be the first to share something — ask a question, share a thought, or just say hi!
               </p>
             </div>
           ) : (

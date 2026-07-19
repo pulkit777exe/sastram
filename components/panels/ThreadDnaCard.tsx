@@ -5,7 +5,7 @@ interface ThreadDnaCardProps {
 }
 
 const QUESTION_TYPE_COLORS: Record<string, string> = {
-  factual: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
+  factual: 'bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand',
   opinion: 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400',
   technical: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
   comparison: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',

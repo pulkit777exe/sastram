@@ -1,5 +1,7 @@
 import React from 'react';
-import { Hash } from 'lucide-react';
+import Link from 'next/link';
+import { Hash, ArrowLeft } from 'lucide-react';
+import { ROUTES } from '@/lib/config/routes';
 import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
 import { InviteFriendButton } from '@/components/thread/invite-friend-button';
 
@@ -17,13 +19,20 @@ export function ThreadPageHeader({
   initialFrequency,
 }: ThreadPageHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-6 h-[64px] border-b border-border/60 flex-shrink-0 bg-background/95 backdrop-blur z-30">
-      <div className="flex items-center gap-3">
-        <div className="w-[34px] h-[34px] rounded-lg bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand dark:text-brand border border-brand/15 dark:border-brand/25">
+    <header className="flex items-center justify-between px-4 sm:px-6 h-[64px] border-b border-border/60 flex-shrink-0 bg-background/95 backdrop-blur z-30">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <Link
+          href={ROUTES.DASHBOARD_THREADS}
+          aria-label="Back to threads"
+          className="shrink-0 w-9 h-9 -ml-1 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+        >
+          <ArrowLeft size={18} strokeWidth={2.25} />
+        </Link>
+        <div className="w-[34px] h-[34px] rounded-lg bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand dark:text-brand border border-brand/15 dark:border-brand/25 shrink-0">
           <Hash size={16} strokeWidth={2.5} />
         </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-foreground tracking-tight">{title}</span>
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <span className="text-sm font-semibold text-foreground tracking-tight truncate">{title}</span>
           <LiveBadge />
         </div>
       </div>
@@ -37,7 +46,7 @@ export function ThreadPageHeader({
             threadName={title}
           />
         </div>
-        
+
         <InviteFriendButton threadId={threadId} threadName={title} />
       </div>
     </header>

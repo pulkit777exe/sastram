@@ -12,10 +12,11 @@ import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
 import { getThreadReadReceipt } from '@/modules/read-receipts/repository';
 import { prisma } from '@/lib/infrastructure/prisma';
-import ThreadInfoCard from '@/components/panels/ThreadInfoCard';
+import ThreadResolutionCard from '@/components/panels/ThreadResolutionCard';
 import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
 import ParticipantsCard from '@/components/panels/ParticipantsCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 
 const INITIAL_MESSAGE_LIMIT = 50;
 
@@ -192,7 +193,7 @@ async function ThreadSidebar({
   const threadDna = parseThreadDna(thread.threadDna);
 
   return (
-    <aside className="w-[320px] hidden xl:flex flex-col overflow-y-auto bg-background/50">
+    <aside className="w-[320px] flex flex-col overflow-y-auto bg-background/50">
       <div className="p-6 border-b border-border/60">
         <div className="flex items-center gap-2 mb-6">
           <Activity size={14} />
@@ -202,39 +203,45 @@ async function ThreadSidebar({
         </div>
 
         <h2 className="text-xl font-bold mb-3 text-foreground">{thread.name}</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed mb-4">{thread.description}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{thread.description}</p>
       </div>
 
-      <div className="p-4 flex flex-col gap-4">
-        <ThreadInfoCard thread={thread} />
+      <div className="p-6 border-b border-border/60">
+        <ThreadResolutionCard
+          threadId={thread.id}
+          score={thread.resolutionScore}
+          lastVerifiedAt={thread.lastVerifiedAt ?? thread.updatedAt}
+        />
+      </div>
 
+      <div className="p-6 flex flex-col gap-6">
         <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
 
-        {threadDna && <ThreadDnaCard dna={threadDna} />}
-
-        <RelatedThreadsCard threadId={thread.id} />
-
-        <ParticipantsCard thread={thread} />
-
-        {thread.isOutdated && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-            <p className="text-[10px] text-amber-600 font-medium mb-2 uppercase tracking-wider">
-              Stale Content Warning
-            </p>
-            <p className="text-xs text-amber-800">
-              This thread may contain outdated information that contradicts newer content.
-            </p>
+        {threadDna && (
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Thread DNA</p>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-semibold text-brand">
+                {threadDna.questionType}
+              </span>
+              <span className="inline-flex items-center rounded-full bg-(--bg) px-2.5 py-1 text-[11px] font-medium text-(--text)">
+                {threadDna.expertiseLevel}
+              </span>
+              {threadDna.topics.slice(0, 4).map((topic) => (
+                <span
+                  key={topic}
+                  className="inline-flex items-center rounded-full border border-border/60 px-2.5 py-1 text-[10px] font-(--font-dm-mono) uppercase tracking-[0.08em] text-muted-foreground"
+                >
+                  {topic}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
-        <div className="rounded-[10px] border border-border bg-card p-4">
-          <p className="text-[10px] text-muted-foreground font-bold mb-2 uppercase tracking-wider">
-            Created
-          </p>
-          <p className="text-xs text-foreground font-medium">
-            <TimeAgo date={thread.createdAt} />
-          </p>
-        </div>
+        <RelatedThreadsCard threadId={thread.id} />
+
+        <ParticipantsCard threadId={thread.id} ownerId={thread.createdBy} />
       </div>
 
       {isAdmin(session.user) && (
@@ -293,12 +300,14 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
         </Suspense>
       </main>
 
-      <Suspense fallback={<ThreadSidebarSkeleton />}>
-        <ThreadSidebar
-          thread={thread}
-          session={{ user: { id: session.user.id, email: session.user.email, name: session.user.name, image: session.user.image, role: session.user.role, status: session.user.status } }}
-        />
-      </Suspense>
+      <ThreadDetailsPanel>
+        <Suspense fallback={<ThreadSidebarSkeleton />}>
+          <ThreadSidebar
+            thread={thread}
+            session={{ user: { id: session.user.id, email: session.user.email, name: session.user.name, image: session.user.image, role: session.user.role, status: session.user.status } }}
+          />
+        </Suspense>
+      </ThreadDetailsPanel>
     </div>
   );
 }
