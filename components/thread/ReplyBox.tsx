@@ -1,8 +1,9 @@
 'use client';
 
-import { Loader2, PlusCircle, FileIcon, X } from 'lucide-react';
+import { Loader2, PlusCircle, FileIcon, X, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
+import { MentionSuggest } from '@/components/chat/mention-suggest';
 
 interface ReplyBoxProps {
   threadId: string;
@@ -34,6 +35,21 @@ export default function ReplyBox({
     handleKeyDown,
     handleChange,
     handleBlur,
+    detectMentionQuery,
+    // Mentions
+    mentionCandidates,
+    mentionOpen,
+    activeMentionIndex,
+    applyMentionSelection,
+    setActiveMentionIndex,
+    mentionListRef,
+    // Poll Builder
+    showPollBuilder,
+    setShowPollBuilder,
+    pollQuestion,
+    setPollQuestion,
+    pollOptions,
+    setPollOptions,
   } = useMessageComposer({
     threadId,
     parentId,
@@ -60,6 +76,79 @@ export default function ReplyBox({
         </div>
       )}
 
+      {/* Inline Poll Builder */}
+      {showPollBuilder && (
+        <div className="rounded-[12px] border border-border/80 bg-muted/30 p-4 space-y-3 relative overflow-hidden transition-all duration-300">
+          <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-2">
+            <span className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground flex items-center gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5 text-(--blue)" />
+              Create Inline Poll
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPollBuilder(false);
+                setPollQuestion('');
+                setPollOptions(['', '']);
+              }}
+              className="text-muted-foreground hover:text-foreground p-1 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            <input
+              type="text"
+              placeholder="Ask a question..."
+              value={pollQuestion}
+              onChange={(e) => setPollQuestion(e.target.value)}
+              className="w-full bg-transparent border-b border-border/60 focus:border-(--blue) py-1.5 text-[13px] outline-none text-(--text) placeholder-muted-foreground/60 transition-colors"
+            />
+            <div className="space-y-2">
+              {pollOptions.map((option, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground/80 font-(--font-dm-mono) w-4">
+                    {idx + 1}
+                  </span>
+                  <input
+                    type="text"
+                    placeholder={`Option ${idx + 1}...`}
+                    value={option}
+                    onChange={(e) => {
+                      const newOpts = [...pollOptions];
+                      newOpts[idx] = e.target.value;
+                      setPollOptions(newOpts);
+                    }}
+                    className="flex-1 bg-transparent border-b border-border/40 focus:border-border py-1 text-[13px] outline-none text-(--text) placeholder-muted-foreground/50 transition-colors"
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newOpts = pollOptions.filter((_, i) => i !== idx);
+                        setPollOptions(newOpts);
+                      }}
+                      className="text-muted-foreground/50 hover:text-red-500 p-1"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 10 && (
+                <button
+                  type="button"
+                  onClick={() => setPollOptions([...pollOptions, ''])}
+                  className="text-[12px] text-(--blue) hover:underline pl-6 pt-1 font-medium transition-all block"
+                >
+                  + Add option
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <span className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           Reply
@@ -71,9 +160,23 @@ export default function ReplyBox({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
+            title="Attach a file"
             className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-(--blue-dim) hover:text-(--text)"
           >
             <PlusCircle className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPollBuilder(!showPollBuilder)}
+            title="Create an inline poll"
+            className={cn(
+              "rounded-[6px] px-2 py-1 text-[12px] transition-colors",
+              showPollBuilder
+                ? "bg-(--blue-dim) text-(--blue)"
+                : "text-muted-foreground hover:bg-(--blue-dim) hover:text-(--text)"
+            )}
+          >
+            <BarChart3 className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -121,41 +224,54 @@ export default function ReplyBox({
         {/* File input */}
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
 
-        <textarea
-          id="thread-reply-box"
-          value={content}
-          onChange={handleChange}
-          onKeyDown={(e) => {
-            handleKeyDown(e);
-          }}
-          onBlur={handleBlur}
-          placeholder="Add your reply. Press Ctrl+Enter or Cmd+Enter to submit."
-          className="min-h-20 w-full resize-none border-0 bg-transparent text-[14px] leading-normal text-(--text) outline-none"
-        />
+          <textarea
+            id="thread-reply-box"
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => {
+              handleChange(e);
+              detectMentionQuery(e.target.value, e.target.selectionStart ?? e.target.value.length);
+            }}
+            onKeyDown={(e) => {
+              handleKeyDown(e);
+            }}
+            onBlur={handleBlur}
+            placeholder="Add your reply. Use @ to mention someone. Press Ctrl+Enter or Cmd+Enter to submit."
+            className="min-h-20 w-full resize-none border-0 bg-transparent text-[14px] leading-normal text-(--text) outline-none"
+          />
 
-        <div className="mt-2 flex items-center justify-between">
-          {error ? (
-            <span className="text-[12px] text-(--red)">{error}</span>
-          ) : (
-            <span className="text-[11px] text-muted-foreground">Markdown-style formatting is supported.</span>
-          )}
-
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={!canSubmit || isSubmitting}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[12px] font-medium',
-              canSubmit
-                ? 'bg-(--blue) text-white hover:opacity-90'
-                : 'bg-(--blue-dim) text-muted-foreground cursor-not-allowed'
+          <div className="mt-2 flex items-center justify-between">
+            {error ? (
+              <span className="text-[12px] text-(--red)">{error}</span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">Markdown-style formatting is supported.</span>
             )}
-          >
-            {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            <span>Post reply</span>
-          </button>
+
+            <button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={!canSubmit || isSubmitting}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[12px] font-medium',
+                canSubmit
+                  ? 'bg-(--blue) text-white hover:opacity-90'
+                  : 'bg-(--blue-dim) text-muted-foreground cursor-not-allowed'
+              )}
+            >
+              {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Post reply</span>
+            </button>
+          </div>
         </div>
-      </div>
+
+        <MentionSuggest
+          open={mentionOpen}
+          candidates={mentionCandidates}
+          activeIndex={activeMentionIndex}
+          onSelect={applyMentionSelection}
+          onHover={setActiveMentionIndex}
+          listRef={mentionListRef}
+        />
     </div>
   );
 }

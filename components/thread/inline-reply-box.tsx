@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
+import { MentionSuggest } from '@/components/chat/mention-suggest';
 import { cn } from '@/lib/utils/cn';
 import type { Message } from '@/lib/types/index';
 
@@ -50,6 +51,13 @@ export function InlineReplyBox({
     handleKeyDown,
     handleChange,
     handleBlur,
+    detectMentionQuery,
+    mentionCandidates,
+    mentionOpen,
+    activeMentionIndex,
+    applyMentionSelection,
+    setActiveMentionIndex,
+    mentionListRef,
     handleSubmit,
     cleanup,
   } = useMessageComposer({
@@ -121,8 +129,11 @@ export function InlineReplyBox({
               <Textarea
                 ref={textareaRef}
                 value={content}
-                onChange={handleChange}
-                placeholder="Write your reply…"
+                onChange={(e) => {
+                  handleChange(e);
+                  detectMentionQuery(e.target.value, e.target.selectionStart ?? e.target.value.length);
+                }}
+                placeholder="Write your reply…  Use @ to mention."
                 className="min-h-[60px] max-h-[200px] text-sm resize-none shadow-none border-0 bg-transparent p-0 focus-visible:ring-0"
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
@@ -153,6 +164,15 @@ export function InlineReplyBox({
           </div>
         </div>
       </div>
+
+      <MentionSuggest
+        open={mentionOpen}
+        candidates={mentionCandidates}
+        activeIndex={activeMentionIndex}
+        onSelect={applyMentionSelection}
+        onHover={setActiveMentionIndex}
+        listRef={mentionListRef}
+      />
     </div>
   );
 }

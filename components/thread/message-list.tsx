@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from '
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp } from 'lucide-react';
+import { ThumbsUp, Pin } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
 import { toggleReaction } from '@/modules/reactions/actions';
@@ -275,7 +275,7 @@ const MessageRow = React.memo(function MessageRow({
         ) : (
           <Avatar className="w-8 h-8 mt-0.5 shrink-0 ring-1 ring-border/30">
             <AvatarImage src={message.sender?.image || ''} />
-            <AvatarFallback className="bg-gradient-to-br from-brand/10 to-brand/5 text-brand text-xs font-bold">
+            <AvatarFallback className="bg-brand/10 text-brand text-xs font-bold">
               {message.sender?.name?.substring(0, 2).toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
@@ -293,7 +293,7 @@ const MessageRow = React.memo(function MessageRow({
                 </span>
               )}
               {message.isAiResponse && (
-                <span className="bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
+                <span className="bg-brand/10 text-brand text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
                   Sai
                 </span>
               )}
@@ -303,7 +303,10 @@ const MessageRow = React.memo(function MessageRow({
                 </span>
               )}
               {message.isPinned && (
-                <span className="text-amber-500 text-[10px] leading-none" title="Pinned">📌</span>
+                <span className="text-amber-500 inline-flex items-center gap-0.5 text-[10px] leading-none" title="Pinned">
+                  <Pin size={10} className="fill-current" />
+                  Pinned
+                </span>
               )}
               <span className="text-[11px] text-muted-foreground/50 font-medium">
                 <TimeAgo date={message.createdAt} />
@@ -351,20 +354,30 @@ const MessageRow = React.memo(function MessageRow({
                 </Button>
               </div>
             </div>
+          ) : message.isAiResponse ? (
+            <div className="mt-0.5 rounded-[10px] bg-brand/[0.04] dark:bg-brand/[0.07] px-3 py-2 -mx-1">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-brand/70">
+                <span className="h-1 w-1 rounded-full bg-brand/60" />
+                Synthesis
+              </div>
+              <div className="text-foreground/85 text-[13px] leading-relaxed whitespace-pre-wrap wrap-break-word">
+                {isAiNotConfigured(message.content) ? (
+                  <AiNotConfiguredNotice />
+                ) : (
+                  renderContent(message.content)
+                )}
+              </div>
+            </div>
           ) : (
             <div className="text-foreground/80 text-[13px] leading-relaxed whitespace-pre-wrap wrap-break-word">
-              {message.isAiResponse && isAiNotConfigured(message.content) ? (
-                <AiNotConfiguredNotice />
-              ) : (
-                renderContent(message.content)
-              )}
+              {renderContent(message.content)}
             </div>
           )}
 
           {aiStatus === 'pending' && !message.isAiResponse && (
             <div className="mt-2 space-y-2 animate-pulse max-w-sm">
-              <div className="h-3 w-full bg-violet-500/10 rounded" />
-              <div className="h-3 w-5/6 bg-violet-500/10 rounded" />
+              <div className="h-3 w-full bg-brand/10 rounded" />
+              <div className="h-3 w-5/6 bg-brand/10 rounded" />
             </div>
           )}
 
