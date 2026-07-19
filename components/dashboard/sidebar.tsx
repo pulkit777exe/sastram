@@ -44,13 +44,17 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('sidebarCollapsed');
-      return saved === 'true';
-    }
-    return false;
-  });
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Hydrate persisted collapse state after mount to avoid SSR/client mismatch.
+  // This is the accepted pattern for reading localStorage on the client only.
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved !== null) setIsCollapsed(saved === 'true');
+    setIsMounted(true);
+  }, []);
 
   const { unreadNotificationCount } = useNotification();
   const unreadCount = unreadNotificationCount ?? 0;
