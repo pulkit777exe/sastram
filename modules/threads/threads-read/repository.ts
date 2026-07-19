@@ -38,6 +38,21 @@ export type ThreadMessage = {
     name: string | null;
     size: number | null;
   }>;
+  poll?: {
+    id: string;
+    question: string;
+    options: string[];
+    isActive: boolean;
+    expiresAt: Date | null;
+    createdAt: Date;
+    votes?: Array<{
+      id: string;
+      pollId: string;
+      userId: string;
+      optionIndex: number;
+      createdAt: Date;
+    }>;
+  } | null;
 };
 
 type ThreadTag = {
@@ -124,12 +139,52 @@ type ThreadRow = {
   is_subscribed: boolean | null;
 };
 
+export type ThreadParticipant = {
+  id: string;
+  name: string | null;
+  image: string | null;
+  messageCount: number;
+};
+
 export type PaginatedMessagesResult = {
   messages: ThreadMessage[];
   hasMore: boolean;
   nextCursor: string | null;
   totalCount: number;
 };
+
+export async function getThreadParticipants(
+  threadId: string,
+  limit: number = 12
+): Promise<ThreadParticipant[]> {
+  const rows = await prisma.$queryRaw<Array<{
+    id: string;
+    name: string | null;
+    image: string | null;
+    message_count: bigint;
+  }>>`
+    SELECT
+      u.id,
+      u.name,
+      u.image,
+      COUNT(m.id)::bigint AS message_count
+    FROM "messages" m
+    JOIN "users" u ON u.id = m."senderId"
+    WHERE m."threadId" = ${threadId}
+      AND m."deletedAt" IS NULL
+      AND m."senderId" IS NOT NULL
+    GROUP BY u.id, u.name, u.image
+    ORDER BY MIN(m."createdAt") ASC
+    LIMIT ${limit}
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    image: r.image,
+    messageCount: Number(r.message_count),
+  }));
+}
 
 export async function getThreadMessagesPaginated(
   threadId: string,
@@ -158,6 +213,11 @@ export async function getThreadMessagesPaginated(
         sender: { select: { id: true, name: true, image: true } },
         reactions: { select: { emoji: true } },
         attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
+        poll: {
+          include: {
+            votes: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
@@ -194,6 +254,21 @@ export async function getThreadMessagesPaginated(
         name: a.name,
         size: a.size !== null ? Number(a.size) : null,
       })),
+      poll: m.poll ? {
+        id: m.poll.id,
+        question: m.poll.question,
+        options: m.poll.options as string[],
+        isActive: m.poll.isActive,
+        expiresAt: m.poll.expiresAt,
+        createdAt: m.poll.createdAt,
+        votes: m.poll.votes.map((v) => ({
+          id: v.id,
+          pollId: v.pollId,
+          userId: v.userId,
+          optionIndex: v.optionIndex,
+          createdAt: v.createdAt,
+        })),
+      } : null,
     })),
     hasMore,
     nextCursor,
@@ -271,6 +346,7 @@ export async function getThreadWithFullContext(
               'author', json_build_object('id', su.id, 'name', su.name, 'image', su.image),
               'reactions', COALESCE(r.reactions, '[]'::json),
               'attachments', COALESCE(a.attachments, '[]'::json),
+              'poll', p.poll,
               '_count', json_build_object('replies', m."replyCount")
             ) as message
           FROM "messages" m
@@ -293,6 +369,32 @@ export async function getThreadWithFullContext(
             FROM "attachments" a
             WHERE a."messageId" = m.id
           ) a ON true
+          LEFT JOIN LATERAL (
+            SELECT json_build_object(
+              'id', p.id,
+              'question', p.question,
+              'options', p.options,
+              'isActive', p."isActive",
+              'expiresAt', p."expiresAt",
+              'createdAt', p."createdAt",
+              'votes', COALESCE(pv.votes, '[]'::json)
+            ) as poll
+            FROM "polls" p
+            LEFT JOIN LATERAL (
+              SELECT json_agg(
+                json_build_object(
+                  'id', v.id,
+                  'pollId', v."pollId",
+                  'userId', v."userId",
+                  'optionIndex', v."optionIndex",
+                  'createdAt', v."createdAt"
+                )
+              ) as votes
+              FROM "poll_votes" v
+              WHERE v."pollId" = p.id
+            ) pv ON true
+            WHERE p."messageId" = m.id
+          ) p ON true
           WHERE m."threadId" = s.id
         ) mrow
       ) msgs ON true
@@ -306,7 +408,7 @@ export async function getThreadWithFullContext(
           'createdAt', p."createdAt"
         ) as poll
         FROM "polls" p
-        WHERE p."threadId" = s.id
+        WHERE p."threadId" = s.id AND p."messageId" IS NULL
       ) poll ON true
       LEFT JOIN LATERAL (
         SELECT

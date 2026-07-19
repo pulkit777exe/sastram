@@ -6,7 +6,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession, assertAdmin } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
-import { createThread, deleteThread } from './threads-write/repository';
+import { createThread, deleteThread, updateThreadStaleness } from './threads-write/repository';
 import { listThreads } from './threads-core/repository';
 import { getThreadMessagesPaginated } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
@@ -149,6 +149,32 @@ export const loadThreadMessages = createServerAction(
       };
     } catch (error) {
       logger.error('[loadThreadMessages]', error);
+      const prismaMsg = prismaErrorMessage(error);
+      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+    }
+  }
+);
+
+export const markThreadVerified = createServerAction(
+  {
+    schema: z.object({
+      threadId: z.string().cuid(),
+    }),
+    actionName: 'markThreadVerified',
+  },
+  async ({ threadId }) => {
+    try {
+      const session = await requireSession();
+      await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+
+      await updateThreadStaleness(threadId, false);
+
+      revalidatePath(`${ROUTES.DASHBOARD_THREADS}/${threadId}`);
+
+      return { data: { ok: true }, error: null, ok: true, errorCode: null };
+    } catch (error) {
+      logger.error('[markThreadVerified]', error);
       const prismaMsg = prismaErrorMessage(error);
       if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
       return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };

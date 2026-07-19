@@ -23,8 +23,8 @@ export {
   updateThreadStaleness,
 } from './threads-write/repository';
 
-export { getThreadWithFullContext, getThreadMessagesPaginated } from './threads-read/repository';
-export type { PaginatedMessagesResult } from './threads-read/repository';
+export { getThreadWithFullContext, getThreadMessagesPaginated, getThreadParticipants } from './threads-read/repository';
+export type { PaginatedMessagesResult, ThreadParticipant } from './threads-read/repository';
 
 export {
   findRelatedThreads,
