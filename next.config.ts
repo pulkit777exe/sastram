@@ -1,7 +1,51 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' https://*.blob.vercel-storage.com data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  'report-uri /api/csp-report',
+].join('; ');
+
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy-Report-Only',
+    value: cspDirectives,
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=300',
+  },
+];
+
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ];
+  },
   redirects: async () => [
     {
       source: '/dashboard/threads/thread/:slug',
@@ -43,10 +87,8 @@ const nextConfig: NextConfig = {
         os: false,
       };
 
-      // Treat server-only packages as external on the client to prevent bundling
       config.externals = config.externals || [];
       config.externals.push(
-        // Node built-ins that shouldn't be bundled
         'fs',
         'net',
         'tls',
@@ -56,7 +98,6 @@ const nextConfig: NextConfig = {
         'path',
         'os',
         'url',
-        // Server-only npm packages that depend on Node built-ins
         'resend',
         'ioredis',
         'native-dns',
