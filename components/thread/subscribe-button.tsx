@@ -20,10 +20,12 @@ interface ThreadSubscribeButtonProps {
   initialFrequency: SubscriptionFrequency;
 }
 
+// Only DAILY is offered: the digest sender emits DAILY only, so WEEKLY would
+// silently never send. Existing WEEKLY subscriptions are migrated to DAILY
+// (see scripts/migrate-weekly-to-daily.ts).
 const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
   { label: 'Not subscribed', value: null },
   { label: 'Daily', value: 'DAILY' },
-  { label: 'Weekly', value: 'WEEKLY' },
   { label: 'Never', value: 'NEVER' },
 ];
 
