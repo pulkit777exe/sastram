@@ -22,6 +22,8 @@ Canonical roles: category `bug | enhancement`; state
 | 5 Daily-digest/query-warming cap | enhancement | ready-for-agent | code paths identified, AFK |
 | 6 Monetization / cap ceiling | decision | ready-for-human | founder-level, not engineering |
 | 7 Cold-start population | decision | ready-for-human | founder-level, not engineering |
+| 8 `prisma.poll.findUnique({ where: { threadId } })` typecheck error | bug | ready-for-agent | pre-existing, unrelated to current work, breaks `pnpm typecheck`; AFK |
+| 9 `thread-components.test.tsx:318` pinned-message render test fails | bug | ready-for-agent | pre-existing, unrelated; fails on fresh checkout; AFK |
 
 None are `bug` (no regression found in Phase 4). None `wontfix`. No `needs-info`
 (open questions would block an agent — none exist). New contributors: pick any
@@ -108,6 +110,38 @@ slice 1–5; slices 6–7 are owned by the founder.
   strangers" goal without the empty-room first impression. Broad public signups open
   after critical mass is reached.
 - **Acceptance criteria:** N/A (decision record, not code)
+
+---
+
+## Slice 8 — Fix `prisma.poll.findUnique({ where: { threadId } })` typecheck error
+
+- **Type:** bug (pre-existing, NOT introduced by the newsletter/account/loading work)
+- **Discovered:** 2026-07-20 engagement close-out. `pnpm typecheck` fails at
+  `modules/polls/repository.ts:133` (`getPollByThreadId`) with
+  `Type '{ threadId: string; }' is not assignable to type 'PollWhereUniqueInput'`.
+- **Root cause:** `PollWhereUniqueInput` requires `{ id }` or `{ messageId }`, not
+  `threadId`. A `threadId` lookup needs `findFirst`/`findMany` (or a unique
+  compound/relation), not `findUnique`.
+- **Blocked by:** None — AFK-grabbable.
+- **Acceptance criteria:**
+  - [ ] `pnpm typecheck` passes with zero errors (this is the only known failure).
+  - [ ] `getPollByThreadId` returns the poll for a thread via a valid query.
+  - [ ] Add/adjust a test if one covers poll-by-thread lookup.
+
+## Slice 9 — Fix `thread-components.test.tsx:318` pinned-message render test
+
+- **Type:** bug (pre-existing, NOT introduced by the current work)
+- **Discovered:** 2026-07-20 engagement close-out. `pnpm test` fails a test that
+  renders `ThreadLiveWrapper` with a pinned message and asserts
+  `screen.getByText('📌 Pinned Message')` is present — it is not found, so the
+  pinned-message rendering either regressed or the test fixture no longer matches
+  the component output.
+- **Blocked by:** None — AFK-grabbable (verify against current `ThreadLiveWrapper`
+  / pinned-message rendering, not `comment-tree.tsx` which is separately excluded).
+- **Acceptance criteria:**
+  - [ ] `pnpm test` shows the pinned-message test passing, OR the test is corrected
+        to match intended rendering and the change is documented.
+  - [ ] Confirm the fix is unrelated to the excluded comment-tree flat/nested bug.
 
 ---
 
