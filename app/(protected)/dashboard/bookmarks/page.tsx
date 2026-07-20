@@ -20,7 +20,7 @@ export default async function BookmarksPage() {
     redirect('/login');
   }
 
-  const result = await getBookmarkedThreads(50, 0);
+  const result = await getBookmarkedThreads({ limit: 50, offset: 0 });
 
   if (result.error || !result.data) {
     return (
