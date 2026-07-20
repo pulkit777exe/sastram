@@ -147,18 +147,10 @@ export function NotificationList({ notifications: initial }: NotificationListPro
   }, [hasMore, loadMore]);
 
   useEffect(() => {
-    const previousCount = notifications.filter((n) => !n.isRead).length;
+    // Clear the unread badge when the notifications page is viewed, without
+    // side-effecting a mark-all-read write on every mount (which previously
+    // re-toasted serverError() on each navigation / StrictMode double-invoke).
     setNotificationCount(0);
-
-    void markAllNotificationsRead().then((result) => {
-      if (result.error) {
-        setNotificationCount(previousCount);
-        toasts.serverError();
-        return;
-      }
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    });
-    // Only run on first mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -2,13 +2,8 @@ import { BrandLoader } from '@/components/ui/brand-loader';
 
 export default function Loading() {
   return (
-    <div className="container mx-auto py-8 px-4 space-y-6">
+    <div className="flex min-h-screen w-full items-center justify-center">
       <BrandLoader size={40} />
-      <div className="space-y-3">
-        <div className="skeleton h-24 rounded-xl" />
-        <div className="skeleton h-24 rounded-xl" />
-        <div className="skeleton h-24 rounded-xl" />
-      </div>
     </div>
   );
 }
