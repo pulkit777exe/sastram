@@ -70,6 +70,14 @@ interface UseMessageComposerReturn {
   error: string | null;
   canSubmit: boolean;
 
+  // Poll Builder
+  showPollBuilder: boolean;
+  setShowPollBuilder: (val: boolean) => void;
+  pollQuestion: string;
+  setPollQuestion: (val: string) => void;
+  pollOptions: string[];
+  setPollOptions: (val: string[]) => void;
+
   // Textarea
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -114,6 +122,11 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
   const mentionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mentionRequestIdRef = useRef(0);
   const mentionListRef = useRef<HTMLDivElement>(null);
+
+  // Poll states
+  const [showPollBuilder, setShowPollBuilder] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
 
   // Textarea
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -286,12 +299,13 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
   // --- Submit ---
   const handleSubmit = useCallback(
     async (formData?: FormData) => {
-      if (!content.trim() && !selectedFile) {
+      const hasPoll = showPollBuilder && pollQuestion.trim().length > 0 && pollOptions.filter(o => o.trim()).length >= 2;
+      if (!content.trim() && !selectedFile && !hasPoll) {
         toasts.error('Message cannot be empty');
         return;
       }
 
-      const messageContent = content;
+      const messageContent = content.trim() || (hasPoll ? `Poll: ${pollQuestion.trim()}` : '');
       const tempId = `temp-${crypto.randomUUID()}`;
 
       // Build optimistic message
@@ -325,6 +339,9 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       setMentionedUserIds([]);
       closeMentions();
       onCancelReply?.();
+      setShowPollBuilder(false);
+      setPollQuestion('');
+      setPollOptions(['', '']);
 
       setIsSubmitting(true);
       setError(null);
@@ -335,6 +352,14 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       data.set('content', messageContent);
       if (parentId) data.set('parentId', parentId);
       if (replyTo && !parentId) data.set('parentId', replyTo.messageId);
+
+      if (hasPoll) {
+        data.set('poll', JSON.stringify({
+          question: pollQuestion.trim(),
+          options: pollOptions.filter(o => o.trim()),
+          expiresAt: null
+        }));
+      }
 
       // Upload file if selected, then include attachment metadata
       if (selectedFile) {
@@ -431,6 +456,9 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       onSuccess,
       onCancelReply,
       closeMentions,
+      showPollBuilder,
+      pollQuestion,
+      pollOptions,
     ]
   );
 
@@ -512,7 +540,12 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
   }, []);
 
   // --- canSubmit ---
-  const canSubmit = useMemo(() => content.trim().length > 0 || !!selectedFile, [content, selectedFile]);
+  const canSubmit = useMemo(() => {
+    const hasContent = content.trim().length > 0;
+    const hasFile = !!selectedFile;
+    const hasPoll = showPollBuilder && pollQuestion.trim().length > 0 && pollOptions.filter(o => o.trim()).length >= 2;
+    return hasContent || hasFile || hasPoll;
+  }, [content, selectedFile, showPollBuilder, pollQuestion, pollOptions]);
 
   return {
     // Content
@@ -554,6 +587,14 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     isSubmitting,
     error,
     canSubmit,
+
+    // Poll Builder
+    showPollBuilder,
+    setShowPollBuilder,
+    pollQuestion,
+    setPollQuestion,
+    pollOptions,
+    setPollOptions,
 
     // Textarea
     textareaRef,

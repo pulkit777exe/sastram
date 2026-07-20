@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 
 type MarkdownToken =
@@ -27,17 +29,133 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
+// Language display names for code fence labels
+const LANG_DISPLAY: Record<string, string> = {
+  js: 'JavaScript', javascript: 'JavaScript', jsx: 'JSX',
+  ts: 'TypeScript', typescript: 'TypeScript', tsx: 'TSX',
+  py: 'Python', python: 'Python',
+  rb: 'Ruby', ruby: 'Ruby',
+  go: 'Go',
+  rs: 'Rust', rust: 'Rust',
+  java: 'Java',
+  cs: 'C#', csharp: 'C#',
+  cpp: 'C++', c: 'C',
+  html: 'HTML', css: 'CSS', scss: 'SCSS',
+  json: 'JSON', yaml: 'YAML', toml: 'TOML',
+  sql: 'SQL', graphql: 'GraphQL',
+  sh: 'Shell', bash: 'Bash', zsh: 'Zsh',
+  md: 'Markdown', markdown: 'Markdown',
+  diff: 'Diff', dockerfile: 'Dockerfile',
+  prisma: 'Prisma',
+};
+
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = React.useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // silent
+    }
+  }, [code]);
+
+  const displayLang = LANG_DISPLAY[lang.toLowerCase()] ?? (lang || null);
+
+  return (
+    <div
+      className="my-2.5 animate-in fade-in duration-200 rounded-[10px] overflow-hidden border border-border/60"
+      style={{ background: 'var(--bg)' }}
+    >
+      {/* Code block header */}
+      <div
+        className="flex items-center justify-between px-3 py-1.5 border-b border-border/40"
+        style={{ background: 'var(--surface)' }}
+      >
+        {displayLang ? (
+          <span
+            className="font-mono text-[10px] uppercase tracking-[0.12em] select-none"
+            style={{ color: 'var(--muted)' }}
+          >
+            {displayLang}
+          </span>
+        ) : (
+          <span
+            className="font-mono text-[10px] uppercase tracking-[0.12em] select-none"
+            style={{ color: 'var(--muted)' }}
+          >
+            code
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 rounded-[6px] px-2 py-0.5 text-[10px] font-medium transition-all duration-150"
+          style={{
+            color: copied ? 'var(--green)' : 'var(--muted)',
+            background: copied ? 'rgba(26,156,92,0.08)' : 'transparent',
+          }}
+          aria-label="Copy code"
+        >
+          <span
+            className="t-icon-swap"
+            data-state={copied ? 'b' : 'a'}
+            style={{ display: 'inline-grid' }}
+          >
+            {/* Copy icon */}
+            <svg
+              data-icon="a"
+              className="t-icon"
+              width="11"
+              height="11"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+            >
+              <rect x="5" y="5" width="9" height="9" rx="2" />
+              <path d="M11 5V3a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+            </svg>
+            {/* Check icon */}
+            <svg
+              data-icon="b"
+              className="t-icon"
+              width="11"
+              height="11"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M2 8l4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      {/* Code content */}
+      <pre
+        className="overflow-x-auto p-3 text-[12.5px] leading-[1.6] font-mono"
+        style={{ color: 'var(--text)', background: 'var(--bg)' }}
+      >
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
 function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   let remaining = text;
   let keyCounter = 0;
 
   while (remaining.length > 0) {
-    // Match bold, italic, link, or mention — find the earliest match
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
     const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
     const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
-    const mentionMatch = remaining.match(/@\w+/);
+    const mentionMatch = remaining.match(/@\w[\w.-]*/);
 
     const matches = [
       boldMatch && { type: 'bold' as const, match: boldMatch, index: boldMatch.index! },
@@ -51,37 +169,31 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
       break;
     }
 
-    // Pick the earliest match
     matches.sort((a, b) => a.index - b.index);
     const earliest = matches[0];
 
-    // Add text before the match
     if (earliest.index > 0) {
       nodes.push(remaining.slice(0, earliest.index));
     }
 
     const matchText = earliest.match[0];
+    keyCounter++;
 
     if (earliest.type === 'bold') {
-      const inner = earliest.match[1];
-      keyCounter++;
       nodes.push(
         <strong key={`${keyPrefix}-b${keyCounter}`} className="font-semibold">
-          {renderTextWithFormatting(inner, `${keyPrefix}-b${keyCounter}`)}
+          {renderTextWithFormatting(earliest.match[1], `${keyPrefix}-b${keyCounter}`)}
         </strong>
       );
     } else if (earliest.type === 'italic') {
-      const inner = earliest.match[1];
-      keyCounter++;
       nodes.push(
         <em key={`${keyPrefix}-i${keyCounter}`}>
-          {renderTextWithFormatting(inner, `${keyPrefix}-i${keyCounter}`)}
+          {renderTextWithFormatting(earliest.match[1], `${keyPrefix}-i${keyCounter}`)}
         </em>
       );
     } else if (earliest.type === 'link') {
       const linkText = earliest.match[1];
       const url = earliest.match[2];
-      keyCounter++;
       if (isSafeUrl(url)) {
         nodes.push(
           <a
@@ -89,7 +201,8 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 underline underline-offset-2 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            className="underline underline-offset-2 transition-colors"
+            style={{ color: 'var(--blue)' }}
           >
             {linkText}
           </a>
@@ -98,11 +211,16 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
         nodes.push(`[${linkText}](${url})`);
       }
     } else if (earliest.type === 'mention') {
-      keyCounter++;
+      // Mention pill — uses brand tokens, reads as a person reference not a tag
       nodes.push(
         <span
           key={`${keyPrefix}-m${keyCounter}`}
-          className="bg-blue-50 text-blue-600 rounded px-0.5 font-medium dark:bg-blue-950/30 dark:text-blue-400"
+          className="inline-flex items-center gap-0.5 rounded-[5px] px-1.5 py-0 align-baseline text-[0.9em] font-semibold leading-[1.6] cursor-default"
+          style={{
+            background: 'var(--blue-dim)',
+            color: 'var(--blue)',
+          }}
+          title={matchText}
         >
           {matchText}
         </span>
@@ -118,27 +236,28 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
 export function renderContent(content: string): React.ReactNode {
   if (!content) return null;
 
-  // Split by fenced code blocks (```)
-  const codeBlockRegex = /```[\s\S]*?```/g;
-  const segments: Array<{ type: 'text' | 'codeblock'; content: string }> = [];
+  // Split by fenced code blocks — capture the language identifier
+  const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+  const segments: Array<
+    | { type: 'text'; content: string }
+    | { type: 'codeblock'; lang: string; code: string }
+  > = [];
   let lastIndex = 0;
 
   for (const match of content.matchAll(codeBlockRegex)) {
     if (match.index! > lastIndex) {
       segments.push({ type: 'text', content: content.slice(lastIndex, match.index!) });
     }
-    // Extract code content between ``` markers
-    const block = match[0];
-    const codeContent = block.slice(3, -3).replace(/^\w+\n/, ''); // Strip language identifier
-    segments.push({ type: 'codeblock', content: codeContent });
-    lastIndex = match.index! + block.length;
+    const lang = (match[1] || '').trim();
+    const code = (match[2] || '').trimEnd();
+    segments.push({ type: 'codeblock', lang, code });
+    lastIndex = match.index! + match[0].length;
   }
 
   if (lastIndex < content.length) {
     segments.push({ type: 'text', content: content.slice(lastIndex) });
   }
 
-  // If no code blocks found, treat entire content as text
   if (segments.length === 0) {
     segments.push({ type: 'text', content });
   }
@@ -147,14 +266,9 @@ export function renderContent(content: string): React.ReactNode {
     <>
       {segments.map((segment, i) => {
         if (segment.type === 'codeblock') {
-          return (
-            <pre key={`cb-${i}`} className="my-2 rounded-lg bg-muted/50 p-3 text-[13px] overflow-x-auto">
-              <code className="font-mono text-foreground/90">{segment.content}</code>
-            </pre>
-          );
+          return <CodeBlock key={`cb-${i}`} lang={segment.lang} code={segment.code} />;
         }
 
-        // Parse inline code first, then apply other formatting to non-code parts
         const inlineTokens = parseInlineCode(segment.content);
         return (
           <React.Fragment key={`t-${i}`}>
@@ -163,7 +277,11 @@ export function renderContent(content: string): React.ReactNode {
                 return (
                   <code
                     key={`ic-${i}-${j}`}
-                    className="rounded bg-muted/60 px-1.5 py-0.5 text-[13px] font-mono text-foreground/80"
+                    className="rounded-[4px] px-1.5 py-0.5 text-[0.88em] font-mono"
+                    style={{
+                      background: 'var(--blue-dim)',
+                      color: 'var(--blue)',
+                    }}
                   >
                     {token.content}
                   </code>

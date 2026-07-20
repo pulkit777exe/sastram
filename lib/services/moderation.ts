@@ -14,7 +14,8 @@ export type MessageLike = {
   parentId?: string | null;
   timestamp?: Date;
   metadata?: Record<string, unknown>;
-  attachments?: { name?: string | null; url: string; type: string }[];
+  attachments?: { name?: string | null; url: string; type: string; size?: number | null }[];
+  poll?: { question: string; options: string[]; expiresAt?: string | null } | null;
 };
 
 export type ConversationContext = {
@@ -366,8 +367,32 @@ export class MessageService {
             senderId: message.authorId,
             parentId: message.parentId ?? null,
             depth,
+            attachments: message.attachments ? {
+              create: message.attachments.map(att => ({
+                url: att.url,
+                type: att.type as any,
+                name: att.name ?? null,
+                size: att.size !== undefined && att.size !== null ? BigInt(att.size) : null
+              }))
+            } : undefined
           },
+          include: {
+            attachments: true
+          }
         });
+
+        if (message.poll) {
+          await tx.poll.create({
+            data: {
+              threadId: message.threadId,
+              messageId: msg.id,
+              question: message.poll.question,
+              options: message.poll.options,
+              expiresAt: message.poll.expiresAt ? new Date(message.poll.expiresAt) : null,
+              isActive: true
+            }
+          });
+        }
 
         if (message.parentId) {
           await tx.message.update({
@@ -443,7 +468,13 @@ export class MessageService {
         ...createdMessage,
         sender: null,
         thread: null,
-        attachments: [],
+        attachments: (createdMessage as any).attachments?.map((a: any) => ({
+          id: a.id,
+          url: a.url,
+          type: a.type,
+          name: a.name,
+          size: a.size !== null ? Number(a.size) : null
+        })) ?? [],
       } : null,
     };
   }

@@ -36,6 +36,14 @@ export const createMessageSchema = z.object({
 
 export const createMessageWithAttachmentsSchema = createMessageSchema.extend({
   attachments: z.array(attachmentInputSchema).max(10, 'Maximum 10 attachments allowed').optional(),
+  poll: z
+    .object({
+      question: z.string().min(1).max(500),
+      options: z.array(z.string().min(1).max(200)).min(2).max(10),
+      expiresAt: z.string().optional().nullable(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export const editMessageSchema = z.object({

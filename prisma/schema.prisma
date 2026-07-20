@@ -212,7 +212,7 @@ model Thread {
   bans          UserBan[]
   bookmarks     UserBookmark[]
   tags          ThreadTagRelation[]
-  poll          Poll?
+  polls         Poll[]
   subscriptions ThreadSubscription[]
   readReceipts  ReadReceipt[]
   relatedTo     ThreadRelation[]     @relation("SourceThread")
@@ -246,13 +246,14 @@ model Message {
   sender      User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
   parent      Message?         @relation("MessageReplies", fields: [parentId], references: [id])
   replies     Message[]        @relation("MessageReplies")
-  attachments Attachment[]
-  reactions   Reaction[]
-  reports     Report[]
-  editHistory MessageEdit[]
-  mentions    MessageMention[]
+  attachments  Attachment[]
+  reactions    Reaction[]
+  reports      Report[]
+  editHistory  MessageEdit[]
+  mentions     MessageMention[]
   readReceipts ReadReceipt[]    @relation("ReadReceiptMessage")
-  appeals     Appeal[]         @relation("MessageAppeal")
+  appeals      Appeal[]         @relation("MessageAppeal")
+  poll         Poll?
 
   @@index([threadId])
   @@index([threadId, createdAt])
@@ -512,16 +513,19 @@ model ThreadTagRelation {
 
 model Poll {
   id        String    @id @default(cuid())
-  threadId  String    @unique
+  threadId  String
+  messageId String?   @unique // null = legacy thread-level poll; set = message-level poll
   question  String
   options   Json // string[]
   isActive  Boolean   @default(true)
   expiresAt DateTime?
   createdAt DateTime  @default(now())
 
-  thread Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  votes  PollVote[]
+  thread  Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  message Message?  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  votes   PollVote[]
 
+  @@index([threadId])
   @@map("polls")
 }
 

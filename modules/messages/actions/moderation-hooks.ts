@@ -8,6 +8,8 @@ export async function moderateIncomingMessage(args: {
   authorId: string;
   content: string;
   parentId: string | null;
+  attachments?: { name?: string | null; url: string; type: string; size?: number | null }[];
+  poll?: { question: string; options: string[]; expiresAt?: string | null } | null;
 }) {
   const recentMessages = await prisma.message.findMany({
     where: { threadId: args.threadId, deletedAt: null },
@@ -54,6 +56,8 @@ export async function moderateIncomingMessage(args: {
       parentId: args.parentId,
       timestamp: new Date(),
       metadata: { edited: false },
+      attachments: args.attachments,
+      poll: args.poll,
     },
     context
   );

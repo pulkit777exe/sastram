@@ -47,6 +47,26 @@ export interface Message {
   reactions?: Reaction[];
   readReceipts?: ReadReceipt[];
   replies?: Message[];
+  poll?: Poll | null;
+}
+
+export interface Poll {
+  id: string;
+  threadId: string;
+  question: string;
+  options: string[];
+  isActive: boolean;
+  expiresAt: Date | null;
+  createdAt: Date;
+  votes?: PollVote[];
+}
+
+export interface PollVote {
+  id: string;
+  pollId: string;
+  userId: string;
+  optionIndex: number;
+  createdAt: Date;
 }
 
 export interface Topic {

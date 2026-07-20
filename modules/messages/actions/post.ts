@@ -36,11 +36,29 @@ export async function postMessage(formData: FormData) {
     mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
   }
 
+  const attachmentsRaw = formData.get('attachments') as string | null;
+  let attachments: any[] | undefined = undefined;
+  if (attachmentsRaw) {
+    try {
+      attachments = JSON.parse(attachmentsRaw);
+    } catch {}
+  }
+
+  const pollRaw = formData.get('poll') as string | null;
+  let poll: any | undefined = undefined;
+  if (pollRaw) {
+    try {
+      poll = JSON.parse(pollRaw);
+    } catch {}
+  }
+
   const validation = createMessageWithAttachmentsSchema.safeParse({
     content,
     threadId: threadId,
     parentId: parentId || undefined,
     mentions,
+    attachments,
+    poll,
   });
 
   if (!validation.success) {
@@ -86,6 +104,8 @@ export async function postMessage(formData: FormData) {
       authorId: session.user.id,
       content: safeContent,
       parentId,
+      attachments: validation.data.attachments,
+      poll: validation.data.poll,
     });
 
     if (!moderationResult.success) {
@@ -115,6 +135,11 @@ export async function postMessage(formData: FormData) {
           },
         },
         attachments: true,
+        poll: {
+          include: {
+            votes: true,
+          },
+        },
       },
     });
 
@@ -163,6 +188,16 @@ export async function postMessage(formData: FormData) {
         name: att.name,
         size: att.size !== null ? Number(att.size) : null,
       })),
+      poll: (message as any).poll ? {
+        id: (message as any).poll.id,
+        threadId: (message as any).poll.threadId,
+        question: (message as any).poll.question,
+        options: (message as any).poll.options,
+        isActive: (message as any).poll.isActive,
+        expiresAt: (message as any).poll.expiresAt,
+        createdAt: (message as any).poll.createdAt,
+        votes: [],
+      } : null,
     };
 
     infraMessageSideEffects.emitThreadMessage(threadId, payload);

@@ -149,16 +149,16 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-lg border bg-card p-6 space-y-4"
+      className="rounded-[12px] border border-border bg-(--surface) p-5 space-y-4 shadow-sm max-w-lg"
     >
       <div className="flex items-start justify-between">
-        <h3 className="text-lg font-semibold text-foreground">{poll.question}</h3>
-        {showResults && <BarChart3 className="h-5 w-5 text-muted-foreground shrink-0" />}
+        <h3 className="text-[14px] font-semibold text-(--text) tracking-tight">{poll.question}</h3>
+        {showResults && <BarChart3 className="h-4 w-4 text-muted-foreground shrink-0" />}
       </div>
 
-      <div className="space-y-2" role="radiogroup" aria-label={poll.question}>
+      <div className="space-y-2.5" role="radiogroup" aria-label={poll.question}>
         {poll.options.map((option, index) => {
           const result = results?.results.find((r) => r.index === index);
           const percentage = result?.percentage ?? 0;
@@ -167,45 +167,50 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
           return (
             <motion.div
               key={index}
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
+              transition={{ delay: index * 0.04 }}
             >
               {showResults ? (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="flex items-center gap-1.5 text-(--text) font-medium">
                       {option}
-                      {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                      {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-(--blue)" />}
                     </span>
-                    <span className="text-muted-foreground tabular-nums">
+                    <span className="text-muted-foreground font-(--font-dm-mono) text-[11px] tabular-nums">
                       {result?.votes ?? 0} votes ({percentage.toFixed(1)}%)
                     </span>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-[6px] bg-muted/40 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${percentage}%` }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                      transition={{ duration: 0.5, delay: index * 0.08 }}
                       className={cn(
                         'h-full rounded-full',
-                        isSelected ? 'bg-primary' : 'bg-muted-foreground/50'
+                        isSelected ? 'bg-(--blue)' : 'bg-(--text)'
                       )}
                     />
                   </div>
                 </div>
               ) : (
-                <Button
+                <button
+                  type="button"
                   onClick={() => handleVote(index)}
                   disabled={isVoting || hasVoted || !poll.isActive || isExpired}
-                  variant={isSelected ? 'default' : 'outline'}
                   role="radio"
                   aria-checked={isSelected}
                   aria-label={`Vote for: ${option}`}
-                  className="w-full justify-start"
+                  className={cn(
+                    'w-full text-left px-3.5 py-2 rounded-[8px] border text-[13px] font-medium transition-all duration-200',
+                    isSelected
+                      ? 'bg-(--blue-dim) border-(--blue) text-(--blue)'
+                      : 'bg-transparent border-border/60 text-(--text) hover:border-border hover:bg-muted/10 disabled:opacity-50'
+                  )}
                 >
                   {option}
-                </Button>
+                </button>
               )}
             </motion.div>
           );
@@ -213,7 +218,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
       </div>
 
       {poll.expiresAt && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[11px] font-(--font-dm-mono) uppercase tracking-wider text-muted-foreground">
           Poll expires <TimeAgo date={poll.expiresAt} />
         </p>
       )}

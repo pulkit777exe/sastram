@@ -315,7 +315,7 @@ describe('ThreadLiveWrapper', () => {
         />
       </MockNextJsProvider>
     );
-    expect(screen.getByText('📌 Pinned Message')).to.not.be.null;
+    expect(screen.getByText('Pinned Message')).to.not.be.null;
     expect(screen.getByText('This is pinned')).to.not.be.null;
     expect(screen.getByText('Jump to message')).to.not.be.null;
   });

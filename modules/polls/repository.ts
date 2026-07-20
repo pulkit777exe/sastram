@@ -20,11 +20,13 @@ export async function createPoll(
   threadId: string,
   question: string,
   options: string[],
-  expiresAt?: Date
+  expiresAt?: Date,
+  messageId?: string
 ) {
   return prisma.poll.create({
     data: {
       threadId,
+      messageId,
       question,
       options: options as Prisma.InputJsonValue,
       expiresAt,
@@ -127,8 +129,8 @@ export async function getUserVote(pollId: string, userId: string) {
 }
 
 export async function getPollByThreadId(threadId: string) {
-  return prisma.poll.findUnique({
-    where: { threadId },
+  return prisma.poll.findFirst({
+    where: { message: { threadId } },
     include: {
       _count: { select: { votes: true } },
     },

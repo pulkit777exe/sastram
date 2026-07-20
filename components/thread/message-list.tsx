@@ -13,6 +13,7 @@ import { InlineReplyThread } from './inline-reply-thread';
 import { MessageActions } from './message-actions';
 import { InlineReplyBox } from './inline-reply-box';
 import { AttachmentItem } from './attachment-item';
+import { PollDisplay } from './poll-display';
 import { renderContent } from '@/lib/utils/render-content';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -392,6 +393,21 @@ const MessageRow = React.memo(function MessageRow({
               {message.attachments.map((file) => (
                 <AttachmentItem key={file.id} file={file} />
               ))}
+            </div>
+          )}
+
+          {message.poll && !isEditing && (
+            <div className="mt-2 max-w-lg">
+              <PollDisplay
+                poll={{
+                  id: message.poll.id,
+                  threadId: message.poll.threadId,
+                  question: message.poll.question,
+                  options: message.poll.options,
+                  isActive: message.poll.isActive,
+                  expiresAt: message.poll.expiresAt,
+                }}
+              />
             </div>
           )}
 

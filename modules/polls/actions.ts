@@ -25,24 +25,33 @@ const threadIdSchema = z.object({ threadId: z.string().cuid() });
 export const createPollAction = withValidation(
   createPollSchema,
   'createPoll',
-  async ({ threadId, question, options, expiresAt }) => {
+  async ({ threadId, messageId, question, options, expiresAt }) => {
     try {
       const session = await requireSession();
       const memberRole = await getMemberRole(threadId, session.user.id);
-      if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-        return { data: null, error: 'Insufficient permissions to create poll', ok: false, errorCode: 'FORBIDDEN' };
+      
+      if (!messageId) {
+        if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
+          return { data: null, error: 'Insufficient permissions to create poll', ok: false, errorCode: 'FORBIDDEN' };
+        }
+      } else {
+        if (!memberRole) {
+          return { data: null, error: 'You are not a member of this thread', ok: false, errorCode: 'FORBIDDEN' };
+        }
       }
 
       const poll = await createPollRepo(
         threadId,
         question,
         options,
-        expiresAt
+        expiresAt,
+        messageId
       );
 
       logger.info('[createPoll] Poll created', {
         pollId: poll.id,
         threadId,
+        messageId,
         createdBy: session.user.id,
       });
 
