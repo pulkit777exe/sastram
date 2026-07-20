@@ -100,27 +100,25 @@ export const revokeSessionAction = createServerAction(
   }
 );
 
-export async function getLinkedAccountsAction() {
-  try {
+export const getLinkedAccountsAction = createServerAction(
+  { schema: z.object({}), actionName: 'getLinkedAccountsAction' },
+  async () => {
     const session = await getSession();
     if (!session) {
       return { data: [], error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
     }
     const accounts = await prisma.account.findMany({
       where: { userId: session.user.id },
-      select: { provider: true, providerAccountId: true, createdAt: true },
+      select: { providerId: true, createdAt: true },
     });
     return {
-      data: accounts.map((a) => ({ provider: a.provider, linkedAt: a.createdAt })),
+      data: accounts.map((a) => ({ provider: a.providerId, linkedAt: a.createdAt })),
       error: null,
       ok: true,
       errorCode: null,
     };
-  } catch (error) {
-    logger.error('[getLinkedAccountsAction]', error);
-    return { data: [], error: 'Failed to load linked accounts', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
-}
+);
 
 const unlinkAccountSchema = z.object({
   provider: z.string().min(1),
@@ -134,6 +132,18 @@ export const unlinkAccountAction = createServerAction(
       return { data: null, error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
     }
     try {
+      const accounts = await prisma.account.findMany({
+        where: { userId: session.user.id },
+        select: { providerId: true },
+      });
+      if (accounts.length <= 1) {
+        return {
+          data: null,
+          error: 'You must keep at least one sign-in method.',
+          ok: false,
+          errorCode: 'FORBIDDEN',
+        };
+      }
       await auth.api.unlinkAccount({ body: { providerId: provider }, headers: await headers() });
       return { data: { ok: true }, error: null, ok: true, errorCode: null };
     } catch (error) {
