@@ -21,19 +21,19 @@
 --             statement below adds what the prior migrations did not.
 
 --------------------------------------------------------------------------------
-STEP 1 of 4 - Phase 1: add deletedAt to Thread and Community.
-Both columns are added with IF NOT EXISTS so this is a no-op on production
-(which already has them) and a forward-additive change on a fresh DB.
+-- STEP 1 of 4 - Phase 1: add deletedAt to Thread and Community.
+-- Both columns are added with IF NOT EXISTS so this is a no-op on production
+-- (which already has them) and a forward-additive change on a fresh DB.
 --------------------------------------------------------------------------------
 
 ALTER TABLE "threads"     ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
 ALTER TABLE "communities" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
 
 --------------------------------------------------------------------------------
-STEP 2 of 4 - Phase 4: 3 new listing indexes.
-The Phase 4 indexes are not expressible in Prisma's schema language in the form
-Prisma's migrate generator emits them; this file uses the exact form Prisma
-emits (no DESC clause). `IF NOT EXISTS` makes both scenarios safe.
+-- STEP 2 of 4 - Phase 4: 3 new listing indexes.
+-- The Phase 4 indexes are not expressible in Prisma's schema language in the form
+-- Prisma's migrate generator emits them; this file uses the exact form Prisma
+-- emits (no DESC clause). `IF NOT EXISTS` makes both scenarios safe.
 --------------------------------------------------------------------------------
 
 CREATE INDEX IF NOT EXISTS "thread_members_userId_status_idx"
@@ -46,10 +46,10 @@ CREATE INDEX IF NOT EXISTS "threads_visibility_communityId_updatedAt_idx"
   ON "threads"("visibility", "communityId", "updatedAt");
 
 --------------------------------------------------------------------------------
-STEP 3 of 4 - Phase 3: 4 CHECK constraints.
-These are not expressible in Prisma's schema language, so they live only as
-hand-written SQL. Both the production DB and a fresh-from-prior-migrations DB
-will need to apply them on replay.
+-- STEP 3 of 4 - Phase 3: 4 CHECK constraints.
+-- These are not expressible in Prisma's schema language, so they live only as
+-- hand-written SQL. Both the production DB and a fresh-from-prior-migrations DB
+-- will need to apply them on replay.
 --------------------------------------------------------------------------------
 
 -- UserActivity.type
@@ -74,10 +74,10 @@ ALTER TABLE "moderation_rules"
   CHECK ("category" IN ('SPAM', 'HARASSMENT', 'MISINFORMATION', 'ADULT_CONTENT', 'OTHER'));
 
 --------------------------------------------------------------------------------
-STEP 4 of 4 - Phase 1: 2 partial indexes on the new deletedAt columns.
-These partially-indexed read helpers cover "find soft-deleted rows for the purge
-cron" without bloating the main indexes with NULL pointers. NOT schema-prisma
-expressible. `IF NOT EXISTS` so both deployment scenarios are safe.
+-- STEP 4 of 4 - Phase 1: 2 partial indexes on the new deletedAt columns.
+-- These partially-indexed read helpers cover "find soft-deleted rows for the purge
+-- cron" without bloating the main indexes with NULL pointers. NOT schema-prisma
+-- expressible. `IF NOT EXISTS` so both deployment scenarios are safe.
 --------------------------------------------------------------------------------
 
 CREATE INDEX IF NOT EXISTS "threads_deletedAt_idx"
