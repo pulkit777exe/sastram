@@ -1,24 +1,12 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
-const cspDirectives = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' https://*.blob.vercel-storage.com data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  'report-uri /api/csp-report',
-].join('; ');
+// NOTE: The active CSP is set in proxy.ts (per-request, with a nonce for
+// script-src). This file no longer sets a CSP to avoid sending two conflicting
+// CSP headers. HSTS is kept here for non-proxied static responses; the proxy
+// sets a stronger HSTS in production.
 
 const securityHeaders = [
-  {
-    key: 'Content-Security-Policy-Report-Only',
-    value: cspDirectives,
-  },
   {
     key: 'X-Content-Type-Options',
     value: 'nosniff',

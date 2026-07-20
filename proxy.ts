@@ -34,15 +34,21 @@ function isPublicThreadPath(pathname: string): boolean {
 
 const isProd = process.env.NODE_ENV === 'production';
 
-const SECURITY_HEADERS: Record<string, string> = {
-  'X-Frame-Options': 'DENY',
-  'X-Content-Type-Options': 'nosniff',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'X-DNS-Prefetch-Control': 'off',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
-  'Content-Security-Policy': [
+// Whether to send the CSP as Report-Only (observe violations, don't block).
+// Defaults to Report-Only so the nonce can be validated against real traffic
+// via /api/csp-report before flipping to enforcing (CSP_REPORT_ONLY=false).
+// The one Next.js bootstrap inline script currently lacks the nonce and will
+// show as a violation under Report-Only but still executes; address before
+// enforcing (see docs/BACKLOG.md O1a).
+const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY !== 'false';
+
+function buildCsp(nonce: string): string {
+  return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
+    // Nonce-based script-src: drop 'unsafe-inline' so injected scripts without the
+    // per-request nonce are blocked (mitigates XSS). Next.js tags its own inline
+    // framework scripts with this nonce automatically.
+    `script-src 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https: http:",
     "connect-src 'self' https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io wss: ws:",
@@ -51,7 +57,16 @@ const SECURITY_HEADERS: Record<string, string> = {
     "base-uri 'self'",
     "form-action 'self'",
     "upgrade-insecure-requests",
-  ].join('; '),
+    'report-uri /api/csp-report',
+  ].join('; ');
+}
+
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-DNS-Prefetch-Control': 'off',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
 };
 
 const PRODUCTION_HEADERS = {
@@ -68,10 +83,15 @@ function getClientIp(request: NextRequest): string {
   return 'unknown';
 }
 
-function applySecurityHeaders(response: NextResponse): NextResponse {
+function applySecurityHeaders(response: NextResponse, nonce: string): NextResponse {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
+  const csp = buildCsp(nonce);
+  response.headers.set(
+    CSP_REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy',
+    csp
+  );
   if (env.NODE_ENV === 'production') {
     for (const [key, value] of Object.entries(PRODUCTION_HEADERS)) {
       response.headers.set(key, value);
@@ -83,6 +103,7 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  const nonce = crypto.randomUUID().replace(/-/g, '');
 
   const isPublic = isPublicPath(pathname);
   const sessionCookie = request.cookies.get('better-auth.session_token');
@@ -93,13 +114,13 @@ export default async function proxy(request: NextRequest) {
     loginUrl.searchParams.set('redirect', `${pathname}${search}`);
     const response = NextResponse.redirect(loginUrl);
     response.headers.set('x-request-id', requestId);
-    return applySecurityHeaders(response);
+    return applySecurityHeaders(response, nonce);
   }
 
   if (sessionCookie && pathname === '/login') {
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     response.headers.set('x-request-id', requestId);
-    return applySecurityHeaders(response);
+    return applySecurityHeaders(response, nonce);
   }
 
   if (!isPublic && env.RATE_LIMIT_ENABLED) {
@@ -109,7 +130,7 @@ export default async function proxy(request: NextRequest) {
     if (!success) {
       const response = NextResponse.json({ error: 'Too Many Requests' }, { status: 429 });
       response.headers.set('x-request-id', requestId);
-      return applySecurityHeaders(response);
+      return applySecurityHeaders(response, nonce);
     }
   }
 
@@ -146,10 +167,12 @@ export default async function proxy(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-request-id', requestId);
+  // Forward the nonce to Next.js so it can tag its inline framework scripts.
+  requestHeaders.set('x-csp-nonce', nonce);
 
   let response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('x-request-id', requestId);
-  response = applySecurityHeaders(response);
+  response = applySecurityHeaders(response, nonce);
   return response;
 }
 
