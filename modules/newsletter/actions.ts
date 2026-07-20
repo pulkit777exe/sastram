@@ -120,6 +120,7 @@ export const subscribeToThreadAction = withValidation(
         threadId,
         userId: session.user.id,
         email,
+        frequency: 'DAILY',
       });
 
       await scheduleThreadDigest(threadId);

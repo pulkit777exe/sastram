@@ -5,10 +5,12 @@ export async function subscribeToThreadNewsletter({
   threadId,
   userId,
   email,
+  frequency,
 }: {
   threadId: string;
   userId?: string;
   email?: string;
+  frequency?: DigestFrequency;
 }) {
   if (!userId && !email) {
     throw new Error('Either userId or email is required for thread subscription');
@@ -22,10 +24,11 @@ export async function subscribeToThreadNewsletter({
           email: email!,
         },
       },
-      update: {},
+      update: frequency ? { frequency } : {},
       create: {
         threadId,
         email: email!,
+        ...(frequency ? { frequency } : {}),
       },
     });
   }
@@ -39,11 +42,13 @@ export async function subscribeToThreadNewsletter({
     },
     update: {
       email,
+      ...(frequency ? { frequency } : {}),
     },
     create: {
       threadId,
       userId,
       email,
+      ...(frequency ? { frequency } : {}),
     },
   });
 }
