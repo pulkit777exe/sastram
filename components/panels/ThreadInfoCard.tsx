@@ -2,7 +2,10 @@
 
 import { useRef, useEffect, useSyncExternalStore, useCallback } from 'react';
 import type { ThreadWithFullContext } from '@/modules/threads';
+import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { TagChip } from '@/components/thread/tag-chip';
+
+const RESOLVABLE_QUESTION_TYPES = new Set(['factual', 'technical', 'comparison']);
 
 interface ThreadInfoCardProps {
   thread: ThreadWithFullContext;
@@ -48,6 +51,12 @@ function DigitGroup({ value }: { value: number }) {
 
 export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
   const now = useSyncExternalStore(subscribeToClock, getClockSnapshot, getClockSnapshot);
+  const threadDna = parseThreadDna(thread.threadDna);
+  // Resolution UI only applies to Q&A-shaped threads. Discussion-shaped
+  // threads (opinion/other) and threads not yet classified show nothing.
+  const showResolution = Boolean(
+    threadDna && RESOLVABLE_QUESTION_TYPES.has(threadDna.questionType)
+  );
   const lastVerifiedRef = thread.lastVerifiedAt ?? thread.updatedAt;
   const lastVerifiedDays = lastVerifiedRef
     ? Math.floor((now - new Date(lastVerifiedRef).getTime()) / (1000 * 60 * 60 * 24))
@@ -65,21 +74,25 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
           <DigitGroup value={thread._count.messages} />
         </div>
 
-        {thread.resolutionScore !== null && (
+        {showResolution && (
           <div className="mt-[4px] space-y-[2px]">
             <div className="flex items-center justify-between">
               <span className="text-[12px]">Resolution</span>
-              <div className="flex items-center gap-[6px]">
-                <div className="h-[4px] w-[60px] overflow-hidden rounded-full bg-(--bg)">
-                  <div
-                    className="h-full rounded-full bg-(--green)"
-                    style={{ width: `${thread.resolutionScore}%` }}
-                  />
+              {thread.resolutionScore !== null ? (
+                <div className="flex items-center gap-[6px]">
+                  <div className="h-[4px] w-[60px] overflow-hidden rounded-full bg-(--bg)">
+                    <div
+                      className="h-full rounded-full bg-(--green)"
+                      style={{ width: `${thread.resolutionScore}%` }}
+                    />
+                  </div>
+                  <DigitGroup value={thread.resolutionScore} />
                 </div>
-                <DigitGroup value={thread.resolutionScore} />
-              </div>
+              ) : (
+                <span className="text-[11px] text-muted-foreground/70">Not yet resolved</span>
+              )}
             </div>
-            {lastVerifiedDays !== null && lastVerifiedDays > 30 && (
+            {thread.resolutionScore !== null && lastVerifiedDays !== null && lastVerifiedDays > 30 && (
               <p className="text-[10px] text-muted-foreground/60 text-right">
                 Confidence aged — last verified {lastVerifiedDays > 90
                   ? `${Math.floor(lastVerifiedDays / 30)} months`
