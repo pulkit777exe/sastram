@@ -24,6 +24,8 @@ Canonical roles: category `bug | enhancement`; state
 | 7 Cold-start population | decision | ready-for-human | founder-level, not engineering |
 | 8 `prisma.poll.findUnique({ where: { threadId } })` typecheck error | bug | **RESOLVED 2026-07-20** | `getPollByThreadId` switched to `findFirst({ where: { message: { threadId } } })`; `pnpm typecheck` now clean |
 | 9 `thread-components.test.tsx:318` pinned-message render test fails | bug | **RESOLVED 2026-07-20** | test asserted `📌 Pinned Message` but component renders `Pinned Message` (icon, no emoji); corrected the assertion; test passes |
+| 10 Apply message-level polls migration | bug/blocker | ready-for-human | migration history drifted from live Neon DB; `migrate dev` demands destructive reset. Pending SQL written, apply after reconciliation | 
+| 11 `Appeal.userId` SetNull relation warning | bug | ready-for-human | schema fixed (userId nullable) + pending SQL; apply after history reconciliation (same blocker as Slice 10) |
 
 None are `bug` (no regression found in Phase 4). None `wontfix`. No `needs-info`
 (open questions would block an agent — none exist). New contributors: pick any
@@ -155,6 +157,31 @@ slice 1–5; slices 6–7 are owned by the founder.
   - [ ] `pending_20260720_message_level_polls.sql` applied; `polls.messageId` exists.
   - [ ] `prisma migrate dev` runs clean end-to-end.
   - [ ] A message-level poll posted via composer renders on its message (verified).
+
+## Slice 11 — `Appeal.userId` SetNull relation warning
+
+- **Type:** bug (pre-existing schema wart)
+- **Discovered:** 2026-07-20. Prisma warned:
+  `The onDelete referential action of a relation should not be set to SetNull
+  when a referenced field is required` — for `Appeal.user` (`AppealSubmitter`,
+  `fields: [userId]`, `onDelete: SetNull`).
+- **Root cause:** `Appeal.userId` was declared `String` (required / NOT NULL),
+  but the relation deletes the user with `SetNull` — a NOT NULL column cannot
+  accept NULL. All other `SetNull` relations in the schema
+  (Thread.createdBy, Message.senderId, Appeal.moderatorId, Report.reporterId,
+  UserBan.userId/bannedBy, ReadReceipt.lastReadMessageId) already had nullable
+  FK fields, so `Appeal.userId` was the only genuinely broken one.
+- **Fix applied (schema):** `Appeal.userId` changed to `String?`. `prisma generate`
+  now emits no SetNull warning; `pnpm typecheck` clean.
+- **DB change still required:** `ALTER TABLE "appeals" ALTER COLUMN "userId"
+  DROP NOT NULL;` — standalone SQL at
+  `prisma/migrations/pending_20260720_appeals_userid_nullable.sql`. NOT
+  auto-applied (same migration-history drift blocker as Slice 10).
+- **Blocked by:** same owner decision as Slice 10 (reconcile migration history
+  before applying). Not AFK-grabbable until then.
+- **Acceptance criteria:**
+  - [ ] `pending_20260720_appeals_userid_nullable.sql` applied.
+  - [ ] `prisma validate` / `prisma generate` emit zero warnings.
 
 ## Slice 9 — Fix `thread-components.test.tsx:318` pinned-message render test
 

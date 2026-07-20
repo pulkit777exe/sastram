@@ -423,7 +423,7 @@ model ModerationRule {
 model Appeal {
   id          String       @id @default(cuid())
   messageId   String
-  userId      String
+  userId      String?
   moderatorId String?
   status      AppealStatus @default(PENDING)
   reason      String
