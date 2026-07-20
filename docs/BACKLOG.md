@@ -22,8 +22,8 @@ Canonical roles: category `bug | enhancement`; state
 | 5 Daily-digest/query-warming cap | enhancement | ready-for-agent | code paths identified, AFK |
 | 6 Monetization / cap ceiling | decision | ready-for-human | founder-level, not engineering |
 | 7 Cold-start population | decision | ready-for-human | founder-level, not engineering |
-| 8 `prisma.poll.findUnique({ where: { threadId } })` typecheck error | bug | ready-for-agent | pre-existing, unrelated to current work, breaks `pnpm typecheck`; AFK |
-| 9 `thread-components.test.tsx:318` pinned-message render test fails | bug | ready-for-agent | pre-existing, unrelated; fails on fresh checkout; AFK |
+| 8 `prisma.poll.findUnique({ where: { threadId } })` typecheck error | bug | **RESOLVED 2026-07-20** | `getPollByThreadId` switched to `findFirst({ where: { message: { threadId } } })`; `pnpm typecheck` now clean |
+| 9 `thread-components.test.tsx:318` pinned-message render test fails | bug | **RESOLVED 2026-07-20** | test asserted `📌 Pinned Message` but component renders `Pinned Message` (icon, no emoji); corrected the assertion; test passes |
 
 None are `bug` (no regression found in Phase 4). None `wontfix`. No `needs-info`
 (open questions would block an agent — none exist). New contributors: pick any
@@ -127,6 +127,34 @@ slice 1–5; slices 6–7 are owned by the founder.
   - [ ] `pnpm typecheck` passes with zero errors (this is the only known failure).
   - [ ] `getPollByThreadId` returns the poll for a thread via a valid query.
   - [ ] Add/adjust a test if one covers poll-by-thread lookup.
+
+## Slice 10 — Apply message-level polls migration (blocked by migration-history drift)
+
+- **Type:** bug/blocker (pre-existing migration history out of sync with live DB)
+- **Discovered:** 2026-07-20 while completing the message-level polls feature.
+- **Symptom:** `prisma migrate dev` (even `--create-only`) refuses to generate the
+  polls migration. It reports the DB needs a **destructive reset** because the
+  committed history does not match the live Neon DB. Root causes:
+  1. The `20260712000200_phase_1_3_4_hardening_baseline` migration was previously
+     emitted with bare `STEP N of 4` prose lines that are NOT SQL comments — Postgres
+     fails to parse them (`syntax error at or near "STEP"`). This has been **fixed**
+     (the descriptive lines are now properly `--` commented) so the file is valid SQL,
+     but the DB was last synced via `prisma db push` (no history row), so migrate still
+     sees drift.
+  2. Schema drift: `user_bans` (FKs/column nullability), `users.deletedAt`,
+     `users.welcomeEmailSent` exist in schema but not reflected in applied history.
+- **What the polls feature needs (standalone, non-destructive SQL):**
+  `prisma/migrations/pending_20260720_message_level_polls.sql` — drops the unique
+  `polls_threadId_key`, adds `polls."messageId"` (nullable, unique) + FK to messages
+  (cascade). Review and apply manually after reconciling the history, or fold into the
+  reconciliation migration. **Do NOT run `migrate reset` on the live DB.**
+- **Blocked by:** owner decision on how to reconcile migration history (re-baseline vs
+  `migrate resolve` vs manual). Not AFK-grabbable until that decision is made.
+- **Acceptance criteria:**
+  - [ ] Migration history reconciled (no `migrate reset` against live data).
+  - [ ] `pending_20260720_message_level_polls.sql` applied; `polls.messageId` exists.
+  - [ ] `prisma migrate dev` runs clean end-to-end.
+  - [ ] A message-level poll posted via composer renders on its message (verified).
 
 ## Slice 9 — Fix `thread-components.test.tsx:318` pinned-message render test
 
