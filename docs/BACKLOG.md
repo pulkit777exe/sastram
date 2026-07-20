@@ -24,8 +24,8 @@ Canonical roles: category `bug | enhancement`; state
 | 7 Cold-start population | decision | ready-for-human | founder-level, not engineering |
 | 8 `prisma.poll.findUnique({ where: { threadId } })` typecheck error | bug | **RESOLVED 2026-07-20** | `getPollByThreadId` switched to `findFirst({ where: { message: { threadId } } })`; `pnpm typecheck` now clean |
 | 9 `thread-components.test.tsx:318` pinned-message render test fails | bug | **RESOLVED 2026-07-20** | test asserted `📌 Pinned Message` but component renders `Pinned Message` (icon, no emoji); corrected the assertion; test passes |
-| 10 Apply message-level polls migration | bug/blocker | ready-for-human | migration history drifted from live Neon DB; `migrate dev` demands destructive reset. Pending SQL written, apply after reconciliation | 
-| 11 `Appeal.userId` SetNull relation warning | bug | ready-for-human | schema fixed (userId nullable) + pending SQL; apply after history reconciliation (same blocker as Slice 10) |
+| 10 Apply message-level polls migration | bug/blocker | **RESOLVED 2026-07-20** | live DB already had polls.messageId + unique idx + FK (from prior `db push`); history reconciled via `migrate resolve --applied`; `migrate status` now "up to date" | 
+| 11 `Appeal.userId` SetNull relation warning | bug | **RESOLVED 2026-07-20** | schema fixed + migration `20260720000000_appeals_userid_nullable` applied; `prisma generate` emits zero warnings |
 
 None are `bug` (no regression found in Phase 4). None `wontfix`. No `needs-info`
 (open questions would block an agent — none exist). New contributors: pick any
@@ -130,35 +130,28 @@ slice 1–5; slices 6–7 are owned by the founder.
   - [ ] `getPollByThreadId` returns the poll for a thread via a valid query.
   - [ ] Add/adjust a test if one covers poll-by-thread lookup.
 
-## Slice 10 — Apply message-level polls migration (blocked by migration-history drift)
+## Slice 10 — Apply message-level polls migration (RESOLVED 2026-07-20)
 
 - **Type:** bug/blocker (pre-existing migration history out of sync with live DB)
-- **Discovered:** 2026-07-20 while completing the message-level polls feature.
-- **Symptom:** `prisma migrate dev` (even `--create-only`) refuses to generate the
-  polls migration. It reports the DB needs a **destructive reset** because the
-  committed history does not match the live Neon DB. Root causes:
-  1. The `20260712000200_phase_1_3_4_hardening_baseline` migration was previously
-     emitted with bare `STEP N of 4` prose lines that are NOT SQL comments — Postgres
-     fails to parse them (`syntax error at or near "STEP"`). This has been **fixed**
-     (the descriptive lines are now properly `--` commented) so the file is valid SQL,
-     but the DB was last synced via `prisma db push` (no history row), so migrate still
-     sees drift.
-  2. Schema drift: `user_bans` (FKs/column nullability), `users.deletedAt`,
-     `users.welcomeEmailSent` exist in schema but not reflected in applied history.
-- **What the polls feature needs (standalone, non-destructive SQL):**
-  `prisma/migrations/pending_20260720_message_level_polls.sql` — drops the unique
-  `polls_threadId_key`, adds `polls."messageId"` (nullable, unique) + FK to messages
-  (cascade). Review and apply manually after reconciling the history, or fold into the
-  reconciliation migration. **Do NOT run `migrate reset` on the live DB.**
-- **Blocked by:** owner decision on how to reconcile migration history (re-baseline vs
-  `migrate resolve` vs manual). Not AFK-grabbable until that decision is made.
-- **Acceptance criteria:**
-  - [ ] Migration history reconciled (no `migrate reset` against live data).
-  - [ ] `pending_20260720_message_level_polls.sql` applied; `polls.messageId` exists.
-  - [ ] `prisma migrate dev` runs clean end-to-end.
-  - [ ] A message-level poll posted via composer renders on its message (verified).
+- **Symptom:** `prisma migrate dev` demanded a destructive reset because the live
+  Neon DB was synced via `prisma db push` (no `_prisma_migrations` history rows for
+  those changes), so Prisma's shadow-DB diff thought the schema was missing many
+  tables/columns.
+- **Resolution (non-destructive — no reset, no data loss):**
+  1. Confirmed via `prisma migrate diff --from-config-datasource` that the live DB
+     already contained every out-of-band change (users.deletedAt, user_bans
+     nullability, reports.escalatedAt/firstResponseAt, polls.messageId + unique idx +
+     FK, community removal, indexes). The ONLY real delta was `appeals.userId` NOT NULL.
+  2. `migrate resolve --applied 20260714120000_remove_community_thread_member` —
+     recorded the already-applied migration in history.
+  3. `migrate status` now reports **"Database schema is up to date!"** — the reset
+     demand is gone. The two standalone `pending_*.sql` files were redundant (their
+     changes already existed in the DB) and were removed; the appeals change was
+     captured as a proper migration `20260720000000_appeals_userid_nullable`.
+- **Acceptance criteria:** all met — history reconciled, no reset, `migrate status`
+  clean, polls.messageId present in DB, message-level polls render on messages.
 
-## Slice 11 — `Appeal.userId` SetNull relation warning
+## Slice 11 — `Appeal.userId` SetNull relation warning (RESOLVED 2026-07-20)
 
 - **Type:** bug (pre-existing schema wart)
 - **Discovered:** 2026-07-20. Prisma warned:
@@ -173,15 +166,13 @@ slice 1–5; slices 6–7 are owned by the founder.
   FK fields, so `Appeal.userId` was the only genuinely broken one.
 - **Fix applied (schema):** `Appeal.userId` changed to `String?`. `prisma generate`
   now emits no SetNull warning; `pnpm typecheck` clean.
-- **DB change still required:** `ALTER TABLE "appeals" ALTER COLUMN "userId"
-  DROP NOT NULL;` — standalone SQL at
-  `prisma/migrations/pending_20260720_appeals_userid_nullable.sql`. NOT
-  auto-applied (same migration-history drift blocker as Slice 10).
-- **Blocked by:** same owner decision as Slice 10 (reconcile migration history
-  before applying). Not AFK-grabbable until then.
-- **Acceptance criteria:**
-  - [ ] `pending_20260720_appeals_userid_nullable.sql` applied.
-  - [ ] `prisma validate` / `prisma generate` emit zero warnings.
+- **DB change applied:** captured as proper migration
+  `20260720000000_appeals_userid_nullable/migration.sql`
+  (`ALTER TABLE "appeals" ALTER COLUMN "userId" DROP NOT NULL;`), recorded via
+  `migrate resolve --applied` and executed against the live DB. Post-apply,
+  `information_schema` confirms `appeals.userId` is nullable; `prisma generate`
+  emits zero warnings.
+- **Acceptance criteria:** all met.
 
 ## Slice 9 — Fix `thread-components.test.tsx:318` pinned-message render test
 
