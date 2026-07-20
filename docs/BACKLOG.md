@@ -154,7 +154,7 @@ they are not mistaken for closed. (See ARCHITECTURE-REPORT.md Critical Issues #1
 
 | # | Issue | Why out of scope | State |
 |---|-------|------------------|-------|
-| O1 | **No CSP / security headers** — no `headers()` in `next.config.ts`; no CSP, HSTS, X-Frame-Options, Permissions-Policy. | Not part of Phase 1 secrets/launch-blockers or Phase 3 cost work. | Open. Owner should decide header policy before broad public launch. |
+| O1 | **No CSP / security headers** — no `headers()` in `next.config.ts`; no CSP, HSTS, X-Frame-Options, Permissions-Policy. | Not part of Phase 1 secrets/launch-blockers or Phase 3 cost work. | **Founder-owned — NOT AFK-grabbable.** Requires an explicit header-policy decision (CSP directives, HSTS suitability, frame-ancestors) before implementation. Do not let a contributor pick this up unprompted. |
 | O2 | **WebSocket in-memory state** — thread channels / connections / typing indicators in `Map`s; multi-instance can't share. (Note: message *delivery* uses Redis pub/sub via `lib/infrastructure/redis-pubsub.ts`, so fan-out is multi-instance; per-connection subscription bookkeeping is the in-memory part.) | Not in Phase 1–5 scope; needs its own design decision (sticky sessions vs external store). | Open. Acceptable at single-instance / low-scale; revisit before horizontal scaling. |
 
 Neither O1 nor O2 was touched, fixed, or verified by the Phase 1–5 work. Treat
