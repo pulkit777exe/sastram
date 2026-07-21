@@ -12,8 +12,105 @@ import type {
   RawSearchResults,
   CrossRefResult,
   SynthesisResult,
+  QueryType,
+  Citation,
   AISearchResponse,
+  PhaseTimings,
 } from './types';
+import { validateCitations } from './citations';
+
+/**
+ * Provider-agnostic text generation with automatic failover.
+ *
+ * We prefer Gemini for the synthesis/classification/conflict/follow-up phases,
+ * but if the account is over quota (HTTP 429 / RESOURCE_EXHAUSTED) and the
+ * caller supplied an OpenAI key, we transparently fall back to OpenAI so the
+ * pipeline still completes (harness §5: not optional, but must degrade
+ * gracefully). Both providers are called via raw `fetch` to match the existing
+ * Exa/Tavily style and avoid pulling in an extra SDK.
+ */
+type GenOptions = {
+  geminiKey: string;
+  openaiKey?: string;
+  model: string;
+  jsonMode?: boolean;
+  signal?: AbortSignal;
+};
+
+function isQuotaError(err: unknown): boolean {
+  if (err instanceof Error && /quota|429|RESOURCE_EXHAUSTED/i.test(err.message)) return true;
+  if (err && typeof err === 'object' && 'status' in err) {
+    return (err as { status?: number }).status === 429;
+  }
+  return false;
+}
+
+async function callGeminiText(
+  geminiKey: string,
+  model: string,
+  prompt: string,
+  opts: { jsonMode?: boolean; signal?: AbortSignal }
+): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: geminiKey });
+  const result = await withRetry((signal) =>
+    ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: { abortSignal: signal ?? opts.signal, ...(opts.jsonMode ? { responseMimeType: 'application/json' } : {}) },
+    })
+  );
+  return (result.text ?? '').trim();
+}
+
+async function callOpenAIText(
+  openaiKey: string,
+  model: string,
+  prompt: string,
+  opts: { jsonMode?: boolean; signal?: AbortSignal }
+): Promise<string> {
+  const response = await withRetry(async (signal) => {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        ...(opts.jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      }),
+      signal: signal ?? opts.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`OpenAI ${res.status}: ${res.statusText}`);
+    }
+    return res.json() as Promise<{ choices?: { message?: { content?: string } }[] }>;
+  });
+  return (response.choices?.[0]?.message?.content ?? '').trim();
+}
+
+/**
+ * Generate text, preferring Gemini and falling back to OpenAI on quota errors.
+ * Returns the raw model text (caller is responsible for JSON parsing).
+ */
+export async function generateText(prompt: string, opts: GenOptions): Promise<string> {
+  try {
+    return await callGeminiText(opts.geminiKey, opts.model, prompt, {
+      jsonMode: opts.jsonMode,
+      signal: opts.signal,
+    });
+  } catch (err) {
+    if (opts.openaiKey && isQuotaError(err)) {
+      logger.warn('[ai-search] Gemini over quota, failing over to OpenAI', { error: err instanceof Error ? err.message : String(err) });
+      return callOpenAIText(opts.openaiKey, getEnv().OPENAI_MODEL, prompt, {
+        jsonMode: opts.jsonMode,
+        signal: opts.signal,
+      });
+    }
+    throw err;
+  }
+}
 
 
 export class AISearchError extends Error {
@@ -113,7 +210,7 @@ function isOutdated(publishedDate?: string): boolean {
   return new Date(publishedDate) < twoYearsAgo;
 }
 
-async function classifyQuery(query: string, geminiKey: string): Promise<QueryClassification> {
+async function classifyQuery(query: string, geminiKey: string, openaiKey?: string): Promise<QueryClassification> {
   const ai = new GoogleGenAI({ apiKey: geminiKey });
   const model = getEnv().GEMINI_LITE_MODEL;
 
@@ -135,14 +232,11 @@ Respond ONLY with valid JSON. No markdown, no code blocks, no explanation.
 Schema: { "type": string, "primaryDomain": string, "suggestedSources": string[], "searchTerms": string[], "isControversial": boolean }`;
 
   try {
-    const result = await withRetry((signal) =>
-      ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: { abortSignal: signal },
-      })
-    );
-    const text = (result.text ?? '').trim();
+    const text = await generateText(prompt, {
+      geminiKey,
+      openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
+      model,
+    });
     // Parse JSON, stripping any markdown code fences
     const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
     return JSON.parse(cleaned) as QueryClassification;
@@ -217,6 +311,7 @@ async function searchWithExa(
           confidence: tier === 1 ? 90 : tier === 2 ? 75 : tier === 3 ? 60 : 45,
           isOutdated: isOutdated(r.publishedDate),
           provider: 'exa' as const,
+          contentFetched: Boolean(r.text && r.text.trim().length > 0),
         };
       }
     );
@@ -289,6 +384,7 @@ async function searchWithTavily(
           confidence: Math.round((r.score || 0.5) * 100),
           isOutdated: isOutdated(r.published_date),
           provider: 'tavily' as const,
+          contentFetched: Boolean(r.content && r.content.trim().length > 0),
         };
       }
     );
@@ -327,7 +423,8 @@ async function searchSources(
 async function crossReference(
   rawResults: RawSearchResults,
   query: string,
-  geminiKey: string
+  geminiKey: string,
+  openaiKey?: string
 ): Promise<CrossRefResult> {
   const allSources = [...rawResults.exaSources, ...rawResults.tavilySources];
 
@@ -375,14 +472,11 @@ Return JSON: { "detected": boolean, "description": string, "sideA": string, "sid
 Only flag real factual conflicts, not opinion differences.
 No markdown, valid JSON only.`;
 
-      const result = await withRetry((signal) =>
-        ai.models.generateContent({
-          model,
-          contents: conflictPrompt,
-          config: { abortSignal: signal },
-        })
-      );
-      const text = (result.text ?? '').trim();
+      const text = await generateText(conflictPrompt, {
+        geminiKey,
+        openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
+        model,
+      });
       const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
       conflictData = JSON.parse(cleaned) as ConflictInfo;
     } catch (err) {
@@ -394,23 +488,97 @@ No markdown, valid JSON only.`;
 }
 
 
+interface StructuredSynthesis {
+  text: string;
+  citations: Citation[];
+  queryType: QueryType;
+  conflictData: ConflictInfo | null;
+}
+
+/**
+ * Parse Gemini's structured synthesis output, validating the expected shape.
+ * On any parse/validation failure, gracefully fall back to wrapping the raw
+ * text as a citation-less synthesis rather than crashing — consistent with the
+ * withRetry / graceful-degrade pattern used across this module.
+ */
+export function parseStructuredSynthesis(raw: string, sources: Source[]): StructuredSynthesis {
+  const cleaned = raw.replace(/```json\n?|```\n?/g, '').trim();
+
+  try {
+    const parsed = JSON.parse(cleaned) as Partial<StructuredSynthesis>;
+
+    if (typeof parsed.text !== 'string' || parsed.text.trim().length === 0) {
+      throw new Error('Missing or empty text field');
+    }
+
+    const rawCitations: Citation[] = Array.isArray(parsed.citations)
+      ? parsed.citations
+          .filter(
+            (c) =>
+              typeof c?.marker === 'number' &&
+              typeof c?.sourceId === 'string'
+          )
+          .map((c) => ({ marker: c.marker, sourceId: c.sourceId }))
+      : [];
+
+    const queryType: QueryType =
+      parsed.queryType === 'factual' ||
+      parsed.queryType === 'opinion' ||
+      parsed.queryType === 'technical' ||
+      parsed.queryType === 'comparison'
+        ? parsed.queryType
+        : 'technical';
+
+    // Harness §2: self-validate citations against the actual text + sources.
+    const { text, citations, overCitedSources } = validateCitations(
+      parsed.text,
+      rawCitations,
+      sources
+    );
+
+    if (overCitedSources > 0) {
+      logger.warn('[ai-search] Citation reuse over cap', { overCitedSources });
+    }
+
+    return {
+      text,
+      citations,
+      queryType,
+      conflictData: parsed.conflictData ?? null,
+    };
+  } catch (err) {
+    logger.warn('[ai-search] Structured synthesis parse failed, falling back to raw text', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      text: raw,
+      citations: [],
+      queryType: 'technical',
+      conflictData: null,
+    };
+  }
+}
+
 async function synthesize(
   query: string,
   sources: Source[],
   classification: QueryClassification,
   conflictData: ConflictInfo,
   geminiKey: string,
-  tavilyAnswer?: string
+  tavilyAnswer?: string,
+  openaiKey?: string
 ): Promise<SynthesisResult> {
   const ai = new GoogleGenAI({ apiKey: geminiKey });
   const model = getEnv().GEMINI_SEARCH_MODEL;
 
-  const sourcesText = sources
+  // Only feed sources whose full content was actually fetched (harness §8).
+  const citableSources = sources.filter((s) => s.contentFetched !== false);
+
+  const sourcesText = citableSources
     .slice(0, 8)
     .map(
       (s, i) =>
-        `SOURCE ${i + 1} [Tier ${s.tier}] [${s.domain}] [${s.publishedDate || 'unknown date'}]:
-${s.text.substring(0, 1000)}`
+        `SOURCE ${i + 1} [id=${s.id}] [Tier ${s.tier}] [${s.domain}] [${s.publishedDate || 'unknown date'}]:\n${s.text.substring(0, 1000)}`
     )
     .join('\n---\n');
 
@@ -424,59 +592,51 @@ ${tavilyAnswer ? `Quick pre-answer from Tavily: ${wrapUserContent(tavilyAnswer)}
 Sources (ranked by trust tier):
 ${wrapUserContent(sourcesText)}
 
-Generate a structured synthesis following these STRICT rules:
-1. Quick Answer: 2-3 sentences. Direct. No hedging.
-2. Community Consensus: What do most sources agree on? Use specific source references.
-3. Critical Points: Edge cases, warnings, gotchas. Things most answers miss.
-4. If query is 'comparison': add a Verdict section with clear recommendation.
-5. Mark any information from Tier 3-4 sources with [community] tag.
-6. Mark information from Tier 1 sources with [official] tag.
+Produce a synthesis and respond with ONLY valid JSON — no markdown, no code fences, no prose wrapper.
+Schema:
+{
+  "text": string,
+  "citations": [{ "marker": number, "sourceId": string }],
+  "queryType": "factual" | "opinion" | "technical" | "comparison",
+  "conflictData": null | { "detected": boolean, "description": string, "sideA": string, "sideB": string }
+}
 
-${conflictData.detected ? `NOTE: There is a detected conflict — ${conflictData.description}. Acknowledge this transparently.` : ''}
+STRICT rules:
+1. "text" is the answer prose with inline markers like [1], [2] placed IMMEDIATELY after the specific claim each supports. Each marker must correspond to a source by its [id=...] from the sources above.
+2. "citations" maps each numeric marker to the exact sourceId (use the id from SOURCE n above). Marker numbers must start at 1 and be contiguous.
+3. Every factual claim must carry an inline marker. If a claim is not supported by any source, do not invent a marker.
+4. Structure the prose: a 2-3 sentence Quick Answer, then Community Consensus, then Critical Points / gotchas.
+5. If query type is "comparison", include a Verdict section with a clear recommendation.
+6. Max 400 words total. Light markdown (bold, bullets) is allowed. No headers with #.
+7. Set "conflictData" to a detected conflict object only if sources genuinely contradict each other (not mere opinion differences); otherwise null.
+${conflictData.detected ? `NOTE: A conflict was already detected — ${conflictData.description}. Reflect it in conflictData and acknowledge it transparently in the prose.` : ''}
 
 IMPORTANT:
 - Do NOT hallucinate. Only state what sources explicitly say.
 - If sources conflict, acknowledge it — don't pick a side without evidence.
-- Freshness matters: prefer recent sources for fast-moving topics.
-- Max 400 words total.
-
-Return plain text with light markdown (bold, bullets only). No headers with #.`;
+- Freshness matters: prefer recent sources for fast-moving topics.`;
 
   try {
-    const result = await withRetry((signal) =>
-      ai.models.generateContent({
-        model,
-        contents: synthesisPrompt,
-        config: { abortSignal: signal },
-      })
-    );
-    const content = (result.text ?? '').trim();
+    const content = await generateText(synthesisPrompt, {
+      geminiKey,
+      openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
+      model,
+      jsonMode: true,
+    });
 
     if (!content) {
       throw new AISearchError('Synthesis produced no content from the model.', 502);
     }
 
-    // Calculate confidence score
-    let confidence = 50;
-    for (const s of sources.slice(0, 8)) {
-      if (s.tier === 1) confidence += 10;
-      else if (s.tier === 2) confidence += 5;
-    }
-    // Agreement bonus
-    if (!conflictData.detected && sources.length > 2) confidence += 5;
-    // Conflict penalty
-    if (conflictData.detected) confidence -= 10;
-    // Outdated penalty
-    if (sources.every((s) => s.isOutdated)) confidence -= 15;
-    // Cap
-    confidence = Math.min(98, Math.max(10, confidence));
+    const parsed = parseStructuredSynthesis(content, sources);
 
     return {
-      content,
-      confidence,
-      queryType: classification.type,
+      content: parsed.text,
+      text: parsed.text,
+      citations: parsed.citations,
+      queryType: parsed.queryType,
       sourceCount: sources.length,
-      conflictData,
+      conflictData: parsed.conflictData ?? conflictData,
       processingTimeMs: 0, // Calculated by caller
     };
   } catch (error) {
@@ -497,18 +657,76 @@ Return plain text with light markdown (bold, bullets only). No headers with #.`;
   }
 }
 
+/**
+ * Generate 3 scoped follow-up questions based on the Q&A pair. Used after
+ * synthesis completes so the client can offer refinement chips.
+ */
+async function generateFollowUps(
+  query: string,
+  synthesisText: string,
+  geminiKey: string,
+  openaiKey?: string
+): Promise<string[]> {
+  try {
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
+    const model = getEnv().GEMINI_LITE_MODEL;
+
+    const prompt = `Given this search query and its synthesized answer, propose exactly 3 scoped follow-up questions a developer would naturally ask next. Each should be specific, self-contained, and build on the prior answer.
+
+Query: "${query}"
+Answer: ${synthesisText.substring(0, 1500)}
+
+Respond ONLY with valid JSON: { "followUps": string[] } (exactly 3 strings).
+No markdown, no code fences.`;
+
+    const text = await generateText(prompt, {
+      geminiKey,
+      openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
+      model,
+      jsonMode: true,
+    });
+    const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
+    const parsed = JSON.parse(cleaned) as { followUps?: unknown };
+    if (Array.isArray(parsed.followUps)) {
+      const items = parsed.followUps
+        .filter((f): f is string => typeof f === 'string' && f.trim().length > 0)
+        .slice(0, 3);
+      if (items.length > 0) return items;
+    }
+    return [];
+  } catch (err) {
+    logger.warn('[ai-search] Follow-up generation failed, returning none', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+}
+
+
+export type AISearchPipelineResult = AISearchResponse & { followUps: string[]; timings?: PhaseTimings };
+
+function phaseProviderLabel(config: SearchConfig): string {
+  const parts: string[] = [];
+  if (config.exaMode) parts.push('exa');
+  if (config.searchMode !== 'instant') parts.push('tavily');
+  parts.push('gemini');
+  return parts.join('+');
+}
 
 export async function executeAISearch(
   query: string,
   config: SearchConfig,
-  keys: { exa: string; tavily: string; gemini: string }
-): Promise<AISearchResponse> {
+  keys: { exa: string; tavily: string; gemini: string; openai?: string }
+): Promise<AISearchPipelineResult> {
   const startTime = Date.now();
+  const t0 = Date.now();
 
   // Phase 1: Classify
-  const classification = await classifyQuery(query, keys.gemini);
+  const classification = await classifyQuery(query, keys.gemini, keys.openai);
+  const classifyMs = Date.now() - t0;
 
   // Phase 2: Search (skip Tavily if instant mode)
+  const t1 = Date.now();
   let rawResults: RawSearchResults;
   if (config.searchMode === 'instant') {
     const exaSources = await searchWithExa(query, classification, keys.exa, config);
@@ -516,36 +734,75 @@ export async function executeAISearch(
   } else {
     rawResults = await searchSources(query, classification, keys.exa, keys.tavily, config);
   }
+  const searchMs = Date.now() - t1;
 
   // Phase 3: Cross-reference
-  const crossRefResult = await crossReference(rawResults, query, keys.gemini);
+  const t2 = Date.now();
+  const crossRefResult = await crossReference(rawResults, query, keys.gemini, keys.openai);
+  const crossrefMs = Date.now() - t2;
+
+  const rankedSources = crossRefResult.rankedSources;
+
+  // Weak-results branch: not enough quality sources to synthesize confidently.
+  const qualitySourceCount = rankedSources.filter((s) => s.tier <= 3).length;
+  if (qualitySourceCount < 2) {
+    return {
+      synthesis: {
+        content: '',
+        queryType: classification.type,
+        sourceCount: rankedSources.length,
+        conflictData: crossRefResult.conflictData,
+        processingTimeMs: Date.now() - startTime,
+      },
+      sources: rankedSources,
+      phase: 'refine',
+      followUps: [],
+      timings: { classifyMs, searchMs, crossrefMs, synthesizeMs: 0, provider: phaseProviderLabel(config) },
+    };
+  }
 
   // Phase 4: Synthesize (skip if instant mode)
+  const t3 = Date.now();
   let synthesis: SynthesisResult;
   if (config.searchMode === 'instant') {
     synthesis = {
       content: rawResults.tavilyAnswer || 'Instant mode — showing raw results only.',
-      confidence: 50,
       queryType: classification.type,
-      sourceCount: crossRefResult.rankedSources.length,
+      sourceCount: rankedSources.length,
       conflictData: crossRefResult.conflictData,
       processingTimeMs: Date.now() - startTime,
     };
   } else {
     synthesis = await synthesize(
       query,
-      crossRefResult.rankedSources,
+      rankedSources,
       classification,
       crossRefResult.conflictData,
       keys.gemini,
-      rawResults.tavilyAnswer
+      rawResults.tavilyAnswer,
+      keys.openai
     );
     synthesis.processingTimeMs = Date.now() - startTime;
+  }
+  const synthesizeMs = Date.now() - t3;
+
+  // Phase 5: Follow-ups (only for full synthesis mode)
+  let followUps: string[] = [];
+  if (config.searchMode !== 'instant' && synthesis.text) {
+    followUps = await generateFollowUps(query, synthesis.text, keys.gemini, keys.openai);
   }
 
   return {
     synthesis,
-    sources: crossRefResult.rankedSources,
+    sources: rankedSources,
     phase: 'done',
+    followUps,
+    timings: {
+      classifyMs,
+      searchMs,
+      crossrefMs,
+      synthesizeMs,
+      provider: phaseProviderLabel(config),
+    },
   };
 }
