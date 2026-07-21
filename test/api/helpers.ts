@@ -10,10 +10,11 @@ export type MockRequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   body?: unknown;
   headers?: Record<string, string>;
+  signal?: AbortSignal;
 };
 
 export function mockRequest(url: string, options: MockRequestOptions = {}): NextRequest {
-  const { method = 'GET', body, headers = {} } = options;
+  const { method = 'GET', body, headers = {}, signal } = options;
 
   const allHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -25,12 +26,14 @@ export function mockRequest(url: string, options: MockRequestOptions = {}): Next
       method,
       headers: allHeaders,
       body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
     });
   }
 
   return new NextRequest(new URL(url, 'http://localhost:3000'), {
     method,
     headers: allHeaders,
+    ...(signal ? { signal } : {}),
   });
 }
 
