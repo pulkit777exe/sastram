@@ -60,6 +60,13 @@ const BootstrapContext = createContext<BootstrapContextValue | null>(null);
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
+// Extract nonce from headers for inline script integrity validation.
+// Extract nonce from response headers for inline script validation
+const getNonceFromHeader = (headerName: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  return document.querySelector('head meta[name="csp-nonce"]')?.getAttribute(headerName) || null;
+};
+
 export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   // --- notification state ---
   const [unreadNotificationCount, setUnreadNotificationCountRaw] = useState(0);

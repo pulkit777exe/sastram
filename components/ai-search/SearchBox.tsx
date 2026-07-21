@@ -213,11 +213,10 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               }`}
             >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <ArrowUp size={16} />
-              )}
+              {/* Loading indicator is owned by the PhaseTracker pill — the submit
+                  icon just returns to its muted/disabled idle state while a
+                  search is in flight, rather than spinning concurrently. */}
+              <ArrowUp size={16} />
             </button>
           </div>
         </div>

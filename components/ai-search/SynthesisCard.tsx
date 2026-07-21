@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState, useRef } from 'react';
 import { AlertTriangle, Sparkles } from 'lucide-react';
-import type { ConflictInfo } from '@/modules/ai-search/types';
+import type { ConflictInfo, Citation } from '@/modules/ai-search/types';
+import type { Source } from '@/modules/ai-search/types';
 
 interface SynthesisCardProps {
-  content: string;
-  conflictData?: ConflictInfo;
-  confidence: number;
+  text: string;
+  citations?: Citation[];
+  sources?: Source[];
+  conflictData?: ConflictInfo | null;
   sourceCount: number;
   queryType: 'factual' | 'opinion' | 'technical' | 'comparison';
+  onCiteClick?: (sourceId: string) => void;
+  isStreaming?: boolean;
 }
 
 const QUERY_TYPE_LABELS: Record<string, { label: string; color: string }> = {
@@ -31,61 +35,79 @@ const QUERY_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   },
 };
 
+interface Segment {
+  type: 'text' | 'cite';
+  value: string;
+  marker?: number;
+  sourceId?: string;
+}
+
+/** Parse prose with inline [n] markers into text + citation segments. */
+function parseSegments(text: string, citations: Citation[]): Segment[] {
+  const byMarker = new Map(citations.map((c) => [c.marker, c]));
+  const segments: Segment[] = [];
+  const regex = /\[(\d+)\]/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const marker = Number(match[1]);
+    const citation = byMarker.get(marker);
+    if (citation) {
+      if (match.index > lastIndex) {
+        segments.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+      }
+      segments.push({
+        type: 'cite',
+        value: `[${marker}]`,
+        marker,
+        sourceId: citation.sourceId,
+      });
+      lastIndex = regex.lastIndex;
+    }
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', value: text.slice(lastIndex) });
+  }
+
+  return segments;
+}
+
 export function SynthesisCard({
-  content,
+  text,
+  citations = [],
+  sources = [],
   conflictData,
-  confidence,
   sourceCount,
   queryType,
+  onCiteClick,
+  isStreaming = false,
 }: SynthesisCardProps) {
-  const [displayedContent, setDisplayedContent] = useState('');
-  const [isStreaming, setIsStreaming] = useState(Boolean(content));
   const containerRef = useRef<HTMLDivElement>(null);
-  const charIndex = useRef(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    charIndex.current = 0;
-    if (!content) return;
-
-    intervalRef.current = setInterval(() => {
-      if (charIndex.current >= content.length) {
-        setIsStreaming(false);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        return;
-      }
-      // Batch 3 chars for smoother streaming
-      const batch = content.substring(charIndex.current, charIndex.current + 3);
-      charIndex.current += 3;
-      setDisplayedContent((prev) => prev + batch);
-
-      // Auto-scroll
-      if (containerRef.current) {
-        containerRef.current.scrollTop = containerRef.current.scrollHeight;
-      }
-    }, 12);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [content]);
 
   const typeConfig = QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
+  const segments = parseSegments(text, citations);
 
-  // Handle empty content
-  if (!content) {
+  const handleCiteClick = (sourceId?: string) => {
+    if (sourceId && onCiteClick) onCiteClick(sourceId);
+  };
+
+  if (!text) {
     return (
       <div className="bg-card border border-border rounded-2xl p-5 text-center text-sm text-muted-foreground">
-        No synthesis available. Sai may have encountered an issue.
+        No synthesis available.
       </div>
     );
   }
 
+  const tierOf = (sourceId?: string) =>
+    sources.find((s) => s.id === sourceId)?.tier;
+
   return (
-    <div className="relative bg-card border border-border rounded-2xl overflow-hidden">
+    <div
+      className="relative bg-card border border-border rounded-2xl overflow-hidden"
+    >
       {/* Top shimmer line */}
       <div className="h-0.5 w-full bg-linear-to-r from-transparent via-foreground/20 to-transparent">
         {isStreaming && (
@@ -104,46 +126,46 @@ export function SynthesisCard({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Query type badge */}
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${typeConfig.color}`}>
             {typeConfig.label}
           </span>
-
-          {/* Confidence */}
-          <div className="flex items-center gap-1.5">
-            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{
-                  width: `${confidence}%`,
-                  backgroundColor:
-                    confidence > 70
-                      ? 'var(--color-foreground)'
-                      : confidence > 40
-                        ? 'var(--amber)'
-                        : 'var(--red)',
-                }}
-              />
-            </div>
-            <span className="text-[10px] text-muted-foreground font-medium tabular-nums">
-              {confidence}%
-            </span>
-          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div ref={containerRef} className="px-5 pb-4 max-h-[400px] overflow-y-auto">
+      {/* Content with inline citations */}
+      <div ref={containerRef} className="px-5 pb-4 max-h-[520px] overflow-y-auto">
         <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
-          {displayedContent}
+          {segments.map((seg, i) =>
+            seg.type === 'cite' ? (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleCiteClick(seg.sourceId)}
+                title={
+                  seg.sourceId
+                    ? `Source: ${sources.find((s) => s.id === seg.sourceId)?.domain ?? ''}`
+                    : undefined
+                }
+                className={`inline-flex items-center justify-center mx-0.5 w-4 h-4 align-text-bottom rounded-full text-[9px] font-semibold leading-none transition-colors ${
+                  seg.sourceId
+                    ? 'bg-foreground/10 text-foreground hover:bg-foreground hover:text-background'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {seg.marker}
+              </button>
+            ) : (
+              <span key={i}>{seg.value}</span>
+            )
+          )}
           {isStreaming && (
             <span className="inline-block w-0.5 h-4 bg-foreground/50 animate-pulse ml-0.5 align-text-bottom" />
           )}
         </div>
       </div>
 
-      {/* Conflict warning */}
-      {conflictData?.detected && !isStreaming && (
+      {/* Conflict warning — only when conflictData is non-null and detected */}
+      {conflictData?.detected && (
         <div className="mx-5 mb-4 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
           <div className="flex items-start gap-2">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />

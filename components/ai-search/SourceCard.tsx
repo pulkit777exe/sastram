@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 import { ExternalLink, AlertTriangle, Shield, Star, Globe, MessageCircle } from 'lucide-react';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 
 interface SourceCardProps {
+  id: string;
   title: string;
   url: string;
   source: string;
@@ -15,69 +16,70 @@ interface SourceCardProps {
   isOutdated?: boolean;
   provider: 'exa' | 'tavily';
   index: number;
+  highlighted?: boolean;
+  onSelect?: (id: string) => void;
+  isLowerQuality?: boolean;
 }
 
 const TIER_CONFIG = {
   1: {
-    label: 'T1',
-    color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    label: 'Official',
+    badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
     icon: Shield,
-    desc: 'Official',
   },
   2: {
-    label: 'T2',
-    color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+    label: 'Trusted',
+    badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
     icon: Star,
-    desc: 'Trusted',
   },
   3: {
-    label: 'T3',
-    color: 'bg-foreground/10 text-muted-foreground',
+    label: 'Community',
+    badge: 'bg-foreground/10 text-muted-foreground',
     icon: MessageCircle,
-    desc: 'Community',
   },
   4: {
-    label: 'T4',
-    color: 'bg-foreground/5 text-muted-foreground/60',
+    label: 'Blog',
+    badge: 'bg-foreground/5 text-muted-foreground/60',
     icon: Globe,
-    desc: 'Blog',
   },
 };
 
-export function SourceCard({
-  title,
-  url,
-  source,
-  snippet,
-  confidence,
-  tier,
-  publishedDate,
-  isOutdated,
-  provider,
-  index,
-}: SourceCardProps) {
-  const [animatedConfidence, setAnimatedConfidence] = useState(0);
+export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function SourceCard(
+  {
+    id,
+    title,
+    url,
+    source,
+    snippet,
+    tier,
+    publishedDate,
+    isOutdated,
+    provider,
+    index,
+    highlighted = false,
+    onSelect,
+    isLowerQuality = false,
+  },
+  ref
+) {
   const [isVisible, setIsVisible] = useState(false);
 
   const tierConfig = TIER_CONFIG[tier];
 
-  // Stagger entrance
   useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), index * 100);
+    const timer = setTimeout(() => setIsVisible(true), index * 60);
     return () => clearTimeout(timer);
   }, [index]);
 
-  // Animate confidence bar
-  useEffect(() => {
-    if (!isVisible) return;
-    const timer = setTimeout(() => setAnimatedConfidence(confidence), 100);
-    return () => clearTimeout(timer);
-  }, [isVisible, confidence]);
-
   return (
     <div
-      className={`bg-card border border-border rounded-xl p-4 transition-all duration-500 ease-out hover:border-foreground/20 hover:shadow-linear-sm group ${
+      ref={ref}
+      id={`source-${id}`}
+      onClick={() => onSelect?.(id)}
+      className={`bg-card border border-border rounded-xl p-4 transition-all duration-500 ease-out hover:border-foreground/20 hover:shadow-linear-sm group scroll-mt-4 cursor-pointer ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+      } ${highlighted ? 'ring-2 ring-foreground/40 border-foreground/40' : ''} ${
+        isLowerQuality ? 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50' : ''
       }`}
     >
       {/* Header */}
@@ -87,6 +89,7 @@ export function SourceCard({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="text-sm font-medium text-foreground hover:underline inline-flex items-center gap-1 group/link"
           >
             <span className="truncate">{title}</span>
@@ -106,10 +109,9 @@ export function SourceCard({
           </div>
         </div>
 
-        {/* Tier badge */}
+        {/* Tier badge — readable trust signal */}
         <span
-          className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${tierConfig.color}`}
-          title={tierConfig.desc}
+          className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${tierConfig.badge}`}
         >
           {tierConfig.label}
         </span>
@@ -120,7 +122,7 @@ export function SourceCard({
 
       {/* Outdated warning */}
       {isOutdated && (
-        <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400 mb-2">
+        <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400">
           <AlertTriangle size={10} />
           <span>
             Content from {publishedDate ? <TimeAgo date={publishedDate} /> : 'unknown date'} — may
@@ -128,27 +130,6 @@ export function SourceCard({
           </span>
         </div>
       )}
-
-      {/* Confidence bar */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-600 ease-out"
-            style={{
-              width: `${animatedConfidence}%`,
-              backgroundColor:
-                confidence > 70
-                  ? 'var(--color-foreground)'
-                  : confidence > 40
-                    ? 'var(--amber)'
-                    : 'var(--red)',
-            }}
-          />
-        </div>
-        <span className="text-[10px] text-muted-foreground font-medium tabular-nums">
-          {confidence}%
-        </span>
-      </div>
     </div>
   );
-}
+});
