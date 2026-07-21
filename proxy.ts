@@ -48,6 +48,7 @@ function buildCsp(nonce: string): string {
     // Nonce-based script-src: drop 'unsafe-inline' so injected scripts without the
     // per-request nonce are blocked (mitigates XSS). Next.js tags its own inline
     // framework scripts with this nonce automatically.
+    `script-src-elem 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
     `script-src 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https: http:",
