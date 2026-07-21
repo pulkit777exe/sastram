@@ -1,5 +1,12 @@
 export { executeAISearch } from './service';
+export type { AISearchPipelineResult } from './service';
 export { getCachedResult, cacheResult } from './cache';
+export {
+  persistSearchSession,
+  listUserSearchSessions,
+  getSearchSession,
+} from './repository';
+export type { PersistedSession } from './repository';
 export { prewarmFollowUpQueries } from './query-warming';
 export type {
   SearchConfig,
@@ -9,4 +16,6 @@ export type {
   SynthesisResult,
   AISearchResponse,
   PastSearch,
+  Citation,
+  QueryType,
 } from './types';

@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import { logger } from '@/lib/infrastructure/logger';
 import type { AISearchResponse } from './types';
+import type { AISearchPipelineResult } from './service';
 
 function normalizeQuery(query: string): string {
   return query
@@ -68,7 +69,7 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
  */
 export async function cacheResult(
   query: string,
-  result: AISearchResponse,
+  result: AISearchPipelineResult,
   queryType: string
 ): Promise<void> {
   const hash = hashQuery(query);
@@ -109,7 +110,9 @@ export async function cacheResult(
       data: {
         sessionId: anonymousSession.id,
         queryHash: hash,
-        synthesis: JSON.stringify(result),
+        synthesis: result.synthesis.text || result.synthesis.content || JSON.stringify(result.synthesis),
+        citations: (result.synthesis.citations ?? []) as unknown as Prisma.InputJsonValue,
+        followUps: (result.followUps ?? []) as unknown as Prisma.InputJsonValue,
         expiresAt,
         sourceCount: result.sources?.length || 0,
         conflictFound: false,
