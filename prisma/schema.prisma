@@ -586,17 +586,31 @@ model AiSearchSession {
   query           String   @db.Text
   queryHash       String // sha256 of normalized query for dedup
   queryType       String? // factual | opinion | technical | comparison
+  title           String? // short human title for sidebar (generated at done time)
+  parentSessionId String? // threading: follow-up child points at its parent
   cacheHit        Boolean  @default(false)
   processingMs    Int?
+  // Phase timing metadata (cheap to capture at write time; enables "why slow" diagnostics)
+  classifyMs   Int?
+  searchMs     Int?
+  crossrefMs   Int?
+  synthesizeMs Int?
+  provider     String? // "exa+tavily+gemini" etc.
+  tokenCostUsd Float? // per-session cost estimate
+  deletedAt    DateTime? // soft-delete for user-initiated "remove from history"
   createdAt       DateTime @default(now())
   lastPrewarmedAt DateTime?
 
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  results AiSearchResult[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results         AiSearchResult[]
+  parentSession   AiSearchSession?  @relation("SessionThread", fields: [parentSessionId], references: [id], onDelete: Cascade)
+  childSessions   AiSearchSession[] @relation("SessionThread")
 
   @@index([userId])
   @@index([queryHash])
+  @@index([parentSessionId])
   @@index([createdAt])
+  @@index([deletedAt])
   @@map("ai_search_sessions")
 }
 
@@ -605,12 +619,15 @@ model AiSearchResult {
   id            String   @id @default(cuid())
   sessionId     String
   queryHash     String
-  synthesis     String   @db.Text
+  // Full structured synthesis (hard requirement per harness §4) — never store only plain text.
+  synthesis     String   @db.Text // rendered answer prose with inline [n] markers
+  citations     Json // Citation[] — marker -> sourceId, renumbered + deduped
+  followUps     Json // string[] — scoped follow-up questions
+  conflictData  Json?
   confidence    Int
   sourceCount   Int
   conflictFound Boolean  @default(false)
-  conflictData  Json?
-  sources       Json // Source[] — title, url, domain, tier, confidence
+  sources       Json // Source[] — title, url, domain, tier, confidence, contentFetched
   expiresAt     DateTime // TTL varies by query type
   hitCount      Int      @default(0)
   createdAt     DateTime @default(now())

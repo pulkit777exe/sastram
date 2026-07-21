@@ -25,6 +25,18 @@ export interface Source {
   confidence: number;
   isOutdated: boolean;
   provider: 'exa' | 'tavily';
+  /** Whether the source's full text was actually retrieved (vs. only a search-API snippet). Synthesis must only cite sources with contentFetched=true. */
+  contentFetched: boolean;
+}
+
+/** Per-phase timing + provider metadata captured at write time (harness §10). */
+export interface PhaseTimings {
+  classifyMs?: number;
+  searchMs?: number;
+  crossrefMs?: number;
+  synthesizeMs?: number;
+  provider?: string;
+  tokenCostUsd?: number;
 }
 
 export interface ConflictInfo {
@@ -34,21 +46,32 @@ export interface ConflictInfo {
   sideB: string;
 }
 
+export type QueryType = 'factual' | 'opinion' | 'technical' | 'comparison';
+
+export interface Citation {
+  marker: number;
+  sourceId: string;
+}
+
 export interface SynthesisResult {
   content: string;
-  confidence: number;
-  queryType: QueryClassification['type'];
+  confidence?: number;
+  queryType: QueryType;
   sourceCount: number;
   conflictData: ConflictInfo;
   processingTimeMs: number;
   cachedAt?: string;
+  /** New citable synthesis shape. `text` carries inline [n] markers. */
+  text?: string;
+  citations?: Citation[];
 }
 
 export interface AISearchResponse {
   synthesis: SynthesisResult;
   sources: Source[];
-  phase: 'classify' | 'search' | 'crossref' | 'synthesize' | 'done';
+  phase: 'classify' | 'search' | 'crossref' | 'synthesize' | 'done' | 'refine';
   error?: string;
+  timings?: PhaseTimings;
 }
 
 export interface PastSearch {
