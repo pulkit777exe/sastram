@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from '
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp, Pin } from 'lucide-react';
+import { ThumbsUp, Pin, Loader2 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
 import { toggleReaction } from '@/modules/reactions/actions';
@@ -364,8 +364,13 @@ const MessageRow = React.memo(function MessageRow({
               <div className="text-foreground/85 text-[13px] leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {isAiNotConfigured(message.content) ? (
                   <AiNotConfiguredNotice />
-                ) : (
+                ) : message.content ? (
                   renderContent(message.content)
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground/60 text-xs">
+                    <Loader2 size={12} className="animate-spin" />
+                    Generating…
+                  </div>
                 )}
               </div>
             </div>
