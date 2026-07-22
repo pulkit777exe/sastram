@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Search, Code2, Trash2, CornerDownRight } from 'lucide-react';
-import { TimeAgo } from '@/components/ui/TimeAgo';
+import { Plus, Search, Code2, Trash2, CornerDownRight, RefreshCw, Check } from 'lucide-react';
 import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 
 export interface HistoryItem {
@@ -27,6 +26,9 @@ interface SidebarProps {
   collapsed: boolean;
   onOpenApiKeys: () => void;
   hasApiKeys: boolean;
+  /** Currently open session, so the matching row can show it's selected. */
+  currentSessionId?: string;
+  user?: { name?: string | null; email?: string | null; image?: string | null } | null;
 }
 
 function label(item: HistoryItem): string {
@@ -42,12 +44,16 @@ export function Sidebar({
   collapsed,
   onOpenApiKeys,
   hasApiKeys,
+  currentSessionId,
+  user,
 }: SidebarProps) {
   const [searches, setSearches] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  // Two-step delete: first click arms it, second click (within 3s) confirms.
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const pendingDeleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listEndRef = useRef<HTMLDivElement | null>(null);
 
   const loadHistory = useCallback(async (reset: boolean) => {
@@ -94,9 +100,24 @@ export function Sidebar({
     loadHistory(true);
   }, [collapsed, loadHistory]);
 
-  const handleDelete = useCallback(
+  useEffect(() => {
+    return () => {
+      if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current);
+    };
+  }, []);
+
+  const armDelete = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current);
+    setPendingDeleteId(id);
+    pendingDeleteTimer.current = setTimeout(() => setPendingDeleteId(null), 3000);
+  }, []);
+
+  const confirmDelete = useCallback(
     async (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
+      if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current);
+      setPendingDeleteId(null);
       try {
         const res = await fetch(`/api/ai/search-history?id=${encodeURIComponent(id)}`, {
           method: 'DELETE',
@@ -111,38 +132,71 @@ export function Sidebar({
     []
   );
 
-  const renderItem = (item: HistoryItem, depth: number) => (
-    <div
-      key={item.id}
-      className="group relative"
-      onMouseEnter={() => setHoveredId(item.id)}
-      onMouseLeave={() => setHoveredId(null)}
-    >
-      <button
-        onClick={() => onSelectSession(item)}
-        className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors truncate flex items-center gap-1.5"
-        style={{ paddingLeft: depth > 0 ? 22 : 12 }}
-      >
-        {depth > 0 && <CornerDownRight size={11} className="shrink-0 text-muted-foreground/40" />}
-        <span className="truncate block flex-1">{label(item)}</span>
-      </button>
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="text-[10px] text-muted-foreground/50 pointer-events-none">{item.sourceCount} src</span>
-        <button
-          onClick={(e) => handleDelete(item.id, e)}
-          className="p-0.5 text-muted-foreground/50 hover:text-destructive transition-colors"
-          aria-label="Remove from history"
-        >
-          <Trash2 size={11} />
-        </button>
-      </span>
-    </div>
+  const handleDeleteClick = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      if (pendingDeleteId === id) {
+        confirmDelete(id, e);
+      } else {
+        armDelete(id, e);
+      }
+    },
+    [pendingDeleteId, armDelete, confirmDelete]
   );
+
+  const renderItem = (item: HistoryItem, depth: number) => {
+    const isSelected = item.id === currentSessionId;
+    const isPendingDelete = pendingDeleteId === item.id;
+
+    return (
+      <div key={item.id} className="group relative">
+        {isSelected && (
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-foreground" />
+        )}
+        <button
+          onClick={() => onSelectSession(item)}
+          aria-current={isSelected ? 'true' : undefined}
+          className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors truncate flex items-center gap-1.5 ${
+            isSelected
+              ? 'bg-foreground/10 text-foreground font-medium'
+              : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+          }`}
+          style={{ paddingLeft: depth > 0 ? 22 : 12 }}
+        >
+          {depth > 0 && <CornerDownRight size={11} className="shrink-0 text-muted-foreground/40" />}
+          <span className="truncate block flex-1">{label(item)}</span>
+        </button>
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {!isPendingDelete && (
+            <span className="text-[10px] text-muted-foreground/50 pointer-events-none">
+              {item.sourceCount} src
+            </span>
+          )}
+          <button
+            onClick={(e) => handleDeleteClick(item.id, e)}
+            className={`p-0.5 transition-colors rounded ${
+              isPendingDelete
+                ? 'text-destructive bg-destructive/10 opacity-100'
+                : 'text-muted-foreground/50 hover:text-destructive'
+            }`}
+            aria-label={isPendingDelete ? 'Confirm delete' : 'Remove from history'}
+            title={isPendingDelete ? 'Click again to delete' : 'Remove from history'}
+          >
+            {isPendingDelete ? <Check size={11} /> : <Trash2 size={11} />}
+          </button>
+        </span>
+      </div>
+    );
+  };
+
+  const userInitial =
+    user?.name?.trim()?.[0]?.toUpperCase() ||
+    user?.email?.trim()?.[0]?.toUpperCase() ||
+    '?';
 
   return (
     <div
       className={`relative h-full flex flex-col bg-card border border-border rounded-2xl transition-all duration-250 ease-in-out overflow-hidden ${
-        collapsed ? 'w-0 border-0 p-0' : 'w-[220px]'
+        collapsed ? 'w-0 border-0 p-0' : 'w-55'
       }`}
     >
       {!collapsed && (
@@ -161,14 +215,6 @@ export function Sidebar({
             </button>
 
             <button
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground"
-              onClick={() => loadHistory(true)}
-            >
-              <Search size={14} />
-              {loading ? 'Loading…' : 'Past Searches'}
-            </button>
-
-            <button
               onClick={onOpenApiKeys}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
             >
@@ -180,8 +226,25 @@ export function Sidebar({
 
           <div className="mx-3 my-3 h-px bg-border" />
 
+          {/* History section header — label is static, refresh is its own affordance */}
+          <div className="px-3 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              <Search size={11} />
+              History
+            </span>
+            <button
+              onClick={() => loadHistory(true)}
+              disabled={loading}
+              aria-label="Refresh search history"
+              title="Refresh"
+              className="p-1 text-muted-foreground/60 hover:text-foreground rounded-md hover:bg-foreground/5 transition-colors disabled:opacity-40"
+            >
+              <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
           <div
-            className="flex-1 overflow-y-auto px-2"
+            className="flex-1 overflow-y-auto px-2 mt-1"
             onScroll={(e) => {
               const el = e.currentTarget;
               if (
@@ -219,11 +282,22 @@ export function Sidebar({
 
           <div className="px-3 pb-3 pt-2 border-t border-border mt-auto">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center text-[10px] font-bold text-foreground">
-                S
-              </div>
+              {user?.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.image}
+                  alt=""
+                  className="w-7 h-7 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center text-[10px] font-bold text-foreground shrink-0">
+                  {userInitial}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground truncate">Sastram User</p>
+                <p className="text-xs font-medium text-foreground truncate">
+                  {user?.name || user?.email || 'Guest'}
+                </p>
                 <p className="text-[10px] text-muted-foreground truncate">Personal workspace</p>
               </div>
             </div>

@@ -15,6 +15,15 @@ import { searchUsersAction } from '@/modules/search/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2 } from 'lucide-react';
 
+// TODO: import this from '@/modules/search/types' if a shared type already
+// exists there — this is the shape actually consumed below, replacing `any[]`.
+interface SearchUser {
+  id: string;
+  name?: string | null;
+  email: string;
+  image?: string | null;
+}
+
 export function SearchDialog({
   open,
   onOpenChange,
@@ -24,19 +33,27 @@ export function SearchDialog({
 }) {
   const router = useRouter();
   const [query, setQuery] = React.useState('');
-  const [data, setData] = React.useState<any[]>([]);
+  const [data, setData] = React.useState<SearchUser[]>([]);
   const [loading, setLoading] = React.useState(false);
+  // Guards against out-of-order responses: only the response matching the
+  // latest fired request is allowed to update state. Previously a fast typer
+  // could have an earlier (slower) request resolve after a newer one and
+  // silently overwrite fresher results.
+  const latestRequestId = React.useRef(0);
 
   React.useEffect(() => {
+    const requestId = ++latestRequestId.current;
+
     const timer = setTimeout(async () => {
       if (query.length === 0) {
-        setData([]);
+        if (requestId === latestRequestId.current) setData([]);
         return;
       }
 
       setLoading(true);
       try {
         const res = await searchUsersAction(query, 5);
+        if (requestId !== latestRequestId.current) return; // stale response, discard
 
         if (res?.data) {
           setData(res.data.users);
@@ -47,10 +64,11 @@ export function SearchDialog({
           }
         }
       } catch (error) {
+        if (requestId !== latestRequestId.current) return;
         clientLogger.error('SearchDialog', 'User search error', error);
         setData([]);
       } finally {
-        setLoading(false);
+        if (requestId === latestRequestId.current) setLoading(false);
       }
     }, 300);
 
@@ -90,7 +108,7 @@ export function SearchDialog({
               >
                 <div className="flex items-center gap-2 w-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.image} />
+                    <AvatarImage src={user.image ?? undefined} />
                     <AvatarFallback>
                       {(user.name?.[0] || user.email[0]).toUpperCase()}
                     </AvatarFallback>

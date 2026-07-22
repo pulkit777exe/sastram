@@ -4,7 +4,15 @@ import { useState, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toasts } from '@/lib/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { KeyRound, ArrowRight, PanelLeftClose, PanelLeftOpen, ChevronDown } from 'lucide-react';
+import {
+  KeyRound,
+  ArrowRight,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ChevronDown,
+  Clock,
+  AlertCircle,
+} from 'lucide-react';
 import { SearchBox } from './SearchBox';
 import { PhaseTracker, type SSEPhase } from './PhaseTracker';
 import { SynthesisCard } from './SynthesisCard';
@@ -46,7 +54,11 @@ interface StreamState {
   suggestion?: string;
 }
 
-export function SearchPage() {
+interface SearchPageProps {
+  user?: { name?: string | null; email?: string | null; image?: string | null } | null;
+}
+
+export function SearchPage({ user }: SearchPageProps) {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') ?? '';
 
@@ -386,6 +398,8 @@ export function SearchPage() {
         collapsed={sidebarCollapsed}
         onOpenApiKeys={() => setShowApiKeys(true)}
         hasApiKeys={hasKeys}
+        currentSessionId={currentSessionId}
+        user={user}
       />
 
       <div className="flex-1 min-w-0 space-y-8">
@@ -528,11 +542,14 @@ export function SearchPage() {
             </div>
             )}
 
-            {/* Blocked (quota/cap) — distinct from error (harness §9) */}
+            {/* Blocked (quota/cap) — distinct from error (harness §9).
+                Uses lucide Clock rather than a raw emoji glyph, matching the
+                same iconography language used everywhere else in this feature
+                (Shield/Star/Globe on SourceCard, AlertTriangle on SynthesisCard). */}
             {appState === 'blocked' && (
               <div className="max-w-3xl flex flex-col items-center pt-8 pb-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <span className="text-muted-foreground text-xl">⏳</span>
+                  <Clock size={20} className="text-muted-foreground" />
                 </div>
                 <h2 className="text-lg font-semibold mb-2">Search limit reached</h2>
                 <p className="text-sm text-muted-foreground max-w-md mb-6">{errorMessage}</p>
@@ -540,11 +557,11 @@ export function SearchPage() {
               </div>
             )}
 
-            {/* Error */}
+            {/* Error — same treatment: lucide AlertCircle instead of a literal "!" character. */}
             {appState === 'error' && (
               <div className="max-w-3xl flex flex-col items-center pt-8 pb-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-                  <span className="text-destructive text-xl">!</span>
+                  <AlertCircle size={20} className="text-destructive" />
                 </div>
                 <h2 className="text-lg font-semibold mb-2">
                   {isOffline ? 'You’re offline' : 'Something went wrong'}

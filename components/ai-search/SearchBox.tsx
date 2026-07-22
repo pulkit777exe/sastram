@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Search, Zap, TableProperties, ArrowUp, ChevronDown } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Search, Zap, TableProperties, ArrowUp } from 'lucide-react';
 import type { SearchConfig } from '@/modules/ai-search/types';
+import { ModeDropdown } from './ModeDropdown';
 
 interface SearchBoxProps {
   onSearch: (query: string, config: SearchConfig) => void;
@@ -37,27 +38,11 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
   const [exaMode, setExaMode] = useState<SearchConfig['exaMode']>('agentic');
   const [tavilyMode, setTavilyMode] = useState<SearchConfig['tavilyMode']>('search');
   const [sourceFilter, setSourceFilter] = useState<SearchConfig['sourceFilter']>('all');
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdowns on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setActiveDropdown(null);
-      }
-    }
-    if (activeDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [activeDropdown]);
 
   const handleSubmit = useCallback(() => {
     const trimmed = query.trim();
     if (!trimmed || trimmed.length < 3 || isLoading) return;
-    setActiveDropdown(null);
     onSearch(trimmed, { exaMode, tavilyMode, sourceFilter, searchMode });
   }, [query, exaMode, tavilyMode, sourceFilter, searchMode, isLoading, onSearch]);
 
@@ -119,7 +104,7 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
         />
 
         {/* Bottom bar */}
-        <div className="flex items-center justify-between px-3 pb-3" ref={dropdownRef}>
+        <div className="flex items-center justify-between px-3 pb-3">
           {/* Left: Mode toggles */}
           <div className="flex items-center gap-1">
             {modeButtons.map(({ mode, icon: Icon, label }) => (
@@ -127,6 +112,7 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
                 key={mode}
                 onClick={() => setSearchMode(mode)}
                 title={label}
+                aria-pressed={searchMode === mode}
                 className={`p-1.5 rounded-lg transition-all duration-200 cursor-pointer ${
                   searchMode === mode
                     ? 'bg-foreground/10 text-foreground'
@@ -140,67 +126,13 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
 
           {/* Right: Dropdowns + Submit */}
           <div className="flex items-center gap-2">
-            {/* Exa mode dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setActiveDropdown(activeDropdown === 'exa' ? null : 'exa')}
-                className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1 rounded-md hover:bg-foreground/5 cursor-pointer"
-              >
-                Exa: {EXA_MODES.find((m) => m.value === exaMode)?.label}
-                <ChevronDown size={12} />
-              </button>
-              {activeDropdown === 'exa' && (
-                <div className="absolute bottom-full mb-1 right-0 bg-popover border border-border rounded-lg shadow-linear-lg py-1 z-50 min-w-[120px]">
-                  {EXA_MODES.map((m) => (
-                    <button
-                      key={m.value}
-                      onClick={() => {
-                        setExaMode(m.value);
-                        setActiveDropdown(null);
-                      }}
-                      className={`w-full text-left px-3 py-1.5 text-xs transition-colors cursor-pointer ${
-                        exaMode === m.value
-                          ? 'bg-accent text-foreground'
-                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Tavily mode dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setActiveDropdown(activeDropdown === 'tavily' ? null : 'tavily')}
-                className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1 rounded-md hover:bg-foreground/5 cursor-pointer"
-              >
-                Tavily: {TAVILY_MODES.find((m) => m.value === tavilyMode)?.label}
-                <ChevronDown size={12} />
-              </button>
-              {activeDropdown === 'tavily' && (
-                <div className="absolute bottom-full mb-1 right-0 bg-popover border border-border rounded-lg shadow-linear-lg py-1 z-50 min-w-[120px]">
-                  {TAVILY_MODES.map((m) => (
-                    <button
-                      key={m.value}
-                      onClick={() => {
-                        setTavilyMode(m.value);
-                        setActiveDropdown(null);
-                      }}
-                      className={`w-full text-left px-3 py-1.5 text-xs transition-colors cursor-pointer ${
-                        tavilyMode === m.value
-                          ? 'bg-accent text-foreground'
-                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ModeDropdown label="Exa" value={exaMode} options={EXA_MODES} onChange={setExaMode} />
+            <ModeDropdown
+              label="Tavily"
+              value={tavilyMode}
+              options={TAVILY_MODES}
+              onChange={setTavilyMode}
+            />
 
             {/* Submit button */}
             <button

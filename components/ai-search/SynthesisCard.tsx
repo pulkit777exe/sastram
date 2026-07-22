@@ -133,7 +133,7 @@ export function SynthesisCard({
       </div>
 
       {/* Content with inline citations */}
-      <div ref={containerRef} className="px-5 pb-4 max-h-[520px] overflow-y-auto">
+      <div ref={containerRef} className="px-5 pb-4 max-h-130 overflow-y-auto">
         <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
           {segments.map((seg, i) =>
             seg.type === 'cite' ? (
