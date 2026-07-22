@@ -19,16 +19,6 @@ import type {
 } from './types';
 import { validateCitations } from './citations';
 
-/**
- * Provider-agnostic text generation with automatic failover.
- *
- * We prefer Gemini for the synthesis/classification/conflict/follow-up phases,
- * but if the account is over quota (HTTP 429 / RESOURCE_EXHAUSTED) and the
- * caller supplied an OpenAI key, we transparently fall back to OpenAI so the
- * pipeline still completes (harness §5: not optional, but must degrade
- * gracefully). Both providers are called via raw `fetch` to match the existing
- * Exa/Tavily style and avoid pulling in an extra SDK.
- */
 type GenOptions = {
   geminiKey: string;
   openaiKey?: string;
@@ -90,10 +80,6 @@ async function callOpenAIText(
   return (response.choices?.[0]?.message?.content ?? '').trim();
 }
 
-/**
- * Generate text, preferring Gemini and falling back to OpenAI on quota errors.
- * Returns the raw model text (caller is responsible for JSON parsing).
- */
 export async function generateText(prompt: string, opts: GenOptions): Promise<string> {
   try {
     return await callGeminiText(opts.geminiKey, opts.model, prompt, {
@@ -154,9 +140,46 @@ const TIER_2_DOMAINS = [
   'serverfault.com',
   'superuser.com',
   'askubuntu.com',
+  // Major wire services / broadsheets
+  'reuters.com',
+  'apnews.com',
+  'bbc.com',
+  'nytimes.com',
+  'washingtonpost.com',
+  'theguardian.com',
+  'economist.com',
+  'ft.com',
+  'wsj.com',
+  'apmreports.org',
+  // India-focused quality outlets
+  'indianexpress.com',
+  'thehindu.com',
+  'livemint.com',
+  'theprint.in',
+  'scroll.in',
+  'thewire.in',
+  'newslaundry.com',
+  'altnews.in',
+  'factchecker.in',
 ];
 
-const TIER_3_DOMAINS = ['reddit.com', 'quora.com', 'lobste.rs'];
+const TIER_3_DOMAINS = [
+  'reddit.com',
+  'quora.com',
+  'lobste.rs',
+  // Broadcast / long-form
+  'dw.com',
+  'aljazeera.com',
+  'npr.org',
+  'pbs.org',
+  'youtube.com',
+  // India regional / niche
+  'newsclick.in',
+  'counterview.net',
+  'sundayguardianlive.com',
+  'genocidewatch.com',
+  'thepolisproject.com',
+];
 
 
 function getIncludeDomains(filter: SearchConfig['sourceFilter']): string[] | undefined {
@@ -183,7 +206,7 @@ function getIncludeDomains(filter: SearchConfig['sourceFilter']): string[] | und
       ];
     case 'all':
     default:
-      return undefined; // no filter
+      return undefined;
   }
 }
 
@@ -211,7 +234,6 @@ function isOutdated(publishedDate?: string): boolean {
 }
 
 async function classifyQuery(query: string, geminiKey: string, openaiKey?: string): Promise<QueryClassification> {
-  const ai = new GoogleGenAI({ apiKey: geminiKey });
   const model = getEnv().GEMINI_LITE_MODEL;
 
   const prompt = `Classify this forum search query into ONE category:
@@ -237,11 +259,13 @@ Schema: { "type": string, "primaryDomain": string, "suggestedSources": string[],
       openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
       model,
     });
-    // Parse JSON, stripping any markdown code fences
     const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
     return JSON.parse(cleaned) as QueryClassification;
   } catch (err) {
-    logger.warn('[ai-search] classifyQuery failed, using fallback', { query, error: err });
+    logger.warn('[ai-search] classifyQuery failed, using technical fallback', {
+      query,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return {
       type: 'technical',
       primaryDomain: 'programming',
@@ -420,7 +444,7 @@ async function searchSources(
 }
 
 
-async function crossReference(
+export async function crossReference(
   rawResults: RawSearchResults,
   query: string,
   geminiKey: string,
@@ -428,7 +452,6 @@ async function crossReference(
 ): Promise<CrossRefResult> {
   const allSources = [...rawResults.exaSources, ...rawResults.tavilySources];
 
-  // Deduplicate by URL
   const seen = new Set<string>();
   const deduped = allSources.filter((s) => {
     const normalized = s.url.replace(/\/$/, '').toLowerCase();
@@ -437,13 +460,11 @@ async function crossReference(
     return true;
   });
 
-  // Sort by tier (ascending = better first), then confidence
   const ranked = deduped.sort((a, b) => {
     if (a.tier !== b.tier) return a.tier - b.tier;
     return b.confidence - a.confidence;
   });
 
-  // Conflict detection via Gemini Flash
   let conflictData: ConflictInfo = {
     detected: false,
     description: '',
@@ -452,16 +473,12 @@ async function crossReference(
   };
 
   if (ranked.length >= 2) {
-    try {
-      const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const model = getEnv().GEMINI_LITE_MODEL;
+    const sourceSummaries = ranked
+      .slice(0, 8)
+      .map((s) => `[${s.domain}]: ${s.snippet.substring(0, 200)}`)
+      .join('\n');
 
-      const sourceSummaries = ranked
-        .slice(0, 8)
-        .map((s) => `[${s.domain}]: ${s.snippet.substring(0, 200)}`)
-        .join('\n');
-
-      const conflictPrompt = `Review these ${ranked.length} sources about: "${query}"
+    const conflictPrompt = `Review these ${ranked.length} sources about: "${query}"
 ${DATA_ONLY_INSTRUCTION}
 
 Sources summary:
@@ -472,21 +489,23 @@ Return JSON: { "detected": boolean, "description": string, "sideA": string, "sid
 Only flag real factual conflicts, not opinion differences.
 No markdown, valid JSON only.`;
 
+    try {
       const text = await generateText(conflictPrompt, {
         geminiKey,
         openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
-        model,
+        model: getEnv().GEMINI_LITE_MODEL,
       });
       const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
       conflictData = JSON.parse(cleaned) as ConflictInfo;
     } catch (err) {
-      logger.warn('[ai-search] Conflict detection failed, continuing without it', { error: err instanceof Error ? err.message : String(err) });
+      logger.warn('[ai-search] Conflict detection failed, continuing without it', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
   return { rankedSources: ranked, conflictData };
 }
-
 
 interface StructuredSynthesis {
   text: string;
@@ -495,12 +514,6 @@ interface StructuredSynthesis {
   conflictData: ConflictInfo | null;
 }
 
-/**
- * Parse Gemini's structured synthesis output, validating the expected shape.
- * On any parse/validation failure, gracefully fall back to wrapping the raw
- * text as a citation-less synthesis rather than crashing — consistent with the
- * withRetry / graceful-degrade pattern used across this module.
- */
 export function parseStructuredSynthesis(raw: string, sources: Source[]): StructuredSynthesis {
   const cleaned = raw.replace(/```json\n?|```\n?/g, '').trim();
 
@@ -529,7 +542,6 @@ export function parseStructuredSynthesis(raw: string, sources: Source[]): Struct
         ? parsed.queryType
         : 'technical';
 
-    // Harness §2: self-validate citations against the actual text + sources.
     const { text, citations, overCitedSources } = validateCitations(
       parsed.text,
       rawCitations,
@@ -571,7 +583,6 @@ async function synthesize(
   const ai = new GoogleGenAI({ apiKey: geminiKey });
   const model = getEnv().GEMINI_SEARCH_MODEL;
 
-  // Only feed sources whose full content was actually fetched (harness §8).
   const citableSources = sources.filter((s) => s.contentFetched !== false);
 
   const sourcesText = citableSources
@@ -657,21 +668,13 @@ IMPORTANT:
   }
 }
 
-/**
- * Generate 3 scoped follow-up questions based on the Q&A pair. Used after
- * synthesis completes so the client can offer refinement chips.
- */
 async function generateFollowUps(
   query: string,
   synthesisText: string,
   geminiKey: string,
   openaiKey?: string
 ): Promise<string[]> {
-  try {
-    const ai = new GoogleGenAI({ apiKey: geminiKey });
-    const model = getEnv().GEMINI_LITE_MODEL;
-
-    const prompt = `Given this search query and its synthesized answer, propose exactly 3 scoped follow-up questions a developer would naturally ask next. Each should be specific, self-contained, and build on the prior answer.
+  const prompt = `Given this search query and its synthesized answer, propose exactly 3 scoped follow-up questions a developer would naturally ask next. Each should be specific, self-contained, and build on the prior answer.
 
 Query: "${query}"
 Answer: ${synthesisText.substring(0, 1500)}
@@ -679,10 +682,11 @@ Answer: ${synthesisText.substring(0, 1500)}
 Respond ONLY with valid JSON: { "followUps": string[] } (exactly 3 strings).
 No markdown, no code fences.`;
 
+  try {
     const text = await generateText(prompt, {
       geminiKey,
       openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
-      model,
+      model: getEnv().GEMINI_LITE_MODEL,
       jsonMode: true,
     });
     const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
@@ -736,14 +740,12 @@ export async function executeAISearch(
   }
   const searchMs = Date.now() - t1;
 
-  // Phase 3: Cross-reference
   const t2 = Date.now();
   const crossRefResult = await crossReference(rawResults, query, keys.gemini, keys.openai);
   const crossrefMs = Date.now() - t2;
 
   const rankedSources = crossRefResult.rankedSources;
 
-  // Weak-results branch: not enough quality sources to synthesize confidently.
   const qualitySourceCount = rankedSources.filter((s) => s.tier <= 3).length;
   if (qualitySourceCount < 2) {
     return {
@@ -761,7 +763,6 @@ export async function executeAISearch(
     };
   }
 
-  // Phase 4: Synthesize (skip if instant mode)
   const t3 = Date.now();
   let synthesis: SynthesisResult;
   if (config.searchMode === 'instant') {
@@ -786,7 +787,6 @@ export async function executeAISearch(
   }
   const synthesizeMs = Date.now() - t3;
 
-  // Phase 5: Follow-ups (only for full synthesis mode)
   let followUps: string[] = [];
   if (config.searchMode !== 'instant' && synthesis.text) {
     followUps = await generateFollowUps(query, synthesis.text, keys.gemini, keys.openai);
