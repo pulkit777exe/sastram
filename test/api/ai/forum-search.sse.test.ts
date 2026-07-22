@@ -7,6 +7,18 @@ import { GoogleGenAI } from '@google/genai';
 
 const POST = () => require('@/app/api/ai/forum-search/route').POST;
 
+// Prisma proxy methods can't be safely stubbed with sinon — save originals.
+const origPrismaCreate = (prisma.aiSearchSession as any).create;
+const origPrismaResultCreate = (prisma.aiSearchResult as any).create;
+const origPrismaResultFindFirst = (prisma.aiSearchResult as any).findFirst;
+
+// Use valid-format test keys (ESM exports are non-configurable, can't stub).
+const VALID_KEYS = {
+  exa: '11111111-1111-1111-1111-111111111111',
+  tavily: 'tvly-valid-key-for-test',
+  gemini: 'AIza-valid-test-key-at-least-20chars',
+};
+
 /** Minimal fake Gemini model that returns canned text based on the prompt. */
 function installFakeGemini(opts: { throwOnSynthesis?: boolean } = {}) {
   const fakeClass = class {
@@ -100,16 +112,20 @@ describe('POST /api/ai/forum-search (SSE)', () => {
   beforeEach(() => {
     stubs.push(stubHeaders());
     stubs.push(...stubAuth());
-    // Avoid touching the real DB.
-    stubs.push(sinon.stub(prisma.aiSearchSession, 'create').resolves({ id: 'sess-1' } as never));
-    stubs.push(sinon.stub(prisma.aiSearchResult, 'create').resolves({ id: 'r1' } as never));
-    stubs.push(sinon.stub(prisma.aiSearchResult, 'findFirst').resolves(null));
+    // Avoid touching the real DB — direct assignment on Prisma proxy methods.
+    (prisma.aiSearchSession as any).create = async () => ({ id: 'sess-1' });
+    (prisma.aiSearchResult as any).create = async () => ({ id: 'r1' });
+    (prisma.aiSearchResult as any).findFirst = async () => null;
   });
 
   afterEach(() => {
     restoreStubs(...stubs);
     restoreGemini();
     stubs = [];
+    // Manually restore Prisma proxy methods.
+    (prisma.aiSearchSession as any).create = origPrismaCreate;
+    (prisma.aiSearchResult as any).create = origPrismaResultCreate;
+    (prisma.aiSearchResult as any).findFirst = origPrismaResultFindFirst;
   });
 
   it('emits the full SSE event sequence for a normal search', async () => {
@@ -141,7 +157,7 @@ describe('POST /api/ai/forum-search (SSE)', () => {
         body: {
           query: 'valid query',
           config: { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
-          keys: { exa: '11111111-1111-1111-1111-111111111111', tavily: 'tvly-test', gemini: 'AIza-test-key' },
+          keys: VALID_KEYS,
         },
       })
     );
@@ -184,7 +200,7 @@ describe('POST /api/ai/forum-search (SSE)', () => {
         body: {
           query: 'valid query',
           config: { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
-          keys: { exa: '11111111-1111-1111-1111-111111111111', tavily: 'tvly-test', gemini: 'AIza-test-key' },
+          keys: VALID_KEYS,
         },
       })
     );
@@ -225,7 +241,7 @@ describe('POST /api/ai/forum-search (SSE)', () => {
         body: {
           query: 'valid query',
           config: { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
-          keys: { exa: '11111111-1111-1111-1111-111111111111', tavily: 'tvly-test', gemini: 'AIza-test-key' },
+          keys: VALID_KEYS,
         },
       })
     );
@@ -260,7 +276,7 @@ describe('POST /api/ai/forum-search (SSE)', () => {
         body: {
           query: 'valid query',
           config: { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
-          keys: { exa: '11111111-1111-1111-1111-111111111111', tavily: 'tvly-test', gemini: 'AIza-test-key' },
+          keys: VALID_KEYS,
         },
       })
     );
@@ -300,7 +316,7 @@ describe('POST /api/ai/forum-search (SSE)', () => {
         body: {
           query: 'valid query',
           config: { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
-          keys: { exa: '11111111-1111-1111-1111-111111111111', tavily: 'tvly-test', gemini: 'AIza-test-key' },
+          keys: VALID_KEYS,
         },
       })
     );
@@ -347,7 +363,7 @@ describe('POST /api/ai/forum-search (SSE)', () => {
         body: {
           query: 'valid query',
           config: { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
-          keys: { exa: '11111111-1111-1111-1111-111111111111', tavily: 'tvly-test', gemini: 'AIza-test-key' },
+          keys: VALID_KEYS,
         },
         signal: abortController.signal,
       })
