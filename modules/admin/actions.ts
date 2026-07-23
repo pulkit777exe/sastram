@@ -17,10 +17,12 @@ export async function getAdminDashboardData() {
         threads,
       },
       error: null,
+      ok: true,
+      errorCode: null,
     };
   } catch (error) {
     logger.error('[getAdminDashboardData]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
