@@ -37,7 +37,7 @@ export async function postMessage(formData: FormData) {
   }
 
   const attachmentsRaw = formData.get('attachments') as string | null;
-  let attachments: any[] | undefined = undefined;
+  let attachments: unknown = undefined;
   if (attachmentsRaw) {
     try {
       attachments = JSON.parse(attachmentsRaw);
@@ -45,7 +45,7 @@ export async function postMessage(formData: FormData) {
   }
 
   const pollRaw = formData.get('poll') as string | null;
-  let poll: any | undefined = undefined;
+  let poll: unknown = undefined;
   if (pollRaw) {
     try {
       poll = JSON.parse(pollRaw);

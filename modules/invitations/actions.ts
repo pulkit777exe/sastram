@@ -96,12 +96,12 @@ export async function inviteFriendToThread(formData: FormData) {
     ).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
 
     revalidatePath(`/dashboard/threads/${thread.slug}`);
-    return { data: invitation, error: null };
+    return { data: invitation, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[inviteFriendToThread]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
-}
+};
 
 export interface ThreadInvitationView {
   id: string;
@@ -141,10 +141,12 @@ export async function listThreadInvitationsAction(threadId: string) {
         createdAt: i.createdAt,
       })),
       error: null,
+      ok: true,
+      errorCode: null,
     };
   } catch (error) {
     logger.error('[listThreadInvitationsAction]', error);
-    return { data: null as ThreadInvitationView[] | null, error: 'Something went wrong' };
+    return { data: null as ThreadInvitationView[] | null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
@@ -177,9 +179,9 @@ export async function revokeThreadInvitationAction(invitationId: string) {
     await prisma.threadInvitation.delete({ where: { id: invitationId } });
 
     revalidatePath(`/dashboard/threads/${thread.slug}`);
-    return { data: { id: invitationId }, error: null };
+    return { data: { id: invitationId }, error: null, ok: true, errorCode: null };
   } catch (error) {
     logger.error('[revokeThreadInvitationAction]', error);
-    return { data: null, error: 'Something went wrong' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
-}
+};

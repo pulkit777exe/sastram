@@ -370,7 +370,7 @@ export class MessageService {
             attachments: message.attachments ? {
               create: message.attachments.map(att => ({
                 url: att.url,
-                type: att.type as any,
+                type: att.type || 'IMAGE',
                 name: att.name ?? null,
                 size: att.size !== undefined && att.size !== null ? BigInt(att.size) : null
               }))
@@ -468,7 +468,7 @@ export class MessageService {
         ...createdMessage,
         sender: null,
         thread: null,
-        attachments: (createdMessage as any).attachments?.map((a: any) => ({
+        attachments: createdMessage.attachments?.map(a => ({
           id: a.id,
           url: a.url,
           type: a.type,

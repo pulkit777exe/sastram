@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getSessionUserAction } from '@/modules/auth/actions';
+import { useSession } from '@/lib/services/auth-client';
 import { PublicNavbar } from '@/components/layout/public-navbar';
 
 interface SessionUser {

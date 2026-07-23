@@ -60,7 +60,7 @@ export const toggleReaction = createServerAction(
     });
 
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
+    return { data: null, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -81,6 +81,6 @@ export const getReactionSummary = createServerAction(
     await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
 
     const reactions = await getMessageReactions(messageId, session.user.id);
-    return { data: reactions, error: null };
+    return { data: reactions, error: null, ok: true, errorCode: null };
   }
 );
