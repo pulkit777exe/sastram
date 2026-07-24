@@ -24,8 +24,8 @@ function SearchPageSkeleton() {
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-3 w-4/5" />
           <Skeleton className="h-3 w-3/5" />
-       </div>
-     </div>
+        </div>
+      </div>
 
       <div className="flex-1 min-w-0">
         <div className="mx-auto w-full max-w-4xl px-4 md:px-6 space-y-6 sm:space-y-8">
@@ -35,7 +35,7 @@ function SearchPageSkeleton() {
             <div className="flex-1" />
             <Skeleton className="hidden sm:inline-block h-10 w-24 rounded-xl" />
             <Skeleton className="h-10 w-24 rounded-xl" />
-         </div>
+          </div>
 
           {/* Compact search box skeleton */}
           <Skeleton className="h-12 w-full rounded-xl" />
@@ -47,23 +47,23 @@ function SearchPageSkeleton() {
             <Skeleton className="h-6 flex-1 rounded-full" />
             <Skeleton className="h-6 flex-1 rounded-full" />
             <Skeleton className="h-6 w-20 rounded-full shrink-0" />
-         </div>
+          </div>
 
           {/* Two-pane synthesis + sources skeleton — matches the real grid ratio */}
           <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
             <div className="space-y-3">
               <Skeleton className="h-40 w-full rounded-2xl" />
               <Skeleton className="h-40 w-full rounded-2xl" />
-           </div>
+            </div>
             <div className="space-y-3">
               <Skeleton className="h-24 w-full rounded-xl" />
               <Skeleton className="h-24 w-full rounded-xl" />
               <Skeleton className="h-24 w-full rounded-xl" />
-           </div>
-         </div>
-       </div>
-     </div>
-   </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -74,23 +74,23 @@ export default async function AISearchPage() {
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 md:px-6 space-y-6">
-      <div>
+    <div>
+      <div className="mx-auto w-full max-w-4xl px-4 md:px-6 mb-6">
         <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
           <Search size={14} />
           <span>Sai Search</span>
-       </div>
+        </div>
         <h1 className="text-4xl font-bold tracking-tight">Search with Sai</h1>
         <p className="text-muted-foreground mt-2">
           Search across Reddit, Hacker News, ArchWiki, Stack Overflow and more.
-       </p>
-     </div>
+        </p>
+      </div>
 
       <ErrorBoundary>
-       <Suspense fallback={<SearchPageSkeleton />}>
-         <SearchPage user={user} />
-      </Suspense>
-     </ErrorBoundary>
-   </div>
+        <Suspense fallback={<SearchPageSkeleton />}>
+          <SearchPage user={user} />
+        </Suspense>
+      </ErrorBoundary>
+    </div>
   );
 }

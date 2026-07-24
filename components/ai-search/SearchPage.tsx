@@ -462,7 +462,7 @@ export function SearchPage({ user }: SearchPageProps) {
   return (
     <div className="flex gap-4 items-start">
       {/* Desktop: inline sidebar */}
-      {!isMobile && <Sidebar {...sidebarProps} />}
+      {!isMobile && <div className="shrink-0"><Sidebar {...sidebarProps} /></div>}
 
       <div className="flex-1 min-w-0">
         <div className="mx-auto w-full max-w-4xl space-y-6 sm:space-y-8 px-4 md:px-6">
