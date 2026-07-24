@@ -317,6 +317,8 @@ export function Sidebar({
                 <Image
                   src={user.image}
                   alt=""
+                  width={28}
+                  height={28}
                   className="w-7 h-7 rounded-full object-cover shrink-0"
                 />
               ) : (
