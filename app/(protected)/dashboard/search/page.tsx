@@ -59,12 +59,11 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Search className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Search</h1>
-        </div>
+    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 md:px-6">
+      <div className="flex items-center gap-3">
+        <Search className="h-6 w-6" />
+        <h1 className="text-2xl font-bold">Search</h1>
+    </div>
 
         <Card className="p-6 space-y-4">
           <div className="flex gap-2">
@@ -160,12 +159,11 @@ export default function SearchPage() {
                       </Card>
                     </Link>
                   ))}
-                </div>
-              </div>
+               </div>
+             </div>
             )}
-          </div>
+         </div>
         )}
-      </div>
-    </div>
+   </div>
   );
 }

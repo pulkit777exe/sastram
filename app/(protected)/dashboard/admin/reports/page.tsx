@@ -79,23 +79,23 @@ export default async function ReportsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4 grid grid-cols-1 md:grid-cols-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {pendingReports.map((report) => (
                 <ReportCard key={report.id} report={report} />
               ))}
-            </div>
+          </div>
           )}
-        </div>
+      </div>
 
         {resolvedReports.length > 0 && (
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-4">Resolved Reports</h2>
-            <div className="space-y-4 grid grid-cols-1 md:grid-cols-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {resolvedReports.map((report) => (
                 <ReportCard key={report.id} report={report} />
               ))}
-            </div>
           </div>
+        </div>
         )}
       </section>
     </div>
