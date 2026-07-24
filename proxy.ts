@@ -37,19 +37,17 @@ const isProd = process.env.NODE_ENV === 'production';
 // Whether to send the CSP as Report-Only (observe violations, don't block).
 // Defaults to Report-Only so the nonce can be validated against real traffic
 // via /api/csp-report before flipping to enforcing (CSP_REPORT_ONLY=false).
-// The one Next.js bootstrap inline script currently lacks the nonce and will
-// show as a violation under Report-Only but still executes; address before
-// enforcing (see docs/BACKLOG.md O1a).
 const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY !== 'false';
 
 function buildCsp(nonce: string): string {
   return [
     "default-src 'self'",
-    // Nonce-based script-src: drop 'unsafe-inline' so injected scripts without the
-    // per-request nonce are blocked (mitigates XSS). Next.js tags its own inline
-    // framework scripts with this nonce automatically.
-    `script-src-elem 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
-    `script-src 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
+    // Nonce-based script-src with 'unsafe-inline' fallback: nonces take precedence
+    // for scripts we control, 'unsafe-inline' covers Next.js bootstrap/HMR scripts
+    // that don't carry the nonce attribute. Remove 'unsafe-inline' only after all
+    // framework inline scripts are nonce-tagged (see docs/BACKLOG.md O1a).
+    `script-src-elem 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} 'unsafe-inline' https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
+    `script-src 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} 'unsafe-inline' https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https: http:",
     "connect-src 'self' https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io wss: ws:",
