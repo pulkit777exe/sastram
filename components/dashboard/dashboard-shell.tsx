@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Menu } from 'lucide-react';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import {
@@ -9,6 +9,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+
+function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    (callback) => {
+      const mq = window.matchMedia(query);
+      mq.addEventListener('change', callback);
+      return () => mq.removeEventListener('change', callback);
+    },
+    () => window.matchMedia(query).matches,
+    () => false
+  );
+}
 
 export function DashboardShell({
   children,
@@ -22,16 +34,7 @@ export function DashboardShell({
   role: string;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Close sheet on navigation (next.js route change)
   useEffect(() => {

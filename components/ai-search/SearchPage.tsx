@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toasts } from '@/lib/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -98,17 +98,16 @@ export function SearchPage({ user }: SearchPageProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLowerQualitySources, setShowLowerQualitySources] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
-  // Detect mobile for sidebar drawer behavior
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  const isMobile = useSyncExternalStore(
+    (callback) => {
+      const mq = window.matchMedia('(max-width: 768px)');
+      mq.addEventListener('change', callback);
+      return () => mq.removeEventListener('change', callback);
+    },
+    () => window.matchMedia('(max-width: 768px)').matches,
+    () => false
+  );
 
   // Auto-collapse sidebar on small screens
   useEffect(() => {
@@ -465,50 +464,53 @@ export function SearchPage({ user }: SearchPageProps) {
       {/* Desktop: inline sidebar */}
       {!isMobile && <Sidebar {...sidebarProps} />}
 
-      {/* Mobile: sheet drawer */}
-      {isMobile && (
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetTrigger asChild>
-            <button
-              className="flex items-center justify-center p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
-              aria-label="Open sidebar"
-            >
-              <Menu size={16} />
-            </button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
-            <SheetTitle className="sr-only">Search history</SheetTitle>
-            <Sidebar
-              {...sidebarProps}
-              collapsed={false}
-              onSelectSession={(item) => {
-                handleSelectSession(item);
-                setSheetOpen(false);
-              }}
-              onNewSearch={() => {
-                handleNewSearch();
-                setSheetOpen(false);
-              }}
-            />
-          </SheetContent>
-        </Sheet>
-      )}
+      <div className="flex-1 min-w-0">
+        <div className="mx-auto w-full max-w-4xl space-y-6 sm:space-y-8 px-4 md:px-6">
+          <div className="flex items-center gap-2">
+            {/* Desktop: collapse toggle */}
+            {!isMobile && (
+              <button
+                onClick={() => setSidebarCollapsed((c) => !c)}
+                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-expanded={!sidebarCollapsed}
+                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+              >
+                {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+             </button>
+            )}
 
-      <div className="flex-1 min-w-0 space-y-6 sm:space-y-8">
-      <div className="flex items-center gap-2">
-        {/* Desktop: collapse toggle */}
-        {!isMobile && (
-          <button
-            onClick={() => setSidebarCollapsed((c) => !c)}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-expanded={!sidebarCollapsed}
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="flex items-center justify-center p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
-          >
-            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          </button>
-        )}
-        <div className="flex-1" />
+            {/* Mobile: drawer trigger — SheetContent portals out, so the
+                trigger's parent container doesn't influence drawer positioning. */}
+            {isMobile && (
+              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+                    aria-label="Open sidebar"
+                  >
+                    <Menu size={16} />
+                 </button>
+               </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <SheetTitle className="sr-only">Search history</SheetTitle>
+                  <Sidebar
+                    {...sidebarProps}
+                    collapsed={false}
+                    onSelectSession={(item) => {
+                      handleSelectSession(item);
+                      setSheetOpen(false);
+                    }}
+                    onNewSearch={() => {
+                      handleNewSearch();
+                      setSheetOpen(false);
+                    }}
+                  />
+               </SheetContent>
+             </Sheet>
+            )}
+
+            <div className="flex-1" />
         {appState === 'results' || appState === 'refine' ? (
           <button
             onClick={handleNewSearch}
@@ -575,7 +577,7 @@ export function SearchPage({ user }: SearchPageProps) {
 
             {/* Refine prompt */}
             {appState === 'refine' && (
-              <div className="max-w-3xl bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 text-center">
+              <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 text-center">
                 <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
                   Not enough quality sources
                 </p>
@@ -642,7 +644,7 @@ export function SearchPage({ user }: SearchPageProps) {
             )}
 
             {appState === 'blocked' && (
-              <div className="max-w-3xl flex flex-col items-center pt-8 pb-4 text-center">
+              <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
                   <Clock size={20} className="text-muted-foreground" />
                 </div>
@@ -653,7 +655,7 @@ export function SearchPage({ user }: SearchPageProps) {
             )}
 
             {appState === 'error' && (
-              <div className="max-w-3xl flex flex-col items-center pt-8 pb-4 text-center">
+              <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
                   <AlertCircle size={20} className="text-destructive" />
                 </div>
@@ -688,7 +690,7 @@ export function SearchPage({ user }: SearchPageProps) {
                   ))}
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-[1fr_360px] md:items-start">
+                <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
                   <div className={mobileTab === 'answer' ? 'block' : 'hidden md:block'}>
                     <SynthesisCard
                       text={synthesis.text || synthesis.content}
@@ -762,18 +764,25 @@ export function SearchPage({ user }: SearchPageProps) {
             )}
 
             {appState === 'loading' && (
-              <div className="max-w-3xl space-y-4 animate-pulse">
-                <div className="bg-muted rounded-2xl h-40" />
-                <div className="bg-muted rounded-xl h-24" />
-                <div className="bg-muted rounded-xl h-24" />
-              </div>
+              <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start animate-pulse">
+                <div className="space-y-3">
+                  <div className="bg-muted rounded-2xl h-40" />
+                  <div className="bg-muted rounded-2xl h-40" />
+               </div>
+                <div className="space-y-3">
+                  <div className="bg-muted rounded-xl h-24" />
+                  <div className="bg-muted rounded-xl h-24" />
+                  <div className="bg-muted rounded-xl h-24" />
+               </div>
+             </div>
             )}
-          </motion.div>
+         </motion.div>
         )}
-      </AnimatePresence>
+       </AnimatePresence>
+       </div>
+     </div>
 
       <ApiKeysModal isOpen={showApiKeys} onClose={() => setShowApiKeys(false)} onKeysChange={setHasKeys} />
-      </div>
-    </div>
+   </div>
   );
 }
