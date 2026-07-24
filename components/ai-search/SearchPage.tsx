@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Clock,
   AlertCircle,
+  Menu,
 } from 'lucide-react';
 import { SearchBox } from './SearchBox';
 import type { SSEPhase } from './PhaseTracker';
@@ -20,6 +21,12 @@ import { SourceCard } from './SourceCard';
 import { TableView } from './TableView';
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from './ApiKeysModal';
 import { Sidebar, type HistoryItem } from './Sidebar';
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import type {
   SearchConfig,
   Source,
@@ -90,10 +97,23 @@ export function SearchPage({ user }: SearchPageProps) {
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLowerQualitySources, setShowLowerQualitySources] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile for sidebar drawer behavior
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Auto-collapse sidebar on small screens
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mq.matches) setSidebarCollapsed(true);
     const handler = (e: MediaQueryListEvent) => { if (e.matches) setSidebarCollapsed(true); };
     mq.addEventListener('change', handler);
@@ -430,29 +450,64 @@ export function SearchPage({ user }: SearchPageProps) {
   const synthesis = stream.synthesis;
   const citations: Citation[] = useMemo(() => synthesis?.citations ?? [], [synthesis]);
 
+  const sidebarProps = {
+    onSelectSession: handleSelectSession,
+    onNewSearch: handleNewSearch,
+    collapsed: sidebarCollapsed,
+    onOpenApiKeys: () => setShowApiKeys(true),
+    hasApiKeys: hasKeys,
+    currentSessionId,
+    user,
+  };
+
   return (
     <div className="flex gap-4 items-start">
-      <Sidebar
-        onSelectSession={handleSelectSession}
-        onNewSearch={handleNewSearch}
-        collapsed={sidebarCollapsed}
-        onOpenApiKeys={() => setShowApiKeys(true)}
-        hasApiKeys={hasKeys}
-        currentSessionId={currentSessionId}
-        user={user}
-      />
+      {/* Desktop: inline sidebar */}
+      {!isMobile && <Sidebar {...sidebarProps} />}
+
+      {/* Mobile: sheet drawer */}
+      {isMobile && (
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <button
+              className="flex items-center justify-center p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+              aria-label="Open sidebar"
+            >
+              <Menu size={16} />
+            </button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64 p-0">
+            <SheetTitle className="sr-only">Search history</SheetTitle>
+            <Sidebar
+              {...sidebarProps}
+              collapsed={false}
+              onSelectSession={(item) => {
+                handleSelectSession(item);
+                setSheetOpen(false);
+              }}
+              onNewSearch={() => {
+                handleNewSearch();
+                setSheetOpen(false);
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
 
       <div className="flex-1 min-w-0 space-y-6 sm:space-y-8">
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => setSidebarCollapsed((c) => !c)}
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-expanded={!sidebarCollapsed}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex items-center justify-center p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
-        >
-          {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-        </button>
+        {/* Desktop: collapse toggle */}
+        {!isMobile && (
+          <button
+            onClick={() => setSidebarCollapsed((c) => !c)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!sidebarCollapsed}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="flex items-center justify-center p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+        )}
         <div className="flex-1" />
         {appState === 'results' || appState === 'refine' ? (
           <button
@@ -647,20 +702,22 @@ export function SearchPage({ user }: SearchPageProps) {
                     />
 
                     {stream.followUps.length > 0 && (
-                      <div className="mt-4 flex flex-col gap-2">
+                      <div className="mt-4 space-y-2">
                         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                           Related
                         </p>
-                        {stream.followUps.map((f) => (
-                          <button
-                            key={f}
-                            onClick={() => handleFollowUp(f)}
-                            className="group flex items-center gap-2 text-left text-sm text-foreground/90 bg-card border border-border hover:border-foreground/30 rounded-xl px-4 py-2.5 transition-colors"
-                          >
-                            <span className="flex-1">{f}</span>
-                            <ArrowRight size={14} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                          </button>
-                        ))}
+                        <div className="flex flex-wrap gap-2">
+                          {stream.followUps.map((f) => (
+                            <button
+                              key={f}
+                              onClick={() => handleFollowUp(f)}
+                              className="group flex items-center gap-2 text-left text-sm text-foreground/90 bg-card border border-border hover:border-foreground/30 rounded-xl px-4 py-2.5 transition-colors"
+                            >
+                              <span className="flex-1">{f}</span>
+                              <ArrowRight size={14} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

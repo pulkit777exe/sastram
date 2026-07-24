@@ -25,7 +25,7 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-8">
-      <header className="rounded-3xl border border-border bg-muted-foreground/10 p-8 text-foreground shadow-linear-xl">
+      <header className="rounded-3xl border border-border bg-muted-foreground/10 p-4 md:p-8 text-foreground shadow-linear-xl">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>
         <h1 className="mt-3 text-3xl font-semibold">Reports Management</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -74,12 +74,12 @@ export default async function ReportsPage() {
           <h2 className="text-xl font-semibold text-foreground mb-4">Pending Reports</h2>
           {pendingReports.length === 0 ? (
             <Card className="bg-card border-border">
-              <CardContent className="p-8 text-center">
+              <CardContent className="p-4 md:p-8 text-center">
                 <p className="text-muted-foreground">No pending reports</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4 grid grid-cols-3">
+            <div className="space-y-4 grid grid-cols-1 md:grid-cols-3">
               {pendingReports.map((report) => (
                 <ReportCard key={report.id} report={report} />
               ))}
@@ -90,7 +90,7 @@ export default async function ReportsPage() {
         {resolvedReports.length > 0 && (
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-4">Resolved Reports</h2>
-            <div className="space-y-4 grid grid-cols-3">
+            <div className="space-y-4 grid grid-cols-1 md:grid-cols-3">
               {resolvedReports.map((report) => (
                 <ReportCard key={report.id} report={report} />
               ))}

@@ -80,7 +80,7 @@ export function TopicCard({
         <Link href={ROUTES.THREAD(slug)} className="inline-flex items-center">
           <ArrowRight
             size={14}
-            className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-brand"
+            className="opacity-100 translate-x-0 md:opacity-0 md:-translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-all text-brand"
           />
         </Link>
       </div>

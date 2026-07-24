@@ -317,7 +317,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                                 size="sm"
                                 variant="ghost"
                                 disabled={!editName.trim()}
-                                className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </Button>
@@ -325,7 +325,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                                 onClick={() => setEditingId(null)}
                                 size="sm"
                                 variant="ghost"
-                                className="h-7 w-7 p-0"
+                                className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <X className="w-3.5 h-3.5" />
                               </Button>
@@ -351,7 +351,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                             {tag.threadCount}
                           </td>
                           <td className="px-4 py-2.5 text-right">
-                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                               <Button
                                 onClick={() => {
                                   setEditingId(tag.id);
@@ -360,7 +360,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                                 }}
                                 size="sm"
                                 variant="ghost"
-                                className="h-7 w-7 p-0"
+                                className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </Button>
@@ -368,7 +368,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                                 onClick={() => setDeletingId(tag.id)}
                                 size="sm"
                                 variant="ghost"
-                                className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>

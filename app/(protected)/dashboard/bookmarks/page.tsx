@@ -44,7 +44,7 @@ export default async function BookmarksPage() {
       </div>
 
       {bookmarks.length === 0 ? (
-        <Card className="p-12 text-center">
+        <Card className="p-6 md:p-12 text-center">
           <Bookmark className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
           <p className="text-muted-foreground">No bookmarks yet</p>
           <p className="text-sm text-muted-foreground mt-2">

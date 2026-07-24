@@ -84,7 +84,7 @@ export function ReportListClient({ initialReports }: ReportListClientProps) {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4 grid grid-cols-3">
+            <div className="space-y-4 grid grid-cols-1 md:grid-cols-3">
               {pendingReports.map((report) => (
                 <ReportCard key={report.id} report={report} onStatusChange={handleStatusChange} />
               ))}
@@ -95,7 +95,7 @@ export function ReportListClient({ initialReports }: ReportListClientProps) {
         {resolvedReports.length > 0 && (
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-4">Resolved Reports</h2>
-            <div className="space-y-4 grid grid-cols-3">
+            <div className="space-y-4 grid grid-cols-1 md:grid-cols-3">
               {resolvedReports.map((report) => (
                 <ReportCard key={report.id} report={report} onStatusChange={handleStatusChange} />
               ))}

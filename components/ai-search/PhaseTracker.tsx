@@ -31,12 +31,13 @@ export function PhaseTracker({ currentPhase }: PhaseTrackerProps) {
   const isTerminal = TERMINAL_PHASES.includes(currentPhase);
 
   return (
-    <div
-      className="flex items-center gap-1 w-full max-w-3xl"
-      role="progressbar"
-      aria-valuenow={Math.min(currentIndex, PHASES.length)}
-      aria-valuemax={PHASES.length}
-    >
+    <div className="w-full max-w-3xl overflow-x-auto">
+      <div
+        className="flex items-center gap-1 min-w-max"
+        role="progressbar"
+        aria-valuenow={Math.min(currentIndex, PHASES.length)}
+        aria-valuemax={PHASES.length}
+      >
       {PHASES.map((phase, index) => {
         const phaseDone = index < currentIndex;
         const isActive = index === currentIndex && !isTerminal;
@@ -72,6 +73,7 @@ export function PhaseTracker({ currentPhase }: PhaseTrackerProps) {
           Refine needed
         </span>
       )}
+    </div>
     </div>
   );
 }

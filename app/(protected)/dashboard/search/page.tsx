@@ -80,7 +80,7 @@ export default function SearchPage() {
             </Button>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {(['all', 'threads', 'messages', 'users'] as SearchType[]).map((type) => (
               <Button
                 key={type}

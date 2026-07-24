@@ -60,7 +60,7 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
   ];
 
   return (
-    <div className={`w-full transition-all duration-300 ${compact ? 'max-w-3xl' : 'max-w-2xl'}`}>
+    <div className="w-full transition-all duration-300">
       {/* Source filter pills — idle only */}
       {!compact && (
         <div className="flex items-center gap-2 mb-3 justify-center">
@@ -104,7 +104,7 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
         />
 
         {/* Bottom bar */}
-        <div className="flex items-center justify-between px-3 pb-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 pb-3 gap-2">
           {/* Left: Mode toggles */}
           <div className="flex items-center gap-1">
             {modeButtons.map(({ mode, icon: Icon, label }) => (
@@ -113,7 +113,7 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
                 onClick={() => setSearchMode(mode)}
                 title={label}
                 aria-pressed={searchMode === mode}
-                className={`p-1.5 rounded-lg transition-all duration-200 cursor-pointer ${
+                className={`min-h-11 min-w-11 p-1.5 rounded-lg transition-all duration-200 cursor-pointer ${
                   searchMode === mode
                     ? 'bg-foreground/10 text-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
@@ -139,15 +139,12 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
               onClick={handleSubmit}
               disabled={!query.trim() || query.trim().length < 3 || isLoading}
               aria-label="Submit search"
-              className={`p-2 rounded-xl transition-all duration-200 cursor-pointer ${
+              className={`min-h-11 min-w-11 p-2 rounded-xl transition-all duration-200 cursor-pointer ${
                 query.trim().length >= 3 && !isLoading
                   ? 'bg-foreground text-background hover:opacity-90 shadow-linear-sm'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               }`}
             >
-              {/* Loading indicator is owned by the PhaseTracker pill — the submit
-                  icon just returns to its muted/disabled idle state while a
-                  search is in flight, rather than spinning concurrently. */}
               <ArrowUp size={16} />
             </button>
           </div>
