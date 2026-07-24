@@ -81,6 +81,18 @@ async function main() {
     await createThread({ ...thread, userId: user.id });
   }
 
+  // System user for anonymous AI search cache sessions
+  await prisma.user.upsert({
+    where: { email: 'system@sastram.internal' },
+    update: {},
+    create: {
+      id: 'anonymous',
+      email: 'system@sastram.internal',
+      name: 'System',
+      role: 'USER',
+    },
+  });
+
   console.log('Seeding completed.');
 }
 

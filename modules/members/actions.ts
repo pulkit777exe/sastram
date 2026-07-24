@@ -24,12 +24,12 @@ const targetMemberSchema = z.object({
 
 export const joinSection = createServerAction(
   { schema: threadIdSchema, actionName: 'joinSection' },
-  async () => ({ data: null, error: null })
+  async () => ({ data: null, error: null, ok: true, errorCode: null })
 );
 
 export const leaveSection = createServerAction(
   { schema: threadIdSchema, actionName: 'leaveSection' },
-  async () => ({ data: null, error: null })
+  async () => ({ data: null, error: null, ok: true, errorCode: null })
 );
 
 export const inviteMember = createServerAction(

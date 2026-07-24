@@ -16,9 +16,6 @@ import { threadIdSchema } from '@/lib/utils/validation-common';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 
-/**
- * Parse a newline-separated string of poll options into a trimmed string array.
- */
 function parsePollOptions(raw: string): string[] {
   return raw.split('\n').map((s) => s.trim()).filter(Boolean);
 }
@@ -34,10 +31,6 @@ const threadSchema = z.object({
   pollExpiresAt: z.coerce.date().optional().or(z.literal('')),
 });
 
-/**
- * Create a new thread with an optional poll.
- * Requires admin privileges.
- */
 export const createThreadAction = createServerAction(
   { schema: threadSchema, actionName: 'createThreadAction' },
   async ({ title, description, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
@@ -53,7 +46,6 @@ export const createThreadAction = createServerAction(
         initialMessage,
       });
 
-      // Create poll alongside thread if poll data is provided
       if (pollQuestion && pollOptions && pollOptions.length >= 2) {
         await createPoll(thread.id, pollQuestion, pollOptions, pollExpiresAt || undefined);
       }
@@ -69,10 +61,6 @@ export const createThreadAction = createServerAction(
   }
 );
 
-/**
- * Delete a thread by ID.
- * Requires admin privileges.
- */
 export const deleteThreadAction = createServerAction(
   { schema: threadIdSchema, actionName: 'deleteThreadAction' },
   async ({ threadId }) => {
@@ -92,9 +80,6 @@ export const deleteThreadAction = createServerAction(
   }
 );
 
-/**
- * List threads with pagination and sorting.
- */
 export const getDashboardThreads = createServerAction(
   {
     schema: z.object({
@@ -118,9 +103,6 @@ export const getDashboardThreads = createServerAction(
   }
 );
 
-/**
- * Load older messages for a thread using cursor-based pagination.
- */
 export const loadThreadMessages = createServerAction(
   {
     schema: z.object({

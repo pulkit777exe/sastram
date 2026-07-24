@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, Code2, Trash2, CornerDownRight, RefreshCw, Check } from 'lucide-react';
 import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
+import Image from 'next/image';
 
 export interface HistoryItem {
   id: string;
@@ -36,6 +37,18 @@ function label(item: HistoryItem): string {
   if (t) return t.length > 38 ? t.substring(0, 38) + '…' : t;
   const q = item.query.trim();
   return q.length > 38 ? q.substring(0, 38) + '…' : q;
+}
+
+function dateGroup(createdAt: string): string {
+  const d = new Date(createdAt);
+  const now = new Date();
+  const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
+
+  if (diffDays <= 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays <= 7) return 'This week';
+  return 'Earlier';
 }
 
 export function Sidebar({
@@ -94,8 +107,6 @@ export function Sidebar({
 
   useEffect(() => {
     if (collapsed) return;
-    // loadHistory performs an async fetch; the synchronous setLoading here is
-    // the intended loading flag, not cascading state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHistory(true);
   }, [collapsed, loadHistory]);
@@ -193,6 +204,17 @@ export function Sidebar({
     user?.email?.trim()?.[0]?.toUpperCase() ||
     '?';
 
+  const groupedSearches: { group: string; items: HistoryItem[] }[] = [];
+  for (const item of searches) {
+    const group = dateGroup(item.createdAt);
+    const last = groupedSearches[groupedSearches.length - 1];
+    if (last && last.group === group) {
+      last.items.push(item);
+    } else {
+      groupedSearches.push({ group, items: [item] });
+    }
+  }
+
   return (
     <div
       className={`relative h-full flex flex-col bg-card border border-border rounded-2xl transition-all duration-250 ease-in-out overflow-hidden ${
@@ -262,15 +284,24 @@ export function Sidebar({
                 {loading ? 'Loading…' : 'No recent searches'}
               </p>
             ) : (
-              <div className="space-y-0.5" ref={listEndRef}>
-                {searches.map((s) => (
-                  <div key={s.id}>
-                    {renderItem(s, 0)}
-                    {s.children && s.children.length > 0 && (
-                      <div className="ml-2">
-                        {s.children.map((c) => renderItem(c, 1))}
-                      </div>
-                    )}
+              <div ref={listEndRef}>
+                {groupedSearches.map(({ group, items }) => (
+                  <div key={group} className="mb-3 last:mb-0">
+                    <p className="px-3 pb-1 text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">
+                      {group}
+                    </p>
+                    <div className="space-y-0.5">
+                      {items.map((s) => (
+                        <div key={s.id}>
+                          {renderItem(s, 0)}
+                          {s.children && s.children.length > 0 && (
+                            <div className="ml-2">
+                              {s.children.map((c) => renderItem(c, 1))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
                 {hasMore && (
@@ -283,8 +314,7 @@ export function Sidebar({
           <div className="px-3 pb-3 pt-2 border-t border-border mt-auto">
             <div className="flex items-center gap-2">
               {user?.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={user.image}
                   alt=""
                   className="w-7 h-7 rounded-full object-cover shrink-0"

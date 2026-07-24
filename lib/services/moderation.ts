@@ -77,7 +77,6 @@ export class RegexFilter {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   async check(message: MessageLike): Promise<ModerationResult> {
-    // Check against custom moderation rules (with caching)
     let compiledRules = this.getCompiledRulesFromCache();
     if (!compiledRules) {
       const rules = await prisma.moderationRule.findMany({
@@ -343,10 +342,16 @@ export class MessageService {
       depth: number;
       createdAt: Date;
       updatedAt: Date;
+      attachments?: Array<{
+        id: string;
+        url: string;
+        type: string;
+        name: string | null;
+        size: bigint | null;
+      }>;
     } | null = null;
 
     try {
-      // Calculate depth from parent
       let depth = 0;
       if (message.parentId) {
         const parent = await prisma.message.findUnique({
@@ -358,7 +363,6 @@ export class MessageService {
         }
       }
 
-      // Create message + increment replyCount + messageCount atomically
       const created = await prisma.$transaction(async (tx) => {
         const msg = await tx.message.create({
           data: {
@@ -370,7 +374,7 @@ export class MessageService {
             attachments: message.attachments ? {
               create: message.attachments.map(att => ({
                 url: att.url,
-                type: att.type || 'IMAGE',
+                type: (att.type || 'IMAGE') as 'IMAGE' | 'GIF' | 'VIDEO' | 'FILE',
                 name: att.name ?? null,
                 size: att.size !== undefined && att.size !== null ? BigInt(att.size) : null
               }))
@@ -412,7 +416,6 @@ export class MessageService {
       dbMessageId = created.id;
       createdMessage = created;
 
-      // If moderation action is needed, create a report (outside transaction — idempotent)
       if (result.action !== 'ALLOW') {
         const systemUser = await prisma.user.upsert({
           where: { email: 'system@sastram.com' },
@@ -468,12 +471,12 @@ export class MessageService {
         ...createdMessage,
         sender: null,
         thread: null,
-        attachments: createdMessage.attachments?.map(a => ({
+        attachments: createdMessage.attachments?.map((a: { id: string; url: string; type: string; name: string | null; size: bigint | null }) => ({
           id: a.id,
           url: a.url,
           type: a.type,
           name: a.name,
-          size: a.size !== null ? Number(a.size) : null
+          size: a.size
         })) ?? [],
       } : null,
     };
@@ -531,7 +534,6 @@ export class ModerationDashboard {
       },
     });
 
-    // If action is BLOCK, create a ban
     if (action === 'BLOCK') {
       const systemUser = await prisma.user.upsert({
         where: { email: 'system@sastram.com' },

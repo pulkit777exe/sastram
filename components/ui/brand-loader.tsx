@@ -7,7 +7,6 @@ interface BrandLoaderProps {
   className?: string;
 }
 
-/** Centered brand loading spinner for route-level loading states. */
 export function BrandLoader({ size = 48, duration = 2.4, label, className }: BrandLoaderProps) {
   return (
     <div className={`flex flex-col items-center justify-center gap-3 py-10 ${className ?? ''}`}>

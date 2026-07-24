@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { env } from '@/lib/config/env';
+import { getEnv } from '@/lib/config/env';
 import { rateLimit } from '@/lib/services/rate-limit';
 
 const PUBLIC_PATHS = [
@@ -93,7 +93,8 @@ function applySecurityHeaders(response: NextResponse, nonce: string): NextRespon
     CSP_REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy',
     csp
   );
-  if (env.NODE_ENV === 'production') {
+  const envValues = getEnv();
+  if (envValues.NODE_ENV === 'production') {
     for (const [key, value] of Object.entries(PRODUCTION_HEADERS)) {
       response.headers.set(key, value);
     }
@@ -124,7 +125,7 @@ export default async function proxy(request: NextRequest) {
     return applySecurityHeaders(response, nonce);
   }
 
-  if (!isPublic && env.RATE_LIMIT_ENABLED) {
+  if (!isPublic && getEnv().RATE_LIMIT_ENABLED) {
     const ip = getClientIp(request);
     const key = `proxy:${ip}:${pathname}`;
     const { success } = await rateLimit({ key, type: 'api' });
@@ -139,7 +140,7 @@ export default async function proxy(request: NextRequest) {
   if (unsafeMethods.includes(request.method)) {
     const origin = request.headers.get('origin');
     const referer = request.headers.get('referer');
-    const appUrl = new URL(env.NEXT_PUBLIC_APP_URL);
+    const appUrl = new URL(getEnv().NEXT_PUBLIC_APP_URL);
 
     const checkOrigin = (headerValue: string | null): boolean => {
       if (!headerValue) return true;

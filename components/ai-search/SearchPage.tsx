@@ -14,7 +14,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { SearchBox } from './SearchBox';
-import { PhaseTracker, type SSEPhase } from './PhaseTracker';
+import type { SSEPhase } from './PhaseTracker';
 import { SynthesisCard } from './SynthesisCard';
 import { SourceCard } from './SourceCard';
 import { TableView } from './TableView';
@@ -26,6 +26,7 @@ import type {
   SynthesisResult,
   Citation,
 } from '@/modules/ai-search/types';
+import { StepLogEntry, ThinkingTrace } from './ThinkingTrace';
 
 type AppState = 'idle' | 'loading' | 'results' | 'refine' | 'error' | 'blocked';
 type MobileTab = 'answer' | 'sources';
@@ -37,7 +38,6 @@ const DEFAULT_CONFIG: SearchConfig = {
   searchMode: 'standard',
 };
 
-// Per-phase max wait before surfacing a "taking longer than usual" hint (harness §1).
 const PHASE_SLOW_MS: Record<string, number> = {
   searching: 12_000,
   reading: 12_000,
@@ -80,6 +80,10 @@ export function SearchPage({ user }: SearchPageProps) {
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
   const [fromHistory, setFromHistory] = useState(false);
 
+  const [stepLog, setStepLog] = useState<StepLogEntry[]>([]);
+  const [completedAt, setCompletedAt] = useState<number | undefined>();
+  const [startedAt, setStartedAt] = useState<number>(0);
+
   const [showApiKeys, setShowApiKeys] = useState(false);
   const [hasKeys, setHasKeys] = useState(() =>
     typeof window !== 'undefined' ? hasAllApiKeys() : false
@@ -89,6 +93,14 @@ export function SearchPage({ user }: SearchPageProps) {
 
   const sourceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
+  const phaseTimerRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  const logStep = useCallback((phase: SSEPhase, sourceCount: number) => {
+    setStepLog((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1].phase === phase) return prev;
+      return [...prev, { phase, at: Date.now(), sourceCount }];
+    });
+  }, []);
 
   const runSearch = useCallback(
     async (
@@ -122,13 +134,15 @@ export function SearchPage({ user }: SearchPageProps) {
       setIsStreaming(true);
       setSlowHint(false);
       setFromHistory(false);
+      setStartedAt(Date.now());
+      setStepLog([]);
+      setCompletedAt(undefined);
       if (typeof navigator !== 'undefined') setIsOffline(!navigator.onLine);
       setStream({ phase: 'searching', sources: [], synthesis: null, followUps: [] });
 
       const controller = new AbortController();
       abortRef.current = controller;
       const clientTimeout = setTimeout(() => controller.abort(), 28_000);
-      // Per-phase "taking longer than usual" hint (harness §1).
       let slowTimer: ReturnType<typeof setTimeout> | null = null;
       const armSlowTimer = (phase: string) => {
         if (slowTimer) clearTimeout(slowTimer);
@@ -149,8 +163,6 @@ export function SearchPage({ user }: SearchPageProps) {
         };
         if (context) {
           body.context = context;
-          // Threading (harness §10a): attach to the parent session and send a
-          // nonce so a double-click can't spawn two child sessions.
           if (currentSessionId) body.parentSessionId = currentSessionId;
           body.clientNonce = crypto.randomUUID();
         }
@@ -202,7 +214,6 @@ export function SearchPage({ user }: SearchPageProps) {
           return;
         }
 
-        // Read the SSE stream.
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -240,16 +251,27 @@ export function SearchPage({ user }: SearchPageProps) {
               case 'searching':
               case 'reading':
               case 'crossref':
-              case 'synthesizing':
+              case 'synthesizing': {
                 setSlowHint(false);
                 armSlowTimer(event.phase);
-                setStream((prev) => ({
-                  ...prev,
-                  phase: event.phase as SSEPhase,
-                  sources: event.sources ?? prev.sources,
-                }));
-                if (event.phase === 'reading') setMobileTab('sources');
+                const nextSourceCount = (event.sources ?? stream.sources).length;
+                logStep(event.phase, nextSourceCount);
+                const phase = event.phase as SSEPhase;
+                const sources = event.sources;
+                // Each setTimeout pushes the update to its own macrotask so
+                // React renders every phase instead of batching them all.
+                const id = setTimeout(() => {
+                  phaseTimerRef.current.delete(id);
+                  setStream((prev) => ({
+                    ...prev,
+                    phase,
+                    sources: sources ?? prev.sources,
+                  }));
+                  if (phase === 'reading') setMobileTab('sources');
+                }, 0);
+                phaseTimerRef.current.add(id);
                 break;
+              }
               case 'refine':
                 setStream((prev) => ({
                   ...prev,
@@ -261,6 +283,9 @@ export function SearchPage({ user }: SearchPageProps) {
                 setIsStreaming(false);
                 break;
               case 'done':
+                phaseTimerRef.current.forEach(clearTimeout);
+                phaseTimerRef.current.clear();
+                setCompletedAt(Date.now());
                 setStream((prev) => ({
                   ...prev,
                   phase: 'done',
@@ -273,13 +298,13 @@ export function SearchPage({ user }: SearchPageProps) {
                 setIsStreaming(false);
                 break;
               case 'blocked':
-                // Quota/cap rejection BEFORE any provider call (harness §9).
-                // Distinct from error — must not invite a retry.
+                setCompletedAt(Date.now());
                 setErrorMessage(event.message || 'Search blocked by quota or usage cap.');
                 setAppState('blocked');
                 setIsStreaming(false);
                 break;
               case 'error':
+                setCompletedAt(Date.now());
                 setErrorMessage(event.message || 'Search failed.');
                 setAppState('error');
                 setIsStreaming(false);
@@ -291,10 +316,12 @@ export function SearchPage({ user }: SearchPageProps) {
       } catch (error) {
         clearTimeout(clientTimeout);
         if (slowTimer) clearTimeout(slowTimer);
+        phaseTimerRef.current.forEach(clearTimeout);
+        phaseTimerRef.current.clear();
+        setCompletedAt(Date.now());
         if (error instanceof DOMException && error.name === 'AbortError') {
           setErrorMessage('Request timed out. Please try again with a simpler query.');
         } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          // Client-side network loss is distinct from a server stream drop (harness §8).
           setIsOffline(true);
           setErrorMessage('You appear to be offline. Check your connection and try again.');
         } else {
@@ -305,7 +332,7 @@ export function SearchPage({ user }: SearchPageProps) {
         toasts.error('Search failed');
       }
     },
-    [currentSessionId]
+    [currentSessionId, logStep, stream.sources]
   );
 
   const handleSearch = useCallback(
@@ -323,8 +350,6 @@ export function SearchPage({ user }: SearchPageProps) {
     [query, lastConfig, runSearch]
   );
 
-  // Refine next action (harness §9): pre-fill the box with the suggested query
-  // rather than leaving the user to guess why the search came back thin.
   const handleRefineSuggestion = useCallback(() => {
     const suggestion = stream.suggestion;
     if (!suggestion) return;
@@ -335,12 +360,16 @@ export function SearchPage({ user }: SearchPageProps) {
 
   const handleNewSearch = useCallback(() => {
     abortRef.current?.abort();
+    phaseTimerRef.current.forEach(clearTimeout);
+    phaseTimerRef.current.clear();
     setAppState('idle');
     setStream({ phase: 'searching', sources: [], synthesis: null, followUps: [] });
     setErrorMessage('');
     setSlowHint(false);
     setIsOffline(false);
     setCurrentSessionId(undefined);
+    setStepLog([]);
+    setCompletedAt(undefined);
     setQuery(initialQuery);
   }, [initialQuery]);
 
@@ -353,6 +382,8 @@ export function SearchPage({ user }: SearchPageProps) {
     setSlowHint(false);
     setIsStreaming(false);
     setFromHistory(true);
+    setStepLog([]);
+    setCompletedAt(undefined);
     setCurrentSessionId(item.id);
     setAppState('results');
     setStream({
@@ -403,10 +434,7 @@ export function SearchPage({ user }: SearchPageProps) {
       />
 
       <div className="flex-1 min-w-0 space-y-8">
-      {/* Action buttons */}
       <div className="flex items-center gap-2">
-        {/* Persistent sidebar toggle — lives outside the collapsible region so it
-            stays visible and clickable in both collapsed and expanded states. */}
         <button
           onClick={() => setSidebarCollapsed((c) => !c)}
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -461,12 +489,19 @@ export function SearchPage({ user }: SearchPageProps) {
             animate={{ opacity: 1 }}
             className="space-y-6"
           >
-            {/* Shared container: search box, phase tracker, and results/skeleton
-                all inherit this one left edge + width instead of setting their
-                own margins/centering. */}
             <SearchBox onSearch={handleSearch} isLoading={appState === 'loading'} compact={true} initialQuery={query} />
 
-            <PhaseTracker currentPhase={stream.phase} />
+            {!fromHistory && (
+              <ThinkingTrace
+                query={query}
+                currentPhase={stream.phase}
+                steps={stepLog}
+                sourceCount={stream.sources.length}
+                startedAt={startedAt}
+                completedAt={completedAt}
+                isLoading={appState === 'loading'}
+              />
+            )}
 
             {slowHint && appState === 'loading' && (
               <p className="text-xs text-muted-foreground animate-pulse">
@@ -474,7 +509,6 @@ export function SearchPage({ user }: SearchPageProps) {
               </p>
             )}
 
-            {/* Refine prompt */}
             {appState === 'refine' && (
               <div className="max-w-3xl bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 text-center">
                 <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
@@ -485,7 +519,7 @@ export function SearchPage({ user }: SearchPageProps) {
                 </p>
                 {stream.suggestion && (
                   <p className="text-xs text-muted-foreground mb-2">
-                    Suggested query: <span className="italic text-foreground">“{stream.suggestion}”</span>
+                    Suggested query: <span className="italic text-foreground">&quot;{stream.suggestion}&quot;</span>
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2 justify-center">
@@ -542,10 +576,6 @@ export function SearchPage({ user }: SearchPageProps) {
             </div>
             )}
 
-            {/* Blocked (quota/cap) — distinct from error (harness §9).
-                Uses lucide Clock rather than a raw emoji glyph, matching the
-                same iconography language used everywhere else in this feature
-                (Shield/Star/Globe on SourceCard, AlertTriangle on SynthesisCard). */}
             {appState === 'blocked' && (
               <div className="max-w-3xl flex flex-col items-center pt-8 pb-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -557,14 +587,13 @@ export function SearchPage({ user }: SearchPageProps) {
               </div>
             )}
 
-            {/* Error — same treatment: lucide AlertCircle instead of a literal "!" character. */}
             {appState === 'error' && (
               <div className="max-w-3xl flex flex-col items-center pt-8 pb-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
                   <AlertCircle size={20} className="text-destructive" />
                 </div>
                 <h2 className="text-lg font-semibold mb-2">
-                  {isOffline ? 'You’re offline' : 'Something went wrong'}
+                  {isOffline ? "You're offline" : 'Something went wrong'}
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-md mb-6">{errorMessage}</p>
                 <button
@@ -576,10 +605,8 @@ export function SearchPage({ user }: SearchPageProps) {
               </div>
             )}
 
-            {/* Two-pane results */}
             {appState === 'results' && synthesis && (
               <>
-                {/* Mobile tabs */}
                 <div className="flex md:hidden gap-2 justify-center">
                   {(['answer', 'sources'] as MobileTab[]).map((tab) => (
                     <button
@@ -597,7 +624,6 @@ export function SearchPage({ user }: SearchPageProps) {
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-[1fr_360px] md:items-start">
-                  {/* Left: synthesis */}
                   <div className={mobileTab === 'answer' ? 'block' : 'hidden md:block'}>
                     <SynthesisCard
                       text={synthesis.text || synthesis.content}
@@ -610,7 +636,6 @@ export function SearchPage({ user }: SearchPageProps) {
                       isStreaming={isStreaming}
                     />
 
-                    {/* Follow-up chips */}
                     {stream.followUps.length > 0 && (
                       <div className="mt-4 flex flex-col gap-2">
                         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -630,7 +655,6 @@ export function SearchPage({ user }: SearchPageProps) {
                     )}
                   </div>
 
-                  {/* Right: sources */}
                   <div className={mobileTab === 'sources' ? 'block' : 'hidden md:block'}>
                     {lastConfig.searchMode === 'table' ? (
                       <TableView sources={stream.sources} />
@@ -670,7 +694,6 @@ export function SearchPage({ user }: SearchPageProps) {
               </>
             )}
 
-            {/* Loading skeleton */}
             {appState === 'loading' && (
               <div className="max-w-3xl space-y-4 animate-pulse">
                 <div className="bg-muted rounded-2xl h-40" />

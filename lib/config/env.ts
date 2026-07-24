@@ -1,13 +1,5 @@
 import { z } from 'zod';
 
-// Client-safe schema - only NEXT_PUBLIC_ variables can be accessed from client
-// WARNING: This file is for reference only - actual schema is separate
-const clientEnvSchema = {};
-
-// Server-only schema - all non-NEXTPUBLIC_ variables
-const serverEnvSchema = {};
-
-// Server-only schema - all non-NEXTPUBLIC_ variables
 const serverEnvSchema = z.object({
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
   REDIS_URL: z.url('REDIS_URL must be a valid URL').optional(),
@@ -64,9 +56,9 @@ const serverEnvSchema = z.object({
   SASTRAM_TAVILY_KEY: z.string().optional(),
   SASTRAM_GEMINI_KEY: z.string().optional(),
   HOSTNAME: z.string().default('localhost'),
+  PORT: z.coerce.number().int().positive().default(3000),
 });
 
-// Safe client-only schema - only NEXT_PUBLIC_ variables
 const fullyClientSafeSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL'),
@@ -74,21 +66,18 @@ const fullyClientSafeSchema = z.object({
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
-export type ClientEnv = z.infer<typeof clientEnvSchema>;
-export type FullyClientSafeEnv = z.infer<typeof fullyClientSafeSchema>;
+export type ClientEnv = z.infer<typeof fullyClientSafeSchema>;
+export type FullyClientSafeEnv = ClientEnv;
 
-// Client-side env access - only NEXT_PUBLIC_ variables
 export const clientEnv: FullyClientSafeEnv = (() => {
   const result = fullyClientSafeSchema.safeParse(process.env);
   if (!result.success) {
-    // Return defaults on error, but log them
     console.warn('Client env validation error:', result.error.issues.map(err => err.message));
-    return result.data || {} as FullyClientSafeEnv;
+    return result.data || ({} as FullyClientSafeEnv);
   }
   return result.data;
 })();
 
-// Server-side env access - all server variables
 let serverEnvCache: ServerEnv | null = null;
 export function getServerEnv(): ServerEnv {
   if (serverEnvCache) {
@@ -119,4 +108,30 @@ export function validateEnv() {
   return serverEnvSchema.safeParse(process.env);
 }
 
-export const env = getServerEnv(); // Backward compatibility, function call ensures fresh validation
+export const env = getServerEnv(); 
+
+export type MergedEnv = ServerEnv & Pick<ClientEnv, 'NODE_ENV' | 'NEXT_PUBLIC_APP_URL'>;
+
+let mergedEnvCache: MergedEnv | null = null;
+export function getEnv(): MergedEnv {
+  if (mergedEnvCache) {
+    return mergedEnvCache;
+  }
+
+  const server = getServerEnv();
+  const clientResult = fullyClientSafeSchema.safeParse(process.env);
+
+  if (!clientResult.success) {
+    const errors = clientResult.error.issues.map((err) => `  - ${err.path.join('.')}: ${err.message}`);
+    throw new Error(
+      `Environment validation failed (client subset):\n${errors.join('\n')}\n\nPlease check your .env file.`
+    );
+  }
+
+  mergedEnvCache = {
+    ...server,
+    NODE_ENV: clientResult.data.NODE_ENV,
+    NEXT_PUBLIC_APP_URL: clientResult.data.NEXT_PUBLIC_APP_URL,
+  };
+  return mergedEnvCache;
+}

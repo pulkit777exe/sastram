@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { requireSession } from '@/modules/auth/session';
 import { requireRole } from '@/modules/policy';
+import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
 import {
@@ -40,7 +41,8 @@ export const createTagAction = createServerAction(
 export const addTagToThreadAction = createServerAction(
   { schema: tagThreadSchema, actionName: 'addTagToThreadAction' },
   async ({ threadId, tagId }) => {
-    await requireSession();
+    const session = await requireSession();
+    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     await addTagToThreadRepo(threadId, tagId);
     revalidatePath(ROUTES.THREAD(threadId));
     return { data: null, error: null, ok: true, errorCode: null };
@@ -50,7 +52,9 @@ export const addTagToThreadAction = createServerAction(
 export const removeTagFromThreadAction = createServerAction(
   { schema: tagThreadSchema, actionName: 'removeTagFromThreadAction' },
   async ({ threadId, tagId }) => {
-    await requireSession();
+    const session = await requireSession();
+    // Same fix as addTagToThreadAction above — removal is also a write action.
+    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     await removeTagFromThreadRepo(threadId, tagId);
     revalidatePath(ROUTES.THREAD(threadId));
     return { data: null, error: null, ok: true, errorCode: null };
@@ -60,6 +64,8 @@ export const removeTagFromThreadAction = createServerAction(
 export const getThreadTagsAction = createServerAction(
   { schema: z.object({ threadId: z.string().cuid() }), actionName: 'getThreadTagsAction' },
   async ({ threadId }) => {
+    const session = await requireSession();
+    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     const tags = await getThreadTagsRepo(threadId);
     return { data: tags, error: null, ok: true, errorCode: null };
   }

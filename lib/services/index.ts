@@ -1,13 +1,7 @@
-/**
- * Services barrel export
- */
-
-// Client-safe exports
 export { authClient } from './auth-client';
 export { isAiNotConfigured } from './ai-sentinel';
-export { isImageModerationEnabled } from './image-moderation-quota';
+export { consumeImageModerationQuota } from './image-moderation-quota';
 
-// Server-only services - DO NOT import these on the client side
 export * as ai from './ai';
 export * as auth from './auth';
 export * as blob from './blob';
