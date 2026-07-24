@@ -225,16 +225,16 @@ export function Sidebar({
         <>
           <div className="px-4 pt-4 pb-2">
             <h2 className="text-sm font-semibold text-foreground tracking-tight">Sai</h2>
-          </div>
+        </div>
 
-          <div className="px-2 space-y-0.5">
+          <div className="px-3 space-y-0.5">
             <button
               onClick={onNewSearch}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
             >
               <Plus size={14} />
               New Search
-            </button>
+          </button>
 
             <button
               onClick={onOpenApiKeys}
@@ -243,17 +243,17 @@ export function Sidebar({
               <Code2 size={14} />
               API Keys
               {hasApiKeys && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-            </button>
-          </div>
+          </button>
+        </div>
 
           <div className="mx-3 my-3 h-px bg-border" />
 
           {/* History section header — label is static, refresh is its own affordance */}
-          <div className="px-3 flex items-center justify-between">
+          <div className="flex items-center justify-between px-3">
             <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               <Search size={11} />
               History
-            </span>
+          </span>
             <button
               onClick={() => loadHistory(true)}
               disabled={loading}
@@ -262,11 +262,11 @@ export function Sidebar({
               className="p-1 text-muted-foreground/60 hover:text-foreground rounded-md hover:bg-foreground/5 transition-colors disabled:opacity-40"
             >
               <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
+          </button>
+        </div>
 
           <div
-            className="flex-1 overflow-y-auto px-2 mt-1"
+            className="flex-1 overflow-y-auto mt-1"
             onScroll={(e) => {
               const el = e.currentTarget;
               if (
@@ -282,14 +282,14 @@ export function Sidebar({
             {searches.length === 0 ? (
               <p className="px-3 text-[11px] text-muted-foreground/50 italic">
                 {loading ? 'Loading…' : 'No recent searches'}
-              </p>
+            </p>
             ) : (
               <div ref={listEndRef}>
                 {groupedSearches.map(({ group, items }) => (
                   <div key={group} className="mb-3 last:mb-0">
                     <p className="px-3 pb-1 text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">
                       {group}
-                    </p>
+                 </p>
                     <div className="space-y-0.5">
                       {items.map((s) => (
                         <div key={s.id}>
@@ -297,19 +297,19 @@ export function Sidebar({
                           {s.children && s.children.length > 0 && (
                             <div className="ml-2">
                               {s.children.map((c) => renderItem(c, 1))}
-                            </div>
+                          </div>
                           )}
-                        </div>
-                      ))}
                     </div>
-                  </div>
+                      ))}
+                 </div>
+                 </div>
                 ))}
                 {hasMore && (
                   <p className="px-3 py-2 text-[10px] text-muted-foreground/40 text-center">Load more…</p>
                 )}
-              </div>
+            </div>
             )}
-          </div>
+        </div>
 
           <div className="px-3 pb-3 pt-2 border-t border-border mt-auto">
             <div className="flex items-center gap-2">
@@ -324,16 +324,16 @@ export function Sidebar({
               ) : (
                 <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center text-[10px] font-bold text-foreground shrink-0">
                   {userInitial}
-                </div>
+              </div>
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">
                   {user?.name || user?.email || 'Guest'}
-                </p>
+            </p>
                 <p className="text-[10px] text-muted-foreground truncate">Personal workspace</p>
-              </div>
             </div>
           </div>
+        </div>
         </>
       )}
     </div>

@@ -31,7 +31,7 @@ export function PhaseTracker({ currentPhase }: PhaseTrackerProps) {
   const isTerminal = TERMINAL_PHASES.includes(currentPhase);
 
   return (
-    <div className="w-full max-w-3xl overflow-x-auto">
+    <div className="w-full overflow-x-auto">
       <div
         className="flex items-center gap-1 min-w-max"
         role="progressbar"
