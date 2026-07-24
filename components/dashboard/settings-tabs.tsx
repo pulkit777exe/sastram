@@ -24,7 +24,7 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
 
   return (
     <div className="border-b">
-      <nav className="flex gap-1">
+      <nav className="flex gap-1 overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

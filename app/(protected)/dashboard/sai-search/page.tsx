@@ -24,36 +24,46 @@ function SearchPageSkeleton() {
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-3 w-4/5" />
           <Skeleton className="h-3 w-3/5" />
-        </div>
-      </div>
+       </div>
+     </div>
 
-      <div className="flex-1 min-w-0 space-y-6">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-xl" />
-          <Skeleton className="h-10 flex-1 max-w-xl rounded-xl" />
-          <Skeleton className="h-10 w-20 rounded-xl" />
-        </div>
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Skeleton className="h-6 w-16 rounded-full" />
-            <Skeleton className="h-6 w-20 rounded-full" />
-            <Skeleton className="h-6 w-24 rounded-full" />
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="p-4 rounded-xl border border-border space-y-3">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-5 w-5 rounded" />
-                  <Skeleton className="h-4 w-1/3" />
-                </div>
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-2/3" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+      <div className="flex-1 min-w-0">
+        <div className="mx-auto w-full max-w-4xl px-4 md:px-6 space-y-6 sm:space-y-8">
+          {/* Top bar skeleton — toggle + spacer + action button */}
+          <div className="flex items-center gap-2">
+            <Skeleton className="min-w-11 min-h-11 h-11 w-11 rounded-xl" />
+            <div className="flex-1" />
+            <Skeleton className="hidden sm:inline-block h-10 w-24 rounded-xl" />
+            <Skeleton className="h-10 w-24 rounded-xl" />
+         </div>
+
+          {/* Compact search box skeleton */}
+          <Skeleton className="h-12 w-full rounded-xl" />
+
+          {/* Phase tracker row skeleton — same width as search box */}
+          <div className="flex items-center gap-1 w-full">
+            <Skeleton className="h-6 flex-1 rounded-full" />
+            <Skeleton className="h-6 flex-1 rounded-full" />
+            <Skeleton className="h-6 flex-1 rounded-full" />
+            <Skeleton className="h-6 flex-1 rounded-full" />
+            <Skeleton className="h-6 w-20 rounded-full shrink-0" />
+         </div>
+
+          {/* Two-pane synthesis + sources skeleton — matches the real grid ratio */}
+          <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
+            <div className="space-y-3">
+              <Skeleton className="h-40 w-full rounded-2xl" />
+              <Skeleton className="h-40 w-full rounded-2xl" />
+           </div>
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+           </div>
+         </div>
+       </div>
+     </div>
+   </div>
   );
 }
 
@@ -64,23 +74,23 @@ export default async function AISearchPage() {
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-4xl px-4 md:px-6 space-y-6">
       <div>
         <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
           <Search size={14} />
           <span>Sai Search</span>
-        </div>
+       </div>
         <h1 className="text-4xl font-bold tracking-tight">Search with Sai</h1>
         <p className="text-muted-foreground mt-2">
           Search across Reddit, Hacker News, ArchWiki, Stack Overflow and more.
-        </p>
-      </div>
+       </p>
+     </div>
 
       <ErrorBoundary>
-        <Suspense fallback={<SearchPageSkeleton />}>
-          <SearchPage user={user} />
-        </Suspense>
-      </ErrorBoundary>
-    </div>
+       <Suspense fallback={<SearchPageSkeleton />}>
+         <SearchPage user={user} />
+      </Suspense>
+     </ErrorBoundary>
+   </div>
   );
 }

@@ -107,7 +107,7 @@ export function TableView({ sources }: TableViewProps) {
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-xs table-fixed">
+        <table className="w-full text-xs table-fixed min-w-[600px]">
           <thead>
             <tr className="border-b border-border">
               <th className="text-left px-4 py-2.5 text-[11px] font-medium text-muted-foreground w-[18%]">

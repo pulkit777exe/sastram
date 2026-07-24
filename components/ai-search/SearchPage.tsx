@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toasts } from '@/lib/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Clock,
   AlertCircle,
+  Menu,
 } from 'lucide-react';
 import { SearchBox } from './SearchBox';
 import type { SSEPhase } from './PhaseTracker';
@@ -20,6 +21,12 @@ import { SourceCard } from './SourceCard';
 import { TableView } from './TableView';
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from './ApiKeysModal';
 import { Sidebar, type HistoryItem } from './Sidebar';
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import type {
   SearchConfig,
   Source,
@@ -90,6 +97,27 @@ export function SearchPage({ user }: SearchPageProps) {
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLowerQualitySources, setShowLowerQualitySources] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const isMobile = useSyncExternalStore(
+    (callback) => {
+      const mq = window.matchMedia('(max-width: 768px)');
+      mq.addEventListener('change', callback);
+      return () => mq.removeEventListener('change', callback);
+    },
+    () => window.matchMedia('(max-width: 768px)').matches,
+    () => false
+  );
+
+  // Auto-collapse sidebar on small screens
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (mq.matches) setSidebarCollapsed(true);
+    const handler = (e: MediaQueryListEvent) => { if (e.matches) setSidebarCollapsed(true); };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const sourceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
@@ -421,44 +449,82 @@ export function SearchPage({ user }: SearchPageProps) {
   const synthesis = stream.synthesis;
   const citations: Citation[] = useMemo(() => synthesis?.citations ?? [], [synthesis]);
 
+  const sidebarProps = {
+    onSelectSession: handleSelectSession,
+    onNewSearch: handleNewSearch,
+    collapsed: sidebarCollapsed,
+    onOpenApiKeys: () => setShowApiKeys(true),
+    hasApiKeys: hasKeys,
+    currentSessionId,
+    user,
+  };
+
   return (
     <div className="flex gap-4 items-start">
-      <Sidebar
-        onSelectSession={handleSelectSession}
-        onNewSearch={handleNewSearch}
-        collapsed={sidebarCollapsed}
-        onOpenApiKeys={() => setShowApiKeys(true)}
-        hasApiKeys={hasKeys}
-        currentSessionId={currentSessionId}
-        user={user}
-      />
+      {/* Desktop: inline sidebar */}
+      {!isMobile && <Sidebar {...sidebarProps} />}
 
-      <div className="flex-1 min-w-0 space-y-8">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setSidebarCollapsed((c) => !c)}
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-expanded={!sidebarCollapsed}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex items-center justify-center p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
-        >
-          {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-        </button>
-        <div className="flex-1" />
+      <div className="flex-1 min-w-0">
+        <div className="mx-auto w-full max-w-4xl space-y-6 sm:space-y-8 px-4 md:px-6">
+          <div className="flex items-center gap-2">
+            {/* Desktop: collapse toggle */}
+            {!isMobile && (
+              <button
+                onClick={() => setSidebarCollapsed((c) => !c)}
+                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-expanded={!sidebarCollapsed}
+                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+              >
+                {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+             </button>
+            )}
+
+            {/* Mobile: drawer trigger — SheetContent portals out, so the
+                trigger's parent container doesn't influence drawer positioning. */}
+            {isMobile && (
+              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+                    aria-label="Open sidebar"
+                  >
+                    <Menu size={16} />
+                 </button>
+               </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <SheetTitle className="sr-only">Search history</SheetTitle>
+                  <Sidebar
+                    {...sidebarProps}
+                    collapsed={false}
+                    onSelectSession={(item) => {
+                      handleSelectSession(item);
+                      setSheetOpen(false);
+                    }}
+                    onNewSearch={() => {
+                      handleNewSearch();
+                      setSheetOpen(false);
+                    }}
+                  />
+               </SheetContent>
+             </Sheet>
+            )}
+
+            <div className="flex-1" />
         {appState === 'results' || appState === 'refine' ? (
           <button
             onClick={handleNewSearch}
-            className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+            className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
           >
             New Search
           </button>
         ) : null}
         <button
           onClick={() => setShowApiKeys(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
         >
           <KeyRound size={14} />
-          API Keys
+          <span className="hidden sm:inline">API Keys</span>
           {hasKeys && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
         </button>
       </div>
@@ -470,7 +536,7 @@ export function SearchPage({ user }: SearchPageProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex flex-col items-center pt-16 pb-8"
+            className="flex flex-col items-center pt-10 sm:pt-16 pb-8"
           >
             <div className="mb-8 text-center">
               <h2 className="text-2xl font-bold tracking-tight mb-2">What do you want to search?</h2>
@@ -509,8 +575,9 @@ export function SearchPage({ user }: SearchPageProps) {
               </p>
             )}
 
+            {/* Refine prompt */}
             {appState === 'refine' && (
-              <div className="max-w-3xl bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 text-center">
+              <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 text-center">
                 <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
                   Not enough quality sources
                 </p>
@@ -577,7 +644,7 @@ export function SearchPage({ user }: SearchPageProps) {
             )}
 
             {appState === 'blocked' && (
-              <div className="max-w-3xl flex flex-col items-center pt-8 pb-4 text-center">
+              <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
                   <Clock size={20} className="text-muted-foreground" />
                 </div>
@@ -588,7 +655,7 @@ export function SearchPage({ user }: SearchPageProps) {
             )}
 
             {appState === 'error' && (
-              <div className="max-w-3xl flex flex-col items-center pt-8 pb-4 text-center">
+              <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
                   <AlertCircle size={20} className="text-destructive" />
                 </div>
@@ -623,7 +690,7 @@ export function SearchPage({ user }: SearchPageProps) {
                   ))}
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-[1fr_360px] md:items-start">
+                <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
                   <div className={mobileTab === 'answer' ? 'block' : 'hidden md:block'}>
                     <SynthesisCard
                       text={synthesis.text || synthesis.content}
@@ -637,20 +704,22 @@ export function SearchPage({ user }: SearchPageProps) {
                     />
 
                     {stream.followUps.length > 0 && (
-                      <div className="mt-4 flex flex-col gap-2">
+                      <div className="mt-4 space-y-2">
                         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                           Related
                         </p>
-                        {stream.followUps.map((f) => (
-                          <button
-                            key={f}
-                            onClick={() => handleFollowUp(f)}
-                            className="group flex items-center gap-2 text-left text-sm text-foreground/90 bg-card border border-border hover:border-foreground/30 rounded-xl px-4 py-2.5 transition-colors"
-                          >
-                            <span className="flex-1">{f}</span>
-                            <ArrowRight size={14} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                          </button>
-                        ))}
+                        <div className="flex flex-wrap gap-2">
+                          {stream.followUps.map((f) => (
+                            <button
+                              key={f}
+                              onClick={() => handleFollowUp(f)}
+                              className="group flex items-center gap-2 text-left text-sm text-foreground/90 bg-card border border-border hover:border-foreground/30 rounded-xl px-4 py-2.5 transition-colors"
+                            >
+                              <span className="flex-1">{f}</span>
+                              <ArrowRight size={14} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -695,18 +764,25 @@ export function SearchPage({ user }: SearchPageProps) {
             )}
 
             {appState === 'loading' && (
-              <div className="max-w-3xl space-y-4 animate-pulse">
-                <div className="bg-muted rounded-2xl h-40" />
-                <div className="bg-muted rounded-xl h-24" />
-                <div className="bg-muted rounded-xl h-24" />
-              </div>
+              <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start animate-pulse">
+                <div className="space-y-3">
+                  <div className="bg-muted rounded-2xl h-40" />
+                  <div className="bg-muted rounded-2xl h-40" />
+               </div>
+                <div className="space-y-3">
+                  <div className="bg-muted rounded-xl h-24" />
+                  <div className="bg-muted rounded-xl h-24" />
+                  <div className="bg-muted rounded-xl h-24" />
+               </div>
+             </div>
             )}
-          </motion.div>
+         </motion.div>
         )}
-      </AnimatePresence>
+       </AnimatePresence>
+       </div>
+     </div>
 
       <ApiKeysModal isOpen={showApiKeys} onClose={() => setShowApiKeys(false)} onKeysChange={setHasKeys} />
-      </div>
-    </div>
+   </div>
   );
 }

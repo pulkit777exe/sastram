@@ -10,6 +10,7 @@ jobs:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
 
   audit:
@@ -58,7 +59,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm db:migrate
+      - run: pnpm db:deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
       - run: pnpm typecheck

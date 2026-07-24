@@ -210,13 +210,13 @@ export function PostMessageForm({
         </div>
 
         {/* Bottom Tier: Toolbar */}
-        <div className="flex items-center justify-between px-3 py-2 bg-muted/10 border-t border-border/40 select-none">
-          <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-between px-2 sm:px-3 py-2 bg-muted/10 border-t border-border/40 select-none">
+          <div className="flex items-center gap-0.5 sm:gap-1.5 flex-wrap">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
+              className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-4.5 w-4.5" />
@@ -225,27 +225,27 @@ export function PostMessageForm({
 
             <div className="h-4 w-px bg-border/60 mx-1" />
 
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleBold}>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleBold}>
               <Bold className="h-4 w-4" />
             </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleItalic}>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleItalic}>
               <Italic className="h-4 w-4" />
             </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleCode}>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleCode}>
               <Code2 className="h-4 w-4" />
             </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleLink}>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleLink}>
               <Link2 className="h-4 w-4" />
             </Button>
 
             <div className="h-4 w-px bg-border/60 mx-1" />
 
             <div className="relative">
-              <Button ref={emojiButtonRef} type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setEmojiOpen((p) => !p)}>
+              <Button ref={emojiButtonRef} type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setEmojiOpen((p) => !p)}>
                 <SmilePlus className="h-4 w-4" />
               </Button>
               {emojiOpen && (
-                <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 rounded-xl border border-border/80 bg-popover p-2.5 shadow-linear-xl">
+                <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border/80 bg-popover p-2.5 shadow-linear-xl">
                   <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
                     {COMMON_EMOJIS.map((emoji) => (
                       <button
@@ -262,7 +262,7 @@ export function PostMessageForm({
               )}
             </div>
 
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtSai}>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtSai}>
               <AtSign className="h-4 w-4" />
             </Button>
 

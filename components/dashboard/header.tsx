@@ -75,6 +75,17 @@ export function DashboardHeader() {
           </Link>
           <button
             type="button"
+            className="md:hidden cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-brand/20 rounded-full"
+            onClick={() => setOpen(true)}
+            aria-label="Search users"
+          >
+            <AnimatedIcon
+              icon={Search}
+              className="h-5 w-5 text-muted-foreground"
+            />
+          </button>
+          <button
+            type="button"
             className="relative hidden md:block cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-brand/20 rounded-full"
             onClick={() => setOpen(true)}
             aria-label="Search users"

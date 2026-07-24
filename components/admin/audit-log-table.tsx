@@ -47,6 +47,7 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="border-border hover:bg-transparent">
@@ -86,6 +87,7 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }
