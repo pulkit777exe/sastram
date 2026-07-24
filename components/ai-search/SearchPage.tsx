@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toasts } from '@/lib/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -90,6 +90,15 @@ export function SearchPage({ user }: SearchPageProps) {
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLowerQualitySources, setShowLowerQualitySources] = useState(false);
+
+  // Auto-collapse sidebar on small screens
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    if (mq.matches) setSidebarCollapsed(true);
+    const handler = (e: MediaQueryListEvent) => { if (e.matches) setSidebarCollapsed(true); };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const sourceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
@@ -433,7 +442,7 @@ export function SearchPage({ user }: SearchPageProps) {
         user={user}
       />
 
-      <div className="flex-1 min-w-0 space-y-8">
+      <div className="flex-1 min-w-0 space-y-6 sm:space-y-8">
       <div className="flex items-center gap-2">
         <button
           onClick={() => setSidebarCollapsed((c) => !c)}
@@ -448,17 +457,17 @@ export function SearchPage({ user }: SearchPageProps) {
         {appState === 'results' || appState === 'refine' ? (
           <button
             onClick={handleNewSearch}
-            className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+            className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
           >
             New Search
           </button>
         ) : null}
         <button
           onClick={() => setShowApiKeys(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
         >
           <KeyRound size={14} />
-          API Keys
+          <span className="hidden sm:inline">API Keys</span>
           {hasKeys && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
         </button>
       </div>
@@ -470,7 +479,7 @@ export function SearchPage({ user }: SearchPageProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex flex-col items-center pt-16 pb-8"
+            className="flex flex-col items-center pt-10 sm:pt-16 pb-8"
           >
             <div className="mb-8 text-center">
               <h2 className="text-2xl font-bold tracking-tight mb-2">What do you want to search?</h2>
@@ -509,6 +518,7 @@ export function SearchPage({ user }: SearchPageProps) {
               </p>
             )}
 
+            {/* Refine prompt */}
             {appState === 'refine' && (
               <div className="max-w-3xl bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 text-center">
                 <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
