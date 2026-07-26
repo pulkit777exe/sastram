@@ -1,4 +1,4 @@
-import { Sidebar } from '@/components/dashboard/sidebar';
+import { DashboardShell } from '@/components/dashboard/dashboard-shell';
 import { getSession } from '@/modules/auth/session';
 import { DashboardProviders } from '@/components/dashboard/dashboard-providers';
 import { redirect } from 'next/navigation';
@@ -11,19 +11,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <DashboardProviders>
-      <div className="flex h-screen bg-muted/40 p-4 gap-4 overflow-hidden">
-        <aside className="h-full shrink-0">
-          <Sidebar
-            name={session.user.name || session.user.email || 'User'}
-            email={session.user.email || 'User'}
-            role={session.user.role}
-          />
-        </aside>
-
-        <div className="flex flex-1 flex-col bg-card rounded-2xl border border-border overflow-hidden">
-          <main id="main-content" className="flex-1 overflow-y-auto p-8 text-foreground">{children}</main>
-        </div>
-      </div>
+      <DashboardShell
+        name={session.user.name || session.user.email || 'User'}
+        email={session.user.email || 'User'}
+        role={session.user.role}
+      >
+        {children}
+      </DashboardShell>
     </DashboardProviders>
   );
 }

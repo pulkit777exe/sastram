@@ -77,6 +77,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
   return (
     <>
       <div className="rounded-lg border border-border overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -84,7 +85,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
               <TableHead>Ban Date</TableHead>
               <TableHead>Ban Reason</TableHead>
               <TableHead>Appeal Reason</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="sticky right-0 bg-muted/50 z-10 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -114,7 +115,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 >
                   &quot;{appeal.reason || 'No appeal reason provided'}&quot;
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="sticky right-0 bg-card z-10 text-right">
                   <div className="flex justify-end gap-2">
                     <Button
                       size="sm"
@@ -144,6 +145,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <Dialog open={!!selectedAppeal} onOpenChange={(open) => !open && setSelectedAppeal(null)}>

@@ -98,7 +98,7 @@ export function ThinkingTrace({
   const currentIndex = PHASE_ORDER.indexOf(currentPhase as (typeof PHASE_ORDER)[number]);
 
   return (
-    <div className="max-w-3xl bg-card border border-border rounded-2xl overflow-hidden">
+    <div className="w-full bg-card border border-border rounded-2xl overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}

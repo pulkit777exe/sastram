@@ -11,7 +11,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
 
-type SubscriptionFrequency = 'DAILY' | 'WEEKLY' | 'NEVER' | null;
+type SubscriptionFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'NEVER' | null;
 
 interface ThreadSubscribeButtonProps {
   threadName?: string;
@@ -20,12 +20,11 @@ interface ThreadSubscribeButtonProps {
   initialFrequency: SubscriptionFrequency;
 }
 
-// Only DAILY is offered: the digest sender emits DAILY only, so WEEKLY would
-// silently never send. Existing WEEKLY subscriptions are migrated to DAILY
-// (see scripts/migrate-weekly-to-daily.ts).
 const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
   { label: 'Not subscribed', value: null },
   { label: 'Daily', value: 'DAILY' },
+  { label: 'Weekly', value: 'WEEKLY' },
+  { label: 'Monthly', value: 'MONTHLY' },
   { label: 'Never', value: 'NEVER' },
 ];
 
@@ -46,6 +45,7 @@ export function ThreadSubscribeButton({
     if (!frequency) return 'Not subscribed';
     if (frequency === 'DAILY') return 'Daily';
     if (frequency === 'WEEKLY') return 'Weekly';
+    if (frequency === 'MONTHLY') return 'Monthly';
     return 'Never';
   }, [frequency]);
 

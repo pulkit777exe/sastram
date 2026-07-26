@@ -146,7 +146,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`t-modal ${isClosing ? 'is-closing' : 'is-open'} relative bg-card border border-border rounded-2xl shadow-linear-md w-full max-w-md mx-4 overflow-hidden`}
+        className={`t-modal ${isClosing ? 'is-closing' : 'is-open'} relative bg-card border border-border rounded-2xl shadow-linear-md w-full max-w-md mx-4 sm:mx-4 overflow-hidden md:my-auto my-0 md:rounded-2xl rounded-none md:h-auto h-full`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">

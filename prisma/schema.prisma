@@ -68,6 +68,7 @@ enum InvitationStatus {
 enum DigestFrequency {
   DAILY
   WEEKLY
+  MONTHLY
   NEVER
 }
 
@@ -392,7 +393,7 @@ model ThreadSubscription {
   threadId  String
   userId    String?
   email     String?
-  frequency DigestFrequency @default(WEEKLY)
+  frequency DigestFrequency @default(DAILY)
   isActive  Boolean         @default(true)
   createdAt DateTime        @default(now())
 

@@ -37,10 +37,14 @@ export function Sidebar({
   name,
   email,
   role,
+  mobile = false,
+  onNavigate,
 }: {
   name: string;
   email: string;
   role: string;
+  mobile?: boolean;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -50,11 +54,15 @@ export function Sidebar({
   // Hydrate persisted collapse state after mount to avoid SSR/client mismatch.
   // This is the accepted pattern for reading localStorage on the client only.
   useEffect(() => {
+    if (mobile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsMounted(true);
+      return;
+    }
     const saved = localStorage.getItem('sidebarCollapsed');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved !== null) setIsCollapsed(saved === 'true');
     setIsMounted(true);
-  }, []);
+  }, [mobile]);
 
   const { unreadNotificationCount } = useNotification();
   const unreadCount = unreadNotificationCount ?? 0;
@@ -97,12 +105,15 @@ export function Sidebar({
   const closeMs = 150;
 
   const toggleCollapse = () => {
+    if (mobile) return;
     const newState = !isCollapsed;
     setIsCollapsed(newState);
     if (typeof window !== 'undefined') {
       localStorage.setItem('sidebarCollapsed', String(newState));
     }
   };
+
+  const effectiveCollapsed = mobile ? false : isCollapsed;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,18 +175,18 @@ export function Sidebar({
     <aside
       className={cn(
         'bg-card rounded-2xl border border-border flex flex-col h-full transition-all duration-300 overflow-hidden',
-        isCollapsed ? 'w-16' : 'w-64'
+        effectiveCollapsed ? 'w-16' : 'w-64'
       )}
     >
       <div className="p-4 flex items-center justify-between">
-        {!isCollapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2">
+        {!effectiveCollapsed && (
+          <Link href="/dashboard" className="flex items-center gap-2" onClick={onNavigate}>
             <Logo brand className="h-5 w-5 shrink-0" />
             <span className="font-semibold text-base text-foreground tracking-tight">Sastram</span>
           </Link>
         )}
-        {isCollapsed && <div />}
-        {!isCollapsed && (
+        {effectiveCollapsed && <div />}
+        {!effectiveCollapsed && !mobile && (
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <button
@@ -186,7 +197,10 @@ export function Sidebar({
             </button>
           </div>
         )}
-        {isCollapsed && (
+        {!effectiveCollapsed && mobile && (
+          <ThemeToggle />
+        )}
+        {effectiveCollapsed && (
           <div className="flex justify-center w-full">
             <button
               onClick={toggleCollapse}
@@ -198,7 +212,7 @@ export function Sidebar({
         )}
       </div>
 
-      {!isCollapsed && (
+      {!effectiveCollapsed && (
         <>
           <div className="px-4 mb-4">
             <form onSubmit={handleSearch} className="relative group">
@@ -238,6 +252,7 @@ export function Sidebar({
                 }
                 collapsed={false}
                 badge={item.badge}
+                onNavigate={onNavigate}
               />
             ))}
 
@@ -245,7 +260,7 @@ export function Sidebar({
               <p className="text-[10px] font-bold text-muted-foreground uppercase">Other</p>
             </div>
 
-            <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false}></NavItem>
+            <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false} onNavigate={onNavigate}></NavItem>
           </nav>
 
           <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
@@ -260,7 +275,7 @@ export function Sidebar({
         </>
       )}
 
-      {isCollapsed && (
+      {effectiveCollapsed && (
         <nav className="flex-1 px-2 space-y-1 py-4">
           {navItems.map((item) => (
             <NavItem
@@ -273,6 +288,7 @@ export function Sidebar({
                 (item.href !== '/dashboard' && pathname.startsWith(item.href))
               }
               collapsed={true}
+              onNavigate={onNavigate}
             />
           ))}
         </nav>
@@ -288,21 +304,21 @@ export function Sidebar({
             <div className="w-8 h-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-medium">
               {name.charAt(0).toUpperCase()}
             </div>
-            {!isCollapsed && (
+            {!effectiveCollapsed && (
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-foreground">{name}</span>
                 <span className="text-xs text-muted-foreground truncate w-24">{email}</span>
               </div>
             )}
           </div>
-          {!isCollapsed && (
+          {!effectiveCollapsed && (
             <div className="flex flex-col gap-0.5 text-muted-foreground">
               <AnimatedIcon icon={ChevronUp} size={12} />
               <AnimatedIcon icon={ChevronDown} size={12} />
             </div>
           )}
         </div>
-        {showProfileMenu && !isCollapsed && (
+        {showProfileMenu && !effectiveCollapsed && (
           <div
             ref={menuRef}
             className={cn(
@@ -314,6 +330,7 @@ export function Sidebar({
             <Link
               href="/dashboard/settings/profile"
               className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
+              onClick={onNavigate}
             >
               <AnimatedIcon icon={User} size={14} />
               <span>View Profile</span>
@@ -321,6 +338,7 @@ export function Sidebar({
             <Link
               href="/dashboard/settings"
               className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
+              onClick={onNavigate}
             >
               <AnimatedIcon icon={Settings} size={14} />
               <span>Settings</span>
@@ -328,12 +346,13 @@ export function Sidebar({
             <Link
               href="/dashboard/settings?tab=newsletters"
               className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
+              onClick={onNavigate}
             >
               <AnimatedIcon icon={Mail} size={14} />
               <span>Newsletters</span>
             </Link>
             <button
-              onClick={handleLogout}
+              onClick={() => { handleLogout(); onNavigate?.(); }}
               className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-800/20 transition-colors w-full"
             >
               <AnimatedIcon icon={LogOut} size={14} className="text-red-500" />
@@ -353,9 +372,10 @@ interface NavItemProps {
   active?: boolean;
   collapsed: boolean;
   badge?: number;
+  onNavigate?: () => void;
 }
 
-function NavItem({ icon: Icon, label, href, active = false, collapsed, badge }: NavItemProps) {
+function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, onNavigate }: NavItemProps) {
   if (href === '#') {
     return (
       <div
@@ -380,6 +400,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge }: 
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className={cn(
         'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
         active

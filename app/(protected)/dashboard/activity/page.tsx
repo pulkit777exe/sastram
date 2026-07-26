@@ -22,11 +22,11 @@ export default async function ActivityPage() {
   const { messages } = messagesResult;
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center gap-3 mb-8">
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
         <Activity className="h-6 w-6 text-brand" />
         <h1 className="text-2xl font-bold">Your Activity</h1>
-      </div>
+    </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
         <section>

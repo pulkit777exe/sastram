@@ -11,7 +11,7 @@
 
 ---
 
-An application with forum-like AI-powered search, newsletters, and moderation. Originally a personal project, now open source.
+An discussion platform with AI-powered search, newsletters, and moderation. Originally a personal project, now open source.
 
 ## Tech
 

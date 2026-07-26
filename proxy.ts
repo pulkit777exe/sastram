@@ -37,19 +37,17 @@ const isProd = process.env.NODE_ENV === 'production';
 // Whether to send the CSP as Report-Only (observe violations, don't block).
 // Defaults to Report-Only so the nonce can be validated against real traffic
 // via /api/csp-report before flipping to enforcing (CSP_REPORT_ONLY=false).
-// The one Next.js bootstrap inline script currently lacks the nonce and will
-// show as a violation under Report-Only but still executes; address before
-// enforcing (see docs/BACKLOG.md O1a).
 const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY !== 'false';
 
 function buildCsp(nonce: string): string {
   return [
     "default-src 'self'",
-    // Nonce-based script-src: drop 'unsafe-inline' so injected scripts without the
-    // per-request nonce are blocked (mitigates XSS). Next.js tags its own inline
-    // framework scripts with this nonce automatically.
-    `script-src-elem 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
-    `script-src 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
+    // Nonce-based script-src with 'unsafe-inline' fallback: nonces take precedence
+    // for scripts we control, 'unsafe-inline' covers Next.js bootstrap/HMR scripts
+    // that don't carry the nonce attribute. Remove 'unsafe-inline' only after all
+    // framework inline scripts are nonce-tagged (see docs/BACKLOG.md O1a).
+    `script-src-elem 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} 'unsafe-inline' https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
+    `script-src 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} 'unsafe-inline' https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https: http:",
     "connect-src 'self' https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io wss: ws:",
@@ -119,11 +117,12 @@ export default async function proxy(request: NextRequest) {
     return applySecurityHeaders(response, nonce);
   }
 
-  if (sessionCookie && pathname === '/login') {
-    const response = NextResponse.redirect(new URL('/dashboard', request.url));
-    response.headers.set('x-request-id', requestId);
-    return applySecurityHeaders(response, nonce);
-  }
+  // NOTE: The /login → /dashboard redirect was removed because proxy.ts
+  // only checks cookie existence, not session validity. When a session
+  // expires in the DB but the cookie persists, this caused an infinite
+  // redirect loop: proxy sends /login → /dashboard, layout sends
+  // /dashboard → /login. The login page now handles the redirect
+  // server-side via getSession().
 
   if (!isPublic && getEnv().RATE_LIMIT_ENABLED) {
     const ip = getClientIp(request);

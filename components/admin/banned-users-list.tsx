@@ -103,6 +103,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
       </div>
 
       <div className="rounded-lg border border-border overflow-hidden bg-card">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 border-border hover:bg-muted/50">
@@ -111,7 +112,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
               <TableHead>Reason</TableHead>
               <TableHead>Banned By</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="sticky right-0 bg-muted/50 z-10 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -162,7 +163,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                         : `Temporary (${getDaysRemaining(ban.expiresAt!)} days)`}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="sticky right-0 bg-card z-10 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="ghost"
@@ -185,6 +186,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   );

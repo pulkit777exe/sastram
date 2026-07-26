@@ -17,7 +17,7 @@ export default async function TagDetailPage({ params }: { params: { slug: string
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <header className="rounded-4xl border border-border admin-header-gradient p-8 text-white shadow-linear-xl">
+      <header className="rounded-4xl border border-border admin-header-gradient p-4 md:p-8 text-white shadow-linear-xl">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors mb-4"

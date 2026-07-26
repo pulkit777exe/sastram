@@ -19,6 +19,7 @@ interface NewsletterSubscription {
     slug: string;
     description: string | null;
   };
+  frequency: string;
   createdAt: Date;
 }
 
@@ -61,7 +62,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
           </h3>
           <p className="text-sm text-muted-foreground max-w-sm">
             You haven&apos;t subscribed to any thread newsletters yet. Subscribe to threads to
-            receive daily digests.
+            receive digests.
           </p>
           <Link href="/dashboard/threads">
             <Button className="mt-4 bg-brand hover:bg-brand/90 text-white">
@@ -104,6 +105,9 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                       </p>
                     )}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand">
+                        {subscription.frequency.charAt(0) + subscription.frequency.slice(1).toLowerCase()}
+                      </span>
                       <span>
                         Subscribed <TimeAgo date={subscription.createdAt} />
                       </span>

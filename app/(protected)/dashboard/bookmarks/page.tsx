@@ -24,27 +24,27 @@ export default async function BookmarksPage() {
 
   if (result.error || !result.data) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <h1 className="text-2xl font-bold mb-6">Bookmarks</h1>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Bookmarks</h1>
         <Card className="p-6 text-center text-muted-foreground">
           {result.error || 'Failed to load bookmarks'}
-        </Card>
-      </div>
+       </Card>
+     </div>
     );
   }
 
   const { bookmarks } = result.data as BookmarkedThreadsResponse;
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
         <Bookmark className="h-6 w-6" />
         <h1 className="text-2xl font-bold">Bookmarks</h1>
         <span className="text-muted-foreground">({bookmarks.length})</span>
-      </div>
+     </div>
 
       {bookmarks.length === 0 ? (
-        <Card className="p-12 text-center">
+        <Card className="p-6 md:p-12 text-center">
           <Bookmark className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
           <p className="text-muted-foreground">No bookmarks yet</p>
           <p className="text-sm text-muted-foreground mt-2">
