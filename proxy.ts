@@ -117,11 +117,12 @@ export default async function proxy(request: NextRequest) {
     return applySecurityHeaders(response, nonce);
   }
 
-  if (sessionCookie && pathname === '/login') {
-    const response = NextResponse.redirect(new URL('/dashboard', request.url));
-    response.headers.set('x-request-id', requestId);
-    return applySecurityHeaders(response, nonce);
-  }
+  // NOTE: The /login → /dashboard redirect was removed because proxy.ts
+  // only checks cookie existence, not session validity. When a session
+  // expires in the DB but the cookie persists, this caused an infinite
+  // redirect loop: proxy sends /login → /dashboard, layout sends
+  // /dashboard → /login. The login page now handles the redirect
+  // server-side via getSession().
 
   if (!isPublic && getEnv().RATE_LIMIT_ENABLED) {
     const ip = getClientIp(request);
