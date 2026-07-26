@@ -143,7 +143,7 @@ export function SubscriptionSuccessModal({
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <span>Daily Sai-generated summary of key discussions</span>
+                  <span>Sai-generated summaries of key discussions</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Bell className="w-4 h-4 text-muted-foreground mt-0.5" />

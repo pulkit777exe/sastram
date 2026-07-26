@@ -22,7 +22,7 @@ const subscribeSchema = z.object({
 
 const updateSubscriptionFrequencySchema = z.object({
   threadId: z.string().cuid(),
-  frequency: z.enum(['DAILY', 'WEEKLY', 'NEVER']),
+  frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'NEVER']),
 });
 
 export const unsubscribeFromThread = withValidation(
