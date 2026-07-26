@@ -100,6 +100,17 @@ export const revokeSessionAction = createServerAction(
   }
 );
 
+function decodeIdTokenDisplayName(idToken: string | null, providerId: string): string | null {
+  if (!idToken) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(idToken.split('.')[1]!, 'base64url').toString('utf-8'));
+    if (providerId === 'github') return payload.login ?? payload.email ?? payload.name ?? null;
+    return payload.email ?? payload.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const getLinkedAccountsAction = createServerAction(
   { schema: z.object({}), actionName: 'getLinkedAccountsAction' },
   async () => {
@@ -109,10 +120,14 @@ export const getLinkedAccountsAction = createServerAction(
     }
     const accounts = await prisma.account.findMany({
       where: { userId: session.user.id },
-      select: { providerId: true, createdAt: true },
+      select: { providerId: true, createdAt: true, idToken: true },
     });
     return {
-      data: accounts.map((a) => ({ provider: a.providerId, linkedAt: a.createdAt })),
+      data: accounts.map((a) => ({
+        provider: a.providerId,
+        linkedAt: a.createdAt,
+        displayName: decodeIdTokenDisplayName(a.idToken, a.providerId),
+      })),
       error: null,
       ok: true,
       errorCode: null,

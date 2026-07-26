@@ -183,7 +183,7 @@ export const backfillThreadMessages = createServerAction(
         where: {
           threadId,
           deletedAt: null,
-          createdAt: { gt: sinceDate },
+          createdAt: { gte: sinceDate },
         },
         include: {
           sender: { select: { id: true, name: true, image: true } },

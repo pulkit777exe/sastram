@@ -92,9 +92,11 @@ export function SearchPage({ user }: SearchPageProps) {
   const [startedAt, setStartedAt] = useState<number>(0);
 
   const [showApiKeys, setShowApiKeys] = useState(false);
-  const [hasKeys, setHasKeys] = useState(() =>
-    typeof window !== 'undefined' ? hasAllApiKeys() : false
-  );
+  const [hasKeys, setHasKeys] = useState(false);
+
+  useEffect(() => {
+    setHasKeys(hasAllApiKeys());
+  }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLowerQualitySources, setShowLowerQualitySources] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);

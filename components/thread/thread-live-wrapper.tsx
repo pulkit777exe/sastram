@@ -410,6 +410,11 @@ export function ThreadLiveWrapper({
         }
         return [...cleaned, newMessage];
       });
+      const msgTimestamp = new Date(newMessage.createdAt).toISOString();
+      if (msgTimestamp > lastMessageTimestampRef.current) {
+        lastMessageTimestampRef.current = msgTimestamp;
+      }
+
       if (hasAiMention(newMessage.content)) {
         setAiPending(newMessage.id);
       }
@@ -584,6 +589,18 @@ export function ThreadLiveWrapper({
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [threadId, title, slug, mapBackfillMessage, clearAiStatus]);
+
+  // Safety net: when a pending AI inline status has a corresponding AI response
+  // message in liveMessages (regardless of how it arrived), clear the status.
+  // Covers edge cases where polling misses the AI message (e.g., timestamp races).
+  useEffect(() => {
+    for (const [pendingMsgId, status] of Object.entries(aiInlineStatus)) {
+      if (status !== 'pending') continue;
+      if (liveMessages.some((m) => m.parentId === pendingMsgId && m.isAiResponse)) {
+        setTimeout(() => clearAiStatus(pendingMsgId), 0);
+      }
+    }
+  }, [liveMessages, aiInlineStatus, clearAiStatus]);
 
   // Fast poll while an @sai reply is generating. The WebSocket runs in noop mode
   // in dev, so real-time delivery is dropped and the 20s poll would make inline
