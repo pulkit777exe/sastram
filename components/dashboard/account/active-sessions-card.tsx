@@ -17,10 +17,18 @@ interface SessionItem {
   isCurrent?: boolean;
 }
 
-function deviceLabel(ua?: string | null) {
-  if (!ua) return { icon: Monitor, label: 'Unknown device' };
-  if (/mobile/i.test(ua)) return { icon: Smartphone, label: 'Mobile device' };
-  return { icon: Monitor, label: 'Desktop' };
+function parseUA(ua?: string | null) {
+  if (!ua) return { icon: Monitor, label: 'Unknown device', browser: undefined };
+  const isMobile = /mobile/i.test(ua);
+  const match = ua.match(/(Chrome\/\S+|Firefox\/\S+|Safari\/\S+|Edge\/\S+|OPR\/\S+)/);
+  const browser = match?.[0]?.replace(/\/.*/, '');
+  const osMatch = ua.match(/\([^)]+\)/)?.[0];
+  const os = osMatch?.replace(/[()]/g, '').split(';').map(s => s.trim()).filter(Boolean).find(s => !/\d/.test(s) && s.length > 2);
+  return {
+    icon: isMobile ? Smartphone : Monitor,
+    label: isMobile ? 'Mobile' : 'Desktop',
+    detail: [browser, os].filter(Boolean).join(' · '),
+  };
 }
 
 export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
@@ -76,23 +84,26 @@ export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
           <p className="text-sm text-muted-foreground">No active sessions found.</p>
         ) : (
           sessions.map((session) => {
-            const { icon: Icon, label } = deviceLabel(session.userAgent);
+            const { icon: Icon, label, detail } = parseUA(session.userAgent);
             return (
               <div
                 key={session.id}
                 className="flex items-center justify-between rounded-lg border border-border p-3"
               >
                 <div className="flex items-center gap-3">
-                  <Icon className="h-5 w-5" />
-                  <div>
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">
                       {label}
                       {session.isCurrent && (
                         <span className="ml-2 text-xs text-emerald-500">This device</span>
                       )}
                     </p>
+                    {detail && (
+                      <p className="text-xs text-muted-foreground truncate">{detail}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      {session.ipAddress ? `${session.ipAddress} · ` : ''}
+                      {session.ipAddress ? `IP ${session.ipAddress} · ` : ''}
                       Signed in {new Date(session.createdAt).toLocaleDateString()}
                     </p>
                   </div>

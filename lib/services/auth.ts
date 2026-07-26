@@ -14,6 +14,17 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
+  advanced: {
+    ipAddress: {
+      ipv6Subnet: 128,
+    },
+  },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ['google', 'github'],
+    },
+  },
   databaseHooks: {
     user: {
       create: {

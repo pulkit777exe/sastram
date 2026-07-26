@@ -21,6 +21,18 @@ import { SourceCard } from './SourceCard';
 import { TableView } from './TableView';
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from './ApiKeysModal';
 import { Sidebar, type HistoryItem } from './Sidebar';
+
+const apiKeysListeners = new Set<() => void>();
+function subscribeToApiKeys(cb: () => void) {
+  apiKeysListeners.add(cb);
+  return () => apiKeysListeners.delete(cb);
+}
+function getHasApiKeys() {
+  return hasAllApiKeys();
+}
+function notifyApiKeysChanged(_hasAll?: boolean) {
+  apiKeysListeners.forEach((fn) => fn());
+}
 import {
   Sheet,
   SheetContent,
@@ -92,9 +104,7 @@ export function SearchPage({ user }: SearchPageProps) {
   const [startedAt, setStartedAt] = useState<number>(0);
 
   const [showApiKeys, setShowApiKeys] = useState(false);
-  const [hasKeys, setHasKeys] = useState(() =>
-    typeof window !== 'undefined' ? hasAllApiKeys() : false
-  );
+  const hasKeys = useSyncExternalStore(subscribeToApiKeys, getHasApiKeys, () => false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLowerQualitySources, setShowLowerQualitySources] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -782,7 +792,7 @@ export function SearchPage({ user }: SearchPageProps) {
        </div>
      </div>
 
-      <ApiKeysModal isOpen={showApiKeys} onClose={() => setShowApiKeys(false)} onKeysChange={setHasKeys} />
+      <ApiKeysModal isOpen={showApiKeys} onClose={() => setShowApiKeys(false)} onKeysChange={notifyApiKeysChanged} />
    </div>
   );
 }

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { signIn } from '@/lib/services/auth-client';
 import { GithubIcon } from '@/public/icons/github';
 import { ChromeIcon } from '@/public/icons/google';
 import { unlinkAccountAction } from '@/modules/users/account-actions';
@@ -12,6 +11,7 @@ import { unlinkAccountAction } from '@/modules/users/account-actions';
 interface LinkedAccount {
   provider: string;
   linkedAt: Date;
+  displayName?: string | null;
 }
 
 const PROVIDERS = [
@@ -22,13 +22,6 @@ const PROVIDERS = [
 export function ConnectedAccountsCard({ linked }: { linked: LinkedAccount[] }) {
   const [unlinking, setUnlinking] = useState<string | null>(null);
   const linkedSet = new Set(linked.map((l) => l.provider));
-
-  function handleLink(provider: string) {
-    void signIn.social({
-      provider: provider as 'google' | 'github',
-      callbackURL: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard/settings?tab=account`,
-    });
-  }
 
   async function handleUnlink(provider: string) {
     setUnlinking(provider);
@@ -49,14 +42,14 @@ export function ConnectedAccountsCard({ linked }: { linked: LinkedAccount[] }) {
       <CardHeader>
         <CardTitle>Connected accounts</CardTitle>
         <CardDescription>
-          Link social accounts to sign in without a password. You must keep at least one sign-in
-          method.
+          Social accounts are automatically linked when you sign in with the same email.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {PROVIDERS.map((provider) => {
           const Icon = provider.icon;
-          const isLinked = linkedSet.has(provider.id);
+          const account = linked.find((l) => l.provider === provider.id);
+          const isLinked = !!account;
           return (
             <div
               key={provider.id}
@@ -67,11 +60,11 @@ export function ConnectedAccountsCard({ linked }: { linked: LinkedAccount[] }) {
                 <div>
                   <p className="text-sm font-medium">{provider.label}</p>
                   <p className="text-xs text-muted-foreground">
-                    {isLinked ? 'Connected' : 'Not connected'}
+                    {isLinked ? (account.displayName ?? 'Connected') : 'Not connected'}
                   </p>
                 </div>
               </div>
-              {isLinked ? (
+              {isLinked && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -79,10 +72,6 @@ export function ConnectedAccountsCard({ linked }: { linked: LinkedAccount[] }) {
                   onClick={() => handleUnlink(provider.id)}
                 >
                   {unlinking === provider.id ? 'Unlinking…' : 'Unlink'}
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => handleLink(provider.id)}>
-                  Link
                 </Button>
               )}
             </div>

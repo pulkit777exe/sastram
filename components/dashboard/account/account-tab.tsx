@@ -13,11 +13,11 @@ import { useEffect, useState } from 'react';
 export function AccountTab({ currentEmail }: { currentEmail: string }) {
   const { data } = useSession();
   const currentToken = data?.session?.token ?? '';
-  const [linked, setLinked] = useState<{ provider: string; linkedAt: Date }[]>([]);
+  const [linked, setLinked] = useState<{ provider: string; linkedAt: Date; displayName?: string | null }[]>([]);
 
   useEffect(() => {
     void getLinkedAccountsAction().then((result) => {
-      if (!result.error && result.data) setLinked(result.data as { provider: string; linkedAt: Date }[]);
+      if (!result.error && result.data) setLinked(result.data as { provider: string; linkedAt: Date; displayName?: string | null }[]);
     });
   }, []);
 
