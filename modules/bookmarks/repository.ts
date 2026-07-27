@@ -79,14 +79,18 @@ export const getUserBookmarks = cache(async (userId: string, limit: number = 20,
 });
 
 export const isBookmarked = cache(async (userId: string, threadId: string): Promise<boolean> => {
-  const bookmark = await prisma.userBookmark.findUnique({
-    where: {
-      userId_threadId: {
-        userId,
-        threadId,
+  try {
+    const bookmark = await prisma.userBookmark.findUnique({
+      where: {
+        userId_threadId: {
+          userId,
+          threadId,
+        },
       },
-    },
-  });
+    });
 
-  return !!bookmark;
+    return !!bookmark;
+  } catch {
+    return false;
+  }
 });

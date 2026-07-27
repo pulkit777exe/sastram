@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { Prisma } from '@prisma/client';
 
 export async function searchThreads(query: string, limit: number = 20, offset: number = 0, threadIds?: string[]) {
   try {
@@ -62,7 +63,7 @@ export async function searchMessages(
   threadIds?: string[]
 ) {
   try {
-    const where: any = {
+    const where: Prisma.MessageWhereInput = {
       deletedAt: null,
       content: { contains: query, mode: 'insensitive' },
       // Exclude messages from soft-deleted threads — the thread is invisible everywhere else.

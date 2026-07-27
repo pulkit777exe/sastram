@@ -100,7 +100,8 @@ export async function getSlaMetrics(): Promise<{
   let avgResponseTimeHours: number | null = null;
   if (resolvedReports.length > 0) {
     const totalMs = resolvedReports.reduce((sum, r) => {
-      return sum + (r.firstResponseAt!.getTime() - r.createdAt.getTime());
+      const responseTime = r.firstResponseAt?.getTime() ?? r.createdAt.getTime();
+      return sum + (responseTime - r.createdAt.getTime());
     }, 0);
     avgResponseTimeHours = Math.round((totalMs / resolvedReports.length) / (1000 * 60 * 60) * 10) / 10;
   }

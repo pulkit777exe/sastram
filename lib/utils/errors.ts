@@ -24,7 +24,12 @@ interface PrismaError {
 }
 
 function isPrismaError(err: unknown): err is PrismaError {
-  return typeof err === 'object' && err !== null && 'code' in err;
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    typeof (err as Record<string, unknown>).code === 'string'
+  );
 }
 
 /**

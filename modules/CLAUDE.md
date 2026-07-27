@@ -71,4 +71,4 @@ Unit tests use Mocha + Chai. Tests live in `test/` directory.
 
 ## Known Issues
 
-1. `modules/newsletter/actions.ts:101,106` - Prisma relation type error
+(None currently known)

@@ -134,6 +134,7 @@ export async function getUserActivity(userId: string, limit = 50, offset = 0) {
           select: {
             id: true,
             name: true,
+            email: true,
             image: true,
           },
         },

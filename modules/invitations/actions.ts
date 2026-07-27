@@ -120,11 +120,11 @@ export async function listThreadInvitationsAction(threadId: string) {
     });
 
     if (!thread) {
-      return { data: null as ThreadInvitationView[] | null, error: 'Thread not found' };
+      return { data: null as ThreadInvitationView[] | null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' };
     }
 
     if (!canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility }, session.user.id, session.user.role)) {
-      return { data: null as ThreadInvitationView[] | null, error: 'Insufficient permissions' };
+      return { data: null as ThreadInvitationView[] | null, error: 'Insufficient permissions', ok: false, errorCode: 'FORBIDDEN' };
     }
 
     const invitations = await prisma.threadInvitation.findMany({

@@ -188,14 +188,14 @@ export async function postMessage(formData: FormData) {
         name: att.name,
         size: att.size !== null ? Number(att.size) : null,
       })),
-      poll: (message as any).poll ? {
-        id: (message as any).poll.id,
-        threadId: (message as any).poll.threadId,
-        question: (message as any).poll.question,
-        options: (message as any).poll.options,
-        isActive: (message as any).poll.isActive,
-        expiresAt: (message as any).poll.expiresAt,
-        createdAt: (message as any).poll.createdAt,
+      poll: message.poll ? {
+        id: message.poll.id,
+        threadId: message.poll.threadId,
+        question: message.poll.question,
+        options: message.poll.options,
+        isActive: message.poll.isActive,
+        expiresAt: message.poll.expiresAt,
+        createdAt: message.poll.createdAt,
         votes: [],
       } : null,
     };

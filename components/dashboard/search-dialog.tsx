@@ -14,15 +14,7 @@ import {
 import { searchUsersAction } from '@/modules/search/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2 } from 'lucide-react';
-
-// TODO: import this from '@/modules/search/types' if a shared type already
-// exists there — this is the shape actually consumed below, replacing `any[]`.
-interface SearchUser {
-  id: string;
-  name?: string | null;
-  email: string;
-  image?: string | null;
-}
+import type { SearchUserResult } from '@/modules/search/types';
 
 export function SearchDialog({
   open,
@@ -33,7 +25,7 @@ export function SearchDialog({
 }) {
   const router = useRouter();
   const [query, setQuery] = React.useState('');
-  const [data, setData] = React.useState<SearchUser[]>([]);
+  const [data, setData] = React.useState<SearchUserResult[]>([]);
   const [loading, setLoading] = React.useState(false);
   // Guards against out-of-order responses: only the response matching the
   // latest fired request is allowed to update state. Previously a fast typer

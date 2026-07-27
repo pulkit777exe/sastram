@@ -379,7 +379,7 @@ export function ThreadLiveWrapper({
     } catch {
       // Silent — backfill is best-effort
     }
-  }, [threadId, title, slug]);
+  }, [threadId, mapBackfillMessage]);
 
   useThreadWebSocket({
     threadId,
