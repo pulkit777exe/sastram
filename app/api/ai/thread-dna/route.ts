@@ -6,6 +6,7 @@ import { aiService } from '@/lib/services/ai';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { consumeAiAnalysisQuota } from '@/lib/services/ai-analysis-quota';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { z } from 'zod';
 
 const dnaRequestSchema = z.object({
@@ -27,13 +28,19 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('RATE_LIMITED', `Daily AI analysis limit reached. Resets at UTC midnight.`), { status: 429 });
   }
 
-  // Global daily spend cap
-  const spendCap = await checkAiSpendCap();
-  if (!spendCap.allowed) {
-    return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
-  }
+   // Global daily spend cap
+   const spendCap = await checkAiSpendCap();
+   if (!spendCap.allowed) {
+     return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
+   }
 
-  let body: unknown;
+   // Hard cost-aware gate: thread DNA is an EXPENSIVE synthesis.
+   const gate = evaluateAiCostGate({ path: AiCallPath.THREAD_DNA, spendCapAllowed: spendCap.allowed });
+   if (!gate.allowed) {
+     return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
+   }
+
+   let body: unknown;
   try {
     body = await req.json();
   } catch {

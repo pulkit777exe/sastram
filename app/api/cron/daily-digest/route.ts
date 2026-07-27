@@ -6,6 +6,9 @@ import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay, subDays, getDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
+import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath, classifyAiCallCost } from '@/lib/services/ai-cost-classification';
+import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import type { DigestFrequency } from '@prisma/client';
 
 /**
@@ -126,14 +129,23 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // Generate or retrieve summary for this thread
-      let summaryHtml = '';
-      try {
-        const cacheKey = `${thread.id}-${sub.frequency}`;
-        if (!threadSummaries.has(cacheKey)) {
-          const summaryPromise = aiService.generateDailyDigest(messages);
-          threadSummaries.set(cacheKey, summaryPromise);
-        }
+       // Generate or retrieve summary for this thread
+       let summaryHtml = '';
+       try {
+         const spendCap = await checkAiSpendCap();
+         const gate = evaluateAiCostGate({ path: AiCallPath.DAILY_DIGEST, spendCapAllowed: spendCap.allowed });
+         if (!gate.allowed) {
+           results.skipped++;
+           continue;
+         }
+
+         await consumeSpendCap(classifyAiCallCost(AiCallPath.DAILY_DIGEST).estimatedCostUsd);
+
+         const cacheKey = `${thread.id}-${sub.frequency}`;
+         if (!threadSummaries.has(cacheKey)) {
+           const summaryPromise = aiService.generateDailyDigest(messages);
+           threadSummaries.set(cacheKey, summaryPromise);
+         }
 
         summaryHtml = await threadSummaries.get(cacheKey);
         if (isAiNotConfigured(summaryHtml)) {

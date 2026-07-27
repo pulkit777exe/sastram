@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
+import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 
 type ThreadStorageWithMessages = Prisma.ThreadGetPayload<{
   include: {
@@ -85,12 +87,26 @@ export async function createThread(payload: {
       },
     ];
 
+    // Pre-flight spend cap: expensive paths (DNA, resolution score) are
+    // gated at enqueue time so we don't queue unaffordable work.
+    const spendCap = await checkAiSpendCap();
+    const dnaGate = evaluateAiCostGate({ path: AiCallPath.THREAD_DNA, spendCapAllowed: spendCap.allowed });
+    const scoreGate = evaluateAiCostGate({ path: AiCallPath.RESOLUTION_SCORE, spendCapAllowed: spendCap.allowed });
+
     // Enqueue background jobs for AI analysis instead of blocking the response
     try {
-      await Promise.all([
-        enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages: initialMessages }),
-        enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, { threadId: thread.id, messages: initialMessages }),
-      ]);
+      const jobs: Promise<void>[] = [];
+      if (dnaGate.allowed) {
+        jobs.push(enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages: initialMessages }));
+      } else {
+        logger.warn(`[createThread] DNA enqueue blocked by spend cap for thread ${thread.id}`);
+      }
+      if (scoreGate.allowed) {
+        jobs.push(enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, { threadId: thread.id, messages: initialMessages }));
+      } else {
+        logger.warn(`[createThread] resolution-score enqueue blocked by spend cap for thread ${thread.id}`);
+      }
+      await Promise.allSettled(jobs);
     } catch (error) {
       logger.error('Failed to enqueue thread AI jobs:', error);
       // Non-critical — thread is created, AI will be processed later

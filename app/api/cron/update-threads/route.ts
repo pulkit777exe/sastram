@@ -11,6 +11,8 @@ import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
+import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 
 const BATCH_SIZE = 25;
 const QSTASH_GUARD_THRESHOLD = 400;
@@ -21,13 +23,21 @@ export async function GET(req: NextRequest) {
     return authError;
   }
 
-  const dailyCount = await getDailyQstashCount();
-  if (dailyCount > QSTASH_GUARD_THRESHOLD) {
-    logger.warn(`[cron/update-threads] Daily QStash count (${dailyCount}) exceeds guard threshold (${QSTASH_GUARD_THRESHOLD}), skipping`);
-    return NextResponse.json(ok({ processed: 0, jobsAdded: 0, skipped: true, dailyCount }));
-  }
+   const dailyCount = await getDailyQstashCount();
+   if (dailyCount > QSTASH_GUARD_THRESHOLD) {
+     logger.warn(`[cron/update-threads] Daily QStash count (${dailyCount}) exceeds guard threshold (${QSTASH_GUARD_THRESHOLD}), skipping`);
+     return NextResponse.json(ok({ processed: 0, jobsAdded: 0, skipped: true, dailyCount }));
+   }
 
-  try {
+   // Spend cap pre-flight for expensive AI enqueues.
+   const spendCap = await checkAiSpendCap();
+
+   const dnaGate = evaluateAiCostGate({ path: AiCallPath.THREAD_DNA, spendCapAllowed: spendCap.allowed });
+   const scoreGate = evaluateAiCostGate({ path: AiCallPath.RESOLUTION_SCORE, spendCapAllowed: spendCap.allowed });
+   const conflictGate = evaluateAiCostGate({ path: AiCallPath.CONFLICT_DETECTION, spendCapAllowed: spendCap.allowed });
+   const digestGate = evaluateAiCostGate({ path: AiCallPath.DAILY_DIGEST, spendCapAllowed: spendCap.allowed });
+
+   try {
     let totalProcessed = 0;
     let totalJobsAdded = 0;
     let cursor: string | undefined;
@@ -75,23 +85,31 @@ export async function GET(req: NextRequest) {
         const isOutdated = thread.updatedAt < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const oldScore = thread.resolutionScore;
 
-        const jobs: Promise<void>[] = [
-          enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages, cronJob: true }),
-          enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, isOutdated, cronJob: true }),
-          enqueueJob(AIJobType.DETECT_CONFLICTS, { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, cronJob: true }),
-        ];
+         const jobs: Promise<void>[] = [];
 
-        if (subscriberIds.length > 0) {
-          jobs.push(
-            enqueueJob(AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true }),
-          );
-        }
+         if (dnaGate.allowed) {
+           jobs.push(enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages, cronJob: true }));
+         }
 
-        if (subscriberIds.length > 0 && isOutdated) {
-          jobs.push(
-            enqueueJob(AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS, { subscriberIds, threadId: thread.id, threadName: thread.name, oldScore: oldScore ?? undefined, isOutdated, cronJob: true }),
-          );
-        }
+         if (scoreGate.allowed) {
+           jobs.push(enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, isOutdated, cronJob: true }));
+         }
+
+         if (conflictGate.allowed) {
+           jobs.push(enqueueJob(AIJobType.DETECT_CONFLICTS, { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, cronJob: true }));
+         }
+
+         if (subscriberIds.length > 0 && digestGate.allowed) {
+           jobs.push(
+             enqueueJob(AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true }),
+           );
+         }
+
+         if (subscriberIds.length > 0 && isOutdated) {
+           jobs.push(
+             enqueueJob(AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS, { subscriberIds, threadId: thread.id, threadName: thread.name, oldScore: oldScore ?? undefined, isOutdated, cronJob: true }),
+           );
+         }
 
         const results = await Promise.allSettled(jobs);
         totalJobsAdded += results.filter((r) => r.status === 'fulfilled').length;

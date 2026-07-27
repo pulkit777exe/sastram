@@ -4,6 +4,8 @@ import { aiService } from '@/lib/services/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { messageLimiter } from '@/lib/services/rate-limit';
 import { createNotification } from '@/modules/notifications';
+import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
+import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
 import type { ReportCategory } from '@prisma/client';
 
 export type MessageLike = {
@@ -182,6 +184,11 @@ export class MLClassifier {
     }
 
     try {
+      // Spend-cap gate: count moderation AI against the global $5/day cap.
+      // TEXT_TOXICITY_MODERATION is classified as CHEAP so the gate
+      // itself is a pass-through, but consumeSpendCap ensures we account for the cost.
+      await consumeSpendCap(classifyAiCallCost(AiCallPath.TEXT_TOXICITY_MODERATION).estimatedCostUsd);
+
       const threadText =
         context.recentHistory
           .slice(-10)

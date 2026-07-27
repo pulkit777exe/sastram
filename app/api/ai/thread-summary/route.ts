@@ -7,6 +7,7 @@ import { enqueueJob } from '@/lib/services/queue';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { consumeAiAnalysisQuota } from '@/lib/services/ai-analysis-quota';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
 import { z } from 'zod';
@@ -46,6 +47,12 @@ export async function POST(req: NextRequest) {
     // Global daily spend cap
     const spendCap = await checkAiSpendCap();
     if (!spendCap.allowed) {
+      return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
+    }
+
+    // Hard cost-aware gate: thread summary is an EXPENSIVE synthesis.
+    const gate = evaluateAiCostGate({ path: AiCallPath.THREAD_SUMMARY, spendCapAllowed: spendCap.allowed });
+    if (!gate.allowed) {
       return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
     }
 
