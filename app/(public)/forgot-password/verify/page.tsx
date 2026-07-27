@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toasts } from '@/lib/utils/toast';
 import { SerifHeading } from '@/components/layout/serif-heading';
+import { clientLogger } from '@/lib/utils/client-logger';
 
 export default function ForgotPasswordVerifyPage() {
   const router = useRouter();
@@ -66,7 +67,7 @@ export default function ForgotPasswordVerifyPage() {
       window.sessionStorage.setItem('forgot_password_otp', code);
       router.push('/forgot-password/reset');
     } catch (error) {
-      console.error('[forgot-password:verify]', error);
+      clientLogger.error('[forgot-password:verify]', error instanceof Error ? error.message : String(error));
       toasts.networkError();
       setIsSubmitting(false);
     }
@@ -136,7 +137,7 @@ export default function ForgotPasswordVerifyPage() {
       toasts.sent();
       setIsSubmitting(false);
     } catch (error) {
-      console.error('[forgot-password:resend]', error);
+      clientLogger.error('[forgot-password:resend]', error instanceof Error ? error.message : String(error));
       toasts.networkError();
       setIsSubmitting(false);
     }

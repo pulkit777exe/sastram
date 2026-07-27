@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/config/routes';
+import { clientLogger } from '@/lib/utils/client-logger';
 import {
   searchThreadsAction,
   searchMessagesAction,
@@ -52,7 +53,7 @@ export default function SearchPage() {
         users: (searchResults[2]?.data as SearchResults['users']) || null,
       });
     } catch (error) {
-      console.error('Search error:', error);
+      clientLogger.error('Search error', error instanceof Error ? error.message : String(error));
     } finally {
       setIsSearching(false);
     }
