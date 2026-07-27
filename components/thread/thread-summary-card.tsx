@@ -44,10 +44,6 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
       // Timeout guard — stop polling after POLL_TIMEOUT_MS
       if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
         stopPolling();
-        if (pollIntervalRef.current !== null) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
         if (mountedRef.current) {
           setIsLoading(false);
           toasts.error('Summary is taking too long. Try again in a moment.');

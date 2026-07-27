@@ -4,6 +4,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { aiService, isAiNotConfigured } from '@/lib/services/ai';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
@@ -57,15 +58,24 @@ export async function GET(
     });
   }
 
-  const spendCap = await checkAiSpendCap();
-  if (!spendCap.allowed) {
-    return new Response(sseEvent('error', { error: 'AI features temporarily unavailable' }), {
-      status: 503,
-      headers: { 'Content-Type': 'text/event-stream' },
-    });
-  }
+   const spendCap = await checkAiSpendCap();
+   if (!spendCap.allowed) {
+     return new Response(sseEvent('error', { error: 'AI features temporarily unavailable' }), {
+       status: 503,
+       headers: { 'Content-Type': 'text/event-stream' },
+     });
+   }
 
-  try {
+   // Hard cost-aware gate: AI reply streaming is an EXPENSIVE synthesis.
+   const gate = evaluateAiCostGate({ path: AiCallPath.AI_REPLY_STREAM, spendCapAllowed: spendCap.allowed });
+   if (!gate.allowed) {
+     return new Response(sseEvent('error', { error: 'AI features temporarily unavailable' }), {
+       status: 503,
+       headers: { 'Content-Type': 'text/event-stream' },
+     });
+   }
+
+   try {
     await requireThreadMembershipOrThrow(threadId, session.user.id);
   } catch {
     return new Response(sseEvent('error', { error: 'Forbidden' }), {

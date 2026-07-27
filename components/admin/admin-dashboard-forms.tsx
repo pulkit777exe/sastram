@@ -2,7 +2,7 @@
 
 import { use, useTransition } from 'react';
 import Link from 'next/link';
-import { Flag, PlusCircle } from 'lucide-react';
+import { Flag, PlusCircle, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -53,7 +53,7 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
               removed; permissions now flow from thread creators and global moderator roles.
             </p>
           </div>
-          <div className="flex gap-3">
+<div className="flex gap-3">
             <Link href="/dashboard/admin/reports">
               <Button className="bg-red-600 hover:bg-red-500 text-white">
                 <Flag className="w-4 h-4 mr-2" />
@@ -64,6 +64,12 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
               <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
                 <Flag className="w-4 h-4 mr-2" />
                 Moderation
+              </Button>
+            </Link>
+            <Link href="/dashboard/admin/spend">
+              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
+                <TrendingUp className="w-4 h-4 mr-2" />
+                Spend Telemetry
               </Button>
             </Link>
           </div>

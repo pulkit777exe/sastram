@@ -12,6 +12,8 @@ import { logger } from '@/lib/infrastructure/logger';
 import { aiService } from '@/lib/services/ai';
 import { env } from '@/lib/config/env';
 import { consumeImageModerationQuota } from '@/lib/services/image-moderation-quota';
+import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
+import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
 
 function errorCodeToStatus(errorCode: string | null): number {
   switch (errorCode) {
@@ -85,12 +87,13 @@ export async function POST(request: NextRequest) {
 
           const fileCategory = getFileCategory(mimeForExt);
           if (env.CONTENT_MODERATION_ENABLED && (fileCategory === 'IMAGE' || fileCategory === 'GIF')) {
-            const quota = await consumeImageModerationQuota();
-            if (!quota.allowed) {
-              await del(blob.url);
-              throw new Error('Daily image moderation limit reached. Please try again tomorrow.');
-            }
-            const modResult = await aiService.moderateImageContent(blob.url);
+             const quota = await consumeImageModerationQuota();
+             if (!quota.allowed) {
+               await del(blob.url);
+               throw new Error('Daily image moderation limit reached. Please try again tomorrow.');
+             }
+             await consumeSpendCap(classifyAiCallCost(AiCallPath.IMAGE_MODERATION).estimatedCostUsd);
+             const modResult = await aiService.moderateImageContent(blob.url);
             if (modResult.classification === 'NSFW') {
               await del(blob.url);
               throw new Error(`Image rejected: ${modResult.reason}`);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail } from '@/lib/utils/api-response';
+import { fail } from '@/lib/utils/api-response';
 
 // Job status tracking is no longer available with QStash.
 // QStash handles retries internally via its own infrastructure.
