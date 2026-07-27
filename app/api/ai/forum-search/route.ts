@@ -5,6 +5,7 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { sanitizeSearchQuery, validateApiKeys } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch, AISearchPipelineResult, AISearchError } from '@/modules/ai-search/service';
 import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
@@ -123,6 +124,12 @@ export async function POST(request: NextRequest) {
 
     const spendCap = await checkAiSpendCap();
     if (!spendCap.allowed) {
+      return blockedStream('AI features temporarily unavailable due to high demand. Resets at UTC midnight.');
+    }
+
+    // Hard cost-aware gate: forum search synthesis is EXPENSIVE.
+    const gate = evaluateAiCostGate({ path: AiCallPath.FORUM_SEARCH_SYNTHESIZE, spendCapAllowed: spendCap.allowed });
+    if (!gate.allowed) {
       return blockedStream('AI features temporarily unavailable due to high demand. Resets at UTC midnight.');
     }
 
@@ -303,11 +310,12 @@ export async function POST(request: NextRequest) {
                 title: deriveTitle(query),
                 timings: result.timings,
               }
-            ).catch(() => {});
+            ).catch((e) => logger.error('[forum-search] persist session failed', { error: e }));
           }
 
           if (!context) {
-            cacheResult(query, result, result.synthesis.queryType).catch(() => {});
+            cacheResult(query, result, result.synthesis.queryType)
+              .catch((e) => logger.error('[forum-search] cache write failed', { error: e }));
           }
 
           send({

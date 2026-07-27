@@ -6,7 +6,6 @@ import { PromptTemplate } from '@langchain/core/prompts';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import {
   RunnableSequence,
-  RunnablePassthrough,
 } from '@langchain/core/runnables';
 import type { LLMResult } from '@langchain/core/outputs';
 import { logger } from '@/lib/infrastructure/logger';
@@ -14,7 +13,6 @@ import { getEnv } from '@/lib/config/env';
 import { logAiUsage } from '@/lib/services/ai-usage-logger';
 
 const MAX_CHUNK_CHARS = 8000;
-const MAX_TOTAL_CHARS = 50000;
 
 interface MessageInput {
   content: string;
@@ -142,7 +140,7 @@ export class LangChainGeminiService implements LangChainAIService {
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
       latencyMs,
-    }).catch(() => {});
+    }).catch((e) => logger.warn('[ai-langchain] usage log failed', { error: e }));
 
     return combinedSummary;
   }
@@ -212,7 +210,7 @@ export class LangChainOpenAIService implements LangChainAIService {
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
       latencyMs,
-    }).catch(() => {});
+    }).catch((e) => logger.warn('[ai-langchain] usage log failed', { error: e }));
 
     return combinedSummary;
   }

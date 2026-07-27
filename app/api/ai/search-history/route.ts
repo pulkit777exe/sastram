@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
+import { logger } from '@/lib/infrastructure/logger';
 import {
   listThreadedSessions,
   listUserSearchSessions,
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(ok(result), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    console.error('[search-history GET] error', error);
+    logger.error('[search-history GET]', error);
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load search history.'), { status: 500 });
   }
 }

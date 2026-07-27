@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
 import { getEnv } from '@/lib/config/env';
 import { threadDnaSchema, type ThreadDNA } from '@/lib/schemas/thread-dna';
-import { getLangChainService, type LangChainAIService } from './ai-langchain';
+import { getLangChainService } from './ai-langchain';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 import { logAiUsage } from '@/lib/services/ai-usage-logger';
 
@@ -221,7 +221,7 @@ export class GeminiService implements AIService {
         inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
         latencyMs,
-      }).catch(() => {});
+      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
       return result.text ?? '';
     } catch (error) {
       logger.warn('[GeminiService.generateSummary] AI failed, returning fallback', { error });
@@ -270,7 +270,7 @@ export class GeminiService implements AIService {
         inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
         latencyMs,
-      }).catch(() => {});
+      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
       return parseThreadDNA(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.generateThreadDNA]', { error });
@@ -312,7 +312,7 @@ export class GeminiService implements AIService {
         inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
         latencyMs,
-      }).catch(() => {});
+      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
       return parseResolutionScore(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.calculateResolutionScore]', { error });
@@ -349,7 +349,7 @@ export class GeminiService implements AIService {
         inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
         latencyMs,
-      }).catch(() => {});
+      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
       return parseConflict(result.text ?? '');
     } catch (error) {
       logger.error('[GeminiService.detectConflicts]', { error });
@@ -392,7 +392,7 @@ export class GeminiService implements AIService {
         inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
         latencyMs,
-      }).catch(() => {});
+      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
       return (result.text ?? '')
         .replace(/```html\n?/g, '')
         .replace(/```\n?/g, '');
@@ -437,7 +437,7 @@ export class GeminiService implements AIService {
         inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
         latencyMs,
-      }).catch(() => {});
+      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
       const text = result.text ?? '';
       const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
       return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;
@@ -480,7 +480,7 @@ export class GeminiService implements AIService {
         inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
         latencyMs,
-      }).catch(() => {});
+      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
 
       const text = cleanJsonText(result.text ?? '');
       const parsed = JSON.parse(text);
@@ -561,7 +561,7 @@ export class OpenAIService implements AIService {
         inputTokens: data.usage?.prompt_tokens ?? 0,
         outputTokens: data.usage?.completion_tokens ?? 0,
         latencyMs,
-      }).catch(() => {});
+      }).catch((e) => logger.warn('[OpenAIService] usage log failed', { error: e }));
 
       return data.choices[0]?.message?.content ?? '';
     } finally {
