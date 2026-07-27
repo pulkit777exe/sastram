@@ -16,6 +16,24 @@ import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
 import { ChevronDown, Loader2, Pin } from 'lucide-react';
 
+function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[]; hasNew: boolean } {
+  const idToIdx = new Map(prev.map((m, i) => [m.id, i]));
+  let next = prev;
+  for (const msg of incoming) {
+    const idx = idToIdx.get(msg.id);
+    if (idx !== undefined && next[idx].content !== msg.content) {
+      if (next === prev) next = [...prev];
+      next[idx] = { ...next[idx], content: msg.content };
+    }
+  }
+  const toAdd = incoming.filter((m) => !idToIdx.has(m.id));
+  if (toAdd.length === 0 && next === prev) return { merged: prev, hasNew: false };
+  const merged = [...next, ...toAdd].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  return { merged, hasNew: true };
+}
+
 interface ThreadLiveWrapperProps {
   messages: Message[];
   threadId: string;
@@ -354,26 +372,11 @@ export function ThreadLiveWrapper({
         const mapped = newMessages.map((m: any) => mapBackfillMessage(m));
 
         setLiveMessages((prev) => {
-          const idToIdx = new Map(prev.map((m, i) => [m.id, i]));
-          let next = prev;
-          for (const msg of mapped) {
-            const idx = idToIdx.get(msg.id);
-            if (idx !== undefined && next[idx].content !== msg.content) {
-              if (next === prev) next = [...prev];
-              next[idx] = { ...next[idx], content: msg.content };
-            }
+          const { merged, hasNew } = mergeMessages(prev, mapped);
+          if (hasNew) {
+            lastMessageTimestampRef.current = new Date(merged[merged.length - 1].createdAt).toISOString();
           }
-          const toAdd = mapped.filter((m) => !idToIdx.has(m.id));
-
-          if (toAdd.length === 0 && next === prev) return prev;
-
-          const merged = [...next, ...toAdd].sort(
-            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
-          lastMessageTimestampRef.current = new Date(
-            merged[merged.length - 1].createdAt
-          ).toISOString();
-           return merged;
+          return merged;
         });
       }
     } catch {
@@ -519,25 +522,11 @@ export function ThreadLiveWrapper({
 
         let hasNew = false;
         setLiveMessages((prev) => {
-          const idToIdx = new Map(prev.map((m, i) => [m.id, i]));
-          let next = prev;
-          // Update content for existing messages (e.g. AI streaming content arriving via poll)
-          for (const msg of newMessages) {
-            const idx = idToIdx.get(msg.id);
-            if (idx !== undefined && next[idx].content !== msg.content) {
-              if (next === prev) next = [...prev];
-              next[idx] = { ...next[idx], content: msg.content };
-            }
+          const { merged, hasNew: foundNew } = mergeMessages(prev, newMessages);
+          hasNew = foundNew;
+          if (foundNew) {
+            lastMessageTimestampRef.current = new Date(merged[merged.length - 1].createdAt).toISOString();
           }
-          const toAdd = newMessages.filter((m) => !idToIdx.has(m.id));
-          if (toAdd.length === 0 && next === prev) return prev;
-          hasNew = true;
-          const merged = [...next, ...toAdd].sort(
-            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
-          lastMessageTimestampRef.current = new Date(
-            merged[merged.length - 1].createdAt
-          ).toISOString();
           return merged;
         });
 
@@ -617,23 +606,10 @@ export function ThreadLiveWrapper({
         if (!result?.ok || !result.data?.messages?.length) return;
         const incoming = result.data.messages.map((m: any) => mapBackfillMessage(m));
         setLiveMessages((prev) => {
-          const idToIdx = new Map(prev.map((m, i) => [m.id, i]));
-          let next = prev;
-          for (const msg of incoming) {
-            const idx = idToIdx.get(msg.id);
-            if (idx !== undefined && next[idx].content !== msg.content) {
-              if (next === prev) next = [...prev];
-              next[idx] = { ...next[idx], content: msg.content };
-            }
+          const { merged, hasNew } = mergeMessages(prev, incoming);
+          if (hasNew) {
+            lastMessageTimestampRef.current = new Date(merged[merged.length - 1].createdAt).toISOString();
           }
-          const toAdd = incoming.filter((m) => !idToIdx.has(m.id));
-          if (toAdd.length === 0 && next === prev) return prev;
-          const merged = [...next, ...toAdd].sort(
-            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
-          lastMessageTimestampRef.current = new Date(
-            merged[merged.length - 1].createdAt
-          ).toISOString();
           return merged;
         });
         for (const msg of incoming) {

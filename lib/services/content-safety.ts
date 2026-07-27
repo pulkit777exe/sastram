@@ -1,29 +1,13 @@
 import sanitizeHtml from 'sanitize-html';
+import { FILE_LIMITS } from '@/lib/config/constants';
 
 export interface XssSanitizeResult {
   sanitized: string;
-  hadDangerousContent: boolean;
 }
 
 const XSS_ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'u', 'a', 'code', 'pre', 'br', 'p', 'ul', 'ol', 'li', 'blockquote'];
 
 export function sanitizeUserContent(content: string): XssSanitizeResult {
-  const dangerousPatterns = [
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    /javascript:/gi,
-    /on\w+\s*=/gi,
-    /<iframe/gi,
-    /<object/gi,
-    /<embed/gi,
-    /<svg[^>]*on/gi,
-    /data:/gi,
-  ];
-
-  const hadDangerousContent = dangerousPatterns.some((pattern) => {
-    pattern.lastIndex = 0;
-    return pattern.test(content);
-  });
-
   const sanitized = sanitizeHtml(content, {
     allowedTags: XSS_ALLOWED_TAGS,
     allowedAttributes: {
@@ -48,7 +32,7 @@ export function sanitizeUserContent(content: string): XssSanitizeResult {
     },
   });
 
-  return { sanitized, hadDangerousContent };
+  return { sanitized };
 }
 
 export function sanitizeHtmlContent(html: string): string {
@@ -66,9 +50,7 @@ export interface FileValidationResult {
   error?: string;
 }
 
-import { FILE_LIMITS } from '@/lib/config/constants';
-
-export function filterBadLanguage(content: string): string {
+export function sanitizeContent(content: string): string {
   return sanitizeUserContent(content).sanitized;
 }
 

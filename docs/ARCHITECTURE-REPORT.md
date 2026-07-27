@@ -1,8 +1,11 @@
 # Sastram Architecture Report
 
+> **⚠️ Superseded by [docs/CANONICAL-REFERENCE.md](./CANONICAL-REFERENCE.md).**
+> This document no longer reflects verified code. Model counts, API route counts, module counts, test counts, real-time architecture, and ThreadDna schema claims in this doc are stale. See the canonical reference for authoritative, code-verified facts. This doc is retained for historical context only.
+
 **Date:** June 19, 2026
-**Status:** Pre-production
-**Codebase:** ~30 domain modules, 27 Prisma models, 31 API routes, 9 QStash job types
+**Status:** Pre-production (superseded)
+**Codebase:** — counts superseded; see canonical reference for verified figures (29 Prisma models, 35 API routes, 25 modules, 40 test files, 199 passing)
 
 ---
 

@@ -1,5 +1,8 @@
 # Sastram Architecture Documentation
 
+> **⚠️ Superseded by [docs/CANONICAL-REFERENCE.md](../docs/CANONICAL-REFERENCE.md).**
+> This document no longer reflects verified code. The `hasResolution` claim in the ThreadDna schema, the WebSocket server references, and several model/route counts are stale or fabricated. See the canonical reference for authoritative, code-verified facts. This doc is retained for historical context only.
+
 ## Overview
 
 Sastram is an AI-powered community forum where questions get **resolved**,

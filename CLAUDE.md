@@ -6,6 +6,8 @@ Personal project, open sourced. Built with Next.js, Prisma, and AI.
 
 Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, PostgreSQL (Neon), serverless architecture, Better Auth authentication, and AI integration.
 
+For the verified system reference, see [docs/CANONICAL-REFERENCE.md](../docs/CANONICAL-REFERENCE.md).
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router)

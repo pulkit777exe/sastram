@@ -1,5 +1,8 @@
 # Backlog — post engagement (Phases 1–4)
 
+> **⚠️ System architecture, data model, routes, and features are now documented in [docs/CANONICAL-REFERENCE.md](../docs/CANONICAL-REFERENCE.md).**
+> This backlog file tracks actionable work items. For the verified system description, see the canonical reference above.
+
 Vertical slices left over from the security / doc-hygiene / `@sai` cost-gating
 engagement. Slices are tracer bullets: each cuts end-to-end and is independently
 grabbable. HITL = needs a human decision; AFK = implementable and mergeable

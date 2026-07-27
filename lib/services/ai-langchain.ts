@@ -11,15 +11,9 @@ import type { LLMResult } from '@langchain/core/outputs';
 import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
 import { logAiUsage } from '@/lib/services/ai-usage-logger';
+import type { MessageInput } from './ai';
 
 const MAX_CHUNK_CHARS = 8000;
-
-interface MessageInput {
-  content: string;
-  sender?: { name: string | null } | null;
-  createdAt?: Date | string;
-  depth?: number;
-}
 
 function buildMessageDocuments(messages: MessageInput[]): Document[] {
   return messages.map((m, i) => {

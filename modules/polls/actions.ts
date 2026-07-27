@@ -18,9 +18,9 @@ import { getMemberRole } from '@/modules/members';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { isPrismaUniqueConstraintError } from '@/lib/utils/errors';
+import { threadIdSchema } from '@/lib/utils/validation-common';
 
 const pollIdSchema = z.object({ pollId: z.string().cuid() });
-const threadIdSchema = z.object({ threadId: z.string().cuid() });
 
 export const createPollAction = withValidation(
   createPollSchema,

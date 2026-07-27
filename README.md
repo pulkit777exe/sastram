@@ -35,7 +35,7 @@ docker compose up
 
 Starts PostgreSQL, Redis, the Next.js app, and background job processing in one command. See [CONTRIBUTING.md](./CONTRIBUTING.md) for environment setup.
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup and [CLAUDE.md](./CLAUDE.md) for architecture details.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup, [CLAUDE.md](./CLAUDE.md) for architecture details, and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.
 
 ## Project
 

@@ -43,7 +43,7 @@ export async function trackNeonRequest(count: number = 1): Promise<void> {
  * Increment the daily Upstash Redis command counter.
  * Call this from key operations that use Redis.
  */
-export async function trackUpstashCommand(count: number =1): Promise<void> {
+export async function trackUpstashCommand(count: number = 1): Promise<void> {
   const redis = getUpstashRedis();
   if (!redis) return;
   try {

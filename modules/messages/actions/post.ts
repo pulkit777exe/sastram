@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { logger } from '@/lib/infrastructure/logger';
-import { filterBadLanguage } from '@/lib/services/content-safety';
+import { sanitizeContent } from '@/lib/services/content-safety';
 import { createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
 import { messageLimiter } from '@/lib/services/rate-limit';
 import { parseMentions, resolveUserMentions } from '@/lib/utils/mention-parser';
@@ -87,7 +87,7 @@ export async function postMessage(formData: FormData) {
     };
   }
 
-  const safeContent = filterBadLanguage(content);
+  const safeContent = sanitizeContent(content);
 
   if (mentions.length > 10) {
     return {

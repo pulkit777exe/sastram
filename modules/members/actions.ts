@@ -7,10 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
 import { canManageThread } from '@/lib/thread-access';
-
-const threadIdSchema = z.object({
-  threadId: z.string().cuid(),
-});
+import { threadIdSchema } from '@/lib/utils/validation-common';
 
 const inviteMemberSchema = z.object({
   threadId: z.string().cuid(),
@@ -21,16 +18,6 @@ const targetMemberSchema = z.object({
   threadId: z.string().cuid(),
   userId: z.string().cuid(),
 });
-
-export const joinSection = createServerAction(
-  { schema: threadIdSchema, actionName: 'joinSection' },
-  async () => ({ data: null, error: null, ok: true, errorCode: null })
-);
-
-export const leaveSection = createServerAction(
-  { schema: threadIdSchema, actionName: 'leaveSection' },
-  async () => ({ data: null, error: null, ok: true, errorCode: null })
-);
 
 export const inviteMember = createServerAction(
   { schema: inviteMemberSchema, actionName: 'inviteMember' },
@@ -68,11 +55,6 @@ export const inviteMember = createServerAction(
     revalidatePath(`/dashboard/threads/${thread.slug}`);
     return { data: invitation, error: null };
   }
-);
-
-export const updateMemberRoleAction = createServerAction(
-  { schema: targetMemberSchema, actionName: 'updateMemberRoleAction' },
-  async () => ({ data: null, error: 'Thread roles were removed; use invitations for access.' })
 );
 
 export const removeMemberAction = createServerAction(

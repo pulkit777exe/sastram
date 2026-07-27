@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { logger } from '@/lib/infrastructure/logger';
-import { filterBadLanguage } from '@/lib/services/content-safety';
+import { sanitizeContent } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
@@ -47,7 +47,7 @@ export const editMessage = createServerAction(
         },
       });
 
-      const safeContent = filterBadLanguage(content);
+      const safeContent = sanitizeContent(content);
       await prisma.message.update({
         where: { id: messageId },
         data: {

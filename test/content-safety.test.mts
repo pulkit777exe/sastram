@@ -7,14 +7,12 @@ describe('Content Safety', () => {
     it('should strip script tags', () => {
       const result = sanitizeUserContent('<script>alert("xss")</script>Hello');
       expect(result.sanitized).to.not.include('<script>');
-      expect(result.hadDangerousContent).to.be.true;
     });
 
     it('should allow safe HTML tags', () => {
       const result = sanitizeUserContent('<b>Bold</b> and <i>italic</i>');
       expect(result.sanitized).to.include('<b>');
       expect(result.sanitized).to.include('<i>');
-      expect(result.hadDangerousContent).to.be.false;
     });
 
     it('should strip event handlers', () => {

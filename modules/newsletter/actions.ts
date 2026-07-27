@@ -10,10 +10,7 @@ import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
 import { ROUTES } from '@/lib/config/routes';
 import { prismaErrorMessage } from '@/lib/utils/errors';
-
-const threadIdSchema = z.object({
-  threadId: z.string().cuid(),
-});
+import { threadIdSchema } from '@/lib/utils/validation-common';
 
 const subscribeSchema = z.object({
   threadId: z.string().cuid(),

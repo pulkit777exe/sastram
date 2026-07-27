@@ -9,9 +9,9 @@ import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-bound
 import { logAiUsage } from '@/lib/services/ai-usage-logger';
 
 export { AI_NOT_CONFIGURED_SENTINEL, isAiNotConfigured } from './ai-sentinel';
-import { AI_NOT_CONFIGURED_SENTINEL, isAiNotConfigured } from './ai-sentinel';
+import { AI_NOT_CONFIGURED_SENTINEL } from './ai-sentinel';
 
-interface MessageInput {
+export interface MessageInput {
   content: string;
   sender?: { name: string | null } | null;
   createdAt?: Date | string;
