@@ -27,8 +27,6 @@ import type {
 
 export const maxDuration = 60;
 
-const isDev = process.env.NODE_ENV !== 'production';
-
 const jobHandlers: Record<string, (data: unknown) => Promise<unknown>> = {
   'generate-thread-summary': (data) => handleThreadSummaryJob(data as ThreadSummaryJobData),
   'generate-thread-dna': (data) => handleThreadDnaJob(data as ThreadDnaJobData),

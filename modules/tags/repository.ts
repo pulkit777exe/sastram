@@ -151,10 +151,9 @@ export async function getTagBySlug(slug: string) {
   }
 }
 
-export async function getThreadsByTag(tagId: string, memberUserIds?: string[]) {
+export async function getThreadsByTag(tagId: string) {
   try {
     const where: Record<string, unknown> = { tags: { some: { tagId } }, deletedAt: null };
-    void memberUserIds;
 
     const threads = await prisma.thread.findMany({
       where,

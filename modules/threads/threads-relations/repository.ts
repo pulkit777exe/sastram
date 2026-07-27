@@ -1,7 +1,6 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Prisma } from '@prisma/client';
-import { aiService } from '@/lib/services/ai';
 import { parseThreadDna, type ThreadDNA } from '@/lib/schemas/thread-dna';
 
 // Threshold for considering threads semantically similar (0-1)
@@ -287,24 +286,4 @@ export async function updateAllThreadRelations(): Promise<{
   }
 
   return stats;
-}
-
-/**
- * Deletes old thread relations that are no longer relevant
- */
-async function cleanupOldThreadRelations(): Promise<{ deleted: number }> {
-  try {
-    const cutoffDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days old
-    const result = await prisma.threadRelation.deleteMany({
-      where: {
-        createdAt: { lt: cutoffDate },
-        similarity: { lt: SIMILARITY_THRESHOLD },
-      },
-    });
-
-    return { deleted: result.count };
-  } catch (error) {
-    logger.error('Failed to cleanup old thread relations:', error);
-    return { deleted: 0 };
-  }
 }

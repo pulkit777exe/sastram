@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { AlertTriangle, Sparkles } from 'lucide-react';
 import type { ConflictInfo, Citation } from '@/modules/ai-search/types';
 import type { Source } from '@/modules/ai-search/types';

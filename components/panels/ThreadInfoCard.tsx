@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useSyncExternalStore, useCallback } from 'react';
+import { useRef, useEffect, useSyncExternalStore } from 'react';
 import type { ThreadWithFullContext } from '@/modules/threads';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { TagChip } from '@/components/thread/tag-chip';

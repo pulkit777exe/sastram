@@ -1,7 +1,6 @@
 'use server';
 
 import { z } from 'zod';
-import { logger } from '@/lib/infrastructure/logger';
 
 import { requireSession } from '@/modules/auth/session';
 import {

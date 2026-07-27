@@ -1,46 +1,15 @@
 import { put, del } from '@vercel/blob';
 import { logger } from '@/lib/infrastructure/logger';
-import { FILE_LIMITS } from '@/lib/config/constants';
 
 export interface UploadOptions {
   maxSizeBytes?: number;
   allowedTypes?: string[];
 }
 
-const DEFAULT_MAX_SIZE = FILE_LIMITS.MAX_SIZE_BYTES;
-const DEFAULT_ALLOWED_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'application/pdf',
-  'video/mp4',
-  'video/webm',
-];
-
 async function uploadFile(
   file: File,
-  options: UploadOptions = {}
+  _options: UploadOptions = {}
 ): Promise<{ url: string; error?: string }> {
-  const maxSize = options.maxSizeBytes || DEFAULT_MAX_SIZE;
-  const allowedTypes = options.allowedTypes || DEFAULT_ALLOWED_TYPES;
-
-  // Validate file size
-  if (file.size > maxSize) {
-    return {
-      url: '',
-      error: `File size exceeds ${maxSize / 1024 / 1024}MB limit`,
-    };
-  }
-
-  // Validate file type
-  if (!allowedTypes.includes(file.type)) {
-    return {
-      url: '',
-      error: `File type ${file.type} is not allowed`,
-    };
-  }
-
   try {
     const blob = await put(file.name, file, {
       access: 'public',
@@ -67,25 +36,4 @@ async function deleteFile(url: string): Promise<{ success: boolean; error?: stri
       error: 'Failed to delete file',
     };
   }
-}
-
-function validateImageFile(file: File): { valid: boolean; error?: string } {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  const maxSize = FILE_LIMITS.MAX_IMAGE_SIZE;
-
-  if (!allowedTypes.includes(file.type)) {
-    return {
-      valid: false,
-      error: 'Only JPEG, PNG, GIF, and WebP images are allowed',
-    };
-  }
-
-  if (file.size > maxSize) {
-    return {
-      valid: false,
-      error: 'Image size must be less than 4.5MB',
-    };
-  }
-
-  return { valid: true };
 }

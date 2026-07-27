@@ -1,10 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { revalidatePath } from 'next/cache';
-import { createNotification } from '@/modules/notifications';
 import {
   applyModerationRateLimit,
   requireModerationSession,
@@ -15,7 +12,6 @@ import { executeMessageDeletionEffects, executeModerationAuditAndRevalidate } fr
 import {
   banUserSchema,
   deleteMessageSchema,
-  deleteEntitySchema,
   getBannedUsersSchema,
   getMessageDetailsSchema,
   getModerationQueueSchema,

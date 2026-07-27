@@ -6,8 +6,8 @@ import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { z } from 'zod';
-import { AIJobType } from '@/lib/queue/config';
 
 const aiReplyParamsSchema = z.object({
   threadId: z.string().cuid(),
@@ -32,13 +32,19 @@ const handler = withErrorHandling(async (
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
   }
 
-  // Global daily spend cap
-  const spendCap = await checkAiSpendCap();
-  if (!spendCap.allowed) {
-    return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
-  }
+   // Global daily spend cap
+   const spendCap = await checkAiSpendCap();
+   if (!spendCap.allowed) {
+     return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
+   }
 
-  try {
+   // Hard cost-aware gate: AI reply is a streaming synthesis.
+   const gate = evaluateAiCostGate({ path: AiCallPath.AI_REPLY_STREAM, spendCapAllowed: spendCap.allowed });
+   if (!gate.allowed) {
+     return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
+   }
+
+   try {
     await requireThreadMembershipOrThrow(threadId, session.user.id);
   } catch {
     return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });

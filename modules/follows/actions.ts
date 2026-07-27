@@ -1,7 +1,6 @@
 'use server';
 
 import { z } from 'zod';
-import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
@@ -14,7 +13,6 @@ import {
 } from './repository';
 import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
-import { userIdSchema } from '@/lib/utils/validation-common';
 
 const followUserSchema = z.object({
   userId: z.string().cuid(),

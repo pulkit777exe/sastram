@@ -8,7 +8,6 @@ import { revalidatePath } from 'next/cache';
 import { addReaction, removeReaction, getMessageReactions } from '@/modules/reactions/repository';
 import { emitReactionUpdate } from '@/modules/ws/publisher';
 import { createServerAction } from '@/lib/utils/server-action';
-import { messageIdSchema, threadIdSchema } from '@/lib/utils/validation-common';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 
 const toggleReactionSchema = z.object({

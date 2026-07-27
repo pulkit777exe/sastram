@@ -6,7 +6,6 @@ export interface XssSanitizeResult {
 }
 
 const XSS_ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'u', 'a', 'code', 'pre', 'br', 'p', 'ul', 'ol', 'li', 'blockquote'];
-const XSS_ALLOWED_ATTR = ['href', 'class'];
 
 export function sanitizeUserContent(content: string): XssSanitizeResult {
   const dangerousPatterns = [

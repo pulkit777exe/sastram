@@ -1,6 +1,3 @@
-import type { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/infrastructure/prisma';
-
 export type CursorPaginationParams<TCursor> = {
   take?: number;
   cursor?: TCursor | null;
@@ -49,39 +46,5 @@ export function emptyPagination<T>(): OffsetPaginationResult<T> {
     items: [],
     total: 0,
     hasMore: false,
-  };
-}
-
-async function paginateThreads<TSelect extends Prisma.ThreadSelect>(
-  params: {
-    where?: Prisma.ThreadWhereInput;
-    orderBy?: Prisma.ThreadOrderByWithRelationInput;
-    select: TSelect;
-  } & CursorPaginationParams<{ id: string }>
-): Promise<CursorPaginationResult<Prisma.ThreadGetPayload<{ select: TSelect }>, { id: string }>> {
-  const take = params.take ?? 20;
-
-  const items = await prisma.thread.findMany({
-    where: params.where,
-    orderBy: params.orderBy ?? { createdAt: 'desc' },
-    take: take + 1,
-    ...(params.cursor
-      ? {
-          cursor: { id: params.cursor.id },
-          skip: 1,
-        }
-      : {}),
-    select: params.select,
-  });
-
-  let nextCursor: { id: string } | null = null;
-  if (items.length > take) {
-    const nextItem = items.pop()!;
-    nextCursor = { id: (nextItem as { id: string }).id };
-  }
-
-  return {
-    items,
-    nextCursor,
   };
 }

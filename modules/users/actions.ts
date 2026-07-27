@@ -10,15 +10,8 @@ import { FILE_LIMITS } from '@/lib/config/constants';
 import { detectMimeTypeFromFile, getExtensionFromMime } from '@/lib/utils/file-upload';
 import { getPublicProfile, getUserThreads, updateProfilePrivacy } from './repository';
 import { ProfilePrivacy } from '@prisma/client';
-import {
-  updateUserProfileSchema,
-  uploadAvatarSchema,
-  uploadBannerSchema,
-  updateProfilePrivacySchema,
-} from './schemas';
 import { parseUserPreferences, type UserPreferences, userPreferencesSchema } from '@/lib/schemas/user-preferences';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
-import { paginationSchema } from '@/lib/utils/validation-common';
 
 const fileSchema = z.object({
   file: z.custom<File>((val) => val instanceof File),

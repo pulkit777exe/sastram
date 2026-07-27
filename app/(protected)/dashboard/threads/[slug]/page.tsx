@@ -6,8 +6,6 @@ import type { Message } from '@/lib/types/index';
 import { isAdmin, requireSession, type SessionUser } from '@/modules/auth/session';
 import { getThreadWithFullContext, getThreadMessagesPaginated } from '@/modules/threads';
 import Link from 'next/link';
-import TimeAgo from '@/components/ui/TimeAgo';
-import ThreadDnaCard from '@/components/panels/ThreadDnaCard';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
 import { getThreadReadReceipt } from '@/modules/read-receipts/repository';

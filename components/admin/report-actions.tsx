@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { XCircle } from 'lucide-react';
 import { resolveReport } from '@/modules/reports/actions';
 import { toasts } from '@/lib/utils/toast';
 import { ReportStatus } from '@/lib/config/constants';

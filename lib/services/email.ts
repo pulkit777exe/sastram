@@ -3,7 +3,6 @@
 import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
 import { enqueueJob } from '@/lib/services/queue';
-import { AIJobType } from '@/lib/queue/config';
 import { getResendClient } from '@/lib/config/resend';
 import type { CreateEmailOptions } from 'resend';
 import type { EmailJobData } from '@/lib/queue/types';
