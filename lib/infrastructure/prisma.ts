@@ -27,9 +27,7 @@ function resolveConnectionString(): string {
     );
   }
 
-  const unpooledUrl = process.env.DATABASE_URL_UNPOOLED;
-
-  return pooledUrl.includes('pgbouncer=true') && unpooledUrl ? unpooledUrl : pooledUrl;
+  return pooledUrl;
 }
 
 function createPrismaClient() {

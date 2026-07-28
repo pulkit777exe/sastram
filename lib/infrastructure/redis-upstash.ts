@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 
 let _upstashRedis: Redis | null = null;
+let _upstashRedisConfigKey: string | null = null;
 
 /**
  * Shared Upstash Redis client for quota/rate-limit operations.
@@ -8,16 +9,20 @@ let _upstashRedis: Redis | null = null;
  * Returns null if Upstash env vars are not configured.
  */
 export function getUpstashRedis(): Redis | null {
-  if (_upstashRedis) return _upstashRedis;
-
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const configKey = url && token ? `${url}:${token}` : null;
+
+  if (_upstashRedis && _upstashRedisConfigKey === configKey) return _upstashRedis;
 
   if (!url || !token) {
+    _upstashRedis = null;
+    _upstashRedisConfigKey = null;
     return null;
   }
 
   _upstashRedis = new Redis({ url, token });
+  _upstashRedisConfigKey = configKey;
   return _upstashRedis;
 }
 
@@ -26,6 +31,7 @@ export function getUpstashRedis(): Redis | null {
  */
 export function resetUpstashRedis(): void {
   _upstashRedis = null;
+  _upstashRedisConfigKey = null;
 }
 
 /**

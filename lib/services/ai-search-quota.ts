@@ -3,6 +3,31 @@ import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCR_EXPIRE_LUA 
 
 const DAILY_LIMIT = 20;
 
+type InMemoryQuotaEntry = {
+  count: number;
+  expiresAt: number;
+};
+
+const inMemoryQuota = new Map<string, InMemoryQuotaEntry>();
+
+function consumeInMemoryQuota(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const existing = inMemoryQuota.get(key);
+  const entry =
+    existing && existing.expiresAt > now
+      ? existing
+      : { count: 0, expiresAt: now + getSecondsUntilUtcMidnight() * 1000 };
+
+  if (entry.count >= DAILY_LIMIT) {
+    inMemoryQuota.set(key, entry);
+    return { allowed: false, remaining: 0 };
+  }
+
+  entry.count += 1;
+  inMemoryQuota.set(key, entry);
+  return { allowed: true, remaining: Math.max(0, DAILY_LIMIT - entry.count) };
+}
+
 export async function consumeAiSearchQuota(
   userId: string
 ): Promise<{ allowed: boolean; remaining: number }> {
@@ -28,6 +53,6 @@ export async function consumeAiSearchQuota(
     };
   } catch (error) {
     logger.error('[consumeAiSearchQuota] Redis error', error);
-    return { allowed: true, remaining: -1 };
+    return consumeInMemoryQuota(key);
   }
 }
