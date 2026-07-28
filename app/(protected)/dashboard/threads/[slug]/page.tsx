@@ -222,7 +222,7 @@ async function ThreadSidebar({
               <span className="inline-flex items-center rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-semibold text-brand">
                 {threadDna.questionType}
               </span>
-              <span className="inline-flex items-center rounded-full bg-(--bg) px-2.5 py-1 text-[11px] font-medium text-(--text)">
+              <span className="inline-flex items-center rounded-full bg-background px-2.5 py-1 text-[11px] font-medium text-foreground">
                 {threadDna.expertiseLevel}
               </span>
               {threadDna.topics.slice(0, 4).map((topic) => (

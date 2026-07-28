@@ -15,7 +15,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
 
   if (isImage) {
     return (
-       <div className="relative group animate-in fade-in duration-200 overflow-hidden rounded-[10px] border border-border/50 bg-(--surface) max-w-[260px] transition-all duration-300 hover:shadow-linear-md hover:border-border">
+       <div className="relative group animate-in fade-in duration-200 overflow-hidden rounded-[10px] border border-border/50 bg-card max-w-[260px] transition-all duration-300 hover:shadow-linear-md hover:border-border">
         <Image
           src={file.url}
           alt={file.name || 'attachment'}
@@ -37,12 +37,12 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
   }
 
   return (
-    <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-[10px] border border-border/60 bg-(--surface) p-2.5 transition-all duration-200 hover:border-border hover:shadow-linear-sm group max-w-[280px]">
-      <div className="p-2 rounded-lg border border-border/50 bg-(--bg) text-muted-foreground shadow-linear-sm transition-transform duration-200 group-hover:scale-105">
-        <FileIcon size={16} className="text-(--text) opacity-80" />
+    <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-[10px] border border-border/60 bg-card p-2.5 transition-all duration-200 hover:border-border hover:shadow-linear-sm group max-w-[280px]">
+      <div className="p-2 rounded-lg border border-border/50 bg-background text-muted-foreground shadow-linear-sm transition-transform duration-200 group-hover:scale-105">
+        <FileIcon size={16} className="text-foreground opacity-80" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-(--text) truncate">{file.name || 'File Attachment'}</p>
+        <p className="text-xs font-semibold text-foreground truncate">{file.name || 'File Attachment'}</p>
         <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">
           {file.type?.split('/').pop()?.toUpperCase() || 'FILE'}
           {file.size ? ` • ${(Number(file.size) / (1024 * 1024)).toFixed(1)} MB` : ''}
@@ -53,7 +53,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
         download={file.name || 'attachment'}
         target="_blank"
         rel="noopener noreferrer"
-        className="p-1.5 rounded-full transition-all duration-200 opacity-60 hover:opacity-100 hover:bg-(--bg) text-(--text) border border-transparent hover:border-border"
+        className="p-1.5 rounded-full transition-all duration-200 opacity-60 hover:opacity-100 hover:bg-background text-foreground border border-transparent hover:border-border"
         title="Download file"
       >
         <Download size={14} />

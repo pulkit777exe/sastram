@@ -12,27 +12,27 @@ function getResolutionState(score: number | null) {
   if (score === null || score === undefined) {
     return {
       label: 'Open',
-      colorClass: 'bg-(--red)',
+      colorClass: 'bg-red-500',
     };
   }
 
   if (score >= 70) {
     return {
       label: 'Resolved',
-      colorClass: 'bg-(--green)',
+      colorClass: 'bg-emerald-500',
     };
   }
 
   if (score >= 40) {
     return {
       label: 'In Progress',
-      colorClass: 'bg-(--amber)',
+      colorClass: 'bg-amber-500',
     };
   }
 
   return {
     label: 'Open',
-    colorClass: 'bg-(--red)',
+    colorClass: 'bg-red-500',
   };
 }
 
@@ -40,25 +40,25 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
   const resolution = getResolutionState(thread.resolutionScore);
 
   return (
-    <header className="rounded-[10px] bg-(--surface) p-[20px] shadow-linear-sm">
+    <header className="rounded-[10px] bg-card p-[20px] shadow-linear-sm">
       <div className="mt-[16px] flex items-start justify-between gap-[16px]">
         <div className="min-w-0 flex-1">
-          <div className="inline-flex items-center gap-[8px] rounded-[999px] bg-(--blue-dim) px-[10px] py-[4px]">
-            <span className="h-[8px] w-[8px] rounded-full bg-(--blue)" />
-            <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted">
+          <div className="inline-flex items-center gap-[8px] rounded-[999px] bg-brand/10 px-[10px] py-[4px]">
+            <span className="h-[8px] w-[8px] rounded-full bg-brand" />
+            <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               Thread
             </span>
           </div>
 
-          <h1 className="mt-[10px] truncate font-['Syne'] text-[24px] font-extrabold leading-[1.1] text-(--text)">
+          <h1 className="mt-[10px] truncate font-['Syne'] text-[24px] font-extrabold leading-[1.1] text-foreground">
             {thread.name}
           </h1>
 
-          <div className="mt-[12px] flex flex-wrap items-center gap-[8px] text-[12px] text-muted">
+          <div className="mt-[12px] flex flex-wrap items-center gap-[8px] text-[12px] text-muted-foreground">
             <div className="flex items-center gap-[8px]">
-              <div className="h-[32px] w-[32px] overflow-hidden rounded-full bg-(--blue-light)" />
+              <div className="h-[32px] w-[32px] overflow-hidden rounded-full bg-brand/5" />
               <div className="flex flex-col">
-                <span className="font-(--font-dm-sans) text-[13px] text-(--text)">
+                <span className="font-(--font-dm-sans) text-[13px] text-foreground">
                   {thread.author.name ?? 'Unknown'}
                 </span>
                 <TimeAgo date={thread.createdAt} />
@@ -67,23 +67,23 @@ export default function ThreadHeader({ thread, isBookmarked }: ThreadHeaderProps
 
             <span className="mx-[8px] h-[16px] w-px bg-border" />
 
-            <div className="flex items-center gap-[12px] text-[11px] font-medium text-muted">
+            <div className="flex items-center gap-[12px] text-[11px] font-medium text-muted-foreground">
               <span>{thread._count.messages} messages</span>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col items-end gap-[12px]">
-          <div className="inline-flex items-center gap-[8px] rounded-[999px] border border-border bg-(--bg) px-[10px] py-[4px]">
+          <div className="inline-flex items-center gap-[8px] rounded-[999px] border border-border bg-background px-[10px] py-[4px]">
             <span className={`h-[8px] w-[8px] rounded-full ${resolution.colorClass}`} />
-            <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted">
+            <span className="font-(--font-dm-mono) text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               {resolution.label}
             </span>
           </div>
 
           <BookmarkButton
             threadId={thread.id}
-            className="h-[32px] rounded-[6px] border border-border bg-(--blue-dim) px-[10px] text-[12px] font-medium text-(--text)"
+            className="h-[32px] rounded-[6px] border border-border bg-brand/10 px-[10px] text-[12px] font-medium text-foreground"
           />
         </div>
       </div>
