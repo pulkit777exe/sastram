@@ -7,6 +7,7 @@ import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
 
 const aiReplyParamsSchema = z.object({
@@ -50,25 +51,28 @@ const handler = withErrorHandling(async (
     return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
   }
 
-  // Find the latest message with @ai mention in this thread
+  // Find the latest Sai mention in this thread. Keep @ai as a legacy alias.
   const parentMessage = await prisma.message.findFirst({
     where: {
       threadId: threadId,
-      content: { contains: '@ai' },
+      OR: [
+        { content: { contains: '@sai', mode: 'insensitive' } },
+        { content: { contains: '@ai', mode: 'insensitive' } },
+      ],
     },
     orderBy: { createdAt: 'desc' },
     take: 1,
   });
 
   if (!parentMessage) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'No @ai mention found'), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'No @sai mention found'), { status: 400 });
   }
 
-  // Extract the query from the message (remove @ai mentions)
-  const query = parentMessage.content.replace(/@ai\s*/gi, '').trim();
+  const query = extractAiInlineQuery(parentMessage.content)
+    ?? parentMessage.content.replace(/(?:^|\s)@ai\s+/i, '').trim();
 
   if (!query) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'No question found after @ai'), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'No question found after @sai'), { status: 400 });
   }
 
   logger.info('[ai-reply] Queuing job:', { threadId, messageId: parentMessage.id, query });

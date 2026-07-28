@@ -2,6 +2,65 @@ import { NextResponse } from "next/server";
 import { env } from "@/lib/config/env";
 import { logger } from "@/lib/infrastructure/logger";
 
+type ServiceStatus = "ok" | "not_configured" | "error";
+
+const HEALTH_CHECK_TIMEOUT_MS = 750;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error(`${label} health check timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+async function checkDatabase(): Promise<ServiceStatus> {
+  try {
+    const { prisma } = await import("@/lib/infrastructure/prisma");
+    await withTimeout(prisma.$queryRaw`SELECT 1`, HEALTH_CHECK_TIMEOUT_MS, "database");
+    return "ok";
+  } catch (err) {
+    logger.error("[health] database check failed", err);
+    return "error";
+  }
+}
+
+async function checkRedis(): Promise<ServiceStatus> {
+  if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+    return "not_configured";
+  }
+
+  try {
+    const { Redis } = await import("@upstash/redis");
+    const redis = Redis.fromEnv();
+    await withTimeout(redis.ping(), HEALTH_CHECK_TIMEOUT_MS, "redis");
+    return "ok";
+  } catch (err) {
+    logger.error("[health] redis check failed", err);
+    return "error";
+  }
+}
+
+function checkAi(): ServiceStatus {
+  try {
+    const aiKey =
+      env.AI_PROVIDER === "gemini"
+        ? env.GEMINI_API_KEY
+        : env.OPENAI_API_KEY;
+    return aiKey ? "ok" : "not_configured";
+  } catch (err) {
+    logger.error("[health] ai config check failed", err);
+    return "error";
+  }
+}
+
 export async function GET() {
   const checks = {
     status: "ok",
@@ -15,39 +74,15 @@ export async function GET() {
     },
   };
 
-  try {
-    const { prisma } = await import("@/lib/infrastructure/prisma");
-    await prisma.$queryRaw`SELECT 1`;
-    checks.services.database = "ok";
-  } catch (err) {
-    logger.error("[health] database check failed", err);
-    checks.services.database = "error";
-  }
+  const [database, redis, ai] = await Promise.all([
+    checkDatabase(),
+    checkRedis(),
+    Promise.resolve(checkAi()),
+  ]);
 
-  try {
-    const { Redis } = await import("@upstash/redis");
-    if (process.env.UPSTASH_REDIS_REST_URL) {
-      const redis = Redis.fromEnv();
-      await redis.ping();
-      checks.services.redis = "ok";
-    } else {
-      checks.services.redis = "not_configured";
-    }
-  } catch (err) {
-    logger.error("[health] redis check failed", err);
-    checks.services.redis = "error";
-  }
-
-  try {
-    const aiKey =
-      env.AI_PROVIDER === "gemini"
-        ? env.GEMINI_API_KEY
-        : env.OPENAI_API_KEY;
-    checks.services.ai = aiKey ? "configured" : "not_configured";
-  } catch (err) {
-    logger.error("[health] ai config check failed", err);
-    checks.services.ai = "error";
-  }
+  checks.services.database = database;
+  checks.services.redis = redis;
+  checks.services.ai = ai;
 
   const allHealthy = Object.values(checks.services).every(
     (s) => s === "ok" || s === "not_configured"

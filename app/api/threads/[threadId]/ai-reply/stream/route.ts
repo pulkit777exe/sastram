@@ -10,6 +10,7 @@ import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 import { emitThreadMessage } from '@/modules/ws';
 import { trackNeonRequest } from '@/lib/services/usage-check';
+import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
 
 const TIMEOUT_MS = 50_000;
@@ -85,21 +86,28 @@ export async function GET(
   }
 
   const parentMessage = await prisma.message.findFirst({
-    where: { threadId, content: { contains: '@ai' } },
+    where: {
+      threadId,
+      OR: [
+        { content: { contains: '@sai', mode: 'insensitive' } },
+        { content: { contains: '@ai', mode: 'insensitive' } },
+      ],
+    },
     orderBy: { createdAt: 'desc' },
     take: 1,
   });
 
   if (!parentMessage) {
-    return new Response(sseEvent('error', { error: 'No @ai mention found' }), {
+    return new Response(sseEvent('error', { error: 'No @sai mention found' }), {
       status: 400,
       headers: { 'Content-Type': 'text/event-stream' },
     });
   }
 
-  const query = parentMessage.content.replace(/@ai\s*/gi, '').trim();
+  const query = extractAiInlineQuery(parentMessage.content)
+    ?? parentMessage.content.replace(/(?:^|\s)@ai\s+/i, '').trim();
   if (!query) {
-    return new Response(sseEvent('error', { error: 'No question found after @ai' }), {
+    return new Response(sseEvent('error', { error: 'No question found after @sai' }), {
       status: 400,
       headers: { 'Content-Type': 'text/event-stream' },
     });
