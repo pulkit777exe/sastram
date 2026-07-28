@@ -46,7 +46,7 @@ function DigitGroup({ value }: { value: number }) {
     el.classList.add('is-animating');
   }, [value]);
 
-  return <span ref={ref} className="t-digit-group font-['Syne'] text-[16px] font-bold text-(--text)" />;
+  return <span ref={ref} className="t-digit-group font-['Syne'] text-[16px] font-bold text-foreground" />;
 }
 
 export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
@@ -63,7 +63,7 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
     : null;
 
   return (
-    <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
+    <section className="rounded-[10px] border border-border bg-card p-[16px]">
       <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground-foreground">
         Thread information
       </p>
@@ -80,9 +80,9 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
               <span className="text-[12px]">Resolution</span>
               {thread.resolutionScore !== null ? (
                 <div className="flex items-center gap-[6px]">
-                  <div className="h-[4px] w-[60px] overflow-hidden rounded-full bg-(--bg)">
+                  <div className="h-[4px] w-[60px] overflow-hidden rounded-full bg-background">
                     <div
-                      className="h-full rounded-full bg-(--green)"
+                      className="h-full rounded-full bg-emerald-500"
                       style={{ width: `${thread.resolutionScore}%` }}
                     />
                   </div>

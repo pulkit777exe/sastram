@@ -48,7 +48,7 @@ export default function ThreadResolutionCard({
   }
 
   const label = score >= 70 ? 'Settled' : score >= 40 ? 'In progress' : 'Open';
-  const barColor = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--red)';
+  const barColor = score >= 70 ? '#3dd68c' : score >= 40 ? '#f2b544' : '#f2555a';
 
   return (
     <div className="space-y-3">
@@ -63,7 +63,7 @@ export default function ThreadResolutionCard({
         </span>
       </div>
 
-      <div className="h-[6px] w-full overflow-hidden rounded-full bg-(--bg)">
+      <div className="h-[6px] w-full overflow-hidden rounded-full bg-background">
         <div
           className="h-full rounded-full transition-[width] duration-500 ease-out"
           style={{ width: `${score}%`, background: barColor }}
@@ -71,9 +71,9 @@ export default function ThreadResolutionCard({
       </div>
 
       {isStale && (
-        <div className="mt-1 flex items-center justify-between gap-3 rounded-[10px] bg-(--amber)/10 px-3 py-2.5">
+        <div className="mt-1 flex items-center justify-between gap-3 rounded-[10px] bg-amber-500/10 px-3 py-2.5">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-(--amber)">Confidence aged</p>
+            <p className="text-[11px] font-semibold text-amber-600">Confidence aged</p>
             <p className="text-[10px] text-muted-foreground">
               Last verified {lastVerifiedDays > 90 ? `${Math.floor(lastVerifiedDays / 30)} months` : `${lastVerifiedDays} days`} ago
             </p>

@@ -18,7 +18,7 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
   }
 
   return (
-    <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
+    <section className="rounded-[10px] border border-border bg-card p-[16px]">
       <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
         Related Threads
       </p>
@@ -33,10 +33,10 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
             <Link
               key={thread.id}
               href={href}
-              className="group block rounded-[8px] border border-border/50 p-[12px] transition-colors hover:border-border hover:bg-(--bg)"
+              className="group block rounded-[8px] border border-border/50 p-[12px] transition-colors hover:border-border hover:bg-background"
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="text-[13px] font-semibold leading-snug text-(--text) group-hover:text-(--accent)">
+                <span className="text-[13px] font-semibold leading-snug text-foreground group-hover:text-foreground">
                   {thread.name}
                 </span>
                 <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
@@ -49,7 +49,7 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
                   {topics.map((topic: string) => (
                     <span
                       key={topic}
-                      className="inline-flex items-center rounded-[999px] bg-(--bg) px-[8px] py-[2px] font-(--font-dm-mono) text-[9px] uppercase tracking-[0.08em] text-(--text)"
+                      className="inline-flex items-center rounded-[999px] bg-background px-[8px] py-[2px] font-(--font-dm-mono) text-[9px] uppercase tracking-[0.08em] text-foreground"
                     >
                       {topic}
                     </span>

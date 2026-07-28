@@ -39,12 +39,12 @@ export default function AiSynthesisCard({
   };
 
   return (
-    <section className="rounded-[10px] border border-border bg-(--surface) p-[16px]">
+    <section className="rounded-[10px] border border-border bg-card p-[16px]">
       <div className="mb-[12px] flex items-center justify-between">
         <div className="flex items-center gap-[8px]">
           <span className="relative flex h-[8px] w-[8px]">
-            <span className="absolute h-full w-full animate-[pulse-dot_2s_ease_infinite] rounded-full bg-(--blue)" />
-            <span className="relative h-[8px] w-[8px] rounded-full bg-(--blue)" />
+            <span className="absolute h-full w-full animate-[pulse-dot_2s_ease_infinite] rounded-full bg-brand" />
+            <span className="relative h-[8px] w-[8px] rounded-full bg-brand" />
           </span>
           <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
             Sai synthesis
@@ -56,7 +56,7 @@ export default function AiSynthesisCard({
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="rounded-[6px] border border-border px-[8px] py-[4px] text-[11px] font-medium text-muted-foreground hover:bg-(--bg) transition-colors"
+              className="rounded-[6px] border border-border px-[8px] py-[4px] text-[11px] font-medium text-muted-foreground hover:bg-background transition-colors"
             >
               {isExpanded ? (
                 <ChevronDown className="h-[12px] w-[12px]" />
@@ -68,7 +68,7 @@ export default function AiSynthesisCard({
           <button
             type="button"
             onClick={handleTransfer}
-            className="rounded-[6px] border border-border px-[10px] py-[4px] text-[11px] font-medium text-(--blue) hover:bg-(--blue-dim)"
+            className="rounded-[6px] border border-border px-[10px] py-[4px] text-[11px] font-medium text-brand hover:bg-brand/10"
           >
             Transfer
           </button>
@@ -80,19 +80,19 @@ export default function AiSynthesisCard({
           <AiNotConfiguredNotice />
         ) : isGenerating ? (
           <div className="flex items-center gap-[8px]">
-            <Loader2 className="h-[14px] w-[14px] animate-spin text-(--blue)" />
+            <Loader2 className="h-[14px] w-[14px] animate-spin text-brand" />
             <p className="text-[13px] text-muted-foreground">Summary generating...</p>
           </div>
         ) : hasSummary ? (
           <>
-            <p className="text-[13px] text-(--text)">
+            <p className="text-[13px] text-foreground">
               {isExpanded ? summary : summary.length > 150 ? `${summary.slice(0, 150)}…` : summary}
             </p>
             {!isExpanded && summary.length > 150 && (
               <button
                 type="button"
                 onClick={() => setIsExpanded(true)}
-                className="text-[11px] font-medium text-(--blue) hover:underline"
+                className="text-[11px] font-medium text-brand hover:underline"
               >
                 Read more
               </button>
@@ -104,7 +104,7 @@ export default function AiSynthesisCard({
             )}
           </>
         ) : (
-          <p className="text-[13px] text-(--text)">
+          <p className="text-[13px] text-foreground">
             Sai will synthesize this thread once enough messages are available.
           </p>
         )}
@@ -118,9 +118,9 @@ export default function AiSynthesisCard({
 
               const confidenceClass =
                 confidence >= 90
-                  ? 'text-(--green)'
+                  ? 'text-emerald-600'
                   : confidence >= 70
-                    ? 'text-(--amber)'
+                    ? 'text-amber-600'
                     : 'text-muted-foreground';
 
               return (
@@ -129,13 +129,13 @@ export default function AiSynthesisCard({
                   className="flex items-center justify-between gap-[8px]"
                 >
                   <div className="flex items-center gap-[8px]">
-                    <div className="flex h-[20px] w-[20px] items-center justify-center rounded-[6px] bg-(--bg)">
-                      <span className="text-[11px] font-semibold text-(--text)">
+                    <div className="flex h-[20px] w-[20px] items-center justify-center rounded-[6px] bg-background">
+                      <span className="text-[11px] font-semibold text-foreground">
                         {source.source.slice(0, 1).toUpperCase()}
                       </span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[12px] text-(--text)">{source.source}</span>
+                      <span className="text-[12px] text-foreground">{source.source}</span>
                       {source.snippet && (
                         <span className="text-[11px] text-muted-foreground line-clamp-1">
                           {source.snippet}

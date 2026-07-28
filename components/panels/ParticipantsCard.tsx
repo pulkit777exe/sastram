@@ -34,18 +34,18 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
             <div
               key={p.id}
               title={`${p.name ?? 'Anonymous'}${p.id === ownerId ? ' · owner' : ''} — ${p.messageCount} ${p.messageCount === 1 ? 'message' : 'messages'}`}
-              className="relative h-[26px] w-[26px] overflow-hidden rounded-full border-2 border-(--surface) bg-(--bg)"
+              className="relative h-[26px] w-[26px] overflow-hidden rounded-full border-card bg-background"
             >
               {p.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.image} alt={p.name ?? 'User'} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-(--blue-dim) text-[10px] font-semibold text-(--blue)">
+                <div className="flex h-full w-full items-center justify-center bg-brand/10 text-[10px] font-semibold text-brand">
                   {(p.name ?? 'U').charAt(0).toUpperCase()}
                 </div>
               )}
               {p.id === ownerId && (
-                <span className="absolute -bottom-0 -right-0 h-[8px] w-[8px] rounded-full border-2 border-(--surface) bg-(--green)" />
+                <span className="absolute -bottom-0 -right-0 h-[8px] w-[8px] rounded-full border-card bg-emerald-500" />
               )}
             </div>
           ))}
