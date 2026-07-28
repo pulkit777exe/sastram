@@ -33,7 +33,20 @@ pnpm dev
 docker compose up
 ```
 
-Starts PostgreSQL, Redis, the Next.js app, and background job processing in one command. See [CONTRIBUTING.md](./CONTRIBUTING.md) for environment setup.
+Starts PostgreSQL, Redis, and the Next.js app. Local jobs run through the app's inline fallback unless QStash is configured. See [CONTRIBUTING.md](./CONTRIBUTING.md) for environment setup.
+
+## Production checks
+
+Before deploying, run the same gates CI expects plus the production readiness check:
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm build
+NODE_ENV=production pnpm check:prod
+```
+
+`pnpm check:prod` validates required production environment variables, URL shape, QStash/Upstash pairs, and warns when optional AI/search infrastructure is missing. The Docker image uses Next.js standalone output and starts on `PORT` with `HOSTNAME=0.0.0.0`.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup, [CLAUDE.md](./CLAUDE.md) for architecture details, and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.
 
