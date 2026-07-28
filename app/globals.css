@@ -66,7 +66,7 @@
   --bg: #fafafb;
   --surface: #ffffff;
   --text: #2c2c34;
-  --muted: #6b6b76;
+  --thread-muted: #6b6b76;
   --green: #1a9c5c;
   --amber: #d99a1b;
   --red: #e5484d;
@@ -238,7 +238,7 @@
   --bg: #08090a;
   --surface: #131316;
   --text: #f2f2f4;
-  --muted: #8a8f98;
+  --thread-muted: #8a8f98;
   --green: #3dd68c;
   --amber: #f2b544;
   --red: #f2555a;
@@ -306,6 +306,114 @@
 .shadow-linear-md { box-shadow: var(--shadow-md); }
 .shadow-linear-lg { box-shadow: var(--shadow-lg); }
 .shadow-linear-xl { box-shadow: var(--shadow-xl); }
+
+.sastram-loader {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--sastram-loader-size);
+  height: var(--sastram-loader-size);
+  color: var(--sastram-loader-color);
+  isolation: isolate;
+}
+
+.sastram-loader::before {
+  content: '';
+  position: absolute;
+  inset: -18%;
+  border-radius: 999px;
+  background:
+    conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, currentColor 58%, transparent) 72deg, transparent 132deg),
+    radial-gradient(circle, color-mix(in oklab, currentColor 12%, transparent), transparent 58%);
+  opacity: 0.5;
+  filter: blur(10px);
+  animation: sastram-loader-aura var(--sastram-loader-duration) cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  z-index: -1;
+}
+
+.sastram-loader svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.sastram-loader-ghost {
+  opacity: 0.12;
+}
+
+.sastram-loader-mark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sastram-loader-mark var(--sastram-loader-duration) cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  filter: drop-shadow(0 10px 18px color-mix(in oklab, currentColor 22%, transparent));
+}
+
+.sastram-loader-trace {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 54 210;
+  opacity: 0.42;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sastram-loader-trace var(--sastram-loader-duration) cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.sastram-loader-trace.trace-b {
+  animation-delay: calc(var(--sastram-loader-duration) * -0.34);
+}
+
+@keyframes sastram-loader-mark {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.78;
+  }
+  42%,
+  62% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sastram-loader-trace {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  18%,
+  70% {
+    opacity: 0.58;
+  }
+  100% {
+    stroke-dashoffset: -264;
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes sastram-loader-aura {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(0.96);
+    opacity: 0.22;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sastram-loader::before,
+  .sastram-loader-mark,
+  .sastram-loader-trace {
+    animation: none;
+  }
+}
 
 @keyframes skeleton-pulse {
   0%,
