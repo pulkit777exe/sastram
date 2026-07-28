@@ -1,6 +1,8 @@
 FROM node:22-alpine AS base
 
-RUN npm install -g pnpm@latest
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@11.12.0 --activate
 
 FROM base AS deps
 WORKDIR /app
@@ -23,16 +25,11 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/server.ts ./server.ts
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
-COPY --from=builder /app/lib ./lib
-COPY --from=builder /app/modules ./modules
-COPY --from=builder /app/prisma ./prisma
 
-EXPOSE 3001
+EXPOSE 3000
 
+ENV PORT "3000"
 ENV HOSTNAME "0.0.0.0"
 
 USER nextjs
-CMD ["node", "--import", "tsx", "server.ts"]
+CMD ["node", "server.js"]

@@ -16,6 +16,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
+    "check:prod": "tsx scripts/check-production-readiness.ts",
     "postinstall": "prisma generate",
     "test": "node --import tsx --import tsconfig-paths/register --import ./test/setup.ts ./node_modules/mocha/bin/mocha.js 'test/**/*.test.{mts,ts,tsx,js}'",
     "db:generate": "prisma generate",

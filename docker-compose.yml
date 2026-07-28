@@ -32,10 +32,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "3001:3000"
     environment:
       NODE_ENV: production
-      PORT: "3001"
+      PORT: "3000"
       DATABASE_URL: postgresql://sastram:sastram_dev@db:5432/sastram
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -43,28 +43,14 @@ services:
       BETTER_AUTH_URL: http://localhost:3001
       NEXT_PUBLIC_APP_URL: http://localhost:3001
       CRON_SECRET: ${CRON_SECRET:?CRON_SECRET must be set}
-      QUEUE_WORKERS_ENABLED: "false"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["node", "--import", "tsx", "worker/index.ts"]
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://sastram:sastram_dev@db:5432/sastram
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}
-      BETTER_AUTH_URL: http://localhost:3001
-      NEXT_PUBLIC_APP_URL: http://localhost:3001
-      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET must be set}
-      QUEUE_WORKERS_ENABLED: "true"
+      RESEND_API_KEY: ${RESEND_API_KEY:-re_local_placeholder}
+      RESEND_FROM: ${RESEND_FROM:-Sastram <noreply@localhost>}
+      RESEND_TEMPLATE_OTP: ${RESEND_TEMPLATE_OTP:-local_otp}
+      RESEND_TEMPLATE_INVITATION: ${RESEND_TEMPLATE_INVITATION:-local_invitation}
+      RESEND_TEMPLATE_THREAD_SUMMARY: ${RESEND_TEMPLATE_THREAD_SUMMARY:-local_thread_summary}
+      RESEND_TEMPLATE_PASSWORD_RESET: ${RESEND_TEMPLATE_PASSWORD_RESET:-local_password_reset}
+      RESEND_TEMPLATE_WELCOME: ${RESEND_TEMPLATE_WELCOME:-local_welcome}
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
         condition: service_healthy
