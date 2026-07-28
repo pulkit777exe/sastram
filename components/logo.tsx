@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { useTheme } from 'next-themes';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -53,118 +53,41 @@ function useResolvedTheme(theme: Theme): ResolvedTheme {
   return resolvedTheme === 'dark' ? 'dark' : 'light';
 }
 
-const SQUARE = 50;
-const RADIUS = 19;
-const REST_OFFSET = 28; // matches the static brand mark
-// Keep both squares inside the 100x100 viewBox: the rightmost edge of B is
-// `25 + offset/2 + SQUARE`, the leftmost edge of A is `25 - offset/2`. Solving
-// for <= 100 and >= 0 gives offset <= 50; we use 46 to leave margin for the
-// rounded corners so nothing clips at full separation.
-const APART_OFFSET = 46; // fully separated, still within bounds
-const MERGED_OFFSET = 0; // fully coincident, reads as one solid square
-// Fraction of the cycle spent paused (still/merged) so the loader breathes
-// instead of oscillating restlessly.
-const HOLD_FRACTION = 0.18;
-
-function easeInOutQuint(t: number) {
-  return t < 0.5 ? 16 * t ** 5 : 1 - Math.pow(-2 * t + 2, 5) / 2;
-}
-
 export function LogoLoader({ theme = 'light', size = 64, duration = 2.4, className }: LogoLoaderProps) {
   const resolved = useResolvedTheme(theme);
-  const fill = THEME_COLORS[resolved];
-  const maskId = useId();
-
-  const rectARef = useRef<SVGRectElement>(null);
-  const rectBRef = useRef<SVGRectElement>(null);
-  const maskCutRef = useRef<SVGRectElement>(null);
-  const pulseRef = useRef<SVGGElement>(null);
-
-  useEffect(() => {
-    const reduceMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-    // Writes the same offset/scale to every dependent node in one pass.
-    const applyFrame = (offset: number, scale: number) => {
-      const a = 25 - offset / 2;
-      const b = 25 + offset / 2;
-      rectARef.current?.setAttribute('x', String(a));
-      rectARef.current?.setAttribute('y', String(a));
-      rectBRef.current?.setAttribute('x', String(b));
-      rectBRef.current?.setAttribute('y', String(b));
-      maskCutRef.current?.setAttribute('x', String(b));
-      maskCutRef.current?.setAttribute('y', String(b));
-      if (pulseRef.current) pulseRef.current.style.transform = `scale(${scale})`;
-    };
-
-    if (reduceMotionQuery.matches) {
-      applyFrame(REST_OFFSET, 1);
-      return;
-    }
-
-    let raf = 0;
-    let start: number | null = null;
-    const cycleMs = Math.max(duration, 0.1) * 1000;
-
-    const tick = (now: number) => {
-      if (start === null) start = now;
-      const t = ((now - start) % cycleMs) / cycleMs; // 0..1 through the cycle
-
-      // Triangle wave 0 -> 1 -> 0 (apart -> merged -> apart)...
-      const triRaw = t < 0.5 ? t * 2 : (1 - t) * 2;
-      // ...eased, then clamped into a flat plateau at the top so the mark rests
-      // as one solid square for a beat instead of oscillating restlessly.
-      const eased = easeInOutQuint(triRaw);
-      const merged = eased >= 1 - HOLD_FRACTION ? 1 : eased / (1 - HOLD_FRACTION);
-      const offset = APART_OFFSET - merged * (APART_OFFSET - MERGED_OFFSET);
-      const scale = 1 + merged * 0.045; // subtle emphasis right at the merge
-      applyFrame(offset, scale);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-
-    const onMotionPrefChange = (e: MediaQueryListEvent) => {
-      cancelAnimationFrame(raf);
-      if (e.matches) {
-        applyFrame(REST_OFFSET, 1);
-      } else {
-        start = null;
-        raf = requestAnimationFrame(tick);
-      }
-    };
-    reduceMotionQuery.addEventListener('change', onMotionPrefChange);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      reduceMotionQuery.removeEventListener('change', onMotionPrefChange);
-    };
-  }, [duration]);
+  const fill = resolved === 'dark' ? THEME_COLORS.dark : 'var(--brand)';
 
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 100 100"
-      width={size}
-      height={size}
-      className={className}
-      role="img"
-      aria-label="Loading"
+    <span
+      className={`sastram-loader ${className ?? ''}`}
+      style={{
+        '--sastram-loader-size': `${size}px`,
+        '--sastram-loader-duration': `${Math.max(duration, 0.8)}s`,
+        '--sastram-loader-color': fill,
+      } as CSSProperties}
+      role="status"
+      aria-label="Loading Sastram"
     >
-      <defs>
-        <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-          <rect x="0" y="0" width="100" height="100" fill="white" />
-          <rect ref={maskCutRef} x="39" y="39" width={SQUARE} height={SQUARE} rx={RADIUS} fill="black" />
-        </mask>
-      </defs>
-
-      <g ref={pulseRef} style={{ transformOrigin: '50px 50px' }}>
-        <rect
-          ref={rectARef}
-          x="11" y="11" width={SQUARE} height={SQUARE} rx={RADIUS}
-          fill={fill}
-          mask={`url(#${maskId})`}
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
+        <path
+          className="sastram-loader-ghost"
+          fill="currentColor"
+          d="
+            M30,11 H42 A19,19 0 0 1 61,30 V42 A19,19 0 0 1 42,61 H30 A19,19 0 0 1 11,42 V30 A19,19 0 0 1 30,11 Z
+            M58,39 H70 A19,19 0 0 1 89,58 V70 A19,19 0 0 1 70,89 H58 A19,19 0 0 1 39,70 V58 A19,19 0 0 1 58,39 Z
+          "
         />
-        <rect ref={rectBRef} x="39" y="39" width={SQUARE} height={SQUARE} rx={RADIUS} fill={fill} />
-      </g>
-    </svg>
+        <path
+          className="sastram-loader-mark"
+          fill="currentColor"
+          d="
+            M30,11 H42 A19,19 0 0 1 61,30 V42 A19,19 0 0 1 42,61 H30 A19,19 0 0 1 11,42 V30 A19,19 0 0 1 30,11 Z
+            M58,39 H70 A19,19 0 0 1 89,58 V70 A19,19 0 0 1 70,89 H58 A19,19 0 0 1 39,70 V58 A19,19 0 0 1 58,39 Z
+          "
+        />
+        <rect className="sastram-loader-trace trace-a" x="11" y="11" width="50" height="50" rx="19" />
+        <rect className="sastram-loader-trace trace-b" x="39" y="39" width="50" height="50" rx="19" />
+      </svg>
+    </span>
   );
 }
