@@ -271,7 +271,7 @@ export function PostMessageForm({
             </div>
           </div>
 
-          <Button type="submit" disabled={isSubmitting || !content.trim()} size="sm" className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-linear-sm font-semibold transition-all">
+          <Button type="submit" disabled={isSubmitting || !canSubmit} size="sm" className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-linear-sm font-semibold transition-all">
             {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             <span>Send</span>
           </Button>

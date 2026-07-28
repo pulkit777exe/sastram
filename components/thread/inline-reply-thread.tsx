@@ -37,21 +37,20 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
   if (replies.length === 0) return null;
 
   return (
-    <div className="mt-2 group/thread">
-      {/* Collapsed summary bar — always visible */}
+    <div className="mt-2 group/thread max-w-[min(100%,56rem)]">
+      {/* Collapsed summary bar - always visible */}
       <div
         role="button"
         tabIndex={0}
         onClick={() => onReplyClick?.()}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onReplyClick?.(); }}
-        className="flex items-center gap-2.5 w-full text-left group/bar hover:bg-brand/10 dark:hover:bg-brand/15 rounded-lg px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
+        className="flex items-center gap-2.5 w-full min-h-8 text-left group/bar rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/35 dark:bg-muted/15 dark:hover:bg-muted/25 px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
       >
-        {/* Stacked avatars */}
         <div className="flex -space-x-1.5 shrink-0">
           {uniqueSenders.map((sender) => (
             <Avatar
               key={sender.id}
-              className="w-5 h-5 ring-2 ring-background"
+              className="w-5 h-5 ring-2 ring-card"
             >
               <AvatarImage src={sender.image || ''} />
               <AvatarFallback className="bg-brand/15 text-brand text-[8px] font-bold">
@@ -61,12 +60,10 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
           ))}
         </div>
 
-        {/* Reply count */}
         <span className="text-[12px] font-semibold text-brand group-hover/bar:text-brand transition-colors">
           {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
         </span>
 
-        {/* Last reply preview */}
         {lastReply && !expanded && (
           <span className="text-[11px] text-muted-foreground/70 truncate flex-1 min-w-0">
             <span className="font-medium text-foreground/60 mr-1">
@@ -76,23 +73,21 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
           </span>
         )}
 
-        {/* Expand/collapse toggle */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             setExpanded((p) => !p);
           }}
-          className="ml-auto shrink-0 text-muted-foreground/50 hover:text-brand transition-colors"
+          className="ml-auto flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-background/60 hover:text-brand transition-colors"
           title={expanded ? 'Collapse replies' : 'Expand replies'}
         >
           {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
       </div>
 
-      {/* Expanded reply list */}
       {expanded && (
-        <div className="mt-1 pl-2.5 border-l-2 border-brand/20 dark:border-brand/30 ml-2.5">
+        <div className="mt-1.5 ml-2.5 border-l border-border/70 pl-2.5">
           {shouldVirtualize ? (
             /* Virtualized list for large reply counts */
             <div
@@ -170,7 +165,7 @@ function ReplyItem({
 }) {
   return (
     <div
-      className="flex items-start gap-2 text-[12px] py-1 px-2 rounded-lg hover:bg-muted/40 cursor-pointer group/reply transition-colors"
+      className="flex items-start gap-2 text-[12px] py-1 px-2 rounded-lg hover:bg-muted/35 cursor-pointer group/reply transition-colors"
       onClick={() => onReplyClick?.(reply.id)}
     >
       <Avatar className="w-4 h-4 mt-0.5 shrink-0">

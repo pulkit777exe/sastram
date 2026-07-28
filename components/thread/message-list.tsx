@@ -208,6 +208,9 @@ const MessageRow = React.memo(function MessageRow({
   const isShowingReplyBox = activeReplyId === message.id;
   const isDeleted = !!message.deletedAt;
   const isModerator = ['ADMIN', 'MODERATOR', 'OWNER'].includes(currentUser.role || '');
+  const activeReplyTarget = activeReplyId
+    ? replies.find((reply) => reply.id === activeReplyId) ?? null
+    : null;
 
   const canEdit = isOwnMessage && !isDeleted;
   const canDelete = (isOwnMessage || isModerator) && !isDeleted;
@@ -426,7 +429,19 @@ const MessageRow = React.memo(function MessageRow({
           {replies.length > 0 && (
             <InlineReplyThread
               replies={replies}
-              onReplyClick={() => onReply(message.id)}
+              onReplyClick={(messageId = message.id) => onReply(messageId)}
+            />
+          )}
+
+          {activeReplyTarget && (
+            <InlineReplyBox
+              parentMessage={activeReplyTarget}
+              threadId={threadId}
+              currentUser={currentUser}
+              visualDepth={Math.min(activeReplyTarget.depth + 1, 3)}
+              onCancel={onCancelReply}
+              onMessagePosted={onMessagePosted}
+              onOptimisticMessage={onOptimisticMessage}
             />
           )}
         </div>

@@ -25,10 +25,10 @@ export function TopicCard({
   tags,
 }: TopicCardProps) {
   return (
-    <div className="group relative flex flex-col justify-between h-full rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:shadow-linear-sm">
+    <div className="group relative flex h-full flex-col justify-between rounded-lg border border-border bg-card p-5 transition-all duration-300 hover:shadow-linear-sm">
       <div>
         <div className="flex items-center justify-between mb-4">
-          <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:text-brand group-hover:bg-brand/90/10 transition-colors">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground transition-colors group-hover:border-brand/20 group-hover:bg-brand/10 group-hover:text-brand">
             <Hash size={20} />
           </div>
           {trending && (
@@ -44,8 +44,8 @@ export function TopicCard({
           </h3>
         </Link>
         {unreadCount > 0 && (
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             {unreadCount} unread
           </div>
         )}
