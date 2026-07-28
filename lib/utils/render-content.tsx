@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { cn } from '@/lib/utils/cn';
 
 type MarkdownToken =
   | { type: 'text'; content: string }
@@ -67,24 +68,24 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
   return (
     <div
       className="my-2.5 animate-in fade-in duration-200 rounded-[10px] overflow-hidden border border-border/60"
-      style={{ background: 'var(--bg)' }}
+      style={{ background: 'var(--background)' }}
     >
       {/* Code block header */}
       <div
         className="flex items-center justify-between px-3 py-1.5 border-b border-border/40"
-        style={{ background: 'var(--surface)' }}
+        style={{ background: 'var(--card)' }}
       >
         {displayLang ? (
           <span
             className="font-mono text-[10px] uppercase tracking-[0.12em] select-none"
-            style={{ color: 'var(--muted)' }}
+            style={{ color: 'var(--muted-foreground)' }}
           >
             {displayLang}
           </span>
         ) : (
           <span
             className="font-mono text-[10px] uppercase tracking-[0.12em] select-none"
-            style={{ color: 'var(--muted)' }}
+            style={{ color: 'var(--muted-foreground)' }}
           >
             code
           </span>
@@ -92,11 +93,12 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-[6px] px-2 py-0.5 text-[10px] font-medium transition-all duration-150"
-          style={{
-            color: copied ? 'var(--green)' : 'var(--muted)',
-            background: copied ? 'rgba(26,156,92,0.08)' : 'transparent',
-          }}
+          className={cn(
+            'flex items-center gap-1.5 rounded-[6px] px-2 py-0.5 text-[10px] font-medium transition-all duration-150',
+            copied
+              ? 'text-emerald-600 bg-emerald-600/10'
+              : 'text-muted-foreground bg-transparent'
+          )}
           aria-label="Copy code"
         >
           <span
@@ -138,7 +140,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
       {/* Code content */}
       <pre
         className="overflow-x-auto p-3 text-[12.5px] leading-[1.6] font-mono"
-        style={{ color: 'var(--text)', background: 'var(--bg)' }}
+        style={{ color: 'var(--foreground)', background: 'var(--background)' }}
       >
         <code>{code}</code>
       </pre>
@@ -202,7 +204,7 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 transition-colors"
-            style={{ color: 'var(--blue)' }}
+            style={{ color: 'var(--brand)' }}
           >
             {linkText}
           </a>
@@ -215,11 +217,7 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
       nodes.push(
         <span
           key={`${keyPrefix}-m${keyCounter}`}
-          className="inline-flex items-center gap-0.5 rounded-[5px] px-1.5 py-0 align-baseline text-[0.9em] font-semibold leading-[1.6] cursor-default"
-          style={{
-            background: 'var(--blue-dim)',
-            color: 'var(--blue)',
-          }}
+          className="inline-flex items-center gap-0.5 rounded-[5px] px-1.5 py-0 align-baseline text-[0.9em] font-semibold leading-[1.6] cursor-default bg-brand/10 text-brand"
           title={matchText}
         >
           {matchText}
@@ -277,11 +275,7 @@ export function renderContent(content: string): React.ReactNode {
                 return (
                   <code
                     key={`ic-${i}-${j}`}
-                    className="rounded-[4px] px-1.5 py-0.5 text-[0.88em] font-mono"
-                    style={{
-                      background: 'var(--blue-dim)',
-                      color: 'var(--blue)',
-                    }}
+                    className="rounded-[4px] px-1.5 py-0.5 text-[0.88em] font-mono bg-brand/10 text-brand"
                   >
                     {token.content}
                   </code>
