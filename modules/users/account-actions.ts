@@ -65,13 +65,32 @@ export const changeEmailAction = createServerAction(
 export const listSessionsAction = createServerAction(
   { schema: z.object({}), actionName: 'listSessionsAction' },
   async () => {
-    const session = await getSession();
-    if (!session) {
+    const current = await getSession();
+    if (!current) {
       return { data: null, error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
     }
     try {
-      const sessions = await auth.api.listSessions({ headers: await headers() });
-      return { data: { sessions }, error: null, ok: true, errorCode: null };
+      const currentToken = await getCurrentSessionToken();
+      const sessions = await prisma.session.findMany({
+        where: { userId: current.user.id, expiresAt: { gt: new Date() } },
+        orderBy: { createdAt: 'desc' },
+      });
+      return {
+        data: {
+          sessions: sessions.map((s) => ({
+            id: s.id,
+            token: s.token,
+            ipAddress: s.ipAddress,
+            userAgent: s.userAgent,
+            createdAt: s.createdAt,
+            expiresAt: s.expiresAt,
+            isCurrent: s.token === currentToken,
+          })),
+        },
+        error: null,
+        ok: true,
+        errorCode: null,
+      };
     } catch (error) {
       logger.error('[listSessionsAction]', error);
       return { data: null, error: 'Failed to load sessions', ok: false, errorCode: 'INTERNAL_ERROR' };
@@ -99,6 +118,14 @@ export const revokeSessionAction = createServerAction(
     }
   }
 );
+
+async function getCurrentSessionToken(): Promise<string | null> {
+  const h = await headers();
+  const cookie = h.get('cookie');
+  if (!cookie) return null;
+  const match = cookie.match(/better-auth\.session_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
 function decodeIdTokenDisplayName(idToken: string | null, providerId: string): string | null {
   if (!idToken) return null;
@@ -163,8 +190,11 @@ export const unlinkAccountAction = createServerAction(
       return { data: { ok: true }, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[unlinkAccountAction]', error);
-      const message = error instanceof Error ? error.message : 'Failed to unlink account';
-      return { data: null, error: message, ok: false, errorCode: 'INTERNAL_ERROR' };
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('SESSION_NOT_FRESH') || msg.includes('Unauthorized')) {
+        return { data: null, error: 'Session expired. Please sign in again and try unlinking.', ok: false, errorCode: 'AUTH_REQUIRED' };
+      }
+      return { data: null, error: msg || 'Failed to unlink account', ok: false, errorCode: 'INTERNAL_ERROR' };
     }
   }
 );
