@@ -150,10 +150,10 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[12px] border border-border bg-(--surface) p-5 space-y-4 shadow-sm max-w-lg"
+      className="rounded-[12px] border border-border bg-card p-5 space-y-4 shadow-sm max-w-lg"
     >
       <div className="flex items-start justify-between">
-        <h3 className="text-[14px] font-semibold text-(--text) tracking-tight">{poll.question}</h3>
+        <h3 className="text-[14px] font-semibold text-foreground tracking-tight">{poll.question}</h3>
         {showResults && <BarChart3 className="h-4 w-4 text-muted-foreground shrink-0" />}
       </div>
 
@@ -173,9 +173,9 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
               {showResults ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[12px]">
-                    <span className="flex items-center gap-1.5 text-(--text) font-medium">
+                    <span className="flex items-center gap-1.5 text-foreground font-medium">
                       {option}
-                      {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-(--blue)" />}
+                      {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
                     </span>
                     <span className="text-muted-foreground font-(--font-dm-mono) text-[11px] tabular-nums">
                       {result?.votes ?? 0} votes ({percentage.toFixed(1)}%)
@@ -188,7 +188,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
                       transition={{ duration: 0.5, delay: index * 0.08 }}
                       className={cn(
                         'h-full rounded-full',
-                        isSelected ? 'bg-(--blue)' : 'bg-(--text)'
+                        isSelected ? 'bg-brand' : 'bg-foreground/20'
                       )}
                     />
                   </div>
@@ -204,8 +204,8 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
                   className={cn(
                     'w-full text-left px-3.5 py-2 rounded-[8px] border text-[13px] font-medium transition-all duration-200',
                     isSelected
-                      ? 'bg-(--blue-dim) border-(--blue) text-(--blue)'
-                      : 'bg-transparent border-border/60 text-(--text) hover:border-border hover:bg-muted/10 disabled:opacity-50'
+                      ? 'bg-brand/10 border-brand text-brand'
+                      : 'bg-transparent border-border/60 text-foreground hover:border-border hover:bg-muted/10 disabled:opacity-50'
                   )}
                 >
                   {option}

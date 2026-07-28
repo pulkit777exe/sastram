@@ -109,8 +109,8 @@ export function ThreadAccessModal({
                     className="flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full border bg-(--blue-dim) flex items-center justify-center">
-                        <Mail size={14} className="text-(--blue)" />
+                      <div className="h-9 w-9 rounded-full border bg-brand/10 flex items-center justify-center">
+                        <Mail size={14} className="text-brand" />
                       </div>
                       <div>
                         <p className="text-sm font-medium leading-none">{invitation.email}</p>

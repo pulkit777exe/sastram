@@ -35,8 +35,8 @@ export function VerifyNowButton({ threadId }: VerifyNowButtonProps) {
       className={cn(
         'inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[11px] font-semibold transition-all duration-200',
         verified
-          ? 'bg-(--green)/10 text-(--green) cursor-default'
-          : 'bg-(--amber)/10 text-(--amber) hover:bg-(--amber)/15'
+          ? 'bg-emerald-500/10 text-emerald-600 cursor-default'
+          : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/15'
       )}
     >
       {verified ? (
