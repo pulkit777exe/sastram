@@ -16,8 +16,20 @@ export interface AIStreamError {
   messageId?: string;
 }
 
+export interface AIStreamStart {
+  messageId: string;
+  parentId: string;
+  threadId: string;
+  depth: number;
+  createdAt: string;
+  senderId: string;
+  senderName: string | null;
+  senderImage: string | null;
+}
+
 interface UseAIReplyStreamOptions {
   threadId: string;
+  onStart?: (info: AIStreamStart) => void;
   onToken?: (token: string) => void;
   onDone?: (result: AIStreamDone) => void;
   onError?: (error: AIStreamError) => void;
@@ -26,6 +38,7 @@ interface UseAIReplyStreamOptions {
 
 export function useAIReplyStream({
   threadId,
+  onStart,
   onToken,
   onDone,
   onError,
@@ -33,7 +46,7 @@ export function useAIReplyStream({
 }: UseAIReplyStreamOptions) {
   const abortRef = useRef<AbortController | null>(null);
 
-  const startStream = useCallback(() => {
+  const startStream = useCallback((parentMessageId?: string) => {
     abortRef.current?.abort();
 
     const controller = new AbortController();
@@ -41,8 +54,13 @@ export function useAIReplyStream({
 
     let buffer = '';
     let messageId: string | undefined;
+    let accumulated = '';
 
-    fetch(`/api/threads/${threadId}/ai-reply/stream`, {
+    const url = parentMessageId
+      ? `/api/threads/${threadId}/ai-reply/stream?messageId=${encodeURIComponent(parentMessageId)}`
+      : `/api/threads/${threadId}/ai-reply/stream`;
+
+    fetch(url, {
       method: 'GET',
       signal: controller.signal,
     }).then(async (response) => {
@@ -65,6 +83,10 @@ export function useAIReplyStream({
 
       const decoder = new TextDecoder();
 
+      // Persist across reads: an `event:` line and its `data:` line can arrive
+      // in different network chunks.
+      let currentEvent = '';
+
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -73,8 +95,6 @@ export function useAIReplyStream({
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
           buffer = lines.pop() ?? '';
-
-          let currentEvent = '';
 
           for (const line of lines) {
             if (line.startsWith('event: ')) {
@@ -85,10 +105,17 @@ export function useAIReplyStream({
                 const data = JSON.parse(rawData);
 
                 switch (currentEvent) {
+                  case 'start':
+                    messageId = data.messageId;
+                    onStart?.(data as AIStreamStart);
+                    break;
                   case 'token':
                     onToken?.(data.content);
-                    if (messageId && data.content) {
-                      onMessageUpdate?.(messageId, data.content);
+                    if (data.content) {
+                      accumulated += data.content;
+                      if (messageId) {
+                        onMessageUpdate?.(messageId, accumulated);
+                      }
                     }
                     break;
                   case 'done':
@@ -113,7 +140,7 @@ export function useAIReplyStream({
         onError?.({ error: err.message || 'Stream failed' });
       }
     });
-  }, [threadId, onToken, onDone, onError, onMessageUpdate]);
+  }, [threadId, onStart, onToken, onDone, onError, onMessageUpdate]);
 
   const stopStream = useCallback(() => {
     abortRef.current?.abort();

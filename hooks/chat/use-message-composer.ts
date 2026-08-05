@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
 import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
-import type { Message } from '@/lib/types/index';
+import type { AiInlineMeta, Message } from '@/lib/types/index';
 import type { MentionCandidate } from '@/components/chat/mention-suggest';
 
 type ToolbarAction = 'bold' | 'italic' | 'code' | 'link';
@@ -22,11 +22,18 @@ interface UseMessageComposerOptions {
     name: string;
     image: string | null;
   };
-  onMessagePosted?: (message: Message) => void;
+  onMessagePosted?: (message: Message, meta?: AiInlineMeta) => void;
   onOptimisticMessage?: (message: Message) => void;
   onMessageError?: (tempId: string) => void;
   onSuccess?: () => void;
   onCancelReply?: () => void;
+  /**
+   * When true, @sai replies are streamed to this client over SSE (instant
+   * tokens) instead of a background job. Only enable in views that wire
+   * useAIReplyStream via the onMessagePosted meta ('streaming'), otherwise
+   * the AI reply would never be generated.
+   */
+  aiClientStream?: boolean;
 }
 
 interface UseMessageComposerReturn {
@@ -100,6 +107,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     onMessageError,
     onSuccess,
     onCancelReply,
+    aiClientStream = false,
   } = options;
 
   // Content
@@ -401,6 +409,10 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         data.append('mentions', JSON.stringify(mentionedUserIds));
       }
 
+      if (aiClientStream) {
+        data.set('clientStreams', '1');
+      }
+
       const result = await postMessage(data);
       setIsSubmitting(false);
 
@@ -433,7 +445,14 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
               size: att.size !== null ? Number(att.size) : null,
             })) ?? [],
         };
-        onMessagePosted?.(transformedMessage);
+        const aiInline: AiInlineMeta['aiInline'] = result.data.aiInlineStreaming
+          ? 'streaming'
+          : result.data.aiInlineQueued
+            ? 'queued'
+            : result.data.aiInlineLimited
+              ? 'limited'
+              : null;
+        onMessagePosted?.(transformedMessage, { aiInline });
         onSuccess?.();
 
         if (result.data.aiInlineLimited) {
@@ -459,6 +478,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       showPollBuilder,
       pollQuestion,
       pollOptions,
+      aiClientStream,
     ]
   );
 

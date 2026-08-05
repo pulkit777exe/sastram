@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommentTree } from '@/components/thread/comment-tree';
 import { PostMessageForm } from '@/components/chat/post-message-form';
 import { useThreadWebSocket } from '@/hooks/useThreadWebSocket';
-import type { Message } from '@/lib/types/index';
+import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hooks/useAIReplyStream';
+import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
 import { loadThreadMessages, backfillThreadMessages } from '@/modules/threads/actions';
@@ -248,6 +249,85 @@ export function ThreadLiveWrapper({
     }
   }, []);
 
+  // --- Instant @sai reply via SSE streaming ---
+  // Tokens are streamed straight into the message list; polling remains the
+  // fallback path (queued jobs, other viewers, stream failures).
+  const streamParentRef = useRef<string | null>(null);
+
+  const handleStreamStart = useCallback(
+    (info: AIStreamStart) => {
+      const aiMsg: Message = {
+        id: info.messageId,
+        content: '',
+        threadId,
+        senderId: info.senderId,
+        parentId: info.parentId,
+        depth: info.depth,
+        isEdited: false,
+        isPinned: false,
+        likeCount: 0,
+        replyCount: 0,
+        isAiResponse: true,
+        createdAt: new Date(info.createdAt),
+        updatedAt: new Date(info.createdAt),
+        deletedAt: null,
+        sender: {
+          id: info.senderId,
+          name: info.senderName ?? 'Sastram AI',
+          image: info.senderImage,
+        },
+        thread: { id: threadId, name: title, slug },
+        attachments: [],
+      };
+      setLiveMessages((prev) =>
+        prev.some((m) => m.id === aiMsg.id) ? prev : [...prev, aiMsg]
+      );
+    },
+    [threadId, title, slug]
+  );
+
+  const handleStreamUpdate = useCallback((messageId: string, content: string) => {
+    setLiveMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, content } : m))
+    );
+  }, []);
+
+  const handleStreamDone = useCallback(() => {
+    const parentId = streamParentRef.current;
+    streamParentRef.current = null;
+    if (parentId) clearAiStatus(parentId);
+  }, [clearAiStatus]);
+
+  const handleStreamError = useCallback(
+    (_err: AIStreamError) => {
+      const parentId = streamParentRef.current;
+      streamParentRef.current = null;
+      // Fall back to the background job path so the reply can still arrive via
+      // polling. Only mark the mention as failed if the fallback can't be queued;
+      // the 2-minute pending timeout remains the last-resort failure signal.
+      fetch(`/api/threads/${threadId}/ai-reply`, { method: 'POST' })
+        .then((res) => {
+          if (!res.ok) throw new Error('fallback enqueue failed');
+        })
+        .catch(() => {
+          if (parentId) {
+            setAiInlineStatus((prev) =>
+              prev[parentId] === 'pending' ? { ...prev, [parentId]: 'failed' } : prev
+            );
+          }
+        });
+    },
+    [threadId]
+  );
+
+  const { startStream, stopStream } = useAIReplyStream({
+    threadId,
+    onStart: handleStreamStart,
+    onMessageUpdate: handleStreamUpdate,
+    onDone: handleStreamDone,
+    onError: handleStreamError,
+  });
+
   const markThreadAsRead = useCallback(
     async (force: boolean = false) => {
       if (unreadCountRef.current <= 0) return;
@@ -397,7 +477,7 @@ export function ThreadLiveWrapper({
   });
 
   const handleMessagePosted = useCallback(
-    (newMessage: Message) => {
+    (newMessage: Message, meta?: AiInlineMeta) => {
       ownPendingIds.current.add(newMessage.id);
       setLiveMessages((prev) => {
         // Remove any pending optimistic message (temp ID) for this sender+parent
@@ -418,11 +498,25 @@ export function ThreadLiveWrapper({
         lastMessageTimestampRef.current = msgTimestamp;
       }
 
-      if (hasAiMention(newMessage.content)) {
+      // Prefer the server's verdict (streaming/queued/limited/null) over the
+      // local regex so quota-limited or query-less mentions don't hang in
+      // "pending" forever.
+      const aiInline =
+        meta?.aiInline !== undefined
+          ? meta.aiInline
+          : hasAiMention(newMessage.content)
+            ? 'queued'
+            : null;
+
+      if (aiInline === 'streaming') {
+        setAiPending(newMessage.id);
+        streamParentRef.current = newMessage.id;
+        startStream(newMessage.id);
+      } else if (aiInline === 'queued') {
         setAiPending(newMessage.id);
       }
     },
-    [hasAiMention, setAiPending]
+    [hasAiMention, setAiPending, startStream]
   );
 
   const handleOptimisticMessage = useCallback(
@@ -465,8 +559,9 @@ export function ThreadLiveWrapper({
         clearTimeout(timer);
       }
       timers.clear();
+      stopStream();
     };
-  }, []);
+  }, [stopStream]);
 
   // Poll for new messages (AI responses, other users' messages) since WebSocket is not connected.
   // Adaptive: pauses when tab hidden, backs off when quiet, resets on new messages.
@@ -534,9 +629,12 @@ export function ThreadLiveWrapper({
           // Reset backoff on new message
           emptyPollCount = 0;
           currentInterval = BASE_INTERVAL;
-          // Defer status clears to avoid state updates during render
+          // Defer status clears to avoid state updates during render.
+          // Only clear once the AI reply has actual content — the worker first
+          // creates an EMPTY placeholder, and clearing on it would stop the
+          // fast poll before the answer exists.
           for (const msg of newMessages) {
-            if (msg.isAiResponse && msg.parentId) {
+            if (msg.isAiResponse && msg.parentId && msg.content.trim().length > 0) {
               setTimeout(() => clearAiStatus(msg.parentId!), 0);
             }
           }
@@ -585,7 +683,11 @@ export function ThreadLiveWrapper({
   useEffect(() => {
     for (const [pendingMsgId, status] of Object.entries(aiInlineStatus)) {
       if (status !== 'pending') continue;
-      if (liveMessages.some((m) => m.parentId === pendingMsgId && m.isAiResponse)) {
+      if (
+        liveMessages.some(
+          (m) => m.parentId === pendingMsgId && m.isAiResponse && m.content.trim().length > 0
+        )
+      ) {
         setTimeout(() => clearAiStatus(pendingMsgId), 0);
       }
     }
@@ -613,7 +715,8 @@ export function ThreadLiveWrapper({
           return merged;
         });
         for (const msg of incoming) {
-          if (msg.isAiResponse && msg.parentId) {
+          // Empty placeholder = generation still running; keep fast-polling.
+          if (msg.isAiResponse && msg.parentId && msg.content.trim().length > 0) {
             setTimeout(() => clearAiStatus(msg.parentId!), 0);
           }
         }
@@ -641,15 +744,15 @@ export function ThreadLiveWrapper({
 
       {/* Fixed pinned message banner just below header */}
       {pinnedMessage && (
-        <div className="border-b border-amber-100 bg-amber-50/60 px-6 py-2.5 flex-shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="border-b border-chart-4/20 bg-chart-4/10 px-6 py-2.5 flex-shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
             <div className="min-w-0 flex items-start gap-2">
-              <Pin size={13} className="text-amber-600 mt-0.5 shrink-0" />
+              <Pin size={13} className="text-chart-4 mt-0.5 shrink-0" />
               <div className="min-w-0">
-              <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
+              <p className="text-xs font-bold text-chart-4 uppercase tracking-wider">
                 Pinned Message
               </p>
-              <p className="mt-0.5 truncate text-xs text-amber-900/90 font-medium">
+              <p className="mt-0.5 truncate text-xs text-chart-4/90 font-medium">
                 {pinnedMessage.content}
               </p>
               </div>
@@ -724,7 +827,7 @@ export function ThreadLiveWrapper({
                 </svg>
               </div>
               <h3 className="text-foreground font-semibold text-base mb-1.5">No messages yet</h3>
-              <p className="text-muted-foreground/70 text-sm max-w-[260px] leading-relaxed">
+              <p className="text-muted-foreground/70 text-sm max-w-65 leading-relaxed">
                 Be the first to share something — ask a question, share a thought, or just say hi!
               </p>
             </div>
@@ -757,6 +860,7 @@ export function ThreadLiveWrapper({
                 currentUser={currentUser}
                 aiInlineStatus={aiInlineStatus}
                 onOptimisticMessage={handleOptimisticMessage}
+                onMessagePosted={handleMessagePosted}
                 firstUnreadMessageId={firstUnreadMessageId}
                 scrollContainerRef={scrollContainerRef}
               />
@@ -767,18 +871,18 @@ export function ThreadLiveWrapper({
 
       {/* Scroll-to-bottom floating button */}
       {isScrolledUp && (
-        <div className="absolute bottom-[130px] right-6 z-30 flex flex-col items-center gap-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+        <div className="absolute bottom-32 right-6 z-30 flex flex-col items-center gap-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
           <button
             type="button"
             onClick={() => {
               scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
               void markThreadAsRead(true);
             }}
-            className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-white shadow-linear-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-primary-foreground shadow-linear-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
             title="Scroll to bottom"
           >
             {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-brand text-white text-[9px] font-bold flex items-center justify-center px-1 border-2 border-background">
+              <span className="absolute -top-2 -right-2 min-w-4.5 h-4.5 rounded-full bg-brand text-primary-foreground text-xs font-bold flex items-center justify-center px-1 border-2 border-background">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -796,6 +900,7 @@ export function ThreadLiveWrapper({
             onMessagePosted={handleMessagePosted}
             onOptimisticMessage={handleOptimisticMessage}
             onMessageError={handleMessageError}
+            aiClientStream
             canManagePoll={canManagePoll}
             showPoll={showPoll}
             onTogglePoll={setShowPoll}

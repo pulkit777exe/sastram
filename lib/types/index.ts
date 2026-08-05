@@ -104,6 +104,13 @@ export interface MentionData {
   parentId?: string;
 }
 
+/** How the @sai inline reply for a just-posted message will be delivered. */
+export type AiInlineDelivery = 'streaming' | 'queued' | 'limited' | null;
+
+export interface AiInlineMeta {
+  aiInline?: AiInlineDelivery;
+}
+
 export interface AttachmentInput {
   url: string;
   type: string;

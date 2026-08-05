@@ -202,12 +202,15 @@ export async function postMessage(formData: FormData) {
 
     infraMessageSideEffects.emitThreadMessage(threadId, payload);
 
-    const { aiInlineQueued, aiInlineLimited } = await queueAiInlineIfRequested({
+    const clientStreams = formData.get('clientStreams') === '1';
+
+    const { aiInlineQueued, aiInlineLimited, aiInlineStreaming } = await queueAiInlineIfRequested({
       content: safeContent,
       userId: session.user.id,
       threadId: threadId,
       messageId: message.id,
       sideEffects: infraMessageSideEffects,
+      clientStreams,
     });
 
     if (message.thread?.slug) {
@@ -232,6 +235,7 @@ export async function postMessage(formData: FormData) {
         pendingModeration: moderationResult.pendingModeration,
         aiInlineQueued,
         aiInlineLimited,
+        aiInlineStreaming,
       },
       error: null,
       errorCode: null,

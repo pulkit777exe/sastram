@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
 import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { aiService, isAiNotConfigured } from '@/lib/services/ai';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
@@ -59,23 +59,6 @@ export async function GET(
     });
   }
 
-   const spendCap = await checkAiSpendCap();
-   if (!spendCap.allowed) {
-     return new Response(sseEvent('error', { error: 'AI features temporarily unavailable' }), {
-       status: 503,
-       headers: { 'Content-Type': 'text/event-stream' },
-     });
-   }
-
-   // Hard cost-aware gate: AI reply streaming is an EXPENSIVE synthesis.
-   const gate = evaluateAiCostGate({ path: AiCallPath.AI_REPLY_STREAM, spendCapAllowed: spendCap.allowed });
-   if (!gate.allowed) {
-     return new Response(sseEvent('error', { error: 'AI features temporarily unavailable' }), {
-       status: 503,
-       headers: { 'Content-Type': 'text/event-stream' },
-     });
-   }
-
    try {
     await requireThreadMembershipOrThrow(threadId, session.user.id);
   } catch {
@@ -85,17 +68,25 @@ export async function GET(
     });
   }
 
-  const parentMessage = await prisma.message.findFirst({
-    where: {
-      threadId,
-      OR: [
-        { content: { contains: '@sai', mode: 'insensitive' } },
-        { content: { contains: '@ai', mode: 'insensitive' } },
-      ],
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 1,
-  });
+  // Prefer the exact message the client just posted (passed as ?messageId=)
+  // over the "latest @sai mention" heuristic, which can race with concurrent
+  // posts and answer the wrong message.
+  const requestedMessageId = request.nextUrl.searchParams.get('messageId');
+  const parentMessage = requestedMessageId
+    ? await prisma.message.findFirst({
+        where: { id: requestedMessageId, threadId, deletedAt: null },
+      })
+    : await prisma.message.findFirst({
+        where: {
+          threadId,
+          OR: [
+            { content: { contains: '@sai', mode: 'insensitive' } },
+            { content: { contains: '@ai', mode: 'insensitive' } },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      });
 
   if (!parentMessage) {
     return new Response(sseEvent('error', { error: 'No @sai mention found' }), {
@@ -106,9 +97,23 @@ export async function GET(
 
   const query = extractAiInlineQuery(parentMessage.content)
     ?? parentMessage.content.replace(/(?:^|\s)@ai\s+/i, '').trim();
-  if (!query) {
+  if (!extractAiInlineQuery(parentMessage.content) && !/(?:^|\s)@ai\s+\S+/i.test(parentMessage.content)) {
     return new Response(sseEvent('error', { error: 'No question found after @sai' }), {
       status: 400,
+      headers: { 'Content-Type': 'text/event-stream' },
+    });
+  }
+
+  // Streaming is the execution path, so reserve the spend atomically here.
+  // A read-only check would allow concurrent streams to overspend the cap.
+  const spendCap = await consumeSpendCap();
+  const gate = evaluateAiCostGate({
+    path: AiCallPath.AI_REPLY_STREAM,
+    spendCapAllowed: spendCap.allowed,
+  });
+  if (!gate.allowed) {
+    return new Response(sseEvent('error', { error: 'AI features temporarily unavailable' }), {
+      status: 503,
       headers: { 'Content-Type': 'text/event-stream' },
     });
   }
@@ -209,6 +214,19 @@ export async function GET(
           controller.close();
         }
       }, TIMEOUT_MS);
+
+      // Announce the AI message identity up-front so the client can render an
+      // empty bubble and stream tokens into it immediately.
+      send('start', {
+        messageId: aiMessage.id,
+        parentId: parentMessage.id,
+        threadId,
+        depth: Math.min((parentMsg?.depth ?? 0) + 1, 4),
+        createdAt: new Date().toISOString(),
+        senderId: aiUser.id,
+        senderName: aiUser.name ?? 'Sastram AI',
+        senderImage: aiUser.image ?? null,
+      });
 
       try {
         await aiService.generateStreamingResponse(
