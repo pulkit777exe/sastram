@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils/cn';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -19,15 +20,24 @@ const THEME_COLORS: Record<ResolvedTheme, string> = {
 };
 
 export function Logo({ theme, brand = false, className }: LogoProps) {
-  const { resolvedTheme } = useTheme();
+  // Resolve the theme color via CSS (`dark:` variant) instead of reading
+  // useTheme() during render: next-themes resolves from localStorage on the
+  // client but not on the server, so a render-time branch produces different
+  // `fill` attributes and a hydration mismatch for dark-mode users.
+  const followsTheme = !brand && (!theme || theme === 'system');
 
-  const resolved: ResolvedTheme =
-    theme && theme !== 'system' ? theme : resolvedTheme === 'dark' ? 'dark' : 'light';
-
-  const fill = brand ? 'var(--brand)' : THEME_COLORS[resolved];
+  const fill = brand
+    ? 'var(--brand)'
+    : followsTheme
+      ? 'currentColor'
+      : THEME_COLORS[theme as ResolvedTheme];
 
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className={className}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 100 100"
+      className={cn(followsTheme && 'text-[#111111] dark:text-[#F5F5F5]', className)}
+    >
       <path
         fillRule="evenodd"
         fill={fill}
