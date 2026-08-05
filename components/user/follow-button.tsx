@@ -45,7 +45,7 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing, onFollow
       <Button
         onClick={handleToggle}
         variant={isFollowing ? 'outline' : 'default'}
-        className="min-w-[120px]"
+        className="min-w-30"
       >
         {isFollowing ? (
           <>

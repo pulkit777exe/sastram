@@ -33,10 +33,10 @@ export function VerifyNowButton({ threadId }: VerifyNowButtonProps) {
       onClick={handleVerify}
       disabled={isVerifying || verified}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[11px] font-semibold transition-all duration-200',
+        'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200',
         verified
-          ? 'bg-emerald-500/10 text-emerald-600 cursor-default'
-          : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/15'
+          ? 'bg-chart-2/10 text-chart-2 cursor-default'
+          : 'bg-chart-4/10 text-chart-4 hover:bg-chart-4/15'
       )}
     >
       {verified ? (

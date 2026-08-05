@@ -32,7 +32,7 @@ export function TopicCard({
             <Hash size={20} />
           </div>
           {trending && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-bold">
               <TrendingUp size={12} /> TRENDING
             </div>
           )}
@@ -44,7 +44,7 @@ export function TopicCard({
           </h3>
         </Link>
         {unreadCount > 0 && (
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             {unreadCount} unread
           </div>
@@ -58,7 +58,7 @@ export function TopicCard({
             <Link
               key={tag}
               href={`/dashboard?tag=${encodeURIComponent(tag.toLowerCase())}`}
-              className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium border border-border hover:bg-brand/10 hover:text-brand"
+              className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-xs font-medium border border-border hover:bg-brand/10 hover:text-brand"
             >
               #{tag}
             </Link>
@@ -66,7 +66,7 @@ export function TopicCard({
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-border pt-4 text-[11px] font-medium text-muted-foreground">
+      <div className="flex items-center justify-between border-t border-border pt-4 text-xs font-medium text-muted-foreground">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <Users size={14} className="text-muted-foreground" />

@@ -78,9 +78,9 @@ export default function ReplyBox({
 
       {/* Inline Poll Builder */}
       {showPollBuilder && (
-        <div className="rounded-[12px] border border-border/80 bg-muted/30 p-4 space-y-3 relative overflow-hidden transition-all duration-300">
+        <div className="rounded-xl border border-border/80 bg-muted/30 p-4 space-y-3 relative overflow-hidden transition-all duration-300">
           <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-2">
-            <span className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground flex items-center gap-1.5">
+            <span className="font-(--font-dm-mono) text-xs uppercase tracking-[0.12em] text-muted-foreground flex items-center gap-1.5">
               <BarChart3 className="h-3.5 w-3.5 text-brand" />
               Create Inline Poll
             </span>
@@ -102,12 +102,12 @@ export default function ReplyBox({
               placeholder="Ask a question..."
               value={pollQuestion}
               onChange={(e) => setPollQuestion(e.target.value)}
-              className="w-full bg-transparent border-b border-border/60 focus:border-brand py-1.5 text-[13px] outline-none text-foreground placeholder-muted-foreground/60 transition-colors"
+              className="w-full bg-transparent border-b border-border/60 focus:border-brand py-1.5 text-sm outline-none text-foreground placeholder-muted-foreground/60 transition-colors"
             />
             <div className="space-y-2">
               {pollOptions.map((option, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <span className="text-[11px] text-muted-foreground/80 font-(--font-dm-mono) w-4">
+                  <span className="text-xs text-muted-foreground/80 font-(--font-dm-mono) w-4">
                     {idx + 1}
                   </span>
                   <input
@@ -119,7 +119,7 @@ export default function ReplyBox({
                       newOpts[idx] = e.target.value;
                       setPollOptions(newOpts);
                     }}
-                    className="flex-1 bg-transparent border-b border-border/40 focus:border-border py-1 text-[13px] outline-none text-foreground placeholder-muted-foreground/50 transition-colors"
+                    className="flex-1 bg-transparent border-b border-border/40 focus:border-border py-1 text-sm outline-none text-foreground placeholder-muted-foreground/50 transition-colors"
                   />
                   {pollOptions.length > 2 && (
                     <button
@@ -128,7 +128,7 @@ export default function ReplyBox({
                         const newOpts = pollOptions.filter((_, i) => i !== idx);
                         setPollOptions(newOpts);
                       }}
-                      className="text-muted-foreground/50 hover:text-red-500 p-1"
+                      className="text-muted-foreground/50 hover:text-destructive p-1"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -139,7 +139,7 @@ export default function ReplyBox({
                 <button
                   type="button"
                   onClick={() => setPollOptions([...pollOptions, ''])}
-                  className="text-[12px] text-brand hover:underline pl-6 pt-1 font-medium transition-all block"
+                  className="text-xs text-brand hover:underline pl-6 pt-1 font-medium transition-all block"
                 >
                   + Add option
                 </button>
@@ -150,18 +150,18 @@ export default function ReplyBox({
       )}
 
       <div className="flex items-center justify-between">
-        <span className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="font-(--font-dm-mono) text-xs uppercase tracking-[0.12em] text-muted-foreground">
           Reply
         </span>
       </div>
 
-      <div className="rounded-[12px] border border-border bg-card p-3">
+      <div className="rounded-xl border border-border bg-card p-3 shadow-linear-sm">
         <div className="mb-2 flex items-center gap-2">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             title="Attach a file"
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-brand/10 hover:text-foreground"
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-brand/10 hover:text-foreground"
           >
             <PlusCircle className="h-4 w-4" />
           </button>
@@ -170,7 +170,7 @@ export default function ReplyBox({
             onClick={() => setShowPollBuilder(!showPollBuilder)}
             title="Create an inline poll"
             className={cn(
-              "rounded-[6px] px-2 py-1 text-[12px] transition-colors",
+              "rounded-md px-2 py-1 text-xs transition-colors",
               showPollBuilder
                 ? "bg-brand/10 text-brand"
                 : "text-muted-foreground hover:bg-brand/10 hover:text-foreground"
@@ -181,28 +181,28 @@ export default function ReplyBox({
           <button
             type="button"
             onClick={handleBold}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-brand/10 hover:text-foreground"
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-brand/10 hover:text-foreground"
           >
             **B**
           </button>
           <button
             type="button"
             onClick={handleItalic}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-brand/10 hover:text-foreground"
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-brand/10 hover:text-foreground"
           >
             *I*
           </button>
           <button
             type="button"
             onClick={handleCode}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-brand/10 hover:text-foreground"
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-brand/10 hover:text-foreground"
           >
             {'</>'}
           </button>
           <button
             type="button"
             onClick={handleLink}
-            className="rounded-[6px] px-2 py-1 text-[12px] text-muted-foreground hover:bg-brand/10 hover:text-foreground"
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-brand/10 hover:text-foreground"
           >
             Link
           </button>
@@ -212,7 +212,7 @@ export default function ReplyBox({
               type="button"
               onClick={handleAtSai}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-[999px] border border-border px-2.5 py-1 text-[12px] font-medium',
+                'inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium',
                 'text-brand hover:bg-brand/10'
               )}
             >
@@ -237,14 +237,14 @@ export default function ReplyBox({
             }}
             onBlur={handleBlur}
             placeholder="Add your reply. Use @ to mention someone. Press Ctrl+Enter or Cmd+Enter to submit."
-            className="min-h-20 w-full resize-none border-0 bg-transparent text-[14px] leading-normal text-foreground outline-none"
+            className="min-h-20 w-full resize-none border-0 bg-transparent text-sm leading-normal text-foreground outline-none"
           />
 
           <div className="mt-2 flex items-center justify-between">
             {error ? (
-              <span className="text-[12px] text-destructive">{error}</span>
+              <span className="text-xs text-destructive">{error}</span>
             ) : (
-              <span className="text-[11px] text-muted-foreground">Markdown-style formatting is supported.</span>
+              <span className="text-xs text-muted-foreground">Markdown-style formatting is supported.</span>
             )}
 
             <button
@@ -252,9 +252,9 @@ export default function ReplyBox({
               onClick={() => void handleSubmit()}
               disabled={!canSubmit || isSubmitting}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[12px] font-medium',
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium',
                 canSubmit
-                  ? 'bg-brand text-white hover:opacity-90'
+                  ? 'bg-brand text-primary-foreground hover:opacity-90'
                   : 'bg-brand/10 text-muted-foreground cursor-not-allowed'
               )}
             >

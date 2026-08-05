@@ -107,7 +107,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                   {msg.senderName || 'Unknown'}
                 </span>
                 {msg.isReported && (
-                  <Badge className="text-[10px] bg-red-500/20 text-red-400">Reported</Badge>
+                  <Badge className="text-xs bg-red-500/20 text-red-400">Reported</Badge>
                 )}
               </div>
               <p
@@ -115,7 +115,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
               >
                 {msg.content}
               </p>
-              <div className="text-[10px] text-muted-foreground mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 <TimeAgo date={msg.createdAt} />
               </div>
             </div>
@@ -167,7 +167,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {report.aiAnalysis.categories.map((cat) => (
-                    <Badge key={cat} variant="outline" className="text-[10px] border-border">
+                    <Badge key={cat} variant="outline" className="text-xs border-border">
                       {cat}
                     </Badge>
                   ))}
@@ -190,7 +190,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                     <Badge
                       variant="outline"
                       className={cn(
-                        'text-[10px]',
+                        'text-xs',
                         similar.status === 'RESOLVED' && 'border-green-500/30 text-green-400',
                         similar.status === 'DISMISSED' && 'border-zinc-500/30'
                       )}
@@ -257,11 +257,11 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-red-400">{violation.action}</span>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         <TimeAgo date={violation.createdAt} />
                       </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{violation.reason}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{violation.reason}</p>
                   </div>
                 ))}
               </div>
@@ -290,7 +290,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 >
                   <Icon className="w-3.5 h-3.5 mr-2" />
                   <span className="flex-1 text-left">{action.label}</span>
-                  <kbd className="ml-auto text-[10px] bg-background/50 px-1.5 py-0.5 rounded border border-border">
+                  <kbd className="ml-auto text-xs bg-background/50 px-1.5 py-0.5 rounded border border-border">
                     {action.shortcut}
                   </kbd>
                 </Button>

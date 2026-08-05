@@ -46,7 +46,7 @@ function DigitGroup({ value }: { value: number }) {
     el.classList.add('is-animating');
   }, [value]);
 
-  return <span ref={ref} className="t-digit-group font-['Syne'] text-[16px] font-bold text-foreground" />;
+  return <span ref={ref} className="t-digit-group font-['Syne'] text-base font-bold text-foreground" />;
 }
 
 export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
@@ -63,37 +63,37 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
     : null;
 
   return (
-    <section className="rounded-[10px] border border-border bg-card p-[16px]">
-      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground-foreground">
+    <section className="rounded-lg border border-border bg-card p-4">
+      <p className="font-(--font-dm-mono) text-xs uppercase tracking-[0.12em] text-muted-foreground-foreground">
         Thread information
       </p>
 
-      <div className="mt-[12px] space-y-[8px] text-[13px] text-muted-foreground-foreground">
+      <div className="mt-3 space-y-2 text-sm text-muted-foreground-foreground">
         <div className="flex items-center justify-between">
           <span>Messages</span>
           <DigitGroup value={thread._count.messages} />
         </div>
 
         {showResolution && (
-          <div className="mt-[4px] space-y-[2px]">
+          <div className="mt-1 space-y-0.5">
             <div className="flex items-center justify-between">
-              <span className="text-[12px]">Resolution</span>
+              <span className="text-xs">Resolution</span>
               {thread.resolutionScore !== null ? (
-                <div className="flex items-center gap-[6px]">
-                  <div className="h-[4px] w-[60px] overflow-hidden rounded-full bg-background">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-1 w-15 overflow-hidden rounded-full bg-background">
                     <div
-                      className="h-full rounded-full bg-emerald-500"
+                      className="h-full rounded-full bg-chart-2"
                       style={{ width: `${thread.resolutionScore}%` }}
                     />
                   </div>
                   <DigitGroup value={thread.resolutionScore} />
                 </div>
               ) : (
-                <span className="text-[11px] text-muted-foreground/70">Not yet resolved</span>
+                <span className="text-xs text-muted-foreground/70">Not yet resolved</span>
               )}
             </div>
             {thread.resolutionScore !== null && lastVerifiedDays !== null && lastVerifiedDays > 30 && (
-              <p className="text-[10px] text-muted-foreground/60 text-right">
+              <p className="text-xs text-muted-foreground/60 text-right">
                 Confidence aged — last verified {lastVerifiedDays > 90
                   ? `${Math.floor(lastVerifiedDays / 30)} months`
                   : `${lastVerifiedDays} days`} ago
@@ -104,7 +104,7 @@ export default function ThreadInfoCard({ thread }: ThreadInfoCardProps) {
       </div>
 
       {thread.tags.length > 0 && (
-        <div className="mt-[12px] flex flex-wrap gap-[6px]">
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {thread.tags.map((tag, index) => (
             <TagChip key={tag.tag.name ?? index} tag={tag.tag} clickable={false} />
           ))}

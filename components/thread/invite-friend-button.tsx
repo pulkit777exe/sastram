@@ -87,7 +87,7 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
           Invite Friend
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Invite a Friend</DialogTitle>
           <DialogDescription>
@@ -111,7 +111,7 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
                     required
                   />
                 </div>
-                <p className="t-error-msg text-[11px] text-red-500 mt-1">Please enter an email address</p>
+                <p className="t-error-msg text-xs text-destructive mt-1">Please enter an email address</p>
               </div>
             </div>
             <div className="space-y-2">
@@ -121,7 +121,7 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
                 placeholder={`Check out this discussion: ${threadName}`}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="resize-none min-h-[100px]"
+                className="resize-none min-h-25"
                 rows={4}
               />
             </div>
@@ -133,7 +133,7 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
             <Button
               type="submit"
               disabled={isSubmitting || !email.trim()}
-              className="bg-brand hover:bg-brand/90 text-white"
+              className="bg-brand hover:bg-brand/90 text-primary-foreground"
             >
               {isSubmitting ? 'Sending...' : 'Send Invitation'}
             </Button>

@@ -170,7 +170,7 @@ export function ModerationDashboard({
               />
             </>
           ) : (
-            <Card className="bg-card border-border h-full min-h-[400px] flex items-center justify-center">
+            <Card className="bg-card border-border h-full min-h-100 flex items-center justify-center">
               <CardContent className="text-center">
                 <p className="text-muted-foreground">Select a report from the queue to review</p>
               </CardContent>

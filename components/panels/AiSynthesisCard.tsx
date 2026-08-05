@@ -39,111 +39,111 @@ export default function AiSynthesisCard({
   };
 
   return (
-    <section className="rounded-[10px] border border-border bg-card p-[16px]">
-      <div className="mb-[12px] flex items-center justify-between">
-        <div className="flex items-center gap-[8px]">
-          <span className="relative flex h-[8px] w-[8px]">
+    <section className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
             <span className="absolute h-full w-full animate-[pulse-dot_2s_ease_infinite] rounded-full bg-brand" />
-            <span className="relative h-[8px] w-[8px] rounded-full bg-brand" />
+            <span className="relative h-2 w-2 rounded-full bg-brand" />
           </span>
-          <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="font-(--font-dm-mono) text-xs uppercase tracking-[0.12em] text-muted-foreground">
             Sai synthesis
           </p>
         </div>
 
-        <div className="flex items-center gap-[6px]">
+        <div className="flex items-center gap-1.5">
           {hasSummary && (
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="rounded-[6px] border border-border px-[8px] py-[4px] text-[11px] font-medium text-muted-foreground hover:bg-background transition-colors"
+              className="rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-background transition-colors"
             >
               {isExpanded ? (
-                <ChevronDown className="h-[12px] w-[12px]" />
+                <ChevronDown className="h-3 w-3" />
               ) : (
-                <ChevronRight className="h-[12px] w-[12px]" />
+                <ChevronRight className="h-3 w-3" />
               )}
             </button>
           )}
           <button
             type="button"
             onClick={handleTransfer}
-            className="rounded-[6px] border border-border px-[10px] py-[4px] text-[11px] font-medium text-brand hover:bg-brand/10"
+            className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand/10"
           >
             Transfer
           </button>
         </div>
       </div>
 
-      <div className="space-y-[10px] text-[13px] text-muted-foreground">
+      <div className="space-y-2.5 text-sm text-muted-foreground">
         {summary !== null && isAiNotConfigured(summary) ? (
           <AiNotConfiguredNotice />
         ) : isGenerating ? (
-          <div className="flex items-center gap-[8px]">
-            <Loader2 className="h-[14px] w-[14px] animate-spin text-brand" />
-            <p className="text-[13px] text-muted-foreground">Summary generating...</p>
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
+            <p className="text-sm text-muted-foreground">Summary generating...</p>
           </div>
         ) : hasSummary ? (
           <>
-            <p className="text-[13px] text-foreground">
+            <p className="text-sm text-foreground">
               {isExpanded ? summary : summary.length > 150 ? `${summary.slice(0, 150)}…` : summary}
             </p>
             {!isExpanded && summary.length > 150 && (
               <button
                 type="button"
                 onClick={() => setIsExpanded(true)}
-                className="text-[11px] font-medium text-brand hover:underline"
+                className="text-xs font-medium text-brand hover:underline"
               >
                 Read more
               </button>
             )}
             {lastUpdated && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Updated {new Date(lastUpdated).toLocaleDateString()}
               </p>
             )}
           </>
         ) : (
-          <p className="text-[13px] text-foreground">
+          <p className="text-sm text-foreground">
             Sai will synthesize this thread once enough messages are available.
           </p>
         )}
 
         <div className="t-panel-slide" data-open={isExpanded ? 'true' : 'false'}>
           {sources.length > 0 && (
-          <div className="mt-[8px] space-y-[6px]">
+          <div className="mt-2 space-y-1.5">
             {sources.map((source) => {
               const confidence =
                 source.confidence < 0 ? 0 : source.confidence > 100 ? 100 : source.confidence;
 
               const confidenceClass =
                 confidence >= 90
-                  ? 'text-emerald-600'
+                  ? 'text-chart-2'
                   : confidence >= 70
-                    ? 'text-amber-600'
+                    ? 'text-chart-4'
                     : 'text-muted-foreground';
 
               return (
                 <div
                   key={`${source.source}-${source.url ?? ''}`}
-                  className="flex items-center justify-between gap-[8px]"
+                  className="flex items-center justify-between gap-2"
                 >
-                  <div className="flex items-center gap-[8px]">
-                    <div className="flex h-[20px] w-[20px] items-center justify-center rounded-[6px] bg-background">
-                      <span className="text-[11px] font-semibold text-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-md bg-background">
+                      <span className="text-xs font-semibold text-foreground">
                         {source.source.slice(0, 1).toUpperCase()}
                       </span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[12px] text-foreground">{source.source}</span>
+                      <span className="text-xs text-foreground">{source.source}</span>
                       {source.snippet && (
-                        <span className="text-[11px] text-muted-foreground line-clamp-1">
+                        <span className="text-xs text-muted-foreground line-clamp-1">
                           {source.snippet}
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className={`text-[11px] font-medium ${confidenceClass}`}>
+                  <span className={`text-xs font-medium ${confidenceClass}`}>
                     {confidence}%
                   </span>
                 </div>

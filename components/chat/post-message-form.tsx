@@ -18,7 +18,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
-import type { Message } from '@/lib/types/index';
+import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { InlinePollButton } from '@/components/thread/inline-poll-button';
 import { MentionSuggest } from '@/components/chat/mention-suggest';
 import { cn } from '@/lib/utils/cn';
@@ -40,9 +40,10 @@ interface PostMessageFormProps {
     image: string | null;
     role?: string;
   };
-  onMessagePosted?: (message: Message) => void;
+  onMessagePosted?: (message: Message, meta?: AiInlineMeta) => void;
   onOptimisticMessage?: (message: Message) => void;
   onMessageError?: (tempId: string) => void;
+  aiClientStream?: boolean;
   replyTo?: {
     messageId: string;
     userName: string;
@@ -60,6 +61,7 @@ export function PostMessageForm({
   onMessagePosted,
   onOptimisticMessage,
   onMessageError,
+  aiClientStream,
   replyTo,
   onCancelReply,
   canManagePoll,
@@ -107,6 +109,7 @@ export function PostMessageForm({
     onMessageError,
     onCancelReply,
     currentUser,
+    aiClientStream,
   });
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -175,7 +178,7 @@ export function PostMessageForm({
           className={`absolute ${replyTo ? '-top-20' : '-top-11'} left-0 bg-muted/90 backdrop-blur border border-border px-3 py-1.5 rounded-t-xl text-xs flex items-center gap-2 shadow-linear-sm z-10`}
         >
           <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="truncate max-w-[200px] text-foreground font-medium">{selectedFile.name}</span>
+          <span className="truncate max-w-50 text-foreground font-medium">{selectedFile.name}</span>
           <button
             type="button"
             onClick={() => {
@@ -203,7 +206,7 @@ export function PostMessageForm({
             placeholder={placeholder}
             value={content}
             onChange={handleChange}
-            className="flex-1 min-h-[44px] max-h-[30vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1.5 px-0 text-sm leading-relaxed placeholder-muted-foreground/60 text-foreground"
+            className="flex-1 min-h-11 max-h-[30vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1.5 px-0 text-sm leading-relaxed placeholder-muted-foreground/60 text-foreground"
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
           />

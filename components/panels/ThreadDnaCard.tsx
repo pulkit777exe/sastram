@@ -21,15 +21,15 @@ const EXPERTISE_COLORS: Record<string, string> = {
 
 export default function ThreadDnaCard({ dna }: ThreadDnaCardProps) {
   return (
-    <section className="rounded-[10px] border border-border bg-card p-[16px]">
-      <p className="font-(--font-dm-mono) text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+    <section className="rounded-lg border border-border bg-card p-4">
+      <p className="font-(--font-dm-mono) text-xs uppercase tracking-[0.12em] text-muted-foreground">
         Thread DNA
       </p>
 
-      <div className="mt-[10px] flex flex-wrap gap-[6px]">
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
         {/* Question Type */}
         <span
-          className={`inline-flex items-center rounded-[999px] px-[10px] py-[4px] text-[11px] font-semibold ${
+          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
             QUESTION_TYPE_COLORS[dna.questionType] ?? QUESTION_TYPE_COLORS.other
           }`}
         >
@@ -38,7 +38,7 @@ export default function ThreadDnaCard({ dna }: ThreadDnaCardProps) {
 
         {/* Expertise Level */}
         <span
-          className={`inline-flex items-center rounded-[999px] px-[10px] py-[4px] text-[11px] font-semibold ${
+          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
             EXPERTISE_COLORS[dna.expertiseLevel] ?? EXPERTISE_COLORS.beginner
           }`}
         >
@@ -49,7 +49,7 @@ export default function ThreadDnaCard({ dna }: ThreadDnaCardProps) {
         {dna.topics.map((topic) => (
           <span
             key={topic}
-            className="inline-flex items-center rounded-[999px] bg-background px-[10px] py-[4px] font-(--font-dm-mono) text-[10px] uppercase tracking-[0.08em] text-foreground"
+            className="inline-flex items-center rounded-full bg-background px-2.5 py-1 font-(--font-dm-mono) text-xs uppercase tracking-[0.08em] text-foreground"
           >
             {topic}
           </span>
@@ -57,7 +57,7 @@ export default function ThreadDnaCard({ dna }: ThreadDnaCardProps) {
       </div>
 
       {dna.readTimeMinutes > 0 && (
-        <p className="mt-[8px] text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           ~{Math.ceil(dna.readTimeMinutes)} min read
         </p>
       )}

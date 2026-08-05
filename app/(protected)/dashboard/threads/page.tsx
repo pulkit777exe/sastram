@@ -52,7 +52,7 @@ function ThreadRow({ thread }: { thread: ThreadSummary }) {
         {thread.description && (
           <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{thread.description}</p>
         )}
-        <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <MessageSquare size={10} />
             {thread.messageCount}

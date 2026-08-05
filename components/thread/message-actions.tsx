@@ -65,7 +65,7 @@ export function MessageActions({
         <ActionBtn
           title={isPinned ? 'Unpin' : 'Pin message'}
           onClick={onPin}
-          className={isPinned ? 'text-amber-500 hover:bg-amber-50 hover:text-amber-600' : ''}
+          className={isPinned ? 'text-chart-4 hover:bg-chart-4/10 hover:text-chart-4' : ''}
         >
           <Pin size={12} />
         </ActionBtn>
@@ -76,7 +76,7 @@ export function MessageActions({
         <ActionBtn
           title="Delete message"
           onClick={onDelete}
-          className="hover:bg-red-50 hover:text-red-600"
+          className="hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 size={12} />
         </ActionBtn>
@@ -102,7 +102,7 @@ function ActionBtn({
       title={title}
       onClick={onClick}
       className={cn(
-        'w-[26px] h-[26px] rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-100',
+        'w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-100',
         className
       )}
     >

@@ -535,7 +535,7 @@ export function SearchPage({ user }: SearchPageProps) {
         >
           <KeyRound size={14} />
           <span className="hidden sm:inline">API Keys</span>
-          {hasKeys && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
+          {hasKeys && <span className="w-2 h-2 rounded-full bg-chart-2" />}
         </button>
       </div>
 
@@ -587,8 +587,8 @@ export function SearchPage({ user }: SearchPageProps) {
 
             {/* Refine prompt */}
             {appState === 'refine' && (
-              <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 text-center">
-                <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
+              <div className="w-full bg-chart-4/10 border border-chart-4/20 rounded-2xl p-5 text-center">
+                <p className="text-sm font-medium text-chart-4 mb-1">
                   Not enough quality sources
                 </p>
                 <p className="text-xs text-muted-foreground mb-4">
@@ -609,7 +609,7 @@ export function SearchPage({ user }: SearchPageProps) {
                   {stream.suggestion && (
                     <button
                       onClick={handleRefineSuggestion}
-                      className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full border border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                      className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full border border-chart-4/30 text-chart-4 hover:bg-chart-4/10 transition-colors"
                     >
                       Try suggested query
                     </button>
@@ -617,7 +617,7 @@ export function SearchPage({ user }: SearchPageProps) {
               </div>
               {stream.sources.length > 0 && (
                 <>
-                  <p className="text-[11px] text-muted-foreground/60 mt-3">
+                  <p className="text-xs text-muted-foreground/60 mt-3">
                     {stream.sources.length} lower-quality source{stream.sources.length !== 1 ? 's' : ''} were still found.
                   </p>
                   <button
@@ -715,7 +715,7 @@ export function SearchPage({ user }: SearchPageProps) {
 
                     {stream.followUps.length > 0 && (
                       <div className="mt-4 space-y-2">
-                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Related
                         </p>
                         <div className="flex flex-wrap gap-2">

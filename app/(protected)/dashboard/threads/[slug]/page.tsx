@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
+import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Activity } from 'lucide-react';
 import type { Message } from '@/lib/types/index';
 import { isAdmin, requireSession, type SessionUser } from '@/modules/auth/session';
@@ -45,7 +46,7 @@ function ThreadContentSkeleton() {
 
 function ThreadSidebarSkeleton() {
   return (
-    <aside className="w-[320px] hidden xl:flex flex-col overflow-y-auto bg-background/50">
+    <aside className="w-80 hidden xl:flex flex-col overflow-y-auto bg-background/50">
       <div className="p-6 border-b border-border/60">
         <Skeleton className="h-3 w-24 mb-4" />
         <Skeleton className="h-6 w-3/4 mb-2" />
@@ -191,11 +192,11 @@ async function ThreadSidebar({
   const threadDna = parseThreadDna(thread.threadDna);
 
   return (
-    <aside className="w-[320px] flex flex-col overflow-y-auto bg-background/50">
+    <aside className="w-80 flex flex-col overflow-y-auto bg-background/50 shadow-linear-md">
       <div className="p-6 border-b border-border/60">
         <div className="flex items-center gap-2 mb-6">
           <Activity size={14} />
-          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
             Thread Details
           </p>
         </div>
@@ -217,21 +218,22 @@ async function ThreadSidebar({
 
         {threadDna && (
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Thread DNA</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Thread DNA</p>
             <div className="flex flex-wrap gap-1.5">
-              <span className="inline-flex items-center rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-semibold text-brand">
+              <Badge variant="live" className="px-2.5 py-1 text-xs">
                 {threadDna.questionType}
-              </span>
-              <span className="inline-flex items-center rounded-full bg-background px-2.5 py-1 text-[11px] font-medium text-foreground">
+              </Badge>
+              <Badge variant="secondary" className="px-2.5 py-1 text-xs">
                 {threadDna.expertiseLevel}
-              </span>
+              </Badge>
               {threadDna.topics.slice(0, 4).map((topic) => (
-                <span
+                <Badge
                   key={topic}
-                  className="inline-flex items-center rounded-full border border-border/60 px-2.5 py-1 text-[10px] font-(--font-dm-mono) uppercase tracking-[0.08em] text-muted-foreground"
+                  variant="outline"
+                  className="px-2.5 py-1 text-xs font-(--font-dm-mono) uppercase tracking-[0.08em]"
                 >
                   {topic}
-                </span>
+                </Badge>
               ))}
             </div>
           </div>
@@ -246,7 +248,7 @@ async function ThreadSidebar({
         <div className="p-6 mt-auto border-t border-border/60">
           <div className="flex items-center gap-2 mb-4">
             <ShieldCheck size={14} className="text-muted-foreground" />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
               Admin Controls
             </span>
           </div>
@@ -323,7 +325,7 @@ function StatCard({
     <div className="flex flex-col p-3 rounded-xl border border-border/60 bg-card/50">
       <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
         {icon}
-        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
       </div>
       <span className="text-lg font-bold text-foreground tabular-nums">{value}</span>
     </div>

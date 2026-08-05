@@ -22,6 +22,7 @@ import {
   Tags,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { Badge } from '@/components/ui/badge';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -229,10 +230,10 @@ export function Sidebar({
                 className="w-full bg-muted border border-border rounded-md py-1.5 pl-9 pr-12 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                <kbd className="text-[10px] bg-background px-1 rounded border border-border text-muted-foreground">
+                <kbd className="text-xs bg-background px-1 rounded border border-border text-muted-foreground">
                   ⌘
                 </kbd>
-                <kbd className="text-[10px] bg-background px-1 rounded border border-border text-muted-foreground">
+                <kbd className="text-xs bg-background px-1 rounded border border-border text-muted-foreground">
                   F
                 </kbd>
               </div>
@@ -257,18 +258,18 @@ export function Sidebar({
             ))}
 
             <div className="mt-6 mb-2 px-3">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase">Other</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase">Other</p>
             </div>
 
             <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false} onNavigate={onNavigate}></NavItem>
           </nav>
 
-          <div className="m-3 p-4 bg-linear-to-br from-muted/50 to-muted border border-border rounded-xl">
+          <div className="mx-3 mb-3 px-3 py-2 text-muted-foreground">
             <div className="flex items-center gap-2 mb-1 text-foreground">
               <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
               <p className="text-sm font-semibold">Boost with Sai</p>
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Sai-powered replies and tools that save hours.
             </p>
           </div>
@@ -299,7 +300,7 @@ export function Sidebar({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer transition-colors">
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-linear-sm hover:bg-accent cursor-pointer transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-medium">
               {name.charAt(0).toUpperCase()}
@@ -353,9 +354,9 @@ export function Sidebar({
             </Link>
             <button
               onClick={() => { handleLogout(); onNavigate?.(); }}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-800/20 transition-colors w-full"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full"
             >
-              <AnimatedIcon icon={LogOut} size={14} className="text-red-500" />
+              <AnimatedIcon icon={LogOut} size={14} className="text-destructive" />
               <span className="font-medium">Log out</span>
             </button>
           </div>
@@ -422,26 +423,27 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
       {!collapsed && <span className="text-sm font-medium">{label}</span>}
 
       {badge != null && badge > 0 && (
-        <span
-          className={cn(
-            'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1',
-            collapsed && 'absolute -top-1 -right-1 h-4 min-w-4 text-[9px]'
-          )}
-        >
+        <Badge
+            variant="destructive-subtle"
+            className={cn(
+              'ml-auto h-5 min-w-5 px-1 text-xs font-bold',
+              collapsed && 'absolute -top-1 -right-1 h-4 min-w-4 text-xs'
+            )}
+          >
           {badge > 99 ? '99+' : badge}
-        </span>
+        </Badge>
       )}
 
       {badge != null && badge > 0 && !collapsed && (
-        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
+        <Badge variant="destructive-subtle" className="ml-auto h-5 min-w-5 px-1 text-xs font-bold">
           {badge > 99 ? '99+' : badge}
-        </span>
+        </Badge>
       )}
       {badge != null && badge > 0 && collapsed && (
         <span className="t-badge" data-open="true">
-          <span className="t-badge-dot flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+          <Badge variant="destructive-subtle" className="t-badge-dot h-4 min-w-4 px-1 text-xs font-bold">
             {badge > 99 ? '99+' : badge}
-          </span>
+          </Badge>
         </span>
       )}
 
