@@ -184,7 +184,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
             className={cn(
               'h-1.5 w-1.5 rounded-full shrink-0',
               isEffectivelyActive
-                ? 'bg-emerald-500 shadow-linear-sm'
+                ? 'bg-chart-2 shadow-linear-sm'
                 : 'bg-muted-foreground/40'
             )}
           />
@@ -192,7 +192,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
             {poll ? 'Poll' : 'Add poll'}
           </span>
           {poll && (
-            <span className="hidden sm:inline text-xs text-muted-foreground/60 font-normal truncate max-w-[200px]">
+            <span className="hidden sm:inline text-xs text-muted-foreground/60 font-normal truncate max-w-50">
               · {poll.question}
             </span>
           )}
@@ -201,7 +201,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
         <div className="flex items-center gap-2">
           {/* Vote count badge */}
           {poll && (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
               <BarChart3 size={10} />
               {isEffectivelyActive ? 'Active' : 'Closed'}
             </span>

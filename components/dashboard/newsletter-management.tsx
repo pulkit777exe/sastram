@@ -105,7 +105,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                       </p>
                     )}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand">
+                      <span className="inline-flex items-center rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
                         {subscription.frequency.charAt(0) + subscription.frequency.slice(1).toLowerCase()}
                       </span>
                       <span>

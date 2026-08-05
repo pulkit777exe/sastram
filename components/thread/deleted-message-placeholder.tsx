@@ -28,7 +28,7 @@ export function DeletedMessagePlaceholder({
             <button
               type="button"
               onClick={() => setShowOriginal((prev) => !prev)}
-              className="text-[11px] text-brand hover:text-brand underline"
+              className="text-xs text-brand hover:text-brand underline"
             >
               {showOriginal ? 'Hide original' : 'View original'}
             </button>

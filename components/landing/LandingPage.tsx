@@ -125,7 +125,7 @@ const useCases = [
 function MosaicTile({ className }: { className?: string }) {
   return (
     <div
-      className={`absolute rounded-sm opacity-60 blur-[0.5px] ${className}`}
+      className={`absolute rounded-sm opacity-60 blur-none ${className}`}
       style={{
         backgroundImage:
           'linear-gradient(135deg, var(--brand) 0%, #5b5af8 40%, var(--green) 70%, var(--brand) 100%)',
@@ -153,19 +153,19 @@ function DashboardPreview() {
         <div className="flex-1 mx-4">
           <div className="h-7 bg-background border border-border rounded-md flex items-center px-3 gap-2">
             <Search size={12} className="text-muted-foreground" />
-            <span className="text-[11px] text-muted-foreground">Search threads, messages, users…</span>
+            <span className="text-xs text-muted-foreground">Search threads, messages, users…</span>
           </div>
         </div>
       </div>
-      <div className="flex min-h-[280px]">
+      <div className="flex min-h-70">
         <div className="w-44 border-r border-border bg-muted/50 p-3 hidden sm:block">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Communities
           </p>
           {['Engineering', 'Research', 'General'].map((c, i) => (
             <div
               key={c}
-              className={`text-[11px] px-2 py-1.5 rounded-md mb-0.5 ${i === 0 ? 'bg-brand/10 text-brand font-medium' : 'text-muted-foreground'}`}
+              className={`text-xs px-2 py-1.5 rounded-md mb-0.5 ${i === 0 ? 'bg-brand/10 text-brand font-medium' : 'text-muted-foreground'}`}
             >
               {c}
             </div>
@@ -173,8 +173,8 @@ function DashboardPreview() {
         </div>
         <div className="flex-1 p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[12px] font-semibold text-foreground">Recent threads</p>
-            <span className="text-[10px] text-emerald-600 flex items-center gap-1">
+            <p className="text-xs font-semibold text-foreground">Recent threads</p>
+            <span className="text-xs text-emerald-600 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live
             </span>
@@ -183,13 +183,13 @@ function DashboardPreview() {
             {threads.map((t) => (
               <div
                 key={t.name}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-[11px] ${t.active ? 'border-brand/20 bg-brand/5' : 'border-border bg-background'}`}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs ${t.active ? 'border-brand/20 bg-brand/5' : 'border-border bg-background'}`}
               >
                 <div className="min-w-0">
                   <p className="font-medium text-foreground truncate">{t.name}</p>
                   <p className="text-muted-foreground mt-0.5">{t.replies} replies</p>
                 </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-2 flex-none">
+                <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-2 flex-none">
                   {t.tag}
                 </span>
               </div>
@@ -223,13 +223,13 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
             {['How do we handle concurrent edits?', 'WebSocket reconnect logic?'].map((msg, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <div className="w-6 h-6 rounded-full bg-brand/20 flex-none" />
-                <div className="bg-muted rounded-lg px-3 py-2 text-[11px] text-foreground/80 flex-1">
+                <div className="bg-muted rounded-lg px-3 py-2 text-xs text-foreground/80 flex-1">
                   {msg}
                 </div>
               </div>
             ))}
             <div className="flex gap-2 items-start justify-end">
-              <div className="bg-brand text-white rounded-lg px-3 py-2 text-[11px]">
+              <div className="bg-brand text-white rounded-lg px-3 py-2 text-xs">
                 Streaming reply…
               </div>
             </div>
@@ -241,14 +241,14 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
 
   if (type === 'ai') {
     return (
-      <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-950 p-5 font-mono text-[10px] leading-relaxed">
+      <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-950 p-5 font-mono text-xs leading-relaxed">
         <div className="flex items-center gap-2 mb-4">
           <div className="flex gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-500/80" />
             <div className="w-2 h-2 rounded-full bg-amber-500/80" />
             <div className="w-2 h-2 rounded-full bg-emerald-500/80" />
           </div>
-          <span className="text-muted-foreground text-[9px]">@sai mention handler</span>
+          <span className="text-muted-foreground text-xs">@sai mention handler</span>
         </div>
         <pre className="text-zinc-300 overflow-hidden">
           <span className="text-muted-foreground">{'{'}</span>
@@ -284,7 +284,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
 
   return (
     <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden border border-border bg-background p-5">
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
         Sai Search Results
       </p>
       <div className="space-y-3">
@@ -295,10 +295,10 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
         ].map((r) => (
           <div key={r.title} className="border border-border rounded-lg p-3">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-[11px] font-medium text-foreground">{r.title}</p>
-              <span className="text-[10px] text-brand font-mono">{r.score}</span>
+              <p className="text-xs font-medium text-foreground">{r.title}</p>
+              <span className="text-xs text-brand font-mono">{r.score}</span>
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               …discussed <span className="bg-brand/15 text-brand px-1 rounded">{r.highlight}</span> in detail…
             </p>
           </div>
@@ -313,7 +313,7 @@ export function LandingPage({ user }: LandingPageProps) {
     <div className="min-h-screen bg-background text-foreground">
       {/* Announcement banner */}
       <div className="bg-brand/8 border-b border-brand/15 text-center py-2 px-4">
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Open source discussion platform with Sai built into every thread.{' '}
           <Link href="#features" className="text-brand font-medium hover:underline">
             Explore features →
@@ -367,7 +367,7 @@ export function LandingPage({ user }: LandingPageProps) {
             {capabilities.map((label) => (
               <span
                 key={label}
-                className="text-[13px] font-medium text-muted-foreground whitespace-nowrap tracking-wide uppercase"
+                className="text-sm font-medium text-muted-foreground whitespace-nowrap tracking-wide uppercase"
               >
                 {label}
               </span>
@@ -392,24 +392,24 @@ export function LandingPage({ user }: LandingPageProps) {
                       <FeatureVisual type={row.visual} />
                     </div>
                     <div className={i % 2 === 1 ? 'md:order-1' : ''}>
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-brand mb-3 block">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-brand mb-3 block">
                         {row.tag}
                       </span>
                       <h3 className="text-2xl md:text-3xl tracking-tight text-foreground mb-4">
                         <SerifHeading>{row.title}</SerifHeading>
                       </h3>
-                      <p className="text-[15px] text-muted-foreground leading-relaxed mb-5">{row.description}</p>
+                      <p className="text-base text-muted-foreground leading-relaxed mb-5">{row.description}</p>
                       <Link
                         href={row.link}
-                        className="text-[13px] font-medium text-foreground inline-flex items-center gap-1 hover:gap-2 transition-all"
+                        className="text-sm font-medium text-foreground inline-flex items-center gap-1 hover:gap-2 transition-all"
                       >
                         Learn more <ChevronRight size={14} />
                       </Link>
                       <div className="mt-8 p-5 rounded-xl bg-muted border border-border">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
                           {row.quote.source}
                         </p>
-                        <p className="text-[13px] text-muted-foreground leading-relaxed italic">
+                        <p className="text-sm text-muted-foreground leading-relaxed italic">
                           &ldquo;{row.quote.text}&rdquo;
                         </p>
                       </div>
@@ -422,7 +422,7 @@ export function LandingPage({ user }: LandingPageProps) {
         </section>
 
         {/* Metrics split section */}
-        <section className="grid grid-cols-1 md:grid-cols-2 min-h-[480px]">
+        <section className="grid grid-cols-1 md:grid-cols-2 min-h-120">
           <div className="bg-secondary text-secondary-foreground px-8 md:px-14 py-16 flex flex-col justify-center">
             <FadeIn>
               <h2 className="text-3xl md:text-4xl tracking-tight mb-8 leading-tight">
@@ -439,8 +439,8 @@ export function LandingPage({ user }: LandingPageProps) {
                       <Icon size={15} className="text-secondary-foreground/80" />
                     </div>
                     <div>
-                      <p className="font-medium text-[14px]">{label}</p>
-                      <p className="text-[13px] text-muted-foreground">{desc}</p>
+                      <p className="font-medium text-sm">{label}</p>
+                      <p className="text-sm text-muted-foreground">{desc}</p>
                     </div>
                   </div>
                 ))}
@@ -449,33 +449,33 @@ export function LandingPage({ user }: LandingPageProps) {
           </div>
           <div className="bg-background px-8 md:px-14 py-16 flex flex-col justify-center border-t md:border-t-0 md:border-l border-border">
             <FadeIn>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-8">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-8">
                 Platform comparison
               </p>
               <div className="space-y-7">
                 {metrics.map((m) => (
                   <div key={m.label}>
-                    <p className="text-[13px] font-medium text-foreground/80 mb-2">{m.label}</p>
+                    <p className="text-sm font-medium text-foreground/80 mb-2">{m.label}</p>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-muted-foreground w-20">Sastram</span>
+                        <span className="text-xs text-muted-foreground w-20">Sastram</span>
                         <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
                           <div
                             className="h-full bg-brand rounded transition-all duration-700"
                             style={{ width: `${m.sastram}%` }}
                           />
                         </div>
-                        <span className="text-[11px] font-mono text-brand w-8">{m.sastram}</span>
+                        <span className="text-xs font-mono text-brand w-8">{m.sastram}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-muted-foreground w-20">Typical</span>
+                        <span className="text-xs text-muted-foreground w-20">Typical</span>
                         <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
                           <div
                             className="h-full bg-muted-foreground/30 rounded"
                             style={{ width: `${m.others}%` }}
                           />
                         </div>
-                        <span className="text-[11px] font-mono text-muted-foreground w-8">{m.others}</span>
+                        <span className="text-xs font-mono text-muted-foreground w-8">{m.others}</span>
                       </div>
                     </div>
                   </div>
@@ -495,32 +495,32 @@ export function LandingPage({ user }: LandingPageProps) {
             </FadeIn>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FadeIn className="md:col-span-1 md:row-span-2">
-                <div className="h-full min-h-[280px] p-8 rounded-2xl bg-background border border-border flex flex-col justify-between">
+                <div className="h-full min-h-70 p-8 rounded-2xl bg-background border border-border flex flex-col justify-between">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-brand mb-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-brand mb-4">
                       {useCases[0].source}
                     </p>
                     <p className="text-xl md:text-2xl text-foreground leading-relaxed">
                       <SerifHeading>&ldquo;{useCases[0].quote}&rdquo;</SerifHeading>
                     </p>
                   </div>
-                  <p className="text-[13px] text-muted-foreground mt-6">— {useCases[0].author}</p>
+                  <p className="text-sm text-muted-foreground mt-6">— {useCases[0].author}</p>
                 </div>
               </FadeIn>
               <FadeIn delay={0.08}>
                 <div className="p-8 rounded-2xl bg-background border border-border">
                   <p className="text-4xl font-bold text-foreground mb-1">{useCases[1].label}</p>
-                  <p className="text-[13px] text-muted-foreground">{useCases[1].sublabel}</p>
+                  <p className="text-sm text-muted-foreground">{useCases[1].sublabel}</p>
                 </div>
               </FadeIn>
               <FadeIn delay={0.12}>
-                <div className="relative p-8 rounded-2xl bg-gradient-to-br from-brand to-brand/80 text-white overflow-hidden min-h-[160px] flex flex-col justify-end">
+                <div className="relative p-8 rounded-2xl bg-gradient-to-br from-brand to-brand/80 text-white overflow-hidden min-h-40 flex flex-col justify-end">
                   <div className="absolute inset-0 opacity-20">
                     <div className="absolute top-4 right-4 w-32 h-32 rounded-full bg-background/20" />
                     <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-background/10 -translate-x-1/4 translate-y-1/4" />
                   </div>
                   <p className="relative text-lg font-medium leading-snug">{useCases[2].title}</p>
-                  <p className="relative text-[13px] text-white/70 mt-2">{useCases[2].subtitle}</p>
+                  <p className="relative text-sm text-white/70 mt-2">{useCases[2].subtitle}</p>
                 </div>
               </FadeIn>
             </div>
@@ -558,12 +558,12 @@ export function LandingPage({ user }: LandingPageProps) {
               ].map((s, i) => (
                 <FadeIn key={s.step} delay={i * 0.08}>
                   <div className="p-6 rounded-2xl border border-border bg-background h-full">
-                    <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-[12px] font-bold mb-4">
+                    <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold mb-4">
                       {s.step}
                     </div>
                     <s.icon size={18} className="text-brand mb-3" />
                     <h3 className="font-semibold text-foreground mb-2">{s.title}</h3>
-                    <p className="text-[13px] text-muted-foreground leading-relaxed">{s.desc}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
                   </div>
                 </FadeIn>
               ))}
@@ -591,8 +591,8 @@ export function LandingPage({ user }: LandingPageProps) {
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
                       <f.icon size={18} className="text-secondary-foreground/80" />
                     </div>
-                    <h3 className="font-semibold text-[15px] mb-2">{f.title}</h3>
-                    <p className="text-[13px] text-muted-foreground leading-relaxed">{f.description}</p>
+                    <h3 className="font-semibold text-base mb-2">{f.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
                   </div>
                 </FadeIn>
               ))}
@@ -606,7 +606,7 @@ export function LandingPage({ user }: LandingPageProps) {
             <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
               <SerifHeading>Discussions built for your community</SerifHeading>
             </h2>
-            <p className="text-[15px] text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
+            <p className="text-base text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
               Real-time threads, Sai synthesis, and smart moderation — free to start, no credit card
               required.
             </p>

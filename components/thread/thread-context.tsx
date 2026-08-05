@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, type ReactNode } from 'react';
-import type { Message } from '@/lib/types/index';
+import type { AiInlineMeta, Message } from '@/lib/types/index';
 
 // Stable context: rarely-changing thread data (threadId, currentUser, callbacks)
 interface ThreadDataContextValue {
@@ -16,7 +16,7 @@ interface ThreadDataContextValue {
   onReply: (messageId: string) => void;
   onCancelReply: () => void;
   onToggleCollapse: (messageId: string) => void;
-  onMessagePosted: (message: Message) => void;
+  onMessagePosted: (message: Message, meta?: AiInlineMeta) => void;
   onOptimisticMessage?: (message: Message) => void;
   onFocusBranch: (messageId: string) => void;
   onMessageUpdate: (messageId: string, updates: Partial<Message>) => void;

@@ -61,7 +61,7 @@ export function AppealMessageModal({ messageId, isOpen, onClose }: AppealMessage
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Provide details for your appeal..."
-            className="min-h-[100px]"
+            className="min-h-25"
           />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={onClose} disabled={loading}>

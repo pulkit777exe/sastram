@@ -109,7 +109,7 @@ export function AdminModerationPanel({ threads: initialThreads }: AdminModeratio
                 Ban User
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Ban User</DialogTitle>
                 <DialogDescription>
@@ -209,7 +209,7 @@ export function AdminModerationPanel({ threads: initialThreads }: AdminModeratio
                 Delete Thread
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Delete Thread</DialogTitle>
                 <DialogDescription>

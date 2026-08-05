@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export type SSEPhase = 'searching' | 'reading' | 'crossref' | 'synthesizing' | 'done' | 'refine' | 'error';
 
@@ -44,34 +45,29 @@ export function PhaseTracker({ currentPhase }: PhaseTrackerProps) {
 
         return (
           <div key={phase.key} className="flex items-center gap-1 flex-1">
-            <div
-              className={`
-                flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
-                transition-all duration-300 w-full
-                ${phaseDone ? 'bg-foreground/10 text-foreground' : ''}
-                ${isActive ? 'bg-foreground text-background animate-pulse' : ''}
-                ${index > currentIndex && !isTerminal ? 'bg-muted text-muted-foreground/50' : ''}
-              `}
+            <Badge
+              variant={phaseDone ? 'secondary' : isActive ? 'live' : 'outline'}
+              className={`w-full justify-center px-3 py-1.5 text-xs transition-all duration-300 ${isActive ? 'animate-pulse' : ''} ${index > currentIndex && !isTerminal ? 'text-muted-foreground/50' : ''}`}
             >
               {phaseDone && <Check size={12} className="shrink-0" />}
               {isActive && <Loader2 size={12} className="shrink-0 animate-spin" />}
               <span className="truncate">{phase.label}</span>
-            </div>
+            </Badge>
           </div>
         );
       })}
 
       {/* Single terminal pill: either Done (green) or Refine needed (orange) — never both. */}
       {isDone && (
-        <span className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+        <Badge variant="success" className="px-3 py-1.5 text-xs shrink-0">
           <Check size={12} className="shrink-0" />
           Done
-        </span>
+        </Badge>
       )}
       {isRefine && (
-        <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+        <Badge variant="warning" className="px-3 py-1.5 text-xs shrink-0">
           Refine needed
-        </span>
+        </Badge>
       )}
     </div>
     </div>

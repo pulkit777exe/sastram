@@ -126,12 +126,12 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="bg-card border-border text-foreground sm:max-w-[480px]">
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-120">
         {submitted ? (
           <>
             <DialogHeader className="text-center items-center pt-4">
-              <div className="t-success-check w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-3" data-state="in">
-                <CheckCircle2 className="w-6 h-6 text-green-500" />
+              <div className="t-success-check w-12 h-12 rounded-full bg-chart-2/10 flex items-center justify-center mb-3" data-state="in">
+                <CheckCircle2 className="w-6 h-6 text-chart-2" />
               </div>
               <DialogTitle className="text-xl font-bold tracking-tight">
                 Report Submitted
@@ -145,8 +145,8 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
                 <p className="text-xs text-muted-foreground mb-1">Report ID</p>
                 <p className="font-mono text-sm text-foreground">{reportId}</p>
               </div>
-              <div className="flex items-start gap-3 bg-amber-500/10 rounded-lg p-3">
-                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 bg-chart-4/10 rounded-lg p-3">
+                <AlertTriangle className="w-4 h-4 text-chart-4 mt-0.5 shrink-0" />
                 <p className="text-sm text-muted-foreground">
                   We&apos;ll review this report and take action if it violates our community
                   guidelines. You can track the status in your Settings.
@@ -194,7 +194,7 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
                       </SelectContent>
                     </Select>
                   </div>
-                  <p className="t-error-msg text-[11px] text-red-500 mt-1">Please select a report category</p>
+                  <p className="t-error-msg text-xs text-destructive mt-1">Please select a report category</p>
                 </div>
               </div>
               <div className="space-y-2">
@@ -207,7 +207,7 @@ export function ReportButton({ messageId, variant = 'text' }: ReportButtonProps)
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
                   placeholder="Please explain why you're reporting this message..."
-                  className="min-h-[100px] bg-muted border-border text-foreground placeholder:text-muted-foreground resize-none"
+                  className="min-h-25 bg-muted border-border text-foreground placeholder:text-muted-foreground resize-none"
                   maxLength={500}
                 />
                 <p className="text-xs text-muted-foreground text-right">

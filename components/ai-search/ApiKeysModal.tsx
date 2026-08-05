@@ -165,7 +165,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
 
         {/* Info */}
         <div className="px-5 py-3 bg-foreground/2">
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             Your API keys are stored <strong>only in your browser</strong> and never sent to our
             servers for storage. They are passed securely via request headers for each search.
           </p>
@@ -183,13 +183,13 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-medium text-foreground">{config.label}</label>
                   {value && (
-                    <span className="flex items-center gap-1 text-[10px]">
+                    <span className="flex items-center gap-1 text-xs">
                       {isValid ? (
-                        <span className="text-emerald-500 flex items-center gap-0.5">
+                        <span className="text-chart-2 flex items-center gap-0.5">
                           <Check size={10} /> Valid
                         </span>
                       ) : (
-                        <span className="text-amber-500 flex items-center gap-0.5">
+                        <span className="text-chart-4 flex items-center gap-0.5">
                           <X size={10} /> Invalid format
                         </span>
                       )}
@@ -214,14 +214,14 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
                     {value && (
                       <button
                         onClick={() => clearKey(config.id)}
-                        className="p-1.5 text-muted-foreground/50 hover:text-red-500 transition-colors"
+                        className="p-1.5 text-muted-foreground/50 hover:text-destructive transition-colors"
                       >
                         <X size={12} />
                       </button>
                     )}
                   </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground/50 mt-1">{config.description}</p>
+                <p className="text-xs text-muted-foreground/50 mt-1">{config.description}</p>
               </div>
             );
           })}

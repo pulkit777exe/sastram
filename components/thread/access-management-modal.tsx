@@ -101,7 +101,7 @@ export function ThreadAccessModal({
               No invitations found.
             </div>
           ) : (
-            <ScrollArea className="h-[350px] pr-4 -mr-4">
+            <ScrollArea className="h-88 pr-4 -mr-4">
               <div className="space-y-4 pr-4">
                 {invitations.map((invitation) => (
                   <div
@@ -122,7 +122,7 @@ export function ThreadAccessModal({
                     <div className="flex items-center gap-2">
                       <Badge
                         variant="secondary"
-                        className="text-[10px] h-4 px-1 flex gap-1"
+                        className="text-xs h-4 px-1 flex gap-1"
                       >
                         {invitation.status}
                       </Badge>

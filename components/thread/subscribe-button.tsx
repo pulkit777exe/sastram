@@ -162,7 +162,7 @@ export function ThreadSubscribeButton({
               </button>
             ))}
           </div>
-          <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+          <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
             Updates for {threadName}
           </div>
         </div>

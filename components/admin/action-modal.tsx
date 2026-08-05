@@ -171,7 +171,7 @@ export function ActionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px]">
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-125">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Icon
@@ -253,7 +253,7 @@ export function ActionModal({
                   ? 'Explain the reason for this action (required)...'
                   : 'Optional notes for internal reference...'
               }
-              className="min-h-[100px] bg-muted border-border resize-none"
+              className="min-h-25 bg-muted border-border resize-none"
               maxLength={500}
             />
             {config.requiresNote && note.length < 10 && note.length > 0 && (

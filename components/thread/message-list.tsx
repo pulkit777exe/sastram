@@ -12,6 +12,7 @@ import { useThreadDataContext, useThreadUIStateContext } from './thread-context'
 import { InlineReplyThread } from './inline-reply-thread';
 import { MessageActions } from './message-actions';
 import { InlineReplyBox } from './inline-reply-box';
+import { Badge } from '@/components/ui/badge';
 import { AttachmentItem } from './attachment-item';
 import { PollDisplay } from './poll-display';
 import { renderContent } from '@/lib/utils/render-content';
@@ -163,7 +164,7 @@ function CompactTimestamp({ time }: { time: Date | string }) {
     hour12: false,
   });
   return (
-    <span className="absolute left-2 top-[10px] text-[10px] text-muted-foreground/40 opacity-0 group-hover:opacity-100 select-none w-8 text-right font-mono transition-opacity">
+    <span className="absolute left-2 top-2.5 text-xs text-muted-foreground/40 opacity-0 group-hover:opacity-100 select-none w-8 text-right font-mono transition-opacity">
       {timeStr}
     </span>
   );
@@ -239,7 +240,7 @@ const MessageRow = React.memo(function MessageRow({
         id={`message-${message.id}`}
         className={cn(
           "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-muted/20 relative transition-colors duration-75",
-          isCompact && "pl-[52px]"
+          isCompact && "pl-13"
         )}
       >
         {!isCompact && (
@@ -248,7 +249,7 @@ const MessageRow = React.memo(function MessageRow({
           </div>
         )}
         <div className="flex-1 min-w-0 py-0.5">
-          <span className="text-[12px] text-muted-foreground/50 italic">[This message was deleted]</span>
+          <span className="text-xs text-muted-foreground/50 italic">[This message was deleted]</span>
         </div>
       </div>
     );
@@ -259,7 +260,7 @@ const MessageRow = React.memo(function MessageRow({
       {isFirstUnread && (
         <div className="flex items-center gap-2.5 my-3" role="separator" aria-label="New messages indicator">
           <div className="flex-1 h-px bg-brand/30" />
-          <span className="text-[10px] text-brand font-bold uppercase tracking-wider whitespace-nowrap bg-background px-2.5">
+          <span className="text-xs text-brand font-bold uppercase tracking-wider whitespace-nowrap bg-background px-2.5">
             New messages
           </span>
           <div className="flex-1 h-px bg-brand/30" />
@@ -270,7 +271,7 @@ const MessageRow = React.memo(function MessageRow({
         id={`message-${message.id}`}
         className={cn(
           "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-muted/30 relative transition-colors duration-75",
-          isCompact && "pl-[52px]",
+          isCompact && "pl-13",
           isShowingReplyBox && "bg-brand/10 dark:bg-brand/10"
         )}
       >
@@ -288,35 +289,35 @@ const MessageRow = React.memo(function MessageRow({
         <div className="flex-1 min-w-0">
           {!isCompact && (
             <div className="flex items-baseline gap-2 mb-0.5">
-              <span className="text-[13px] font-semibold text-foreground leading-none">
+              <span className="text-sm font-semibold text-foreground leading-none">
                 {message.sender?.name || 'Anonymous'}
               </span>
               {isOwnMessage && (
-                <span className="bg-brand/15 dark:bg-brand/20 text-brand text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
+                <Badge variant="live" className="px-1.5 py-px text-xs leading-none">
                   you
-                </span>
+                </Badge>
               )}
               {message.isAiResponse && (
-                <span className="bg-brand/10 text-brand text-[9px] px-1.5 py-px rounded-full font-semibold leading-none">
+                <Badge variant="live" className="px-1.5 py-px text-xs leading-none">
                   Sai
-                </span>
+                </Badge>
               )}
               {message.truncated && (
-                <span className="text-[9px] text-muted-foreground/60 italic">
+                <span className="text-xs text-muted-foreground/60 italic">
                   (truncated)
                 </span>
               )}
               {message.isPinned && (
-                <span className="text-amber-500 inline-flex items-center gap-0.5 text-[10px] leading-none" title="Pinned">
+                <span className="text-chart-4 inline-flex items-center gap-0.5 text-xs leading-none" title="Pinned">
                   <Pin size={10} className="fill-current" />
                   Pinned
                 </span>
               )}
-              <span className="text-[11px] text-muted-foreground/50 font-medium">
+              <span className="text-xs text-muted-foreground/50 font-medium">
                 <TimeAgo date={message.createdAt} />
               </span>
               {message.isEdited && (
-                <span className="text-[10px] text-muted-foreground/40 italic">edited</span>
+                <span className="text-xs text-muted-foreground/40 italic">edited</span>
               )}
             </div>
           )}
@@ -326,7 +327,7 @@ const MessageRow = React.memo(function MessageRow({
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="min-h-20 max-h-[250px] resize-none text-[13px]"
+                className="min-h-20 max-h-64 resize-none text-sm"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
@@ -359,12 +360,12 @@ const MessageRow = React.memo(function MessageRow({
               </div>
             </div>
           ) : message.isAiResponse ? (
-            <div className="mt-0.5 rounded-[10px] bg-brand/[0.04] dark:bg-brand/[0.07] px-3 py-2 -mx-1">
-              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-brand/70">
+            <div className="mt-0.5 rounded-lg bg-brand/[0.04] dark:bg-brand/[0.07] px-3 py-2 -mx-1">
+              <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-brand/70">
                 <span className="h-1 w-1 rounded-full bg-brand/60" />
                 Synthesis
               </div>
-              <div className="text-foreground/85 text-[13px] leading-relaxed whitespace-pre-wrap wrap-break-word">
+              <div className="text-foreground/85 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {isAiNotConfigured(message.content) ? (
                   <AiNotConfiguredNotice />
                 ) : message.content ? (
@@ -378,7 +379,7 @@ const MessageRow = React.memo(function MessageRow({
               </div>
             </div>
           ) : (
-            <div className="text-foreground/80 text-[13px] leading-relaxed whitespace-pre-wrap wrap-break-word">
+            <div className="text-foreground/80 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
               {renderContent(message.content)}
             </div>
           )}
@@ -391,7 +392,7 @@ const MessageRow = React.memo(function MessageRow({
           )}
 
           {aiStatus === 'failed' && !message.isAiResponse && (
-            <p className="text-[11px] text-amber-600 mt-1">
+            <p className="text-xs text-chart-4 mt-1">
               Sai couldn&apos;t process this. Try rephrasing your question.
             </p>
           )}
@@ -420,7 +421,7 @@ const MessageRow = React.memo(function MessageRow({
           )}
 
           {likeCount > 0 && (
-            <div className="flex items-center gap-1 mt-1 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 w-fit rounded-full px-2 py-0.5 text-[10px] text-amber-600 font-medium select-none">
+            <div className="flex items-center gap-1 mt-1 bg-chart-4/5 hover:bg-chart-4/10 border border-chart-4/10 w-fit rounded-full px-2 py-0.5 text-xs text-chart-4 font-medium select-none">
               <ThumbsUp size={10} className="fill-current" />
               <span>{likeCount}</span>
             </div>
@@ -490,7 +491,7 @@ const MessageRow = React.memo(function MessageRow({
             <Button
               size="sm"
               variant="destructive"
-              className="h-6 px-2 text-[10px]"
+              className="h-6 px-2 text-xs"
               disabled={isDeleting}
               onClick={async () => {
                 setIsDeleting(true);
@@ -509,7 +510,7 @@ const MessageRow = React.memo(function MessageRow({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 px-2 text-[10px]"
+              className="h-6 px-2 text-xs"
               onClick={() => setShowDeleteConfirm(false)}
             >
               Cancel

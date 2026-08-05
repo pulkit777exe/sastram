@@ -15,7 +15,7 @@ export default function RightPanel({ thread }: RightPanelProps) {
   const threadDna = parseThreadDna(thread.threadDna);
 
   return (
-    <div className="flex h-full flex-col gap-[16px]">
+    <div className="flex h-full flex-col gap-4">
       <ThreadInfoCard thread={thread} />
       {threadDna && <ThreadDnaCard dna={threadDna} />}
       <AiSynthesisCard

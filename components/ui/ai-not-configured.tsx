@@ -12,11 +12,11 @@ export function AiNotConfiguredNotice({ className }: { className?: string }) {
       <AlertTriangle size={14} className="mt-0.5 shrink-0" />
       <p className="text-xs leading-relaxed">
         Sai features aren&apos;t configured for this deployment. Set{' '}
-        <code className="font-mono text-[10px] bg-amber-100 dark:bg-amber-900/50 px-1 py-px rounded">
+        <code className="font-mono text-xs bg-amber-100 dark:bg-amber-900/50 px-1 py-px rounded">
           GEMINI_API_KEY
         </code>{' '}
         or{' '}
-        <code className="font-mono text-[10px] bg-amber-100 dark:bg-amber-900/50 px-1 py-px rounded">
+        <code className="font-mono text-xs bg-amber-100 dark:bg-amber-900/50 px-1 py-px rounded">
           OPENAI_API_KEY
         </code>{' '}
         to enable them.

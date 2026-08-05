@@ -9,7 +9,7 @@ export function PublicFooter() {
         <SerifHeading as="h2" className="text-4xl md:text-6xl tracking-tight mb-16 leading-[1.1] block">
           Imagine a world with better discussions
         </SerifHeading>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16 text-[13px]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16 text-sm">
           <div>
             <p className="font-semibold mb-3 text-white/90">Product</p>
             <div className="space-y-2 text-white/60">
@@ -57,7 +57,7 @@ export function PublicFooter() {
             <Logo className="h-4 w-4 shrink-0" />
             <span className="font-semibold text-sm">Sastram</span>
           </div>
-          <p className="text-[12px] text-white/50">&copy; 2026 Sastram. Open source.</p>
+          <p className="text-xs text-white/50">&copy; 2026 Sastram. Open source.</p>
         </div>
       </div>
     </footer>

@@ -9,7 +9,8 @@ interface LoadingVideoProps {
 }
 
 export function LoadingVideo({ className, fullScreen = false }: LoadingVideoProps) {
-  const { theme } = useTheme();
+  // resolvedTheme so `system` users with a dark OS preference get the dark video
+  const { resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -18,7 +19,7 @@ export function LoadingVideo({ className, fullScreen = false }: LoadingVideoProp
 
   if (!mounted) return null;
 
-  const videoSrc = theme === 'dark' ? '/sastram-video-dark.mp4' : '/sastram-video-light.mp4';
+  const videoSrc = resolvedTheme === 'dark' ? '/sastram-video-dark.mp4' : '/sastram-video-light.mp4';
 
   return (
     <div

@@ -81,7 +81,7 @@ export function ModerationQueue({
         <h2 className="text-lg font-semibold text-foreground">Report Queue</h2>
         <div className="flex items-center gap-2">
           <Select defaultValue="all">
-            <SelectTrigger className="w-[140px] h-8 text-sm bg-muted border-border">
+            <SelectTrigger className="w-36 h-8 text-sm bg-muted border-border">
               <Filter className="w-3.5 h-3.5 mr-2" />
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
@@ -220,7 +220,7 @@ function StatsCard({
               {badge && (
                 <Badge
                   className={cn(
-                    'text-[10px]',
+                    'text-xs',
                     variant === 'critical' && 'bg-red-500/20 text-red-400',
                     variant === 'high' && 'bg-orange-500/20 text-orange-400'
                   )}

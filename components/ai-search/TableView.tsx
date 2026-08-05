@@ -33,7 +33,7 @@ function SortHeader({
   return (
     <button
       onClick={() => onToggle(sortKeyVal)}
-      className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+      className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
     >
       {label}
       <ArrowUpDown
@@ -107,13 +107,13 @@ export function TableView({ sources }: TableViewProps) {
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-xs table-fixed min-w-[600px]">
+        <table className="w-full text-xs table-fixed min-w-150">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left px-4 py-2.5 text-[11px] font-medium text-muted-foreground w-[18%]">
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground w-[18%]">
                 Source
               </th>
-              <th className="text-left px-4 py-2.5 text-[11px] font-medium text-muted-foreground w-[30%]">
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground w-[30%]">
                 Title
               </th>
               <th className="px-4 py-2.5 w-[16%]">
@@ -140,7 +140,7 @@ export function TableView({ sources }: TableViewProps) {
                   onToggle={toggleSort}
                 />
               </th>
-              <th className="text-left px-4 py-2.5 text-[11px] font-medium text-muted-foreground w-[14%]">
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground w-[14%]">
                 Provider
               </th>
             </tr>

@@ -15,17 +15,17 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
 
   if (isImage) {
     return (
-       <div className="relative group animate-in fade-in duration-200 overflow-hidden rounded-[10px] border border-border/50 bg-card max-w-[260px] transition-all duration-300 hover:shadow-linear-md hover:border-border">
+       <div className="relative group animate-in fade-in duration-200 overflow-hidden rounded-lg border border-border/50 bg-card max-w-65 transition-all duration-300 hover:shadow-linear-md hover:border-border">
         <Image
           src={file.url}
           alt={file.name || 'attachment'}
           width={260}
           height={180}
-          className="w-full h-auto max-h-[180px] object-cover transition-transform duration-500 ease-out group-hover:scale-102"
+          className="w-full h-auto max-h-45 object-cover transition-transform duration-500 ease-out group-hover:scale-102"
         />
         {file.name && (
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <p className="text-[10px] text-white truncate font-medium">{file.name}</p>
+            <p className="text-xs text-background truncate font-medium">{file.name}</p>
           </div>
         )}
       </div>
@@ -37,13 +37,13 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
   }
 
   return (
-    <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-[10px] border border-border/60 bg-card p-2.5 transition-all duration-200 hover:border-border hover:shadow-linear-sm group max-w-[280px]">
+    <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-lg border border-border/60 bg-card p-2.5 transition-all duration-200 hover:border-border hover:shadow-linear-sm group max-w-70">
       <div className="p-2 rounded-lg border border-border/50 bg-background text-muted-foreground shadow-linear-sm transition-transform duration-200 group-hover:scale-105">
         <FileIcon size={16} className="text-foreground opacity-80" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-foreground truncate">{file.name || 'File Attachment'}</p>
-        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">
+        <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mt-0.5">
           {file.type?.split('/').pop()?.toUpperCase() || 'FILE'}
           {file.size ? ` • ${(Number(file.size) / (1024 * 1024)).toFixed(1)} MB` : ''}
         </p>
@@ -88,7 +88,7 @@ function VideoPlayer({ file }: { file: Attachment }) {
 
   return (
     <div 
-      className="relative group animate-in fade-in duration-200 overflow-hidden rounded-[10px] border border-border/50 bg-black max-w-[320px] aspect-video cursor-pointer"
+      className="relative group animate-in fade-in duration-200 overflow-hidden rounded-lg border border-border/50 bg-foreground max-w-80 aspect-video cursor-pointer"
       onClick={togglePlay}
     >
       <video
@@ -102,24 +102,24 @@ function VideoPlayer({ file }: { file: Attachment }) {
       />
       
       {/* Overlay controls */}
-      <div className="absolute inset-0 bg-black/20 opacity-100 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-2">
+      <div className="absolute inset-0 bg-foreground/20 opacity-100 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-2">
         <div className="flex justify-end">
           <button
             type="button"
             onClick={toggleMute}
-            className="p-1.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+            className="p-1.5 rounded-full bg-foreground/40 text-background hover:bg-foreground/60 transition-colors"
           >
             {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
           </button>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-white/90 font-medium truncate max-w-[200px] drop-shadow-sm">
+          <span className="text-xs text-background/90 font-medium truncate max-w-50 drop-shadow-sm">
             {file.name || 'Video'}
           </span>
           <button
             type="button"
-            className="p-2 rounded-full bg-brand text-white shadow-lg hover:scale-105 transition-transform"
+            className="p-2 rounded-full bg-brand text-primary-foreground shadow-linear-sm hover:scale-105 transition-transform"
           >
             {isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
           </button>

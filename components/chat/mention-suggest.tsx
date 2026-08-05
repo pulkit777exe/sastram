@@ -34,7 +34,7 @@ export function MentionSuggest({
   return (
     <div
       ref={listRef}
-      className="absolute bottom-13 left-4 z-30 w-[280px] rounded-xl border border-border bg-popover shadow-linear-xl overflow-hidden"
+      className="absolute bottom-13 left-4 z-30 w-70 rounded-xl border border-border bg-popover shadow-linear-xl overflow-hidden"
     >
       <div className="max-h-56 overflow-y-auto py-1.5">
         {candidates.map((candidate, index) => (
@@ -52,7 +52,7 @@ export function MentionSuggest({
           >
             <Avatar className="size-6 shrink-0">
               <AvatarImage src={candidate.image ?? undefined} alt={candidate.name ?? candidate.handle} />
-              <AvatarFallback className="text-[10px] font-medium">
+              <AvatarFallback className="text-xs font-medium">
                 {(candidate.name ?? candidate.handle).charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -60,7 +60,7 @@ export function MentionSuggest({
               <span className="font-semibold truncate">
                 {candidate.name || candidate.email}
               </span>
-              <span className="text-[10px] text-muted-foreground truncate">
+              <span className="text-xs text-muted-foreground truncate">
                 @{candidate.handle}
               </span>
             </div>

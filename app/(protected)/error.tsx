@@ -15,7 +15,7 @@ export default function ProtectedError({
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+    <div className="flex flex-col items-center justify-center min-h-100 gap-4">
       <p className="text-muted-foreground text-sm">Something went wrong loading this page.</p>
       <button
         type="button"

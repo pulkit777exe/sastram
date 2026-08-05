@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { AlertTriangle, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import type { ConflictInfo, Citation } from '@/modules/ai-search/types';
 import type { Source } from '@/modules/ai-search/types';
 
@@ -16,22 +17,22 @@ interface SynthesisCardProps {
   isStreaming?: boolean;
 }
 
-const QUERY_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+const QUERY_TYPE_LABELS: Record<string, { label: string; variant: 'live' | 'warning' | 'success' | 'secondary' }> = {
   factual: {
     label: 'Factual',
-    color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+    variant: 'live',
   },
   opinion: {
     label: 'Opinion',
-    color: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
+    variant: 'warning',
   },
   technical: {
     label: 'Technical',
-    color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    variant: 'success',
   },
   comparison: {
     label: 'Comparison',
-    color: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+    variant: 'secondary',
   },
 };
 
@@ -106,7 +107,7 @@ export function SynthesisCard({
 
   return (
     <div
-      className="relative bg-card border border-border rounded-2xl overflow-hidden"
+      className="relative bg-card border border-border rounded-2xl shadow-linear-md overflow-hidden"
     >
       {/* Top shimmer line */}
       <div className="h-0.5 w-full bg-linear-to-r from-transparent via-foreground/20 to-transparent">
@@ -126,9 +127,9 @@ export function SynthesisCard({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${typeConfig.color}`}>
+          <Badge variant={typeConfig.variant} className="px-2 py-0.5 text-xs font-medium">
             {typeConfig.label}
-          </span>
+          </Badge>
         </div>
       </div>
 
@@ -146,7 +147,7 @@ export function SynthesisCard({
                     ? `Source: ${sources.find((s) => s.id === seg.sourceId)?.domain ?? ''}`
                     : undefined
                 }
-                className={`inline-flex items-center justify-center mx-0.5 w-4 h-4 align-text-bottom rounded-full text-[9px] font-semibold leading-none transition-colors ${
+                className={`inline-flex items-center justify-center mx-0.5 w-4 h-4 align-text-bottom rounded-full text-xs font-semibold leading-none transition-colors ${
                   seg.sourceId
                     ? 'bg-foreground/10 text-foreground hover:bg-foreground hover:text-background'
                     : 'bg-muted text-muted-foreground'
@@ -166,11 +167,11 @@ export function SynthesisCard({
 
       {/* Conflict warning — only when conflictData is non-null and detected */}
       {conflictData?.detected && (
-        <div className="mx-5 mb-4 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+        <div className="mx-5 mb-4 px-4 py-3 bg-chart-4/10 border border-chart-4/20 rounded-xl">
           <div className="flex items-start gap-2">
-            <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+            <AlertTriangle size={14} className="text-chart-4 mt-0.5 shrink-0" />
             <div className="text-xs">
-              <p className="font-medium text-amber-600 dark:text-amber-400 mb-1">
+              <p className="font-medium text-chart-4 mb-1">
                 Conflict Detected
               </p>
               <p className="text-muted-foreground mb-1">{conflictData.description}</p>

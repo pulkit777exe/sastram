@@ -31,6 +31,10 @@ export function SubscriptionSuccessModal({
       const end = Date.now() + duration;
 
       let cancelled = false;
+      const styles = getComputedStyle(document.documentElement);
+      const colors = ['--brand', '--brand-hover', '--chart-2']
+        .map((token) => styles.getPropertyValue(token).trim())
+        .filter(Boolean);
 
       import('canvas-confetti').then(({ default: confetti }) => {
         const frame = () => {
@@ -40,14 +44,14 @@ export function SubscriptionSuccessModal({
             angle: 60,
             spread: 55,
             origin: { x: 0 },
-            colors: ['#6366f1', '#8b5cf6', '#a855f7'],
+            colors,
           });
           confetti({
             particleCount: 3,
             angle: 120,
             spread: 55,
             origin: { x: 1 },
-            colors: ['#6366f1', '#8b5cf6', '#a855f7'],
+            colors,
           });
 
           if (Date.now() < end) {
@@ -105,9 +109,9 @@ export function SubscriptionSuccessModal({
                 stiffness: 200,
                 delay: 0.1,
               }}
-              className="mx-auto w-20 h-20 rounded-full bg-linear-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-6 shadow-lg shadow-green-500/30"
+              className="mx-auto w-20 h-20 rounded-full bg-chart-2 flex items-center justify-center mb-6 shadow-linear-md"
             >
-              <CheckCircle2 className="w-10 h-10 text-white" />
+              <CheckCircle2 className="w-10 h-10 text-primary-foreground" />
             </motion.div>
 
             <motion.h2

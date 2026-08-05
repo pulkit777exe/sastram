@@ -88,7 +88,7 @@ export function CreateTopicButton() {
       <DialogTrigger asChild>
         <Button className="bg-brand hover:bg-brand/90 cursor-pointer">New Thread</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold tracking-tight">Create New Topic</DialogTitle>
           <DialogDescription className="text-muted-foreground">
@@ -106,7 +106,7 @@ export function CreateTopicButton() {
             <Label htmlFor="description" className="text-muted-foreground">
               Description
             </Label>
-            <Textarea id="description" name="description" className="min-h-[100px]" required />
+            <Textarea id="description" name="description" className="min-h-25" required />
           </div>
 
           <div className="space-y-2">

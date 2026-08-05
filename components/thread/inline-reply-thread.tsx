@@ -53,19 +53,19 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
               className="w-5 h-5 ring-2 ring-card"
             >
               <AvatarImage src={sender.image || ''} />
-              <AvatarFallback className="bg-brand/15 text-brand text-[8px] font-bold">
+              <AvatarFallback className="bg-brand/15 text-brand text-xs font-bold">
                 {sender.name?.substring(0, 1).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
           ))}
         </div>
 
-        <span className="text-[12px] font-semibold text-brand group-hover/bar:text-brand transition-colors">
+        <span className="text-xs font-semibold text-brand group-hover/bar:text-brand transition-colors">
           {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
         </span>
 
         {lastReply && !expanded && (
-          <span className="text-[11px] text-muted-foreground/70 truncate flex-1 min-w-0">
+          <span className="text-xs text-muted-foreground/70 truncate flex-1 min-w-0">
             <span className="font-medium text-foreground/60 mr-1">
               {lastReply.sender?.name?.split(' ')[0]}:
             </span>
@@ -92,7 +92,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
             /* Virtualized list for large reply counts */
             <div
               ref={scrollContainerRef}
-              className="max-h-[400px] overflow-y-auto"
+              className="max-h-100 overflow-y-auto"
             >
               <div style={{ position: 'relative', height: `${virtualizer.getTotalSize()}px` }}>
                 {virtualizer.getVirtualItems().map((virtualItem) => {
@@ -132,7 +132,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
                     e.stopPropagation();
                     setExpanded(true);
                   }}
-                  className="flex items-center gap-1.5 text-[11px] font-semibold text-brand hover:text-brand px-2 py-1 w-fit transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-brand hover:text-brand px-2 py-1 w-fit transition-colors"
                 >
                   <MessageCircle size={11} />
                   {hidden} more {hidden === 1 ? 'reply' : 'replies'}
@@ -145,7 +145,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
           <button
             type="button"
             onClick={() => onReplyClick?.()}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-brand px-2 py-1 w-fit transition-colors mt-0.5"
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-brand px-2 py-1 w-fit transition-colors mt-0.5"
           >
             <MessageCircle size={11} />
             Reply to thread
@@ -165,12 +165,12 @@ function ReplyItem({
 }) {
   return (
     <div
-      className="flex items-start gap-2 text-[12px] py-1 px-2 rounded-lg hover:bg-muted/35 cursor-pointer group/reply transition-colors"
+      className="flex items-start gap-2 text-xs py-1 px-2 rounded-lg hover:bg-muted/35 cursor-pointer group/reply transition-colors"
       onClick={() => onReplyClick?.(reply.id)}
     >
       <Avatar className="w-4 h-4 mt-0.5 shrink-0">
         <AvatarImage src={reply.sender?.image || ''} />
-        <AvatarFallback className="bg-brand/10 text-brand text-[7px] font-bold">
+        <AvatarFallback className="bg-brand/10 text-brand text-xs font-bold">
           {reply.sender?.name?.substring(0, 1).toUpperCase() || 'U'}
         </AvatarFallback>
       </Avatar>

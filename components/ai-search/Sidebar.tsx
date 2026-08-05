@@ -178,7 +178,7 @@ export function Sidebar({
         </button>
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {!isPendingDelete && (
-            <span className="text-[10px] text-muted-foreground/50 pointer-events-none">
+            <span className="text-xs text-muted-foreground/50 pointer-events-none">
               {item.sourceCount} src
             </span>
           )}
@@ -217,7 +217,7 @@ export function Sidebar({
 
   return (
     <div
-      className={`relative h-full flex flex-col bg-card border border-border rounded-2xl transition-all duration-250 ease-in-out overflow-hidden ${
+      className={`relative h-full flex flex-col bg-card border border-border rounded-2xl shadow-linear-md transition-all duration-250 ease-in-out overflow-hidden ${
         collapsed ? 'w-0 border-0 p-0' : 'w-55'
       }`}
     >
@@ -242,7 +242,7 @@ export function Sidebar({
             >
               <Code2 size={14} />
               API Keys
-              {hasApiKeys && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+              {hasApiKeys && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-chart-2" />}
           </button>
         </div>
 
@@ -250,7 +250,7 @@ export function Sidebar({
 
           {/* History section header — label is static, refresh is its own affordance */}
           <div className="flex items-center justify-between px-3">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               <Search size={11} />
               History
           </span>
@@ -280,14 +280,14 @@ export function Sidebar({
             }}
           >
             {searches.length === 0 ? (
-              <p className="px-3 text-[11px] text-muted-foreground/50 italic">
+              <p className="px-3 text-xs text-muted-foreground/50 italic">
                 {loading ? 'Loading…' : 'No recent searches'}
             </p>
             ) : (
               <div ref={listEndRef}>
                 {groupedSearches.map(({ group, items }) => (
                   <div key={group} className="mb-3 last:mb-0">
-                    <p className="px-3 pb-1 text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">
+                    <p className="px-3 pb-1 text-xs font-medium text-muted-foreground/50 uppercase tracking-wider">
                       {group}
                  </p>
                     <div className="space-y-0.5">
@@ -305,7 +305,7 @@ export function Sidebar({
                  </div>
                 ))}
                 {hasMore && (
-                  <p className="px-3 py-2 text-[10px] text-muted-foreground/40 text-center">Load more…</p>
+                  <p className="px-3 py-2 text-xs text-muted-foreground/40 text-center">Load more…</p>
                 )}
             </div>
             )}
@@ -322,7 +322,7 @@ export function Sidebar({
                   className="w-7 h-7 rounded-full object-cover shrink-0"
                 />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center text-[10px] font-bold text-foreground shrink-0">
+                <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center text-xs font-bold text-foreground shrink-0">
                   {userInitial}
               </div>
               )}
@@ -330,7 +330,7 @@ export function Sidebar({
                 <p className="text-xs font-medium text-foreground truncate">
                   {user?.name || user?.email || 'Guest'}
             </p>
-                <p className="text-[10px] text-muted-foreground truncate">Personal workspace</p>
+                <p className="text-xs text-muted-foreground truncate">Personal workspace</p>
             </div>
           </div>
         </div>

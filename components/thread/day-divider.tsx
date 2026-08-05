@@ -26,7 +26,7 @@ export function DayDivider({ date }: DayDividerProps) {
   return (
     <div className="flex items-center gap-4 my-6">
       <div className="flex-1 h-px bg-border/60" />
-      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest bg-background px-2.5">
+      <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-background px-2.5">
         {formatDate(d)}
       </span>
       <div className="flex-1 h-px bg-border/60" />

@@ -48,7 +48,7 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
             <Link
               key={link.href}
               href={link.href}
-              className="text-[13px] text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               {link.label}
             </Link>
@@ -90,7 +90,7 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
                   >
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={user.image || undefined} />
-                      <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
+                      <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
@@ -123,7 +123,7 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
             <Link href="/dashboard" className="hidden md:flex items-center gap-2">
               <Avatar className="h-7 w-7">
                 <AvatarImage src={user.image || undefined} />
-                <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
+                <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                   {userInitial}
                 </AvatarFallback>
               </Avatar>
@@ -132,13 +132,13 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
             <>
               <Link
                 href="/login"
-                className="text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block px-3 py-1.5"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block px-3 py-1.5"
               >
                 Sign in
               </Link>
               <Link
                 href="/login"
-                className="hidden md:inline-flex text-[13px] font-medium px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
+                className="hidden md:inline-flex text-sm font-medium px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
               >
                 Get started
               </Link>

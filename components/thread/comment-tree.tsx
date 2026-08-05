@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback, type RefObject } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import type { Message } from '@/lib/types/index';
+import type { AiInlineMeta, Message } from '@/lib/types/index';
 import type { MessageNode } from '@/modules/messages/types';
 import {
   buildMessageTree,
@@ -55,6 +55,13 @@ interface CommentTreeProps {
   };
   aiInlineStatus?: Record<string, 'pending' | 'failed'>;
   onOptimisticMessage?: (message: Message) => void;
+  /**
+   * Notified for messages posted from inline reply boxes, so the parent
+   * (ThreadLiveWrapper) can track the message and kick off the @sai
+   * streaming/pending flow. Without this, inline @sai replies were invisible
+   * to the wrapper and never triggered AI delivery.
+   */
+  onMessagePosted?: (message: Message, meta?: AiInlineMeta) => void;
   firstUnreadMessageId: string | null;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
@@ -65,6 +72,7 @@ export function CommentTree({
   currentUser,
   aiInlineStatus = {},
   onOptimisticMessage,
+  onMessagePosted,
   firstUnreadMessageId,
   scrollContainerRef,
 }: CommentTreeProps) {
@@ -159,13 +167,16 @@ export function CommentTree({
     setLocalMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, ...updates } : m)));
   }, []);
 
-  const handleMessagePosted = useCallback((newMessage: Message) => {
-    setLocalMessages((prev) => [...prev, newMessage]);
+  const handleMessagePosted = useCallback((newMessage: Message, meta?: AiInlineMeta) => {
+    setLocalMessages((prev) => (prev.some((m) => m.id === newMessage.id) ? prev : [...prev, newMessage]));
     setActiveReplyId(null);
     setAnimateMessageId(newMessage.id);
     if (animateTimerRef.current) clearTimeout(animateTimerRef.current);
     animateTimerRef.current = setTimeout(() => setAnimateMessageId(null), 700);
-  }, []);
+    // Bubble up so ThreadLiveWrapper tracks the message and starts the
+    // @sai stream / pending indicator for inline replies too.
+    onMessagePosted?.(newMessage, meta);
+  }, [onMessagePosted]);
 
   useEffect(() => {
     return () => {

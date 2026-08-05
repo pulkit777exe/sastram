@@ -1,12 +1,25 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 
+const emptySubscribe = () => () => {};
+
 export function ThemeVideo({ className }: { className?: string }) {
-  const { theme } = useTheme();
-  const videoSrc = theme === 'dark' ? '/sastram-video-dark.mp4' : '/sastram-video-light.mp4';
-  const posterSrc = theme === 'dark' ? '/sastram-image-dark.png' : '/sastram-image-light.png';
+  // resolvedTheme (not theme) so users on `system` with a dark OS preference
+  // get the dark assets. Gate on `mounted` so the server-rendered poster
+  // matches the client's first render — next-themes resolves the theme from
+  // localStorage on the client only, and branching on it during hydration
+  // caused a poster attribute mismatch for dark-mode users.
+  const { resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+  const isDark = mounted && resolvedTheme === 'dark';
+  const videoSrc = isDark ? '/sastram-video-dark.mp4' : '/sastram-video-light.mp4';
+  const posterSrc = isDark ? '/sastram-image-dark.png' : '/sastram-image-light.png';
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 

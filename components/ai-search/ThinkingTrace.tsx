@@ -98,7 +98,7 @@ export function ThinkingTrace({
   const currentIndex = PHASE_ORDER.indexOf(currentPhase as (typeof PHASE_ORDER)[number]);
 
   return (
-    <div className="w-full bg-card border border-border rounded-2xl overflow-hidden">
+    <div className="w-full bg-card border border-border rounded-2xl shadow-linear-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
@@ -106,7 +106,7 @@ export function ThinkingTrace({
         aria-expanded={expanded}
       >
         {isDone ? (
-          <Check size={15} className="text-emerald-500 shrink-0" />
+          <Check size={15} className="text-chart-2 shrink-0" />
         ) : (
           <Loader2 size={15} className="text-foreground animate-spin shrink-0" />
         )}
@@ -170,13 +170,13 @@ export function ThinkingTrace({
                         {config.label}
                       </span>
                       {relativeMs !== null && (
-                        <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+                        <span className="text-xs text-muted-foreground/50 tabular-nums">
                           +{formatElapsed(relativeMs)}
                         </span>
                       )}
                     </div>
                     {reached && (
-                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {config.describe(entry?.sourceCount ?? sourceCount, query)}
                       </p>
                     )}

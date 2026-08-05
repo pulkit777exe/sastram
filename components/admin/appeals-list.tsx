@@ -106,11 +106,11 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 <TableCell className="text-sm text-muted-foreground">
                   <TimeAgo date={appeal.banDate} />
                 </TableCell>
-                <TableCell className="max-w-[200px] truncate text-sm" title={appeal.banReason}>
+                <TableCell className="max-w-50 truncate text-sm" title={appeal.banReason}>
                   {appeal.banReason}
                 </TableCell>
                 <TableCell
-                  className="max-w-[300px] truncate text-sm italic text-muted-foreground"
+                  className="max-w-75 truncate text-sm italic text-muted-foreground"
                   title={appeal.reason}
                 >
                   &quot;{appeal.reason || 'No appeal reason provided'}&quot;

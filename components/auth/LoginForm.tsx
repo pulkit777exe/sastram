@@ -728,7 +728,7 @@ export function LoginForm({
 
   return (
     <div className="flex flex-1 items-center justify-center py-16 px-6">
-      <div className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-[400px]">
+      <div className="mx-auto flex w-full flex-col justify-center gap-6 sm:w-100">
         <div className="flex flex-col gap-2 text-center mb-4">
           <AnimatePresence mode="wait">
             <motion.div

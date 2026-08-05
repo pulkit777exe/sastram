@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useState } from 'react';
 import { ExternalLink, AlertTriangle, Shield, Star, Globe, MessageCircle } from 'lucide-react';
 import { TimeAgo } from '@/components/ui/TimeAgo';
+import { Badge } from '@/components/ui/badge';
 
 interface SourceCardProps {
   id: string;
@@ -24,22 +25,22 @@ interface SourceCardProps {
 const TIER_CONFIG = {
   1: {
     label: 'Official',
-    badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    variant: 'success' as const,
     icon: Shield,
   },
   2: {
     label: 'Trusted',
-    badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+    variant: 'live' as const,
     icon: Star,
   },
   3: {
     label: 'Community',
-    badge: 'bg-foreground/10 text-muted-foreground',
+    variant: 'secondary' as const,
     icon: MessageCircle,
   },
   4: {
     label: 'Blog',
-    badge: 'bg-foreground/5 text-muted-foreground/60',
+    variant: 'outline' as const,
     icon: Globe,
   },
 };
@@ -79,7 +80,7 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
       className={`bg-card border border-border rounded-xl p-4 transition-all duration-500 ease-out hover:border-foreground/20 hover:shadow-linear-sm group scroll-mt-4 cursor-pointer ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
       } ${highlighted ? 'ring-2 ring-foreground/40 border-foreground/40' : ''} ${
-        isLowerQuality ? 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50' : ''
+        isLowerQuality ? 'border-chart-4/30 bg-chart-4/5 hover:border-chart-4/50' : ''
       }`}
     >
       {/* Header */}
@@ -99,22 +100,20 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
             />
           </a>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[11px] text-muted-foreground truncate">{source}</span>
+            <span className="text-xs text-muted-foreground truncate">{source}</span>
             {publishedDate && (
-              <span className="text-[10px] text-muted-foreground/70">
+              <span className="text-xs text-muted-foreground/70">
                 · <TimeAgo date={publishedDate} />
               </span>
             )}
-            <span className="text-[10px] text-muted-foreground/40">via {provider}</span>
+            <span className="text-xs text-muted-foreground/40">via {provider}</span>
           </div>
         </div>
 
         {/* Tier badge — readable trust signal */}
-        <span
-          className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${tierConfig.badge}`}
-        >
+        <Badge variant={tierConfig.variant} className="px-2 py-0.5 text-xs shrink-0">
           {tierConfig.label}
-        </span>
+        </Badge>
       </div>
 
       {/* Snippet */}
@@ -122,7 +121,7 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
 
       {/* Outdated warning */}
       {isOutdated && (
-        <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-1.5 text-xs text-chart-4">
           <AlertTriangle size={10} />
           <span>
             Content from {publishedDate ? <TimeAgo date={publishedDate} /> : 'unknown date'} — may

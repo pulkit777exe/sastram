@@ -132,13 +132,13 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
 
   return (
     <div
-      className={cn('rounded-xl border p-5 relative overflow-hidden bg-background/50', className)}
+      className={cn('rounded-xl border p-5 relative overflow-hidden bg-background/50 shadow-linear-sm', className)}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-brand" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-brand">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand">
             Sai Summary
           </span>
         </div>

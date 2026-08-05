@@ -4,6 +4,7 @@ import { Hash, ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@/lib/config/routes';
 import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
 import { InviteFriendButton } from '@/components/thread/invite-friend-button';
+import { Badge } from '@/components/ui/badge';
 
 interface ThreadPageHeaderProps {
   title: string;
@@ -19,7 +20,7 @@ export function ThreadPageHeader({
   initialFrequency,
 }: ThreadPageHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-4 sm:px-6 h-[64px] border-b border-border/60 flex-shrink-0 bg-background/95 backdrop-blur z-30">
+    <header className="flex items-center justify-between px-4 sm:px-6 h-16 border-b border-border/60 flex-shrink-0 bg-background/95 backdrop-blur z-30">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Link
           href={ROUTES.DASHBOARD_THREADS}
@@ -28,7 +29,7 @@ export function ThreadPageHeader({
         >
           <ArrowLeft size={18} strokeWidth={2.25} />
         </Link>
-        <div className="w-[34px] h-[34px] rounded-lg bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand dark:text-brand border border-brand/15 dark:border-brand/25 shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand dark:text-brand border border-brand/15 dark:border-brand/25 shrink-0">
           <Hash size={16} strokeWidth={2.5} />
         </div>
         <div className="flex flex-col gap-0.5 min-w-0">
@@ -38,7 +39,7 @@ export function ThreadPageHeader({
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="h-8 min-w-[140px]">
+        <div className="h-8 min-w-36">
           <ThreadSubscribeButton
             threadId={threadId}
             slug={slug}
@@ -55,10 +56,10 @@ export function ThreadPageHeader({
 
 function LiveBadge() {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-emerald-200/80 bg-emerald-50/50 w-fit">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-      <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">Live</span>
-    </div>
+    <Badge variant="live" className="gap-1.5 px-2 py-0.5 text-xs uppercase tracking-widest">
+      <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+      Live
+    </Badge>
   );
 }
 

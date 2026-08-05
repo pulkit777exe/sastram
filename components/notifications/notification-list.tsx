@@ -263,7 +263,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                           >
                             {notification.title}
                           </p>
-                          <span className="text-[11px] text-muted-foreground shrink-0">
+                          <span className="text-xs text-muted-foreground shrink-0">
                             <TimeAgo date={notification.createdAt} />
                           </span>
                         </div>
