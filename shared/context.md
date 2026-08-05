@@ -11,7 +11,134 @@ This document provides a quick reference to the main features and functions avai
 - **Key Files:**
   - `modules/auth/session.ts` - Session management
   - `modules/users/` - User profile management
-- **API Routes:** `app/api/auth/[...all]/route.ts`
+- **API Routes:** `app/api/auth/[.# Design & Interaction Modernization Prompt — Coach-XYZ
+
+## 0. Guardrails (read before anything else)
+
+This is a visual/interaction pass, **not** a license to touch backend logic, the state machine,
+polling behavior, or anything in Section 7 (Non-Negotiable Invariants) of
+`coach-xyz-canonical-spec.md`. A design change must never regress a functional fix — the
+`AnalysisDetailClient.tsx` poll-stop-on-`complete` fix and the retry state machine are especially
+easy to break by accident while "just" restyling a loading state. If a redesign touches a file
+that also carries logic (very likely for `usePipeline.ts`, `AnalysisDetailClient.tsx`,
+`AnalysisProgress.tsx`), isolate the logic from the presentation first — don't rewrite both at
+once.
+
+**"Modern" here means specific, not generic.** Do not default to glassmorphism, gratuitous
+spring bounces, or a light SaaS template look. The existing identity — dark (`#0d0d0d`/
+`#f0ebe1`/`#c8003c`), DM Mono + Instrument Serif, editorial/restrained — is a strength, not a
+starting point to discard. The goal is: this identity, executed with the polish, motion
+continuity, and considered micro-interaction of a well-built modern product, not a different
+identity.
+
+**Discovery before rewrite, same discipline as every other pass:** check what animation tooling
+already exists (GSAP is confirmed in use on the landing page only — check `package.json` for
+anything else, e.g. Framer Motion/Motion, before introducing a new dependency) before assuming
+you need a new library. Extend the existing hand-rolled `components/ui/` primitives — don't fork
+a parallel design system next to them.
+
+**No big-bang rewrite.** Work component by component, in the phases below, with a checkpoint
+before implementation starts on each phase. A full-app redesign landed as one diff is
+unreviewable and, given the app's recent history of regressions, the highest-risk possible way
+to ship this.
+
+---
+
+## Phase 1 — Discovery & audit (report back before proceeding)
+
+1. Inventory every page/component currently in the pipeline (landing, upload, scanning,
+   selecting, analyzing/rendering, completed, error, dashboard, history, analysis detail,
+   account) with file:line for each.
+2. Confirm what's already inconsistent *before* introducing new motion — e.g. is film grain
+   really landing-only (flagged as a known gap), are loading states consistent across
+   components, is spacing/typography actually following a scale or ad hoc per component? You
+   cannot build smooth systematic motion on top of inconsistent foundations — inconsistencies
+   found here need to be named as a prerequisite, not skipped past.
+3. Confirm current animation tooling: GSAP usage scope, whether any other animation library is
+   installed, whether Tailwind's built-in transition utilities are used consistently or
+   piecemeal.
+4. Check for `prefers-reduced-motion` handling anywhere in the codebase currently. Report
+   whether it exists at all — if not, it needs to be part of the motion system from the start,
+   not bolted on later.
+
+Report format: same CONFIRMED/DRIFTED/MISSING discipline as prior audits, file:line, no prose
+summary layer.
+
+---
+
+## Phase 2 — Design system extension (propose, don't implement yet)
+
+Propose, don't build:
+
+1. **Spacing/typography scale** — formalize whatever's implicit today into an explicit scale,
+   reusing current values as the base (don't invent new type sizes/colors from scratch — derive
+   from what's already there).
+2. **Elevation/depth system for the dark theme** — flat `#0d0d0d` panels reading as "modern" vs.
+   "unfinished" usually comes down to subtle elevation (soft shadows, faint borders, slight
+   background value shifts between layers), not brightness. Propose a small, restrained scale
+   (e.g. 2-3 elevation levels), not a dozen.
+3. **Motion tokens** — a duration scale (e.g. fast/base/slow) and one or two easing curves, used
+   consistently everywhere rather than bespoke timing per component. Sports-coaching content
+   should read as calm and precise, not playful — bias toward short durations (150-300ms) and
+   restrained easing over bouncy/springy defaults.
+4. **Component state coverage** — for each existing primitive (`Button`, `Card`, `Badge`,
+   `Separator`), define hover/active/disabled/loading states explicitly if they aren't already,
+   so new components built during this pass have something consistent to reference.
+
+**Checkpoint: report this proposal and wait for approval before moving to Phase 3.**
+
+---
+
+## Phase 3 — Per-functionality rethink (propose, don't implement yet)
+
+For each item below, the ask is a genuine rethink of the *interaction*, not just a re-skin.
+Propose the concept in words/wireframe-level description first — this phase produces a plan,
+not code.
+
+| Feature | Current state | Rethink prompt |
+|---|---|---|
+| **Landing / upload zone** | 657-line marketing page, film grain, upload zone | Does the upload moment feel like the product's front door, or an afterthought at the bottom of a marketing page? Consider whether upload should be more prominent/immediate rather than requiring a scroll. |
+| **Scanning / player selection** | Grid of base64 crops with confidence badges | This is a decision moment for the user — does it feel considered, or like a raw data dump? Consider progressive reveal, clearer visual hierarchy for confidence, subtle entrance animation per card rather than all appearing at once. |
+| **Analyzing / rendering** | Stage stepper + ETA (`AnalysisProgress`) | This is 45-150s of waiting — the highest-anxiety moment in the flow. Modern apps often replace static progress bars with live status narration, skeleton previews of what's coming, or subtle ambient motion that signals "working," not just a percentage. Rethink what reduces perceived wait time, not just what looks nicer. |
+| **Results summary** | Form score, tips, strengths, shot event timeline, download | Dense stat display — consider card hierarchy (what's the one number the user's eye should land on first?), whether shot events benefit from a timeline/visual treatment vs. a list, and how the reveal from `rendering` → `completed` transitions (should not be a hard cut). |
+| **Error screens** | 25+ code mappings, auto-retry countdown | Should read as calm and solvable, not alarming — consistent iconography/tone across all 25+ codes rather than each feeling ad hoc. Consider how retry (now correctly wired end-to-end per the verification sweep) is surfaced so the user trusts it's actually working, not just clicking into a void. |
+| **History page** | Paginated list with status badges | Modern list views use hover-elevate affordance, meaningful empty states (a brand-new user's empty history page is a real screen someone will see — design it, don't leave it blank), and clear visual distinction between complete/failed/in-progress beyond just badge color. |
+| **Analysis detail (state-aware)** | Just built — server-rendered shell + client poller | This is new enough to design well from the start rather than retrofit. Consider how the transition from "in progress" to "complete" renders in place (smooth reveal) rather than a jarring content swap. |
+| **Account page** | Currently minimal / still being verified separately | Once the auth audit from the verification sweep reports back, this needs real design attention — don't design it blind before that lands. |
+| **Dashboard home** | Recent analyses overview | Consider whether this is currently just a smaller history list or has distinct purpose (quick stats, continue-where-you-left-off surfacing for in-progress jobs). |
+
+For each row, deliver: the rethought concept, what specifically changes (layout, motion,
+information hierarchy — call out which), and explicit confirmation that no invariant from
+Section 7 of the canonical spec is affected by the change.
+
+**Checkpoint: report all proposals together and wait for approval before any implementation.**
+Approve/reject per-row is expected — this table is not all-or-nothing.
+
+---
+
+## Phase 4 — Implementation (only after Phase 2 and 3 are approved)
+
+- One component/feature at a time, in priority order to be set at approval time (suggest:
+  analyzing/rendering and error screens first, since those are the highest-anxiety, highest
+  user-facing-trust moments; landing page last, since it's lowest-risk to get wrong).
+- Every new transition/animation must have a `prefers-reduced-motion` fallback from the start,
+  not added after.
+- Animate `transform`/`opacity` only where possible — avoid animating layout-triggering
+  properties (width/height/top/left) for performance.
+- After each component: confirm via the existing manual acceptance checks (from the routing
+  prompt) that no functional behavior regressed — refresh mid-flow, back/forward navigation,
+  retry-after-failure — still all need to work exactly as verified, just with better motion
+  around them.
+- Report progress component-by-component, not as one final batch — this lets fixes get reviewed
+  incrementally rather than as one large, hard-to-review diff.
+
+---
+
+## Report format throughout
+
+Same discipline as every other pass in this project: CONFIRMED/DRIFTED/MISSING for discovery,
+file:line citations, raw findings, explicit checkpoints before implementation — propose, wait,
+then build...all]/route.ts`
 - **UI:** `components/auth/LoginForm.tsx`, `app/(public)/login/page.tsx`
 
 ### Role-Based Access Control

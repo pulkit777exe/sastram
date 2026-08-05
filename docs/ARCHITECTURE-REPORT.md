@@ -195,7 +195,7 @@ if (!role) return fail('AUTHORIZATION_ERROR', 'Not a member');
 - `/api/ai/thread-dna` — Generate thread DNA analysis
 - `/api/ai/resolution-score` — Calculate resolution score
 - `/api/jobs` — QStash webhook callback (background jobs)
-- `/api/threads/[threadId]/ai-reply` — @sai inline response
+- `/api/threads/[threadId]/ai-reply` — @sai inline response (fallback enqueue; primary path is `ai-reply/stream` SSE)
 
 ### Core Resources (5)
 - `/api/threads` — Thread CRUD
@@ -288,7 +288,7 @@ User query → POST /api/ai/forum-search
 | `conflict-detection` | New message arrives | Thread.isOutdated + Notification |
 | `daily-digest` | Daily cron | Email via Resend |
 | `ai-insight-notifications` | Score change / outdated / conflict | Notification |
-| `ai-inline` | @sai mention in message | Message (streamed via QStash job) |
+| `ai-inline` | @sai mention in message | Message (streamed via SSE to the poster; QStash job as fallback) |
 | `staleness-check` | Daily cron | Thread.isOutdated |
 | `email` | Various | Email delivery |
 

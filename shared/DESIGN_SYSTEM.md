@@ -71,7 +71,6 @@ maps to one of these tokens. Brand identity must always resolve to `#3736fc`.
 | Serif (headings / display) | Instrument Serif | `.font-serif-heading` → `var(--font-instrument-serif)` |
 
 **Scale in use across the codebase:**
-- `text-[10px]` / `text-[11px]` — micro labels, caps badges
 - `text-xs` (12px) — meta, timestamps, tag labels
 - `text-sm` (14px) — body, list items
 - `text-base` (16px) — default prose
@@ -91,7 +90,7 @@ maps to one of these tokens. Brand identity must always resolve to `#3736fc`.
 |-------|-------|---------|---------|
 | `--radius` | `0.75rem` (12px) | `rounded-xl` | Cards, modals, primary containers |
 | `--radius-sm` | `0.5rem` (8px) | `rounded-lg` | Buttons, inputs, small chips |
-| `--radius-md` | `0.625rem` (10px) | `rounded-[10px]` | Mid-sized containers |
+| `--radius-md` | `0.625rem` (10px) | `rounded-lg` | Mid-sized containers |
 | `--radius-xl` | `1rem` (16px) | `rounded-2xl` | Large panels, hero elements |
 | `rounded-full` | 9999px | — | Pills, avatars, badges |
 
@@ -168,7 +167,7 @@ Key variants observed in codebase:
 
 **Pattern for brand badges:**
 ```tsx
-<span className="bg-brand/10 text-brand text-[10px] font-bold px-2 py-0.5 rounded-full border border-brand/20">
+<span className="bg-brand/10 text-brand text-xs font-bold px-2 py-0.5 rounded-full border border-brand/20">
   LABEL
 </span>
 ```

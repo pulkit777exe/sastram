@@ -381,7 +381,7 @@ The central entity. Stores AI metadata directly:
 | Message attachments | `app/api/messages/route.ts` (multipart upload) |
 | @mentions | `modules/messages/actions/mentions.ts` (create, search, notify) |
 | Mention autocomplete | `components/chat/mention-suggest.tsx` (debounced search) |
-| @sai inline responses | `modules/messages/actions/ai-inline.ts` → QStash job |
+| @sai inline responses | `modules/messages/actions/ai-inline.ts` → SSE stream to poster (primary) or QStash job (fallback) |
 | AI inline pending status | `thread-live-wrapper.tsx` (2-min timeout, pending/failed tracking) |
 | "Edited" label | `message-list.tsx` line 304-306 |
 | Deleted placeholder | `message-list.tsx` lines 230-248 ("This message was deleted") |
@@ -422,7 +422,7 @@ The central entity. Stores AI metadata directly:
 | Resolution score | 0-100 with confidence decay over time |
 | Conflict detection | AI identifies contradictory facts in threads |
 | Thread summary (LangChain) | Map-reduce: split → parallel summarize → combine |
-| AI inline (@sai) | User types @sai in message → QStash job → streaming response (best-effort, graceful placeholder on failure) |
+| AI inline (@sai) | User types @sai in message → SSE stream (`ai-reply/stream`, instant tokens for the poster) with QStash-job fallback → polling delivery for other viewers (best-effort, graceful placeholder on failure) |
 | Staleness detection | 30-day threshold, checks if thread needs updating |
 | AI insight notifications | Score change ≥20pts or conflict detected → notify subscribers |
 
@@ -440,7 +440,7 @@ The central entity. Stores AI metadata directly:
 | Conflict detection | New message arrives | Notification to subscribers |
 | Daily digest | Daily cron (3 AM UTC) | Email via Resend |
 | AI insight notifications | Score change / conflict | Notification table |
-| AI inline | @sai in message | Streaming AI response |
+| AI inline | @sai in message (fallback path; primary is client SSE stream) | Streaming AI response |
 | Staleness check | Daily cron | `Thread.isOutdated` flag |
 | Email | Various | Resend send |
 
