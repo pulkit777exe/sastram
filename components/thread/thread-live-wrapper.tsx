@@ -15,6 +15,7 @@ import { toasts } from '@/lib/utils/toast';
 import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
+import { ReadingProgress } from '@/components/interior/reading-progress';
 import { ChevronDown, Loader2, Pin } from 'lucide-react';
 
 function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[]; hasNew: boolean } {
@@ -773,9 +774,15 @@ export function ThreadLiveWrapper({
       )}
 
       {/* Scrollable messages — flex-1 */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-6 py-4"
+      <div className="flex-1 flex flex-col min-h-0">
+        <ReadingProgress
+          scroller={scrollContainerRef}
+          steps={30}
+          className="px-6 pt-2"
+        />
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto px-6 py-4"
         role="log"
         aria-live="polite"
         aria-label="Thread messages"
@@ -866,6 +873,7 @@ export function ThreadLiveWrapper({
               />
             </ErrorBoundary>
           )}
+        </div>
         </div>
       </div>
 

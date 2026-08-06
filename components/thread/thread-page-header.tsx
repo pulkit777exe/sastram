@@ -5,6 +5,7 @@ import { ROUTES } from '@/lib/config/routes';
 import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
 import { InviteFriendButton } from '@/components/thread/invite-friend-button';
 import { Badge } from '@/components/ui/badge';
+import { CopyButton } from '@/components/interior/copy-button';
 
 interface ThreadPageHeaderProps {
   title: string;
@@ -33,7 +34,13 @@ export function ThreadPageHeader({
           <Hash size={16} strokeWidth={2.5} />
         </div>
         <div className="flex flex-col gap-0.5 min-w-0">
-          <span className="text-sm font-semibold text-foreground tracking-tight truncate">{title}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-foreground tracking-tight truncate">{title}</span>
+            <CopyButton
+              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/threads/${slug}`}
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+          </div>
           <LiveBadge />
         </div>
       </div>

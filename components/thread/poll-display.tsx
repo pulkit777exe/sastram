@@ -1,13 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { voteOnPollAction, getUserVoteAction, getPollResultsAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
-import { CheckCircle2, BarChart3 } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+import { BarChart3 } from 'lucide-react';
 import { TimeAgo } from '@/components/ui/TimeAgo';
-import type { PollResults } from '@/modules/polls/types';
+import { PollResults } from '@/components/interior/poll-results';
+import type { PollResults as PollResultsType } from '@/modules/polls/types';
 
 interface PollDisplayProps {
   poll: {
@@ -19,7 +18,7 @@ interface PollDisplayProps {
     expiresAt: Date | null;
   };
   /** Fresh results from parent's poll tick — skips internal fetch when provided. */
-  pollResults?: PollResults | null;
+  pollResults?: PollResultsType | null;
   /** Increment to trigger a re-fetch of results. */
   refreshKey?: number;
 }
@@ -43,7 +42,7 @@ function PollSkeleton({ optionCount }: { optionCount: number }) {
 export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
-  const [results, setResults] = useState<PollResults | null>(null);
+  const [results, setResults] = useState<PollResultsType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
 
@@ -58,7 +57,6 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
   const loadPollData = useCallback(async () => {
     if (!mountedRef.current) return;
 
-    // If parent provides fresh results (from poll tick), use them directly
     if (pollResults) {
       setResults(pollResults);
       setIsLoading(false);
@@ -68,7 +66,6 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     setIsLoading(true);
 
     try {
-      // Both requests fire in parallel
       const [voteResult, resultsResult] = await Promise.all([
         getUserVoteAction(poll.id),
         getPollResultsAction(poll.id),
@@ -96,8 +93,6 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     }
   }, [poll.id, pollResults]);
 
-  // loadPollData is now stable (useCallback with [poll.id])
-  // so this effect only runs once per poll.id change or refreshKey bump
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -108,8 +103,11 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     };
   }, [loadPollData, refreshKey]);
 
-  const handleVote = async (optionIndex: number) => {
+  const handleVote = async (optionId: string) => {
     if (hasVoted || isVoting) return;
+
+    const optionIndex = poll.options.findIndex((_, i) => `${poll.id}-opt-${i}` === optionId);
+    if (optionIndex === -1) return;
 
     setIsVoting(true);
     try {
@@ -121,9 +119,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
       } else {
         setSelectedOption(optionIndex);
         setHasVoted(true);
-        // "saved" is misleading for a vote action
         toasts.success('Vote recorded!');
-        // Reload results to show updated counts
         await loadPollData();
       }
     } catch {
@@ -146,81 +142,37 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     return <PollSkeleton optionCount={poll.options.length} />;
   }
 
+  const pollOptions = poll.options.map((option, index) => ({
+    id: `${poll.id}-opt-${index}`,
+    label: option,
+    votes: results?.results.find((r) => r.index === index)?.votes ?? 0,
+  }));
+
+  const totalVotes = pollOptions.reduce((sum, opt) => sum + opt.votes, 0);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm max-w-lg"
-    >
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm max-w-lg">
       <div className="flex items-start justify-between">
         <h3 className="text-sm font-semibold text-foreground tracking-tight">{poll.question}</h3>
         {showResults && <BarChart3 className="h-4 w-4 text-muted-foreground shrink-0" />}
       </div>
 
-      <div className="space-y-2.5" role="radiogroup" aria-label={poll.question}>
-        {poll.options.map((option, index) => {
-          const result = results?.results.find((r) => r.index === index);
-          const percentage = result?.percentage ?? 0;
-          const isSelected = selectedOption === index;
-
-          return (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.04 }}
-            >
-              {showResults ? (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-foreground font-medium">
-                      {option}
-                      {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
-                    </span>
-                    <span className="text-muted-foreground font-(--font-dm-mono) text-xs tabular-nums">
-                      {result?.votes ?? 0} votes ({percentage.toFixed(1)}%)
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${percentage}%` }}
-                      transition={{ duration: 0.5, delay: index * 0.08 }}
-                      className={cn(
-                        'h-full rounded-full',
-                        isSelected ? 'bg-brand' : 'bg-foreground/20'
-                      )}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleVote(index)}
-                  disabled={isVoting || hasVoted || !poll.isActive || isExpired}
-                  role="radio"
-                  aria-checked={isSelected}
-                  aria-label={`Vote for: ${option}`}
-                  className={cn(
-                    'w-full text-left px-3.5 py-2 rounded-lg border text-sm font-medium transition-all duration-200',
-                    isSelected
-                      ? 'bg-brand/10 border-brand text-brand'
-                      : 'bg-transparent border-border/60 text-foreground hover:border-border hover:bg-muted/10 disabled:opacity-50'
-                  )}
-                >
-                  {option}
-                </button>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
+      <PollResults
+        label={poll.question}
+        options={pollOptions}
+        value={showResults && selectedOption !== null ? `${poll.id}-opt-${selectedOption}` : null}
+        onVote={isVoting || hasVoted || !poll.isActive || isExpired ? undefined : handleVote}
+      />
 
       {poll.expiresAt && (
         <p className="text-xs font-(--font-dm-mono) uppercase tracking-wider text-muted-foreground">
           Poll expires <TimeAgo date={poll.expiresAt} />
         </p>
       )}
-    </motion.div>
+
+      <p className="text-xs text-muted-foreground">
+        {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
+      </p>
+    </div>
   );
 }
