@@ -12,7 +12,7 @@
   --dark-secondary: #131316;
   --text-primary-hover: #27272a;
   --text-secondary-hover: #4f4eff;
-  --radius: 0.75rem;
+  --radius: 0.65rem;
 
   /* Brand Color — unchanged, this is Sastram's identity */
   --brand: #3736fc;
@@ -251,6 +251,7 @@
 
   html {
     @apply antialiased;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -258,6 +259,24 @@
     transition:
       background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
       color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--brand) 24%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--brand) 75%, white);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--muted-foreground) 24%, transparent);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
   }
 
   .font-serif-heading {
@@ -296,6 +315,56 @@
       animation-duration: 0.01ms !important;
     }
   }
+}
+
+.linear-surface {
+  background: linear-gradient(145deg, color-mix(in oklab, var(--card) 94%, white), var(--card));
+  box-shadow: var(--shadow-sm);
+}
+
+.landing-grid {
+  background-image: linear-gradient(color-mix(in oklab, var(--border) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--border) 42%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.dashboard-page {
+  color: var(--foreground);
+}
+
+.page-heading {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.page-heading h1 {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+}
+
+.page-heading > p:last-child {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+.page-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.dashboard-page > .grid > h2,
+.dashboard-page section > h2 {
+  letter-spacing: -0.02em;
 }
 
 /* style elevation utilities — optional, additive.
