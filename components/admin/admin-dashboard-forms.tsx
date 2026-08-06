@@ -3,7 +3,6 @@
 import { use, useTransition } from 'react';
 import Link from 'next/link';
 import { Flag, PlusCircle, TrendingUp } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,28 +45,28 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
       <header className="rounded-4xl border border-border admin-header-gradient p-8 text-white shadow-linear-xl">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>
+            <p className="page-eyebrow"><Flag className="h-3.5 w-3.5" /> Admin</p>
             <h1 className="mt-3 text-3xl font-semibold">Create and moderate</h1>
             <p className="mt-2 max-w-2xl text-sm text-white/70">
               Publish curated threads and keep conversations clean. Community containers were
               removed; permissions now flow from thread creators and global moderator roles.
             </p>
           </div>
-<div className="flex gap-3">
+          <div className="flex gap-3">
             <Link href="/dashboard/admin/reports">
-              <Button className="bg-red-600 hover:bg-red-500 text-white">
+              <Button className="bg-red-600 hover:bg-red-500 text-white rounded-xl">
                 <Flag className="w-4 h-4 mr-2" />
                 View Reports
               </Button>
             </Link>
             <Link href="/dashboard/admin/moderation">
-              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
+              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10 rounded-xl">
                 <Flag className="w-4 h-4 mr-2" />
                 Moderation
               </Button>
             </Link>
             <Link href="/dashboard/admin/spend">
-              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
+              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10 rounded-xl">
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Spend Telemetry
               </Button>
@@ -77,85 +76,81 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
       </header>
 
       <section>
-        <Card className="rounded-3xl border-border">
-          <CardHeader>
-            <CardTitle>Create a thread</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Threads are the top-level discussion surface.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form action={handleCreateThread} className="space-y-4">
+        <div className="rounded-xl border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-1">Create a thread</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Threads are the top-level discussion surface.
+          </p>
+          <form action={handleCreateThread} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="thread-title">Title</Label>
+              <Input
+                id="thread-title"
+                name="title"
+                placeholder="Photon propulsion L2 sync"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="thread-description">Description</Label>
+              <Textarea
+                id="thread-description"
+                name="description"
+                placeholder="Gather specs, blockers, open questions."
+              />
+            </div>
+            <div className="border rounded-xl p-4 space-y-3 bg-muted/50">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-medium text-foreground">
+                  Add a poll (optional)
+                </Label>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="thread-title">Title</Label>
+                <Label htmlFor="poll-question">Poll Question</Label>
                 <Input
-                  id="thread-title"
-                  name="title"
-                  placeholder="Photon propulsion L2 sync"
-                  required
+                  id="poll-question"
+                  name="pollQuestion"
+                  placeholder="What is your preferred approach?"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="thread-description">Description</Label>
+                <Label>Options (one per line, at least 2)</Label>
                 <Textarea
-                  id="thread-description"
-                  name="description"
-                  placeholder="Gather specs, blockers, open questions."
+                  id="poll-options"
+                  name="pollOptions"
+                  placeholder="Option A&#10;Option B&#10;Option C"
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Separate each option with a new line.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="poll-expires">Expires at (optional)</Label>
+                <Input
+                  id="poll-expires"
+                  name="pollExpiresAt"
+                  type="datetime-local"
                 />
               </div>
-              <div className="border rounded-2xl p-4 space-y-3 bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <PlusCircle className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium text-foreground">
-                    Add a poll (optional)
-                  </Label>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="poll-question">Poll Question</Label>
-                  <Input
-                    id="poll-question"
-                    name="pollQuestion"
-                    placeholder="What is your preferred approach?"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Options (one per line, at least 2)</Label>
-                  <Textarea
-                    id="poll-options"
-                    name="pollOptions"
-                    placeholder="Option A&#10;Option B&#10;Option C"
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Separate each option with a new line.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="poll-expires">Expires at (optional)</Label>
-                  <Input
-                    id="poll-expires"
-                    name="pollExpiresAt"
-                    type="datetime-local"
-                  />
-                </div>
-              </div>
+            </div>
 
-              <Button type="submit" className="w-full rounded-2xl">
-                Publish thread
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            <Button type="submit" className="w-full rounded-xl">
+              Publish thread
+            </Button>
+          </form>
+        </div>
       </section>
 
-      <section className="rounded-3xl border border-border bg-white p-6 shadow-linear-sm">
+      <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Threads</h2>
+            <h2 className="text-sm font-semibold text-foreground">Threads</h2>
             <p className="text-sm text-muted-foreground">Click slug to open the live view.</p>
           </div>
         </div>
-        <div className="mt-6 overflow-x-auto">
+        <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>

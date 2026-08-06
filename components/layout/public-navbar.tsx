@@ -35,20 +35,20 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
   const userInitial = user?.name?.[0] || user?.email?.[0] || 'U';
 
   return (
-    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-background/75 backdrop-blur-xl border-b border-border/70">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2" aria-label="Sastram home">
           <Logo brand className="h-6 w-6 shrink-0" />
           <span className="font-semibold tracking-tight text-foreground">Sastram</span>
         </Link>
 
         {/* Desktop nav links */}
-        <nav className="hidden md:flex items-center gap-7">
+        <nav className="hidden md:flex items-center gap-1 rounded-full border border-border/70 bg-muted/40 p-1">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
             >
               {link.label}
             </Link>
@@ -138,7 +138,7 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
               </Link>
               <Link
                 href="/login"
-                className="hidden md:inline-flex text-sm font-medium px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
+                className="hidden md:inline-flex text-sm font-medium px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-all shadow-linear-sm"
               >
                 Get started
               </Link>

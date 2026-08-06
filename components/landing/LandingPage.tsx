@@ -16,6 +16,7 @@ import { PublicFooter } from '@/components/layout/public-footer';
 import { SerifHeading } from '@/components/layout/serif-heading';
 import { FadeIn } from '@/components/landing/FadeIn';
 import { ThemeVideo } from '@/components/landing/LandingMedia';
+import { TextReveal } from '@/components/interior/text-reveal';
 
 interface User {
   id: string;
@@ -204,7 +205,7 @@ function DashboardPreview() {
 function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
   if (type === 'threads') {
     return (
-      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-brand/20 via-brand/5 to-emerald-500/10 p-6">
+      <div className="relative w-full aspect-4/3 rounded-2xl overflow-hidden bg-linear-to-br from-brand/20 via-brand/5 to-emerald-500/10 p-6">
         <div className="absolute inset-0 opacity-30">
           {Array.from({ length: 12 }).map((_, i) => (
             <div
@@ -241,7 +242,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
 
   if (type === 'ai') {
     return (
-      <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-950 p-5 font-mono text-xs leading-relaxed">
+      <div className="w-full aspect-4/3 rounded-2xl overflow-hidden bg-zinc-950 p-5 font-mono text-xs leading-relaxed">
         <div className="flex items-center gap-2 mb-4">
           <div className="flex gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-500/80" />
@@ -283,7 +284,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
   }
 
   return (
-    <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden border border-border bg-background p-5">
+    <div className="w-full aspect-4/3 rounded-2xl overflow-hidden border border-border bg-background p-5">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
         Sai Search Results
       </p>
@@ -323,9 +324,11 @@ export function LandingPage({ user }: LandingPageProps) {
 
       <PublicNavbar user={user} />
 
-      <main>
+      <main className="relative overflow-hidden">
         {/* Hero */}
-        <section className="relative pt-20 pb-8 px-6 overflow-hidden">
+        <section className="relative pt-24 pb-12 px-6 overflow-hidden">
+          <div className="landing-grid absolute inset-0 -z-10 opacity-60" />
+          <div className="absolute left-1/2 top-0 -z-10 h-160 w-160 -translate-x-1/2 rounded-full bg-brand/10 blur-3xl" />
           <MosaicTile className="w-16 h-16 -left-4 top-32 hidden lg:block" />
           <MosaicTile className="w-12 h-12 left-8 top-52 hidden lg:block opacity-40" />
           <MosaicTile className="w-20 h-20 -right-2 top-28 hidden lg:block" />
@@ -333,12 +336,13 @@ export function LandingPage({ user }: LandingPageProps) {
 
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <FadeIn>
-              <h1 className="text-4xl md:text-[3.5rem] leading-[1.08] tracking-tight text-foreground mb-5">
-                <SerifHeading>Discussions, built for the Sai era</SerifHeading>
+              <p className="mb-5 text-xs font-semibold uppercase tracking-[0.22em] text-brand">The intelligent discussion workspace</p>
+              <h1 className="text-5xl md:text-[4.75rem] leading-[1.02] tracking-[-0.04em] text-foreground mb-6">
+                <TextReveal text="Discussions, built for the Sai era" by="word" />
               </h1>
             </FadeIn>
             <FadeIn delay={0.08}>
-              <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
+              <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-9 leading-relaxed">
                 The discussion platform where real-time threads, Sai synthesis, and smart moderation
                 work together — not bolted on.
               </p>
@@ -346,7 +350,7 @@ export function LandingPage({ user }: LandingPageProps) {
             <FadeIn delay={0.16}>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-all text-sm"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary/90 transition-all text-sm shadow-linear-md"
               >
                 Start for free
                 <ArrowRight size={15} />
@@ -514,7 +518,7 @@ export function LandingPage({ user }: LandingPageProps) {
                 </div>
               </FadeIn>
               <FadeIn delay={0.12}>
-                <div className="relative p-8 rounded-2xl bg-gradient-to-br from-brand to-brand/80 text-white overflow-hidden min-h-40 flex flex-col justify-end">
+                <div className="relative p-8 rounded-2xl bg-linear-to-br from-brand to-brand/80 text-white overflow-hidden min-h-40 flex flex-col justify-end">
                   <div className="absolute inset-0 opacity-20">
                     <div className="absolute top-4 right-4 w-32 h-32 rounded-full bg-background/20" />
                     <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-background/10 -translate-x-1/4 translate-y-1/4" />
