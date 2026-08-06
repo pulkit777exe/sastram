@@ -217,14 +217,14 @@ export function Sidebar({
 
   return (
     <div
-      className={`relative h-full flex flex-col bg-card border border-border rounded-2xl shadow-linear-md transition-all duration-250 ease-in-out overflow-hidden ${
+        className={`relative h-full flex flex-col bg-card/80 border border-border/80 rounded-xl shadow-linear-xs transition-all duration-250 ease-in-out overflow-hidden ${
         collapsed ? 'w-0 border-0 p-0' : 'w-55'
       }`}
     >
       {!collapsed && (
         <>
           <div className="px-4 pt-4 pb-2">
-            <h2 className="text-sm font-semibold text-foreground tracking-tight">Sai</h2>
+            <h2 className="text-sm font-semibold text-foreground tracking-tight">Agent</h2>
         </div>
 
           <div className="px-3 space-y-0.5">
@@ -233,7 +233,7 @@ export function Sidebar({
               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
             >
               <Plus size={14} />
-              New Search
+              New chat
           </button>
 
             <button
