@@ -9,6 +9,7 @@ import { toasts } from '@/lib/utils/toast';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { validatePassword } from '@/lib/utils/password-validation';
 import { SerifHeading } from '@/components/layout/serif-heading';
+import { PasswordStrength } from '@/components/interior/password-strength';
 
 export default function ForgotPasswordResetPage() {
   const router = useRouter();
@@ -106,6 +107,9 @@ export default function ForgotPasswordResetPage() {
             required
             className="h-11 rounded-xl"
           />
+          {password.length > 0 && (
+            <PasswordStrength value={password} showRules className="mt-2" />
+          )}
         </div>
 
         <div className="space-y-2">
@@ -119,15 +123,6 @@ export default function ForgotPasswordResetPage() {
             required
             className="h-11 rounded-xl"
           />
-        </div>
-
-        <div className="rounded-xl border border-border p-3 text-xs space-y-1 text-muted-foreground">
-          <p className={validation.minLength ? 'text-emerald-500' : ''}>Minimum 8 characters</p>
-          <p className={validation.includesNumber ? 'text-emerald-500' : ''}>At least one number</p>
-          <p className={validation.includesSpecial ? 'text-emerald-500' : ''}>
-            At least one special character
-          </p>
-          <p className={validation.matches ? 'text-emerald-500' : ''}>Passwords match</p>
         </div>
 
         <Button

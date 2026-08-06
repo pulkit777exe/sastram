@@ -17,6 +17,9 @@ import { GithubIcon } from '@/public/icons/github';
 import { ChromeIcon } from '@/public/icons/google';
 import { toasts } from '@/lib/utils/toast';
 import { SerifHeading } from '@/components/layout/serif-heading';
+import { OtpInput } from '@/components/interior/otp-input';
+import { PasswordStrength } from '@/components/interior/password-strength';
+import { LoadingButton } from '@/components/interior/loading-button';
 
 type AuthMode = 'signin' | 'signup' | 'email-otp' | 'otp-verify';
 
@@ -45,7 +48,7 @@ function UserAuthForm({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState('');
   const [loadingState, setLoadingState] = useState<'email' | 'github' | 'google' | 'otp' | null>(
     null
   );
@@ -278,54 +281,21 @@ function UserAuthForm({
     }
   };
 
-  const handleOTPChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      const pastedValues = value.slice(0, 6).split('');
-      const newOtp = [...otp];
-      pastedValues.forEach((char, i) => {
-        if (index + i < 6) {
-          newOtp[index + i] = char;
-        }
-      });
-      setOtp(newOtp);
-      const nextIndex = Math.min(index + pastedValues.length, 5);
-      inputRefs.current[nextIndex]?.focus();
-      const pastedOtp = newOtp.join('');
-      if (pastedOtp.length === 6) {
-        void verifyOtpCode(pastedOtp);
-      }
-      return;
-    }
-
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    const currentOtp = newOtp.join('');
-    if (currentOtp.length === 6) {
-      void verifyOtpCode(currentOtp);
-    }
-  };
-
-  const handleOTPKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+  const handleOTPChange = (value: string) => {
+    setOtp(value);
+    if (value.length === 6) {
+      void verifyOtpCode(value);
     }
   };
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    const otpCode = otp.join('');
-    if (otpCode.length !== 6) {
+    if (otp.length !== 6) {
       setError('Please enter the complete 6-digit code');
       return;
     }
 
-    await verifyOtpCode(otpCode);
+    await verifyOtpCode(otp);
   };
 
   const handleResendOTP = async () => {
@@ -347,8 +317,11 @@ function UserAuthForm({
       }
 
       setCountdown(60);
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
+      setOtp('');
+      setTimeout(() => {
+        const firstInput = document.querySelector('[data-otp-input]') as HTMLInputElement | null;
+        firstInput?.focus();
+      }, 100);
     } catch {
       setError('Failed to resend code. Please try again.');
     } finally {
@@ -450,25 +423,15 @@ function UserAuthForm({
               <Label className="text-muted-foreground text-center block text-sm">
                 Enter 6-digit code
               </Label>
-              <div className="flex justify-center gap-2 sm:gap-3">
-                {otp.map((digit, index) => (
-                  <Input
-                    key={index}
-                    ref={(el) => {
-                      inputRefs.current[index] = el;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={6}
-                    aria-label={`Digit ${index + 1} of verification code`}
-                    value={digit}
-                    onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
-                    onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                    disabled={loadingState !== null}
-                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
-                  />
-                ))}
+              <div className="flex justify-center">
+                <OtpInput
+                  length={6}
+                  defaultValue={otp}
+                  onChange={handleOTPChange}
+                  disabled={loadingState !== null}
+                  autoFocus
+                  label="Verification code"
+                />
               </div>
             </div>
 
@@ -480,7 +443,7 @@ function UserAuthForm({
 
             <Button
               type="submit"
-              disabled={loadingState !== null || otp.join('').length !== 6}
+              disabled={loadingState !== null || otp.length !== 6}
               className={primaryButtonStyles + ' w-full'}
             >
               {loadingState === 'otp' ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -505,7 +468,7 @@ function UserAuthForm({
                   type="button"
                   onClick={() => {
                     setMode('email-otp');
-                    setOtp(['', '', '', '', '', '']);
+                    setOtp('');
                     setError(null);
                   }}
                   className="text-muted-foreground hover:text-foreground transition-colors text-xs"
@@ -593,6 +556,9 @@ function UserAuthForm({
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
+            {mode === 'signup' && password.length > 0 && (
+              <PasswordStrength value={password} showRules={false} className="mt-1" />
+            )}
             {mode === 'signin' && (
               <div className="flex justify-end">
                 <button

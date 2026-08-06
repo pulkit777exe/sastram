@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { toasts } from '@/lib/utils/toast';
 import { validatePassword } from '@/lib/utils/password-validation';
+import { OtpInput } from '@/components/interior/otp-input';
+import { PasswordStrength } from '@/components/interior/password-strength';
 
 interface ForgotPasswordModalProps {
   open: boolean;
@@ -117,15 +119,10 @@ function ForgotPasswordOtpForm({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(60);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [, startTransition] = useTransition();
-
-  useEffect(() => {
-    inputRefs.current[0]?.focus();
-  }, []);
 
   useEffect(() => {
     if (countdown <= 0) {
@@ -185,39 +182,10 @@ function ForgotPasswordOtpForm({
     }
   };
 
-  const handleOtpChange = (index: number, rawValue: string) => {
-    const value = rawValue.replace(/[^0-9]/g, '');
-
-    if (value.length > 1) {
-      const pastedValues = value.slice(0, 6).split('');
-      const nextOtp = [...otp];
-
-      pastedValues.forEach((char, charIndex) => {
-        if (index + charIndex < 6) {
-          nextOtp[index + charIndex] = char;
-        }
-      });
-
-      setOtp(nextOtp);
-      inputRefs.current[Math.min(5, index + pastedValues.length)]?.focus();
-
-      if (nextOtp.join('').length === 6) {
-        void verifyOtp(nextOtp.join(''));
-      }
-
-      return;
-    }
-
-    const nextOtp = [...otp];
-    nextOtp[index] = value;
-    setOtp(nextOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (nextOtp.join('').length === 6) {
-      void verifyOtp(nextOtp.join(''));
+  const handleOtpChange = (value: string) => {
+    setOtp(value);
+    if (value.length === 6) {
+      void verifyOtp(value);
     }
   };
 
@@ -243,8 +211,7 @@ function ForgotPasswordOtpForm({
         return;
       }
 
-      setOtp(['', '', '', '', '']);
-      inputRefs.current[0]?.focus();
+      setOtp('');
       setCountdown(60);
       toasts.sent();
       setIsSubmitting(false);
@@ -265,27 +232,15 @@ function ForgotPasswordOtpForm({
       </DialogHeader>
 
       <div className="py-4 space-y-4">
-        <div className="flex justify-center gap-2">
-          {otp.map((digit, index) => (
-            <Input
-              key={index}
-              ref={(input) => {
-                inputRefs.current[index] = input;
-              }}
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              className="w-10 text-center"
-              value={digit}
-              disabled={isSubmitting}
-              onChange={(event) => handleOtpChange(index, event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Backspace' && !otp[index] && index > 0) {
-                  inputRefs.current[index - 1]?.focus();
-                }
-              }}
-            />
-          ))}
+        <div className="flex justify-center">
+          <OtpInput
+            length={6}
+            defaultValue={otp}
+            onChange={handleOtpChange}
+            disabled={isSubmitting}
+            autoFocus
+            label="Reset code"
+          />
         </div>
 
         <div className="flex gap-2">
@@ -300,8 +255,8 @@ function ForgotPasswordOtpForm({
           </Button>
           <Button
             type="button"
-            onClick={() => void verifyOtp(otp.join(''))}
-            disabled={isSubmitting || otp.join('').length !== 6}
+            onClick={() => void verifyOtp(otp)}
+            disabled={isSubmitting || otp.length !== 6}
             className="flex-1"
           >
             {isSubmitting ? 'Verifying...' : 'Verify Code'}
@@ -406,6 +361,9 @@ function ForgotPasswordResetForm({
             disabled={isSubmitting}
             required
           />
+          {password.length > 0 && (
+            <PasswordStrength value={password} showRules className="mt-2" />
+          )}
         </div>
 
         <div className="space-y-2">
@@ -418,15 +376,6 @@ function ForgotPasswordResetForm({
             disabled={isSubmitting}
             required
           />
-        </div>
-
-        <div className="rounded-md border border-border p-3 text-xs space-y-1 text-muted-foreground">
-          <p className={validation.minLength ? 'text-emerald-500' : ''}>Minimum 8 characters</p>
-          <p className={validation.includesNumber ? 'text-emerald-500' : ''}>At least one number</p>
-          <p className={validation.includesSpecial ? 'text-emerald-500' : ''}>
-            At least one special character
-          </p>
-          <p className={validation.matches ? 'text-emerald-500' : ''}>Passwords match</p>
         </div>
 
         <div className="flex gap-2">

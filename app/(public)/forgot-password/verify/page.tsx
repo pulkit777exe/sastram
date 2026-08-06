@@ -1,26 +1,21 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toasts } from '@/lib/utils/toast';
 import { SerifHeading } from '@/components/layout/serif-heading';
 import { clientLogger } from '@/lib/utils/client-logger';
+import { OtpInput } from '@/components/interior/otp-input';
 
 export default function ForgotPasswordVerifyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
 
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  useEffect(() => {
-    inputRefs.current[0]?.focus();
-  }, []);
 
   useEffect(() => {
     if (countdown <= 0) {
@@ -73,39 +68,10 @@ export default function ForgotPasswordVerifyPage() {
     }
   };
 
-  const handleOtpChange = (index: number, rawValue: string) => {
-    const value = rawValue.replace(/[^0-9]/g, '');
-
-    if (value.length > 1) {
-      const pastedValues = value.slice(0, 6).split('');
-      const nextOtp = [...otp];
-
-      pastedValues.forEach((char, charIndex) => {
-        if (index + charIndex < 6) {
-          nextOtp[index + charIndex] = char;
-        }
-      });
-
-      setOtp(nextOtp);
-      inputRefs.current[Math.min(5, index + pastedValues.length)]?.focus();
-
-      if (nextOtp.join('').length === 6) {
-        void verifyOtp(nextOtp.join(''));
-      }
-
-      return;
-    }
-
-    const nextOtp = [...otp];
-    nextOtp[index] = value;
-    setOtp(nextOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (nextOtp.join('').length === 6) {
-      void verifyOtp(nextOtp.join(''));
+  const handleOtpChange = (value: string) => {
+    setOtp(value);
+    if (value.length === 6) {
+      void verifyOtp(value);
     }
   };
 
@@ -131,8 +97,7 @@ export default function ForgotPasswordVerifyPage() {
         return;
       }
 
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
+      setOtp('');
       setCountdown(60);
       toasts.sent();
       setIsSubmitting(false);
@@ -155,35 +120,22 @@ export default function ForgotPasswordVerifyPage() {
           </p>
         </div>
 
-        <div className="flex justify-center gap-2">
-          {otp.map((digit, index) => (
-            <Input
-              key={index}
-              ref={(input) => {
-                inputRefs.current[index] = input;
-              }}
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              aria-label={`Digit ${index + 1} of verification code`}
-              className="w-10 h-12 text-center rounded-xl"
-              value={digit}
-              disabled={isSubmitting}
-              onChange={(event) => handleOtpChange(index, event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Backspace' && !otp[index] && index > 0) {
-                  inputRefs.current[index - 1]?.focus();
-                }
-              }}
-            />
-          ))}
+        <div className="flex justify-center">
+          <OtpInput
+            length={6}
+            defaultValue={otp}
+            onChange={handleOtpChange}
+            disabled={isSubmitting}
+            autoFocus
+            label="Reset code"
+          />
         </div>
 
         <Button
           type="button"
-          onClick={() => void verifyOtp(otp.join(''))}
+          onClick={() => void verifyOtp(otp)}
           className="w-full h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-          disabled={isSubmitting || otp.join('').length !== 6}
+          disabled={isSubmitting || otp.length !== 6}
         >
           {isSubmitting ? 'Verifying...' : 'Verify Code'}
         </Button>
