@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { clientLogger } from '@/lib/utils/client-logger';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function ProtectedError({
   error,
@@ -15,13 +16,22 @@ export default function ProtectedError({
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-100 gap-4">
-      <p className="text-muted-foreground text-sm">Something went wrong loading this page.</p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
+      <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+        <AlertCircle size={20} className="text-destructive" />
+      </div>
+      <div className="text-center">
+        <h2 className="text-lg font-semibold text-foreground mb-1">Something went wrong</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          An unexpected error occurred. Please try again or return to the dashboard.
+        </p>
+      </div>
       <button
         type="button"
         onClick={reset}
-        className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-foreground text-background rounded-xl hover:opacity-90 transition-opacity"
       >
+        <RefreshCw size={14} />
         Try again
       </button>
     </div>

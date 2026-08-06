@@ -20,7 +20,7 @@ function NotificationListSkeleton() {
       </div>
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex items-start gap-3 p-4 rounded-xl">
+          <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card">
             <Skeleton className="h-8 w-8 rounded-full shrink-0" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-3 w-3/4" />
@@ -69,21 +69,23 @@ export default async function NotificationsPage() {
   if (!session?.user) {
     return (
       <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-muted-foreground">
-        <Bell size={48} className="text-foreground" />
-        <p>Please log in to view your notifications.</p>
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+          <Bell size={20} className="text-muted-foreground" />
+        </div>
+        <p className="text-sm">Please log in to view your notifications.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-10 max-w-3xl">
+    <div className="dashboard-page space-y-8 max-w-3xl animate-in fade-in duration-500">
       <div>
-        <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
+        <div className="page-eyebrow">
           <Bell size={14} />
-          <span>Notifications</span>
+          <span>Inbox</span>
         </div>
-        <h1 className="text-4xl font-bold tracking-tight">Notifications</h1>
-        <p className="text-muted-foreground mt-2">Stay updated with mentions, replies, and activity.</p>
+        <h1 className="text-3xl font-medium tracking-[-0.03em]">Notifications</h1>
+        <p className="text-muted-foreground mt-2 text-sm">Stay updated with mentions, replies, and activity.</p>
       </div>
 
       <Suspense fallback={<NotificationListSkeleton />}>

@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { SearchPage } from '@/components/ai-search/SearchPage';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search } from 'lucide-react';
 import { getSession } from '@/modules/auth/session';
 
 export const metadata: Metadata = {
@@ -16,7 +15,7 @@ function SearchPageSkeleton() {
   return (
     <div className="flex gap-4 items-start">
       {/* Sidebar placeholder — matches Sidebar's expanded width */}
-      <div className="w-55 shrink-0 h-120 bg-card border border-border rounded-2xl p-4 space-y-3">
+      <div className="w-55 shrink-0 h-120 bg-card/80 border border-border/80 rounded-xl p-4 space-y-3 shadow-linear-xs">
         <Skeleton className="h-4 w-10" />
         <Skeleton className="h-8 w-full rounded-lg" />
         <Skeleton className="h-8 w-full rounded-lg" />
@@ -28,7 +27,7 @@ function SearchPageSkeleton() {
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="mx-auto w-full max-w-4xl px-4 md:px-6 space-y-6 sm:space-y-8">
+        <div className="mx-auto w-full max-w-5xl px-4 md:px-6 space-y-6 sm:space-y-8">
           {/* Top bar skeleton — toggle + spacer + action button */}
           <div className="flex items-center gap-2">
             <Skeleton className="min-w-11 min-h-11 h-11 w-11 rounded-xl" />
@@ -75,17 +74,6 @@ export default async function AISearchPage() {
 
   return (
     <div>
-      <div className="mx-auto w-full max-w-4xl px-4 md:px-6 mb-6">
-        <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
-          <Search size={14} />
-          <span>Sai Search</span>
-        </div>
-        <h1 className="text-4xl font-bold tracking-tight">Search with Sai</h1>
-        <p className="text-muted-foreground mt-2">
-          Search across Reddit, Hacker News, ArchWiki, Stack Overflow and more.
-        </p>
-      </div>
-
       <ErrorBoundary>
         <Suspense fallback={<SearchPageSkeleton />}>
           <SearchPage user={user} />

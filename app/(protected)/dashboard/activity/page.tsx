@@ -1,8 +1,7 @@
 import { getUserThreads, getUserMessages } from '@/modules/users';
 import { getSession } from '@/modules/auth';
 import { redirect } from 'next/navigation';
-import { Card } from '@/components/ui/card';
-import { Activity, MessageSquare, FileText, Users, Calendar, Reply } from 'lucide-react';
+import { Activity, MessageSquare, FileText, Users, Calendar, Reply, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ROUTES } from '@/lib/config/routes';
@@ -22,37 +21,40 @@ export default async function ActivityPage() {
   const { messages } = messagesResult;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Activity className="h-6 w-6 text-brand" />
-        <h1 className="text-2xl font-bold">Your Activity</h1>
-    </div>
+    <div className="dashboard-page space-y-8 animate-in fade-in duration-500">
+      <div className="page-heading">
+        <p className="page-eyebrow"><Activity className="h-3.5 w-3.5" /> Activity</p>
+        <h1>Your activity</h1>
+        <p>Keep track of the discussions and replies you've contributed.</p>
+      </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Threads Created</h2>
-            <span className="text-sm text-muted-foreground">({threadsResult.total})</span>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Threads Created</h2>
+            <span className="text-xs text-muted-foreground">({threadsResult.total})</span>
           </div>
 
           {threads.length === 0 ? (
-            <Card className="p-8 text-center">
-              <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No threads created yet</p>
+            <div className="rounded-xl border border-border bg-card p-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <FileText size={16} className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground mb-1">No threads created yet</p>
               <Link
                 href="/dashboard/threads"
-                className="text-brand text-sm mt-2 inline-block hover:underline"
+                className="text-xs text-brand mt-2 inline-block hover:underline"
               >
                 Create your first thread
               </Link>
-            </Card>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {threads.map((thread) => (
                 <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
-                  <Card className="p-4 hover:bg-accent transition-colors">
-                    <h3 className="font-semibold text-foreground mb-1">{thread.name}</h3>
+                  <div className="group rounded-xl border border-border bg-card p-4 hover:bg-accent transition-all hover:shadow-linear-sm cursor-pointer">
+                    <h3 className="font-semibold text-foreground mb-1 group-hover:text-brand transition-colors">{thread.name}</h3>
                     {thread.description && (
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
                         {thread.description}
@@ -72,15 +74,15 @@ export default async function ActivityPage() {
                         <TimeAgo date={thread.createdAt} />
                       </span>
                     </div>
-                  </Card>
+                  </div>
                 </Link>
               ))}
               {threadsResult.hasMore && (
                 <Link
                   href="/dashboard/threads?filter=mine"
-                  className="block text-center text-sm text-brand hover:underline py-2"
+                  className="flex items-center justify-center gap-1 text-xs text-brand hover:underline py-2"
                 >
-                  View all threads →
+                  View all threads <ArrowRight size={12} />
                 </Link>
               )}
             </div>
@@ -89,24 +91,26 @@ export default async function ActivityPage() {
 
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <MessageSquare className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Your Comments</h2>
-            <span className="text-sm text-muted-foreground">({messagesResult.total})</span>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Your Comments</h2>
+            <span className="text-xs text-muted-foreground">({messagesResult.total})</span>
           </div>
 
           {messages.length === 0 ? (
-            <Card className="p-8 text-center">
-              <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No comments yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Join a thread and start the conversation
+            <div className="rounded-xl border border-border bg-card p-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <MessageSquare size={16} className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground mb-1">No comments yet</p>
+              <p className="text-xs text-muted-foreground">
+                Join a thread and start the conversation.
               </p>
-            </Card>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {messages.map((message) => (
                 <Link key={message.id} href={ROUTES.THREAD(message.thread.slug)}>
-                  <Card className="p-4 hover:bg-accent transition-colors">
+                  <div className="group rounded-xl border border-border bg-card p-4 hover:bg-accent transition-all hover:shadow-linear-sm cursor-pointer">
                     {message.parent && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 pb-2 border-b border-border">
                         <Reply className="h-3 w-3" />
@@ -127,12 +131,12 @@ export default async function ActivityPage() {
                         <TimeAgo date={message.createdAt} />
                       </span>
                     </div>
-                  </Card>
+                  </div>
                 </Link>
               ))}
               {messagesResult.hasMore && (
-                <button className="block w-full text-center text-sm text-brand hover:underline py-2">
-                  Load more comments
+                <button className="flex items-center justify-center gap-1 w-full text-xs text-brand hover:underline py-2">
+                  Load more comments <ArrowRight size={12} />
                 </button>
               )}
             </div>

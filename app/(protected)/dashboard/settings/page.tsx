@@ -44,11 +44,12 @@ export default async function SettingsPage({
   });
 
   return (
-    <div className="space-y-10 max-w-4xl">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
-        <p className="mt-2">
-          Manage your account settings, notifications, and appearance preferences.
+    <div className="mx-auto w-full max-w-3xl space-y-8">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Personal workspace</p>
+        <h1 className="text-3xl font-medium tracking-[-0.03em]">Settings</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage your profile, preferences, and account access.
         </p>
       </div>
 
