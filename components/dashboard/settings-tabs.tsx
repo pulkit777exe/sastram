@@ -2,18 +2,17 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { User, Mail, Settings, Shield } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
-import { AnimatedIcon } from '@/components/ui/animated-icon';
+import { SegmentedControl } from '@/components/interior/segmented-control';
 
 export function SettingsTabs({ activeTab }: { activeTab: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'newsletters', label: 'Newsletters', icon: Mail },
-    { id: 'preferences', label: 'Preferences', icon: Settings },
-    { id: 'account', label: 'Account', icon: Shield },
+    { value: 'profile', label: 'Profile' },
+    { value: 'newsletters', label: 'Newsletters' },
+    { value: 'preferences', label: 'Preferences' },
+    { value: 'account', label: 'Account' },
   ];
 
   function handleTabChange(tabId: string) {
@@ -23,26 +22,11 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
   }
 
   return (
-    <div className="border-b">
-      <nav className="flex gap-1 overflow-x-auto">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 cursor-pointer hover:bg-secondary',
-                isActive ? 'border-brand bg-muted-foreground/10 rounded' : 'border-transparent'
-              )}
-            >
-              <AnimatedIcon icon={Icon} size={16} animateOnHover />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-    </div>
+    <SegmentedControl
+      options={tabs}
+      label="Settings tabs"
+      value={activeTab}
+      onValueChange={handleTabChange}
+    />
   );
 }

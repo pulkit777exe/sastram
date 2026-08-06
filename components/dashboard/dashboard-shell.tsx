@@ -44,9 +44,9 @@ export function DashboardShell({
 
   if (isMobile) {
     return (
-      <div className="flex flex-col h-screen bg-muted/40 overflow-hidden">
+      <div className="flex flex-col h-screen bg-background overflow-hidden">
         {/* Mobile top bar */}
-        <div className="flex items-center justify-between px-3 py-2 bg-card border-b border-border shrink-0">
+        <div className="flex items-center justify-between px-3 py-2 bg-background/90 backdrop-blur-xl border-b border-border shrink-0">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <button
@@ -80,12 +80,12 @@ export function DashboardShell({
   }
 
   return (
-    <div className="flex h-screen bg-muted/40 p-4 gap-4 overflow-hidden">
+    <div className="flex h-screen bg-background p-3 gap-3 overflow-hidden">
       <aside className="h-full shrink-0">
         <Sidebar name={name} email={email} role={role} />
       </aside>
-      <div className="flex flex-1 flex-col bg-card rounded-2xl border border-border overflow-hidden">
-        <main id="main-content" className="flex-1 overflow-y-auto p-8 text-foreground">
+      <div className="flex flex-1 flex-col bg-card/70 rounded-xl border border-border/80 overflow-hidden shadow-linear-xs">
+        <main id="main-content" className="flex-1 overflow-y-auto p-6 lg:p-8 text-foreground">
           {children}
         </main>
       </div>

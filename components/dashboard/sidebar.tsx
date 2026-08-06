@@ -33,6 +33,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { useNotification } from '@/components/bootstrap-provider';
 import { signOut } from '@/lib/services/auth-client';
+import { Ripple } from '@/components/interior/ripple';
 
 export function Sidebar({
   name,
@@ -68,42 +69,33 @@ export function Sidebar({
   const { unreadNotificationCount } = useNotification();
   const unreadCount = unreadNotificationCount ?? 0;
 
-  const hideTimeout = useRef<number | null>(null);
-
-  const clearHideTimeout = () => {
-    if (typeof window === 'undefined') return;
-    if (hideTimeout.current) {
-      window.clearTimeout(hideTimeout.current);
-      hideTimeout.current = null;
-    }
-  };
-
-  const handleMouseEnter = () => {
-    clearHideTimeout();
-    if (!isCollapsed) {
-      setProfileMenuClosing(false);
-      setShowProfileMenu(true);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    clearHideTimeout();
-    if (typeof window === 'undefined') return;
-    hideTimeout.current = window.setTimeout(() => {
-      setProfileMenuClosing(true);
-      setTimeout(() => {
-        setShowProfileMenu(false);
-        setProfileMenuClosing(false);
-      }, closeMs);
-      hideTimeout.current = null;
-    }, 500);
-  };
-
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [profileMenuClosing, setProfileMenuClosing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const closeMs = 150;
+
+  const toggleProfileMenu = () => {
+    if (!effectiveCollapsed) {
+      setShowProfileMenu((prev) => !prev);
+    }
+  };
+
+  useEffect(() => {
+    if (!showProfileMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowProfileMenu(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showProfileMenu]);
 
   const toggleCollapse = () => {
     if (mobile) return;
@@ -133,7 +125,7 @@ export function Sidebar({
   };
 
   const navItems = [
-    { icon: Sparkles, label: 'Sai Search', href: '/dashboard/sai-search' },
+    { icon: Sparkles, label: 'Agent', href: '/dashboard/sai-search' },
     { icon: FileText, label: 'Threads', href: '/dashboard/threads' },
     { icon: Bookmark, label: 'Bookmarks', href: '/dashboard/bookmarks' },
     { icon: Search, label: 'Search', href: '/dashboard/search' },
@@ -175,7 +167,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'bg-card rounded-2xl border border-border flex flex-col h-full transition-all duration-300 overflow-hidden',
+        'bg-card/80 rounded-xl border border-border/80 flex flex-col h-full transition-all duration-300 overflow-hidden shadow-linear-xs',
         effectiveCollapsed ? 'w-16' : 'w-64'
       )}
     >
@@ -227,7 +219,7 @@ export function Sidebar({
                 placeholder="Search with Sai..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-muted border border-border rounded-md py-1.5 pl-9 pr-12 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand"
+                className="w-full bg-muted/70 border border-border/80 rounded-md py-2 pl-9 pr-12 text-xs text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/50 transition-colors"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                 <kbd className="text-xs bg-background px-1 rounded border border-border text-muted-foreground">
@@ -295,18 +287,18 @@ export function Sidebar({
         </nav>
       )}
 
-      <div
-        className="p-3 border-t border-border relative duration-300 transition-shadow"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-linear-sm hover:bg-accent cursor-pointer transition-colors">
+      <div className="p-3 border-t border-border relative" ref={menuRef}>
+        <button
+          type="button"
+          onClick={toggleProfileMenu}
+          className="w-full flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-linear-sm hover:bg-accent cursor-pointer transition-colors"
+        >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-medium">
               {name.charAt(0).toUpperCase()}
             </div>
             {!effectiveCollapsed && (
-              <div className="flex flex-col">
+              <div className="flex flex-col text-left">
                 <span className="text-xs font-semibold text-foreground">{name}</span>
                 <span className="text-xs text-muted-foreground truncate w-24">{email}</span>
               </div>
@@ -318,15 +310,10 @@ export function Sidebar({
               <AnimatedIcon icon={ChevronDown} size={12} />
             </div>
           )}
-        </div>
+        </button>
         {showProfileMenu && !effectiveCollapsed && (
           <div
-            ref={menuRef}
-            className={cn(
-              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-border rounded-lg shadow-linear-lg overflow-hidden z-10',
-              profileMenuClosing ? 'is-closing' : 'is-open'
-            )}
-            data-origin="bottom-left"
+            className="absolute bottom-full left-3 right-3 mb-2 bg-popover border border-border rounded-lg shadow-linear-lg overflow-hidden z-10 animate-in fade-in slide-in-from-bottom-2 duration-150"
           >
             <Link
               href="/dashboard/settings/profile"
@@ -405,7 +392,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
       className={cn(
         'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
         active
-          ? 'bg-brand/5 text-brand shadow-linear-sm border-r-2 border-brand'
+          ? 'bg-accent text-foreground shadow-linear-xs'
           : 'text-muted-foreground hover:text-foreground hover:bg-accent',
         collapsed && 'justify-center'
       )}
@@ -416,7 +403,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
         size={18}
         className={cn(
           'transition-colors shrink-0',
-          active ? 'text-brand' : 'text-muted-foreground group-hover:text-foreground'
+          active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
         )}
         animateOnHover
       />
@@ -448,7 +435,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
       )}
 
       {active && !collapsed && !badge && (
-        <div className="ml-auto w-2 h-2 rounded-full bg-brand shadow-linear-sm" />
+        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-brand shadow-linear-sm" />
       )}
     </Link>
   );
