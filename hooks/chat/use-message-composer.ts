@@ -7,6 +7,38 @@ import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import type { MentionCandidate } from '@/components/chat/mention-suggest';
 
+function draftKey(threadId: string, parentId?: string): string {
+  return `sastram:draft:${threadId}:${parentId ?? 'root'}`;
+}
+
+function readDraft(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(key: string, content: string): void {
+  try {
+    if (content) {
+      localStorage.setItem(key, content);
+    } else {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // quota exceeded or localStorage unavailable — silent fail
+  }
+}
+
+function clearDraft(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // localStorage unavailable — silent fail
+  }
+}
+
 type ToolbarAction = 'bold' | 'italic' | 'code' | 'link';
 
 interface UseMessageComposerOptions {
@@ -112,6 +144,30 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
 
   // Content
   const [content, setContent] = useState('');
+
+  // Draft autosave
+  const draftKeyRef = useRef<string | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore draft on mount
+  useEffect(() => {
+    const key = draftKey(threadId, parentId);
+    draftKeyRef.current = key;
+    const saved = readDraft(key);
+    if (saved) setContent(saved); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [threadId, parentId]);
+
+  // Debounced draft write on content change
+  useEffect(() => {
+    if (!draftKeyRef.current) return;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      writeDraft(draftKeyRef.current!, content);
+    }, 700);
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [content]);
 
   // File
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -342,6 +398,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
 
       // Clear form immediately
       setContent('');
+      clearDraft(draftKey(threadId, parentId));
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setMentionedUserIds([]);
