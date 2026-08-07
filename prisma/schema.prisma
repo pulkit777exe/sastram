@@ -79,6 +79,18 @@ enum AttachmentType {
   FILE
 }
 
+enum FeedbackType {
+  BUG
+  SUGGESTION
+  OTHER
+}
+
+enum FeedbackStatus {
+  OPEN
+  REVIEWED
+  CLOSED
+}
+
 model User {
   id            String  @id @default(cuid())
   email         String  @unique
@@ -130,6 +142,7 @@ model User {
   moderatedAppeals Appeal[]         @relation("AppealModerator")
 
   aiSearchSessions AiSearchSession[]
+  feedback      Feedback[]
 
   @@index([email])
   @@index([status])
@@ -674,5 +687,23 @@ model AiUsageLog {
   @@index([createdAt])
   @@index([costUsd])
   @@map("ai_usage_logs")
+}
+
+model Feedback {
+  id        String         @id @default(cuid())
+  userId    String?
+  type      FeedbackType
+  message   String
+  route     String?
+  status    FeedbackStatus @default(OPEN)
+  createdAt DateTime       @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("feedback")
 }
 

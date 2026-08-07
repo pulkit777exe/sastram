@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { Analytics } from '@vercel/analytics/next';
+import { FeedbackWidget } from '@/components/feedback/feedback-widget';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -44,6 +45,7 @@ export default function RootLayout({
         </a>
         <Analytics />
         <Providers>{children}</Providers>
+        <FeedbackWidget />
       </body>
     </html>
   );
