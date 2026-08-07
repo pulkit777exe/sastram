@@ -26,6 +26,13 @@ interface SimilarThread {
   similarity: number;
 }
 
+// Each check costs one unit of the 30/day AI analysis quota, so a single
+// compose session must not be able to drain it while the user iterates.
+const MAX_CHECKS_PER_SESSION = 3;
+
+// Wait for a real pause in typing, not a micro-pause mid-sentence.
+const SIMILARITY_DEBOUNCE_MS = 1500;
+
 export function CreateThreadDialog() {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -38,12 +45,25 @@ export function CreateThreadDialog() {
   const [dismissed, setDismissed] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checksUsedRef = useRef(0);
+  const lastCheckedRef = useRef<string | null>(null);
 
   const checkSimilar = useCallback(async (titleText: string, descText: string) => {
     if (titleText.trim().length < 10) {
       setSimilarThreads([]);
       return;
     }
+
+    // Never spend more than MAX_CHECKS_PER_SESSION quota units while the user
+    // iterates on a draft. The daily AI analysis quota is only 30.
+    if (checksUsedRef.current >= MAX_CHECKS_PER_SESSION) return;
+
+    // Skip identical payloads (retyping the same text, description-only edits
+    // that leave the analysed text unchanged).
+    const payload = `${titleText.trim()}\u0000${descText.trim()}`;
+    if (lastCheckedRef.current === payload) return;
+    lastCheckedRef.current = payload;
+    checksUsedRef.current += 1;
 
     setCheckingSimilar(true);
     try {
@@ -70,7 +90,7 @@ export function CreateThreadDialog() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       void checkSimilar(title, description);
-    }, 1000);
+    }, SIMILARITY_DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
@@ -83,6 +103,8 @@ export function CreateThreadDialog() {
       setDescription('');
       setSimilarThreads([]);
       setDismissed(false);
+      checksUsedRef.current = 0;
+      lastCheckedRef.current = null;
     }
   };
 
