@@ -7,7 +7,7 @@ import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import type { MentionCandidate } from '@/components/chat/mention-suggest';
 
-function draftKey(threadId: string, parentId?: string): string {
+export function draftKey(threadId: string, parentId?: string): string {
   return `sastram:draft:${threadId}:${parentId ?? 'root'}`;
 }
 

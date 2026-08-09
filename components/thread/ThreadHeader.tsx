@@ -1,4 +1,4 @@
-import type { ThreadWithFullContext } from '@/modules/threads/queries';
+import type { ThreadWithFullContext } from '@/modules/threads/types';
 import TimeAgo from './TimeAgo';
 import { BookmarkButton } from './bookmark-button';
 import { Badge } from '@/components/ui/badge';

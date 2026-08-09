@@ -11,7 +11,7 @@ import { detectMimeTypeFromFile, getFileCategory, getExtensionFromMime, validate
 import { logger } from '@/lib/infrastructure/logger';
 import { aiService } from '@/lib/services/ai';
 import { env } from '@/lib/config/env';
-import { consumeImageModerationQuota } from '@/lib/services/image-moderation-quota';
+import { consumeImageModerationQuota } from '@/lib/services/daily-quota';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
 
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
           const fileCategory = getFileCategory(mimeForExt);
           if (env.CONTENT_MODERATION_ENABLED && (fileCategory === 'IMAGE' || fileCategory === 'GIF')) {
-             const quota = await consumeImageModerationQuota();
+             const quota = await consumeImageModerationQuota({});
              if (!quota.allowed) {
                await del(blob.url);
                throw new Error('Daily image moderation limit reached. Please try again tomorrow.');

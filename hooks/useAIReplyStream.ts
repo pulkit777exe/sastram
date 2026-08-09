@@ -36,6 +36,27 @@ interface UseAIReplyStreamOptions {
   onMessageUpdate?: (messageId: string, content: string) => void;
 }
 
+async function drainToText(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<string> {
+  const decoder = new TextDecoder();
+  let text = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+  }
+  return text;
+}
+
+function parseSSEError(text: string): AIStreamError | null {
+  const match = text.match(/event: error\ndata: (.+)/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1]);
+  } catch {
+    return null;
+  }
+}
+
 export function useAIReplyStream({
   threadId,
   onStart,
@@ -52,94 +73,89 @@ export function useAIReplyStream({
     const controller = new AbortController();
     abortRef.current = controller;
 
-    let buffer = '';
-    let messageId: string | undefined;
-    let accumulated = '';
-
     const url = parentMessageId
       ? `/api/threads/${threadId}/ai-reply/stream?messageId=${encodeURIComponent(parentMessageId)}`
       : `/api/threads/${threadId}/ai-reply/stream`;
 
-    fetch(url, {
-      method: 'GET',
-      signal: controller.signal,
-    }).then(async (response) => {
-      if (!response.ok) {
+    fetch(url, { method: 'GET', signal: controller.signal })
+      .then(async (response) => {
         const reader = response.body?.getReader();
-        if (reader) {
-          const text = await readSSEBuffer(reader);
-          const errorData = parseSSEError(text);
-          onError?.(errorData ?? { error: `HTTP ${response.status}` });
-          reader.releaseLock();
+
+        if (!response.ok) {
+          if (reader) {
+            const errorData = parseSSEError(await drainToText(reader));
+            onError?.(errorData ?? { error: `HTTP ${response.status}` });
+            reader.releaseLock();
+          }
+          return;
         }
-        return;
-      }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        onError?.({ error: 'No response body' });
-        return;
-      }
+        if (!reader) {
+          onError?.({ error: 'No response body' });
+          return;
+        }
 
-      const decoder = new TextDecoder();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let messageId: string | undefined;
+        let accumulated = '';
+        // Persists across reads: an `event:` line and its `data:` line can arrive
+        // in different network chunks.
+        let currentEvent = '';
 
-      // Persist across reads: an `event:` line and its `data:` line can arrive
-      // in different network chunks.
-      let currentEvent = '';
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
+            for (const line of lines) {
+              if (line.startsWith('event: ')) {
+                currentEvent = line.slice(7).trim();
+                continue;
+              }
+              if (!line.startsWith('data: ')) continue;
 
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              currentEvent = line.slice(7).trim();
-            } else if (line.startsWith('data: ')) {
-              const rawData = line.slice(6);
+              let data;
               try {
-                const data = JSON.parse(rawData);
-
-                switch (currentEvent) {
-                  case 'start':
-                    messageId = data.messageId;
-                    onStart?.(data as AIStreamStart);
-                    break;
-                  case 'token':
-                    onToken?.(data.content);
-                    if (data.content) {
-                      accumulated += data.content;
-                      if (messageId) {
-                        onMessageUpdate?.(messageId, accumulated);
-                      }
-                    }
-                    break;
-                  case 'done':
-                    messageId = data.messageId;
-                    onDone?.({ messageId: data.messageId, truncated: data.truncated });
-                    return;
-                  case 'error':
-                    onError?.({ error: data.error, messageId: data.messageId });
-                    return;
-                }
+                data = JSON.parse(line.slice(6));
               } catch {
-                // Malformed JSON — skip
+                continue;
+              }
+
+              switch (currentEvent) {
+                case 'start':
+                  messageId = data.messageId;
+                  onStart?.(data as AIStreamStart);
+                  break;
+                case 'token':
+                  onToken?.(data.content);
+                  if (data.content) {
+                    accumulated += data.content;
+                    if (messageId) onMessageUpdate?.(messageId, accumulated);
+                  }
+                  break;
+                case 'done':
+                  onDone?.({ messageId: data.messageId, truncated: data.truncated });
+                  return;
+                case 'error':
+                  onError?.({ error: data.error, messageId: data.messageId });
+                  return;
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
-      } finally {
-        reader.releaseLock();
-      }
-    }).catch((err) => {
-      if (err.name !== 'AbortError') {
-        onError?.({ error: err.message || 'Stream failed' });
-      }
-    });
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          onError?.({ error: err.message || 'Stream failed' });
+        }
+      });
   }, [threadId, onStart, onToken, onDone, onError, onMessageUpdate]);
 
   const stopStream = useCallback(() => {
@@ -148,27 +164,4 @@ export function useAIReplyStream({
   }, []);
 
   return { startStream, stopStream };
-}
-
-function parseSSEError(text: string): AIStreamError | null {
-  const match = text.match(/event: error\ndata: (.+)/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[1]);
-  } catch {
-    return null;
-  }
-}
-
-async function readSSEBuffer(
-  reader: ReadableStreamDefaultReader<Uint8Array>
-): Promise<string> {
-  const decoder = new TextDecoder();
-  let text = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    text += decoder.decode(value, { stream: true });
-  }
-  return text;
 }

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { consumeAiSearchQuota } from '@/lib/services/ai-search-quota';
+import { consumeAiSearchQuota } from '@/lib/services/daily-quota';
 import { getSecondsUntilUtcMidnight, getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
 
 describe('AI Search Quota', function () {

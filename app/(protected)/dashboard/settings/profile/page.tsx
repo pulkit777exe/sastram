@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { isAdmin } from '@/modules/auth/session';
+import { isAdminUser as isAdmin } from '@/modules/auth/session';
 import { getSession } from '@/modules/auth/session';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

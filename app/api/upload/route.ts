@@ -9,7 +9,7 @@ import { requireSessionOrThrow } from '@/modules/auth/session';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { aiService } from '@/lib/services/ai';
 import { env } from '@/lib/config/env';
-import { consumeImageModerationQuota } from '@/lib/services/image-moderation-quota';
+import { consumeImageModerationQuota } from '@/lib/services/daily-quota';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
 
@@ -67,7 +67,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
       let flagged = false;
       if (env.CONTENT_MODERATION_ENABLED && (type === 'IMAGE' || type === 'GIF')) {
-         const quota = await consumeImageModerationQuota();
+         const quota = await consumeImageModerationQuota({});
          if (!quota.allowed) {
            await del(blob.url);
            throw new Error('Daily image moderation limit reached. Please try again tomorrow.');

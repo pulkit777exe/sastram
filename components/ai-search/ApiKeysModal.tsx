@@ -241,9 +241,6 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
   );
 }
 
-/**
- * Helper to read API keys from localStorage.
- */
 export function getStoredApiKeys(): {
   exa: string;
   tavily: string;

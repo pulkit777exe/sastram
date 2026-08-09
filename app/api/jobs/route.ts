@@ -13,6 +13,7 @@ import {
   handleStalenessCheckJob,
 } from '@/lib/queue/workers/ai.worker';
 import { handleEmailJob } from '@/lib/queue/workers/email.worker';
+import { AIJobType } from '@/lib/queue/config';
 import type {
   ThreadSummaryJobData,
   ThreadDnaJobData,
@@ -35,7 +36,7 @@ const jobHandlers: Record<string, (data: unknown) => Promise<unknown>> = {
   'generate-daily-digest': (data) => handleDailyDigestJob(data as DailyDigestJobData),
   'send-ai-insight-notifications': (data) => handleAIInsightNotificationsJob(data as AIInsightNotificationJobData),
   'generate-ai-inline': (data) => handleAIInlineJob(data as AIInlineJobData),
-  'staleness-check': (data) => handleStalenessCheckJob(data as StalenessCheckJobData),
+  [AIJobType.STALENESS_CHECK]: (data) => handleStalenessCheckJob(data as StalenessCheckJobData),
   'email': (data) => handleEmailJob(data as EmailJobData),
 };
 

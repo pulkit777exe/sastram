@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommentTree } from '@/components/thread/comment-tree';
 import { PostMessageForm } from '@/components/chat/post-message-form';
-import { useThreadWebSocket } from '@/hooks/useThreadWebSocket';
 import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hooks/useAIReplyStream';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
@@ -350,131 +349,6 @@ export function ThreadLiveWrapper({
     },
     [isAtBottom, threadId]
   );
-
-  const handleWsNewMessage = useCallback(
-    (newMessage: Message) => {
-      const wasAtBottom = isAtBottom();
-
-      const msgTimestamp = new Date(newMessage.createdAt).toISOString();
-      if (msgTimestamp > lastMessageTimestampRef.current) {
-        lastMessageTimestampRef.current = msgTimestamp;
-      }
-
-      setLiveMessages((prev) => {
-        // Own message already added via handleMessagePosted
-        if (ownPendingIds.current.has(newMessage.id)) {
-          ownPendingIds.current.delete(newMessage.id);
-          const idx = prev.findIndex((m) => m.id === newMessage.id);
-          if (idx === -1) return prev;
-          const merged = { ...prev[idx], ...newMessage };
-          if (merged === prev[idx]) return prev;
-          const next = [...prev];
-          next[idx] = merged;
-          return next;
-        }
-
-        // Streaming content update (same ID, new content from AI)
-        const existingIndex = prev.findIndex((m) => m.id === newMessage.id);
-        if (existingIndex !== -1) {
-          const updated = [...prev];
-          updated[existingIndex] = {
-            ...updated[existingIndex],
-            content: newMessage.content,
-          };
-          return updated;
-        }
-
-        // Genuinely new message — schedule unread update OUTSIDE updater
-        // via microtask to avoid setState-in-setState React violation
-        if (!wasAtBottom) {
-          Promise.resolve().then(() => {
-            setUnreadCount((c) => c + 1);
-            setFirstUnreadMessageId((id) => id ?? newMessage.id);
-          });
-        }
-
-        return [...prev, newMessage];
-      });
-    },
-    [isAtBottom]
-  );
-
-  // Called by WebSocket hook when isComplete:true arrives on an AI message
-  const handleAiComplete = useCallback(
-    (parentMessageId: string) => {
-      clearAiStatus(parentMessageId);
-    },
-    [clearAiStatus]
-  );
-
-  const handleWsMessageDeleted = useCallback((messageId: string) => {
-    setLiveMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, deletedAt: new Date() } : m))
-    );
-  }, []);
-
-  const handleWsPinUpdate = useCallback((messageId: string, isPinned: boolean) => {
-    setLiveMessages((prev) =>
-      prev.map((m) => ({
-        ...m,
-        isPinned: m.id === messageId ? isPinned : isPinned ? false : m.isPinned,
-      }))
-    );
-  }, []);
-
-  const handleWsMessageEdited = useCallback((messageId: string, content: string) => {
-    setLiveMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId ? { ...m, content, isEdited: true, updatedAt: new Date() } : m
-      )
-    );
-  }, []);
-
-  const handleReactionUpdate = useCallback(
-    (update: { messageId: string; reactionType: string; count: number }) => {
-      setLiveMessages((prev) =>
-        prev.map((m) =>
-          m.id === update.messageId ? { ...m, likeCount: update.count } : m
-        )
-      );
-    },
-    []
-  );
-
-  const handleReconnect = useCallback(async () => {
-    const since = lastMessageTimestampRef.current;
-    try {
-      const result = await backfillThreadMessages(threadId, since);
-      if (result?.ok && result.data?.messages) {
-        const newMessages = result.data.messages;
-        if (newMessages.length === 0) return;
-
-        const mapped = newMessages.map((m: any) => mapBackfillMessage(m));
-
-        setLiveMessages((prev) => {
-          const { merged, hasNew } = mergeMessages(prev, mapped);
-          if (hasNew) {
-            lastMessageTimestampRef.current = new Date(merged[merged.length - 1].createdAt).toISOString();
-          }
-          return merged;
-        });
-      }
-    } catch {
-      // Silent — backfill is best-effort
-    }
-  }, [threadId, mapBackfillMessage]);
-
-  useThreadWebSocket({
-    threadId,
-    currentUserId: currentUser.id,
-    onNewMessage: handleWsNewMessage,
-    onMessageDeleted: handleWsMessageDeleted,
-    onMessageEdited: handleWsMessageEdited,
-    onPinUpdate: handleWsPinUpdate,
-    onAiComplete: handleAiComplete,
-    onReconnect: handleReconnect,
-    onReactionUpdate: handleReactionUpdate,
-  });
 
   const handleMessagePosted = useCallback(
     (newMessage: Message, meta?: AiInlineMeta) => {

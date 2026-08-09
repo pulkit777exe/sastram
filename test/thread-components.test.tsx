@@ -22,6 +22,7 @@ const mockRouter = {
   forward: () => {},
   refresh: () => {},
   prefetch: () => {},
+  bfcacheId: 'test-bfcache-id',
 };
 
 function MockNextJsProvider({ children }: { children: React.ReactNode }) {

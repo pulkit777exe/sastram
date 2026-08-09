@@ -9,11 +9,6 @@ import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effec
 function makeSideEffectsStub() {
   const calls: { enqueueAiInline: unknown[] } = { enqueueAiInline: [] };
   const stub: MessageSideEffectsPort = {
-    emitThreadMessage: () => {},
-    emitMentionNotification: () => {},
-    emitMessageDeleted: () => {},
-    emitMessageEdited: () => {},
-    emitPinUpdate: () => {},
     sendMentionEmail: async () => {},
     enqueueAiInline: async (args) => {
       calls.enqueueAiInline.push(args);

@@ -53,7 +53,6 @@ export function Sidebar({
   const [isMounted, setIsMounted] = useState(false);
 
   // Hydrate persisted collapse state after mount to avoid SSR/client mismatch.
-  // This is the accepted pattern for reading localStorage on the client only.
   useEffect(() => {
     if (mobile) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
