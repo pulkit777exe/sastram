@@ -7,34 +7,51 @@ import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { inviteFriendSchema } from './schemas';
 import { canManageThread } from '@/lib/thread-access';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/actions/result';
+import type { ActionEnvelope, ActionErrorCode } from '@/lib/actions/result';
 import { AppError } from '@/lib/utils/errors';
-import type { ActionErrorCode } from '@/lib/actions/result';
+
+function toEnvelope<T>(error: unknown): ActionEnvelope<T> {
+  if (error instanceof AppError) {
+    return actionFailure<T>((error.code as ActionErrorCode) ?? 'INTERNAL_ERROR', error.message);
+  }
+  return actionFailure<T>('INTERNAL_ERROR', 'Something went wrong');
+}
 
 export async function inviteFriendToThread(formData: FormData) {
-  const threadId = formData.get('threadId') as string;
-  const email = formData.get('email') as string;
+  const parsed = inviteFriendSchema.safeParse({
+    threadId: formData.get('threadId'),
+    email: formData.get('email'),
+    message: formData.get('message') ?? undefined,
+  });
 
-  const parsed = inviteFriendSchema.safeParse({ threadId, email });
   if (!parsed.success) {
-    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' as ActionErrorCode };
+    return actionFailure('VALIDATION_ERROR', 'Invalid input');
   }
 
   try {
     const session = await requireSession();
 
-    // Check if thread exists
     const thread = await prisma.thread.findFirst({
       where: { id: parsed.data.threadId, deletedAt: null },
       select: { id: true, slug: true, name: true, createdBy: true, visibility: true },
     });
 
     if (!thread) {
-      return { data: null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' as ActionErrorCode };
+      return actionFailure('NOT_FOUND', 'Thread not found');
     }
 
-    if (!canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility }, session.user.id, session.user.role)) {
-      return { data: null, error: 'Only the thread creator or moderators can invite people', ok: false, errorCode: 'FORBIDDEN' as ActionErrorCode };
+    if (
+      !canManageThread(
+        { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
+        session.user.id,
+        session.user.role
+      )
+    ) {
+      return actionFailure(
+        'FORBIDDEN',
+        'Only the thread creator or moderators can invite people'
+      );
     }
 
     // Clear any declined/expired invitations so the user can be re-invited
@@ -46,7 +63,6 @@ export async function inviteFriendToThread(formData: FormData) {
       },
     });
 
-    // Check if a pending invitation already exists
     const existingInvitation = await prisma.threadInvitation.findUnique({
       where: {
         threadId_email: {
@@ -57,15 +73,9 @@ export async function inviteFriendToThread(formData: FormData) {
     });
 
     if (existingInvitation) {
-      return {
-        data: null,
-        error: 'You have already invited this friend to this thread',
-        ok: false,
-        errorCode: 'CONFLICT' as ActionErrorCode,
-      };
+      return actionFailure('CONFLICT', 'You have already invited this friend to this thread');
     }
 
-    // Create invitation
     const invitation = await prisma.threadInvitation.create({
       data: {
         threadId: parsed.data.threadId,
@@ -104,12 +114,9 @@ export async function inviteFriendToThread(formData: FormData) {
     return actionSuccess(invitation);
   } catch (error) {
     logger.error('[inviteFriendToThread]', error);
-    if (error instanceof AppError) {
-      return { data: null, error: error.message, ok: false, errorCode: error.code as ActionErrorCode };
-    }
-    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+    return toEnvelope(error);
   }
-};
+}
 
 export interface ThreadInvitationView {
   id: string;
@@ -118,7 +125,9 @@ export interface ThreadInvitationView {
   createdAt: Date;
 }
 
-export async function listThreadInvitationsAction(threadId: string) {
+export async function listThreadInvitationsAction(
+  threadId: string
+): Promise<ActionEnvelope<ThreadInvitationView[]>> {
   try {
     const session = await requireSession();
 
@@ -128,11 +137,17 @@ export async function listThreadInvitationsAction(threadId: string) {
     });
 
     if (!thread) {
-      return { data: null as ThreadInvitationView[] | null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' };
+      return actionFailure<ThreadInvitationView[]>('NOT_FOUND', 'Thread not found');
     }
 
-    if (!canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility }, session.user.id, session.user.role)) {
-      return { data: null as ThreadInvitationView[] | null, error: 'Insufficient permissions', ok: false, errorCode: 'FORBIDDEN' };
+    if (
+      !canManageThread(
+        { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
+        session.user.id,
+        session.user.role
+      )
+    ) {
+      return actionFailure<ThreadInvitationView[]>('FORBIDDEN', 'Insufficient permissions');
     }
 
     const invitations = await prisma.threadInvitation.findMany({
@@ -141,18 +156,17 @@ export async function listThreadInvitationsAction(threadId: string) {
       select: { id: true, email: true, status: true, createdAt: true },
     });
 
-    return actionSuccess(invitations.map((i) => ({
-      id: i.id,
-      email: i.email,
-      status: i.status,
-      createdAt: i.createdAt,
-    })));
+    return actionSuccess(
+      invitations.map((i) => ({
+        id: i.id,
+        email: i.email,
+        status: i.status,
+        createdAt: i.createdAt,
+      }))
+    );
   } catch (error) {
     logger.error('[listThreadInvitationsAction]', error);
-    if (error instanceof AppError) {
-      return { data: null as ThreadInvitationView[] | null, error: error.message, ok: false, errorCode: error.code as ActionErrorCode };
-    }
-    return { data: null as ThreadInvitationView[] | null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+    return toEnvelope<ThreadInvitationView[]>(error);
   }
 }
 
@@ -166,7 +180,7 @@ export async function revokeThreadInvitationAction(invitationId: string) {
     });
 
     if (!invitation) {
-      return { data: null, error: 'Invitation not found', ok: false, errorCode: 'NOT_FOUND' as ActionErrorCode };
+      return actionFailure('NOT_FOUND', 'Invitation not found');
     }
 
     const thread = await prisma.thread.findFirst({
@@ -175,11 +189,17 @@ export async function revokeThreadInvitationAction(invitationId: string) {
     });
 
     if (!thread) {
-      return { data: null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' as ActionErrorCode };
+      return actionFailure('NOT_FOUND', 'Thread not found');
     }
 
-    if (!canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility }, session.user.id, session.user.role)) {
-      return { data: null, error: 'Insufficient permissions', ok: false, errorCode: 'FORBIDDEN' as ActionErrorCode };
+    if (
+      !canManageThread(
+        { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
+        session.user.id,
+        session.user.role
+      )
+    ) {
+      return actionFailure('FORBIDDEN', 'Insufficient permissions');
     }
 
     await prisma.threadInvitation.delete({ where: { id: invitationId } });
@@ -188,9 +208,6 @@ export async function revokeThreadInvitationAction(invitationId: string) {
     return actionSuccess({ id: invitationId });
   } catch (error) {
     logger.error('[revokeThreadInvitationAction]', error);
-    if (error instanceof AppError) {
-      return { data: null, error: error.message, ok: false, errorCode: error.code as ActionErrorCode };
-    }
-    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+    return toEnvelope(error);
   }
-};
+}
