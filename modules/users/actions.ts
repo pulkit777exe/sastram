@@ -12,10 +12,61 @@ import { getPublicProfile, getUserThreads, updateProfilePrivacy } from './reposi
 import { ProfilePrivacy } from '@prisma/client';
 import { parseUserPreferences, type UserPreferences, userPreferencesSchema } from '@/lib/schemas/user-preferences';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
+import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 
 const fileSchema = z.object({
   file: z.custom<File>((val) => val instanceof File),
 });
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+function revalidateProfilePaths() {
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/settings/profile');
+}
+
+async function uploadProfileImage(
+  file: File,
+  folder: 'avatars' | 'banners',
+  column: 'image' | 'bannerUrl',
+  actionName: string
+) {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return {
+      data: null,
+      error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
+    };
+  }
+
+  if (file.size > FILE_LIMITS.MAX_IMAGE_SIZE) {
+    return { data: null, error: 'File size must be less than 4.5MB' };
+  }
+
+  // Sniff the real mime from magic bytes — file.type is client-supplied
+  const detected = await detectMimeTypeFromFile(file);
+  if (detected && !ALLOWED_IMAGE_TYPES.includes(detected)) {
+    return { data: null, error: 'File content does not match declared type' };
+  }
+
+  try {
+    const session = await requireSession();
+    const ext = getExtensionFromMime(detected || file.type);
+    const blob = await put(`${folder}/${session.user.id}-${Date.now()}.${ext}`, file, {
+      access: 'public',
+    });
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { [column]: blob.url },
+    });
+
+    revalidateProfilePaths();
+    return { data: { url: blob.url }, error: null };
+  } catch (error) {
+    logger.error(`[${actionName}]`, error);
+    return { data: null, error: 'Something went wrong' };
+  }
+}
 
 export const updateUserProfile = withValidation(
   z.object({
@@ -41,104 +92,21 @@ export const updateUserProfile = withValidation(
       },
     });
 
-    revalidatePath('/dashboard/settings');
-    revalidatePath('/dashboard/settings/profile');
+    revalidateProfilePaths();
     return { data: null, error: null };
   }
 );
 
-export const uploadAvatar = withValidation(
-  fileSchema,
-  'uploadAvatar',
-  async ({ file }) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      return {
-        data: null,
-        error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
-      };
-    }
-
-    if (file.size > FILE_LIMITS.MAX_IMAGE_SIZE) {
-      return { data: null, error: 'File size must be less than 4.5MB' };
-    }
-
-    const detected = await detectMimeTypeFromFile(file);
-    if (detected && !allowedTypes.includes(detected)) {
-      return { data: null, error: 'File content does not match declared type' };
-    }
-
-    try {
-      const session = await requireSession();
-      const ext = getExtensionFromMime(detected || file.type);
-      const blob = await put(
-        `avatars/${session.user.id}-${Date.now()}.${ext}`,
-        file,
-        { access: 'public' }
-      );
-
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { image: blob.url },
-      });
-
-      revalidatePath('/dashboard/settings');
-      revalidatePath('/dashboard/settings/profile');
-      return { data: { url: blob.url }, error: null };
-    } catch (error) {
-      logger.error('[uploadAvatar]', error);
-      return { data: null, error: 'Something went wrong' };
-    }
-  }
+export const uploadAvatar = withValidation(fileSchema, 'uploadAvatar', ({ file }) =>
+  uploadProfileImage(file, 'avatars', 'image', 'uploadAvatar')
 );
 
-export const uploadBanner = withValidation(
-  fileSchema,
-  'uploadBanner',
-  async ({ file }) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      return {
-        data: null,
-        error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
-      };
-    }
-
-    if (file.size > FILE_LIMITS.MAX_IMAGE_SIZE) {
-      return { data: null, error: 'File size must be less than 4.5MB' };
-    }
-
-    const detected = await detectMimeTypeFromFile(file);
-    if (detected && !allowedTypes.includes(detected)) {
-      return { data: null, error: 'File content does not match declared type' };
-    }
-
-    try {
-      const session = await requireSession();
-      const ext = getExtensionFromMime(detected || file.type);
-      const blob = await put(
-        `banners/${session.user.id}-${Date.now()}.${ext}`,
-        file,
-        { access: 'public' }
-      );
-
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { bannerUrl: blob.url },
-      });
-
-      revalidatePath('/dashboard/settings');
-      revalidatePath('/dashboard/settings/profile');
-      return { data: { url: blob.url }, error: null };
-    } catch (error) {
-      logger.error('[uploadBanner]', error);
-      return { data: null, error: 'Something went wrong' };
-    }
-  }
+export const uploadBanner = withValidation(fileSchema, 'uploadBanner', ({ file }) =>
+  uploadProfileImage(file, 'banners', 'bannerUrl', 'uploadBanner')
 );
 
 export const getUserProfile = createServerAction(
-  { schema: z.object({ userId: z.string().cuid() }), actionName: 'getUserProfile' },
+  { schema: userIdSchema, actionName: 'getUserProfile' },
   async ({ userId }) => {
     const session = await requireSession();
     const profile = await getPublicProfile(userId, session.user.id);
@@ -152,11 +120,7 @@ export const getUserProfile = createServerAction(
 );
 
 export const getUserThreadsAction = withValidation(
-  z.object({
-    userId: z.string().cuid(),
-    limit: z.number().int().positive().max(100).optional(),
-    offset: z.number().int().nonnegative().optional(),
-  }),
+  userIdSchema.merge(paginationSchema),
   'getUserThreadsAction',
   async ({ userId, limit, offset }) => {
     const result = await getUserThreads(userId, limit || 20, offset || 0);
@@ -212,13 +176,14 @@ export const requestAccountDeletion = withValidation(
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true },
+      select: { id: true },
     });
 
     if (!user) {
       return { data: null, error: 'User not found' };
     }
 
+    // OAuth-only accounts have no credential row, so there's no password to verify
     const credentialAccount = await prisma.account.findFirst({
       where: { userId, providerId: 'credential' },
       select: { password: true },
@@ -232,6 +197,8 @@ export const requestAccountDeletion = withValidation(
       }
     }
 
+    // Soft-delete + scrub PII, then detach authored content so threads and
+    // messages survive as anonymous rather than cascading away
     await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },

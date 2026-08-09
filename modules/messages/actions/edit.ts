@@ -8,7 +8,6 @@ import { sanitizeContent } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
-import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import {
   editMessageSchema,
@@ -24,7 +23,7 @@ export const editMessage = createServerAction(
     try {
       const message = await prisma.message.findUnique({
         where: { id: messageId },
-        select: { senderId: true, content: true, threadId: true },
+        select: { senderId: true, content: true },
       });
 
       if (!message) {
@@ -98,18 +97,8 @@ export const pinMessage = createServerAction(
 
       const shouldPin = !message.isPinned;
 
-      const previouslyPinned = shouldPin
-        ? await prisma.message.findFirst({
-            where: {
-              threadId: message.threadId,
-              isPinned: true,
-              id: { not: messageId },
-            },
-            select: { id: true },
-          })
-        : null;
-
       await prisma.$transaction(async (tx) => {
+        // Only one pinned message per thread — unpin the incumbent first.
         if (shouldPin) {
           await tx.message.updateMany({
             where: { threadId: message.threadId, isPinned: true },
@@ -129,15 +118,6 @@ export const pinMessage = createServerAction(
         entityId: messageId,
         userId: session.user.id,
       });
-
-      infraMessageSideEffects.emitPinUpdate(message.threadId, { messageId, isPinned: shouldPin });
-
-      if (previouslyPinned?.id) {
-        infraMessageSideEffects.emitPinUpdate(message.threadId, {
-          messageId: previouslyPinned.id,
-          isPinned: false,
-        });
-      }
 
       revalidatePath(`/dashboard/threads/${message.thread?.slug}`);
       return { data: null, error: null, errorCode: null, ok: true };
@@ -170,7 +150,7 @@ export const getMessageEditHistory = createServerAction(
         orderBy: { editedAt: 'desc' },
       });
 
-      return { data: edits ?? [], error: null, errorCode: null, ok: true };
+      return { data: edits, error: null, errorCode: null, ok: true };
     } catch (error) {
       logger.error('[getMessageEditHistory]', error);
       return {

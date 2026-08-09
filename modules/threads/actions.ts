@@ -11,37 +11,54 @@ import { listThreads } from './threads-core/repository';
 import { getThreadMessagesPaginated } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
 import { ROUTES } from '@/lib/config/routes';
-import { createServerAction } from '@/lib/utils/server-action';
+import { createServerAction, type ActionResult } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 
-function parsePollOptions(raw: string): string[] {
-  return raw.split('\n').map((s) => s.trim()).filter(Boolean);
+const PAGE_SIZE = 50;
+const BACKFILL_LIMIT = 100;
+
+// createServerAction has its own catch-all, but it surfaces raw Error messages.
+// These actions swallow them instead, exposing only the friendly Prisma mapping.
+function failure(actionName: string, error: unknown): ActionResult<never> {
+  logger.error(`[${actionName}]`, error);
+  return {
+    data: null,
+    error: prismaErrorMessage(error) ?? 'Something went wrong',
+    ok: false,
+    errorCode: 'INTERNAL_ERROR',
+  };
 }
 
-const pollOptionsFromString = z.string().transform(parsePollOptions);
+const success = <T>(data: T) => ({ data, error: null, ok: true as const, errorCode: null });
 
-const threadSchema = z.object({
+const threadIdOnly = z.object({ threadId: z.string().cuid() });
+
+const createThreadInput = z.object({
   title: z.string().min(3),
   description: z.string().max(480).optional().or(z.literal('')),
   initialMessage: z.string().optional(),
   pollQuestion: z.string().min(1).max(500).optional().or(z.literal('')),
-  pollOptions: pollOptionsFromString.optional().or(z.literal('')),
+  // Poll options arrive as a newline-separated textarea value from the form.
+  pollOptions: z
+    .string()
+    .transform((raw) => raw.split('\n').map((s) => s.trim()).filter(Boolean))
+    .optional()
+    .or(z.literal('')),
   pollExpiresAt: z.coerce.date().optional().or(z.literal('')),
 });
 
 export const createThreadAction = createServerAction(
-  { schema: threadSchema, actionName: 'createThreadAction' },
+  { schema: createThreadInput, actionName: 'createThreadAction' },
   async ({ title, description, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
     try {
       const session = await requireSession();
 
-      const slug = buildThreadSlug(title);
       const thread = await createThread({
         name: title,
         description,
-        slug,
+        slug: buildThreadSlug(title),
         createdBy: session.user.id,
         initialMessage,
       });
@@ -51,12 +68,9 @@ export const createThreadAction = createServerAction(
       }
 
       revalidatePath(ROUTES.DASHBOARD);
-      return { data: null, error: null, ok: true, errorCode: null };
+      return success(null);
     } catch (error) {
-      logger.error('[createThreadAction]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return failure('createThreadAction', error);
     }
   }
 );
@@ -70,12 +84,9 @@ export const deleteThreadAction = createServerAction(
 
       await deleteThread(threadId);
       revalidatePath(ROUTES.DASHBOARD);
-      return { data: null, error: null, ok: true, errorCode: null };
+      return success(null);
     } catch (error) {
-      logger.error('[deleteThreadAction]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return failure('deleteThreadAction', error);
     }
   }
 );
@@ -92,23 +103,16 @@ export const getDashboardThreads = createServerAction(
   async (params) => {
     try {
       const session = await requireSession();
-      const result = await listThreads({ ...params, memberUserId: session.user.id });
-      return { data: result, error: null, ok: true, errorCode: null };
+      return success(await listThreads({ ...params, memberUserId: session.user.id }));
     } catch (error) {
-      logger.error('[getDashboardThreads]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return failure('getDashboardThreads', error);
     }
   }
 );
 
 export const loadThreadMessages = createServerAction(
   {
-    schema: z.object({
-      threadId: z.string().cuid(),
-      cursor: z.string().cuid().optional(),
-    }),
+    schema: threadIdOnly.extend({ cursor: z.string().cuid().optional() }),
     actionName: 'loadThreadMessages',
   },
   async ({ threadId, cursor }) => {
@@ -116,60 +120,34 @@ export const loadThreadMessages = createServerAction(
       const session = await requireSession();
       await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
-      const result = await getThreadMessagesPaginated(threadId, cursor, 50);
-
-      return {
-        data: {
-          messages: result.messages,
-          hasMore: result.hasMore,
-          nextCursor: result.nextCursor,
-          totalCount: result.totalCount,
-        },
-        error: null,
-        ok: true,
-        errorCode: null,
-      };
+      return success(await getThreadMessagesPaginated(threadId, cursor, PAGE_SIZE));
     } catch (error) {
-      logger.error('[loadThreadMessages]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return failure('loadThreadMessages', error);
     }
   }
 );
 
 export const markThreadVerified = createServerAction(
-  {
-    schema: z.object({
-      threadId: z.string().cuid(),
-    }),
-    actionName: 'markThreadVerified',
-  },
+  { schema: threadIdOnly, actionName: 'markThreadVerified' },
   async ({ threadId }) => {
     try {
       const session = await requireSession();
       await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
       await updateThreadStaleness(threadId, false);
-
       revalidatePath(`${ROUTES.DASHBOARD_THREADS}/${threadId}`);
 
-      return { data: { ok: true }, error: null, ok: true, errorCode: null };
+      return success({ ok: true });
     } catch (error) {
-      logger.error('[markThreadVerified]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return failure('markThreadVerified', error);
     }
   }
 );
 
+// Used by the live wrapper to recover messages missed while the socket was down.
 export const backfillThreadMessages = createServerAction(
   {
-    schema: z.object({
-      threadId: z.string().cuid(),
-      since: z.string().datetime(),
-    }),
+    schema: threadIdOnly.extend({ since: z.string().datetime() }),
     actionName: 'backfillThreadMessages',
   },
   async ({ threadId, since }) => {
@@ -177,33 +155,23 @@ export const backfillThreadMessages = createServerAction(
       const session = await requireSession();
       await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
-      const sinceDate = new Date(since);
-
       const messages = await prisma.message.findMany({
         where: {
           threadId,
           deletedAt: null,
-          createdAt: { gte: sinceDate },
+          createdAt: { gte: new Date(since) },
         },
         include: {
           sender: { select: { id: true, name: true, image: true } },
           attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
         },
         orderBy: { createdAt: 'asc' },
-        take: 100,
+        take: BACKFILL_LIMIT,
       });
 
-      return {
-        data: { messages },
-        error: null,
-        ok: true,
-        errorCode: null,
-      };
+      return success({ messages });
     } catch (error) {
-      logger.error('[backfillThreadMessages]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return failure('backfillThreadMessages', error);
     }
   }
 );

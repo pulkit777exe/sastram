@@ -26,6 +26,9 @@ export async function getThreadReadReceipt(
   }
 }
 
+// Raw ON CONFLICT rather than prisma.upsert: marking-as-read fires from several
+// tabs at once, and a read/write upsert would race on the (threadId, userId) index.
+// Failures are logged and swallowed — a lost read receipt isn't worth failing a request.
 export async function upsertThreadReadReceipt(params: {
   threadId: string;
   userId: string;

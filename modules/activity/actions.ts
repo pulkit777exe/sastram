@@ -21,13 +21,7 @@ export const recordActivityAction = withValidation(
   'recordActivityAction',
   async (data) => {
     const session = await requireSession();
-    await recordActivityRepo({
-      userId: session.user.id,
-      type: data.type,
-      entityType: data.entityType,
-      entityId: data.entityId,
-      metadata: data.metadata,
-    });
+    await recordActivityRepo({ ...data, userId: session.user.id });
     return { data: null, error: null, ok: true, errorCode: null };
   }
 );
@@ -36,11 +30,7 @@ export const getUserActivityAction = withValidation(
   activityQuerySchema,
   'getUserActivityAction',
   async ({ userId, limit, offset }) => {
-    const result = await getUserActivityRepo(
-      userId!,
-      limit || 20,
-      offset || 0
-    );
+    const result = await getUserActivityRepo(userId!, limit || 20, offset || 0);
     return { data: result, error: null, ok: true, errorCode: null };
   }
 );
@@ -50,11 +40,7 @@ export const getFollowedUsersActivityAction = withValidation(
   'getFollowedUsersActivityAction',
   async ({ limit, offset }) => {
     const session = await requireSession();
-    const result = await getFollowedUsersActivityRepo(
-      session.user.id,
-      limit || 20,
-      offset || 0
-    );
+    const result = await getFollowedUsersActivityRepo(session.user.id, limit || 20, offset || 0);
     return { data: result, error: null, ok: true, errorCode: null };
   }
 );

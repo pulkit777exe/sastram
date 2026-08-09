@@ -4,11 +4,12 @@ import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
 import {
   applyModerationRateLimit,
-  requireModerationSession,
-  validateEntityForDeletion,
+  findMessageForDeletion,
+  findThreadForDeletion,
   validateModerationTarget,
 } from './policy';
-import { executeMessageDeletionEffects, executeModerationAuditAndRevalidate } from './executors';
+import { requireModerationRole } from '@/modules/policy';
+import { executeAuditAndRevalidate } from './executors';
 import {
   banUserSchema,
   deleteMessageSchema,
@@ -17,6 +18,7 @@ import {
   getModerationQueueSchema,
 } from './schemas';
 import { createServerAction } from '@/lib/utils/server-action';
+import { ROUTES } from '@/lib/config/routes';
 import type { Prisma } from '@prisma/client';
 
 const bulkDeleteSchema = z.object({
@@ -36,16 +38,10 @@ const deleteThreadSchema = z.object({
 export const deleteMessageAction = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessageAction' },
   async ({ messageId, threadSlug, reason }) => {
-    const session = await requireModerationSession();
-
+    const session = await requireModerationRole();
     await applyModerationRateLimit(session.user.id);
 
-    const message = await validateEntityForDeletion('message', messageId) as {
-      id: string;
-      threadId: string;
-      senderId: string;
-      thread: { name: string; slug: string };
-    };
+    const message = await findMessageForDeletion(messageId);
 
     await prisma.$transaction(async (tx) => {
       await tx.message.update({
@@ -60,7 +56,7 @@ export const deleteMessageAction = createServerAction(
 
       await tx.notification.create({
         data: {
-          userId: message.senderId,
+          userId: message.senderId!,
           type: 'SYSTEM',
           title: 'Message Deleted',
           message: reason
@@ -71,13 +67,13 @@ export const deleteMessageAction = createServerAction(
       });
     });
 
-    await executeMessageDeletionEffects({
-      messageId,
-      threadId: message.threadId,
-      threadSlug,
-      moderatorId: session.user.id,
-      reason,
-      originalAuthor: message.senderId,
+    await executeAuditAndRevalidate({
+      action: 'MESSAGE_DELETED',
+      entityType: 'Message',
+      entityId: messageId,
+      userId: session.user.id,
+      details: { reason, threadSlug, originalAuthor: message.senderId },
+      paths: [ROUTES.THREAD(threadSlug), ROUTES.ADMIN_MODERATION],
     });
 
     return { data: null, error: null };
@@ -87,7 +83,7 @@ export const deleteMessageAction = createServerAction(
 export const bulkDeleteMessages = createServerAction(
   { schema: bulkDeleteSchema, actionName: 'bulkDeleteMessages' },
   async ({ messageIds, reason }) => {
-    const session = await requireModerationSession();
+    const session = await requireModerationRole();
     await applyModerationRateLimit(session.user.id);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -105,14 +101,17 @@ export const bulkDeleteMessages = createServerAction(
         data: { deletedAt: new Date() },
       });
 
-      const sectionCounts = messages.reduce((acc, msg) => {
-        acc[msg.threadId] = (acc[msg.threadId] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const perThread = new Map<string, number>();
+      const perSender = new Map<string, number>();
+      for (const msg of messages) {
+        perThread.set(msg.threadId, (perThread.get(msg.threadId) ?? 0) + 1);
+        if (msg.senderId) {
+          perSender.set(msg.senderId, (perSender.get(msg.senderId) ?? 0) + 1);
+        }
+      }
 
-      // Batch thread count updates using Promise.all instead of sequential loop
       await Promise.all(
-        Object.entries(sectionCounts).map(([threadId, count]) =>
+        [...perThread].map(([threadId, count]) =>
           tx.thread.update({
             where: { id: threadId },
             data: { messageCount: { decrement: count } },
@@ -120,37 +119,28 @@ export const bulkDeleteMessages = createServerAction(
         )
       );
 
-      // Batch notification creation using createMany
-      const uniqueSenders = [...new Set(messages.map((m) => m.senderId).filter((id): id is string => id !== null))];
-      const senderMessageCounts = new Map<string, number>();
-      for (const senderId of uniqueSenders) {
-        senderMessageCounts.set(
-          senderId,
-          messages.filter((m) => m.senderId === senderId).length
-        );
-      }
-
+      // One rolled-up notification per author rather than one per message.
       await tx.notification.createMany({
-        data: uniqueSenders.map((senderId) => ({
+        data: [...perSender].map(([senderId, count]) => ({
           userId: senderId,
           type: 'SYSTEM' as const,
           title: 'Messages Deleted',
           message: reason
-            ? `${senderMessageCounts.get(senderId)} of your messages were deleted by a moderator. Reason: ${reason}`
-            : `${senderMessageCounts.get(senderId)} of your messages were deleted by a moderator.`,
+            ? `${count} of your messages were deleted by a moderator. Reason: ${reason}`
+            : `${count} of your messages were deleted by a moderator.`,
         })),
       });
 
       return { deletedCount: messages.length };
     });
 
-    await executeModerationAuditAndRevalidate({
+    await executeAuditAndRevalidate({
       action: 'MESSAGE_DELETED',
       entityType: 'Message',
       entityId: 'bulk',
       userId: session.user.id,
       details: { messageIds, reason, count: result.deletedCount, bulk: true },
-      paths: ['/dashboard/admin/moderation'],
+      paths: [ROUTES.ADMIN_MODERATION],
     });
 
     return { data: { deletedCount: result.deletedCount }, error: null };
@@ -158,19 +148,12 @@ export const bulkDeleteMessages = createServerAction(
 );
 
 export const banUser = createServerAction(
-  {
-    schema: banUserSchema,
-    actionName: 'banUser',
-  },
+  { schema: banUserSchema, actionName: 'banUser' },
   async ({ userId, reason, customReason, threadId, expiresAt }) => {
-    const session = await requireModerationSession();
+    const session = await requireModerationRole();
     await applyModerationRateLimit(session.user.id);
 
-    const targetUser = await validateModerationTarget(
-      userId,
-      session.user.id,
-      session.user.role || 'ADMIN'
-    );
+    const targetUser = await validateModerationTarget(userId, session.user.id);
 
     const existingBan = await prisma.userBan.findFirst({
       where: {
@@ -184,7 +167,9 @@ export const banUser = createServerAction(
     if (existingBan) {
       return {
         data: null,
-        error: threadId ? 'User is already banned from this thread' : 'User is already globally banned',
+        error: threadId
+          ? 'User is already banned from this thread'
+          : 'User is already globally banned',
       };
     }
 
@@ -214,6 +199,7 @@ export const banUser = createServerAction(
         },
       });
 
+      // A thread-scoped ban leaves the account usable elsewhere.
       if (!threadId) {
         await tx.user.update({
           where: { id: userId },
@@ -245,7 +231,7 @@ export const banUser = createServerAction(
       return newBan;
     });
 
-    await executeModerationAuditAndRevalidate({
+    await executeAuditAndRevalidate({
       action: 'USER_BANNED',
       entityType: 'User',
       entityId: userId,
@@ -257,7 +243,7 @@ export const banUser = createServerAction(
         targetUserEmail: targetUser.email,
         targetUserName: targetUser.name,
       },
-      paths: ['/dashboard/admin/moderation', '/dashboard'],
+      paths: [ROUTES.ADMIN_MODERATION, ROUTES.DASHBOARD],
     });
 
     return { data: { banId: ban.id, expiresAt: ban.expiresAt }, error: null };
@@ -267,13 +253,18 @@ export const banUser = createServerAction(
 export const unbanUser = createServerAction(
   { schema: unbanSchema, actionName: 'unbanUser' },
   async ({ banId }) => {
-    const session = await requireModerationSession();
+    const session = await requireModerationRole();
     await applyModerationRateLimit(session.user.id);
 
     const result = await prisma.$transaction(async (tx) => {
       const ban = await tx.userBan.findUnique({
         where: { id: banId },
-        select: { userId: true, threadId: true, isActive: true, user: { select: { name: true, email: true } } },
+        select: {
+          userId: true,
+          threadId: true,
+          isActive: true,
+          user: { select: { name: true, email: true } },
+        },
       });
 
       if (!ban) {
@@ -293,6 +284,7 @@ export const unbanUser = createServerAction(
         data: { isActive: false },
       });
 
+      // Only restore the account once no other global ban is still holding it down.
       if (!ban.threadId) {
         const otherActiveBans = await tx.userBan.count({
           where: { userId: ban.userId, threadId: null, isActive: true, id: { not: banId } },
@@ -321,7 +313,7 @@ export const unbanUser = createServerAction(
       return ban;
     });
 
-    await executeModerationAuditAndRevalidate({
+    await executeAuditAndRevalidate({
       action: 'USER_UNBANNED',
       entityType: 'User',
       entityId: result.userId!,
@@ -332,7 +324,7 @@ export const unbanUser = createServerAction(
         targetUserEmail: result.user?.email ?? 'unknown',
         targetUserName: result.user?.name ?? 'unknown',
       },
-      paths: ['/dashboard/admin/moderation'],
+      paths: [ROUTES.ADMIN_MODERATION],
     });
 
     return { data: null, error: null };
@@ -342,7 +334,7 @@ export const unbanUser = createServerAction(
 export const getBannedUsers = createServerAction(
   { schema: getBannedUsersSchema, actionName: 'getBannedUsers' },
   async (filters) => {
-    const session = await requireModerationSession();
+    await requireModerationRole();
 
     const limit = Math.min(filters.limit || 50, 100);
     const offset = filters.offset || 0;
@@ -384,40 +376,18 @@ export const getBannedUsers = createServerAction(
 export const deleteThread = createServerAction(
   { schema: deleteThreadSchema, actionName: 'deleteThread' },
   async ({ threadId, reason }) => {
-    const session = await requireModerationSession();
+    const session = await requireModerationRole();
     await applyModerationRateLimit(session.user.id);
 
-    const thread = await validateEntityForDeletion('section', threadId) as {
-      id: string;
-      name: string;
-      slug: string;
-      messageCount: number;
-      createdBy: string | null;
-    };
+    const thread = await findThreadForDeletion(threadId);
 
     // Soft-delete: set deletedAt instead of hard-deleting.
-    await prisma.$transaction(async (tx) => {
-      await tx.thread.update({
-        where: { id: threadId },
-        data: { deletedAt: new Date() },
-      });
-
-      if (thread.createdBy) {
-        await tx.notification.create({
-          data: {
-            userId: thread.createdBy,
-            type: 'SYSTEM',
-            title: 'Thread Deleted',
-            message: reason
-              ? `Your thread "${thread.name}" has been deleted. Reason: ${reason}`
-              : `Your thread "${thread.name}" has been deleted by a moderator.`,
-            data: { threadId, threadName: thread.name, reason },
-          },
-        });
-      }
+    await prisma.thread.update({
+      where: { id: threadId },
+      data: { deletedAt: new Date() },
     });
 
-    await executeModerationAuditAndRevalidate({
+    await executeAuditAndRevalidate({
       action: 'SECTION_DELETED',
       entityType: 'Section',
       entityId: threadId,
@@ -429,7 +399,7 @@ export const deleteThread = createServerAction(
         messageCount: thread.messageCount,
         softDelete: true,
       },
-      paths: ['/dashboard', '/dashboard/threads', '/dashboard/admin/moderation'],
+      paths: [ROUTES.DASHBOARD, ROUTES.DASHBOARD_THREADS, ROUTES.ADMIN_MODERATION],
     });
 
     return { data: null, error: null };
@@ -439,12 +409,22 @@ export const deleteThread = createServerAction(
 export const getMessageDetails = createServerAction(
   { schema: getMessageDetailsSchema, actionName: 'getMessageDetails' },
   async ({ messageId }) => {
-    const session = await requireModerationSession();
+    await requireModerationRole();
 
     const message = await prisma.message.findUnique({
       where: { id: messageId },
       include: {
-        sender: { select: { id: true, name: true, email: true, image: true, role: true, status: true, createdAt: true } },
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+            status: true,
+            createdAt: true,
+          },
+        },
         attachments: true,
         thread: { select: { id: true, name: true, slug: true } },
         parent: { select: { id: true, content: true, sender: { select: { name: true } } } },
@@ -462,14 +442,19 @@ export const getMessageDetails = createServerAction(
       return { data: null, error: 'Message not found' };
     }
 
-    const recentMessages = await prisma.message.count({
-      where: { senderId: message.senderId, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
-    });
-
-    const senderBans = await prisma.userBan.findMany({
-      where: { userId: message.senderId, isActive: true },
-      select: { reason: true, threadId: true, expiresAt: true },
-    });
+    // Burst rate over the last day is the signal moderators use to spot spam runs.
+    const [recentMessages, senderBans] = await Promise.all([
+      prisma.message.count({
+        where: {
+          senderId: message.senderId,
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      }),
+      prisma.userBan.findMany({
+        where: { userId: message.senderId, isActive: true },
+        select: { reason: true, threadId: true, expiresAt: true },
+      }),
+    ]);
 
     return {
       data: { message, context: { recentMessages24h: recentMessages, activeBans: senderBans } },
@@ -481,7 +466,7 @@ export const getMessageDetails = createServerAction(
 export const getModerationQueue = createServerAction(
   { schema: getModerationQueueSchema, actionName: 'getModerationQueue' },
   async (filters) => {
-    const session = await requireModerationSession();
+    await requireModerationRole();
 
     const limit = Math.min(filters.limit || 20, 100);
     const offset = filters.offset || 0;
@@ -495,7 +480,13 @@ export const getModerationQueue = createServerAction(
         where: whereClause,
         include: {
           message: {
-            select: { id: true, content: true, createdAt: true, sender: { select: { id: true, name: true, email: true, image: true } }, thread: { select: { name: true, slug: true } } },
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              sender: { select: { id: true, name: true, email: true, image: true } },
+              thread: { select: { name: true, slug: true } },
+            },
           },
           reporter: { select: { id: true, name: true, email: true } },
         },

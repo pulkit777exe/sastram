@@ -7,8 +7,6 @@ export const getUserMemberships = cache(async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      id: true,
-      role: true,
       threads: {
         where: { deletedAt: null },
         select: { id: true, name: true, slug: true },
@@ -20,6 +18,8 @@ export const getUserMemberships = cache(async (userId: string) => {
   return user?.threads ?? [];
 });
 
+// There is no membership table — "role" is derived from thread visibility,
+// authorship, and the viewer's global role.
 export const getMemberRole = cache(async (threadId: string, userId: string) => {
   const [thread, user] = await Promise.all([
     prisma.thread.findFirst({
@@ -32,19 +32,15 @@ export const getMemberRole = cache(async (threadId: string, userId: string) => {
     }),
   ]);
 
-  if (!thread || !user) {
-    return null;
-  }
+  if (!thread || !user) return null;
 
-  if (canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility }, userId, user.role)) {
+  const context = { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility };
+
+  if (canManageThread(context, userId, user.role)) {
     return { role: user.role === Role.USER ? 'OWNER' : 'MODERATOR', status: 'ACTIVE' } as const;
   }
 
-  const allowed = await canAccessThread(
-    { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
-    userId,
-    user.role
-  );
+  const allowed = await canAccessThread(context, userId, user.role);
 
   return allowed ? ({ role: 'MEMBER', status: 'ACTIVE' } as const) : null;
 });

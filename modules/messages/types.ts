@@ -2,10 +2,6 @@ import type { UserStatus } from '@prisma/client';
 import type { ReactionSummary } from '@/modules/reactions/types';
 import type { Message } from '@/lib/types/index';
 
-/**
- * Message domain types
- */
-
 export interface AttachmentInfo {
   id: string;
   url: string;
@@ -42,30 +38,10 @@ export interface MessageWithDetails {
   replies?: MessageWithDetails[];
 }
 
-/**
- * A message node in the nested reply tree.
- * Extends the flat Message type with children and collapse state.
- */
 export interface MessageNode extends Message {
   children: MessageNode[];
   isCollapsed: boolean;
   likeCount: number;
   replyCount: number;
   isAiResponse: boolean;
-}
-
-export interface MessageEditHistory {
-  id: string;
-  content: string;
-  editedAt: Date;
-}
-
-export interface PostMessageResult {
-  id: string;
-  content: string;
-  senderId: string;
-  senderName: string;
-  senderImage: string | null;
-  createdAt: Date;
-  threadId: string;
 }

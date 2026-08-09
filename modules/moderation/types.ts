@@ -1,4 +1,0 @@
-/**
- * Moderation domain types
- */
-export {};

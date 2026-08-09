@@ -1,7 +1,3 @@
-/**
- * Reaction domain types
- */
-
 export interface ReactionSummary {
   emoji: string;
   count: number;

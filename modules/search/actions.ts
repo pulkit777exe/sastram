@@ -1,7 +1,5 @@
 'use server';
 
-import { logger } from '@/lib/infrastructure/logger';
-
 import {
   searchThreads as searchThreadsRepo,
   searchMessages as searchMessagesRepo,
@@ -16,24 +14,18 @@ const searchSchema = z.object({
   offset: z.number().int().nonnegative().optional().default(0),
 });
 
-const searchMessagesSchema = z.object({
-  query: z.string().min(1).max(200),
+const searchMessagesSchema = searchSchema.extend({
   threadId: z.string().optional(),
-  limit: z.number().int().positive().max(100).optional().default(20),
-  offset: z.number().int().nonnegative().optional().default(0),
 });
 
+// The repositories already swallow and log their own failures, returning empty
+// result sets; createServerAction covers anything that escapes.
 export const searchThreadsAction = withValidation(
   searchSchema,
   'searchThreads',
   async ({ query, limit, offset }) => {
-    try {
-      const result = await searchThreadsRepo(query, limit, offset);
-      return { data: result, error: null, ok: true, errorCode: null };
-    } catch (error) {
-      logger.error('[searchThreads]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
-    }
+    const result = await searchThreadsRepo(query, limit, offset);
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -41,13 +33,8 @@ export const searchMessagesAction = withValidation(
   searchMessagesSchema,
   'searchMessages',
   async ({ query, threadId, limit, offset }) => {
-    try {
-      const result = await searchMessagesRepo(query, threadId, limit, offset);
-      return { data: result, error: null, ok: true, errorCode: null };
-    } catch (error) {
-      logger.error('[searchMessages]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
-    }
+    const result = await searchMessagesRepo(query, threadId, limit, offset);
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );
 
@@ -55,12 +42,7 @@ export const searchUsersAction = withValidation(
   searchSchema,
   'searchUsers',
   async ({ query, limit, offset }) => {
-    try {
-      const result = await searchUsersRepo(query, limit, offset);
-      return { data: result, error: null, ok: true, errorCode: null };
-    } catch (error) {
-      logger.error('[searchUsers]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
-    }
+    const result = await searchUsersRepo(query, limit, offset);
+    return { data: result, error: null, ok: true, errorCode: null };
   }
 );

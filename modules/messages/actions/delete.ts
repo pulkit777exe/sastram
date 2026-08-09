@@ -8,7 +8,6 @@ import { requireSession } from '@/modules/auth';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
-import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 
 export const deleteMessage = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessage' },
@@ -19,7 +18,6 @@ export const deleteMessage = createServerAction(
       const message = await prisma.message.findUnique({
         where: { id: messageId },
         select: {
-          id: true,
           senderId: true,
           threadId: true,
           parentId: true,
@@ -31,15 +29,10 @@ export const deleteMessage = createServerAction(
         return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
       }
 
-      let canDelete = message.senderId === session.user.id;
-      if (!canDelete && message.threadId) {
-        const memberRole = await getMemberRole(message.threadId, session.user.id);
-        if (memberRole && ['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-          canDelete = true;
-        }
-      }
+      const isAuthor = message.senderId === session.user.id;
+      const memberRole = isAuthor ? null : await getMemberRole(message.threadId, session.user.id);
 
-      if (!canDelete) {
+      if (!isAuthor && !['OWNER', 'MODERATOR'].includes(memberRole?.role ?? '')) {
         return {
           data: null,
           error: 'Insufficient permissions to delete this message',
@@ -76,10 +69,6 @@ export const deleteMessage = createServerAction(
 
       if (message.thread?.slug) {
         revalidatePath(`/dashboard/threads/${message.thread.slug}`);
-      }
-
-      if (message.threadId) {
-        infraMessageSideEffects.emitMessageDeleted(message.threadId, messageId, session.user.id);
       }
 
       return { data: null, error: null, errorCode: null, ok: true };

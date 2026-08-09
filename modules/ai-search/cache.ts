@@ -1,21 +1,9 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import type { Prisma } from '@prisma/client';
-import crypto from 'crypto';
 import { logger } from '@/lib/infrastructure/logger';
 import type { AISearchResponse } from './types';
 import type { AISearchPipelineResult } from './service';
-
-function normalizeQuery(query: string): string {
-  return query
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ');
-}
-
-function hashQuery(query: string): string {
-  return crypto.createHash('sha256').update(normalizeQuery(query)).digest('hex');
-}
+import { hashQuery } from './hash';
 
 export async function getCachedResult(query: string): Promise<AISearchResponse | null> {
   const hash = hashQuery(query);
@@ -27,7 +15,6 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
 
     if (!cached) return null;
 
-    // Increment hit count asynchronously
     prisma.aiSearchResult
       .update({
         where: { id: cached.id },
@@ -42,7 +29,6 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
 
     const result = JSON.parse(cached.synthesis) as unknown as AISearchResponse;
 
-    // Guard against serving a previously cached degraded/error result.
     if (
       !result?.synthesis?.content ||
       typeof result.synthesis.content !== 'string' ||
@@ -64,27 +50,17 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
   }
 }
 
-/**
- * Store a result in the cache.
- */
 export async function cacheResult(
   query: string,
   result: AISearchPipelineResult,
   queryType: string
 ): Promise<void> {
   const hash = hashQuery(query);
-
-  // TTL: 6 hours for technical, 1 hour for opinion/news
   const ttlSeconds = queryType === 'technical' || queryType === 'factual' ? 6 * 60 * 60 : 60 * 60;
-
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   try {
-    // Get or create a single anonymous session for all cache entries.
-    // Plain read-then-write (no transaction): the session is a singleton keyed
-    // by userId 'anonymous', and a rare duplicate-create is harmless. Using a
-    // transaction here held a pooled connection for the whole cascade and failed
-    // under load with "Unable to start a transaction in the given time."
+    // Singleton anonymous session — read-then-write avoids transaction pool exhaustion under load
     let anonymousSession = await prisma.aiSearchSession.findFirst({
       where: { userId: 'anonymous' },
     });
@@ -94,12 +70,11 @@ export async function cacheResult(
         anonymousSession = await prisma.aiSearchSession.create({
           data: {
             userId: 'anonymous',
-            query: '', // placeholder query
-            queryHash: hashQuery(''), // hash of empty string
+            query: '',
+            queryHash: hashQuery(''),
           },
         });
       } catch (createErr) {
-        // Another request may have created it concurrently — fall back to read.
         anonymousSession =
           (await prisma.aiSearchSession.findFirst({ where: { userId: 'anonymous' } })) ?? null;
         if (!anonymousSession) throw createErr;
@@ -124,20 +99,5 @@ export async function cacheResult(
     logger.error('[cacheResult] cache write failed', {
       error: err instanceof Error ? err.message : String(err),
     });
-  }
-}
-
-/**
- * Cleanup expired cache entries. Can be called from a cron job.
- */
-export async function cleanupExpiredCache(): Promise<number> {
-  try {
-    const result = await prisma.aiSearchResult.deleteMany({
-      where: { expiresAt: { lt: new Date() } },
-    });
-    return result.count;
-  } catch (err) {
-    logger.warn('[ai-search-cache] Failed to cleanup expired cache', { error: err instanceof Error ? err.message : String(err) });
-    return 0;
   }
 }

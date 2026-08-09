@@ -29,39 +29,23 @@ export const getPublicProfile = cache(async (userId: string, viewerId?: string) 
     },
   });
 
-  if (!user) {
+  if (!user) return null;
+  if (viewerId === userId) return user;
+
+  if (user.profilePrivacy === ProfilePrivacy.PRIVATE) {
     return null;
   }
 
-  if (user.profilePrivacy === ProfilePrivacy.PRIVATE) {
-    if (viewerId !== userId) {
-      return null;
-    }
-  } else if (user.profilePrivacy === ProfilePrivacy.FOLLOWERS_ONLY) {
-    if (viewerId !== userId) {
-      const isFollowing = await prisma.userFollow.findUnique({
-        where: {
-          followerId_followingId: {
-            followerId: viewerId || '',
-            followingId: userId,
-          },
-        },
-      });
-
-      if (!isFollowing) {
-        return null;
-      }
-    }
+  if (user.profilePrivacy === ProfilePrivacy.FOLLOWERS_ONLY) {
+    if (!viewerId) return null;
+    const isFollowing = await prisma.userFollow.findUnique({
+      where: { followerId_followingId: { followerId: viewerId, followingId: userId } },
+    });
+    if (!isFollowing) return null;
   }
 
-  if (viewerId !== userId) {
-    return {
-      ...user,
-      email: undefined,
-    };
-  }
-
-  return user;
+  // Email is only ever exposed to the profile owner
+  return { ...user, email: undefined };
 });
 
 export const getUserBootstrapProfile = cache(async (userId: string) => {
@@ -79,13 +63,12 @@ export const getUserBootstrapProfile = cache(async (userId: string) => {
 });
 
 export const getUserThreads = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
+  const where = { createdBy: userId, deletedAt: null };
+
   try {
     const [threads, total] = await Promise.all([
       prisma.thread.findMany({
-        where: {
-          createdBy: userId,
-          deletedAt: null,
-        },
+        where,
         select: {
           id: true,
           name: true,
@@ -100,26 +83,13 @@ export const getUserThreads = cache(async (userId: string, limit: number = 20, o
         take: limit,
         skip: offset,
       }),
-      prisma.thread.count({
-        where: {
-          createdBy: userId,
-          deletedAt: null,
-        },
-      }),
+      prisma.thread.count({ where }),
     ]);
 
-    return {
-      threads: threads ?? [],
-      total,
-      hasMore: computeHasMore(offset, limit, total),
-    };
+    return { threads, total, hasMore: computeHasMore(offset, limit, total) };
   } catch (error) {
     logger.error('[getUserThreads]', error);
-    return {
-      threads: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { threads: [], total: 0, hasMore: false };
   }
 });
 
@@ -131,13 +101,12 @@ export async function updateProfilePrivacy(userId: string, privacy: ProfilePriva
 }
 
 export const getUserMessages = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
+  const where = { senderId: userId, deletedAt: null };
+
   try {
     const [messages, total] = await Promise.all([
       prisma.message.findMany({
-        where: {
-          senderId: userId,
-          deletedAt: null,
-        },
+        where,
         select: {
           id: true,
           content: true,
@@ -167,25 +136,12 @@ export const getUserMessages = cache(async (userId: string, limit: number = 20, 
         take: limit,
         skip: offset,
       }),
-      prisma.message.count({
-        where: {
-          senderId: userId,
-          deletedAt: null,
-        },
-      }),
+      prisma.message.count({ where }),
     ]);
 
-    return {
-      messages: messages ?? [],
-      total,
-      hasMore: computeHasMore(offset, limit, total),
-    };
+    return { messages, total, hasMore: computeHasMore(offset, limit, total) };
   } catch (error) {
     logger.error('[getUserMessages]', error);
-    return {
-      messages: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { messages: [], total: 0, hasMore: false };
   }
 });

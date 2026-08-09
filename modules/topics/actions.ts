@@ -19,24 +19,20 @@ export const createTopic = createServerAction(
   async ({ title, description, tags }) => {
     const session = await requireSession();
 
-    const section = await prisma.thread.create({
+    const thread = await prisma.thread.create({
       data: {
         name: title,
-        description: description,
+        description,
         createdBy: session.user.id,
         slug: buildThreadSlug(title),
       },
     });
 
-    const uniqueTags = Array.from(
-      new Set((tags ?? []).map((tag) => tag.toLowerCase()))
-    ).slice(0, 5);
+    const uniqueTags = Array.from(new Set((tags ?? []).map((tag) => tag.toLowerCase()))).slice(0, 5);
 
-    if (uniqueTags.length > 0) {
-      for (const tagName of uniqueTags) {
-        const tag = await createTag(tagName);
-        await addTagToThread(section.id, tag.id);
-      }
+    for (const tagName of uniqueTags) {
+      const tag = await createTag(tagName);
+      await addTagToThread(thread.id, tag.id);
     }
 
     revalidatePath('/dashboard');

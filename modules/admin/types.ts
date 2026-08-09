@@ -1,4 +1,0 @@
-/**
- * Admin domain types
- */
-export {};

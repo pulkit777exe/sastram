@@ -1,7 +1,3 @@
-/**
- * Search domain types
- */
-
 export type SearchThreadResult = {
   id: string;
   name: string;

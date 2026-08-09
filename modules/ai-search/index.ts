@@ -15,7 +15,6 @@ export type {
   ConflictInfo,
   SynthesisResult,
   AISearchResponse,
-  PastSearch,
   Citation,
   QueryType,
 } from './types';

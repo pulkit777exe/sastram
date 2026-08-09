@@ -19,14 +19,33 @@ import {
 } from './repository';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 
+const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
+
 const createTagSchema = z.object({
   name: z.string().min(1).max(50),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: hexColor.optional(),
 });
 
 const tagThreadSchema = z.object({
   threadId: z.string().cuid(),
   tagId: z.string().cuid(),
+});
+
+const updateTagSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(50).optional(),
+  color: hexColor.optional(),
+});
+
+const mergeTagsSchema = z.object({
+  sourceId: z.string(),
+  targetId: z.string(),
+});
+
+const listTagsSchema = z.object({
+  page: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().max(100).optional(),
+  search: z.string().optional(),
 });
 
 export const createTagAction = createServerAction(
@@ -53,7 +72,6 @@ export const removeTagFromThreadAction = createServerAction(
   { schema: tagThreadSchema, actionName: 'removeTagFromThreadAction' },
   async ({ threadId, tagId }) => {
     const session = await requireSession();
-    // Same fix as addTagToThreadAction above — removal is also a write action.
     await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     await removeTagFromThreadRepo(threadId, tagId);
     revalidatePath(ROUTES.THREAD(threadId));
@@ -80,27 +98,6 @@ export const getPopularTagsAction = withValidation(
   }
 );
 
-const updateTagSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1).max(50).optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-});
-
-const deleteTagSchema = z.object({
-  id: z.string(),
-});
-
-const mergeTagsSchema = z.object({
-  sourceId: z.string(),
-  targetId: z.string(),
-});
-
-const listTagsSchema = z.object({
-  page: z.number().int().positive().optional(),
-  pageSize: z.number().int().positive().max(100).optional(),
-  search: z.string().optional(),
-});
-
 export const listAllTagsAction = createServerAction(
   { schema: listTagsSchema, actionName: 'listAllTagsAction' },
   async (params) => {
@@ -121,7 +118,7 @@ export const updateTagAction = createServerAction(
 );
 
 export const deleteTagAction = createServerAction(
-  { schema: deleteTagSchema, actionName: 'deleteTagAction' },
+  { schema: z.object({ id: z.string() }), actionName: 'deleteTagAction' },
   async ({ id }) => {
     await requireRole(['ADMIN']);
     await deleteTagRepo(id);

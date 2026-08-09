@@ -10,7 +10,17 @@ import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effec
 import { ROUTES } from '@/lib/config/routes';
 import { createBulkNotifications } from '@/modules/notifications/repository';
 
-export async function createMentionsForMessage(args: {
+const EMAIL_PREVIEW_LENGTH = 200;
+
+export async function createMentionsForMessage({
+  messageId,
+  threadId,
+  mentions,
+  mentionedBy,
+  content,
+  threadSlug,
+  sideEffects,
+}: {
   messageId: string;
   threadId: string;
   mentions: string[];
@@ -24,66 +34,49 @@ export async function createMentionsForMessage(args: {
   threadSlug: string | null;
   sideEffects: MessageSideEffectsPort;
 }) {
-  if (args.mentions.length === 0) {
-    return;
-  }
+  if (mentions.length === 0) return;
+
+  const mentionerName = mentionedBy.name || mentionedBy.email;
 
   await prisma.messageMention.createMany({
-    data: args.mentions.map((userId) => ({
-      messageId: args.messageId,
-      userId,
-    })),
+    data: mentions.map((userId) => ({ messageId, userId })),
   });
 
-  const linkUrl = args.threadSlug
-    ? `${ROUTES.THREAD(args.threadSlug)}?focus=${args.messageId}`
-    : null;
-
   await createBulkNotifications(
-    args.mentions.map((userId) => ({
+    mentions.map((userId) => ({
       userId,
       type: 'MENTION' as const,
       title: 'You were mentioned',
-      message: `${args.mentionedBy.name || args.mentionedBy.email} mentioned you in a message`,
-      data: { messageId: args.messageId, threadId: args.threadId, linkUrl },
+      message: `${mentionerName} mentioned you in a message`,
+      data: {
+        messageId,
+        threadId,
+        linkUrl: threadSlug ? `${ROUTES.THREAD(threadSlug)}?focus=${messageId}` : null,
+      },
     }))
   );
 
-  for (const userId of args.mentions) {
-    args.sideEffects.emitMentionNotification(args.threadId, {
-      messageId: args.messageId,
-      mentionedUserId: userId,
-      mentionedBy: args.mentionedBy.id,
-      mentionedByName: args.mentionedBy.name || args.mentionedBy.email,
-      threadId: args.threadId,
-      content: args.content,
-      parentId: args.parentId ?? undefined,
-    });
-  }
-
   const thread = await prisma.thread.findFirst({
-    where: { id: args.threadId, deletedAt: null },
+    where: { id: threadId, deletedAt: null },
     select: { name: true, slug: true },
   });
 
-  if (!thread) {
-    return;
-  }
+  if (!thread) return;
 
   const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}`;
-
   const mentionedUsers = await prisma.user.findMany({
-    where: { id: { in: args.mentions }, deletedAt: null },
+    where: { id: { in: mentions }, deletedAt: null },
     select: { email: true },
   });
 
-  for (const mentionedUser of mentionedUsers) {
-    args.sideEffects
+  // Fire-and-forget: a bounced mention email must not fail the post.
+  for (const { email } of mentionedUsers) {
+    sideEffects
       .sendMentionEmail({
-        toEmail: mentionedUser.email,
-        mentionedByName: args.mentionedBy.name || args.mentionedBy.email,
+        toEmail: email,
+        mentionedByName: mentionerName,
         threadName: thread.name,
-        contentPreview: args.content.substring(0, 200),
+        contentPreview: content.substring(0, EMAIL_PREVIEW_LENGTH),
         threadUrl,
       })
       .catch((error) => {
@@ -119,19 +112,13 @@ export const searchMentionUsers = createServerAction(
       });
 
       return {
-        data: users.map((user) => {
-          const base = (user.name || user.email.split('@')[0] || 'user')
-            .toLowerCase()
-            .replace(/[^a-z0-9.-]/g, '');
-
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            image: user.image,
-            handle: base || 'user',
-          };
-        }),
+        data: users.map((user) => ({
+          ...user,
+          handle:
+            (user.name || user.email.split('@')[0] || '')
+              .toLowerCase()
+              .replace(/[^a-z0-9.-]/g, '') || 'user',
+        })),
         error: null,
         errorCode: null,
         ok: true,

@@ -8,6 +8,13 @@ import { getSession } from '@/modules/auth';
 import { createServerAction } from '@/lib/utils/server-action';
 import { logger } from '@/lib/infrastructure/logger';
 
+const NOT_AUTHENTICATED = {
+  data: null,
+  error: 'Not authenticated',
+  ok: false,
+  errorCode: 'AUTH_REQUIRED',
+} as const;
+
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
@@ -17,9 +24,7 @@ export const changePasswordAction = createServerAction(
   { schema: changePasswordSchema, actionName: 'changePasswordAction' },
   async ({ currentPassword, newPassword }) => {
     const session = await getSession();
-    if (!session) {
-      return { data: null, error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
-    }
+    if (!session) return NOT_AUTHENTICATED;
     try {
       await auth.api.changePassword({
         body: { currentPassword, newPassword, revokeOtherSessions: false },
@@ -42,9 +47,7 @@ export const changeEmailAction = createServerAction(
   { schema: changeEmailSchema, actionName: 'changeEmailAction' },
   async ({ newEmail }) => {
     const session = await getSession();
-    if (!session) {
-      return { data: null, error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
-    }
+    if (!session) return NOT_AUTHENTICATED;
     try {
       await auth.api.changeEmail({
         body: {
@@ -66,9 +69,7 @@ export const listSessionsAction = createServerAction(
   { schema: z.object({}), actionName: 'listSessionsAction' },
   async () => {
     const current = await getSession();
-    if (!current) {
-      return { data: null, error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
-    }
+    if (!current) return NOT_AUTHENTICATED;
     try {
       const currentToken = await getCurrentSessionToken();
       const sessions = await prisma.session.findMany({
@@ -106,9 +107,7 @@ export const revokeSessionAction = createServerAction(
   { schema: revokeSessionSchema, actionName: 'revokeSessionAction' },
   async ({ token }) => {
     const session = await getSession();
-    if (!session) {
-      return { data: null, error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
-    }
+    if (!session) return NOT_AUTHENTICATED;
     try {
       await auth.api.revokeSession({ body: { token }, headers: await headers() });
       return { data: { ok: true }, error: null, ok: true, errorCode: null };
@@ -142,9 +141,7 @@ export const getLinkedAccountsAction = createServerAction(
   { schema: z.object({}), actionName: 'getLinkedAccountsAction' },
   async () => {
     const session = await getSession();
-    if (!session) {
-      return { data: [], error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
-    }
+    if (!session) return { ...NOT_AUTHENTICATED, data: [] };
     const accounts = await prisma.account.findMany({
       where: { userId: session.user.id },
       select: { providerId: true, createdAt: true, idToken: true },
@@ -170,9 +167,7 @@ export const unlinkAccountAction = createServerAction(
   { schema: unlinkAccountSchema, actionName: 'unlinkAccountAction' },
   async ({ provider }) => {
     const session = await getSession();
-    if (!session) {
-      return { data: null, error: 'Not authenticated', ok: false, errorCode: 'AUTH_REQUIRED' };
-    }
+    if (!session) return NOT_AUTHENTICATED;
     try {
       const accounts = await prisma.account.findMany({
         where: { userId: session.user.id },

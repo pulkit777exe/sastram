@@ -1,34 +1,26 @@
 import { z } from 'zod';
 
-/**
- * Attachment input schema
- */
+const MAX_CONTENT_LENGTH = 10000;
+
 export const attachmentInputSchema = z.object({
   url: z
     .string()
     .url('Invalid attachment URL')
-    .refine(
-      (val) => !val.includes('..') && !val.includes('\\'),
-      'Invalid path in URL'
-    )
-    .refine(
-      (val) => /^https:\/\//.test(val),
-      'URL must start with https://'
-    ),
+    // Uploads are proxied through blob storage; reject traversal-ish and non-TLS URLs.
+    .refine((val) => !val.includes('..') && !val.includes('\\'), 'Invalid path in URL')
+    .refine((val) => /^https:\/\//.test(val), 'URL must start with https://'),
   type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
   name: z.string().nullable(),
   size: z.number().int().positive('File size must be positive').nullable(),
 });
 
-/**
- * Message validation schemas
- */
+const messageContent = z
+  .string()
+  .min(1, 'Message cannot be empty')
+  .max(MAX_CONTENT_LENGTH, `Message must be less than ${MAX_CONTENT_LENGTH} characters`);
 
 export const createMessageSchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Message cannot be empty')
-    .max(10000, 'Message must be less than 10000 characters'),
+  content: messageContent,
   threadId: z.string().cuid('Invalid thread ID'),
   parentId: z.string().cuid('Invalid parent message ID').optional(),
   mentions: z.array(z.string().cuid()).optional(),
@@ -46,25 +38,17 @@ export const createMessageWithAttachmentsSchema = createMessageSchema.extend({
     .nullable(),
 });
 
-export const editMessageSchema = z.object({
-  messageId: z.string().cuid('Invalid message ID'),
-  content: z
-    .string()
-    .min(1, 'Message cannot be empty')
-    .max(10000, 'Message must be less than 10000 characters'),
-});
-
-export const pinMessageSchema = z.object({
+const messageIdSchema = z.object({
   messageId: z.string().cuid('Invalid message ID'),
 });
 
-export const deleteMessageSchema = z.object({
-  messageId: z.string().cuid('Invalid message ID'),
+export const editMessageSchema = messageIdSchema.extend({
+  content: messageContent,
 });
 
-export const getMessageEditHistorySchema = z.object({
-  messageId: z.string().cuid('Invalid message ID'),
-});
+export const pinMessageSchema = messageIdSchema;
+export const deleteMessageSchema = messageIdSchema;
+export const getMessageEditHistorySchema = messageIdSchema;
 
 export const searchMentionUsersSchema = z.object({
   threadId: z.string().cuid('Invalid thread ID'),

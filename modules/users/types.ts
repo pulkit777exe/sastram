@@ -1,9 +1,5 @@
 import type { Role, UserStatus } from '@prisma/client';
 
-/**
- * User domain types
- */
-
 export interface UserProfile {
   id: string;
   name: string | null;

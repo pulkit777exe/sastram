@@ -2,42 +2,31 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { slugify } from '@/lib/utils/slug';
 
+const withThreadCount = { _count: { select: { threads: true } } };
+
 export async function createTag(name: string, color: string = '#3b82f6') {
   const slug = slugify(name);
 
+  // Tags are keyed by slug, so re-creating an existing tag just refreshes its label/colour.
   return prisma.threadTag.upsert({
     where: { slug },
     update: { name, color },
-    create: {
-      name,
-      slug,
-      color,
-    },
+    create: { name, slug, color },
   });
 }
 
 export async function addTagToThread(threadId: string, tagId: string) {
   return prisma.threadTagRelation.upsert({
-    where: {
-      threadId_tagId: {
-        threadId,
-        tagId,
-      },
-    },
+    where: { threadId_tagId: { threadId, tagId } },
     update: {},
-    create: {
-      threadId,
-      tagId,
-    },
+    create: { threadId, tagId },
   });
 }
 
 export async function removeTagFromThread(threadId: string, tagId: string) {
   try {
     await prisma.threadTagRelation.delete({
-      where: {
-        threadId_tagId: { threadId, tagId },
-      },
+      where: { threadId_tagId: { threadId, tagId } },
     });
     return { id: '' };
   } catch (err) {
@@ -50,12 +39,10 @@ export async function getThreadTags(threadId: string) {
   try {
     const relations = await prisma.threadTagRelation.findMany({
       where: { threadId },
-      include: {
-        tag: true,
-      },
+      include: { tag: true },
     });
 
-    return (relations ?? []).map((relation) => relation.tag);
+    return relations.map((relation) => relation.tag);
   } catch (error) {
     logger.error('[getThreadTags]', error);
     return [];
@@ -65,25 +52,12 @@ export async function getThreadTags(threadId: string) {
 export async function getPopularTags(limit: number = 20) {
   try {
     const tags = await prisma.threadTag.findMany({
-      include: {
-        _count: {
-          select: {
-            threads: true,
-          },
-        },
-      },
-      orderBy: {
-        threads: {
-          _count: 'desc',
-        },
-      },
+      include: withThreadCount,
+      orderBy: { threads: { _count: 'desc' } },
       take: limit,
     });
 
-    return (tags ?? []).map((tag) => ({
-      ...tag,
-      threadCount: tag._count.threads,
-    }));
+    return tags.map((tag) => ({ ...tag, threadCount: tag._count.threads }));
   } catch (error) {
     logger.error('[getPopularTags]', error);
     return [];
@@ -91,13 +65,9 @@ export async function getPopularTags(limit: number = 20) {
 }
 
 export async function updateTag(id: string, data: { name?: string; color?: string }) {
-  const updateData: { name?: string; slug?: string; color?: string } = { ...data };
-  if (data.name) {
-    updateData.slug = slugify(data.name);
-  }
   return prisma.threadTag.update({
     where: { id },
-    data: updateData,
+    data: data.name ? { ...data, slug: slugify(data.name) } : data,
   });
 }
 
@@ -109,16 +79,15 @@ export async function deleteTag(id: string) {
 export async function listAllTags(params?: { page?: number; pageSize?: number; search?: string }) {
   const page = params?.page ?? 1;
   const pageSize = params?.pageSize ?? 50;
-  const search = params?.search;
 
-  const where = search
-    ? { name: { contains: search, mode: 'insensitive' as const } }
+  const where = params?.search
+    ? { name: { contains: params.search, mode: 'insensitive' as const } }
     : {};
 
   const [tags, total] = await Promise.all([
     prisma.threadTag.findMany({
       where,
-      include: { _count: { select: { threads: true } } },
+      include: withThreadCount,
       orderBy: { threads: { _count: 'desc' } },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -139,9 +108,7 @@ export async function getTagBySlug(slug: string) {
   try {
     const tag = await prisma.threadTag.findUnique({
       where: { slug },
-      include: {
-        _count: { select: { threads: true } },
-      },
+      include: withThreadCount,
     });
     if (!tag) return null;
     return { ...tag, threadCount: tag._count.threads };
@@ -153,10 +120,8 @@ export async function getTagBySlug(slug: string) {
 
 export async function getThreadsByTag(tagId: string) {
   try {
-    const where: Record<string, unknown> = { tags: { some: { tagId } }, deletedAt: null };
-
     const threads = await prisma.thread.findMany({
-      where,
+      where: { tags: { some: { tagId } }, deletedAt: null },
       select: {
         id: true,
         slug: true,
@@ -193,6 +158,7 @@ export async function mergeTags(sourceId: string, targetId: string) {
     where: { tagId: sourceId },
   });
 
+  // Upsert rather than update: the thread may already carry the target tag.
   await Promise.all(
     relations.map((r) =>
       prisma.threadTagRelation.upsert({

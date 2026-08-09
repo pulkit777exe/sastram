@@ -1,4 +1,0 @@
-/**
- * Tags domain types
- */
-export {};

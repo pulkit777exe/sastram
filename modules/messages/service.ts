@@ -2,143 +2,123 @@ import type { Message } from '@/lib/types/index';
 import type { MessageNode } from './types';
 
 const MAX_DEPTH = 4;
+const COLLAPSE_KEY_PREFIX = 'thread-collapse:';
 
-/**
- * Builds a nested message tree from a flat array of messages.
- * Single-pass algorithm using a Map for O(n) performance.
- *
- * @param flatMessages - Flat array of messages from DB (ordered by createdAt)
- * @returns Array of root-level MessageNodes with nested children
- */
+function toNode(msg: Message): MessageNode {
+  return {
+    id: msg.id,
+    content: msg.content,
+    createdAt: msg.createdAt,
+    updatedAt: msg.updatedAt,
+    senderId: msg.senderId,
+    threadId: msg.threadId,
+    parentId: msg.parentId ?? null,
+    depth: msg.depth ?? 0,
+    isEdited: msg.isEdited ?? false,
+    isPinned: msg.isPinned ?? false,
+    likeCount: msg.likeCount ?? 0,
+    replyCount: msg.replyCount ?? 0,
+    isAiResponse: msg.isAiResponse ?? false,
+    deletedAt: msg.deletedAt ?? null,
+    sender: msg.sender ?? { id: msg.senderId ?? '', name: null, image: null },
+    thread: msg.thread ?? { id: msg.threadId, name: '', slug: '' },
+    attachments: msg.attachments ?? [],
+    children: [],
+    isCollapsed: false,
+  };
+}
+
+const byCreatedAt = (a: MessageNode, b: MessageNode) =>
+  new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+
 export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
   const nodeMap = new Map<string, MessageNode>();
   const roots: MessageNode[] = [];
+  // Replies can appear before their parent (pagination, realtime inserts), so
+  // park them here until the parent shows up.
   const pendingChildren = new Map<string, MessageNode[]>();
 
-  // Single pass: create nodes and attach to parents (or queue until parent arrives)
   for (const msg of flatMessages) {
-    let node = nodeMap.get(msg.id);
-    if (node) {
-      Object.assign(node, msg, {
-        isCollapsed: node.isCollapsed ?? false,
-        likeCount: msg.likeCount ?? node.likeCount ?? 0,
-        replyCount: msg.replyCount ?? node.replyCount ?? 0,
-        isAiResponse: msg.isAiResponse ?? node.isAiResponse ?? false,
-        children: node.children ?? [],
+    const existing = nodeMap.get(msg.id);
+    let node: MessageNode;
+
+    if (existing) {
+      node = Object.assign(existing, msg, {
+        isCollapsed: existing.isCollapsed ?? false,
+        likeCount: msg.likeCount ?? existing.likeCount ?? 0,
+        replyCount: msg.replyCount ?? existing.replyCount ?? 0,
+        isAiResponse: msg.isAiResponse ?? existing.isAiResponse ?? false,
+        children: existing.children ?? [],
       });
     } else {
-      node = {
-        id: msg.id,
-        content: msg.content,
-        createdAt: msg.createdAt,
-        updatedAt: msg.updatedAt,
-        senderId: msg.senderId,
-        threadId: msg.threadId,
-        parentId: msg.parentId ?? null,
-        depth: msg.depth ?? 0,
-        isEdited: msg.isEdited ?? false,
-        isPinned: msg.isPinned ?? false,
-        likeCount: msg.likeCount ?? 0,
-        replyCount: msg.replyCount ?? 0,
-        isAiResponse: msg.isAiResponse ?? false,
-        deletedAt: msg.deletedAt ?? null,
-        sender: msg.sender ?? { id: msg.senderId ?? '', name: null, image: null },
-        thread: msg.thread ?? { id: msg.threadId, name: '', slug: '' },
-        attachments: msg.attachments ?? [],
-        children: [],
-        isCollapsed: false,
-      };
+      node = toNode(msg);
       nodeMap.set(msg.id, node);
     }
 
     const queued = pendingChildren.get(msg.id);
-    if (queued && queued.length > 0) {
-      node!.children.push(...queued);
+    if (queued?.length) {
+      node.children.push(...queued);
       pendingChildren.delete(msg.id);
     }
 
-    if (msg.parentId) {
-      const parent = nodeMap.get(msg.parentId);
-      if (parent) {
-        parent.children.push(node!);
-      } else {
-        const list = pendingChildren.get(msg.parentId);
-        if (list) {
-          list.push(node!);
-        } else {
-          pendingChildren.set(msg.parentId, [node!]);
-        }
-      }
+    if (!msg.parentId) {
+      roots.push(node);
+      continue;
+    }
+
+    const parent = nodeMap.get(msg.parentId);
+    if (parent) {
+      parent.children.push(node);
     } else {
-      roots.push(node!);
+      const waiting = pendingChildren.get(msg.parentId);
+      if (waiting) waiting.push(node);
+      else pendingChildren.set(msg.parentId, [node]);
     }
   }
 
-  // Attach any children whose parents were missing from this list.
+  // Parents that never arrived — surface their replies rather than dropping them.
   for (const orphaned of pendingChildren.values()) {
     roots.push(...orphaned);
   }
 
-  // Sort children by createdAt within each parent
   for (const node of nodeMap.values()) {
-    node.children.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    node.children.sort(byCreatedAt);
   }
-
-  // Sort roots by createdAt
-  roots.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  roots.sort(byCreatedAt);
 
   return roots;
 }
 
-/**
- * Count total descendants of a node (recursive).
- */
 export function countDescendants(node: MessageNode): number {
-  let count = node.children.length;
-  for (const child of node.children) {
-    count += countDescendants(child);
-  }
-  return count;
+  return node.children.reduce((count, child) => count + 1 + countDescendants(child), 0);
 }
 
-/**
- * Check if a message is beyond the visual depth limit.
- */
 export function isBeyondDepthLimit(depth: number): boolean {
   return depth >= MAX_DEPTH;
 }
 
-/**
- * Get the collapse state key for localStorage persistence.
- */
 export function getCollapseKey(threadId: string, messageId: string): string {
-  return `thread-collapse:${threadId}:${messageId}`;
+  return `${COLLAPSE_KEY_PREFIX}${threadId}:${messageId}`;
 }
 
-/**
- * Load collapse states from localStorage for a given thread.
- */
 export function loadCollapseStates(threadId: string): Map<string, boolean> {
   const states = new Map<string, boolean>();
   if (typeof window === 'undefined') return states;
 
-  const prefix = `thread-collapse:${threadId}:`;
+  const prefix = `${COLLAPSE_KEY_PREFIX}${threadId}:`;
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith(prefix)) {
-      const messageId = key.slice(prefix.length);
-      states.set(messageId, localStorage.getItem(key) === 'true');
+    if (key?.startsWith(prefix)) {
+      states.set(key.slice(prefix.length), localStorage.getItem(key) === 'true');
     }
   }
   return states;
 }
 
-/**
- * Save a collapse state to localStorage.
- */
 export function saveCollapseState(threadId: string, messageId: string, collapsed: boolean): void {
   if (typeof window === 'undefined') return;
   const key = getCollapseKey(threadId, messageId);
+  // Absence means "expanded", so clear the entry instead of storing 'false'.
   if (collapsed) {
     localStorage.setItem(key, 'true');
   } else {

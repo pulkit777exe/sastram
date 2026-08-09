@@ -1,6 +1,5 @@
 'use server';
 
-import { z } from 'zod';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
@@ -11,14 +10,10 @@ import {
   isBookmarked as isBookmarkedRepo,
 } from './repository';
 import { createServerAction } from '@/lib/utils/server-action';
-import { paginationSchema } from '@/lib/utils/validation-common';
-
-const bookmarkSchema = z.object({
-  threadId: z.string().cuid('Invalid thread ID'),
-});
+import { paginationSchema, threadIdSchema } from '@/lib/utils/validation-common';
 
 export const toggleBookmark = createServerAction(
-  { schema: bookmarkSchema, actionName: 'toggleBookmark' },
+  { schema: threadIdSchema, actionName: 'toggleBookmark' },
   async ({ threadId }) => {
     const session = await requireSession();
     const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
@@ -40,17 +35,13 @@ export const getBookmarkedThreads = createServerAction(
   { schema: paginationSchema, actionName: 'getBookmarkedThreads' },
   async ({ limit, offset }) => {
     const session = await requireSession();
-    const result = await getUserBookmarksRepo(
-      session.user.id,
-      limit || 20,
-      offset || 0
-    );
+    const result = await getUserBookmarksRepo(session.user.id, limit || 20, offset || 0);
     return { data: result, error: null, ok: true, errorCode: null };
   }
 );
 
 export const checkBookmarkStatus = createServerAction(
-  { schema: bookmarkSchema, actionName: 'checkBookmarkStatus' },
+  { schema: threadIdSchema, actionName: 'checkBookmarkStatus' },
   async ({ threadId }) => {
     const session = await requireSession();
     const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);

@@ -1,7 +1,3 @@
-/**
- * Bookmarks domain types
- */
-
 export interface BookmarkedThreadsResponse {
   bookmarks: Array<{
     id: string;

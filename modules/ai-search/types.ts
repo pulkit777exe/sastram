@@ -74,13 +74,6 @@ export interface AISearchResponse {
   timings?: PhaseTimings;
 }
 
-export interface PastSearch {
-  id: string;
-  query: string;
-  timestamp: number;
-  resultCount: number;
-}
-
 export interface RawSearchResults {
   exaSources: Source[];
   tavilySources: Source[];

@@ -1,9 +1,5 @@
 import { z } from 'zod';
 
-/**
- * User validation schemas
- */
-
 export const updateUserProfileSchema = z.object({
   name: z
     .string()

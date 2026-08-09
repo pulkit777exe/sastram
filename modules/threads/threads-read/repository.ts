@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { Role, type Prisma } from '@prisma/client';
+import { Role, type Prisma, type ThreadVisibility } from '@prisma/client';
 import { dedupe } from '@/lib/dedupe';
 import { canAccessThread } from '@/lib/thread-access';
 
@@ -112,28 +112,14 @@ export type ThreadWithFullContext = {
   isSubscribed: boolean;
 };
 
-type ThreadRow = {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  createdBy: string | null;
-  visibility: string;
-  aiSummary: string | null;
-  resolutionScore: number | null;
-  isOutdated: boolean;
-  threadDna: Prisma.JsonValue | null;
-  createdAt: Date;
-  updatedAt: Date;
-  lastVerifiedAt: Date | null;
-  author: {
-    id: string;
-    name: string | null;
-    image: string | null;
-  };
+// Shape returned by the raw SQL below: same scalars as ThreadWithFullContext but
+// with snake_case aggregates and every json_agg nullable (empty LATERAL -> NULL).
+type ThreadRow = Omit<
+  ThreadWithFullContext,
+  'tags' | 'messages' | 'aiSearchSession' | '_count' | 'isBookmarked' | 'isSubscribed'
+> & {
   tags: ThreadTag[] | null;
   messages: ThreadMessage[] | null;
-  poll: ThreadPoll | null;
   message_count: number | null;
   is_bookmarked: boolean | null;
   is_subscribed: boolean | null;
@@ -191,18 +177,17 @@ export async function getThreadMessagesPaginated(
   cursor?: string | null,
   limit: number = 50
 ): Promise<PaginatedMessagesResult> {
-  const where: Record<string, unknown> = {
-    threadId,
-    deletedAt: null,
-  };
+  const where: Prisma.MessageWhereInput = { threadId, deletedAt: null };
 
+  // Cursors are message ids, but we page on createdAt — a missing cursor row
+  // (deleted mid-scroll) silently falls back to the first page.
   if (cursor) {
     const cursorMessage = await prisma.message.findUnique({
       where: { id: cursor },
       select: { createdAt: true },
     });
     if (cursorMessage) {
-      (where as Record<string, unknown>).createdAt = { gt: cursorMessage.createdAt };
+      where.createdAt = { gt: cursorMessage.createdAt };
     }
   }
 
@@ -211,13 +196,8 @@ export async function getThreadMessagesPaginated(
       where,
       include: {
         sender: { select: { id: true, name: true, image: true } },
-        reactions: { select: { emoji: true } },
         attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
-        poll: {
-          include: {
-            votes: true,
-          },
-        },
+        poll: { include: { votes: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
@@ -226,11 +206,10 @@ export async function getThreadMessagesPaginated(
   ]);
 
   const hasMore = messages.length > limit;
-  const sliced = hasMore ? messages.slice(0, limit) : messages;
-  const nextCursor = hasMore && sliced.length > 0 ? sliced[sliced.length - 1].id : null;
+  const page = hasMore ? messages.slice(0, limit) : messages;
 
   return {
-    messages: sliced.map((m) => ({
+    messages: page.map((m) => ({
       id: m.id,
       body: m.content,
       threadId: m.threadId,
@@ -254,24 +233,20 @@ export async function getThreadMessagesPaginated(
         name: a.name,
         size: a.size !== null ? Number(a.size) : null,
       })),
-      poll: m.poll ? {
-        id: m.poll.id,
-        question: m.poll.question,
-        options: m.poll.options as string[],
-        isActive: m.poll.isActive,
-        expiresAt: m.poll.expiresAt,
-        createdAt: m.poll.createdAt,
-        votes: m.poll.votes.map((v) => ({
-          id: v.id,
-          pollId: v.pollId,
-          userId: v.userId,
-          optionIndex: v.optionIndex,
-          createdAt: v.createdAt,
-        })),
-      } : null,
+      poll: m.poll
+        ? {
+            id: m.poll.id,
+            question: m.poll.question,
+            options: m.poll.options as string[],
+            isActive: m.poll.isActive,
+            expiresAt: m.poll.expiresAt,
+            createdAt: m.poll.createdAt,
+            votes: m.poll.votes,
+          }
+        : null,
     })),
     hasMore,
-    nextCursor,
+    nextCursor: hasMore && page.length > 0 ? page[page.length - 1].id : null,
     totalCount,
   };
 }
@@ -422,6 +397,8 @@ export async function getThreadWithFullContext(
     const row = rows[0];
     if (!row) return null;
 
+    // The query itself doesn't filter on visibility, so non-public threads get
+    // an explicit access check here rather than leaking a row.
     if (row.visibility !== 'PUBLIC') {
       if (!userId) return null;
       const user = await prisma.user.findUnique({
@@ -429,39 +406,24 @@ export async function getThreadWithFullContext(
         select: { role: true },
       });
       const allowed = await canAccessThread(
-        { threadId: row.id, createdBy: row.createdBy, visibility: row.visibility as never },
+        { threadId: row.id, createdBy: row.createdBy, visibility: row.visibility as ThreadVisibility },
         userId,
         user?.role ?? Role.USER
       );
       if (!allowed) return null;
     }
 
-    const aiSearchSession: ThreadAiSearchSession = null;
+    const { message_count, is_bookmarked, is_subscribed, tags, messages, ...thread } = row;
 
     return {
-      id: row.id,
-      name: row.name,
-      slug: row.slug,
-      description: row.description ?? null,
-      createdBy: row.createdBy,
-      visibility: row.visibility,
-      aiSummary: row.aiSummary ?? null,
-      resolutionScore: row.resolutionScore ?? null,
-      isOutdated: row.isOutdated,
-      threadDna: row.threadDna ?? null,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      lastVerifiedAt: row.lastVerifiedAt ?? null,
-      author: row.author,
-      messages: (row.messages ?? []) as ThreadMessage[],
-      tags: (row.tags ?? []) as ThreadTag[],
-      aiSearchSession,
-      poll: (row.poll ?? null) as ThreadPoll,
-      _count: {
-        messages: row.message_count ?? 0,
-      },
-      isBookmarked: row.is_bookmarked ?? false,
-      isSubscribed: row.is_subscribed ?? false,
+      ...thread,
+      messages: messages ?? [],
+      tags: tags ?? [],
+      // Search sessions aren't joined into this query yet; the panel renders empty.
+      aiSearchSession: null,
+      _count: { messages: message_count ?? 0 },
+      isBookmarked: is_bookmarked ?? false,
+      isSubscribed: is_subscribed ?? false,
     };
   });
 }

@@ -1,22 +1,28 @@
 import type {
+  Attachment,
+  Message,
+  Reaction,
   Thread,
   ThreadVisibility,
+  User,
 } from '@prisma/client';
+import type { ThreadDNA } from '@/lib/schemas/thread-dna';
 import type { MessageWithDetails } from '@/modules/messages/types';
 
-// Base thread record with all relations
+export type { ThreadWithFullContext } from './threads-read/repository';
+export type { ThreadDNA };
+
 export type ThreadRecord = Thread & {
-  creator?: import('@prisma/client').User | null;
-  messages?: (import('@prisma/client').Message & {
-    sender?: import('@prisma/client').User | null;
-    reactions?: import('@prisma/client').Reaction[];
-    attachments?: import('@prisma/client').Attachment[];
-    replies?: import('@prisma/client').Message[];
+  creator?: User | null;
+  messages?: (Message & {
+    sender?: User | null;
+    reactions?: Reaction[];
+    attachments?: Attachment[];
+    replies?: Message[];
   })[];
   subscriptions?: { id: string; email: string }[];
 };
 
-// Thread summary for list views
 export interface ThreadSummary {
   id: string;
   slug: string;
@@ -40,15 +46,6 @@ export interface ThreadSummary {
   createdBy: string | null;
 }
 
-// Thread DNA metadata
-export interface ThreadDNA {
-  questionType: 'factual' | 'opinion' | 'technical' | 'comparison' | 'other';
-  expertiseLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
-  topics: string[];
-  readTimeMinutes: number;
-}
-
-// Detailed thread view with messages
 export interface ThreadDetail extends ThreadSummary {
   messages: MessageWithDetails[];
   aiSummary?: string | null;
@@ -59,46 +56,4 @@ export interface ThreadDetail extends ThreadSummary {
   threadDna?: ThreadDNA;
   lastVerifiedAt?: Date | null;
   isOutdated?: boolean;
-}
-
-// Thread filters
-export interface ThreadFilters {
-  visibility?: ThreadVisibility;
-  search?: string;
-  sortBy?: 'recent' | 'popular' | 'active' | 'oldest';
-  page?: number;
-  pageSize?: number;
-}
-
-// Create/Update DTOs
-export interface CreateThreadInput {
-  name: string;
-  slug: string;
-  description?: string;
-  summary?: string;
-  visibility?: ThreadVisibility;
-}
-
-export interface UpdateThreadInput {
-  name?: string;
-  description?: string;
-  summary?: string;
-  visibility?: ThreadVisibility;
-}
-
-export interface CreateMessageInput {
-  content: string;
-  threadId: string;
-  parentId?: string;
-  attachments?: {
-    url: string;
-    type: string;
-    name?: string;
-    mimeType?: string;
-    size?: bigint;
-  }[];
-}
-
-export interface UpdateMessageInput {
-  content: string;
 }

@@ -19,8 +19,17 @@ import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { isPrismaUniqueConstraintError } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
+import type { ActionErrorCode } from '@/lib/actions/result';
 
 const pollIdSchema = z.object({ pollId: z.string().cuid() });
+
+const MANAGER_ROLES = ['OWNER', 'MODERATOR'];
+
+const fail = (error: string, errorCode: ActionErrorCode) =>
+  ({ data: null, error, ok: false, errorCode }) as const;
+const internalError = () => fail('Something went wrong', 'INTERNAL_ERROR');
+const pollNotFound = () => fail('Poll not found', 'NOT_FOUND');
+const notAMember = () => fail('You are not a member of this thread', 'FORBIDDEN');
 
 export const createPollAction = withValidation(
   createPollSchema,
@@ -29,24 +38,18 @@ export const createPollAction = withValidation(
     try {
       const session = await requireSession();
       const memberRole = await getMemberRole(threadId, session.user.id);
-      
+
+      // Thread-level polls are an owner/mod call; a poll attached to a message can
+      // be created by anyone who belongs to the thread.
       if (!messageId) {
-        if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-          return { data: null, error: 'Insufficient permissions to create poll', ok: false, errorCode: 'FORBIDDEN' };
+        if (!memberRole || !MANAGER_ROLES.includes(memberRole.role)) {
+          return fail('Insufficient permissions to create poll', 'FORBIDDEN');
         }
-      } else {
-        if (!memberRole) {
-          return { data: null, error: 'You are not a member of this thread', ok: false, errorCode: 'FORBIDDEN' };
-        }
+      } else if (!memberRole) {
+        return notAMember();
       }
 
-      const poll = await createPollRepo(
-        threadId,
-        question,
-        options,
-        expiresAt,
-        messageId
-      );
+      const poll = await createPollRepo(threadId, question, options, expiresAt, messageId);
 
       logger.info('[createPoll] Poll created', {
         pollId: poll.id,
@@ -59,7 +62,7 @@ export const createPollAction = withValidation(
       return { data: poll, error: null, ok: true, errorCode: null };
     } catch (err) {
       logger.error('[createPoll]', { error: err });
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return internalError();
     }
   }
 );
@@ -72,20 +75,15 @@ export const voteOnPollAction = withValidation(
       const session = await requireSession();
 
       const poll = await getPollByIdRepo(pollId);
-      if (!poll) {
-        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
-      }
-      if (!poll.isActive) {
-        return { data: null, error: 'Voting is closed for this poll', ok: false, errorCode: 'CONFLICT' };
-      }
-      if (poll.expiresAt && poll.expiresAt.getTime() < Date.now()) {
-        return { data: null, error: 'Voting is closed for this poll', ok: false, errorCode: 'CONFLICT' };
+      if (!poll) return pollNotFound();
+
+      const expired = poll.expiresAt !== null && poll.expiresAt.getTime() < Date.now();
+      if (!poll.isActive || expired) {
+        return fail('Voting is closed for this poll', 'CONFLICT');
       }
 
       const memberRole = await getMemberRole(poll.threadId, session.user.id);
-      if (!memberRole) {
-        return { data: null, error: 'You are not a member of this thread', ok: false, errorCode: 'FORBIDDEN' };
-      }
+      if (!memberRole) return notAMember();
 
       await voteOnPollRepo(pollId, session.user.id, optionIndex);
 
@@ -95,35 +93,29 @@ export const voteOnPollAction = withValidation(
 
       return { data: null, error: null, ok: true, errorCode: null };
     } catch (err) {
+      // One vote per user is enforced by a unique index, not a pre-check.
       if (isPrismaUniqueConstraintError(err)) {
-        return { data: null, error: 'You have already voted on this poll', ok: false, errorCode: 'CONFLICT' };
+        return fail('You have already voted on this poll', 'CONFLICT');
       }
       logger.error('[voteOnPoll]', { error: err });
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return internalError();
     }
   }
 );
 
 export const closePollAction = createServerAction(
-  {
-    schema: pollIdSchema,
-    actionName: 'closePoll',
-  },
+  { schema: pollIdSchema, actionName: 'closePoll' },
   async ({ pollId }) => {
     try {
       const session = await requireSession();
 
       const poll = await getPollByIdRepo(pollId);
-      if (!poll) {
-        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
-      }
+      if (!poll) return pollNotFound();
 
       const memberRole = await getMemberRole(poll.threadId, session.user.id);
-      if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-        if (session.user.role !== 'ADMIN') {
-          return { data: null, error: 'Insufficient permissions', ok: false, errorCode: 'FORBIDDEN' };
-        }
-      }
+      const canClose =
+        (memberRole && MANAGER_ROLES.includes(memberRole.role)) || session.user.role === 'ADMIN';
+      if (!canClose) return fail('Insufficient permissions', 'FORBIDDEN');
 
       await closePollRepo(pollId);
 
@@ -134,35 +126,27 @@ export const closePollAction = createServerAction(
       return { data: null, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[closePoll]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return internalError();
     }
   }
 );
 
 export const getPollResultsAction = createServerAction(
-  {
-    schema: pollIdSchema,
-    actionName: 'getPollResults',
-  },
+  { schema: pollIdSchema, actionName: 'getPollResults' },
   async ({ pollId }) => {
     try {
       const poll = await getPollResultsRepo(pollId);
-      if (!poll) {
-        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
-      }
+      if (!poll) return pollNotFound();
       return { data: poll, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getPollResults]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return internalError();
     }
   }
 );
 
 export const getUserVoteAction = createServerAction(
-  {
-    schema: pollIdSchema,
-    actionName: 'getUserVote',
-  },
+  { schema: pollIdSchema, actionName: 'getUserVote' },
   async ({ pollId }) => {
     try {
       const session = await requireSession();
@@ -170,45 +154,35 @@ export const getUserVoteAction = createServerAction(
       return { data: vote, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getUserVote]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return internalError();
     }
   }
 );
 
 export const getPollByIdAction = createServerAction(
-  {
-    schema: pollIdSchema,
-    actionName: 'getPollById',
-  },
+  { schema: pollIdSchema, actionName: 'getPollById' },
   async ({ pollId }) => {
     try {
       const poll = await getPollByIdRepo(pollId);
-      if (!poll) {
-        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
-      }
+      if (!poll) return pollNotFound();
       return { data: poll, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getPollById]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return internalError();
     }
   }
 );
 
 export const getPollByThreadAction = createServerAction(
-  {
-    schema: threadIdSchema,
-    actionName: 'getPollByThread',
-  },
+  { schema: threadIdSchema, actionName: 'getPollByThread' },
   async ({ threadId }) => {
     try {
       const poll = await getPollByThreadIdRepo(threadId);
-      if (!poll) {
-        return { data: null, error: 'Poll not found', ok: false, errorCode: 'NOT_FOUND' };
-      }
+      if (!poll) return pollNotFound();
       return { data: poll, error: null, ok: true, errorCode: null };
     } catch (error) {
       logger.error('[getPollByThread]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return internalError();
     }
   }
 );

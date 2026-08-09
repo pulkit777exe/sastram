@@ -1,49 +1,42 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { computeHasMore } from '@/lib/db/pagination';
+
+const FOLLOW_USER_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  image: true,
+  bio: true,
+  followerCount: true,
+  followingCount: true,
+} as const;
 
 export async function followUser(followerId: string, followingId: string) {
-  // Prevent self-follow
   if (followerId === followingId) {
     throw new Error('Cannot follow yourself');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const existing = await tx.userFollow.findUnique({
-      where: {
-        followerId_followingId: {
-          followerId,
-          followingId,
-        },
-      },
+      where: { followerId_followingId: { followerId, followingId } },
     });
 
-    if (existing) {
-      return existing;
-    }
+    // Already following — don't double-count
+    if (existing) return existing;
 
     const follow = await tx.userFollow.create({
-      data: {
-        followerId,
-        followingId,
-      },
+      data: { followerId, followingId },
     });
 
     await tx.user.update({
       where: { id: followerId },
-      data: {
-        followingCount: {
-          increment: 1,
-        },
-      },
+      data: { followingCount: { increment: 1 } },
     });
 
     await tx.user.update({
       where: { id: followingId },
-      data: {
-        followerCount: {
-          increment: 1,
-        },
-      },
+      data: { followerCount: { increment: 1 } },
     });
 
     return follow;
@@ -52,44 +45,22 @@ export async function followUser(followerId: string, followingId: string) {
 
 export async function unfollowUser(followerId: string, followingId: string) {
   const follow = await prisma.userFollow.findUnique({
-    where: {
-      followerId_followingId: {
-        followerId,
-        followingId,
-      },
-    },
+    where: { followerId_followingId: { followerId, followingId } },
   });
 
-  if (!follow) {
-    return null;
-  }
+  if (!follow) return null;
 
-  // Delete follow relationship and update counts in transaction
-  return await prisma.$transaction(async (tx) => {
-    await tx.userFollow.delete({
-      where: {
-        id: follow.id,
-      },
-    });
+  return prisma.$transaction(async (tx) => {
+    await tx.userFollow.delete({ where: { id: follow.id } });
 
-    // Decrement follower count for the user being unfollowed
     await tx.user.update({
       where: { id: followingId },
-      data: {
-        followerCount: {
-          decrement: 1,
-        },
-      },
+      data: { followerCount: { decrement: 1 } },
     });
 
-    // Decrement following count for the unfollower
     await tx.user.update({
       where: { id: followerId },
-      data: {
-        followingCount: {
-          decrement: 1,
-        },
-      },
+      data: { followingCount: { decrement: 1 } },
     });
 
     return follow;
@@ -101,40 +72,22 @@ export async function getFollowers(userId: string, limit: number = 50, offset: n
     const [follows, total] = await Promise.all([
       prisma.userFollow.findMany({
         where: { followingId: userId },
-        include: {
-          follower: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              bio: true,
-              followerCount: true,
-              followingCount: true,
-            },
-          },
-        },
+        include: { follower: { select: FOLLOW_USER_SELECT } },
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
-      prisma.userFollow.count({
-        where: { followingId: userId },
-      }),
+      prisma.userFollow.count({ where: { followingId: userId } }),
     ]);
 
     return {
-      followers: (follows ?? []).map((follow) => follow.follower),
+      followers: follows.map((follow) => follow.follower),
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getFollowers]', error);
-    return {
-      followers: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { followers: [], total: 0, hasMore: false };
   }
 }
 
@@ -143,94 +96,30 @@ export async function getFollowing(userId: string, limit: number = 50, offset: n
     const [follows, total] = await Promise.all([
       prisma.userFollow.findMany({
         where: { followerId: userId },
-        include: {
-          following: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              bio: true,
-              followerCount: true,
-              followingCount: true,
-            },
-          },
-        },
+        include: { following: { select: FOLLOW_USER_SELECT } },
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
-      prisma.userFollow.count({
-        where: { followerId: userId },
-      }),
+      prisma.userFollow.count({ where: { followerId: userId } }),
     ]);
 
     return {
-      following: (follows ?? []).map((follow) => follow.following),
+      following: follows.map((follow) => follow.following),
       total,
-      hasMore: offset + limit < total,
+      hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getFollowing]', error);
-    return {
-      following: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { following: [], total: 0, hasMore: false };
   }
 }
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
   const follow = await prisma.userFollow.findUnique({
-    where: {
-      followerId_followingId: {
-        followerId,
-        followingId,
-      },
-    },
+    where: { followerId_followingId: { followerId, followingId } },
+    select: { id: true },
   });
 
-  return !!follow;
-}
-
-export async function getMutualFollows(userId1: string, userId2: string) {
-  try {
-    // Get users that both userId1 and userId2 follow
-    const user1Following = await prisma.userFollow.findMany({
-      where: { followerId: userId1 },
-      select: { followingId: true },
-    });
-
-    const user2Following = await prisma.userFollow.findMany({
-      where: { followerId: userId2 },
-      select: { followingId: true },
-    });
-
-    const user1FollowingIds = new Set((user1Following ?? []).map((follow) => follow.followingId));
-    const mutualIds = (user2Following ?? [])
-      .map((follow) => follow.followingId)
-      .filter((id) => user1FollowingIds.has(id));
-
-    if (mutualIds.length === 0) {
-      return [];
-    }
-
-    return (
-      (await prisma.user.findMany({
-        where: {
-          id: { in: mutualIds },
-          deletedAt: null,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-        },
-      })) ?? []
-    );
-  } catch (error) {
-    logger.error('[getMutualFollows]', error);
-    return [];
-  }
+  return follow !== null;
 }

@@ -1,20 +1,8 @@
 import type { Citation, Source } from './types';
 
 /**
- * Citation correctness rules (harness §2).
- *
- * The model emits `[n]` markers in the prose and a `citations` array mapping
- * each marker to a sourceId. Models are unreliable here, so we self-validate
- * and normalize before anything reaches the UI:
- *
- *  - Drop markers/citations that don't line up (orphans fail soft, never crash).
- *  - Renumber markers to [1..N] in the order they FIRST appear in `text`
- *    (not the order the model happened to number them).
- *  - Collapse multiple markers that point at the same sourceId to the
- *    first-seen marker (don't mint a second marker for a source already cited).
- *  - Only cite sources whose content was actually fetched (contentFetched).
- *  - Warn (don't crash) when a single source is cited more than `reuseCap`
- *    times — a prompt-tightening signal, treated as a tunable not gospel.
+ * Models emit `[n]` markers unreliably — we validate and renumber to [1..N] in
+ * first-seen order, drop orphans, collapse dupes, and only cite fetched content.
  */
 
 export interface CitationValidationResult {
@@ -27,7 +15,6 @@ export interface CitationValidationResult {
 }
 
 const MARKER_RE = /\[(\d+)\]/g;
-/** Configurable threshold; harness §2 suggests a 5–10 start. */
 export const CITATION_REUSE_CAP = 8;
 
 export function validateCitations(

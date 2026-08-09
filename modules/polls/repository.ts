@@ -2,12 +2,10 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 
-// Parse poll.options from Prisma Json field safely.
-// If the DB value is malformed, this throws early with a clear error
-// instead of causing a silent runtime crash downstream.
-
 const optionsSchema = z.array(z.string());
 
+// Throw loudly on a malformed Json column rather than letting `undefined`
+// options leak into the UI.
 function parsePollOptions(raw: Prisma.JsonValue): string[] {
   const result = optionsSchema.safeParse(raw);
   if (!result.success) {
@@ -35,9 +33,8 @@ export async function createPoll(
   });
 }
 
-// Unique constraint on [pollId, userId] enforces one-vote-per-user.
-// No pre-check — that would be an extra round trip per vote. Action catches the error.
-
+// The unique constraint on [pollId, userId] is the one-vote-per-user check —
+// a pre-read would just add a round trip. The action handles the conflict.
 export async function voteOnPoll(pollId: string, userId: string, optionIndex: number) {
   return prisma.pollVote.create({
     data: { pollId, userId, optionIndex },
@@ -59,20 +56,13 @@ export async function getPollById(pollId: string) {
       threadId: true,
       isActive: true,
       expiresAt: true,
-      thread: {
-        select: {
-          id: true,
-          slug: true,
-          createdBy: true,
-        },
-      },
+      thread: { select: { id: true, slug: true, createdBy: true } },
     },
   });
 }
 
-// DB-level aggregation (groupBy) instead of loading all vote rows into memory.
-
 export async function getPollResults(pollId: string) {
+  // groupBy keeps the tally in the DB instead of pulling every vote row.
   const [poll, voteCounts] = await Promise.all([
     prisma.poll.findUnique({
       where: { id: pollId },
@@ -131,8 +121,6 @@ export async function getUserVote(pollId: string, userId: string) {
 export async function getPollByThreadId(threadId: string) {
   return prisma.poll.findFirst({
     where: { message: { threadId } },
-    include: {
-      _count: { select: { votes: true } },
-    },
+    include: { _count: { select: { votes: true } } },
   });
 }

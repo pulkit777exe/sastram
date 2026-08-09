@@ -15,50 +15,39 @@ import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 
+const MAX_MENTIONS = 10;
+
+function parseJsonField(raw: string | null): unknown {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function postMessage(formData: FormData) {
   const content = formData.get('content') as string;
   const threadId = formData.get('threadId') as string;
   const parentId = formData.get('parentId') as string | null;
   const mentionsRaw = formData.get('mentions') as string | null;
 
-  const parsedMentions = parseMentions(content);
-  let mentions: string[];
-
+  // Mentions come from two sources: ids the composer resolved client-side, and
+  // @handles parsed out of the raw text. Merge both, tolerating malformed JSON.
+  let mentions = await resolveUserMentions(parseMentions(content).usernames, prisma);
   if (mentionsRaw) {
     try {
-      const explicitMentions = JSON.parse(mentionsRaw) as string[];
-      const resolvedMentions = await resolveUserMentions(parsedMentions.usernames, prisma);
-      mentions = Array.from(new Set([...explicitMentions, ...resolvedMentions]));
-    } catch {
-      mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
-    }
-  } else {
-    mentions = await resolveUserMentions(parsedMentions.usernames, prisma);
-  }
-
-  const attachmentsRaw = formData.get('attachments') as string | null;
-  let attachments: unknown = undefined;
-  if (attachmentsRaw) {
-    try {
-      attachments = JSON.parse(attachmentsRaw);
-    } catch {}
-  }
-
-  const pollRaw = formData.get('poll') as string | null;
-  let poll: unknown = undefined;
-  if (pollRaw) {
-    try {
-      poll = JSON.parse(pollRaw);
+      mentions = Array.from(new Set([...(JSON.parse(mentionsRaw) as string[]), ...mentions]));
     } catch {}
   }
 
   const validation = createMessageWithAttachmentsSchema.safeParse({
     content,
-    threadId: threadId,
+    threadId,
     parentId: parentId || undefined,
     mentions,
-    attachments,
-    poll,
+    attachments: parseJsonField(formData.get('attachments') as string | null),
+    poll: parseJsonField(formData.get('poll') as string | null),
   });
 
   if (!validation.success) {
@@ -68,17 +57,12 @@ export async function postMessage(formData: FormData) {
   const session = await requireSession();
   await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
+  let withinRateLimit = false;
   try {
-    const rateLimitResult = await messageLimiter.check(session.user.id);
-    if (!rateLimitResult.success) {
-      return {
-        data: null,
-        error: 'Rate limit exceeded. Please slow down.',
-        errorCode: 'RATE_LIMITED',
-        ok: false,
-      };
-    }
-  } catch {
+    withinRateLimit = (await messageLimiter.check(session.user.id)).success;
+  } catch {}
+
+  if (!withinRateLimit) {
     return {
       data: null,
       error: 'Rate limit exceeded. Please slow down.',
@@ -87,20 +71,20 @@ export async function postMessage(formData: FormData) {
     };
   }
 
-  const safeContent = sanitizeContent(content);
-
-  if (mentions.length > 10) {
+  if (mentions.length > MAX_MENTIONS) {
     return {
       data: null,
-      error: 'A message can include at most 10 mentions.',
+      error: `A message can include at most ${MAX_MENTIONS} mentions.`,
       errorCode: 'VALIDATION_ERROR',
       ok: false,
     };
   }
 
+  const safeContent = sanitizeContent(content);
+
   try {
     const moderationResult = await moderateIncomingMessage({
-      threadId: threadId,
+      threadId,
       authorId: session.user.id,
       content: safeContent,
       parentId,
@@ -120,26 +104,10 @@ export async function postMessage(formData: FormData) {
     const message = await prisma.message.findUnique({
       where: { id: moderationResult.messageId! },
       include: {
-        thread: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
+        thread: { select: { id: true, name: true, slug: true } },
+        sender: { select: { id: true, name: true, image: true } },
         attachments: true,
-        poll: {
-          include: {
-            votes: true,
-          },
-        },
+        poll: { include: { votes: true } },
       },
     });
 
@@ -154,7 +122,7 @@ export async function postMessage(formData: FormData) {
 
     await createMentionsForMessage({
       messageId: message.id,
-      threadId: threadId,
+      threadId,
       mentions,
       mentionedBy: {
         id: session.user.id,
@@ -167,54 +135,17 @@ export async function postMessage(formData: FormData) {
       sideEffects: infraMessageSideEffects,
     });
 
-    const payload = {
-      id: message.id,
-      content: message.content,
-      senderId: session.user.id,
-      senderName: message.sender?.name || session.user.email,
-      senderImage: message.sender?.image ?? session.user.image,
-      createdAt: message.createdAt,
-      threadId: threadId,
-      parentId: message.parentId ?? null,
-      depth: message.depth ?? 0,
-      likeCount: 0,
-      replyCount: 0,
-      isAiResponse: false,
-      reactions: [],
-      attachments: message.attachments.map((att) => ({
-        id: att.id,
-        url: att.url,
-        type: att.type,
-        name: att.name,
-        size: att.size !== null ? Number(att.size) : null,
-      })),
-      poll: message.poll ? {
-        id: message.poll.id,
-        threadId: message.poll.threadId,
-        question: message.poll.question,
-        options: message.poll.options,
-        isActive: message.poll.isActive,
-        expiresAt: message.poll.expiresAt,
-        createdAt: message.poll.createdAt,
-        votes: [],
-      } : null,
-    };
-
-    infraMessageSideEffects.emitThreadMessage(threadId, payload);
-
-    const clientStreams = formData.get('clientStreams') === '1';
-
     const { aiInlineQueued, aiInlineLimited, aiInlineStreaming } = await queueAiInlineIfRequested({
       content: safeContent,
       userId: session.user.id,
-      threadId: threadId,
+      threadId,
       messageId: message.id,
       sideEffects: infraMessageSideEffects,
-      clientStreams,
+      clientStreams: formData.get('clientStreams') === '1',
     });
 
     if (message.thread?.slug) {
-        revalidatePath(`/dashboard/threads/${message.thread.slug}`);
+      revalidatePath(`/dashboard/threads/${message.thread.slug}`);
     }
     revalidatePath('/dashboard');
 
@@ -224,7 +155,7 @@ export async function postMessage(formData: FormData) {
       entityType: 'Message',
       entityId: message.id,
       metadata: {
-        threadId: threadId,
+        threadId,
         threadName: message.thread?.slug,
       },
     });

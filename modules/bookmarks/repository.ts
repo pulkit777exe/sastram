@@ -5,9 +5,7 @@ import { computeHasMore } from '@/lib/db/pagination';
 
 export async function bookmarkThread(userId: string, threadId: string) {
   return prisma.userBookmark.upsert({
-    where: {
-      userId_threadId: { userId, threadId },
-    },
+    where: { userId_threadId: { userId, threadId } },
     update: {},
     create: { userId, threadId },
   });
@@ -16,9 +14,7 @@ export async function bookmarkThread(userId: string, threadId: string) {
 export async function unbookmarkThread(userId: string, threadId: string) {
   try {
     await prisma.userBookmark.delete({
-      where: {
-        userId_threadId: { userId, threadId },
-      },
+      where: { userId_threadId: { userId, threadId } },
     });
     return { id: '' };
   } catch (err) {
@@ -58,38 +54,28 @@ export const getUserBookmarks = cache(async (userId: string, limit: number = 20,
         take: limit,
         skip: offset,
       }),
-      prisma.userBookmark.count({
-        where: { userId },
-      }),
+      prisma.userBookmark.count({ where: { userId } }),
     ]);
 
     return {
-      bookmarks: (bookmarks ?? []).map((bookmark) => bookmark.thread),
+      bookmarks: bookmarks.map((bookmark) => bookmark.thread),
       total,
       hasMore: computeHasMore(offset, limit, total),
     };
   } catch (error) {
     logger.error('[getUserBookmarks]', error);
-    return {
-      bookmarks: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { bookmarks: [], total: 0, hasMore: false };
   }
 });
 
 export const isBookmarked = cache(async (userId: string, threadId: string): Promise<boolean> => {
   try {
     const bookmark = await prisma.userBookmark.findUnique({
-      where: {
-        userId_threadId: {
-          userId,
-          threadId,
-        },
-      },
+      where: { userId_threadId: { userId, threadId } },
+      select: { id: true },
     });
 
-    return !!bookmark;
+    return bookmark !== null;
   } catch {
     return false;
   }

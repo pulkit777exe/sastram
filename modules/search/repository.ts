@@ -2,34 +2,31 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { Prisma } from '@prisma/client';
 
-export async function searchThreads(query: string, limit: number = 20, offset: number = 0, threadIds?: string[]) {
+const insensitive = 'insensitive' as const;
+
+export async function searchThreads(
+  query: string,
+  limit: number = 20,
+  offset: number = 0,
+  threadIds?: string[]
+) {
   try {
-    const where = {
+    const where: Prisma.ThreadWhereInput = {
       OR: [
-        { name: { contains: query, mode: 'insensitive' as const } },
-        { description: { contains: query, mode: 'insensitive' as const } },
-        { aiSummary: { contains: query, mode: 'insensitive' as const } },
+        { name: { contains: query, mode: insensitive } },
+        { description: { contains: query, mode: insensitive } },
+        { aiSummary: { contains: query, mode: insensitive } },
       ],
       deletedAt: null,
-      ...(threadIds && threadIds.length > 0 ? { id: { in: threadIds } } : {}),
+      ...(threadIds?.length ? { id: { in: threadIds } } : {}),
     };
+
     const [threads, total] = await Promise.all([
       prisma.thread.findMany({
         where,
         include: {
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
-          _count: {
-            select: {
-              messages: true,
-            },
-          },
+          creator: { select: { id: true, name: true, email: true, image: true } },
+          _count: { select: { messages: true } },
         },
         orderBy: [{ messageCount: 'desc' }, { createdAt: 'desc' }],
         take: limit,
@@ -38,20 +35,10 @@ export async function searchThreads(query: string, limit: number = 20, offset: n
       prisma.thread.count({ where }),
     ]);
 
-    const safeThreads = threads ?? [];
-
-    return {
-      threads: safeThreads,
-      total,
-      hasMore: offset + limit < total,
-    };
+    return { threads, total, hasMore: offset + limit < total };
   } catch (error) {
     logger.error('[searchThreads]', error);
-    return {
-      threads: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { threads: [], total: 0, hasMore: false };
   }
 }
 
@@ -59,40 +46,23 @@ export async function searchMessages(
   query: string,
   threadId?: string,
   limit: number = 20,
-  offset: number = 0,
-  threadIds?: string[]
+  offset: number = 0
 ) {
   try {
     const where: Prisma.MessageWhereInput = {
       deletedAt: null,
-      content: { contains: query, mode: 'insensitive' },
+      content: { contains: query, mode: insensitive },
       // Exclude messages from soft-deleted threads — the thread is invisible everywhere else.
       thread: { deletedAt: null },
+      ...(threadId ? { threadId } : {}),
     };
-
-    if (threadId) {
-      where.threadId = threadId;
-    }
 
     const [messages, total] = await Promise.all([
       prisma.message.findMany({
         where,
         include: {
-          sender: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
-          thread: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
+          sender: { select: { id: true, name: true, email: true, image: true } },
+          thread: { select: { id: true, name: true, slug: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -101,35 +71,27 @@ export async function searchMessages(
       prisma.message.count({ where }),
     ]);
 
-    const safeMessages = messages ?? [];
-
-    return {
-      messages: safeMessages,
-      total,
-      hasMore: offset + limit < total,
-    };
+    return { messages, total, hasMore: offset + limit < total };
   } catch (error) {
     logger.error('[searchMessages]', error);
-    return {
-      messages: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { messages: [], total: 0, hasMore: false };
   }
 }
 
 export async function searchUsers(query: string, limit: number = 20, offset: number = 0) {
   try {
+    const where: Prisma.UserWhereInput = {
+      status: 'ACTIVE',
+      deletedAt: null,
+      OR: [
+        { name: { contains: query, mode: insensitive } },
+        { email: { contains: query, mode: insensitive } },
+      ],
+    };
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
-        where: {
-          status: 'ACTIVE',
-          deletedAt: null,
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
-          ],
-        },
+        where,
         select: {
           id: true,
           name: true,
@@ -143,31 +105,12 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
         take: limit,
         skip: offset,
       }),
-      prisma.user.count({
-        where: {
-          status: 'ACTIVE',
-          deletedAt: null,
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-      }),
+      prisma.user.count({ where }),
     ]);
 
-    const safeUsers = users ?? [];
-
-    return {
-      users: safeUsers,
-      total,
-      hasMore: offset + limit < total,
-    };
+    return { users, total, hasMore: offset + limit < total };
   } catch (error) {
     logger.error('[searchUsers]', error);
-    return {
-      users: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { users: [], total: 0, hasMore: false };
   }
 }

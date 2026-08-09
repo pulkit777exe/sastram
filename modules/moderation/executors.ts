@@ -1,39 +1,10 @@
 import { revalidatePath } from 'next/cache';
-import { emitMessageDeleted } from '@/modules/ws';
 import { logAction } from '@/modules/audit';
 import type { Prisma } from '@prisma/client';
 import { ROUTES } from '@/lib/config/routes';
 
-export async function executeMessageDeletionEffects(args: {
-  messageId: string;
-  threadId: string;
-  threadSlug: string;
-  moderatorId: string;
-  reason?: string;
-  originalAuthor: string;
-}) {
-  await logAction({
-    action: 'MESSAGE_DELETED',
-    entityType: 'Message',
-    entityId: args.messageId,
-    userId: args.moderatorId,
-    details: {
-      reason: args.reason,
-      threadSlug: args.threadSlug,
-      originalAuthor: args.originalAuthor,
-    },
-  });
-
-  emitMessageDeleted(args.threadId, args.messageId);
-
-  revalidatePath(ROUTES.THREAD(args.threadSlug));
-  revalidatePath(ROUTES.ADMIN_MODERATION);
-}
-
-/**
- * Shared audit logging + path revalidation.
- * Used by both moderation and reports modules.
- */
+// Shared by the moderation and reports modules: every moderator action needs an
+// audit trail plus a cache bust of whatever surfaces it appears on.
 export async function executeAuditAndRevalidate(args: {
   action: string;
   entityType: string;
@@ -50,13 +21,7 @@ export async function executeAuditAndRevalidate(args: {
     details: args.details,
   });
 
-  const defaultPaths = [ROUTES.ADMIN_MODERATION, ROUTES.ADMIN_REPORTS];
-  for (const path of args.paths ?? defaultPaths) {
+  for (const path of args.paths ?? [ROUTES.ADMIN_MODERATION, ROUTES.ADMIN_REPORTS]) {
     revalidatePath(path);
   }
 }
-
-/**
- * @deprecated Use executeAuditAndRevalidate instead
- */
-export const executeModerationAuditAndRevalidate = executeAuditAndRevalidate;

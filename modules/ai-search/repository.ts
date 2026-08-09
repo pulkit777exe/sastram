@@ -7,18 +7,7 @@ import type {
   Citation,
   PhaseTimings,
 } from './types';
-
-function normalizeQuery(query: string): string {
-  return query
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ');
-}
-
-function hashQuery(query: string): string {
-  return crypto.createHash('sha256').update(normalizeQuery(query)).digest('hex');
-}
+import { hashQuery } from './hash';
 
 export interface PersistedSession {
   id: string;
@@ -42,14 +31,7 @@ export interface PersistOptions {
   timings?: PhaseTimings;
 }
 
-/**
- * Persist a completed search to the user-scoped AiSearchSession / AiSearchResult
- * models. Best-effort: failures are logged but never throw to the caller.
- *
- * Stores the FULL structured synthesis (text, citations, followUps, conflictData)
- * per harness §4 — history replay must render citation chips and follow-up chips
- * without re-running the search.
- */
+/** Best-effort persist — failures are logged, never thrown. */
 export async function persistSearchSession(
   userId: string,
   query: string,
@@ -109,11 +91,7 @@ export async function persistSearchSession(
   }
 }
 
-/**
- * List a user's search sessions (cursor-paginated, harness §10). Soft-deleted
- * sessions (deletedAt != null) are excluded — a user's "remove from history" is
- * a soft delete, not a hard delete.
- */
+/** Cursor-paginated list; soft-deleted sessions excluded. */
 export async function listUserSearchSessions(
   userId: string,
   opts: { limit?: number; cursor?: string | null } = {}
@@ -145,10 +123,7 @@ export async function listUserSearchSessions(
   };
 }
 
-/**
- * Load a single session by ID, scoped to the requesting user (harness §8 IDOR
- * guard — must verify ownership, not just authentication).
- */
+/** Load one session, scoped to owner. */
 export async function getSearchSession(
   userId: string,
   sessionId: string
@@ -167,10 +142,7 @@ export async function getSearchSession(
   return mapSession(s);
 }
 
-/**
- * List top-level sessions (no parent) with their follow-up children nested,
- * for Perplexity-style threaded sidebar rendering (harness §10a).
- */
+/** Top-level sessions with follow-up children nested. */
 export async function listThreadedSessions(
   userId: string,
   opts: { limit?: number; cursor?: string | null } = {}
@@ -198,10 +170,7 @@ export async function listThreadedSessions(
   };
 }
 
-/**
- * Soft-delete a session from a user's history (harness §10). Hard-delete only
- * happens on account deletion via the existing onDelete: Cascade.
- */
+/** Soft-delete from history; hard-delete only on account deletion. */
 export async function softDeleteSearchSession(
   userId: string,
   sessionId: string

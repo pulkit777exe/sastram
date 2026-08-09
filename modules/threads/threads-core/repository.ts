@@ -5,12 +5,6 @@ import { logger } from '@/lib/infrastructure/logger';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 
-type ThreadStorageWithCount = Prisma.ThreadGetPayload<{
-  include: {
-    _count: { select: { messages: true } };
-  };
-}>;
-
 export interface ListThreadsParams {
   page?: number;
   pageSize?: number;
@@ -31,149 +25,117 @@ export interface PaginatedThreads {
   };
 }
 
-export const listThreads = cache(async (params: ListThreadsParams = {}): Promise<PaginatedThreads> => {
-  const { page = 1, pageSize = 10, sortBy = 'recent', threadIds } = params;
-  const skip = (page - 1) * pageSize;
+const ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-  const where: Record<string, unknown> = { deletedAt: null };
-  if (threadIds && threadIds.length > 0) {
-    where.id = { in: threadIds };
-  }
+// "Active users" is distinct senders in the last week — not derivable from any
+// denormalized column, hence the raw aggregate.
+async function countActiveUsersByThread(threadIds: string[]): Promise<Map<string, number>> {
+  if (threadIds.length === 0) return new Map();
 
-  try {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const rows = await prisma.$queryRaw<Array<{ threadId: string; uniqueUsers: bigint }>>`
+    SELECT "threadId", COUNT(DISTINCT "senderId")::bigint as "uniqueUsers"
+    FROM "messages"
+    WHERE "threadId" IN (${Prisma.join(threadIds)})
+      AND "deletedAt" IS NULL
+      AND "createdAt" >= ${new Date(Date.now() - ACTIVE_WINDOW_MS)}
+    GROUP BY "threadId"
+  `;
 
-    const [totalItems, threadRows] = await Promise.all([
-      prisma.thread.count({ where }),
-      prisma.thread.findMany({
-        where,
-        include: {
-          _count: {
-            select: {
-              messages: {
-                where: {
-                  deletedAt: null,
-                },
-              },
-            },
+  return new Map(rows.map((row) => [row.threadId, Number(row.uniqueUsers)]));
+}
+
+export const listThreads = cache(
+  async (params: ListThreadsParams = {}): Promise<PaginatedThreads> => {
+    const { page = 1, pageSize = 10, sortBy = 'recent', threadIds } = params;
+
+    const where: Prisma.ThreadWhereInput = { deletedAt: null };
+    if (threadIds && threadIds.length > 0) {
+      where.id = { in: threadIds };
+    }
+
+    try {
+      const [totalItems, threadRows] = await Promise.all([
+        prisma.thread.count({ where }),
+        prisma.thread.findMany({
+          where,
+          include: {
+            _count: { select: { messages: { where: { deletedAt: null } } } },
           },
-        },
-        orderBy:
-          sortBy === 'oldest'
-            ? { createdAt: 'asc' }
-            : sortBy === 'popular'
-              ? { messageCount: 'desc' }
-              : { updatedAt: 'desc' },
-        skip,
-        take: pageSize,
-      }),
-    ]);
+          orderBy:
+            sortBy === 'oldest'
+              ? { createdAt: 'asc' }
+              : sortBy === 'popular'
+                ? { messageCount: 'desc' }
+                : { updatedAt: 'desc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ]);
 
-    // Aggregate unique active user counts per thread in the last 7 days
-    const threadIds = (threadRows ?? []).map((t) => t.id);
-    const activeUserMap = new Map<string, number>();
-    if (threadIds.length > 0) {
-      const activeUserCounts = await prisma.$queryRaw<
-        Array<{ threadId: string; uniqueUsers: bigint }>
-      >`
-        SELECT "threadId", COUNT(DISTINCT "senderId")::bigint as "uniqueUsers"
-        FROM "messages"
-        WHERE "threadId" IN (${Prisma.join(threadIds)})
-          AND "deletedAt" IS NULL
-          AND "createdAt" >= ${sevenDaysAgo}
-        GROUP BY "threadId"
-      `;
-      for (const row of activeUserCounts) {
-        activeUserMap.set(row.threadId, Number(row.uniqueUsers));
-      }
-    }
+      const activeUsers = await countActiveUsersByThread(threadRows.map((t) => t.id));
 
-    let mappedThreads = (threadRows ?? []).map((thread: ThreadStorageWithCount) => {
-      const uniqueActiveUsers = activeUserMap.get(thread.id) ?? 0;
-      return buildThreadDTO(
-        thread as unknown as ThreadRecord,
-        thread._count.messages,
-        uniqueActiveUsers,
-        0
+      const mappedThreads = threadRows.map((thread) =>
+        buildThreadDTO(thread as ThreadRecord, thread._count.messages, activeUsers.get(thread.id) ?? 0)
       );
-    });
 
-    if (sortBy === 'trending') {
-      mappedThreads = mappedThreads.sort((a, b) => {
-        const scoreA = a.activeUsers * 2 + a.messageCount;
-        const scoreB = b.activeUsers * 2 + b.messageCount;
-        return scoreB - scoreA;
-      });
+      // Trending has no SQL equivalent, so it re-orders the current page only.
+      if (sortBy === 'trending') {
+        mappedThreads.sort(
+          (a, b) => b.activeUsers * 2 + b.messageCount - (a.activeUsers * 2 + a.messageCount)
+        );
+      }
+
+      const totalPages = Math.ceil(totalItems / pageSize);
+
+      return {
+        threads: mappedThreads,
+        pagination: {
+          page,
+          pageSize,
+          totalItems,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+        },
+      };
+    } catch (error) {
+      logger.error('[listThreads]', error);
+      return {
+        threads: [],
+        pagination: {
+          page,
+          pageSize,
+          totalItems: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: page > 1,
+        },
+      };
     }
-
-    const totalPages = Math.ceil(totalItems / pageSize);
-
-    return {
-      threads: mappedThreads,
-      pagination: {
-        page,
-        pageSize,
-        totalItems,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
-      },
-    };
-  } catch (error) {
-    logger.error('[listThreads]', error);
-    return {
-      threads: [],
-      pagination: {
-        page,
-        pageSize,
-        totalItems: 0,
-        totalPages: 0,
-        hasNextPage: false,
-        hasPreviousPage: page > 1,
-      },
-    };
   }
-});
+);
 
 export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail | null> => {
   const row = await prisma.thread.findFirst({
-    where: {
-      slug,
-      deletedAt: null,
-    },
+    where: { slug, deletedAt: null },
     include: {
       _count: {
         select: {
-          messages: {
-            where: {
-              deletedAt: null,
-            },
-          },
+          messages: { where: { deletedAt: null } },
           subscriptions: true,
         },
       },
     },
   });
 
-  if (!row) {
-    return null;
-  }
+  if (!row) return null;
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const activeUserRows = await prisma.$queryRaw<Array<{ uniqueUsers: bigint }>>`
-    SELECT COUNT(DISTINCT "senderId")::bigint as "uniqueUsers"
-    FROM "messages"
-    WHERE "threadId" = ${row.id}
-      AND "deletedAt" IS NULL
-      AND "createdAt" >= ${sevenDaysAgo}
-  `;
-  const activeUsers = Number(activeUserRows[0]?.uniqueUsers ?? 0);
+  const activeUsers = await countActiveUsersByThread([row.id]);
 
   return buildThreadDetailDTO(
-    row as unknown as ThreadRecord,
+    row as ThreadRecord,
     row._count.messages,
-    activeUsers,
-    0,
+    activeUsers.get(row.id) ?? 0,
     row.aiSummary,
     row._count.subscriptions
   );

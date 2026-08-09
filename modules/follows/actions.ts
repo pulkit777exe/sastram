@@ -1,6 +1,5 @@
 'use server';
 
-import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
@@ -13,25 +12,17 @@ import {
 } from './repository';
 import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
+import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 
-const followUserSchema = z.object({
-  userId: z.string().cuid(),
-});
+const followListSchema = userIdSchema.merge(paginationSchema);
 
-const getFollowersSchema = z.object({
-  userId: z.string().cuid(),
-  limit: z.number().int().positive().max(100).optional(),
-  offset: z.number().int().nonnegative().optional(),
-});
-
-const getFollowingSchema = z.object({
-  userId: z.string().cuid(),
-  limit: z.number().int().positive().max(100).optional(),
-  offset: z.number().int().nonnegative().optional(),
-});
+function revalidateFollowPaths(userId: string) {
+  revalidatePath(`/user/${userId}`);
+  revalidatePath('/dashboard');
+}
 
 export const followUser = createServerAction(
-  { schema: followUserSchema, actionName: 'followUser' },
+  { schema: userIdSchema, actionName: 'followUser' },
   async ({ userId }) => {
     const session = await requireSession();
 
@@ -41,7 +32,7 @@ export const followUser = createServerAction(
 
     const targetUser = await prisma.user.findUnique({
       where: { id: userId, deletedAt: null },
-      select: { id: true, name: true, email: true },
+      select: { id: true },
     });
 
     if (!targetUser) {
@@ -61,47 +52,42 @@ export const followUser = createServerAction(
       },
     });
 
-    revalidatePath(`/user/${userId}`);
-    revalidatePath('/dashboard');
+    revalidateFollowPaths(userId);
 
     return { data: null, error: null };
   }
 );
 
 export const unfollowUser = createServerAction(
-  { schema: followUserSchema, actionName: 'unfollowUser' },
+  { schema: userIdSchema, actionName: 'unfollowUser' },
   async ({ userId }) => {
     const session = await requireSession();
     await unfollowUserRepo(session.user.id, userId);
 
-    revalidatePath(`/user/${userId}`);
-    revalidatePath('/dashboard');
+    revalidateFollowPaths(userId);
 
     return { data: null, error: null };
   }
 );
 
 export const getFollowers = createServerAction(
-  { schema: getFollowersSchema, actionName: 'getFollowers' },
+  { schema: followListSchema, actionName: 'getFollowers' },
   async ({ userId, limit, offset }) => {
-    const result = await getFollowersRepo(userId, limit, offset);
-    return { data: result, error: null };
+    return { data: await getFollowersRepo(userId, limit, offset), error: null };
   }
 );
 
 export const getFollowing = createServerAction(
-  { schema: getFollowingSchema, actionName: 'getFollowing' },
+  { schema: followListSchema, actionName: 'getFollowing' },
   async ({ userId, limit, offset }) => {
-    const result = await getFollowingRepo(userId, limit, offset);
-    return { data: result, error: null };
+    return { data: await getFollowingRepo(userId, limit, offset), error: null };
   }
 );
 
 export const checkFollowingStatus = createServerAction(
-  { schema: followUserSchema, actionName: 'checkFollowingStatus' },
+  { schema: userIdSchema, actionName: 'checkFollowingStatus' },
   async ({ userId }) => {
     const session = await requireSession();
-    const isFollowing = await isFollowingRepo(session.user.id, userId);
-    return { data: { isFollowing }, error: null };
+    return { data: { isFollowing: await isFollowingRepo(session.user.id, userId) }, error: null };
   }
 );

@@ -14,10 +14,7 @@ export async function recordActivity(data: {
 }) {
   return prisma.userActivity.create({
     data: {
-      userId: data.userId,
-      type: data.type,
-      entityType: data.entityType,
-      entityId: data.entityId,
+      ...data,
       metadata: data.metadata as Prisma.InputJsonValue,
     },
   });
@@ -33,24 +30,14 @@ export const getUserActivity = cache(async (userId: string, limit: number = 20, 
           take: limit,
           skip: offset,
         }),
-        prisma.userActivity.count({
-          where: { userId },
-        }),
+        prisma.userActivity.count({ where: { userId } }),
       ])
     );
 
-    return {
-      activities: activities ?? [],
-      total,
-      hasMore: computeHasMore(offset, limit, total),
-    };
+    return { activities, total, hasMore: computeHasMore(offset, limit, total) };
   } catch (error) {
     logger.error('[getUserActivity]', error);
-    return {
-      activities: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { activities: [], total: 0, hasMore: false };
   }
 });
 
@@ -60,7 +47,6 @@ export const getFollowedUsersActivity = cache(async (
   offset: number = 0
 ) => {
   try {
-    // Get users that the current user follows
     const following = await dedupe(`activity:following:${userId}`, () =>
       prisma.userFollow.findMany({
         where: { followerId: userId },
@@ -68,22 +54,18 @@ export const getFollowedUsersActivity = cache(async (
       })
     );
 
-    const followingIds = (following ?? []).map((f) => f.followingId);
+    const followingIds = following.map((f) => f.followingId);
 
     if (followingIds.length === 0) {
-      return {
-        activities: [],
-        total: 0,
-        hasMore: false,
-      };
+      return { activities: [], total: 0, hasMore: false };
     }
+
+    const where = { userId: { in: followingIds } };
 
     const [activities, total] = await dedupe(`activity:followed:${userId}:${limit}:${offset}`, () =>
       Promise.all([
         prisma.userActivity.findMany({
-          where: {
-            userId: { in: followingIds },
-          },
+          where,
           include: {
             user: {
               select: {
@@ -98,25 +80,13 @@ export const getFollowedUsersActivity = cache(async (
           take: limit,
           skip: offset,
         }),
-        prisma.userActivity.count({
-          where: {
-            userId: { in: followingIds },
-          },
-        }),
+        prisma.userActivity.count({ where }),
       ])
     );
 
-    return {
-      activities: activities ?? [],
-      total,
-      hasMore: computeHasMore(offset, limit, total),
-    };
+    return { activities, total, hasMore: computeHasMore(offset, limit, total) };
   } catch (error) {
     logger.error('[getFollowedUsersActivity]', error);
-    return {
-      activities: [],
-      total: 0,
-      hasMore: false,
-    };
+    return { activities: [], total: 0, hasMore: false };
   }
 });

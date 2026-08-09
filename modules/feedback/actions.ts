@@ -1,6 +1,5 @@
 'use server';
 
-import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { createServerAction } from '@/lib/utils/server-action';
@@ -10,12 +9,13 @@ import { submitFeedbackSchema } from '@/modules/feedback/schemas';
 export const submitFeedback = createServerAction(
   { schema: submitFeedbackSchema, actionName: 'submitFeedback' },
   async ({ type, message, route }) => {
+    // Anonymous feedback is allowed — a missing session just leaves userId null.
     let userId: string | null = null;
     try {
       const session = await requireSession();
       userId = session.user.id;
     } catch {
-      // allow anonymous feedback — userId stays null
+      userId = null;
     }
 
     const limitKey = userId ? `feedback:user:${userId}` : `feedback:ip:${route ?? 'unknown'}`;
@@ -27,7 +27,7 @@ export const submitFeedback = createServerAction(
     const feedback = await prisma.feedback.create({
       data: {
         userId,
-        type: type as 'BUG' | 'SUGGESTION' | 'OTHER',
+        type,
         message,
         route: route ?? null,
       },
