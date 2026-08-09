@@ -11,8 +11,8 @@ import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 
 const BATCH_SIZE = 25;
 const QSTASH_GUARD_THRESHOLD = 400;
@@ -30,12 +30,10 @@ export async function GET(req: NextRequest) {
    }
 
    // Spend cap pre-flight for expensive AI enqueues.
-   const spendCap = await checkAiSpendCap();
-
-   const dnaGate = evaluateAiCostGate({ path: AiCallPath.THREAD_DNA, spendCapAllowed: spendCap.allowed });
-   const scoreGate = evaluateAiCostGate({ path: AiCallPath.RESOLUTION_SCORE, spendCapAllowed: spendCap.allowed });
-   const conflictGate = evaluateAiCostGate({ path: AiCallPath.CONFLICT_DETECTION, spendCapAllowed: spendCap.allowed });
-   const digestGate = evaluateAiCostGate({ path: AiCallPath.DAILY_DIGEST, spendCapAllowed: spendCap.allowed });
+   const dnaAllowed = await enforceAiSpendCap(AiCallPath.THREAD_DNA);
+   const scoreAllowed = await enforceAiSpendCap(AiCallPath.RESOLUTION_SCORE);
+   const conflictAllowed = await enforceAiSpendCap(AiCallPath.CONFLICT_DETECTION);
+   const digestAllowed = await enforceAiSpendCap(AiCallPath.DAILY_DIGEST);
 
    try {
     let totalProcessed = 0;
@@ -87,19 +85,19 @@ export async function GET(req: NextRequest) {
 
          const jobs: Promise<void>[] = [];
 
-         if (dnaGate.allowed) {
+         if (dnaAllowed.allowed) {
            jobs.push(enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages, cronJob: true }));
          }
 
-         if (scoreGate.allowed) {
+         if (scoreAllowed.allowed) {
            jobs.push(enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, isOutdated, cronJob: true }));
          }
 
-         if (conflictGate.allowed) {
+         if (conflictAllowed.allowed) {
            jobs.push(enqueueJob(AIJobType.DETECT_CONFLICTS, { threadId: thread.id, messages, subscriberIds, threadName: thread.name, oldScore, cronJob: true }));
          }
 
-         if (subscriberIds.length > 0 && digestGate.allowed) {
+         if (subscriberIds.length > 0 && digestAllowed.allowed) {
            jobs.push(
              enqueueJob(AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true }),
            );

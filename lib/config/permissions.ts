@@ -1,9 +1,10 @@
 /**
- * Permission constants and helpers
- * Global User.role is the only role system (USER / MODERATOR / ADMIN).
+ * The single authorization seam — every role check in the app resolves here.
+ * Other modules re-export from this file rather than comparing roles inline.
  */
 
 import { USER_ROLES, type UserRole } from './constants';
+import { AppError } from '@/lib/utils/errors';
 
 export const PERMISSIONS = {
   // Message permissions
@@ -29,9 +30,6 @@ export const PERMISSIONS = {
   MANAGE_USERS: [USER_ROLES.ADMIN],
 } as const;
 
-/**
- * Check if a role has a specific permission
- */
 export function hasPermission(
   role: UserRole | string,
   permission: keyof typeof PERMISSIONS
@@ -39,30 +37,33 @@ export function hasPermission(
   return (PERMISSIONS[permission] as readonly UserRole[]).includes(role as UserRole);
 }
 
-/**
- * Check if user can perform moderation actions
- */
-export function canModerate(role: UserRole): boolean {
+// Role args are nullable throughout so callers can pass an unauthenticated
+// session straight through without a guard.
+export function canModerate(role: UserRole | string | null | undefined): boolean {
   return role === USER_ROLES.ADMIN || role === USER_ROLES.MODERATOR;
 }
 
-/**
- * Check if user is admin
- */
-export function isAdmin(role: UserRole): boolean {
+export function isAdmin(role: UserRole | string | null | undefined): boolean {
   return role === USER_ROLES.ADMIN;
 }
 
-/**
- * Thread-level management: creator or platform mod/admin
- */
+/** Thread-level management: creator or platform mod/admin. */
 export function canManageThreadAsUser(
   role: UserRole,
   userId: string,
   createdBy: string | null
 ): boolean {
-  if (canModerate(role)) {
-    return true;
+  return canModerate(role) || (createdBy !== null && createdBy === userId);
+}
+
+export function requireAdmin(role: UserRole | string | null | undefined): void {
+  if (!isAdmin(role)) {
+    throw new AppError('Admin access required', 'FORBIDDEN', 403);
   }
-  return createdBy !== null && createdBy === userId;
+}
+
+export function requireModerator(role: UserRole | string | null | undefined): void {
+  if (!canModerate(role)) {
+    throw new AppError('Moderator access required', 'FORBIDDEN', 403);
+  }
 }

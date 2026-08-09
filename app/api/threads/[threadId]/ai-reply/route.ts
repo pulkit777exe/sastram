@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
@@ -34,7 +34,7 @@ const handler = withErrorHandling(async (
   }
 
    // Global daily spend cap
-   const spendCap = await checkAiSpendCap();
+   const spendCap = await enforceAiSpendCap(AiCallPath.AI_REPLY_STREAM);
    if (!spendCap.allowed) {
      return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
    }

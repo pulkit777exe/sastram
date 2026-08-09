@@ -7,8 +7,9 @@ import { auth } from '@/lib/services/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { AppError } from '@/lib/utils/errors';
+import { isAdmin } from '@/lib/config/permissions';
 import {
-  requireThreadAccess as requireThreadAccessRedirect,
+  requireThreadAccess,
   requireThreadAccessOrThrow,
   requireThreadWriteOrThrow,
 } from '@/lib/thread-access';
@@ -30,16 +31,15 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
 
   const { user } = session;
 
+  // Better Auth's session doesn't carry role/status, so read them from our own
+  // row. A DB blip shouldn't log the user out — fall back to least privilege.
   let role: Role = Role.USER;
   let status: User['status'] = 'ACTIVE';
 
   try {
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id, deletedAt: null },
-      select: {
-        role: true,
-        status: true,
-      },
+      select: { role: true, status: true },
     });
 
     if (fullUser) {
@@ -79,9 +79,7 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
   return session;
 }
 
-/**
- * API route variant — throws an error instead of redirecting.
- */
+/** API route variant — throws instead of redirecting. */
 export async function requireSessionOrThrow(checkBanStatus = true): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) {
@@ -96,11 +94,8 @@ export async function requireSessionOrThrow(checkBanStatus = true): Promise<Sess
 }
 
 /** @deprecated Use requireThreadAccess — kept as alias during migration */
-export async function requireThreadMembership(
-  threadId: string,
-  userId: string
-): Promise<void> {
-  await requireThreadAccessRedirect(threadId, userId);
+export async function requireThreadMembership(threadId: string, userId: string): Promise<void> {
+  await requireThreadAccess(threadId, userId);
 }
 
 /** @deprecated Use requireThreadAccessOrThrow */
@@ -110,18 +105,17 @@ export async function requireThreadMembershipOrThrow(
   _requiredRole?: never
 ): Promise<void> {
   const session = await getSession();
-  const role = session?.user.role ?? Role.USER;
-  await requireThreadAccessOrThrow(threadId, userId, role);
+  await requireThreadAccessOrThrow(threadId, userId, session?.user.role ?? Role.USER);
 }
 
-export { requireThreadAccessOrThrow, requireThreadWriteOrThrow };
+export { requireThreadAccessOrThrow, requireThreadWriteOrThrow, isAdmin };
 
-export function isAdmin(user: SessionUser | undefined | null): boolean {
-  return user?.role === Role.ADMIN;
+export function isAdminUser(user: SessionUser | undefined | null): boolean {
+  return isAdmin(user?.role);
 }
 
 export function assertAdmin(user: SessionUser | undefined | null) {
-  if (!isAdmin(user)) {
+  if (!isAdminUser(user)) {
     redirect('/dashboard');
   }
 }

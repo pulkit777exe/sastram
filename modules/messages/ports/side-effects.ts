@@ -1,42 +1,6 @@
-export interface MentionNotificationPayload {
-  messageId: string;
-  mentionedUserId: string;
-  mentionedBy: string;
-  mentionedByName: string;
-  threadId: string;
-  content: string;
-  parentId?: string;
-}
-
-export interface MessageBroadcastPayload {
-  id: string;
-  content: string;
-  senderId: string;
-  senderName: string;
-  senderImage: string | null | undefined;
-  createdAt: Date;
-  threadId: string;
-  parentId: string | null;
-  depth: number;
-  likeCount: number;
-  replyCount: number;
-  isAiResponse: boolean;
-  reactions: unknown[];
-  attachments: Array<{
-    id: string;
-    url: string;
-    type: string;
-    name: string | null;
-    size: number | null;
-  }>;
-}
-
+// Injected into message actions so tests can assert on emails/jobs without
+// touching SMTP or QStash. See adapters/infra-side-effects.ts for the real one.
 export interface MessageSideEffectsPort {
-  emitThreadMessage: (threadId: string, payload: MessageBroadcastPayload) => void;
-  emitMentionNotification: (threadId: string, payload: MentionNotificationPayload) => void;
-  emitMessageDeleted: (threadId: string, messageId: string, userId?: string) => void;
-  emitMessageEdited: (threadId: string, messageId: string, content: string) => void;
-  emitPinUpdate: (threadId: string, payload: { messageId: string; isPinned: boolean }) => void;
   sendMentionEmail: (args: {
     toEmail: string;
     mentionedByName: string;

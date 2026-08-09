@@ -5,8 +5,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { consumeAiAnalysisQuota } from '@/lib/services/ai-analysis-quota';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { consumeAiAnalysisQuota } from '@/lib/services/daily-quota';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Global daily spend cap
-    const spendCap = await checkAiSpendCap();
+    const spendCap = await enforceAiSpendCap(AiCallPath.THREAD_SUMMARY);
     if (!spendCap.allowed) {
       return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
     }

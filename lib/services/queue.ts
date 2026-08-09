@@ -20,6 +20,7 @@ if (QSTASH_CONFIGURED) {
   }
 }
 
+// Well under QStash's 1,000/day free tier — the rest is headroom for retries.
 const DAILY_CAP = 450;
 const CRITICAL_JOBS = new Set<string>(['email']);
 
@@ -47,10 +48,8 @@ export async function incrementDailyQstashCount(): Promise<number> {
   const redis = getUpstashRedis();
   if (!redis) return 0;
   try {
-    const key = getDailyCounterKey();
     const ttl = getSecondsUntilUtcMidnight();
-    const count = (await redis.eval(ATOMIC_INCR_EXPIRE_LUA, [key], [ttl])) as number;
-    return count;
+    return (await redis.eval(ATOMIC_INCR_EXPIRE_LUA, [getDailyCounterKey()], [ttl])) as number;
   } catch (error) {
     logger.error('[queue] Failed to increment daily QStash counter', error);
     return 0;
@@ -58,7 +57,7 @@ export async function incrementDailyQstashCount(): Promise<number> {
 }
 
 export async function enqueueJob(jobType: string, payload: Record<string, unknown>) {
-  // Local dev fallback: run job inline when QStash is not configured
+  // Local dev fallback: run inline when QStash isn't configured.
   if (!QSTASH_CONFIGURED || !client) {
     logger.info(`[queue] QStash not configured, running job inline: ${jobType}`);
     await runJobInline(jobType, payload);
@@ -86,20 +85,29 @@ export async function enqueueJob(jobType: string, payload: Record<string, unknow
 
 async function runJobInline(jobType: string, payload: Record<string, unknown>) {
   try {
-    // Dynamic import to avoid circular dependencies
-    const { handleAIInlineJob } = await import('@/lib/queue/workers/ai.worker');
+    // Deferred imports: the workers import back into this module.
+    const ai = await import('@/lib/queue/workers/ai.worker');
     const { handleEmailJob } = await import('@/lib/queue/workers/email.worker');
 
-    switch (jobType) {
-      case AIJobType.GENERATE_AI_INLINE:
-        await handleAIInlineJob(payload as unknown as AIInlineJobData);
-        break;
-      case 'email':
-        await handleEmailJob(payload as unknown as import('@/lib/queue/types').EmailJobData);
-        break;
-      default:
-        logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${(payload as Record<string, unknown>)?.id ?? 'unknown'}`);
+    const handlers: Record<string, (data: never) => Promise<unknown>> = {
+      [AIJobType.GENERATE_THREAD_SUMMARY]: ai.handleThreadSummaryJob,
+      [AIJobType.GENERATE_THREAD_DNA]: ai.handleThreadDnaJob,
+      [AIJobType.CALCULATE_RESOLUTION_SCORE]: ai.handleResolutionScoreJob,
+      [AIJobType.DETECT_CONFLICTS]: ai.handleConflictDetectionJob,
+      [AIJobType.GENERATE_DAILY_DIGEST]: ai.handleDailyDigestJob,
+      [AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS]: ai.handleAIInsightNotificationsJob,
+      [AIJobType.STALENESS_CHECK]: ai.handleStalenessCheckJob,
+      [AIJobType.GENERATE_AI_INLINE]: ai.handleAIInlineJob,
+      email: handleEmailJob,
+    };
+
+    const handler = handlers[jobType];
+    if (!handler) {
+      logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${payload?.id ?? 'unknown'}`);
+      return;
     }
+
+    await handler(payload as never);
   } catch (error) {
     logger.error(`[queue] Inline job execution failed: ${jobType}`, error);
   }

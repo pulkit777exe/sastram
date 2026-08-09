@@ -5,8 +5,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { applyConfidenceDecay } from '@/lib/utils/confidence-decay';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { consumeAiAnalysisQuota } from '@/lib/services/ai-analysis-quota';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { consumeAiAnalysisQuota } from '@/lib/services/daily-quota';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { z } from 'zod';
 
@@ -30,7 +30,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   }
 
    // Global daily spend cap
-   const spendCap = await checkAiSpendCap();
+   const spendCap = await enforceAiSpendCap(AiCallPath.RESOLUTION_SCORE);
    if (!spendCap.allowed) {
      return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
    }

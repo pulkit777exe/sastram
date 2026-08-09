@@ -4,8 +4,8 @@ import { requireSessionOrThrow } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { consumeAiAnalysisQuota } from '@/lib/services/ai-analysis-quota';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { consumeAiAnalysisQuota } from '@/lib/services/daily-quota';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { parseThreadDna, type ThreadDNA } from '@/lib/schemas/thread-dna';
 import { Prisma } from '@prisma/client';
@@ -53,7 +53,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('RATE_LIMITED', 'Daily AI analysis limit reached. Resets at UTC midnight.'), { status: 429 });
   }
 
-  const spendCap = await checkAiSpendCap();
+  const spendCap = await enforceAiSpendCap(AiCallPath.THREAD_DNA);
   const gate = evaluateAiCostGate({ path: AiCallPath.THREAD_DNA, spendCapAllowed: spendCap.allowed });
   if (!gate.allowed) {
     return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable.'), { status: 503 });

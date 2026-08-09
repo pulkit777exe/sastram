@@ -1,64 +1,20 @@
 'use server';
 
-import { auth } from '@/lib/services/auth';
-import { prisma } from '@/lib/infrastructure/prisma';
-import { Role } from '@prisma/client';
-import { headers } from 'next/headers';
+import { requireSessionOrThrow } from '@/modules/auth/session';
+import { canModerate, isAdmin } from '@/lib/config/permissions';
 
 export async function requireModerator() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    throw new Error('Unauthorized');
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id, deletedAt: null },
-    select: { role: true, status: true },
-  });
-
-  if (!user) {
-    throw new Error('Unauthorized');
-  }
-
-  if (user.status === 'BANNED') {
-    throw new Error('Forbidden: user is banned');
-  }
-
-  if (user.role !== Role.MODERATOR && user.role !== Role.ADMIN) {
+  const session = await requireSessionOrThrow();
+  if (!canModerate(session.user.role)) {
     throw new Error('Moderator access required');
   }
-
   return session;
 }
 
 export async function requireAdmin() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    throw new Error('Unauthorized');
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id, deletedAt: null },
-    select: { role: true, status: true },
-  });
-
-  if (!user) {
-    throw new Error('Unauthorized');
-  }
-
-  if (user.status === 'BANNED') {
-    throw new Error('Forbidden: user is banned');
-  }
-
-  if (user.role !== Role.ADMIN) {
+  const session = await requireSessionOrThrow();
+  if (!isAdmin(session.user.role)) {
     throw new Error('Admin access required');
   }
-
   return session;
 }

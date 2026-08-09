@@ -6,7 +6,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay, subDays, getDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath, classifyAiCallCost } from '@/lib/services/ai-cost-classification';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import type { DigestFrequency } from '@prisma/client';
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
        // Generate or retrieve summary for this thread
        let summaryHtml = '';
        try {
-         const spendCap = await checkAiSpendCap();
+         const spendCap = await enforceAiSpendCap(AiCallPath.DAILY_DIGEST);
          const gate = evaluateAiCostGate({ path: AiCallPath.DAILY_DIGEST, spendCapAllowed: spendCap.allowed });
          if (!gate.allowed) {
            results.skipped++;

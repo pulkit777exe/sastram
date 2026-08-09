@@ -1,26 +1,13 @@
 import { requireSession, type SessionPayload } from '@/modules/auth/session';
-import type { Role } from '@prisma/client';
 import type { AuthPolicyRole } from './types';
-
-const MODERATION_ROLES: ReadonlySet<string> = new Set(['ADMIN', 'MODERATOR']);
-
-export function hasAnyRole(
-  role: Role | null | undefined,
-  allowedRoles: ReadonlyArray<AuthPolicyRole>
-): boolean {
-  return Boolean(role && allowedRoles.includes(role as AuthPolicyRole));
-}
-
-export function canModerate(role: Role | null | undefined): boolean {
-  return Boolean(role && MODERATION_ROLES.has(role));
-}
+import { canModerate } from '@/lib/config/permissions';
 
 export async function requireRole(
   allowedRoles: ReadonlyArray<AuthPolicyRole>,
   checkBanStatus = true
 ): Promise<SessionPayload> {
   const session = await requireSession(checkBanStatus);
-  if (!hasAnyRole(session.user.role, allowedRoles)) {
+  if (!session.user.role || !allowedRoles.includes(session.user.role as AuthPolicyRole)) {
     throw new Error('FORBIDDEN');
   }
 

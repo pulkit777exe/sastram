@@ -5,7 +5,7 @@ import { mockRequest, stubAuth, stubHeaders, restoreStubs } from '../helpers';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { resetRateLimiters } from '@/lib/services/rate-limit';
 
-const quotaModulePath = require.resolve('@/lib/services/ai-analysis-quota');
+const quotaModulePath = require.resolve('@/lib/services/daily-quota');
 const spendCapModulePath = require.resolve('@/lib/services/ai-spend-cap');
 const POST = () => require('@/app/api/ai/resolution-score/route').POST;
 
@@ -24,7 +24,7 @@ describe('POST /api/ai/resolution-score', () => {
     } as NodeModule;
     require.cache[spendCapModulePath] = {
       id: spendCapModulePath, filename: spendCapModulePath, loaded: true, exports: {
-        checkAiSpendCap: async () => ({ allowed: true }),
+        enforceAiSpendCap: async () => ({ allowed: true, remaining: -1 }),
       },
     } as NodeModule;
   });

@@ -2,20 +2,20 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { buildThreadDTO } from '@/modules/threads/service';
 import type { ThreadRecord, ThreadSummary } from '@/modules/threads/types';
-import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 
-type ThreadStorageWithMessages = Prisma.ThreadGetPayload<{
-  include: {
-    messages: true;
-    _count: { select: { messages: true } };
-  };
-}>;
+type InitialMessage = {
+  id: string;
+  content: string;
+  senderId: string;
+  sender: { id: string; name: string | null; image: string | null };
+  createdAt: Date;
+};
 
 export async function createThread(payload: {
   name: string;
@@ -24,22 +24,6 @@ export async function createThread(payload: {
   createdBy: string;
   initialMessage?: string;
 }): Promise<ThreadSummary> {
-  // Option A: set memberCount: 1 directly in the nested create rather than wrapping
-  // in a transaction and issuing a separate increment-update. This is structurally
-  // different from join/leave (modules/members/actions.ts:78-81,108-111) which uses
-  // tx.thread.update({ memberCount: { increment/decrement: 1 } }) — and that's
-  // correct. Join/leave is a state transition on an existing thread where the prior
-  // count is unknown; creation is declaring the initial state of a brand-new row.
-  // Setting it to 1 directly expresses the invariant ("a new thread starts with
-  // exactly 1 member: the OWNER"), avoids an extra round-trip on the project's
-  // highest-frequency write path, and keeps single-query atomicity.
-  //
-  // NOTE on _count.members vs. Thread.memberCount: both answer "how many members"
-  // but are maintained independently. _count is a live COUNT(*) from the
-  // invitation/access table; memberCount is denormalized for read perf. This
-  // dual-answer is exactly what caused the memberCount drift surfaced by the
-  // reconciliation cron — and is the reason we validate it periodically instead
-  // of trusting the denorm blindly.
   const thread = await prisma.thread.create({
     data: {
       name: payload.name,
@@ -48,103 +32,80 @@ export async function createThread(payload: {
       createdBy: payload.createdBy,
       messageCount: payload.initialMessage ? 1 : 0,
       messages: payload.initialMessage
-        ? {
-            create: {
-              content: payload.initialMessage,
-              senderId: payload.createdBy,
-              depth: 0,
-              isAiResponse: false,
-              isEdited: false,
-              isPinned: false,
-              likeCount: 0,
-              replyCount: 0,
-            },
-          }
+        ? { create: { content: payload.initialMessage, senderId: payload.createdBy } }
         : undefined,
     },
     include: {
       messages: true,
-      _count: {
-        select: {
-          messages: true,
-        },
-      },
+      _count: { select: { messages: true } },
     },
   });
 
   if (payload.initialMessage) {
-    const initialMessages = [
-      {
-        id: thread.messages[0].id,
-        content: payload.initialMessage,
-        senderId: payload.createdBy,
-        sender: {
-          id: payload.createdBy,
-          name: null,
-          image: null,
-        },
-        createdAt: thread.messages[0].createdAt,
-      },
-    ];
-
-    // Pre-flight spend cap: expensive paths (DNA, resolution score) are
-    // gated at enqueue time so we don't queue unaffordable work.
-    const spendCap = await checkAiSpendCap();
-    const dnaGate = evaluateAiCostGate({ path: AiCallPath.THREAD_DNA, spendCapAllowed: spendCap.allowed });
-    const scoreGate = evaluateAiCostGate({ path: AiCallPath.RESOLUTION_SCORE, spendCapAllowed: spendCap.allowed });
-
-    // Enqueue background jobs for AI analysis instead of blocking the response
-    try {
-      const jobs: Promise<void>[] = [];
-      if (dnaGate.allowed) {
-        jobs.push(enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages: initialMessages }));
-      } else {
-        logger.warn(`[createThread] DNA enqueue blocked by spend cap for thread ${thread.id}`);
-      }
-      if (scoreGate.allowed) {
-        jobs.push(enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, { threadId: thread.id, messages: initialMessages }));
-      } else {
-        logger.warn(`[createThread] resolution-score enqueue blocked by spend cap for thread ${thread.id}`);
-      }
-      await Promise.allSettled(jobs);
-    } catch (error) {
-      logger.error('Failed to enqueue thread AI jobs:', error);
-      // Non-critical — thread is created, AI will be processed later
-    }
+    await enqueueInitialAiJobs(thread.id, {
+      id: thread.messages[0].id,
+      content: payload.initialMessage,
+      senderId: payload.createdBy,
+      sender: { id: payload.createdBy, name: null, image: null },
+      createdAt: thread.messages[0].createdAt,
+    });
   }
 
-  const typedThread = thread as ThreadStorageWithMessages;
-  return buildThreadDTO(
-    typedThread as unknown as ThreadRecord,
-    typedThread._count.messages,
-    0,
-    0
-  );
+  return buildThreadDTO(thread as ThreadRecord, thread._count.messages, 0);
 }
 
+// DNA and resolution score are the two expensive AI paths, so they're gated by the
+// spend cap *before* enqueue — no point queueing work we can't pay for.
+async function enqueueInitialAiJobs(threadId: string, message: InitialMessage): Promise<void> {
+  const messages = [message];
+  const gated = [
+    { type: AIJobType.GENERATE_THREAD_DNA, path: AiCallPath.THREAD_DNA, label: 'DNA' },
+    {
+      type: AIJobType.CALCULATE_RESOLUTION_SCORE,
+      path: AiCallPath.RESOLUTION_SCORE,
+      label: 'resolution-score',
+    },
+  ];
+
+  try {
+    const jobs: Promise<void>[] = [];
+    for (const { type, path, label } of gated) {
+      if ((await enforceAiSpendCap(path)).allowed) {
+        jobs.push(enqueueJob(type, { threadId, messages }));
+      } else {
+        logger.warn(`[createThread] ${label} enqueue blocked by spend cap for thread ${threadId}`);
+      }
+    }
+    await Promise.allSettled(jobs);
+  } catch (error) {
+    // Non-critical — the thread exists; AI enrichment can be retried later.
+    logger.error('Failed to enqueue thread AI jobs:', error);
+  }
+}
+
+// Soft-delete only. The purge cron (app/api/cron/update-threads) hard-removes the
+// row plus cascade once deletedAt is past the retention window.
 export async function deleteThread(threadId: string): Promise<void> {
-  // Soft-delete: set deletedAt instead of hard-deleting. The purge cron
-  // (app/api/cron/update-threads/route.ts) hard-removes the row + cascade
-  // once deletedAt is older than the retention window.
   await prisma.thread.update({
     where: { id: threadId },
     data: { deletedAt: new Date() },
   });
 }
 
-export async function updateThreadDNA(threadId: string, threadDNA: Record<string, unknown>): Promise<void> {
-  const validatedDNA = threadDnaSchema.parse(threadDNA);
+export async function updateThreadDNA(
+  threadId: string,
+  threadDNA: Record<string, unknown>
+): Promise<void> {
   await prisma.thread.update({
     where: { id: threadId },
-    data: { threadDna: validatedDNA },
+    data: { threadDna: threadDnaSchema.parse(threadDNA) },
   });
 }
 
 export async function updateResolutionScore(threadId: string, score: number): Promise<void> {
-  const validatedScore = z.number().int().min(0).max(100).parse(score);
   await prisma.thread.update({
     where: { id: threadId },
-    data: { resolutionScore: validatedScore },
+    data: { resolutionScore: z.number().int().min(0).max(100).parse(score) },
   });
 }
 

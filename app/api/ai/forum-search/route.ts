@@ -4,13 +4,13 @@ import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { sanitizeSearchQuery, validateApiKeys } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { checkAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch, AISearchPipelineResult, AISearchError } from '@/modules/ai-search/service';
 import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
 import { persistSearchSession } from '@/modules/ai-search/repository';
-import { consumeAiSearchQuota } from '@/lib/services/ai-search-quota';
+import { consumeAiSearchQuota } from '@/lib/services/daily-quota';
 import { consumeIdempotencyKey } from '@/lib/services/idempotency';
 import { env } from '@/lib/config/env';
 
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const spendCap = await checkAiSpendCap();
+    const spendCap = await enforceAiSpendCap(AiCallPath.FORUM_SEARCH_SYNTHESIZE);
     if (!spendCap.allowed) {
       return blockedStream('AI features temporarily unavailable due to high demand. Resets at UTC midnight.');
     }

@@ -8,7 +8,6 @@ import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classific
 import { aiService, isAiNotConfigured } from '@/lib/services/ai';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
-import { emitThreadMessage } from '@/modules/ws';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
@@ -247,24 +246,6 @@ export async function GET(
             }
             if (now - lastEmitTime >= 100 && !isAiNotConfigured(fullContent)) {
               lastEmitTime = now;
-              emitThreadMessage(threadId, {
-                id: aiMessage.id,
-                content: fullContent.slice(0, MAX_CONTENT_CHARS),
-                senderId: aiUser.id,
-                senderName: aiUser.name ?? 'Sastram AI',
-                senderImage: aiUser.image ?? null,
-                createdAt: new Date(),
-                threadId,
-                parentId: parentMessage.id,
-                depth: Math.min((parentMsg?.depth ?? 0) + 1, 4),
-                likeCount: 0,
-                replyCount: 0,
-                isAiResponse: true,
-                isComplete: false,
-                truncated: false,
-                reactions: [],
-                attachments: [],
-              });
             }
           }
         );
@@ -292,24 +273,7 @@ export async function GET(
 
         send('done', { messageId: aiMessage.id, truncated });
 
-        emitThreadMessage(threadId, {
-          id: aiMessage.id,
-          content: sanitized,
-          senderId: aiUser.id,
-          senderName: aiUser.name ?? 'Sastram AI',
-          senderImage: aiUser.image ?? null,
-          createdAt: new Date(),
-          threadId,
-          parentId: parentMessage.id,
-          depth: Math.min((parentMsg?.depth ?? 0) + 1, 4),
-          likeCount: 0,
-          replyCount: 0,
-          isAiResponse: true,
-          isComplete: true,
-          truncated,
-          reactions: [],
-          attachments: [],
-        });
+
       } catch (error) {
         clearTimeout(timeout);
         logger.error('[ai-reply-stream] Generation error', { error });
