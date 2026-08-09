@@ -65,14 +65,16 @@ slice 1–5; slices 6–7 are owned by the founder.
 ## Slice 3 — Close moderation / image spend-cap gap
 - **Type:** AFK
 - **Blocked by:** None
-- **What to build:** Text toxicity moderation (lib/services/moderation.ts) and image
-  moderation (consumeImageModerationQuota path) currently bypass the global `$5/day`
-  spend cap entirely. Add a pre-flight `checkAiSpendCap` for these paths so a
-  runaway moderation bill is bounded. Keep fail-open behaviour (moderation must
-  never block a post on Redis-outage).
+- **Status: RESOLVED.** Both paths now charge the global `$5/day` cap via
+  `consumeSpendCap` (`lib/services/ai-spend-cap.ts`), priced through
+  `classifyAiCallCost`:
+  - Text toxicity — `lib/services/moderation.ts:184` (`AiCallPath.TEXT_TOXICITY_MODERATION`)
+  - Image moderation — `app/api/upload/route.ts:75` (`AiCallPath.IMAGE_MODERATION`),
+    behind `consumeImageModerationQuota` from `lib/services/daily-quota.ts`
 - **Acceptance criteria:**
-  - [ ] toxicity + image moderation consult spend cap pre-flight
-  - [ ] fails open on Redis outage (posting unaffected)
+  - [x] toxicity + image moderation consult the spend cap
+  - [x] fails open on Redis outage (posting unaffected) — `consumeSpendCap` returns
+        `allowed: true` when Redis is unreachable
   - [ ] unit tests for the gate
 
 ## Slice 4 — Gate thread-create / cron DNA-score-conflict enqueues
@@ -206,7 +208,7 @@ they are not mistaken for closed. (See ARCHITECTURE-REPORT.md Critical Issues #1
 | O1 | **CSP / security headers** — RESOLVED & upgraded (2026-07-20). The active CSP now lives in `proxy.ts` (per-request, nonce-based), not `next.config.ts` (which no longer sets a CSP to avoid duplicate headers). `proxy.ts` sets `Content-Security-Policy` (or `-Report-Only` when `CSP_REPORT_ONLY=true`, the default) with frame-ancestors 'none', base-uri/form-action 'self', connect-src scoped to AI APIs, plus XFO DENY, nosniff, Referrer-Policy, Permissions-Policy. Report collector at `app/api/csp-report/route.ts`. | Was founder-owned; policy decided, implemented + nonce upgrade. | **Closed pending report-log review.** Flip to enforcing (`CSP_REPORT_ONLY=false`) once the `/api/csp-report` log is clean across real traffic. |
 | O1a | **CSP XSS gap — `script-src 'unsafe-inline'` without nonce.** PARTIALLY RESOLVED (2026-07-20). `proxy.ts` now generates a per-request nonce, emits `script-src 'self' 'nonce-<req>'` (NO `'unsafe-inline'`), and forwards it via the `x-csp-nonce` request header so Next.js tags its framework inline scripts. Verified: the CSP header nonce matches the inline-script nonce within a single request (49/50 scripts nonced; the 1 exception is the Next.js bootstrap `<script>` which Next does not auto-nonce yet). Under Report-Only (default) that bootstrap script still executes and only reports a violation; under enforcing it would be blocked until Next nonces it. | Follows from O1 implementation. | **Not yet "XSS fully mitigated."** Next steps: (1) keep Report-Only and review `/api/csp-report` across real traffic; (2) before enforcing, ensure the bootstrap script is nonced (Next 16 does not currently nonce it — may need `experimental.nonce` or a manual injection). Only then flip `CSP_REPORT_ONLY=false`. |
 | O1b | **CSRF token validation on server actions** (ARCHITECTURE-REPORT Critical Issue #3). RE-ASSESSED (2026-07-20): `proxy.ts` ALREADY performs origin/referer validation on all unsafe methods (POST/PUT/DELETE/PATCH) — it rejects cross-origin requests lacking a matching Origin/Referer (lines ~116-145). So CSRF is effectively mitigated today by same-site origin enforcement + `frame-ancestors 'none'`, not by a double-submit token. Lower risk than originally framed. | Architecture report Critical Issue #3; proxy.ts origin check. | **Mitigated in practice.** Keep the origin check; add a double-submit/header token only if the attack surface changes (CORS exposure, iframe embeds). |
-| O2 | **WebSocket in-memory state** — thread channels / connections / typing indicators in `Map`s; multi-instance can't share. (Note: message *delivery* uses Redis pub/sub via `lib/infrastructure/redis-pubsub.ts`, so fan-out is multi-instance; per-connection subscription bookkeeping is the in-memory part.) | Not in Phase 1–5 scope; needs its own design decision (sticky sessions vs external store). | Open. Acceptable at single-instance / low-scale; revisit before horizontal scaling. |
+| O2 | **No real-time delivery layer.** The WebSocket layer was removed entirely — `modules/ws/`, `hooks/useThreadWebSocket.ts`, and the `emit*` functions are all deleted (they were no-ops). Multi-instance fan-out does **not** work: what survives is `publishUserEvent` in `lib/infrastructure/redis.ts:84-108`, publish-only on a single `user:{id}` channel for notification counts, with no subscriber. Thread updates are poll-only (20-60s, 3s while an `@sai` job is pending); AI reply streaming uses SSE. | Not in Phase 1–5 scope; needs its own design decision (WS vs SSE, sticky sessions vs external store). | Open. Acceptable at single-instance / low-scale; must be designed before horizontal scaling. |
 
 Neither O1 nor O2 was touched, fixed, or verified by the Phase 1–5 work. Treat
 them as a separate backlog from slices 1–5.

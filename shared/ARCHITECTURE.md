@@ -37,7 +37,7 @@ accumulates knowledge. More users = better answers for the next user.
 - **AI — Search:** Exa API + Tavily API (via `modules/ai-search/service.ts`)
 - **AI — Synthesis:** Google Gemini Flash (classify/DNA) + Pro (synthesis)
 - **AI — LangChain:** Map-reduce summarization via `lib/services/ai-langchain.ts`
-- **State Management:** TanStack Query (chat/messages) + Zustand (thread view)
+- **State Management:** Zustand + `useSyncExternalStore` (thread view)
 - **E2E Testing:** Playwright (`e2e/`)
 
 ---
@@ -91,8 +91,6 @@ sastram/
 │   │   │   ├── settings/                 # Account settings + profile
 │   │   │   └── admin/                    # Admin (tags, moderation, reports, appeals, health)
 │   │   └── user/[userId]/                # Public user profile
-│   ├── chat/                             # Real-time chat
-│   ├── thread/[slug]/                    # Flat thread detail view (public URL)
 │   ├── banned/                           # Banned user page
 │   ├── api-docs/                         # API documentation page
 │   └── api/
@@ -124,7 +122,7 @@ sastram/
 ├── components/
 │   ├── ai-search/                        # SearchBox, Sidebar, PhaseTracker, SynthesisCard, SourceCard, TableView, ApiKeysModal
 │   ├── thread/                           # comment-tree, message-list, message-node, RightPanel, poll-*, subscribe-button, thread-live-wrapper
-│   ├── chat/                             # post-message-form, mention-suggest, typing-indicator
+│   ├── chat/                             # post-message-form, mention-suggest
 │   ├── dashboard/                        # settings-form, preferences-form, header, sidebar, StatsCard, TopicCard
 │   ├── panels/                           # RightPanel (ThreadInfoCard, ThreadDnaCard, AiSynthesisCard, RelatedThreadsCard, ParticipantsCard)
 │   ├── notifications/                    # notification-list
@@ -136,21 +134,18 @@ sastram/
 │   └── ui/                               # shadcn/ui + TimeAgo, ErrorBoundary, LoadingVideo, ThemeToggle
 │
 ├── hooks/
-│   ├── useThreadWebSocket.ts             # Thread polling hook
-│   ├── useMessages.ts                    # React Query: conversation messages
-│   ├── useConversations.ts              # React Query: chat conversations
+│   ├── useAIReplyStream.ts               # SSE consumer for @sai reply streaming
 │   ├── use-debounce.ts                   # Generic debounce hook
-│   └── chat/use-websocket.ts            # Chat polling hook
+│   └── chat/use-message-composer.ts      # Message composition, drafts, mentions
 │
 ├── stores/
 │   └── thread-view-store.ts             # useSyncExternalStore: current thread slug
 │
-├── modules/                              # Domain logic (29 modules)
+├── modules/                              # Domain logic (25 modules)
 │   ├── auth/                             # Session management, OAuth
 │   ├── users/                            # User CRUD, profiles, avatar/banner upload
 │   ├── threads/                          # Thread CRUD, membership, slug routing, relations
 │   ├── messages/                         # Post, edit, pin, delete, mentions, AI inline
-│   ├── chat/                             # Real-time chat (conversations, messages)
 │   ├── ai-search/                        # Exa + Tavily + Gemini pipeline, caching, query warming
 │   ├── moderation/                       # Regex rules, content filtering, AI inline moderation
 │   ├── reports/                          # Report creation, resolution, executors
@@ -167,13 +162,11 @@ sastram/
 │   ├── polls/                            # Poll creation, voting, results
 │   ├── invitations/                      # Thread invitations
 │   ├── activity/                         # User activity logging
-│   ├── reputation/                       # Reputation points system
-│   ├── badges/                           # Badge definitions and awarding
+│   ├── feedback/                         # In-app feedback widget submissions
 │   ├── search/                           # Local full-text search
 │   ├── admin/                            # Admin dashboard data
 │   ├── policy/                           # Policy enforcement
-│   ├── audit/                            # Audit logging
-│   └── ws/                               # WebSocket types, publisher, cross-instance delivery
+│   └── audit/                            # Audit logging
 │
 ├── lib/
 │   ├── config/
@@ -182,15 +175,13 @@ sastram/
 │   │   ├── permissions.ts                # Role-based access control
 │   │   └── routes.ts                     # Route constants
 │   ├── infrastructure/
-│   │   ├── bullmq.ts                     # Backward-compatible re-export barrel
 │   │   ├── logger.ts                     # Structured logger with request IDs
 │   │   ├── prisma.ts                     # Prisma Client (Neon adapter)
-│   │   ├── redis-connection.ts           # Redis connection factory
-│   │   ├── redis-pubsub.ts              # Redis pub/sub for cross-instance events
+│   │   ├── redis.ts                     # ioredis connection factory + pub/sub publisher
 │   │   ├── redis-upstash.ts             # Upstash Redis client
 │   │   └── query-cache.ts              # Redis/in-memory query cache
 │   ├── queue/
-│   │   ├── config.ts                     # QUEUE_NAMES (9), DEFAULT_JOB_OPTIONS, AIJobType enum (7)
+│   │   ├── config.ts                     # AIJobType enum (8)
 │   │   ├── types.ts                      # Job data interfaces (ThreadSummaryJobData, etc.)
 │   │   └── workers/
 │   │       ├── ai.worker.ts              # AI job handlers (summary, DNA, score, conflicts, inline, staleness)
@@ -303,7 +294,6 @@ The central entity. Stores AI metadata directly:
 - `role: Enum` — USER, MODERATOR, ADMIN
 - `status: Enum` — ACTIVE, SUSPENDED, BANNED
 - `profilePrivacy: Enum` — PUBLIC, PRIVATE, FOLLOWERS_ONLY
-- `reputationPoints: Int` — gamification points
 - `isPro: Boolean` — pro subscription status
 - `preferences: Json` — notification, theme, AI settings
 
@@ -343,7 +333,7 @@ The central entity. Stores AI metadata directly:
 | Role system | USER, MODERATOR, ADMIN (Prisma enum) |
 | Status system | ACTIVE, SUSPENDED, BANNED (Prisma enum) |
 | Banned user page | `app/banned/page.tsx` |
-| Bootstrap endpoint | `GET /api/bootstrap` — user + notifications + activity + reputation |
+| Bootstrap endpoint | `GET /api/bootstrap` — user + unread notification count + recent activity |
 
 ### Thread & Discussion
 
@@ -352,8 +342,7 @@ The central entity. Stores AI metadata directly:
 | Create thread | `modules/threads/actions.ts:createThreadAction` |
 | Delete thread (soft) | `modules/threads/actions.ts:deleteThreadAction` |
 | Thread list (dashboard) | `app/(protected)/dashboard/threads/page.tsx` |
-| Thread detail (by slug) | `app/thread/[slug]/page.tsx` |
-| Thread view (public/flat) | `app/thread/[slug]/page.tsx` |
+| Thread detail (by slug) | `app/(protected)/dashboard/threads/[slug]/page.tsx` |
 | Nested reply tree (depth 4) | `components/thread/comment-tree.tsx` + `message-list.tsx` |
 | Virtual scrolling | `@tanstack/react-virtual` in `message-list.tsx` |
 | Load older messages | `thread-live-wrapper.tsx:loadMoreMessages` (cursor pagination) |
@@ -395,15 +384,6 @@ The central entity. Stores AI metadata directly:
 | Message updates | Client-side polling |
 | Typing indicators | Not implemented (forum-style platform) |
 
-### Chat
-
-| Feature | Implementation |
-|---------|---------------|
-| Chat conversations | `app/chat/page.tsx` + `modules/chat/actions.ts` |
-| Create conversation | `modules/chat/actions.ts:createConversation` |
-| Send/receive messages | `hooks/useMessages.ts` (React Query) |
-| Chat polling | `hooks/chat/use-websocket.ts` |
-| Conversation list | `hooks/useConversations.ts` |
 
 ### AI-Powered Features
 
@@ -485,8 +465,6 @@ The central entity. Stores AI metadata directly:
 | Emoji reactions | `modules/reactions/actions.ts:toggleReaction` |
 | Read receipts | `modules/read-receipts/actions.ts:markThreadReadAction` (auto after 30s) |
 | Activity feed | `modules/activity/actions.ts` (record, get, followed users) |
-| Reputation system | `modules/reputation/actions.ts` (points, awards, sync) |
-| Badges | `modules/badges/actions.ts` (check, award, list) |
 | Thread subscriptions | `modules/newsletter/actions.ts` (Daily, Weekly, Never frequency) |
 | Polls | `modules/polls/actions.ts` (create, vote, close, results) |
 
@@ -508,7 +486,7 @@ The central entity. Stores AI metadata directly:
 | Feature | Implementation |
 |---------|---------------|
 | Create thread | `modules/threads/actions.ts:createThreadAction` |
-| Thread view (public/flat) | `app/thread/[slug]/page.tsx` |
+| Thread detail (by slug) | `app/(protected)/dashboard/threads/[slug]/page.tsx` |
 
 ### Email
 

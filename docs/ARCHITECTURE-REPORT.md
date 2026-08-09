@@ -21,12 +21,12 @@ The backend is mature and well-architected. The frontend has significant gaps be
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| Framework | Next.js (App Router) | 16.2.9 |
+| Framework | Next.js (App Router) | 16.3.0 |
 | Language | TypeScript (strict) | — |
-| UI | React 19, Tailwind CSS 4, shadcn/ui | 19.2.7 |
-| Database | PostgreSQL via Prisma ORM (Neon serverless) | 7.8.0 |
-| Auth | Better Auth (email OTP + Google + GitHub OAuth) | 1.6.19 |
-| Real-time | Custom WebSocket server (ws library) | 8.21.0 |
+| UI | React 19, Tailwind CSS 4, shadcn/ui | 19.2.8 |
+| Database | PostgreSQL via Prisma ORM (Neon serverless) | 7.9.1 |
+| Auth | Better Auth (email OTP + Google + GitHub OAuth) | 1.6.26 |
+| Real-time | Custom WebSocket server (ws library) | 8.21.2 |
 | Queue | QStash with Redis | 5.78.1 |
 | Cache/Rate Limit | Upstash Redis + ioredis | — |
 | AI | Google Gemini (Flash + Pro), OpenAI GPT | — |

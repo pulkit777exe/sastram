@@ -35,6 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Update dependencies to latest minor/patch versions — Next.js 16.2.10 → 16.3.0, React 19.2.7 → 19.2.8, Prisma 7.9.0 → 7.9.1, Better Auth 1.6.23 → 1.6.26, `@google/genai` 2.12.0 → 2.16.0, Axios 1.18.1 → 1.19.0, plus Radix UI, LangChain, Upstash, and tooling packages
+- Add `bfcacheId` to the mock router in `test/thread-components.test.tsx` — Next.js 16.3 added it as a required field on `AppRouterInstance`
 - `removeMember()` repository function now returns `{ count: number }` to enable callers to check affected rows
 - `validateModerationTarget()` now accepts `string | null | undefined` for moderatorRole and throws if role is missing
 - `/api/cron/worker` response shape changed from `{ processed, failed }` to `{ processed, failed, total }`

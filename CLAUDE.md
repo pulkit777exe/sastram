@@ -6,7 +6,7 @@ Personal project, open sourced. Built with Next.js, Prisma, and AI.
 
 Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, PostgreSQL (Neon), serverless architecture, Better Auth authentication, and AI integration.
 
-For the verified system reference, see [docs/CANONICAL-REFERENCE.md](../docs/CANONICAL-REFERENCE.md).
+For the verified system reference, see [docs/CANONICAL-REFERENCE.md](docs/CANONICAL-REFERENCE.md).
 
 ## Tech Stack
 
@@ -29,7 +29,8 @@ pnpm build           # Prisma generate + Next build
 pnpm start           # Production server
 
 # Testing & Linting
-pnpm test            # Mocha tests (199 passing)
+pnpm test            # Mocha tests (297 passing)
+pnpm test:e2e       # Playwright e2e tests
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
 pnpm lint:fix      # ESLint fix
@@ -56,7 +57,7 @@ pnpm db:studio   # Prisma studio
 
 ### Database Models
 
-29 models in `prisma/schema.prisma`:
+30 models in `prisma/schema.prisma`:
 - User (deletedAt), Account, Session, Verification
 - Thread (deletedAt, visibility, memberCount)
 - Message (deletedAt, nullable senderId), MessageEdit, MessageMention, Attachment
@@ -67,12 +68,12 @@ pnpm db:studio   # Prisma studio
 - ModerationRule (CHECK constraints), Appeal (own table), Report (escalatedAt, firstResponseAt), UserBan
 - ThreadTag, ThreadTagRelation
 - Poll, PollVote
-- UserReputation, UserBadge, UserBadgeEarned
 - UserActivity (CHECK constraint)
 - ThreadInvitation
 - AiSearchSession, AiSearchResult
 - AiUsageLog (costUsd)
 - ThreadRelation
+- Feedback
 
 ### Key Services
 
@@ -82,7 +83,7 @@ pnpm db:studio   # Prisma studio
 - **Moderation** (`lib/services/moderation.ts`): Regex-based content filtering + AI inline + moderator notifications
 - **AI Spend Cap** (`lib/services/ai-spend-cap.ts`): Dollar-based daily limit ($5.00) via Redis INCRBYFLOAT
 - **AI Usage Logger** (`lib/services/ai-usage-logger.ts`): Per-request token counts and cost estimates
-- **Image Moderation Quota** (`lib/services/image-moderation-quota.ts`): Per-user 50/day limit
+- **Daily Quota** (`lib/services/daily-quota.ts`): Per-user/day Redis quotas for AI inline, AI analysis, AI search, image moderation
 - **Moderation SLA** (`lib/services/moderation-sla.ts`): Stale report escalation (>24h/72h)
 - **Soft-Delete Purge** (`lib/services/soft-delete-purge.ts`): Purges soft-deleted users after 30 days
 
@@ -90,7 +91,7 @@ pnpm db:studio   # Prisma studio
 
 - QStash webhook callback at `app/api/jobs/route.ts`
 - Job handlers in `lib/queue/workers/ai.worker.ts` and `email.worker.ts`
-- Vercel Cron for scheduled tasks (update-threads, cleanup-blobs)
+- Vercel Cron for scheduled tasks (update-threads, cleanup-blobs, daily-digest)
 - Jobs: thread summary, thread DNA, resolution score, conflict detection, daily digest, AI inline, email, staleness check, AI insight notifications
 - Jobs retry 3x via QStash
 
@@ -99,10 +100,10 @@ pnpm db:studio   # Prisma studio
 - `/api/auth/*` - Authentication endpoints
 - `/api/threads/*` - Thread operations
 - `/api/messages/*` - Message operations
-- `/api/ai/*` - AI-powered features (forum-search, thread-summary, thread-dna, resolution-score, jobs)
+- `/api/ai/*` - AI-powered features (forum-search, thread-summary, thread-dna, resolution-score, search-history, spend)
 - `/api/cron/*` - Scheduled jobs (cron auth via `CRON_SECRET` Bearer token)
+- `/api/jobs` - QStash webhook callback for background jobs
 - `/api/v1/moderation/*` - Moderation tools (admin-only)
-- `/api/conversations` - Chat conversations (membership-scoped)
 
 ## Authorization Patterns
 
@@ -113,14 +114,14 @@ pnpm db:studio   # Prisma studio
 - Routes/actions that read/write thread data must call `requireThreadAccessOrThrow(threadId, userId, role)` / `requireThreadWriteOrThrow(...)`.
 - `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check access.
 - Admin-only: `assertAdmin(session.user)` in thread actions, `requireAdmin()` / `requireModerator()` for API routes.
-- Chat (messages + websocket): posting and reading require thread access (modules/messages/actions.ts, modules/ws/).
+- Messages: posting and reading require thread access (`modules/messages/actions.ts`).
 - AI routes (`thread-dna`, `resolution-score`, `ai-reply`) require thread access.
-- Message posting requires thread access.
 
 ## Test Coverage
 
-- **Current**: 40 test files covering utilities, services, API routes, and some components
-- **Missing**: e2e tests, integration tests with real DB, component storybook
+- **Current**: 48 Mocha test files (297 passing) covering utilities, services, API routes, and some components
+- **E2E**: Playwright smoke tests in `test/e2e/`
+- **Missing**: integration tests with real DB, component storybook
 
 ## Architecture Notes
 
