@@ -9,6 +9,7 @@ import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { ROUTES } from '@/lib/config/routes';
 import { createBulkNotifications } from '@/modules/notifications/repository';
+import { actionSuccess } from '@/lib/actions/result';
 
 const EMAIL_PREVIEW_LENGTH = 200;
 
@@ -111,18 +112,13 @@ export const searchMentionUsers = createServerAction(
         take: 5,
       });
 
-      return {
-        data: users.map((user) => ({
-          ...user,
-          handle:
-            (user.name || user.email.split('@')[0] || '')
-              .toLowerCase()
-              .replace(/[^a-z0-9.-]/g, '') || 'user',
-        })),
-        error: null,
-        errorCode: null,
-        ok: true,
-      };
+      return actionSuccess(users.map((user) => ({
+        ...user,
+        handle:
+          (user.name || user.email.split('@')[0] || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9.-]/g, '') || 'user',
+      })));
     } catch (error) {
       logger.error('[searchMentionUsers]', error);
       return {

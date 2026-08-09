@@ -7,6 +7,7 @@ import {
 } from './repository';
 import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
+import { actionSuccess } from '@/lib/actions/result';
 
 const searchSchema = z.object({
   query: z.string().min(1).max(200),
@@ -25,7 +26,7 @@ export const searchThreadsAction = withValidation(
   'searchThreads',
   async ({ query, limit, offset }) => {
     const result = await searchThreadsRepo(query, limit, offset);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return actionSuccess(result);
   }
 );
 
@@ -34,7 +35,7 @@ export const searchMessagesAction = withValidation(
   'searchMessages',
   async ({ query, threadId, limit, offset }) => {
     const result = await searchMessagesRepo(query, threadId, limit, offset);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return actionSuccess(result);
   }
 );
 
@@ -43,6 +44,6 @@ export const searchUsersAction = withValidation(
   'searchUsers',
   async ({ query, limit, offset }) => {
     const result = await searchUsersRepo(query, limit, offset);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return actionSuccess(result);
   }
 );

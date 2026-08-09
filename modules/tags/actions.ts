@@ -18,6 +18,7 @@ import {
   mergeTags as mergeTagsRepo,
 } from './repository';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
+import { actionSuccess } from '@/lib/actions/result';
 
 const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 
@@ -53,7 +54,7 @@ export const createTagAction = createServerAction(
   async ({ name, color }) => {
     await requireSession();
     const tag = await createTagRepo(name, color);
-    return { data: tag, error: null, ok: true, errorCode: null };
+    return actionSuccess(tag);
   }
 );
 
@@ -64,7 +65,7 @@ export const addTagToThreadAction = createServerAction(
     await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     await addTagToThreadRepo(threadId, tagId);
     revalidatePath(ROUTES.THREAD(threadId));
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -75,7 +76,7 @@ export const removeTagFromThreadAction = createServerAction(
     await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     await removeTagFromThreadRepo(threadId, tagId);
     revalidatePath(ROUTES.THREAD(threadId));
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -85,7 +86,7 @@ export const getThreadTagsAction = createServerAction(
     const session = await requireSession();
     await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     const tags = await getThreadTagsRepo(threadId);
-    return { data: tags, error: null, ok: true, errorCode: null };
+    return actionSuccess(tags);
   }
 );
 
@@ -94,7 +95,7 @@ export const getPopularTagsAction = withValidation(
   'getPopularTagsAction',
   async ({ limit }) => {
     const tags = await getPopularTagsRepo(limit || 20);
-    return { data: tags, error: null, ok: true, errorCode: null };
+    return actionSuccess(tags);
   }
 );
 
@@ -103,7 +104,7 @@ export const listAllTagsAction = createServerAction(
   async (params) => {
     await requireRole(['ADMIN']);
     const result = await listAllTagsRepo(params);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return actionSuccess(result);
   }
 );
 
@@ -113,7 +114,7 @@ export const updateTagAction = createServerAction(
     await requireRole(['ADMIN']);
     const tag = await updateTagRepo(id, { name, color });
     revalidatePath(ROUTES.ADMIN);
-    return { data: tag, error: null, ok: true, errorCode: null };
+    return actionSuccess(tag);
   }
 );
 
@@ -123,7 +124,7 @@ export const deleteTagAction = createServerAction(
     await requireRole(['ADMIN']);
     await deleteTagRepo(id);
     revalidatePath(ROUTES.ADMIN);
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -133,6 +134,6 @@ export const mergeTagsAction = createServerAction(
     await requireRole(['ADMIN']);
     const tag = await mergeTagsRepo(sourceId, targetId);
     revalidatePath(ROUTES.ADMIN);
-    return { data: tag, error: null, ok: true, errorCode: null };
+    return actionSuccess(tag);
   }
 );

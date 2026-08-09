@@ -21,24 +21,25 @@ function getDailyKey(prefix: string): string {
 }
 
 // Tracking must never break the request it's measuring, so errors are swallowed.
-async function track(prefix: string, count: number): Promise<void> {
+// Increments by one per call — ATOMIC_INCR_EXPIRE_LUA has no batch-count argument.
+async function track(prefix: string): Promise<void> {
   const redis = getUpstashRedis();
   if (!redis) return;
   try {
     const ttl = getSecondsUntilUtcMidnight();
-    await redis.eval(ATOMIC_INCR_EXPIRE_LUA, [getDailyKey(prefix)], [String(ttl), String(count)]);
+    await redis.eval(ATOMIC_INCR_EXPIRE_LUA, [getDailyKey(prefix)], [String(ttl)]);
   } catch {
     return;
   }
 }
 
 /** Call from API routes that cause DB queries. */
-export async function trackNeonRequest(count: number = 1): Promise<void> {
-  return track('neon', count);
+export async function trackNeonRequest(): Promise<void> {
+  return track('neon');
 }
 
-export async function trackUpstashCommand(count: number = 1): Promise<void> {
-  return track('upstash', count);
+export async function trackUpstashCommand(): Promise<void> {
+  return track('upstash');
 }
 
 /** Null when Redis is unavailable. */

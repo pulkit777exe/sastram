@@ -119,12 +119,12 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
     }
 
     setIsSaving(true);
-    const result = await createPollAction(
+    const result = await createPollAction({
       threadId,
-      question.trim(),
-      trimmedOptions,
-      expiresAt ? new Date(expiresAt) : undefined
-    );
+      question: question.trim(),
+      options: trimmedOptions,
+      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+    });
     setIsSaving(false);
 
     if (result.error || !result.data) {
@@ -153,7 +153,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
     if (!poll) return;
 
     setIsSaving(true);
-    const result = await closePollAction(poll.id);
+    const result = await closePollAction({ pollId: poll.id });
     setIsSaving(false);
 
     if (result.error) {

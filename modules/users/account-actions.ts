@@ -7,6 +7,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { getSession } from '@/modules/auth';
 import { createServerAction } from '@/lib/utils/server-action';
 import { logger } from '@/lib/infrastructure/logger';
+import { actionSuccess } from '@/lib/actions/result';
 
 const NOT_AUTHENTICATED = {
   data: null,
@@ -30,7 +31,7 @@ export const changePasswordAction = createServerAction(
         body: { currentPassword, newPassword, revokeOtherSessions: false },
         headers: await headers(),
       });
-      return { data: { ok: true }, error: null, ok: true, errorCode: null };
+      return actionSuccess({ ok: true });
     } catch (error) {
       logger.error('[changePasswordAction]', error);
       const message = error instanceof Error ? error.message : 'Failed to change password';
@@ -56,7 +57,7 @@ export const changeEmailAction = createServerAction(
         },
         headers: await headers(),
       });
-      return { data: { ok: true }, error: null, ok: true, errorCode: null };
+      return actionSuccess({ ok: true });
     } catch (error) {
       logger.error('[changeEmailAction]', error);
       const message = error instanceof Error ? error.message : 'Failed to change email';
@@ -76,22 +77,17 @@ export const listSessionsAction = createServerAction(
         where: { userId: current.user.id, expiresAt: { gt: new Date() } },
         orderBy: { createdAt: 'desc' },
       });
-      return {
-        data: {
-          sessions: sessions.map((s) => ({
-            id: s.id,
-            token: s.token,
-            ipAddress: s.ipAddress,
-            userAgent: s.userAgent,
-            createdAt: s.createdAt,
-            expiresAt: s.expiresAt,
-            isCurrent: s.token === currentToken,
-          })),
-        },
-        error: null,
-        ok: true,
-        errorCode: null,
-      };
+      return actionSuccess({
+        sessions: sessions.map((s) => ({
+          id: s.id,
+          token: s.token,
+          ipAddress: s.ipAddress,
+          userAgent: s.userAgent,
+          createdAt: s.createdAt,
+          expiresAt: s.expiresAt,
+          isCurrent: s.token === currentToken,
+        })),
+      });
     } catch (error) {
       logger.error('[listSessionsAction]', error);
       return { data: null, error: 'Failed to load sessions', ok: false, errorCode: 'INTERNAL_ERROR' };
@@ -110,7 +106,7 @@ export const revokeSessionAction = createServerAction(
     if (!session) return NOT_AUTHENTICATED;
     try {
       await auth.api.revokeSession({ body: { token }, headers: await headers() });
-      return { data: { ok: true }, error: null, ok: true, errorCode: null };
+      return actionSuccess({ ok: true });
     } catch (error) {
       logger.error('[revokeSessionAction]', error);
       return { data: null, error: 'Failed to revoke session', ok: false, errorCode: 'INTERNAL_ERROR' };
@@ -146,16 +142,11 @@ export const getLinkedAccountsAction = createServerAction(
       where: { userId: session.user.id },
       select: { providerId: true, createdAt: true, idToken: true },
     });
-    return {
-      data: accounts.map((a) => ({
-        provider: a.providerId,
-        linkedAt: a.createdAt,
-        displayName: decodeIdTokenDisplayName(a.idToken, a.providerId),
-      })),
-      error: null,
-      ok: true,
-      errorCode: null,
-    };
+    return actionSuccess(accounts.map((a) => ({
+      provider: a.providerId,
+      linkedAt: a.createdAt,
+      displayName: decodeIdTokenDisplayName(a.idToken, a.providerId),
+    })));
   }
 );
 
@@ -182,7 +173,7 @@ export const unlinkAccountAction = createServerAction(
         };
       }
       await auth.api.unlinkAccount({ body: { providerId: provider }, headers: await headers() });
-      return { data: { ok: true }, error: null, ok: true, errorCode: null };
+      return actionSuccess({ ok: true });
     } catch (error) {
       logger.error('[unlinkAccountAction]', error);
       const msg = error instanceof Error ? error.message : '';

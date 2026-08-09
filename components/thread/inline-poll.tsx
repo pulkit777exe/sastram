@@ -62,12 +62,12 @@ const validOptions = options.filter(option => option.trim().length > 0);
     setIsSaving(true);
     
     try {
-      const result = await createPollAction(
+      const result = await createPollAction({
         threadId,
         question,
-        options.filter(opt => opt.trim().length > 0),
-        expiresAt ? new Date(expiresAt) : undefined
-      );
+        options: options.filter(opt => opt.trim().length > 0),
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      });
       
       if (result.error) {
         toasts.error(result.error || 'Failed to create poll');

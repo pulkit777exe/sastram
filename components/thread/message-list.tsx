@@ -223,7 +223,7 @@ const MessageRow = React.memo(function MessageRow({
     const trimmed = editContent.trim();
     if (!trimmed || trimmed === message.content) return;
     setIsSavingEdit(true);
-    const res = await editMessage(message.id, trimmed);
+    const res = await editMessage({ messageId: message.id, content: trimmed });
     if (!res?.error) {
       onMessageUpdate(message.id, { content: trimmed, isEdited: true, updatedAt: new Date() });
       setIsEditing(false);
@@ -458,7 +458,7 @@ const MessageRow = React.memo(function MessageRow({
               const wasLiked = isLiked;
               setIsLiked(!wasLiked);
               setLikeCount((prev) => (wasLiked ? Math.max(0, prev - 1) : prev + 1));
-              const result = await toggleReaction(message.id, '👍');
+              const result = await toggleReaction({ messageId: message.id, emoji: '👍' });
               if (result?.error) {
                 setIsLiked(wasLiked);
                 setLikeCount((prev) => (wasLiked ? prev + 1 : Math.max(0, prev - 1)));
@@ -470,7 +470,7 @@ const MessageRow = React.memo(function MessageRow({
               setIsPinning(true);
               const wasPinned = message.isPinned;
               onMessageUpdate(message.id, { isPinned: !wasPinned });
-              const res = await pinMessage(message.id);
+              const res = await pinMessage({ messageId: message.id });
               if (res?.error) {
                 onMessageUpdate(message.id, { isPinned: wasPinned });
                 toasts.error('Failed to pin message');
@@ -495,7 +495,7 @@ const MessageRow = React.memo(function MessageRow({
               disabled={isDeleting}
               onClick={async () => {
                 setIsDeleting(true);
-                const res = await deleteMessage(message.id);
+                const res = await deleteMessage({ messageId: message.id });
                 if (!res?.error) {
                   onMessageUpdate(message.id, { deletedAt: new Date() });
                   setShowDeleteConfirm(false);

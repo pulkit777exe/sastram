@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json(fail('VALIDATION_ERROR', 'Body id must match URL id'), { status: 412 });
     }
 
-    const result = await resolveAppeal(id, approved);
+    const result = await resolveAppeal({ appealId: id, approved });
 
     if ('error' in result && result.error) {
       return NextResponse.json(fail('INTERNAL_ERROR', result.error), { status: 500 });

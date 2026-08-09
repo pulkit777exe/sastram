@@ -176,7 +176,13 @@ export async function rateLimit(
     : getOrCreateLimiter(arg.type).check(arg.key);
 }
 
-export const messageLimiter: RateLimiter = getOrCreateLimiter('message');
+/**
+ * Resolved lazily: binding at module load would freeze the limiter in
+ * in-memory mode for the process lifetime if Redis was down at cold start.
+ */
+export function getMessageLimiter(): RateLimiter {
+  return getOrCreateLimiter('message');
+}
 
 /** Test hook — lets a suite re-evaluate limiter mode after changing env. */
 export function resetRateLimiters(): void {

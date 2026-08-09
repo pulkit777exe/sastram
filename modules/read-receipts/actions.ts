@@ -5,6 +5,7 @@ import { markThreadReadSchema } from '@/modules/read-receipts/schemas';
 import { upsertThreadReadReceipt } from '@/modules/read-receipts/repository';
 import { logger } from '@/lib/infrastructure/logger';
 import { withValidation } from '@/lib/utils/server-action';
+import { actionSuccess } from '@/lib/actions/result';
 
 export const markThreadReadAction = withValidation(
   markThreadReadSchema,
@@ -18,7 +19,7 @@ export const markThreadReadAction = withValidation(
         lastReadMessageId: lastReadMessageId ?? null,
       });
 
-      return { data: { marked: true }, error: null, ok: true, errorCode: null };
+      return actionSuccess({ marked: true });
     } catch (error) {
       logger.error('[markThreadRead]', error);
       return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };

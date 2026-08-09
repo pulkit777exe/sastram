@@ -12,6 +12,7 @@ import {
 } from '@/modules/reactions/repository';
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { actionSuccess } from '@/lib/actions/result';
 
 const toggleReactionSchema = z.object({
   messageId: z.string().cuid(),
@@ -59,7 +60,7 @@ export const toggleReaction = createServerAction(
     }
 
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -70,6 +71,6 @@ export const getReactionSummary = createServerAction(
     if (notFound) return messageNotFound;
 
     const reactions = await getMessageReactions(messageId, session.user.id);
-    return { data: reactions, error: null, ok: true, errorCode: null };
+    return actionSuccess(reactions);
   }
 );

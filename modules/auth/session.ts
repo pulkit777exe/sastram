@@ -8,11 +8,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { AppError } from '@/lib/utils/errors';
 import { isAdmin } from '@/lib/config/permissions';
-import {
-  requireThreadAccess,
-  requireThreadAccessOrThrow,
-  requireThreadWriteOrThrow,
-} from '@/lib/thread-access';
+import { requireThreadAccessOrThrow, requireThreadWriteOrThrow } from '@/lib/thread-access';
 
 export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status'>;
 
@@ -91,21 +87,6 @@ export async function requireSessionOrThrow(checkBanStatus = true): Promise<Sess
   }
 
   return session;
-}
-
-/** @deprecated Use requireThreadAccess — kept as alias during migration */
-export async function requireThreadMembership(threadId: string, userId: string): Promise<void> {
-  await requireThreadAccess(threadId, userId);
-}
-
-/** @deprecated Use requireThreadAccessOrThrow */
-export async function requireThreadMembershipOrThrow(
-  threadId: string,
-  userId: string,
-  _requiredRole?: never
-): Promise<void> {
-  const session = await getSession();
-  await requireThreadAccessOrThrow(threadId, userId, session?.user.role ?? Role.USER);
 }
 
 export { requireThreadAccessOrThrow, requireThreadWriteOrThrow, isAdmin };

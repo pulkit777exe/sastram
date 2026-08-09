@@ -185,20 +185,6 @@ export async function sendMentionNotification(
   });
 }
 
-export async function sendFollowNotification(
-  to: string,
-  followerName: string,
-  followerUrl: string
-) {
-  return sendEmail({
-    to,
-    subject: `${followerName} started following you`,
-    type: 'follow-notification',
-    metadata: { followerName, followerUrl },
-    text: `${followerName} started following you — ${followerUrl}`,
-  });
-}
-
 export async function sendThreadInvitation(
   to: string,
   inviterName: string,
@@ -217,19 +203,6 @@ export async function sendThreadInvitation(
       threadName,
       message: message || "You've been invited to join this discussion!",
       threadUrl,
-    },
-  });
-}
-
-export async function sendPasswordResetEmail(to: string, resetUrl: string) {
-  return sendEmail({
-    to,
-    subject: 'Reset your password',
-    type: 'password-reset',
-    metadata: { resetUrl },
-    templateId: env.RESEND_TEMPLATE_PASSWORD_RESET,
-    data: {
-      resetUrl,
     },
   });
 }

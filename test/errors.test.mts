@@ -34,11 +34,21 @@ describe('Error Handling', () => {
       expect(result.statusCode).to.equal(404);
     });
 
-    it('should handle generic Error instances', () => {
+    it('should not leak generic Error messages to clients', () => {
       const result = handleError(new Error('Something broke'));
-      expect(result.message).to.equal('Something broke');
+      expect(result.message).to.equal('An internal error occurred');
       expect(result.code).to.equal('INTERNAL_ERROR');
       expect(result.statusCode).to.equal(500);
+    });
+
+    it('should not leak Prisma internals for untranslated Prisma codes', () => {
+      const err = Object.assign(
+        new Error('Invalid `prisma.user.findMany()` invocation: column "users"."secret" does not exist'),
+        { code: 'P2021' }
+      );
+      const result = handleError(err);
+      expect(result.message).to.equal('An internal error occurred');
+      expect(result.message).to.not.include('users');
     });
 
     it('should handle unknown errors', () => {

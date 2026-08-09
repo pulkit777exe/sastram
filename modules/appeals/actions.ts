@@ -11,6 +11,7 @@ import { getBannedUsersSchema } from '@/modules/moderation';
 import { ROUTES } from '@/lib/config/routes';
 import { requireModerationRole } from '@/modules/policy';
 import { createNotification } from '@/modules/notifications';
+import { actionSuccess } from '@/lib/actions/result';
 
 const createAppealSchema = z.object({
   reason: z.string().min(10, 'Reason must be at least 10 characters long'),
@@ -117,7 +118,7 @@ export const submitAppeal = withValidation(
     });
 
     revalidatePath(ROUTES.BANNED);
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -166,20 +167,15 @@ export const getAppeals = withValidation(listSchema, 'getAppeals', async (filter
     };
   });
 
-  return {
-    data: {
-      appeals: appealsWithBanInfo,
-      pagination: {
-        total: totalCount,
-        limit,
-        offset,
-        hasMore: computeHasMore(offset, limit, totalCount),
-      },
+  return actionSuccess({
+    appeals: appealsWithBanInfo,
+    pagination: {
+      total: totalCount,
+      limit,
+      offset,
+      hasMore: computeHasMore(offset, limit, totalCount),
     },
-    error: null,
-    ok: true,
-    errorCode: null,
-  };
+  });
 });
 
 export const resolveAppeal = withValidation(
@@ -248,7 +244,7 @@ export const resolveAppeal = withValidation(
     });
 
     revalidatePath(ROUTES.ADMIN_APPEALS);
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -280,19 +276,14 @@ export const getBannedUsers = withValidation(
       prisma.userBan.count({ where: whereClause }),
     ]);
 
-    return {
-      data: {
-        bans,
-        pagination: {
-          total: totalCount,
-          limit,
-          offset,
-          hasMore: computeHasMore(offset, limit, totalCount),
-        },
+    return actionSuccess({
+      bans,
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: computeHasMore(offset, limit, totalCount),
       },
-      error: null,
-      ok: true,
-      errorCode: null,
-    };
+    });
   }
 );

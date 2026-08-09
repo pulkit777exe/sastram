@@ -37,13 +37,13 @@ export default function SearchPage() {
       const promises: Promise<{ data: unknown; error: unknown; ok?: boolean }>[] = [];
 
       if (searchType === 'all' || searchType === 'threads') {
-        promises.push(searchThreadsAction(query));
+        promises.push(searchThreadsAction({ query }));
       }
       if (searchType === 'all' || searchType === 'messages') {
-        promises.push(searchMessagesAction(query));
+        promises.push(searchMessagesAction({ query }));
       }
       if (searchType === 'all' || searchType === 'users') {
-        promises.push(searchUsersAction(query));
+        promises.push(searchUsersAction({ query }));
       }
 
       const searchResults = await Promise.all(promises);

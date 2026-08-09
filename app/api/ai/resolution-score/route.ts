@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
-import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
 import { applyConfidenceDecay } from '@/lib/utils/confidence-decay';
@@ -58,7 +59,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   const { threadId } = parsed.data;
 
   try {
-    await requireThreadMembershipOrThrow(threadId, session.user.id);
+    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
   } catch {
     return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
   }

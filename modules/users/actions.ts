@@ -12,6 +12,7 @@ import { getPublicProfile, getUserThreads, updateProfilePrivacy } from './reposi
 import { ProfilePrivacy } from '@prisma/client';
 import { parseUserPreferences, type UserPreferences, userPreferencesSchema } from '@/lib/schemas/user-preferences';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
+import { actionFailure, actionSuccess } from '@/lib/actions/result';
 import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 
 const fileSchema = z.object({
@@ -32,20 +33,20 @@ async function uploadProfileImage(
   actionName: string
 ) {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    return {
-      data: null,
-      error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
-    };
+    return actionFailure(
+      'VALIDATION_ERROR',
+      'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed'
+    );
   }
 
   if (file.size > FILE_LIMITS.MAX_IMAGE_SIZE) {
-    return { data: null, error: 'File size must be less than 4.5MB' };
+    return actionFailure('VALIDATION_ERROR', 'File size must be less than 4.5MB');
   }
 
   // Sniff the real mime from magic bytes — file.type is client-supplied
   const detected = await detectMimeTypeFromFile(file);
   if (detected && !ALLOWED_IMAGE_TYPES.includes(detected)) {
-    return { data: null, error: 'File content does not match declared type' };
+    return actionFailure('VALIDATION_ERROR', 'File content does not match declared type');
   }
 
   try {
@@ -61,10 +62,10 @@ async function uploadProfileImage(
     });
 
     revalidateProfilePaths();
-    return { data: { url: blob.url }, error: null };
+    return actionSuccess({ url: blob.url });
   } catch (error) {
     logger.error(`[${actionName}]`, error);
-    return { data: null, error: 'Something went wrong' };
+    return actionFailure('INTERNAL_ERROR', 'Something went wrong');
   }
 }
 
@@ -93,7 +94,7 @@ export const updateUserProfile = withValidation(
     });
 
     revalidateProfilePaths();
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
@@ -112,10 +113,10 @@ export const getUserProfile = createServerAction(
     const profile = await getPublicProfile(userId, session.user.id);
 
     if (!profile) {
-      return { data: null, error: 'Profile not found or not accessible' };
+      return actionFailure('NOT_FOUND', 'Profile not found or not accessible');
     }
 
-    return { data: profile, error: null };
+    return actionSuccess(profile);
   }
 );
 
@@ -124,7 +125,7 @@ export const getUserThreadsAction = withValidation(
   'getUserThreadsAction',
   async ({ userId, limit, offset }) => {
     const result = await getUserThreads(userId, limit || 20, offset || 0);
-    return { data: result, error: null };
+    return actionSuccess(result);
   }
 );
 
@@ -136,7 +137,7 @@ export const updateProfilePrivacyAction = withValidation(
     await updateProfilePrivacy(session.user.id, privacy);
     revalidatePath('/dashboard/settings');
     revalidatePath(`/user/${session.user.id}`);
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
@@ -163,7 +164,7 @@ export const updateUserPreferencesAction = withValidation(
     });
 
     revalidatePath('/dashboard/settings');
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
@@ -180,7 +181,7 @@ export const requestAccountDeletion = withValidation(
     });
 
     if (!user) {
-      return { data: null, error: 'User not found' };
+      return actionFailure('NOT_FOUND', 'User not found');
     }
 
     // OAuth-only accounts have no credential row, so there's no password to verify
@@ -193,7 +194,7 @@ export const requestAccountDeletion = withValidation(
       const { verifyPassword } = await import('better-auth/crypto');
       const valid = await verifyPassword({ password, hash: credentialAccount.password });
       if (!valid) {
-        return { data: null, error: 'Incorrect password' };
+        return actionFailure('VALIDATION_ERROR', 'Incorrect password');
       }
     }
 
@@ -246,7 +247,7 @@ export const requestAccountDeletion = withValidation(
 
     await prisma.session.deleteMany({ where: { userId } });
 
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
@@ -313,28 +314,25 @@ export const exportUserData = createServerAction(
       }),
     ]);
 
-    return {
-      data: {
-        profile: user,
-        messages: messages.map((m) => ({
-          id: m.id,
-          content: m.content,
-          createdAt: m.createdAt,
-          threadName: m.thread.name,
-          threadSlug: m.thread.slug,
-        })),
-        threads,
-        invitations: invitations.map((m) => ({
-          threadName: m.thread.name,
-          threadSlug: m.thread.slug,
-          status: m.status,
-          createdAt: m.createdAt,
-        })),
-        reports,
-        activities,
-        exportedAt: new Date().toISOString(),
-      },
-      error: null,
-    };
+    return actionSuccess({
+      profile: user,
+      messages: messages.map((m) => ({
+        id: m.id,
+        content: m.content,
+        createdAt: m.createdAt,
+        threadName: m.thread.name,
+        threadSlug: m.thread.slug,
+      })),
+      threads,
+      invitations: invitations.map((m) => ({
+        threadName: m.thread.name,
+        threadSlug: m.thread.slug,
+        status: m.status,
+        createdAt: m.createdAt,
+      })),
+      reports,
+      activities,
+      exportedAt: new Date().toISOString(),
+    });
   }
 );

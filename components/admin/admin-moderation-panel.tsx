@@ -55,12 +55,12 @@ export function AdminModerationPanel({ threads: initialThreads }: AdminModeratio
     setBanCustomReason('');
     toasts.success('User banned successfully');
 
-    const result = await banUser(
-      banUserId,
-      banReason,
-      banCustomReason || undefined,
-      banThreadId || undefined
-    );
+    const result = await banUser({
+      userId: banUserId,
+      reason: banReason,
+      customReason: banCustomReason || undefined,
+      threadId: banThreadId || undefined,
+    });
 
     if (result?.error) {
       toasts.error(result.error);
@@ -81,7 +81,7 @@ export function AdminModerationPanel({ threads: initialThreads }: AdminModeratio
     setDeleteReason('');
     toasts.success(`Thread "${threadName}" deleted`);
 
-    const result = await deleteThread(selectedThread, deleteReason || undefined);
+    const result = await deleteThread({ threadId: selectedThread, reason: deleteReason || undefined });
 
     if (result?.error) {
       setThreads(prev);

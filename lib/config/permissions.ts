@@ -30,13 +30,6 @@ export const PERMISSIONS = {
   MANAGE_USERS: [USER_ROLES.ADMIN],
 } as const;
 
-export function hasPermission(
-  role: UserRole | string,
-  permission: keyof typeof PERMISSIONS
-): boolean {
-  return (PERMISSIONS[permission] as readonly UserRole[]).includes(role as UserRole);
-}
-
 // Role args are nullable throughout so callers can pass an unauthenticated
 // session straight through without a guard.
 export function canModerate(role: UserRole | string | null | undefined): boolean {

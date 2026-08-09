@@ -237,6 +237,7 @@ model Thread {
   @@index([createdBy])
   @@index([resolutionScore])
   @@index([visibility, updatedAt])
+  @@index([deletedAt])
   @@map("threads")
 }
 
@@ -276,6 +277,8 @@ model Message {
   @@index([parentId]) // critical for tree building
   @@index([parentId, threadId]) // critical for tree building
   @@index([depth])
+  @@index([deletedAt])
+  @@index([threadId, deletedAt, createdAt]) // hot thread-feed path
   @@map("messages")
 }
 

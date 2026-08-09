@@ -9,6 +9,7 @@ import { createServerAction } from '@/lib/utils/server-action';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { actionSuccess } from '@/lib/actions/result';
 import {
   editMessageSchema,
   pinMessageSchema,
@@ -56,7 +57,7 @@ export const editMessage = createServerAction(
       });
 
       revalidatePath('/dashboard/threads');
-      return { data: null, error: null, errorCode: null, ok: true };
+      return actionSuccess(null);
     } catch (error) {
       logger.error('[editMessage]', error);
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
@@ -120,7 +121,7 @@ export const pinMessage = createServerAction(
       });
 
       revalidatePath(`/dashboard/threads/${message.thread?.slug}`);
-      return { data: null, error: null, errorCode: null, ok: true };
+      return actionSuccess(null);
     } catch (error) {
       logger.error('[pinMessage]', error);
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
@@ -150,7 +151,7 @@ export const getMessageEditHistory = createServerAction(
         orderBy: { editedAt: 'desc' },
       });
 
-      return { data: edits, error: null, errorCode: null, ok: true };
+      return actionSuccess(edits);
     } catch (error) {
       logger.error('[getMessageEditHistory]', error);
       return {

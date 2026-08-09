@@ -8,6 +8,7 @@ import { requireSession } from '@/modules/auth';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
+import { actionSuccess } from '@/lib/actions/result';
 
 export const deleteMessage = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessage' },
@@ -71,7 +72,7 @@ export const deleteMessage = createServerAction(
         revalidatePath(`/dashboard/threads/${message.thread.slug}`);
       }
 
-      return { data: null, error: null, errorCode: null, ok: true };
+      return actionSuccess(null);
     } catch (error) {
       logger.error('[deleteMessage]', error);
       return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };

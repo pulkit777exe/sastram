@@ -6,7 +6,7 @@ import { requireSession } from '@/modules/auth/session';
 import { logger } from '@/lib/infrastructure/logger';
 import { sanitizeContent } from '@/lib/services/content-safety';
 import { createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
-import { messageLimiter } from '@/lib/services/rate-limit';
+import { getMessageLimiter } from '@/lib/services/rate-limit';
 import { parseMentions, resolveUserMentions } from '@/lib/utils/mention-parser';
 import { recordActivity } from '@/modules/activity';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
@@ -38,7 +38,9 @@ export async function postMessage(formData: FormData) {
   if (mentionsRaw) {
     try {
       mentions = Array.from(new Set([...(JSON.parse(mentionsRaw) as string[]), ...mentions]));
-    } catch {}
+    } catch (error) {
+      logger.debug('[postMessage] ignoring malformed mentions payload', error);
+    }
   }
 
   const validation = createMessageWithAttachmentsSchema.safeParse({
@@ -57,10 +59,13 @@ export async function postMessage(formData: FormData) {
   const session = await requireSession();
   await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
-  let withinRateLimit = false;
+  // Fail open: a Redis outage should degrade limiting, not block posting.
+  let withinRateLimit = true;
   try {
-    withinRateLimit = (await messageLimiter.check(session.user.id)).success;
-  } catch {}
+    withinRateLimit = (await getMessageLimiter().check(session.user.id)).success;
+  } catch (error) {
+    logger.warn('[postMessage] rate limit check failed, allowing post', error);
+  }
 
   if (!withinRateLimit) {
     return {

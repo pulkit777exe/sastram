@@ -1,4 +1,3 @@
-import { Role } from '@prisma/client';
 import { cache } from 'react';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { canAccessThread, canManageThread } from '@/lib/thread-access';
@@ -37,7 +36,10 @@ export const getMemberRole = cache(async (threadId: string, userId: string) => {
   const context = { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility };
 
   if (canManageThread(context, userId, user.role)) {
-    return { role: user.role === Role.USER ? 'OWNER' : 'MODERATOR', status: 'ACTIVE' } as const;
+    return {
+      role: thread.createdBy === userId ? 'OWNER' : 'MODERATOR',
+      status: 'ACTIVE',
+    } as const;
   }
 
   const allowed = await canAccessThread(context, userId, user.role);

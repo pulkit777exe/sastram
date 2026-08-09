@@ -7,8 +7,7 @@ import { startOfDay, endOfDay, subDays, getDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath, classifyAiCallCost } from '@/lib/services/ai-cost-classification';
-import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import type { DigestFrequency } from '@prisma/client';
 
 /**
@@ -138,8 +137,6 @@ export async function GET(req: NextRequest) {
            results.skipped++;
            continue;
          }
-
-         await consumeSpendCap(classifyAiCallCost(AiCallPath.DAILY_DIGEST).estimatedCostUsd);
 
          const cacheKey = `${thread.id}-${sub.frequency}`;
          if (!threadSummaries.has(cacheKey)) {

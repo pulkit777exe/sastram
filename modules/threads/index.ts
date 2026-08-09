@@ -12,7 +12,7 @@ export {
   updateAllThreadRelations,
 } from './repository';
 
-export { buildThreadDTO, buildThreadDetailDTO } from './service';
+export { buildThreadDTO, buildThreadDetailDTO, toClientMessage } from './service';
 export { buildThreadSlug } from '@/lib/utils/slug';
 
 export type { ThreadRecord, ThreadSummary, ThreadDetail } from './types';

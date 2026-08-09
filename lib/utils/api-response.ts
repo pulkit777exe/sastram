@@ -18,9 +18,12 @@ export function withErrorHandling(handler: ApiHandler): ApiHandler {
     } catch (error) {
       const { message, code, statusCode } = handleError(error);
 
+      // handleError deliberately strips non-AppError messages before they reach
+      // the client, so the real one only exists in the log line below.
       logger.error(`API Error: ${code}`, {
         requestId,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         path: request.nextUrl.pathname,
       });
 

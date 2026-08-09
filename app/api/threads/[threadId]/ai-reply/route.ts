@@ -2,7 +2,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { enqueueInlineJob } from '@/lib/services/queue';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
-import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
@@ -46,7 +47,7 @@ const handler = withErrorHandling(async (
    }
 
    try {
-    await requireThreadMembershipOrThrow(threadId, session.user.id);
+    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
   } catch {
     return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
   }

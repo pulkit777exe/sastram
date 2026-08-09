@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { NextRequest } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
-import { requireThreadMembershipOrThrow, requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
@@ -59,7 +60,7 @@ export async function GET(
   }
 
    try {
-    await requireThreadMembershipOrThrow(threadId, session.user.id);
+    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
   } catch {
     return new Response(sseEvent('error', { error: 'Forbidden' }), {
       status: 403,

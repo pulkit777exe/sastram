@@ -2,7 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { env } from '@/lib/config/env';
 import { aiService } from '@/lib/services/ai';
 import { logger } from '@/lib/infrastructure/logger';
-import { messageLimiter } from '@/lib/services/rate-limit';
+import { getMessageLimiter } from '@/lib/services/rate-limit';
 import { createNotification } from '@/modules/notifications';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
@@ -67,7 +67,7 @@ async function getSystemUser() {
 
 export class RateLimitFilter {
   async check(message: MessageLike, _context: ConversationContext): Promise<ModerationResult> {
-    const result = await messageLimiter.check(message.authorId);
+    const result = await getMessageLimiter().check(message.authorId);
     if (!result.success) {
       return {
         success: false,

@@ -23,8 +23,8 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing, onFollow
 
     try {
       const result = isFollowing
-        ? await unfollowUser(userId)
-        : await followUser(userId);
+        ? await unfollowUser({ userId })
+        : await followUser({ userId });
 
       if (result?.error) {
         setIsFollowing(prev);

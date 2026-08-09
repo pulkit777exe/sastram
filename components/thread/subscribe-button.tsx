@@ -77,7 +77,7 @@ export function ThreadSubscribeButton({
 
     try {
       if (nextFrequency === null || nextFrequency === 'NEVER') {
-        const result = await unsubscribeFromThread(threadId);
+        const result = await unsubscribeFromThread({ threadId });
         if (result.error) {
           setFrequency(previous);
           toasts.serverError();

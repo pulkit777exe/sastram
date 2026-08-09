@@ -10,6 +10,7 @@ import {
 } from './repository';
 import { withValidation } from '@/lib/utils/server-action';
 import { activityQuerySchema } from '@/lib/utils/validation-common';
+import { actionSuccess } from '@/lib/actions/result';
 
 export const recordActivityAction = withValidation(
   z.object({
@@ -22,7 +23,7 @@ export const recordActivityAction = withValidation(
   async (data) => {
     const session = await requireSession();
     await recordActivityRepo({ ...data, userId: session.user.id });
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -31,7 +32,7 @@ export const getUserActivityAction = withValidation(
   'getUserActivityAction',
   async ({ userId, limit, offset }) => {
     const result = await getUserActivityRepo(userId!, limit || 20, offset || 0);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return actionSuccess(result);
   }
 );
 
@@ -41,6 +42,6 @@ export const getFollowedUsersActivityAction = withValidation(
   async ({ limit, offset }) => {
     const session = await requireSession();
     const result = await getFollowedUsersActivityRepo(session.user.id, limit || 20, offset || 0);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return actionSuccess(result);
   }
 );

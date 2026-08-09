@@ -11,6 +11,7 @@ import {
 } from './repository';
 import { createServerAction } from '@/lib/utils/server-action';
 import { paginationSchema, threadIdSchema } from '@/lib/utils/validation-common';
+import { actionSuccess } from '@/lib/actions/result';
 
 export const toggleBookmark = createServerAction(
   { schema: threadIdSchema, actionName: 'toggleBookmark' },
@@ -27,7 +28,7 @@ export const toggleBookmark = createServerAction(
     revalidatePath(ROUTES.DASHBOARD_BOOKMARKS);
     revalidatePath(ROUTES.THREAD(threadId));
 
-    return { data: { isBookmarked: !isBookmarked }, error: null, ok: true, errorCode: null };
+    return actionSuccess({ isBookmarked: !isBookmarked });
   }
 );
 
@@ -36,7 +37,7 @@ export const getBookmarkedThreads = createServerAction(
   async ({ limit, offset }) => {
     const session = await requireSession();
     const result = await getUserBookmarksRepo(session.user.id, limit || 20, offset || 0);
-    return { data: result, error: null, ok: true, errorCode: null };
+    return actionSuccess(result);
   }
 );
 
@@ -45,6 +46,6 @@ export const checkBookmarkStatus = createServerAction(
   async ({ threadId }) => {
     const session = await requireSession();
     const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
-    return { data: { isBookmarked }, error: null, ok: true, errorCode: null };
+    return actionSuccess({ isBookmarked });
   }
 );

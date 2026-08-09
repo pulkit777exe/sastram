@@ -11,6 +11,7 @@ import { withValidation } from '@/lib/utils/server-action';
 import { ROUTES } from '@/lib/config/routes';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
+import { actionSuccess } from '@/lib/actions/result';
 
 const subscribeSchema = z.object({
   threadId: z.string().cuid(),
@@ -37,7 +38,7 @@ export const unsubscribeFromThread = withValidation(
       });
 
       revalidatePath(ROUTES.DASHBOARD_SETTINGS);
-      return { data: null, error: null, ok: true, errorCode: null };
+      return actionSuccess(null);
     } catch (error) {
       logger.error('[unsubscribeFromThread]', error);
       const prismaMsg = prismaErrorMessage(error);
@@ -66,7 +67,7 @@ export const updateSubscriptionFrequencyAction = withValidation(
         },
       });
 
-      return { data: null, error: null, ok: true, errorCode: null };
+      return actionSuccess(null);
     } catch (error) {
       logger.error('[updateSubscriptionFrequency]', error);
       const prismaMsg = prismaErrorMessage(error);
@@ -85,18 +86,13 @@ export async function getUserNewsletterSubscriptions() {
       include: { thread: { select: { id: true, name: true, slug: true, description: true } } },
     });
 
-    return {
-      data: subscriptions.map((sub) => ({
-        id: sub.id,
-        threadId: sub.threadId,
-        thread: sub.thread,
-        frequency: sub.frequency,
-        createdAt: sub.createdAt,
-      })),
-      error: null,
-      ok: true,
-      errorCode: null,
-    };
+    return actionSuccess(subscriptions.map((sub) => ({
+      id: sub.id,
+      threadId: sub.threadId,
+      thread: sub.thread,
+      frequency: sub.frequency,
+      createdAt: sub.createdAt,
+    })));
   } catch (error) {
     logger.error('[getUserNewsletterSubscriptions]', error);
     const prismaMsg = prismaErrorMessage(error);
@@ -122,7 +118,7 @@ export const subscribeToThreadAction = withValidation(
 
       await scheduleThreadDigest(threadId);
       revalidatePath(ROUTES.THREAD(slug));
-      return { data: null, error: null, ok: true, errorCode: null };
+      return actionSuccess(null);
     } catch (error) {
       logger.error('[subscribeToThread]', error);
       const prismaMsg = prismaErrorMessage(error);

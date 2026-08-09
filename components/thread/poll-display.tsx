@@ -70,8 +70,8 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     try {
       // Both requests fire in parallel
       const [voteResult, resultsResult] = await Promise.all([
-        getUserVoteAction(poll.id),
-        getPollResultsAction(poll.id),
+        getUserVoteAction({ pollId: poll.id }),
+        getPollResultsAction({ pollId: poll.id }),
       ]);
 
       if (!mountedRef.current) return;
@@ -113,7 +113,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
 
     setIsVoting(true);
     try {
-      const result = await voteOnPollAction(poll.id, optionIndex);
+      const result = await voteOnPollAction({ pollId: poll.id, optionIndex });
       if (!mountedRef.current) return;
 
       if (result?.error) {

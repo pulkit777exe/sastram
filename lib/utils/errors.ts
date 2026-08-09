@@ -60,6 +60,11 @@ export function isQuotaError(err: unknown): boolean {
   return (err as { status?: unknown }).status === 429;
 }
 
+// AppError messages are authored for end users. Everything else (Prisma, driver,
+// third-party SDKs) can embed table names, connection strings or prompt content,
+// so those messages stay server-side and clients get this instead.
+export const INTERNAL_ERROR_MESSAGE = 'An internal error occurred';
+
 export function handleError(error: unknown): {
   message: string;
   code?: string;
@@ -82,7 +87,7 @@ export function handleError(error: unknown): {
 
   if (error instanceof Error) {
     return {
-      message: error.message,
+      message: INTERNAL_ERROR_MESSAGE,
       code: 'INTERNAL_ERROR',
       statusCode: 500,
     };

@@ -12,6 +12,7 @@ import {
 } from './repository';
 import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
+import { actionFailure, actionSuccess } from '@/lib/actions/result';
 import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 
 const followListSchema = userIdSchema.merge(paginationSchema);
@@ -27,7 +28,7 @@ export const followUser = createServerAction(
     const session = await requireSession();
 
     if (session.user.id === userId) {
-      return { data: null, error: 'Cannot follow yourself' };
+      return actionFailure('VALIDATION_ERROR', 'Cannot follow yourself');
     }
 
     const targetUser = await prisma.user.findUnique({
@@ -36,7 +37,7 @@ export const followUser = createServerAction(
     });
 
     if (!targetUser) {
-      return { data: null, error: 'User not found' };
+      return actionFailure('NOT_FOUND', 'User not found');
     }
 
     await followUserRepo(session.user.id, userId);
@@ -54,7 +55,7 @@ export const followUser = createServerAction(
 
     revalidateFollowPaths(userId);
 
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
@@ -66,21 +67,21 @@ export const unfollowUser = createServerAction(
 
     revalidateFollowPaths(userId);
 
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
 export const getFollowers = createServerAction(
   { schema: followListSchema, actionName: 'getFollowers' },
   async ({ userId, limit, offset }) => {
-    return { data: await getFollowersRepo(userId, limit, offset), error: null };
+    return actionSuccess(await getFollowersRepo(userId, limit, offset));
   }
 );
 
 export const getFollowing = createServerAction(
   { schema: followListSchema, actionName: 'getFollowing' },
   async ({ userId, limit, offset }) => {
-    return { data: await getFollowingRepo(userId, limit, offset), error: null };
+    return actionSuccess(await getFollowingRepo(userId, limit, offset));
   }
 );
 
@@ -88,6 +89,6 @@ export const checkFollowingStatus = createServerAction(
   { schema: userIdSchema, actionName: 'checkFollowingStatus' },
   async ({ userId }) => {
     const session = await requireSession();
-    return { data: { isFollowing: await isFollowingRepo(session.user.id, userId) }, error: null };
+    return actionSuccess({ isFollowing: await isFollowingRepo(session.user.id, userId) });
   }
 );

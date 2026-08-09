@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireSessionOrThrow, requireThreadMembershipOrThrow } from '@/modules/auth';
+import { requireSessionOrThrow } from '@/modules/auth';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      await requireThreadMembershipOrThrow(threadId, session.user.id);
+      await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
     } catch {
       return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
     }

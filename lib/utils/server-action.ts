@@ -15,30 +15,40 @@ function isRedirectError(err: unknown): boolean {
 export interface ActionResult<T = unknown> {
   data: T | null;
   error: string | null;
-  ok?: boolean;
-  errorCode?: ActionErrorCode | null;
+  ok: boolean;
+  errorCode: ActionErrorCode | null;
 }
 
-export interface ServerActionOptions<In, Out = unknown> {
-  schema: z.ZodSchema<In>;
+/** `In` is the schema's parsed output, `Raw` its accepted input (pre-defaults/coercion). */
+export interface ServerActionOptions<In, Raw = In> {
+  schema: z.ZodType<In, Raw>;
   actionName: string;
 }
 
-export function createServerAction<In, Out = unknown>(
-  options: ServerActionOptions<In, Out>,
+/**
+ * Actions take a single argument: the input object matching the action's schema,
+ * or a FormData instance (flattened to an object before validation).
+ * Schemas with no required keys can be called with no argument at all.
+ */
+export type ServerAction<Raw, Out = unknown> = Record<string, never> extends Raw
+  ? (args?: Raw | FormData) => Promise<ActionResult<Out>>
+  : (args: Raw | FormData) => Promise<ActionResult<Out>>;
+
+export function createServerAction<In, Out = unknown, Raw = In>(
+  options: ServerActionOptions<In, Raw>,
   handler: (args: In) => Promise<ActionResult<Out>>
-): (...args: unknown[]) => Promise<ActionResult<Out>> {
+): ServerAction<Raw, Out> {
   const { schema, actionName } = options;
 
-  return async (...handlerArgs: unknown[]): Promise<ActionResult<Out>> => {
+  const action = async (args?: Raw | FormData): Promise<ActionResult<Out>> => {
     let validatedArgs: In;
     try {
       const input =
-        handlerArgs.length === 1 && handlerArgs[0] instanceof FormData
-          ? Object.fromEntries(handlerArgs[0].entries())
-          : handlerArgs.length === 1
-            ? handlerArgs[0]
-            : handlerArgs;
+        args instanceof FormData
+          ? Object.fromEntries(args.entries())
+          : args === undefined
+            ? {}
+            : args;
       validatedArgs = schema.parse(input);
     } catch (error) {
       if (!(error instanceof z.ZodError)) {
@@ -74,13 +84,15 @@ export function createServerAction<In, Out = unknown>(
       };
     }
   };
+
+  return action as ServerAction<Raw, Out>;
 }
 
-/** Positional-args variant of createServerAction. */
-export function withValidation<In, Out = unknown>(
-  schema: z.ZodSchema<In>,
+/** Shorthand for createServerAction with the schema and name as positional args. */
+export function withValidation<In, Out = unknown, Raw = In>(
+  schema: z.ZodType<In, Raw>,
   actionName: string,
   handler: (args: In) => Promise<ActionResult<Out>>
-) {
-  return createServerAction<In, Out>({ schema, actionName }, handler);
+): ServerAction<Raw, Out> {
+  return createServerAction<In, Out, Raw>({ schema, actionName }, handler);
 }

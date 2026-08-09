@@ -11,6 +11,7 @@ import { requireRole, requireModerationRole } from '@/modules/policy';
 import { executeAuditAndRevalidate } from '@/modules/moderation/executors';
 import type { ReportCategory, ReportStatus } from '@prisma/client';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { actionSuccess } from '@/lib/actions/result';
 
 const INTERNAL_ERROR = {
   data: null,
@@ -156,15 +157,10 @@ export async function createReport(data: {
       threadName: message.thread.name,
     });
 
-    return {
-      data: {
-        reportId: report.id,
-        message: `Thank you for reporting. We'll review this within 24 hours.`,
-      },
-      error: null,
-      ok: true,
-      errorCode: null,
-    };
+    return actionSuccess({
+      reportId: report.id,
+      message: `Thank you for reporting. We'll review this within 24 hours.`,
+    });
   } catch (error) {
     logger.error('[createReport]', error);
     return INTERNAL_ERROR;
@@ -208,7 +204,7 @@ export async function getReports(filters?: { status?: string; limit?: number; of
       skip: offset,
     });
 
-    return { data: reports, error: null, ok: true, errorCode: null };
+    return actionSuccess(reports);
   } catch (error) {
     logger.error('[getReports]', error);
     return INTERNAL_ERROR;
@@ -247,18 +243,13 @@ export async function getReportStats() {
       bySeverity[CATEGORY_SEVERITY[cat.category] ?? 'low'] += cat._count;
     }
 
-    return {
-      data: {
-        total,
-        pending,
-        ...bySeverity,
-        resolvedToday,
-        autoModActions: autoModCount,
-      },
-      error: null,
-      ok: true,
-      errorCode: null,
-    };
+    return actionSuccess({
+      total,
+      pending,
+      ...bySeverity,
+      resolvedToday,
+      autoModActions: autoModCount,
+    });
   } catch (error) {
     logger.error('[getReportStats]', error);
     return INTERNAL_ERROR;
@@ -346,45 +337,40 @@ export async function getReportWithContext(reportId: string) {
       Math.min(100, 50 + accountAgeDays * 0.5 - userBanCount * 20 - userReportCount * 5)
     );
 
-    return {
-      data: {
-        ...report,
-        categoryLabel:
-          REPORT_CATEGORY_LABELS[report.category as keyof typeof REPORT_CATEGORY_LABELS],
-        threadContext: {
-          threadTitle: report.message.thread.name,
-          threadSlug: report.message.thread.slug,
-          messageCount: report.message.thread.messageCount,
-          surroundingMessages: surroundingMessages.map((m) => ({
-            id: m.id,
-            content: m.content,
-            senderId: m.senderId,
-            senderName: m.sender?.name,
-            createdAt: m.createdAt,
-            isReported: m.id === report.messageId,
-          })),
-        },
-        reportedUserProfile: {
-          id: report.message.sender?.id ?? 'unknown',
-          name: report.message.sender?.name ?? null,
-          email: report.message.sender?.email ?? 'unknown',
-          createdAt: report.message.sender?.createdAt ?? report.message.createdAt,
-          status: report.message.sender?.status ?? 'ACTIVE',
-          trustScore: Math.round(trustScore),
-          violationHistory: violationHistory.map((v) => ({
-            id: v.id,
-            action: v.isActive ? 'Active Ban' : 'Past Ban',
-            reason: v.reason,
-            createdAt: v.createdAt,
-          })),
-        },
-        similarReports,
-        reportCount: similarReports.length + 1,
+    return actionSuccess({
+      ...report,
+      categoryLabel:
+        REPORT_CATEGORY_LABELS[report.category as keyof typeof REPORT_CATEGORY_LABELS],
+      threadContext: {
+        threadTitle: report.message.thread.name,
+        threadSlug: report.message.thread.slug,
+        messageCount: report.message.thread.messageCount,
+        surroundingMessages: surroundingMessages.map((m) => ({
+          id: m.id,
+          content: m.content,
+          senderId: m.senderId,
+          senderName: m.sender?.name,
+          createdAt: m.createdAt,
+          isReported: m.id === report.messageId,
+        })),
       },
-      error: null,
-      ok: true,
-      errorCode: null,
-    };
+      reportedUserProfile: {
+        id: report.message.sender?.id ?? 'unknown',
+        name: report.message.sender?.name ?? null,
+        email: report.message.sender?.email ?? 'unknown',
+        createdAt: report.message.sender?.createdAt ?? report.message.createdAt,
+        status: report.message.sender?.status ?? 'ACTIVE',
+        trustScore: Math.round(trustScore),
+        violationHistory: violationHistory.map((v) => ({
+          id: v.id,
+          action: v.isActive ? 'Active Ban' : 'Past Ban',
+          reason: v.reason,
+          createdAt: v.createdAt,
+        })),
+      },
+      similarReports,
+      reportCount: similarReports.length + 1,
+    });
   } catch (error) {
     logger.error('[getReportWithContext]', error);
     return INTERNAL_ERROR;
@@ -417,7 +403,7 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
       details: { status: validation.data.status },
     });
 
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   } catch (error) {
     logger.error('[updateReportStatusAction]', error);
     return INTERNAL_ERROR;
@@ -586,12 +572,7 @@ export async function resolveReport(data: {
       details: { action, note, duration },
     });
 
-    return {
-      data: { message: `Report ${action === 'DISMISS' ? 'dismissed' : 'resolved'} successfully` },
-      error: null,
-      ok: true,
-      errorCode: null,
-    };
+    return actionSuccess({ message: `Report ${action === 'DISMISS' ? 'dismissed' : 'resolved'} successfully` });
   } catch (error) {
     logger.error('[resolveReport]', error);
     return INTERNAL_ERROR;

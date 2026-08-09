@@ -18,7 +18,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkBookmarkStatus(threadId).then((result) => {
+    checkBookmarkStatus({ threadId }).then((result) => {
       if (result?.data?.isBookmarked !== undefined) {
         setIsBookmarked(result.data.isBookmarked || false);
       }
@@ -29,7 +29,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
   const handleToggle = async () => {
     setIsLoading(true);
     try {
-      const result = await toggleBookmark(threadId);
+      const result = await toggleBookmark({ threadId });
       if (result?.error) {
         toasts.error(result.error);
       } else if (result?.data?.isBookmarked !== undefined) {

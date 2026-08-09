@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import {
   rateLimit,
   rateLimitConfig,
-  messageLimiter,
+  getMessageLimiter,
   decideLimiterMode,
   InMemoryRateLimiter,
   type RateLimitBucket,
@@ -44,14 +44,14 @@ describe('Rate Limiting Service', () => {
     });
   });
 
-  describe('messageLimiter', () => {
-    it('should be a pre-created limiter instance', () => {
-      expect(messageLimiter).to.have.property('check');
-      expect(messageLimiter.check).to.be.a('function');
+  describe('getMessageLimiter', () => {
+    it('should resolve a limiter instance lazily', () => {
+      expect(getMessageLimiter()).to.have.property('check');
+      expect(getMessageLimiter().check).to.be.a('function');
     });
 
     it('should allow messages under the limit', async () => {
-      const result = await messageLimiter.check(`test-msg-${Date.now()}`);
+      const result = await getMessageLimiter().check(`test-msg-${Date.now()}`);
       expect(result.success).to.be.true;
     });
   });

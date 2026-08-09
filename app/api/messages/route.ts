@@ -12,8 +12,8 @@ import { logger } from '@/lib/infrastructure/logger';
 import { aiService } from '@/lib/services/ai';
 import { env } from '@/lib/config/env';
 import { consumeImageModerationQuota } from '@/lib/services/daily-quota';
-import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
-import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 
 function errorCodeToStatus(errorCode: string | null): number {
   switch (errorCode) {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
                await del(blob.url);
                throw new Error('Daily image moderation limit reached. Please try again tomorrow.');
              }
-             await consumeSpendCap(classifyAiCallCost(AiCallPath.IMAGE_MODERATION).estimatedCostUsd);
+             await enforceAiSpendCap(AiCallPath.IMAGE_MODERATION);
              const modResult = await aiService.moderateImageContent(blob.url);
             if (modResult.classification === 'NSFW') {
               await del(blob.url);

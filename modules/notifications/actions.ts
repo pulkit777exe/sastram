@@ -11,6 +11,7 @@ import {
 } from '@/modules/notifications/repository';
 import { ROUTES } from '@/lib/config/routes';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
+import { actionSuccess } from '@/lib/actions/result';
 
 const getNotificationsSchema = z.object({
   unreadOnly: z.boolean().optional().default(false),
@@ -33,7 +34,7 @@ export const getNotifications = withValidation(
       limit,
       offset,
     });
-    return { data: notifications, error: null, ok: true, errorCode: null };
+    return actionSuccess(notifications);
   }
 );
 
@@ -44,7 +45,7 @@ export const markNotificationRead = withValidation(
     const session = await requireSession();
     await markAsRead(notificationId, session.user.id);
     revalidatePath(ROUTES.DASHBOARD);
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -54,7 +55,7 @@ export const markAllNotificationsRead = createServerAction(
     const session = await requireSession();
     await markAllAsRead(session.user.id);
     revalidatePath(ROUTES.DASHBOARD);
-    return { data: null, error: null, ok: true, errorCode: null };
+    return actionSuccess(null);
   }
 );
 
@@ -63,6 +64,6 @@ export const getUnreadNotificationCount = createServerAction(
   async () => {
     const session = await requireSession();
     const count = await getUnreadCount(session.user.id);
-    return { data: { count }, error: null, ok: true, errorCode: null };
+    return actionSuccess({ count });
   }
 );

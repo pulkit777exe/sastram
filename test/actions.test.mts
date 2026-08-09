@@ -2,16 +2,14 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { z } from 'zod';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
+import { actionSuccess } from '@/lib/actions/result';
 
 describe('Server Action Framework (real implementation)', () => {
   describe('createServerAction', () => {
     it('should return data on successful execution', async () => {
       const action = createServerAction(
         { schema: z.object({ name: z.string(), age: z.number().int().positive().optional() }), actionName: 'testAction' },
-        async (args) => ({
-          data: { name: args.name, age: args.age ?? null },
-          error: null,
-        })
+        async (args) => actionSuccess({ name: args.name, age: args.age ?? null })
       );
 
       const result = await action({ name: 'Alice', age: 30 });
@@ -22,7 +20,7 @@ describe('Server Action Framework (real implementation)', () => {
     it('should return VALIDATION_ERROR on invalid input', async () => {
       const action = createServerAction(
         { schema: z.object({ name: z.string().min(1) }), actionName: 'testAction' },
-        async () => ({ data: null, error: null })
+        async () => actionSuccess(null)
       );
 
       const result = await action({ name: '' });
@@ -44,7 +42,7 @@ describe('Server Action Framework (real implementation)', () => {
     it('should accept schema optionals gracefully', async () => {
       const action = createServerAction(
         { schema: z.object({ name: z.string(), age: z.number().int().positive().optional() }), actionName: 'testAction' },
-        async (args) => ({ data: { name: args.name, age: args.age ?? null }, error: null })
+        async (args) => actionSuccess({ name: args.name, age: args.age ?? null })
       );
 
       const result = await action({ name: 'Charlie' });
@@ -58,7 +56,7 @@ describe('Server Action Framework (real implementation)', () => {
       const action = withValidation(
         z.object({ name: z.string().min(1) }),
         'testAction',
-        async (args) => ({ data: { name: args.name }, error: null })
+        async (args) => actionSuccess({ name: args.name })
       );
 
       const result = await action({ name: 'Bob' });
@@ -70,7 +68,7 @@ describe('Server Action Framework (real implementation)', () => {
       const action = withValidation(
         z.object({ name: z.string().min(1) }),
         'testAction',
-        async () => ({ data: null, error: null })
+        async () => actionSuccess(null)
       );
 
       const result = await action({ name: '' });

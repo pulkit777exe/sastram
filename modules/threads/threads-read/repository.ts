@@ -187,7 +187,8 @@ export async function getThreadMessagesPaginated(
       select: { createdAt: true },
     });
     if (cursorMessage) {
-      where.createdAt = { gt: cursorMessage.createdAt };
+      // Feed is ordered newest-first, so the next page is strictly older.
+      where.createdAt = { lt: cursorMessage.createdAt };
     }
   }
 

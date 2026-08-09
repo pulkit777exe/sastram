@@ -54,7 +54,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
     // In a real app, we might want to send a rejection reason note.
     // For now assuming resolveAppeal handles basic logic.
 
-    const result = await resolveAppeal(selectedAppeal.id, approved);
+    const result = await resolveAppeal({ appealId: selectedAppeal.id, approved });
 
     if (result?.error) {
       toasts.error(result.error);

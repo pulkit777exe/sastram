@@ -35,7 +35,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
     setPendingSubscriptions((prev) => new Set(prev).add(threadId));
 
     startTransition(async () => {
-      const result = await unsubscribeFromThread(threadId);
+      const result = await unsubscribeFromThread({ threadId });
       setPendingSubscriptions((prev) => {
         const next = new Set(prev);
         next.delete(threadId);

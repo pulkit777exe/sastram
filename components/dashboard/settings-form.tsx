@@ -19,6 +19,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 import { parseUserPreferences } from '@/lib/schemas/user-preferences';
 
+const PRIVACY_OPTIONS = [
+  { value: 'PUBLIC', label: 'Public' },
+  { value: 'FOLLOWERS_ONLY', label: 'Followers Only' },
+  { value: 'PRIVATE', label: 'Private' },
+] as const;
+
+type ProfilePrivacyValue = (typeof PRIVACY_OPTIONS)[number]['value'];
+
 interface SettingsFormProps {
   user: {
     id: string;
@@ -102,10 +110,10 @@ export function SettingsForm({ user }: SettingsFormProps) {
     toasts.saved();
   }
 
-  async function handleUpdatePrivacy(privacy: string) {
+  async function handleUpdatePrivacy(privacy: ProfilePrivacyValue) {
     const previous = profilePrivacy;
     setProfilePrivacy(privacy);
-    const result = await updateProfilePrivacyAction(privacy);
+    const result = await updateProfilePrivacyAction({ privacy });
     if (result?.error) {
       setProfilePrivacy(previous);
       toasts.serverError();
@@ -442,11 +450,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
           <div className="grid gap-3">
             <Label className="text-base font-medium text-foreground">Privacy Level</Label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {[
-                { value: 'PUBLIC', label: 'Public' },
-                { value: 'FOLLOWERS_ONLY', label: 'Followers Only' },
-                { value: 'PRIVATE', label: 'Private' },
-              ].map((option) => (
+              {PRIVACY_OPTIONS.map((option) => (
                 <button
                   key={option.value}
                   type="button"

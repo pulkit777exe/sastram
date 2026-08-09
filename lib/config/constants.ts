@@ -78,25 +78,3 @@ export const FILE_LIMITS = {
   MAX_VIDEO_SIZE: 4.5 * 1024 * 1024,
   MAX_PDF_SIZE: 4.5 * 1024 * 1024,
 } as const;
-
-export const RATE_LIMITS = {
-  MESSAGE: { count: 10, window: '10 s' },
-  MODERATION: { count: 50, window: '1 m' },
-  API: { count: 100, window: '1 m' },
-} as const;
-
-export const PAGINATION = {
-  DEFAULT_PAGE_SIZE: 20,
-  MAX_PAGE_SIZE: 100,
-} as const;
-
-export const CONTENT_LIMITS = {
-  MESSAGE_MAX_LENGTH: 10000,
-  MESSAGE_MIN_LENGTH: 1,
-  BIO_MAX_LENGTH: 500,
-  NAME_MAX_LENGTH: 100,
-  NAME_MIN_LENGTH: 2,
-  TITLE_MAX_LENGTH: 200,
-  TITLE_MIN_LENGTH: 3,
-  DESCRIPTION_MAX_LENGTH: 1000,
-} as const;

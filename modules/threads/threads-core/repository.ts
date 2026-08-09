@@ -44,13 +44,43 @@ async function countActiveUsersByThread(threadIds: string[]): Promise<Map<string
   return new Map(rows.map((row) => [row.threadId, Number(row.uniqueUsers)]));
 }
 
+/**
+ * Mirrors `canAccessThread`: non-public threads are only visible to their
+ * creator or to someone with an accepted invitation (matched by sender id or
+ * by the email the invitation was addressed to).
+ */
+async function visibilityFilter(memberUserId: string): Promise<Prisma.ThreadWhereInput> {
+  const user = await prisma.user.findUnique({
+    where: { id: memberUserId },
+    select: { email: true },
+  });
+
+  const invitationMatch: Prisma.ThreadInvitationWhereInput[] = [{ senderId: memberUserId }];
+  if (user?.email) {
+    invitationMatch.push({ email: user.email });
+  }
+
+  return {
+    OR: [
+      { visibility: 'PUBLIC' },
+      { createdBy: memberUserId },
+      { invitations: { some: { status: 'ACCEPTED', OR: invitationMatch } } },
+    ],
+  };
+}
+
 export const listThreads = cache(
   async (params: ListThreadsParams = {}): Promise<PaginatedThreads> => {
-    const { page = 1, pageSize = 10, sortBy = 'recent', threadIds } = params;
+    const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, threadIds } = params;
 
     const where: Prisma.ThreadWhereInput = { deletedAt: null };
     if (threadIds && threadIds.length > 0) {
       where.id = { in: threadIds };
+    }
+    // Omitting memberUserId is an admin/system-level listing (callers are
+    // already role-gated); any user-facing call must pass it.
+    if (memberUserId) {
+      Object.assign(where, await visibilityFilter(memberUserId));
     }
 
     try {

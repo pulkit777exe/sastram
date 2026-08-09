@@ -18,6 +18,7 @@ import {
   getModerationQueueSchema,
 } from './schemas';
 import { createServerAction } from '@/lib/utils/server-action';
+import { actionFailure, actionSuccess } from '@/lib/actions/result';
 import { ROUTES } from '@/lib/config/routes';
 import type { Prisma } from '@prisma/client';
 
@@ -76,7 +77,7 @@ export const deleteMessageAction = createServerAction(
       paths: [ROUTES.THREAD(threadSlug), ROUTES.ADMIN_MODERATION],
     });
 
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
@@ -143,7 +144,7 @@ export const bulkDeleteMessages = createServerAction(
       paths: [ROUTES.ADMIN_MODERATION],
     });
 
-    return { data: { deletedCount: result.deletedCount }, error: null };
+    return actionSuccess({ deletedCount: result.deletedCount });
   }
 );
 
@@ -165,12 +166,10 @@ export const banUser = createServerAction(
     });
 
     if (existingBan) {
-      return {
-        data: null,
-        error: threadId
-          ? 'User is already banned from this thread'
-          : 'User is already globally banned',
-      };
+      return actionFailure(
+        'CONFLICT',
+        threadId ? 'User is already banned from this thread' : 'User is already globally banned'
+      );
     }
 
     const thread = threadId
@@ -181,7 +180,7 @@ export const banUser = createServerAction(
       : null;
 
     if (threadId && !thread) {
-      return { data: null, error: 'Thread not found' };
+      return actionFailure('NOT_FOUND', 'Thread not found');
     }
 
     const ban = await prisma.$transaction(async (tx) => {
@@ -246,7 +245,7 @@ export const banUser = createServerAction(
       paths: [ROUTES.ADMIN_MODERATION, ROUTES.DASHBOARD],
     });
 
-    return { data: { banId: ban.id, expiresAt: ban.expiresAt }, error: null };
+    return actionSuccess({ banId: ban.id, expiresAt: ban.expiresAt });
   }
 );
 
@@ -327,7 +326,7 @@ export const unbanUser = createServerAction(
       paths: [ROUTES.ADMIN_MODERATION],
     });
 
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
@@ -358,18 +357,15 @@ export const getBannedUsers = createServerAction(
       prisma.userBan.count({ where: whereClause }),
     ]);
 
-    return {
-      data: {
-        bans,
-        pagination: {
-          total: totalCount,
-          limit,
-          offset,
-          hasMore: offset + limit < totalCount,
-        },
+    return actionSuccess({
+      bans,
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: offset + limit < totalCount,
       },
-      error: null,
-    };
+    });
   }
 );
 
@@ -402,7 +398,7 @@ export const deleteThread = createServerAction(
       paths: [ROUTES.DASHBOARD, ROUTES.DASHBOARD_THREADS, ROUTES.ADMIN_MODERATION],
     });
 
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );
 
@@ -439,7 +435,7 @@ export const getMessageDetails = createServerAction(
     });
 
     if (!message) {
-      return { data: null, error: 'Message not found' };
+      return actionFailure('NOT_FOUND', 'Message not found');
     }
 
     // Burst rate over the last day is the signal moderators use to spot spam runs.
@@ -456,10 +452,10 @@ export const getMessageDetails = createServerAction(
       }),
     ]);
 
-    return {
-      data: { message, context: { recentMessages24h: recentMessages, activeBans: senderBans } },
-      error: null,
-    };
+    return actionSuccess({
+      message,
+      context: { recentMessages24h: recentMessages, activeBans: senderBans },
+    });
   }
 );
 
@@ -497,12 +493,9 @@ export const getModerationQueue = createServerAction(
       prisma.report.count({ where: whereClause }),
     ]);
 
-    return {
-      data: {
-        reports,
-        pagination: { total: totalCount, limit, offset, hasMore: offset + limit < totalCount },
-      },
-      error: null,
-    };
+    return actionSuccess({
+      reports,
+      pagination: { total: totalCount, limit, offset, hasMore: offset + limit < totalCount },
+    });
   }
 );

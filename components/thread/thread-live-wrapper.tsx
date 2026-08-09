@@ -8,6 +8,7 @@ import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
 import { loadThreadMessages, backfillThreadMessages } from '@/modules/threads/actions';
+import { toClientMessage, type ThreadMessage } from '@/modules/threads/service';
 import { getPollResultsAction, getPollByThreadAction } from '@/modules/polls/actions';
 import type { PollResults } from '@/modules/polls/types';
 import { toasts } from '@/lib/utils/toast';
@@ -112,44 +113,14 @@ export function ThreadLiveWrapper({
     setIsLoadingMore(true);
 
     try {
-      const result = await loadThreadMessages(threadId, nextCursor);
+      const result = await loadThreadMessages({ threadId, cursor: nextCursor });
 
       if (result.ok && result.data) {
         const { messages: olderMessages, hasMore, nextCursor: newCursor } = result.data;
 
-        const mappedMessages: Message[] = olderMessages.map((m: any) => ({
-          id: m.id,
-          content: m.body ?? m.content ?? '',
-          createdAt: m.createdAt,
-          senderId: m.senderId,
-          parentId: m.parentId ?? null,
-          threadId,
-          depth: m.depth ?? 0,
-          isEdited: m.isEdited ?? false,
-          isPinned: m.isPinned ?? false,
-          likeCount: m.likeCount ?? 0,
-          replyCount: m.replyCount ?? 0,
-          isAiResponse: m.isAI ?? m.isAiResponse ?? false,
-          updatedAt: m.createdAt,
-          deletedAt: m.deletedAt ?? null,
-          sender: {
-            id: m.author?.id ?? m.senderId,
-            name: m.author?.name ?? 'Anonymous',
-            image: m.author?.image ?? null,
-          },
-          attachments: (m.attachments ?? []).map((att: any) => ({
-            id: att.id,
-            name: att.name ?? null,
-            url: att.url,
-            type: att.type,
-            size: att.size ?? null,
-          })),
-          thread: {
-            id: threadId,
-            name: title,
-            slug,
-          },
-        }));
+        const mappedMessages: Message[] = olderMessages.map((m) =>
+          toClientMessage(m, { id: threadId, name: title, slug })
+        );
 
         setLiveMessages((prev) => [...mappedMessages, ...prev]);
         setHasMoreMessages(hasMore);
@@ -181,35 +152,7 @@ export function ThreadLiveWrapper({
   const hasAiMention = useCallback((content: string) => /\B@sai\b/i.test(content), []);
 
   const mapBackfillMessage = useCallback(
-    (m: any): Message => ({
-      id: m.id,
-      content: m.body ?? m.content ?? '',
-      createdAt: m.createdAt,
-      senderId: m.senderId,
-      parentId: m.parentId ?? null,
-      threadId,
-      depth: m.depth ?? 0,
-      isEdited: m.isEdited ?? false,
-      isPinned: m.isPinned ?? false,
-      likeCount: m.likeCount ?? 0,
-      replyCount: m.replyCount ?? 0,
-      isAiResponse: m.isAI ?? m.isAiResponse ?? false,
-      updatedAt: m.createdAt,
-      deletedAt: m.deletedAt ?? null,
-      sender: {
-        id: m.sender?.id ?? m.senderId,
-        name: m.sender?.name ?? 'Anonymous',
-        image: m.sender?.image ?? null,
-      },
-      attachments: (m.attachments ?? []).map((att: any) => ({
-        id: att.id,
-        name: att.name ?? null,
-        url: att.url,
-        type: att.type,
-        size: att.size ?? null,
-      })),
-      thread: { id: threadId, name: title, slug },
-    }),
+    (m: ThreadMessage): Message => toClientMessage(m, { id: threadId, name: title, slug }),
     [threadId, title, slug]
   );
 
@@ -336,7 +279,7 @@ export function ThreadLiveWrapper({
       const latestId = liveMessagesRef.current[liveMessagesRef.current.length - 1]?.id ?? null;
 
       isMarkingReadRef.current = true;
-      const result = await markThreadReadAction(threadId, latestId);
+      const result = await markThreadReadAction({ threadId, lastReadMessageId: latestId });
       isMarkingReadRef.current = false;
 
       // Best-effort: a failed read-receipt must not surface a scary, repeating
@@ -452,15 +395,15 @@ export function ThreadLiveWrapper({
     async function poll() {
       try {
         const since = lastMessageTimestampRef.current;
-        const result = await backfillThreadMessages(threadId, since);
+        const result = await backfillThreadMessages({ threadId, since });
 
         // Piggyback poll vote refresh on every message poll tick
         if (currentPollRef.current) {
           try {
             const pollId = currentPollRef.current.id;
             const [freshPollResult, freshResultsResult] = await Promise.all([
-              getPollByThreadAction(threadId),
-              getPollResultsAction(pollId),
+              getPollByThreadAction({ threadId }),
+              getPollResultsAction({ pollId }),
             ]);
             if (freshPollResult?.data) {
               const freshPoll = freshPollResult.data;
@@ -485,9 +428,7 @@ export function ThreadLiveWrapper({
           return;
         }
 
-        const newMessages: Message[] = result.data.messages.map((m: any) =>
-          mapBackfillMessage(m)
-        );
+        const newMessages: Message[] = result.data.messages.map(mapBackfillMessage);
 
         let hasNew = false;
         setLiveMessages((prev) => {
@@ -578,9 +519,9 @@ export function ThreadLiveWrapper({
     let timer: ReturnType<typeof setInterval> | null = null;
     const fastPoll = async () => {
       try {
-        const result = await backfillThreadMessages(threadId, lastMessageTimestampRef.current);
+        const result = await backfillThreadMessages({ threadId, since: lastMessageTimestampRef.current });
         if (!result?.ok || !result.data?.messages?.length) return;
-        const incoming = result.data.messages.map((m: any) => mapBackfillMessage(m));
+        const incoming = result.data.messages.map(mapBackfillMessage);
         setLiveMessages((prev) => {
           const { merged, hasNew } = mergeMessages(prev, incoming);
           if (hasNew) {

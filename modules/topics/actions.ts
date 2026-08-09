@@ -5,8 +5,9 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
-import { createTag, addTagToThread } from '@/modules/tags/repository';
+import { createTag } from '@/modules/tags/repository';
 import { createServerAction } from '@/lib/utils/server-action';
+import { actionSuccess } from '@/lib/actions/result';
 
 const createTopicSchema = z.object({
   title: z.string().min(3),
@@ -30,13 +31,16 @@ export const createTopic = createServerAction(
 
     const uniqueTags = Array.from(new Set((tags ?? []).map((tag) => tag.toLowerCase()))).slice(0, 5);
 
-    for (const tagName of uniqueTags) {
-      const tag = await createTag(tagName);
-      await addTagToThread(thread.id, tag.id);
+    if (uniqueTags.length > 0) {
+      const createdTags = await Promise.all(uniqueTags.map((tagName) => createTag(tagName)));
+      await prisma.threadTagRelation.createMany({
+        data: createdTags.map((tag) => ({ threadId: thread.id, tagId: tag.id })),
+        skipDuplicates: true,
+      });
     }
 
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/threads');
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );

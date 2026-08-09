@@ -5,6 +5,7 @@ import { requireSession } from '@/modules/auth/session';
 import { createServerAction } from '@/lib/utils/server-action';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { submitFeedbackSchema } from '@/modules/feedback/schemas';
+import { actionSuccess } from '@/lib/actions/result';
 
 export const submitFeedback = createServerAction(
   { schema: submitFeedbackSchema, actionName: 'submitFeedback' },
@@ -33,6 +34,6 @@ export const submitFeedback = createServerAction(
       },
     });
 
-    return { data: { id: feedback.id }, error: null, ok: true, errorCode: null };
+    return actionSuccess({ id: feedback.id });
   }
 );

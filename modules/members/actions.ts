@@ -7,6 +7,7 @@ import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';
+import { actionFailure, actionSuccess } from '@/lib/actions/result';
 import { canManageThread } from '@/lib/thread-access';
 import { threadIdSchema, userIdSchema } from '@/lib/utils/validation-common';
 
@@ -40,7 +41,7 @@ export const inviteMember = createServerAction(
     const thread = await findManageableThread(threadId, session.user.id, session.user.role);
 
     if (!thread) {
-      return { data: null, error: 'Insufficient permissions' };
+      return actionFailure('FORBIDDEN', 'Insufficient permissions');
     }
 
     const invitation = await prisma.threadInvitation.upsert({
@@ -65,7 +66,7 @@ export const inviteMember = createServerAction(
     }
 
     revalidatePath(`/dashboard/threads/${thread.slug}`);
-    return { data: invitation, error: null };
+    return actionSuccess(invitation);
   }
 );
 
@@ -76,7 +77,7 @@ export const removeMemberAction = createServerAction(
     const thread = await findManageableThread(threadId, session.user.id, session.user.role);
 
     if (!thread) {
-      return { data: null, error: 'Insufficient permissions' };
+      return actionFailure('FORBIDDEN', 'Insufficient permissions');
     }
 
     const user = await prisma.user.findUnique({
@@ -85,7 +86,7 @@ export const removeMemberAction = createServerAction(
     });
 
     if (!user) {
-      return { data: null, error: 'User not found' };
+      return actionFailure('NOT_FOUND', 'User not found');
     }
 
     // Access is invitation-derived, so revoking means deleting the invitation row
@@ -94,6 +95,6 @@ export const removeMemberAction = createServerAction(
     });
 
     revalidatePath(`/dashboard/threads/${thread.slug}`);
-    return { data: null, error: null };
+    return actionSuccess(null);
   }
 );

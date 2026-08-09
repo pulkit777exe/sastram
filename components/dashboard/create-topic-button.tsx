@@ -30,7 +30,7 @@ export function CreateTopicButton() {
 
   useEffect(() => {
     if (!open) return;
-    void getPopularTagsAction(30).then((result) => {
+    void getPopularTagsAction({ limit: 30 }).then((result) => {
       const tags = Array.isArray(result.data)
         ? result.data.map((tag) => tag.name.toLowerCase())
         : [];

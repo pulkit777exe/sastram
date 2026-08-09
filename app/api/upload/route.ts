@@ -10,8 +10,8 @@ import { rateLimit } from '@/lib/services/rate-limit';
 import { aiService } from '@/lib/services/ai';
 import { env } from '@/lib/config/env';
 import { consumeImageModerationQuota } from '@/lib/services/daily-quota';
-import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
-import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 
 const handler = withErrorHandling(async (req: NextRequest) => {
   const session = await requireSessionOrThrow();
@@ -72,7 +72,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
            await del(blob.url);
            throw new Error('Daily image moderation limit reached. Please try again tomorrow.');
          }
-         await consumeSpendCap(classifyAiCallCost(AiCallPath.IMAGE_MODERATION).estimatedCostUsd);
+         await enforceAiSpendCap(AiCallPath.IMAGE_MODERATION);
          const result = await aiService.moderateImageContent(blob.url);
         if (result.classification === 'NSFW') {
           await del(blob.url);

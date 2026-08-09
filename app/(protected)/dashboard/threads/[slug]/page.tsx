@@ -5,11 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Activity } from 'lucide-react';
 import type { Message } from '@/lib/types/index';
 import { isAdminUser as isAdmin, requireSession, type SessionUser } from '@/modules/auth/session';
-import { getThreadWithFullContext, getThreadMessagesPaginated } from '@/modules/threads';
+import { getThreadWithFullContext, toClientMessage } from '@/modules/threads';
 import Link from 'next/link';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
-import { getThreadReadReceipt } from '@/modules/read-receipts/repository';
 import { prisma } from '@/lib/infrastructure/prisma';
 import ThreadResolutionCard from '@/components/panels/ThreadResolutionCard';
 import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
@@ -74,60 +73,22 @@ async function ThreadContent({
 }) {
   if (!thread) return null;
 
-  const paginatedResult = await getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT);
+  const threadRef = { id: thread.id, name: thread.name, slug: thread.slug };
 
-  const allMessages: Message[] = paginatedResult.messages.map((m) => {
-    const raw = m as { sender?: { name?: string; image?: string }; author?: { name?: string; image?: string }; content?: string; body?: string; isAiResponse?: boolean; isAI?: boolean; id: string; createdAt: Date; senderId: string; parentId?: string | null; depth?: number; isEdited?: boolean; isPinned?: boolean; likeCount?: number; replyCount?: number; deletedAt?: Date | null; attachments?: Array<{ id: string; name?: string | null; url: string; type: string; size?: number | null }> };
-    const senderName: string = raw.sender?.name ?? raw.author?.name ?? 'Anonymous';
-    const senderImage: string | null = raw.sender?.image ?? raw.author?.image ?? null;
-    const messageContent: string = raw.content ?? raw.body ?? '';
-    const isAiResponse: boolean = raw.isAiResponse ?? raw.isAI ?? false;
+  // getThreadWithFullContext already returned every message (ASC, including
+  // soft-deleted ones); no second paginated query is needed here.
+  const liveMessages = thread.messages.filter((m) => m.deletedAt === null);
+  const hasMoreMessages = liveMessages.length > INITIAL_MESSAGE_LIMIT;
+  const visibleMessages = hasMoreMessages
+    ? liveMessages.slice(-INITIAL_MESSAGE_LIMIT)
+    : liveMessages;
 
-    return {
-      id: raw.id,
-      content: messageContent,
-      createdAt: raw.createdAt,
-      senderId: raw.senderId,
-      parentId: raw.parentId ?? null,
-      threadId: thread.id,
-      depth: raw.depth ?? 0,
-      isEdited: raw.isEdited ?? false,
-      isPinned: raw.isPinned ?? false,
-      likeCount: raw.likeCount ?? 0,
-      replyCount: raw.replyCount ?? 0,
-      isAiResponse,
-      updatedAt: raw.createdAt,
-      deletedAt: raw.deletedAt ?? null,
-      sender: {
-        id: raw.senderId,
-        name: senderName,
-        image: senderImage,
-      },
-      attachments: (raw.attachments ?? []).map((att) => ({
-        id: att.id,
-        name: att.name ?? null,
-        url: att.url,
-        type: att.type,
-        size: att.size ?? null,
-      })),
-      thread: {
-        id: thread.id,
-        name: thread.name,
-        slug: thread.slug,
-      },
-    };
-  });
+  const allMessages: Message[] = visibleMessages.map((m) => toClientMessage(m, threadRef));
 
-  // getThreadMessagesPaginated returns DESC (newest first); reverse to ASC for rendering
-  allMessages.reverse();
-
-  const unreadMessages = paginatedResult.messages.filter((message) => {
-    if (message.senderId === session.user.id) return false;
-    return true;
-  });
+  const unreadMessages = allMessages.filter((message) => message.senderId !== session.user.id);
 
   const initialUnreadCount = unreadMessages.length;
-  const firstUnreadMessageId = unreadMessages[0]?.id ?? null;
+  const firstUnreadMessageId = unreadMessages[unreadMessages.length - 1]?.id ?? null;
 
   return (
     <ThreadLiveWrapper
@@ -135,9 +96,9 @@ async function ThreadContent({
       threadId={thread.id}
       initialUnreadCount={initialUnreadCount}
       initialFirstUnreadMessageId={firstUnreadMessageId}
-      hasMoreMessages={paginatedResult.hasMore}
-      nextCursor={paginatedResult.nextCursor}
-      totalMessageCount={paginatedResult.totalCount}
+      hasMoreMessages={hasMoreMessages}
+      nextCursor={hasMoreMessages ? (visibleMessages[0]?.id ?? null) : null}
+      totalMessageCount={thread._count.messages}
       poll={
         thread.poll
           ? {
@@ -175,19 +136,6 @@ async function ThreadSidebar({
   session: { user: SessionUser };
 }) {
   if (!thread) return null;
-
-  const [readReceipt, subscription] = await Promise.all([
-    getThreadReadReceipt(thread.id, session.user.id),
-    prisma.threadSubscription.findUnique({
-      where: {
-        threadId_userId: {
-          threadId: thread.id,
-          userId: session.user.id,
-        },
-      },
-      select: { frequency: true },
-    }),
-  ]);
 
   const threadDna = parseThreadDna(thread.threadDna);
 

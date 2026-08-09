@@ -49,7 +49,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
 
   const handleClick = async (notification: NotificationItem) => {
     if (!notification.isRead) {
-      const result = await markNotificationRead(notification.id);
+      const result = await markNotificationRead({ notificationId: notification.id });
       if (!result.error) {
         setNotifications((prev) =>
           prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))

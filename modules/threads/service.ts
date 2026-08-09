@@ -1,7 +1,51 @@
 import type { UserStatus } from '@prisma/client';
+import type { Message } from '@/lib/types/index';
 import type { ThreadDetail, ThreadDNA, ThreadRecord, ThreadSummary } from './types';
+import type { ThreadMessage as ReadThreadMessage } from './threads-read/repository';
+
+export type ThreadMessage = ReadThreadMessage;
 
 const ANONYMOUS_SENDER = { name: null, image: null, status: 'ACTIVE' as UserStatus };
+
+/**
+ * The read models speak SQL-shaped names (`body`, `isAI`, `author`); the UI
+ * speaks `Message` (`content`, `isAiResponse`, `sender`). Reconcile once here
+ * so callers never hand-roll the mapping.
+ */
+export function toClientMessage(
+  message: ReadThreadMessage,
+  thread: { id: string; name: string; slug: string }
+): Message {
+  return {
+    id: message.id,
+    content: message.body,
+    threadId: thread.id,
+    senderId: message.senderId,
+    parentId: message.parentId,
+    depth: message.depth,
+    isEdited: message.isEdited,
+    isPinned: message.isPinned,
+    likeCount: message.likeCount,
+    replyCount: message.replyCount,
+    isAiResponse: message.isAI,
+    createdAt: message.createdAt,
+    updatedAt: message.createdAt,
+    deletedAt: message.deletedAt,
+    sender: {
+      id: message.author?.id ?? message.senderId ?? '',
+      name: message.author?.name ?? 'Anonymous',
+      image: message.author?.image ?? null,
+    },
+    thread,
+    attachments: (message.attachments ?? []).map((att) => ({
+      id: att.id,
+      name: att.name ?? null,
+      url: att.url,
+      type: att.type,
+      size: att.size ?? null,
+    })),
+  };
+}
 
 export function buildThreadDTO(
   thread: ThreadRecord,

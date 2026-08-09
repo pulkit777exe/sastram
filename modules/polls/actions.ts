@@ -19,7 +19,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { isPrismaUniqueConstraintError } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
-import type { ActionErrorCode } from '@/lib/actions/result';
+import { actionSuccess, type ActionErrorCode } from '@/lib/actions/result';
 
 const pollIdSchema = z.object({ pollId: z.string().cuid() });
 
@@ -59,7 +59,7 @@ export const createPollAction = withValidation(
       });
 
       revalidatePath(ROUTES.THREAD(threadId));
-      return { data: poll, error: null, ok: true, errorCode: null };
+      return actionSuccess(poll);
     } catch (err) {
       logger.error('[createPoll]', { error: err });
       return internalError();
@@ -91,7 +91,7 @@ export const voteOnPollAction = withValidation(
         revalidatePath(ROUTES.THREAD(poll.thread.slug));
       }
 
-      return { data: null, error: null, ok: true, errorCode: null };
+      return actionSuccess(null);
     } catch (err) {
       // One vote per user is enforced by a unique index, not a pre-check.
       if (isPrismaUniqueConstraintError(err)) {
@@ -123,7 +123,7 @@ export const closePollAction = createServerAction(
         revalidatePath(ROUTES.THREAD(poll.thread.slug));
       }
 
-      return { data: null, error: null, ok: true, errorCode: null };
+      return actionSuccess(null);
     } catch (error) {
       logger.error('[closePoll]', error);
       return internalError();
@@ -137,7 +137,7 @@ export const getPollResultsAction = createServerAction(
     try {
       const poll = await getPollResultsRepo(pollId);
       if (!poll) return pollNotFound();
-      return { data: poll, error: null, ok: true, errorCode: null };
+      return actionSuccess(poll);
     } catch (error) {
       logger.error('[getPollResults]', error);
       return internalError();
@@ -151,7 +151,7 @@ export const getUserVoteAction = createServerAction(
     try {
       const session = await requireSession();
       const vote = await getUserVoteRepo(pollId, session.user.id);
-      return { data: vote, error: null, ok: true, errorCode: null };
+      return actionSuccess(vote);
     } catch (error) {
       logger.error('[getUserVote]', error);
       return internalError();
@@ -165,7 +165,7 @@ export const getPollByIdAction = createServerAction(
     try {
       const poll = await getPollByIdRepo(pollId);
       if (!poll) return pollNotFound();
-      return { data: poll, error: null, ok: true, errorCode: null };
+      return actionSuccess(poll);
     } catch (error) {
       logger.error('[getPollById]', error);
       return internalError();
@@ -179,7 +179,7 @@ export const getPollByThreadAction = createServerAction(
     try {
       const poll = await getPollByThreadIdRepo(threadId);
       if (!poll) return pollNotFound();
-      return { data: poll, error: null, ok: true, errorCode: null };
+      return actionSuccess(poll);
     } catch (error) {
       logger.error('[getPollByThread]', error);
       return internalError();

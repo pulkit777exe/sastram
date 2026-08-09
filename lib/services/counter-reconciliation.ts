@@ -28,8 +28,24 @@ type CounterFamily = {
   counter: string;
   /** Rows to check. Soft-deleted rows are excluded — they aren't listed anywhere. */
   load: () => Promise<AnyRow[]>;
-  recompute: (id: string) => Promise<number>;
+  /**
+   * One aggregate for the whole family, keyed by row id. Ids missing from the
+   * map have an actual count of zero.
+   */
+  loadActuals: () => Promise<Map<string, number>>;
 };
+
+function toCountMap<T extends { _count: { _all: number } }>(
+  groups: T[],
+  keyOf: (group: T) => string | null,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const group of groups) {
+    const key = keyOf(group);
+    if (key !== null) counts.set(key, group._count._all);
+  }
+  return counts;
+}
 
 const COUNTERS: CounterFamily[] = [
   {
@@ -40,7 +56,15 @@ const COUNTERS: CounterFamily[] = [
         where: { deletedAt: null },
         select: { id: true, messageCount: true },
       }),
-    recompute: (threadId) => prisma.message.count({ where: { threadId, deletedAt: null } }),
+    loadActuals: async () =>
+      toCountMap(
+        await prisma.message.groupBy({
+          by: ['threadId'],
+          where: { deletedAt: null },
+          _count: { _all: true },
+        }),
+        (g) => g.threadId,
+      ),
   },
   {
     table: 'messages',
@@ -52,7 +76,14 @@ const COUNTERS: CounterFamily[] = [
       }),
     // Reactions aren't pruned when a message is soft-deleted, so drift here is
     // expected to surface rather than be silently correct.
-    recompute: (messageId) => prisma.reaction.count({ where: { messageId } }),
+    loadActuals: async () =>
+      toCountMap(
+        await prisma.reaction.groupBy({
+          by: ['messageId'],
+          _count: { _all: true },
+        }),
+        (g) => g.messageId,
+      ),
   },
   {
     table: 'messages',
@@ -63,14 +94,51 @@ const COUNTERS: CounterFamily[] = [
         where: { deletedAt: null, thread: { deletedAt: null }, depth: 0 },
         select: { id: true, replyCount: true },
       }),
-    recompute: (messageId) =>
-      prisma.message.count({ where: { parentId: messageId, deletedAt: null } }),
+    loadActuals: async () =>
+      toCountMap(
+        await prisma.message.groupBy({
+          by: ['parentId'],
+          where: { deletedAt: null, parentId: { not: null } },
+          _count: { _all: true },
+        }),
+        (g) => g.parentId,
+      ),
+  },
+  {
+    table: 'users',
+    counter: 'followerCount',
+    load: () =>
+      prisma.user.findMany({
+        where: { deletedAt: null },
+        select: { id: true, followerCount: true },
+      }),
+    loadActuals: async () =>
+      toCountMap(
+        await prisma.userFollow.groupBy({
+          by: ['followingId'],
+          _count: { _all: true },
+        }),
+        (g) => g.followingId,
+      ),
+  },
+  {
+    table: 'users',
+    counter: 'followingCount',
+    load: () =>
+      prisma.user.findMany({
+        where: { deletedAt: null },
+        select: { id: true, followingCount: true },
+      }),
+    loadActuals: async () =>
+      toCountMap(
+        await prisma.userFollow.groupBy({
+          by: ['followerId'],
+          _count: { _all: true },
+        }),
+        (g) => g.followerId,
+      ),
   },
 ];
-
-// followerCount / followingCount are deliberately absent: the columns exist on
-// User but no write path ever touches them, so reconciling would always report
-// zero drift and burn query budget. Add them when follow/unfollow lands.
 
 export async function reconcileCounters(): Promise<{
   scanned: number;
@@ -80,9 +148,9 @@ export async function reconcileCounters(): Promise<{
   let scanned = 0;
 
   for (const family of COUNTERS) {
-    const rows = await family.load();
+    const [rows, actuals] = await Promise.all([family.load(), family.loadActuals()]);
     scanned += rows.length;
-    drifts.push(...(await compareAll(family.table, family.counter, rows, family.recompute)));
+    drifts.push(...compareAll(family.table, family.counter, rows, actuals));
   }
 
   if (drifts.length > 0) {
@@ -104,15 +172,15 @@ export async function reconcileCounters(): Promise<{
   return { scanned, drifts };
 }
 
-async function compareAll(
+function compareAll(
   table: string,
   counter: string,
   rows: AnyRow[],
-  recompute: (id: string) => Promise<number>,
-): Promise<CounterDrift[]> {
+  actuals: Map<string, number>,
+): CounterDrift[] {
   const drifts: CounterDrift[] = [];
   for (const row of rows) {
-    const actual = await recompute(row.id);
+    const actual = actuals.get(row.id) ?? 0;
     const stored = Number(row[counter] ?? 0);
     if (stored !== actual) {
       drifts.push({

@@ -215,7 +215,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
   const resolveMentionCandidates = useCallback(
     async (query: string) => {
       const requestId = ++mentionRequestIdRef.current;
-      const result = await searchMentionUsers(threadId, query);
+      const result = await searchMentionUsers({ threadId, query });
       if (requestId !== mentionRequestIdRef.current) return;
 
       const users = Array.isArray(result.data) ? result.data : [];

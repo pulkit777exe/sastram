@@ -14,6 +14,15 @@ export interface ActionEnvelope<T> {
   errorCode: ActionErrorCode | null;
 }
 
+export function actionSuccess<T>(data: T): ActionEnvelope<T> {
+  return {
+    ok: true,
+    data,
+    error: null,
+    errorCode: null,
+  };
+}
+
 export function actionFailure<T = null>(
   code: ActionErrorCode,
   message: string

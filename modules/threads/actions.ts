@@ -8,10 +8,11 @@ import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/lib/utils/slug';
 import { createThread, deleteThread, updateThreadStaleness } from './threads-write/repository';
 import { listThreads } from './threads-core/repository';
-import { getThreadMessagesPaginated } from './threads-read/repository';
+import { getThreadMessagesPaginated, type ThreadMessage } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
 import { ROUTES } from '@/lib/config/routes';
 import { createServerAction, type ActionResult } from '@/lib/utils/server-action';
+import { actionSuccess } from '@/lib/actions/result';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
@@ -30,8 +31,6 @@ function failure(actionName: string, error: unknown): ActionResult<never> {
     errorCode: 'INTERNAL_ERROR',
   };
 }
-
-const success = <T>(data: T) => ({ data, error: null, ok: true as const, errorCode: null });
 
 const threadIdOnly = z.object({ threadId: z.string().cuid() });
 
@@ -68,7 +67,7 @@ export const createThreadAction = createServerAction(
       }
 
       revalidatePath(ROUTES.DASHBOARD);
-      return success(null);
+      return actionSuccess(null);
     } catch (error) {
       return failure('createThreadAction', error);
     }
@@ -84,7 +83,7 @@ export const deleteThreadAction = createServerAction(
 
       await deleteThread(threadId);
       revalidatePath(ROUTES.DASHBOARD);
-      return success(null);
+      return actionSuccess(null);
     } catch (error) {
       return failure('deleteThreadAction', error);
     }
@@ -103,7 +102,7 @@ export const getDashboardThreads = createServerAction(
   async (params) => {
     try {
       const session = await requireSession();
-      return success(await listThreads({ ...params, memberUserId: session.user.id }));
+      return actionSuccess(await listThreads({ ...params, memberUserId: session.user.id }));
     } catch (error) {
       return failure('getDashboardThreads', error);
     }
@@ -120,7 +119,7 @@ export const loadThreadMessages = createServerAction(
       const session = await requireSession();
       await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
-      return success(await getThreadMessagesPaginated(threadId, cursor, PAGE_SIZE));
+      return actionSuccess(await getThreadMessagesPaginated(threadId, cursor, PAGE_SIZE));
     } catch (error) {
       return failure('loadThreadMessages', error);
     }
@@ -137,7 +136,7 @@ export const markThreadVerified = createServerAction(
       await updateThreadStaleness(threadId, false);
       revalidatePath(`${ROUTES.DASHBOARD_THREADS}/${threadId}`);
 
-      return success({ ok: true });
+      return actionSuccess({ ok: true });
     } catch (error) {
       return failure('markThreadVerified', error);
     }
@@ -169,7 +168,35 @@ export const backfillThreadMessages = createServerAction(
         take: BACKFILL_LIMIT,
       });
 
-      return success({ messages });
+      // Normalise to the read-model shape so clients reuse the same mapper as
+      // the paginated loader instead of hand-rolling a second conversion.
+      const normalised: ThreadMessage[] = messages.map((m) => ({
+        id: m.id,
+        body: m.content,
+        threadId: m.threadId,
+        senderId: m.senderId,
+        parentId: m.parentId,
+        depth: m.depth,
+        createdAt: m.createdAt,
+        isEdited: m.isEdited,
+        isPinned: m.isPinned,
+        isAI: m.isAiResponse,
+        deletedAt: m.deletedAt,
+        likeCount: m.likeCount,
+        replyCount: m.replyCount,
+        author: m.sender ?? { id: '', name: null, image: null },
+        reactions: [],
+        _count: { replies: m.replyCount },
+        attachments: m.attachments.map((a) => ({
+          id: a.id,
+          url: a.url,
+          type: a.type,
+          name: a.name,
+          size: a.size !== null ? Number(a.size) : null,
+        })),
+      }));
+
+      return actionSuccess({ messages: normalised });
     } catch (error) {
       return failure('backfillThreadMessages', error);
     }
