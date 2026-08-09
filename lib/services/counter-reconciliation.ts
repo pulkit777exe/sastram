@@ -2,26 +2,16 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 
 /**
- * Counter reconciliation policy.
+ * Reconciling denormalized counters at write time would multiply Neon query
+ * load on every post, so it runs as a nightly batch inside `update-threads`.
  *
- * Reconciling denormalized counters (messageCount, likeCount, replyCount,
- * followerCount, followingCount) at write-time would multiply Neon query load on every post.
- * Instead, this runs as a once-a-day batch inside the `update-threads` cron.
- *
- * Safety: the first 30 days of post-launch reconciliation is REPORT-ONLY (logs drift, never
- * touches data). This surfaces the actual write-path bugs causing drift instead of silently
- * masking them nightly. Flip to auto-correct once the write paths are audited and trusted.
- *
- * To enable auto-correct: change `false` to `true` (or wire to a runtime env / config knob
- * matching how the rest of the project's quota / rate-limit flags are wired).
+ * Report-only for now: logging drift surfaces the write-path bug causing it,
+ * whereas auto-correcting would quietly paper over the same bug every night.
+ * Flip once the write paths have been audited.
  */
 export const COUNTER_RECONCILIATION_AUTO_CORRECT = false;
 
-/**
- * Per-counter diagnostic output. Schema:
- *   { table, rowId, counterName, storedValue, actualValue, delta }
- * `delta = actualValue - storedValue` so positive means we're undercounting.
- */
+/** `delta = actualValue - storedValue`, so positive means we're undercounting. */
 type CounterDrift = {
   table: string;
   rowId: string;
@@ -31,9 +21,13 @@ type CounterDrift = {
   delta: number;
 };
 
+type AnyRow = { id: string } & Record<string, unknown>;
+
 type CounterFamily = {
   table: string;
   counter: string;
+  /** Rows to check. Soft-deleted rows are excluded — they aren't listed anywhere. */
+  load: () => Promise<AnyRow[]>;
   recompute: (id: string) => Promise<number>;
 };
 
@@ -41,39 +35,43 @@ const COUNTERS: CounterFamily[] = [
   {
     table: 'threads',
     counter: 'messageCount',
-    // Recompute by counting active (non-deleted) messages belonging to the thread,
-    // and excluding the thread itself from the count if it's soft-deleted.
-    recompute: async (threadId: string) =>
-      prisma.message.count({
-        where: { threadId, deletedAt: null },
+    load: () =>
+      prisma.thread.findMany({
+        where: { deletedAt: null },
+        select: { id: true, messageCount: true },
       }),
+    recompute: (threadId) => prisma.message.count({ where: { threadId, deletedAt: null } }),
   },
   {
     table: 'messages',
     counter: 'likeCount',
-    // Recompute via reaction rows pointing at this message.
-    // Note: reactions are not deleted with messages on cascade, but pruning is hypothetical
-    // for now (no delete-reaction path); real-value vs. stored drift will surface.
-    recompute: async (messageId: string) =>
-      prisma.reaction.count({
-        where: { messageId },
+    load: () =>
+      prisma.message.findMany({
+        where: { deletedAt: null, thread: { deletedAt: null } },
+        select: { id: true, likeCount: true },
       }),
+    // Reactions aren't pruned when a message is soft-deleted, so drift here is
+    // expected to surface rather than be silently correct.
+    recompute: (messageId) => prisma.reaction.count({ where: { messageId } }),
   },
   {
     table: 'messages',
     counter: 'replyCount',
-    // active (non-deleted) child replies.
-    recompute: async (messageId: string) =>
-      prisma.message.count({
-        where: { parentId: messageId, deletedAt: null },
+    // Root messages only — bounds the scan.
+    load: () =>
+      prisma.message.findMany({
+        where: { deletedAt: null, thread: { deletedAt: null }, depth: 0 },
+        select: { id: true, replyCount: true },
       }),
+    recompute: (messageId) =>
+      prisma.message.count({ where: { parentId: messageId, deletedAt: null } }),
   },
 ];
 
-/**
- * Run a full reconciliation pass. Returns the list of drifts for reporting.
- * Always excludes soft-deleted rows (they don't belong in listings anyway).
- */
+// followerCount / followingCount are deliberately absent: the columns exist on
+// User but no write path ever touches them, so reconciling would always report
+// zero drift and burn query budget. Add them when follow/unfollow lands.
+
 export async function reconcileCounters(): Promise<{
   scanned: number;
   drifts: CounterDrift[];
@@ -81,68 +79,11 @@ export async function reconcileCounters(): Promise<{
   const drifts: CounterDrift[] = [];
   let scanned = 0;
 
-  // We scan each counter family separately so a failure in one doesn't kill the others.
-
-  // 1) Thread.messageCount
-  {
-    const threads = await prisma.thread.findMany({
-      where: { deletedAt: null },
-      select: { id: true, messageCount: true },
-    });
-    scanned += threads.length;
-    drifts.push(
-      ...(await compareAll(
-        'threads',
-        'messageCount',
-        threads as AnyRow[],
-        COUNTERS[0].recompute
-      ))
-    );
+  for (const family of COUNTERS) {
+    const rows = await family.load();
+    scanned += rows.length;
+    drifts.push(...(await compareAll(family.table, family.counter, rows, family.recompute)));
   }
-
-  // 2) Message.likeCount — only scan messages in active threads
-  {
-    const messages = await prisma.message.findMany({
-      where: { deletedAt: null, thread: { deletedAt: null } },
-      select: { id: true, likeCount: true },
-    });
-    scanned += messages.length;
-    drifts.push(
-      ...(await compareAll(
-        'messages',
-        'likeCount',
-        messages as AnyRow[],
-        COUNTERS[1].recompute
-      ))
-    );
-  }
-
-  // 3) Message.replyCount — only scan root messages to bound the scan.
-  {
-    const messages = await prisma.message.findMany({
-      where: {
-        deletedAt: null,
-        thread: { deletedAt: null },
-        depth: 0,
-      },
-      select: { id: true, replyCount: true },
-    });
-    scanned += messages.length;
-    drifts.push(
-      ...(await compareAll(
-        'messages',
-        'replyCount',
-        messages as AnyRow[],
-        COUNTERS[2].recompute
-      ))
-    );
-  }
-
-  // Note: followerCount / followingCount are intentionally NOT reconciled here.
-  // Both columns exist in the User model but are never incremented/decremented by any
-  // write path in this codebase (grep confirms zero call sites). Forcing a reconcile
-  // on these would surface zero drift (stored = actual = 0) and burn query budget.
-  // Revisit when a follow/unfollow write path actually exists.
 
   if (drifts.length > 0) {
     logger.warn(
@@ -153,8 +94,6 @@ export async function reconcileCounters(): Promise<{
     logger.info(`[counter-reconcile] clean — ${scanned} rows scanned, no drift`);
   }
 
-  // Auto-correct: intentionally a no-op while COUNTER_RECONCILIATION_AUTO_CORRECT=false.
-  // The config flag exists so flipping it later is a one-line change, not a code change.
   if (COUNTER_RECONCILIATION_AUTO_CORRECT && drifts.length > 0) {
     logger.warn(
       '[counter-reconcile] auto-correct ENABLED but would mask underlying write-path bugs; ' +
@@ -164,8 +103,6 @@ export async function reconcileCounters(): Promise<{
 
   return { scanned, drifts };
 }
-
-type AnyRow = { id: string } & Record<string, unknown>;
 
 async function compareAll(
   table: string,

@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import { ALLOWED_MIME_TYPE_LIST } from '@/lib/utils/file-upload';
 
-/**
- * File upload validation schemas
- */
 export const fileUploadSchema = z.object({
   files: z
     .array(
@@ -33,9 +30,6 @@ export const uploadResponseSchema = z.object({
     .max(10, 'Maximum 10 files allowed'),
 });
 
-/**
- * Thread schemas
- */
 export const createThreadRequestSchema = z.object({
   name: z
     .string()
@@ -50,9 +44,8 @@ export const createThreadRequestSchema = z.object({
     .max(480, 'Description must be less than 480 characters')
     .optional()
     .or(z.literal('')),
-  // Optional poll fields
-  // pollOptions accepts a newline-separated string from the admin form textarea;
-  // the thread action transforms it into an array.
+  // pollOptions arrives as newline-separated text from the admin form textarea;
+  // the thread action splits it into an array.
   pollQuestion: z.string().min(1).max(500).optional(),
   pollOptions: z.string().optional(),
   pollExpiresAt: z.coerce.date().optional(),
@@ -82,9 +75,6 @@ export const threadDetailSchema = threadSummarySchema.extend({
   subscriptionCount: z.number().int().nonnegative().optional(),
 });
 
-/**
- * Standardized API error response
- */
 export const apiErrorSchema = z.object({
   error: z.string(),
   details: z.string().optional(),
@@ -98,9 +88,6 @@ export const apiErrorSchema = z.object({
     .optional(),
 });
 
-/**
- * Standardized API success response
- */
 export function createSuccessResponseSchema<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     success: z.literal(true),
@@ -108,9 +95,6 @@ export function createSuccessResponseSchema<T extends z.ZodTypeAny>(dataSchema: 
   });
 }
 
-/**
- * Generic action response schema
- */
 export function createActionResponseSchema<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     data: dataSchema.nullable(),
@@ -118,9 +102,6 @@ export function createActionResponseSchema<T extends z.ZodTypeAny>(dataSchema: T
   });
 }
 
-/**
- * Pagination schemas
- */
 export const paginationParamsSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
@@ -135,9 +116,6 @@ export const paginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =
     hasMore: z.boolean(),
   });
 
-/**
- * Type exports
- */
 export type FileUpload = z.infer<typeof fileUploadSchema>;
 export type UploadedFile = z.infer<typeof uploadedFileSchema>;
 export type UploadResponse = z.infer<typeof uploadResponseSchema>;

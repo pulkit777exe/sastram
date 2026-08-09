@@ -11,12 +11,10 @@ export async function withRetry<T>(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    // If external signal is already aborted, abort immediately
     if (externalSignal?.aborted) {
       controller.abort();
     }
 
-    // Link external signal to our controller
     const onExternalAbort = () => controller.abort();
     externalSignal?.addEventListener('abort', onExternalAbort, { once: true });
 

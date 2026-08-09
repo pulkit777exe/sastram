@@ -1,6 +1,6 @@
 import { Redis } from 'ioredis';
 import { logger } from '@/lib/infrastructure/logger';
-import { createRedisConnection } from '@/lib/infrastructure/redis-connection';
+import { createRedisConnection } from '@/lib/infrastructure/redis';
 
 type CacheValue = Record<string, unknown> | unknown[] | string | number | boolean | null;
 
@@ -13,13 +13,13 @@ const _memoryCache = new Map<string, { value: string; expiry: number }>();
 function getCacheClient(): Redis | null {
   if (_redis) return _redis;
 
-  const url = process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL;
-  if (!url) {
+  if (!process.env.REDIS_URL && !process.env.UPSTASH_REDIS_REST_URL) {
     logger.warn('[query-cache] No REDIS_URL configured, using in-memory fallback');
     return null;
   }
 
   try {
+    // Fail fast rather than queueing: a slow cache is worse than no cache here.
     _redis = createRedisConnection({
       label: 'query-cache',
       retryStrategy: () => null,
@@ -33,27 +33,6 @@ function getCacheClient(): Redis | null {
   }
 }
 
-function memoryGet(key: string): CacheValue | null {
-  const entry = _memoryCache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiry) {
-    _memoryCache.delete(key);
-    return null;
-  }
-  return JSON.parse(entry.value);
-}
-
-function memorySet(key: string, value: CacheValue, ttlSeconds: number): void {
-  _memoryCache.set(key, {
-    value: JSON.stringify(value),
-    expiry: Date.now() + ttlSeconds * 1000,
-  });
-}
-
-function memoryDel(key: string): void {
-  _memoryCache.delete(key);
-}
-
 function buildKey(parts: string[]): string {
   return KEY_PREFIX + parts.join(':');
 }
@@ -61,27 +40,40 @@ function buildKey(parts: string[]): string {
 export async function cacheGet<T = CacheValue>(keyParts: string[]): Promise<T | null> {
   const key = buildKey(keyParts);
   const client = getCacheClient();
+
   if (!client) {
-    return (memoryGet(key) as T) ?? null;
+    const entry = _memoryCache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiry) {
+      _memoryCache.delete(key);
+      return null;
+    }
+    return JSON.parse(entry.value) as T;
   }
+
   try {
     const raw = await client.get(key);
-    if (raw === null) return null;
-    return JSON.parse(raw) as T;
+    return raw === null ? null : (JSON.parse(raw) as T);
   } catch (err) {
     logger.error('[query-cache] cacheGet error', { key, error: (err as Error).message });
     return null;
   }
 }
 
-export async function cacheSet(keyParts: string[], value: CacheValue, ttlSeconds: number = DEFAULT_TTL_SECONDS): Promise<void> {
+export async function cacheSet(
+  keyParts: string[],
+  value: CacheValue,
+  ttlSeconds: number = DEFAULT_TTL_SECONDS
+): Promise<void> {
   const key = buildKey(keyParts);
   const client = getCacheClient();
   const serialized = JSON.stringify(value);
+
   if (!client) {
-    memorySet(key, value, ttlSeconds);
+    _memoryCache.set(key, { value: serialized, expiry: Date.now() + ttlSeconds * 1000 });
     return;
   }
+
   try {
     await client.setex(key, ttlSeconds, serialized);
   } catch (err) {
@@ -92,8 +84,9 @@ export async function cacheSet(keyParts: string[], value: CacheValue, ttlSeconds
 export async function cacheDel(keyParts: string[]): Promise<void> {
   const key = buildKey(keyParts);
   const client = getCacheClient();
-  memoryDel(key);
+  _memoryCache.delete(key);
   if (!client) return;
+
   try {
     await client.del(key);
   } catch (err) {
@@ -108,6 +101,7 @@ export async function cacheWrap<T = CacheValue>(
 ): Promise<T> {
   const cached = await cacheGet<T>(keyParts);
   if (cached !== null) return cached;
+
   const value = await fn();
   await cacheSet(keyParts, value as CacheValue, ttlSeconds);
   return value;
@@ -115,23 +109,22 @@ export async function cacheWrap<T = CacheValue>(
 
 export async function invalidatePattern(pattern: string): Promise<void> {
   const client = getCacheClient();
+  const prefix = KEY_PREFIX + pattern;
+
   if (!client) {
     for (const key of _memoryCache.keys()) {
-      if (key.startsWith(KEY_PREFIX + pattern)) {
-        _memoryCache.delete(key);
-      }
+      if (key.startsWith(prefix)) _memoryCache.delete(key);
     }
     return;
   }
+
   try {
+    // SCAN rather than KEYS — this runs against a shared Redis in production.
     let cursor = '0';
     do {
-      const result = await (client as Redis).scan(cursor, 'MATCH', KEY_PREFIX + pattern + '*', 'COUNT', 100);
-      cursor = result[0];
-      const keys = result[1];
-      if (keys.length > 0) {
-        await client.del(...keys);
-      }
+      const [next, keys] = await client.scan(cursor, 'MATCH', `${prefix}*`, 'COUNT', 100);
+      cursor = next;
+      if (keys.length > 0) await client.del(...keys);
     } while (cursor !== '0');
   } catch (err) {
     logger.error('[query-cache] invalidatePattern error', { pattern, error: (err as Error).message });

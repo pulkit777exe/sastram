@@ -20,16 +20,6 @@ interface EmailOptions {
   data?: Record<string, string>;
 }
 
-async function enqueueEmailJob(payload: EmailJobData) {
-  await enqueueJob('email', payload as unknown as Record<string, unknown>);
-
-  logger.info(
-    `Queued email job (${payload.type || 'email'}) for ${Array.isArray(payload.to) ? payload.to.join(', ') : payload.to}`
-  );
-
-  return { id: `email-${Date.now()}` };
-}
-
 export async function sendEmail({
   to,
   subject,
@@ -40,18 +30,15 @@ export async function sendEmail({
   templateId,
   data,
 }: EmailOptions) {
-  const job = await enqueueEmailJob({
-    to,
-    subject,
-    text,
-    from,
-    type,
-    metadata,
-    templateId,
-    data,
-  });
+  const payload: EmailJobData = { to, subject, text, from, type, metadata, templateId, data };
+  await enqueueJob('email', payload as unknown as Record<string, unknown>);
 
-  return { id: String(job.id) };
+  logger.info(
+    `Queued email job (${type}) for ${Array.isArray(to) ? to.join(', ') : to}`
+  );
+
+  // The real provider id only exists once the job runs; this is a queue receipt.
+  return { id: `email-${Date.now()}` };
 }
 
 export async function sendEmailNow({
@@ -77,7 +64,6 @@ export async function sendEmailNow({
       return { id: 'dev-noop' };
     }
 
-
     const baseOpts = { from, to: toAddresses, subject };
 
     const payload: CreateEmailOptions = templateId && data
@@ -91,9 +77,7 @@ export async function sendEmailNow({
       throw new Error(error.message);
     }
 
-    logger.info(
-      `Email sent successfully to ${toAddresses.join(', ')} (id: ${result?.id})`
-    );
+    logger.info(`Email sent successfully to ${toAddresses.join(', ')} (id: ${result?.id})`);
 
     return { id: result?.id || 'unknown' };
   } catch (error) {
@@ -102,53 +86,47 @@ export async function sendEmailNow({
   }
 }
 
+const OTP_COPY = {
+  'sign-in': {
+    title: 'Sign In to Sastram',
+    subtitle: 'Your one-time password is ready',
+    action: 'sign in',
+    subject: 'Your Sastram Sign-In Code',
+  },
+  'email-verification': {
+    title: 'Verify Your Email',
+    subtitle: 'Confirm your email address',
+    action: 'email verification',
+    subject: 'Verify Your Sastram Email',
+  },
+  'forget-password': {
+    title: 'Reset Your Password',
+    subtitle: 'Password recovery request',
+    action: 'password reset',
+    subject: 'Your Sastram password reset code',
+  },
+  'change-email': {
+    title: 'Update Your Email',
+    subtitle: 'Email change request',
+    action: 'email change',
+    subject: 'Verify Your Sastram Email Change',
+  },
+} as const;
+
 export async function sendOTPEmail(
   to: string,
   otp: string,
-  type: 'sign-in' | 'email-verification' | 'forget-password' | 'change-email'
+  type: keyof typeof OTP_COPY
 ) {
-  const typeConfig = {
-    'sign-in': {
-      title: 'Sign In to Sastram',
-      subtitle: 'Your one-time password is ready',
-      action: 'sign in',
-      subject: 'Your Sastram Sign-In Code',
-    },
-    'email-verification': {
-      title: 'Verify Your Email',
-      subtitle: 'Confirm your email address',
-      action: 'email verification',
-      subject: 'Verify Your Sastram Email',
-    },
-    'forget-password': {
-      title: 'Reset Your Password',
-      subtitle: 'Password recovery request',
-      action: 'password reset',
-      subject: 'Your Sastram password reset code',
-    },
-    'change-email': {
-      title: 'Update Your Email',
-      subtitle: 'Email change request',
-      action: 'email change',
-      subject: 'Verify Your Sastram Email Change',
-    },
-  };
-
-  const config = typeConfig[type];
+  const { title, subtitle, action, subject } = OTP_COPY[type];
 
   return sendEmail({
     to,
-    subject: config.subject,
+    subject,
     type: `otp-${type}`,
     metadata: { otpType: type },
     templateId: env.RESEND_TEMPLATE_OTP,
-    data: {
-      title: config.title,
-      subtitle: config.subtitle,
-      action: config.action,
-      otp,
-      appUrl: env.NEXT_PUBLIC_APP_URL,
-    },
+    data: { title, subtitle, action, otp, appUrl: env.NEXT_PUBLIC_APP_URL },
   });
 }
 

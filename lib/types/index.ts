@@ -1,10 +1,3 @@
-export interface User {
-  id: string;
-  name: string | null;
-  email: string;
-  image: string | null;
-}
-
 export interface Sender {
   id: string;
   name: string | null;
@@ -37,6 +30,7 @@ export interface Message {
   updatedAt: Date;
   deletedAt: Date | null;
 
+  // Null once the author is soft-deleted; render as a deleted/anonymous user.
   sender: Sender | null;
   thread: {
     id: string;
@@ -69,55 +63,6 @@ export interface PollVote {
   createdAt: Date;
 }
 
-export interface Topic {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  createdAt: Date;
-}
-
-export interface WebSocketMessage {
-  type: WebSocketEventType;
-  payload: {
-    sectionId: string;
-    [key: string]: unknown;
-  };
-}
-
-export type WebSocketEventType =
-  | 'NEW_MESSAGE'
-  | 'MESSAGE_DELETED'
-  | 'MESSAGE_EDITED'
-  | 'MESSAGE_QUEUED'
-  | 'MENTION_NOTIFICATION'
-  | 'REACTION_UPDATE'
-  | 'PIN_UPDATE';
-
-export interface MentionData {
-  messageId: string;
-  mentionedUserId: string;
-  mentionedBy: string;
-  mentionedByName: string;
-  sectionId: string;
-  content: string;
-  parentId?: string;
-}
-
-/** How the @sai inline reply for a just-posted message will be delivered. */
-export type AiInlineDelivery = 'streaming' | 'queued' | 'limited' | null;
-
-export interface AiInlineMeta {
-  aiInline?: AiInlineDelivery;
-}
-
-export interface AttachmentInput {
-  url: string;
-  type: string;
-  name: string | null;
-  size: number | null;
-}
-
 export interface Reaction {
   id: string;
   emoji: string;
@@ -133,7 +78,9 @@ export interface ReadReceipt {
   readAt: Date;
 }
 
-export type ActionResponse<T = unknown> = {
-  data: T | null;
-  error: string | null;
-};
+/** How the @sai inline reply for a just-posted message will be delivered. */
+export type AiInlineDelivery = 'streaming' | 'queued' | 'limited' | null;
+
+export interface AiInlineMeta {
+  aiInline?: AiInlineDelivery;
+}

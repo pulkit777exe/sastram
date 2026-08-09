@@ -8,7 +8,6 @@ import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { NotificationType } from '@prisma/client';
 import { isQuotaError } from '@/lib/utils/errors';
 import { notifyMultipleUsers } from '@/modules/notifications';
-import { emitThreadMessage } from '@/modules/ws';
 import { enqueueJob } from '@/lib/services/queue';
 import { AIJobType } from '../config';
 import type {
@@ -31,30 +30,30 @@ async function assertSpendCapAvailable(): Promise<void> {
   }
 }
 
-export async function handleThreadSummaryJob(data: ThreadSummaryJobData) {
-  logger.info(`[worker:ai] thread-summary job`);
-  const { threadId, messages } = data;
-  if (!threadId || !messages) {
+// Job payloads arrive as untyped JSON from QStash, so the required fields are
+// re-checked at the boundary rather than trusted from the type signature.
+function assertThreadJob(data: { threadId?: string; messages?: unknown }) {
+  if (!data.threadId || !data.messages) {
     throw new Error('Missing required fields: threadId and messages');
   }
-  return generateThreadSummary(threadId, messages);
+}
+
+export async function handleThreadSummaryJob(data: ThreadSummaryJobData) {
+  logger.info('[worker:ai] thread-summary job');
+  assertThreadJob(data);
+  return generateThreadSummary(data.threadId, data.messages);
 }
 
 export async function handleThreadDnaJob(data: ThreadDnaJobData) {
-  logger.info(`[worker:ai] thread-dna job`);
-  const { threadId, messages } = data;
-  if (!threadId || !messages) {
-    throw new Error('Missing required fields: threadId and messages');
-  }
-  return generateThreadDNA(threadId, messages);
+  logger.info('[worker:ai] thread-dna job');
+  assertThreadJob(data);
+  return generateThreadDNA(data.threadId, data.messages);
 }
 
 export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
-  logger.info(`[worker:ai] resolution-score job`);
+  logger.info('[worker:ai] resolution-score job');
+  assertThreadJob(data);
   const { threadId, messages, subscriberIds, threadName, oldScore, isOutdated, cronJob } = data;
-  if (!threadId || !messages) {
-    throw new Error('Missing required fields: threadId and messages');
-  }
 
   const resolutionScore = await calculateResolutionScore(threadId, messages);
 
@@ -81,11 +80,9 @@ export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
 }
 
 export async function handleConflictDetectionJob(data: ConflictDetectionJobData) {
-  logger.info(`[worker:ai] conflict-detection job`);
+  logger.info('[worker:ai] conflict-detection job');
+  assertThreadJob(data);
   const { threadId, messages, subscriberIds, threadName, oldScore, cronJob } = data;
-  if (!threadId || !messages) {
-    throw new Error('Missing required fields: threadId and messages');
-  }
 
   const { conflictResult } = await detectConflicts(threadId, messages);
 
@@ -110,7 +107,7 @@ export async function handleConflictDetectionJob(data: ConflictDetectionJobData)
 }
 
 export async function handleDailyDigestJob(data: DailyDigestJobData) {
-  logger.info(`[worker:ai] daily-digest job`);
+  logger.info('[worker:ai] daily-digest job');
   const { messages, subscriberIds } = data;
   if (!messages || !subscriberIds) {
     throw new Error('Missing required fields: messages and subscriberIds');
@@ -119,7 +116,7 @@ export async function handleDailyDigestJob(data: DailyDigestJobData) {
 }
 
 export async function handleAIInsightNotificationsJob(data: AIInsightNotificationJobData) {
-  logger.info(`[worker:ai] ai-insight-notifications job`);
+  logger.info('[worker:ai] ai-insight-notifications job');
   const { subscriberIds, threadId, threadName, oldScore, newScore, isOutdated, conflictResult } =
     data;
   if (!subscriberIds || !threadId || !threadName) {
@@ -227,7 +224,7 @@ async function handleStalenessBatchCheck() {
 }
 
 export async function handleAIInlineJob(data: AIInlineJobData) {
-  logger.info(`[worker:ai] ai-inline job`);
+  logger.info('[worker:ai] ai-inline job');
   const { messageId, threadId, query } = data;
   if (!messageId || !threadId || !query) {
     throw new Error('Missing required fields: messageId, threadId, query');
@@ -236,11 +233,9 @@ export async function handleAIInlineJob(data: AIInlineJobData) {
 }
 
 /**
- * Runs an AI generation step. Provider quota/rate-limit errors (429) are treated
- * as terminal: the failure is logged and the job returns without rethrowing, so
- * `/api/jobs` responds 200 and QStash does NOT retry a failure that won't resolve
- * within the retry window (avoiding a 3x retry storm that only amplifies the
- * limit). Any other error still propagates so it surfaces for investigation.
+ * Quota/rate-limit errors (429) are swallowed rather than rethrown so `/api/jobs`
+ * answers 200 and QStash skips its 3x retry — the limit won't clear inside the
+ * retry window and retrying only amplifies it. Other errors still propagate.
  */
 async function runAiGeneration<T>(
   label: string,
@@ -332,10 +327,7 @@ async function detectConflicts(threadId: string, messages: JobMessageData[]) {
   if (conflictResult.hasConflict) {
     await prisma.thread.update({
       where: { id: threadId },
-      data: {
-        isOutdated: true,
-        lastVerifiedAt: new Date(),
-      },
+      data: { isOutdated: true, lastVerifiedAt: new Date() },
     });
   }
   return { conflictResult };
@@ -367,18 +359,11 @@ async function sendAIInsightNotifications(
 ) {
   logger.info(`Sending AI insight notifications for thread: ${threadId}`);
 
-  const notifications: Array<{
-    userIds: string[];
-    type: typeof NotificationType.AI_INSIGHT;
-    title: string;
-    message: string;
-    data: Record<string, unknown>;
-  }> = [];
+  const notifications: Array<{ title: string; message: string; data: Record<string, unknown> }> = [];
 
+  // Only a meaningful swing is worth interrupting subscribers over.
   if (oldScore != null && newScore != null && Math.abs(newScore - oldScore) >= 20) {
     notifications.push({
-      userIds: subscriberIds,
-      type: NotificationType.AI_INSIGHT,
       title: `Resolution score updated for "${threadName}"`,
       message: `The resolution score for this thread has changed from ${oldScore} to ${newScore}.`,
       data: { threadId, threadName, oldScore, newScore, type: 'resolution_score_change' },
@@ -387,8 +372,6 @@ async function sendAIInsightNotifications(
 
   if (isOutdated) {
     notifications.push({
-      userIds: subscriberIds,
-      type: NotificationType.AI_INSIGHT,
       title: `Thread "${threadName}" may be outdated`,
       message: "This thread hasn't been updated in over a week and may contain outdated information.",
       data: { threadId, threadName, type: 'thread_outdated' },
@@ -397,8 +380,6 @@ async function sendAIInsightNotifications(
 
   if (conflictResult?.hasConflict) {
     notifications.push({
-      userIds: subscriberIds,
-      type: NotificationType.AI_INSIGHT,
       title: `Conflict detected in "${threadName}"`,
       message: conflictResult.reason || 'A conflict has been detected in this thread.',
       data: {
@@ -410,14 +391,8 @@ async function sendAIInsightNotifications(
     });
   }
 
-  for (const notification of notifications) {
-    await notifyMultipleUsers(
-      notification.userIds,
-      notification.type,
-      notification.title,
-      notification.message,
-      notification.data,
-    );
+  for (const { title, message, data } of notifications) {
+    await notifyMultipleUsers(subscriberIds, NotificationType.AI_INSIGHT, title, message, data);
   }
 
   return { notificationsSent: notifications.length };
@@ -442,65 +417,49 @@ async function generateAIInlineResponse(
   // along the way (spend cap, quota, auth, network) must NOT crash the job or
   // leave a broken empty message — we write a clear placeholder and return 200 so
   // QStash does not retry a failure the user has already seen.
-  let aiMessage: { id: string; content: string; createdAt: Date; parentId: string | null; depth: number } | null = null;
-  let aiUser: { id: string; name: string | null; image: string | null } | null = null;
+  let aiMessage: { id: string } | null = null;
 
   try {
     await assertSpendCapAvailable();
 
-    // Dedup: check if an AI response already exists for this parent message (e.g. from a previous job attempt)
+    // A previous attempt may have already created the placeholder message;
+    // reuse it so a retry doesn't post a second reply.
     const existingAiMessage = await prisma.message.findFirst({
-      where: {
-        threadId,
-        parentId: parentMessage.id,
-        isAiResponse: true,
-      },
-      select: { id: true, createdAt: true, parentId: true, depth: true, content: true },
+      where: { threadId, parentId: parentMessage.id, isAiResponse: true },
+      select: { id: true },
       orderBy: { createdAt: 'desc' },
     });
 
     const context = await fetchThreadContext(threadId);
-    aiUser = await getOrCreateAiUser();
 
-    let isRetry = false;
     if (existingAiMessage) {
       logger.info(`[worker:ai] Reusing existing AI message ${existingAiMessage.id} for parent ${messageId} (retry)`);
       aiMessage = existingAiMessage;
-      isRetry = true;
     } else {
+      const aiUser = await getOrCreateAiUser();
       aiMessage = await createAiMessage(threadId, parentMessage.id, (parentMessage.depth ?? 0) + 1, aiUser.id);
     }
 
-    if (!isRetry) {
-      emitAiMessage(threadId, aiMessage, aiUser, false);
-    }
-
-    const { content: finalContent, truncated } = await streamAiResponse(threadId, query, context, aiMessage, aiUser);
-    emitAiMessage(threadId, { ...aiMessage, content: finalContent }, aiUser, true, truncated);
+    await streamAiResponse(query, context, aiMessage);
   } catch (error) {
     logger.error('[worker:ai] AI inline generation failed:', error);
 
     const isCapOrQuota =
       isQuotaError(error) || /spend cap/i.test(error instanceof Error ? error.message : '');
-    const errorMessage = isCapOrQuota
-      ? "I'm temporarily over my AI quota, so I couldn't reply just now. Please try again later."
-      : "Sorry, I couldn't generate a response right now. Please try again later.";
 
     if (aiMessage) {
       await prisma.message.update({
         where: { id: aiMessage.id },
-        data: { content: errorMessage },
+        data: {
+          content: isCapOrQuota
+            ? "I'm temporarily over my AI quota, so I couldn't reply just now. Please try again later."
+            : "Sorry, I couldn't generate a response right now. Please try again later.",
+        },
       });
-      emitAiMessage(
-        threadId,
-        { ...aiMessage, content: errorMessage },
-        aiUser ?? { id: 'ai@sastram.system', name: 'Sastram AI', image: null },
-        true,
-      );
     }
   }
 
-  logger.info(`[worker:ai] AI inline job complete`);
+  logger.info('[worker:ai] AI inline job complete');
   return { queued: true, handled: true, aiMessageId: aiMessage?.id };
 }
 
@@ -542,9 +501,8 @@ async function createAiMessage(
   depth: number,
   senderId: string,
 ) {
-  // Atomic: create AI message + bump parent replyCount + bump thread messageCount.
-  // Matches the pattern used by moderation.ts:337-361 for user-posted replies so
-  // both paths keep denormalized counters in sync with a single transaction.
+  // Create + counter bumps share a transaction so the denormalized counts stay
+  // in sync, mirroring what MessageService.processMessage does for user replies.
   return prisma.$transaction(async (tx) => {
     const msg = await tx.message.create({
       data: {
@@ -580,45 +538,18 @@ async function createAiMessage(
   });
 }
 
-function emitAiMessage(
-  threadId: string,
-  message: { id: string; content: string; parentId: string | null; depth: number; createdAt: Date },
-  aiUser: { id: string; name: string | null; image: string | null },
-  isComplete: boolean,
-  truncated = false,
-) {
-  emitThreadMessage(threadId, {
-    id: message.id,
-    content: message.content,
-    senderId: aiUser.id,
-    senderName: aiUser.name ?? 'Sastram AI',
-    senderImage: aiUser.image ?? null,
-    createdAt: message.createdAt,
-    threadId,
-    parentId: message.parentId ?? null,
-    depth: message.depth ?? 0,
-    likeCount: 0,
-    replyCount: 0,
-    isAiResponse: true,
-    isComplete,
-    truncated,
-    reactions: [],
-    attachments: [],
-  });
-}
+// Partial content is flushed to the DB as it streams so a reader polling the
+// message sees it grow, rather than waiting for the whole generation.
+const DB_THROTTLE_MS = 500;
+const MAX_AI_REPLY_CHARS = 2000;
 
 async function streamAiResponse(
-  threadId: string,
   query: string,
   context: string,
-  aiMessage: { id: string; createdAt: Date; parentId: string | null; depth: number },
-  aiUser: { id: string; name: string | null; image: string | null },
-): Promise<{ content: string; truncated: boolean }> {
+  aiMessage: { id: string },
+): Promise<void> {
   let fullContent = '';
   let lastDbUpdateTime = Date.now();
-  let lastEmitTime = Date.now();
-  const DB_THROTTLE_MS = 500;
-  const EMIT_THROTTLE_MS = 100;
 
   await aiService.generateStreamingResponse(
     `Answer this forum question in under 200 words and stay grounded in thread context.${DATA_ONLY_INSTRUCTION}\nQuestion: ${wrapUserContent(query)}\n\nRecent thread context:\n${wrapUserContent(context)}`,
@@ -628,23 +559,16 @@ async function streamAiResponse(
       if (now - lastDbUpdateTime >= DB_THROTTLE_MS) {
         await prisma.message.update({
           where: { id: aiMessage.id },
-          data: { content: fullContent.slice(0, 2000) },
+          data: { content: fullContent.slice(0, MAX_AI_REPLY_CHARS) },
         });
         lastDbUpdateTime = now;
-      }
-      if (now - lastEmitTime >= EMIT_THROTTLE_MS) {
-        emitAiMessage(threadId, { ...aiMessage, content: fullContent.slice(0, 2000) }, aiUser, false);
-        lastEmitTime = now;
       }
     },
   );
 
-  const truncated = fullContent.length > 2000;
-  const finalContent = fullContent.slice(0, 2000);
-  const { sanitized: sanitizedContent } = sanitizeUserContent(finalContent);
+  const { sanitized } = sanitizeUserContent(fullContent.slice(0, MAX_AI_REPLY_CHARS));
   await prisma.message.update({
     where: { id: aiMessage.id },
-    data: { content: sanitizedContent },
+    data: { content: sanitized },
   });
-  return { content: sanitizedContent, truncated };
 }

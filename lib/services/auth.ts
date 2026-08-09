@@ -8,6 +8,34 @@ import { logger } from '@/lib/infrastructure/logger';
 
 const env = getEnv();
 
+function buildSocialProviders() {
+  const providers: Record<string, { clientId: string; clientSecret: string }> = {};
+
+  // Half-configured OAuth is worse than none — it fails at the callback with a
+  // confusing provider error, so refuse to boot instead.
+  const candidates = [
+    ['google', 'Google', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
+    ['github', 'GitHub', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'],
+  ] as const;
+
+  for (const [name, label, idKey, secretKey] of candidates) {
+    const clientId = env[idKey]?.trim();
+    const clientSecret = env[secretKey]?.trim();
+    if (!clientId && !clientSecret) continue;
+
+    if (!clientId || !clientSecret) {
+      throw new Error(`${label} OAuth requires both ${idKey} and ${secretKey}`);
+    }
+    providers[name] = { clientId, clientSecret };
+  }
+
+  if (process.env.NODE_ENV === 'production' && Object.keys(providers).length === 0) {
+    logger.warn('No social providers configured - only email OTP authentication available');
+  }
+
+  return providers;
+}
+
 export const auth = betterAuth({
   baseURL: env.NEXT_PUBLIC_APP_URL,
   secret: env.BETTER_AUTH_SECRET,
@@ -51,34 +79,7 @@ export const auth = betterAuth({
   advancedCookies: {
     useSecureCookies: process.env.NODE_ENV === 'production',
   },
-  socialProviders: (() => {
-    const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
-
-    const googleId = env.GOOGLE_CLIENT_ID?.trim();
-    const googleSecret = env.GOOGLE_CLIENT_SECRET?.trim();
-    const githubId = env.GITHUB_CLIENT_ID?.trim();
-    const githubSecret = env.GITHUB_CLIENT_SECRET?.trim();
-
-    if (googleId || googleSecret) {
-      if (!googleId || !googleSecret) {
-        throw new Error('Google OAuth requires both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
-      }
-      socialProviders.google = { clientId: googleId, clientSecret: googleSecret };
-    }
-
-    if (githubId || githubSecret) {
-      if (!githubId || !githubSecret) {
-        throw new Error('GitHub OAuth requires both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET');
-      }
-      socialProviders.github = { clientId: githubId, clientSecret: githubSecret };
-    }
-
-    if (process.env.NODE_ENV === 'production' && Object.keys(socialProviders).length === 0) {
-      logger.warn('No social providers configured - only email OTP authentication available');
-    }
-
-    return socialProviders;
-  })(),
+  socialProviders: buildSocialProviders(),
   plugins: [
     oAuthProxy({
       currentURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
@@ -94,6 +95,7 @@ export const auth = betterAuth({
           logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
         }
 
+        // In development the logged code above is the delivery mechanism.
         if (process.env.NODE_ENV === 'development') {
           return;
         }

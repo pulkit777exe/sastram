@@ -56,6 +56,15 @@ export type ModerationResult = {
   pendingModeration?: boolean;
 };
 
+// Auto-mod reports and bans need an actor row; this is that placeholder.
+async function getSystemUser() {
+  return prisma.user.upsert({
+    where: { email: 'system@sastram.com' },
+    create: { email: 'system@sastram.com', name: 'System', role: 'ADMIN' },
+    update: {},
+  });
+}
+
 export class RateLimitFilter {
   async check(message: MessageLike, _context: ConversationContext): Promise<ModerationResult> {
     const result = await messageLimiter.check(message.authorId);
@@ -75,8 +84,8 @@ type CompiledRule = { regex: RegExp; action: string; severity: string; category:
 type RawRule = { id: string; pattern: string; action: string; severity: string; category: string };
 
 export class RegexFilter {
-  private rulesCache: { rules: RawRule[]; compiledRules: Map<string, CompiledRule>; timestamp: number } | null = null;
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private rulesCache: { compiledRules: Map<string, CompiledRule>; timestamp: number } | null = null;
+  private readonly CACHE_TTL = 5 * 60 * 1000;
 
   async check(message: MessageLike): Promise<ModerationResult> {
     let compiledRules = this.getCompiledRulesFromCache();
@@ -87,48 +96,38 @@ export class RegexFilter {
       compiledRules = this.cacheRules(rules);
     }
 
-    for (const [ruleId, { regex, action, severity, category }] of compiledRules) {
+    // Attachment filenames are checked too — they render in the UI and are an
+    // easy way to smuggle banned text past a content-only filter.
+    const subjects = [
+      message.content,
+      ...(message.attachments ?? []).map((att) => att.name).filter((n): n is string => !!n),
+    ];
+
+    for (const subject of subjects) {
+      const match = this.firstMatch(compiledRules, subject);
+      if (match) {
+        return {
+          success: false,
+          action: match.action as 'BLOCK' | 'REVIEW' | 'FLAG',
+          severity: match.severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
+          reason: `Matched rule: ${match.category}`,
+        };
+      }
+    }
+
+    return { success: true, action: 'ALLOW' };
+  }
+
+  private firstMatch(rules: Map<string, CompiledRule>, text: string): CompiledRule | null {
+    for (const [ruleId, rule] of rules) {
       try {
-        if (regex.test(message.content)) {
-          return {
-            success: false,
-            action: action as 'BLOCK' | 'REVIEW' | 'FLAG',
-            severity: severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
-            reason: `Matched rule: ${category}`,
-          };
-        }
+        if (rule.regex.test(text)) return rule;
       } catch (error) {
+        // A pathological pattern shouldn't take the whole filter down.
         logger.warn(`Invalid regex pattern for rule ${ruleId}:`, error);
-        continue;
       }
     }
-
-    if (message.attachments) {
-      for (const att of message.attachments) {
-        if (att.name) {
-          for (const [ruleId, { regex, action, severity, category }] of compiledRules) {
-            try {
-              if (regex.test(att.name)) {
-                return {
-                  success: false,
-                  action: action as 'BLOCK' | 'REVIEW' | 'FLAG',
-                  severity: severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
-                  reason: `Matched rule: ${category}`,
-                };
-              }
-            } catch (error) {
-              logger.warn(`Invalid regex pattern for rule ${ruleId}:`, error);
-              continue;
-            }
-          }
-        }
-      }
-    }
-
-    return {
-      success: true,
-      action: 'ALLOW',
-    };
+    return null;
   }
 
   private getCompiledRulesFromCache(): Map<string, CompiledRule> | null {
@@ -155,11 +154,7 @@ export class RegexFilter {
         logger.warn(`Failed to compile regex for rule ${rule.id}:`, error);
       }
     }
-    this.rulesCache = {
-      rules,
-      compiledRules,
-      timestamp: Date.now(),
-    };
+    this.rulesCache = { compiledRules, timestamp: Date.now() };
     return compiledRules;
   }
 }
@@ -184,9 +179,8 @@ export class MLClassifier {
     }
 
     try {
-      // Spend-cap gate: count moderation AI against the global $5/day cap.
-      // TEXT_TOXICITY_MODERATION is classified as CHEAP so the gate
-      // itself is a pass-through, but consumeSpendCap ensures we account for the cost.
+      // Moderation is classified CHEAP so the cost gate always passes, but the
+      // spend still has to be accounted against the global daily cap.
       await consumeSpendCap(classifyAiCallCost(AiCallPath.TEXT_TOXICITY_MODERATION).estimatedCostUsd);
 
       const threadText =
@@ -196,41 +190,26 @@ export class MLClassifier {
           .join('\n') + `\nNew message: ${message.content}`;
 
       let toxicity = 0;
-
       try {
         toxicity = await aiService.classifyToxicity(threadText);
       } catch (error) {
         logger.warn('Could not analyze content, defaulting to safe:', error);
-        toxicity = 0;
       }
 
       const confidence = Math.min(1, Math.max(0, toxicity));
       const threshold = env.MODERATION_CONFIDENCE_THRESHOLD || 0.7;
 
-      let action: 'ALLOW' | 'BLOCK' | 'REVIEW' | 'FLAG' = 'ALLOW';
-      let severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
-      const categories: string[] = [];
-
       if (confidence >= 0.9) {
-        action = 'BLOCK';
-        severity = 'HIGH';
-        categories.push('toxicity', 'harmful');
-      } else if (confidence >= threshold) {
-        action = 'REVIEW';
-        severity = 'MEDIUM';
-        categories.push('potential-violation');
-      } else if (confidence >= 0.5) {
-        action = 'FLAG';
-        severity = 'LOW';
-        categories.push('review-suggested');
+        return { action: 'BLOCK', severity: 'HIGH', confidence, categories: ['toxicity', 'harmful'] };
+      }
+      if (confidence >= threshold) {
+        return { action: 'REVIEW', severity: 'MEDIUM', confidence, categories: ['potential-violation'] };
+      }
+      if (confidence >= 0.5) {
+        return { action: 'FLAG', severity: 'LOW', confidence, categories: ['review-suggested'] };
       }
 
-      return {
-        action,
-        severity,
-        confidence,
-        categories,
-      };
+      return { action: 'ALLOW', severity: 'LOW', confidence, categories: [] };
     } catch (error) {
       logger.error('ML classifier error:', error);
       return {
@@ -255,19 +234,14 @@ export class ContextualAnalyzer {
         (message.content.match(/[A-Z]/g) || []).length > message.content.length * 0.6 &&
         message.content.length > 10;
 
-      let escalatingTone = false;
-      if (recentMessages.length > 2) {
-        const avgLength =
-          recentMessages.reduce((sum, m) => sum + m.content.length, 0) / recentMessages.length;
-        if (message.content.length > avgLength * 1.5) {
-          escalatingTone = true;
-        }
-      }
-
-      const shouldEscalate = hasExcessiveCaps || escalatingTone;
+      // A message much longer than the recent average often means a rant.
+      const avgLength = recentMessages.length
+        ? recentMessages.reduce((sum, m) => sum + m.content.length, 0) / recentMessages.length
+        : 0;
+      const escalatingTone = recentMessages.length > 2 && message.content.length > avgLength * 1.5;
 
       return {
-        shouldEscalate,
+        shouldEscalate: hasExcessiveCaps || escalatingTone,
         reason: hasExcessiveCaps
           ? 'excessive-caps'
           : escalatingTone
@@ -299,9 +273,9 @@ export class MessageModerationPipeline {
     }
 
     const mlResult = await this.mlClassifier.analyze(message, context);
-
     const ctxResult = await this.contextualAnalyzer.analyze(message, context);
 
+    // Start from the regex verdict, then let ML and context only escalate it.
     let finalAction: 'ALLOW' | 'BLOCK' | 'REVIEW' | 'FLAG' = regexResult.action;
     let severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = regexResult.severity || 'LOW';
     const confidence: number = mlResult.confidence;
@@ -339,26 +313,8 @@ export class MessageService {
   ): Promise<ModerationResult> {
     const result = await this.pipeline.process(message, context);
 
-    let dbMessageId: string | undefined;
-    let createdMessage: {
-      id: string;
-      content: string;
-      threadId: string;
-      senderId: string | null;
-      parentId: string | null;
-      depth: number;
-      createdAt: Date;
-      updatedAt: Date;
-      attachments?: Array<{
-        id: string;
-        url: string;
-        type: string;
-        name: string | null;
-        size: bigint | null;
-      }>;
-    } | null = null;
-
     try {
+      // Replies are nested at most 4 deep; beyond that they flatten onto the parent.
       let depth = 0;
       if (message.parentId) {
         const parent = await prisma.message.findUnique({
@@ -420,19 +376,8 @@ export class MessageService {
         return msg;
       });
 
-      dbMessageId = created.id;
-      createdMessage = created;
-
       if (result.action !== 'ALLOW') {
-        const systemUser = await prisma.user.upsert({
-          where: { email: 'system@sastram.com' },
-          create: {
-            email: 'system@sastram.com',
-            name: 'System',
-            role: 'ADMIN',
-          },
-          update: {},
-        });
+        const systemUser = await getSystemUser();
 
         await prisma.report.create({
           data: {
@@ -461,59 +406,42 @@ export class MessageService {
             )
           );
         } catch (err) {
+          // The message is already stored; a failed notification shouldn't
+          // fail the post.
           logger.error('[moderation] Failed to notify moderators', err);
         }
       }
+
+      return {
+        ...result,
+        messageId: created.id,
+        message: {
+          ...created,
+          sender: null,
+          thread: null,
+          attachments: created.attachments ?? [],
+        },
+      };
     } catch (error) {
       logger.error('Message processing error:', error);
       throw new Error(
         `Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
-
-    return {
-      ...result,
-      messageId: dbMessageId,
-      message: createdMessage ? {
-        ...createdMessage,
-        sender: null,
-        thread: null,
-        attachments: createdMessage.attachments?.map((a: { id: string; url: string; type: string; name: string | null; size: bigint | null }) => ({
-          id: a.id,
-          url: a.url,
-          type: a.type,
-          name: a.name,
-          size: a.size
-        })) ?? [],
-      } : null,
-    };
   }
 }
 
 export class ModerationDashboard {
   async getQueue(params?: { status?: string }) {
-    const whereClause: Record<string, unknown> = {
-      status: params?.status || 'PENDING',
-    };
+    const whereClause: Record<string, unknown> = { status: params?.status || 'PENDING' };
 
     return prisma.report.findMany({
       where: whereClause,
       include: {
         message: {
           include: {
-            sender: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            thread: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            sender: { select: { id: true, name: true, email: true } },
+            thread: { select: { id: true, name: true } },
           },
         },
       },
@@ -542,15 +470,7 @@ export class ModerationDashboard {
     });
 
     if (action === 'BLOCK') {
-      const systemUser = await prisma.user.upsert({
-        where: { email: 'system@sastram.com' },
-        create: {
-          email: 'system@sastram.com',
-          name: 'System',
-          role: 'ADMIN',
-        },
-        update: {},
-      });
+      const systemUser = await getSystemUser();
 
       await prisma.userBan.create({
         data: {

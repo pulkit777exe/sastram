@@ -1,11 +1,8 @@
 import { z } from 'zod';
 
-// Re-export from modules/messages/schemas for backward compatibility
+// Kept as re-exports so older import paths keep working.
 export { attachmentInputSchema, createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
 
-/**
- * Thread/Section creation schema
- */
 export const createThreadSchema = z.object({
   name: z
     .string()
@@ -24,17 +21,11 @@ export const createThreadSchema = z.object({
   createdBy: z.string().cuid('Invalid user ID'),
 });
 
-/**
- * Thread update schema
- */
 export const updateThreadSchema = z.object({
   name: z.string().min(3).max(100).optional(),
   description: z.string().max(480).optional(),
   aiSummary: z.string().max(2000).optional(),
 });
 
-/**
- * Type exports
- */
 export type CreateThread = z.infer<typeof createThreadSchema>;
 export type UpdateThread = z.infer<typeof updateThreadSchema>;

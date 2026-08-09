@@ -18,48 +18,40 @@ const LONG_OPAQUE_RE = /^[A-Za-z0-9_\-]{24,}\.[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-
 
 const BEARER_RE = /\bBearer\s+[A-Za-z0-9_\-\.]{8,}/gi;
 
-/**
- * Recursively scrub a value so secrets are never written to console output.
- * - Object keys matching secret patterns are replaced wholesale.
- * - Long JWT-like opaque strings in string values are replaced.
- * - `Authorization: Bearer ...` substrings in free-form text are replaced.
- * - Email values are partially masked to keep login flows debuggable without leaking addresses.
- */
+function maskEmail(email: string): string {
+  const at = email.indexOf('@');
+  const local = email.slice(0, at);
+  return `${local[0] ?? ''}${'*'.repeat(Math.max(local.length - 1, 1))}${email.slice(at)}`;
+}
+
+// Nothing reaches console without passing through here — logs end up in Vercel/Sentry,
+// so tokens, cookies and raw email addresses must never survive the trip.
 export function scrub(value: unknown, seen: WeakSet<object> = new WeakSet()): unknown {
   if (value === null || value === undefined) return value;
-  if (typeof value === 'string') {
-    let out = value.replace(BEARER_RE, 'Bearer [REDACTED]');
-    if (EMAIL_RE.test(out)) {
-      out = out.replace(EMAIL_RE, (m) => {
-        const at = m.indexOf('@');
-        const local = m.slice(0, at);
-        const domain = m.slice(at);
-        const head = local[0] ?? '';
-        return `${head}${'*'.repeat(Math.max(local.length - 1, 1))}${domain}`;
-      });
-    }
-    if (LONG_OPAQUE_RE.test(out)) {
-      return REDACTED;
-    }
-    return out;
-  }
-  if (typeof value !== 'object') return value;
-  if (seen.has(value as object)) return '[Circular]';
-  seen.add(value as object);
 
-  if (Array.isArray(value)) {
-    return value.map((item) => scrub(item, seen));
+  if (typeof value === 'string') {
+    const out = value.replace(BEARER_RE, 'Bearer [REDACTED]');
+    if (LONG_OPAQUE_RE.test(out)) return REDACTED;
+    // Emails are masked rather than dropped so login flows stay debuggable.
+    return EMAIL_RE.test(out) ? out.replace(EMAIL_RE, maskEmail) : out;
   }
+
+  if (typeof value !== 'object') return value;
+  if (seen.has(value)) return '[Circular]';
+  seen.add(value);
+
+  if (Array.isArray(value)) return value.map((item) => scrub(item, seen));
 
   const record = value as Record<string, unknown>;
   const result: Record<string, unknown> = {};
-  for (const key of Object.keys(record)) {
+  for (const [key, entry] of Object.entries(record)) {
     if (SECRET_KEY_RE.test(key)) {
       result[key] = REDACTED;
-    } else if (key === 'metadata' && record[key] && typeof record[key] === 'object') {
-      result[key] = record[key];
+    } else if (key === 'metadata' && entry && typeof entry === 'object') {
+      // `metadata` is caller-curated structured context; pass it through untouched.
+      result[key] = entry;
     } else {
-      result[key] = scrub(record[key], seen);
+      result[key] = scrub(entry, seen);
     }
   }
   return result;
@@ -68,38 +60,25 @@ export function scrub(value: unknown, seen: WeakSet<object> = new WeakSet()): un
 export function safeContext(args: unknown[]): unknown {
   if (args.length === 0) return {};
   try {
-    const merged = Object.assign({}, ...args.filter((a) => a && typeof a === 'object'));
-    return scrub(merged);
+    return scrub(Object.assign({}, ...args.filter((a) => a && typeof a === 'object')));
   } catch {
     return '[unserializable context]';
   }
 }
 
+const CONSOLE_BY_LEVEL: Record<LogLevel, (...args: unknown[]) => void> = {
+  debug: console.log,
+  info: console.info,
+  warn: console.warn,
+  error: console.error,
+};
+
 class Logger {
   private log(level: LogLevel, message: string, ...args: unknown[]) {
-    if (level === 'debug' && !isDevelopment) {
-      return;
-    }
+    if (level === 'debug' && !isDevelopment) return;
 
-    const timestamp = new Date().toISOString();
-    const context = args.length > 0 ? safeContext(args) : {};
-
-    const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-
-    switch (level) {
-      case 'error':
-        console.error(prefix, message, context);
-        break;
-      case 'warn':
-        console.warn(prefix, message, context);
-        break;
-      case 'info':
-        console.info(prefix, message, context);
-        break;
-      case 'debug':
-        console.log(prefix, message, context);
-        break;
-    }
+    const prefix = `[${new Date().toISOString()}] [${level.toUpperCase()}]`;
+    CONSOLE_BY_LEVEL[level](prefix, message, safeContext(args));
   }
 
   debug(message: string, ...args: unknown[]) {

@@ -8,8 +8,10 @@ const COST_PER_1M_TOKENS: Record<string, { input: number; output: number }> = {
   'gpt-4o': { input: 2.50, output: 10.00 },
 };
 
+const DEFAULT_RATES = COST_PER_1M_TOKENS['gemini-flash'];
+
 function estimateCost(model: string, inputTokens: number, outputTokens: number): number {
-  const rates = COST_PER_1M_TOKENS[model] ?? { input: 0.075, output: 0.30 };
+  const rates = COST_PER_1M_TOKENS[model] ?? DEFAULT_RATES;
   return (inputTokens * rates.input + outputTokens * rates.output) / 1_000_000;
 }
 
@@ -25,21 +27,14 @@ export interface LogAiUsageParams {
   errorMessage?: string;
 }
 
+/** Never throws — accounting must not break the AI call it's measuring. */
 export async function logAiUsage(params: LogAiUsageParams): Promise<void> {
   try {
-    const costUsd = estimateCost(params.model, params.inputTokens, params.outputTokens);
     await prisma.aiUsageLog.create({
       data: {
-        userId: params.userId,
-        operation: params.operation,
-        provider: params.provider,
-        model: params.model,
-        inputTokens: params.inputTokens,
-        outputTokens: params.outputTokens,
-        latencyMs: params.latencyMs,
-        costUsd,
+        ...params,
+        costUsd: estimateCost(params.model, params.inputTokens, params.outputTokens),
         success: params.success ?? true,
-        errorMessage: params.errorMessage,
       },
     });
   } catch (error) {

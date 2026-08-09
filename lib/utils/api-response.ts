@@ -46,15 +46,12 @@ export interface ApiResponse<T> {
   };
 }
 
+function metadata(requestId?: string) {
+  return { timestamp: new Date().toISOString(), requestId: requestId ?? '' };
+}
+
 export function ok<T>(data: T, requestId?: string): ApiResponse<T> {
-  return {
-    success: true,
-    data,
-    metadata: {
-      timestamp: new Date().toISOString(),
-      requestId: requestId ?? '',
-    },
-  };
+  return { success: true, data, metadata: metadata(requestId) };
 }
 
 export function fail(
@@ -65,14 +62,7 @@ export function fail(
 ): ApiResponse<null> {
   return {
     success: false,
-    error: {
-      code,
-      message,
-      details,
-    },
-    metadata: {
-      timestamp: new Date().toISOString(),
-      requestId: requestId ?? '',
-    },
+    error: { code, message, details },
+    metadata: metadata(requestId),
   };
 }

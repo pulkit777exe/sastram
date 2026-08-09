@@ -3,10 +3,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils/cn';
 
-type MarkdownToken =
-  | { type: 'text'; content: string }
-  | { type: 'code'; content: string }
-  | { type: 'mention'; content: string };
+type MarkdownToken = { type: 'text'; content: string } | { type: 'code'; content: string };
 
 function parseInlineCode(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
@@ -30,7 +27,6 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-// Language display names for code fence labels
 const LANG_DISPLAY: Record<string, string> = {
   js: 'JavaScript', javascript: 'JavaScript', jsx: 'JSX',
   ts: 'TypeScript', typescript: 'TypeScript', tsx: 'TSX',
@@ -59,37 +55,27 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // silent
+      // Clipboard denied — leave the button in its idle state.
     }
   }, [code]);
 
-  const displayLang = LANG_DISPLAY[lang.toLowerCase()] ?? (lang || null);
+  const displayLang = LANG_DISPLAY[lang.toLowerCase()] ?? lang ?? '';
 
   return (
     <div
       className="my-2.5 animate-in fade-in duration-200 rounded-lg overflow-hidden border border-border/60"
       style={{ background: 'var(--background)' }}
     >
-      {/* Code block header */}
       <div
         className="flex items-center justify-between px-3 py-1.5 border-b border-border/40"
         style={{ background: 'var(--card)' }}
       >
-        {displayLang ? (
-          <span
-            className="font-mono text-xs uppercase tracking-[0.12em] select-none"
-            style={{ color: 'var(--muted-foreground)' }}
-          >
-            {displayLang}
-          </span>
-        ) : (
-          <span
-            className="font-mono text-xs uppercase tracking-[0.12em] select-none"
-            style={{ color: 'var(--muted-foreground)' }}
-          >
-            code
-          </span>
-        )}
+        <span
+          className="font-mono text-xs uppercase tracking-[0.12em] select-none"
+          style={{ color: 'var(--muted-foreground)' }}
+        >
+          {displayLang || 'code'}
+        </span>
         <button
           type="button"
           onClick={handleCopy}
@@ -106,7 +92,6 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
             data-state={copied ? 'b' : 'a'}
             style={{ display: 'inline-grid' }}
           >
-            {/* Copy icon */}
             <svg
               data-icon="a"
               className="t-icon"
@@ -120,7 +105,6 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
               <rect x="5" y="5" width="9" height="9" rx="2" />
               <path d="M11 5V3a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
             </svg>
-            {/* Check icon */}
             <svg
               data-icon="b"
               className="t-icon"
@@ -137,7 +121,6 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      {/* Code content */}
       <pre
         className="overflow-x-auto p-3 text-xs leading-[1.6] font-mono"
         style={{ color: 'var(--foreground)', background: 'var(--background)' }}
@@ -154,26 +137,30 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
   let keyCounter = 0;
 
   while (remaining.length > 0) {
+    // Only match complete **bold** pairs — a lone '**' during streaming is left as-is
+    // until its closing pair arrives, then both are consumed on the next render.
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
-    const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
+    const codeMatch = remaining.match(/`([^`]+)`/);
     const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
     const mentionMatch = remaining.match(/@\w[\w.-]*/);
 
-    const matches = [
-      boldMatch && { type: 'bold' as const, match: boldMatch, index: boldMatch.index! },
-      italicMatch && { type: 'italic' as const, match: italicMatch, index: italicMatch.index! },
-      linkMatch && { type: 'link' as const, match: linkMatch, index: linkMatch.index! },
-      mentionMatch && { type: 'mention' as const, match: mentionMatch, index: mentionMatch.index! },
-    ].filter(Boolean) as Array<{ type: string; match: RegExpMatchArray; index: number }>;
+    // Find the earliest complete match only — skip partial markers.
+    const candidates: Array<{ type: string; match: RegExpMatchArray; index: number }> = [];
+    if (boldMatch && boldMatch.index !== undefined) candidates.push({ type: 'bold', match: boldMatch, index: boldMatch.index });
+    if (codeMatch && codeMatch.index !== undefined) candidates.push({ type: 'code', match: codeMatch, index: codeMatch.index });
+    if (linkMatch && linkMatch.index !== undefined) candidates.push({ type: 'link', match: linkMatch, index: linkMatch.index });
+    if (mentionMatch && mentionMatch.index !== undefined) candidates.push({ type: 'mention', match: mentionMatch, index: mentionMatch.index });
 
-    if (matches.length === 0) {
+    if (candidates.length === 0) {
       nodes.push(remaining);
       break;
     }
 
-    matches.sort((a, b) => a.index - b.index);
-    const earliest = matches[0];
+    candidates.sort((a, b) => a.index - b.index);
+    const earliest = candidates[0];
 
+    // Push any text before the match — strips lone '**' fragments naturally
+    // because they won't match the regex and will fall through to here.
     if (earliest.index > 0) {
       nodes.push(remaining.slice(0, earliest.index));
     }
@@ -187,11 +174,14 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
           {renderTextWithFormatting(earliest.match[1], `${keyPrefix}-b${keyCounter}`)}
         </strong>
       );
-    } else if (earliest.type === 'italic') {
+    } else if (earliest.type === 'code') {
       nodes.push(
-        <em key={`${keyPrefix}-i${keyCounter}`}>
-          {renderTextWithFormatting(earliest.match[1], `${keyPrefix}-i${keyCounter}`)}
-        </em>
+        <code
+          key={`${keyPrefix}-c${keyCounter}`}
+          className="rounded-sm px-1.5 py-0.5 text-[0.88em] font-mono bg-brand/10 text-brand"
+        >
+          {earliest.match[1]}
+        </code>
       );
     } else if (earliest.type === 'link') {
       const linkText = earliest.match[1];
@@ -213,7 +203,6 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
         nodes.push(`[${linkText}](${url})`);
       }
     } else if (earliest.type === 'mention') {
-      // Mention pill — uses brand tokens, reads as a person reference not a tag
       nodes.push(
         <span
           key={`${keyPrefix}-m${keyCounter}`}
@@ -234,7 +223,7 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
 export function renderContent(content: string): React.ReactNode {
   if (!content) return null;
 
-  // Split by fenced code blocks — capture the language identifier
+  // Fenced blocks are split out first so their contents skip inline formatting.
   const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
   const segments: Array<
     | { type: 'text'; content: string }

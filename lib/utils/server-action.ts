@@ -3,24 +3,15 @@ import { z } from 'zod';
 import { actionFailure, type ActionErrorCode } from '@/lib/actions/result';
 import { AppError } from './errors';
 
-/**
- * Detect Next.js redirect errors so they aren't swallowed
- */
+// redirect() signals by throwing; these must propagate rather than be caught
+// and reported as an action failure.
 function isRedirectError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
-  const error = err as Record<string, unknown>;
-  if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-    return true;
-  }
-  if (err instanceof Error && err.message?.includes('NEXT_REDIRECT')) {
-    return true;
-  }
-  return false;
+  const digest = (err as Record<string, unknown>).digest;
+  if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) return true;
+  return err instanceof Error && err.message?.includes('NEXT_REDIRECT');
 }
 
-/**
- * Server action result type
- */
 export interface ActionResult<T = unknown> {
   data: T | null;
   error: string | null;
@@ -28,17 +19,11 @@ export interface ActionResult<T = unknown> {
   errorCode?: ActionErrorCode | null;
 }
 
-/**
- * Options for createServerAction
- */
 export interface ServerActionOptions<In, Out = unknown> {
   schema: z.ZodSchema<In>;
   actionName: string;
 }
 
-/**
- * Wrap a server action handler with validation and error handling
- */
 export function createServerAction<In, Out = unknown>(
   options: ServerActionOptions<In, Out>,
   handler: (args: In) => Promise<ActionResult<Out>>
@@ -48,22 +33,17 @@ export function createServerAction<In, Out = unknown>(
   return async (...handlerArgs: unknown[]): Promise<ActionResult<Out>> => {
     let validatedArgs: In;
     try {
-      if (handlerArgs.length === 1 && handlerArgs[0] instanceof FormData) {
-        const formData = handlerArgs[0] as FormData;
-        const dataObj: Record<string, unknown> = {};
-        for (const [key, value] of formData.entries()) {
-          dataObj[key] = value;
-        }
-        validatedArgs = schema.parse(dataObj);
-      } else {
-        const input = handlerArgs.length === 1 ? handlerArgs[0] : handlerArgs;
-        validatedArgs = schema.parse(input);
-      }
+      const input =
+        handlerArgs.length === 1 && handlerArgs[0] instanceof FormData
+          ? Object.fromEntries(handlerArgs[0].entries())
+          : handlerArgs.length === 1
+            ? handlerArgs[0]
+            : handlerArgs;
+      validatedArgs = schema.parse(input);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return actionFailure('VALIDATION_ERROR', 'Invalid input');
+      if (!(error instanceof z.ZodError)) {
+        logger.error(`[${actionName}] validation`, error);
       }
-      logger.error(`[${actionName}] validation`, error);
       return actionFailure('VALIDATION_ERROR', 'Invalid input');
     }
 
@@ -74,6 +54,8 @@ export function createServerAction<In, Out = unknown>(
         throw error;
       }
 
+      // AppError carries a deliberate user-facing message and code, so it's
+      // passed through without logging as an unexpected failure.
       if (error instanceof AppError) {
         return {
           ok: false,
@@ -83,30 +65,18 @@ export function createServerAction<In, Out = unknown>(
         };
       }
 
-      if (error instanceof Error) {
-        logger.error(`[${actionName}]`, error);
-        return {
-          ok: false,
-          data: null,
-          error: error.message || 'Something went wrong',
-          errorCode: 'INTERNAL_ERROR',
-        };
-      }
-
       logger.error(`[${actionName}]`, error);
       return {
         ok: false,
         data: null,
-        error: 'Something went wrong',
+        error: (error instanceof Error && error.message) || 'Something went wrong',
         errorCode: 'INTERNAL_ERROR',
       };
     }
   };
 }
 
-/**
- * Simple variant: only validation + error handling
- */
+/** Positional-args variant of createServerAction. */
 export function withValidation<In, Out = unknown>(
   schema: z.ZodSchema<In>,
   actionName: string,

@@ -46,8 +46,8 @@ const serverEnvSchema = z.object({
   MAX_MESSAGES_PER_HOUR: z.coerce.number().int().positive().default(200),
   MODERATION_WEBHOOK_URL: z.url().optional(),
   AI_ANALYSIS_MESSAGE_LIMIT: z.coerce.number().int().positive().default(200),
-  GEMINI_FLASH_MODEL: z.string().default('gemini-3-flash-preview'),
-  GEMINI_PRO_MODEL: z.string().default('gemini-2.5-pro'),
+  GEMINI_FLASH_MODEL: z.string().default('gemini-3.6-flash'),
+  GEMINI_PRO_MODEL: z.string().default('gemini-2.5-flash'),
   GEMINI_LITE_MODEL: z.string().default('gemini-3.1-flash-lite'),
   GEMINI_SEARCH_MODEL: z.string().default('gemini-3.1-flash-lite'),
   OPENAI_MODEL: z.string().default('gpt-4o'),
@@ -68,11 +68,17 @@ const fullyClientSafeSchema = z.object({
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 export type ClientEnv = z.infer<typeof fullyClientSafeSchema>;
 export type FullyClientSafeEnv = ClientEnv;
+export type MergedEnv = ServerEnv & Pick<ClientEnv, 'NODE_ENV' | 'NEXT_PUBLIC_APP_URL'>;
 
+function formatIssues(error: z.ZodError): string {
+  return error.issues.map((err) => `  - ${err.path.join('.')}: ${err.message}`).join('\n');
+}
+
+// Client bundles can't throw on a bad env — degrade to whatever parsed.
 export const clientEnv: FullyClientSafeEnv = (() => {
   const result = fullyClientSafeSchema.safeParse(process.env);
   if (!result.success) {
-    console.warn('Client env validation error:', result.error.issues.map(err => err.message));
+    console.warn('Client env validation error:', result.error.issues.map((err) => err.message));
     return result.data || ({} as FullyClientSafeEnv);
   }
   return result.data;
@@ -80,21 +86,13 @@ export const clientEnv: FullyClientSafeEnv = (() => {
 
 let serverEnvCache: ServerEnv | null = null;
 export function getServerEnv(): ServerEnv {
-  if (serverEnvCache) {
-    return serverEnvCache;
-  }
+  if (serverEnvCache) return serverEnvCache;
 
   const result = serverEnvSchema.safeParse(process.env);
-
   if (!result.success) {
-    const errors = result.error.issues.map((err) => {
-      return `  - ${err.path.join('.')}: ${err.message}`;
-    });
-
     throw new Error(
-      `Environment validation failed:\n${errors.join(
-        '\n'
-      )}\n\nPlease check your .env file and ensure all required variables are set.`
+      `Environment validation failed:\n${formatIssues(result.error)}\n\n` +
+        'Please check your .env file and ensure all required variables are set.'
     );
   }
 
@@ -102,34 +100,27 @@ export function getServerEnv(): ServerEnv {
   return serverEnvCache;
 }
 
-export const serverEnv: ServerEnv = getServerEnv();
-
 export function validateEnv() {
   return serverEnvSchema.safeParse(process.env);
 }
 
-export const env = getServerEnv(); 
-
-export type MergedEnv = ServerEnv & Pick<ClientEnv, 'NODE_ENV' | 'NEXT_PUBLIC_APP_URL'>;
+export const serverEnv: ServerEnv = getServerEnv();
+export const env = getServerEnv();
 
 let mergedEnvCache: MergedEnv | null = null;
 export function getEnv(): MergedEnv {
-  if (mergedEnvCache) {
-    return mergedEnvCache;
-  }
+  if (mergedEnvCache) return mergedEnvCache;
 
-  const server = getServerEnv();
   const clientResult = fullyClientSafeSchema.safeParse(process.env);
-
   if (!clientResult.success) {
-    const errors = clientResult.error.issues.map((err) => `  - ${err.path.join('.')}: ${err.message}`);
     throw new Error(
-      `Environment validation failed (client subset):\n${errors.join('\n')}\n\nPlease check your .env file.`
+      `Environment validation failed (client subset):\n${formatIssues(clientResult.error)}\n\n` +
+        'Please check your .env file.'
     );
   }
 
   mergedEnvCache = {
-    ...server,
+    ...getServerEnv(),
     NODE_ENV: clientResult.data.NODE_ENV,
     NEXT_PUBLIC_APP_URL: clientResult.data.NEXT_PUBLIC_APP_URL,
   };

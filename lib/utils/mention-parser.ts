@@ -1,42 +1,25 @@
-/**
- * Parse @mentions from message content
- * Returns array of usernames mentioned and formatted content
- * Supports both @username and @email formats
- */
+// Email alternative comes first so `@a@b.com` matches the whole address
+// rather than stopping at the bare `@a`.
+const MENTION_REGEX = /@([\w.-]+@[\w.-]+\.\w+|[\w.-]+)/g;
+
 export function parseMentions(content: string): {
   usernames: string[];
   formatted: string;
 } {
-  // Match @username or @email patterns
-  const mentionRegex = /@([\w.-]+@[\w.-]+\.\w+|[\w.-]+)/g;
-  const matches = content.matchAll(mentionRegex);
-  const usernames: string[] = [];
-
-  for (const match of matches) {
-    if (match[1]) {
-      usernames.push(match[1]);
-    }
-  }
-
-  // Remove duplicates
-  const uniqueUsernames = Array.from(new Set(usernames));
+  const usernames = Array.from(content.matchAll(MENTION_REGEX), (m) => m[1]).filter(Boolean);
 
   return {
-    usernames: uniqueUsernames,
+    usernames: Array.from(new Set(usernames)),
     formatted: content,
   };
 }
 
-/**
- * Find user IDs from usernames or emails
- */
 export async function resolveUserMentions(
   usernames: string[],
   prisma: { user: { findMany: (args: { where: Record<string, unknown>; select: { id: true } }) => Promise<{ id: string }[]> } }
 ): Promise<string[]> {
   if (usernames.length === 0) return [];
 
-  // Separate emails from usernames
   const emails = usernames.filter((u) => u.includes('@'));
   const names = usernames.filter((u) => !u.includes('@'));
 
@@ -55,14 +38,8 @@ export async function resolveUserMentions(
 
   if (where.OR.length === 0) return [];
 
-  const users = await prisma.user.findMany({
-    where,
-    select: {
-      id: true,
-    },
-  });
+  const users = await prisma.user.findMany({ where, select: { id: true } });
 
   return users.map((u) => u.id);
 }
-
 

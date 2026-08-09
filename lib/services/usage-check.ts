@@ -2,63 +2,46 @@ import { getUpstashRedis, ATOMIC_INCR_EXPIRE_LUA, getSecondsUntilUtcMidnight } f
 import { logger } from '@/lib/infrastructure/logger';
 
 /**
- * Internal budget limits (conservative, best-effort tripwire).
- * These are NOT hard guarantees — just early warnings.
+ * Best-effort tripwire for free-tier budgets, not a hard guarantee.
  *
- * Neon free tier: 100 CU-hours/month (~3.3 CU-hours/day)
- *   - Each serverless function invocation ≈ 1 CU-second minimum
- *   - 80% threshold = ~2.6 CU-hours/day = ~9,600 CU-seconds/day
- *   - We estimate ~2s per DB-heavy request, so ~4,800 requests/day budget
+ * Neon: 100 CU-hours/month (~3.3/day). At ~2s per DB-heavy request that's
+ * roughly 4,800 requests/day at the 80% mark. Free tier has no usage API, so
+ * this is an estimate from our own request count.
  *
- * Upstash Redis free: 500K commands/month (~16,666/day)
- *   - 80% threshold = ~13,333 commands/day
- *   - This counter tracks our own Redis commands, not Upstash's internal counting
+ * Upstash: 500K commands/month (~16,666/day). We count our own calls, which
+ * won't exactly match Upstash's internal tally.
  */
-const NEON_DAILY_BUDGET = 4800; // estimated requests/day at 80% of CU-hour budget
-const UPSTASH_DAILY_BUDGET = 13_333; // 80% of 16,666/day
-const WARN_THRESHOLD = 0.8; //80%
+const NEON_DAILY_BUDGET = 4800;
+const UPSTASH_DAILY_BUDGET = 13_333;
+const WARN_THRESHOLD = 0.8;
 
 function getDailyKey(prefix: string): string {
   const d = new Date();
   return `usage:${prefix}:${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
-/**
- * Increment the daily Neon request counter.
- * Call this from key API routes that cause DB queries.
- */
+// Tracking must never break the request it's measuring, so errors are swallowed.
+async function track(prefix: string, count: number): Promise<void> {
+  const redis = getUpstashRedis();
+  if (!redis) return;
+  try {
+    const ttl = getSecondsUntilUtcMidnight();
+    await redis.eval(ATOMIC_INCR_EXPIRE_LUA, [getDailyKey(prefix)], [String(ttl), String(count)]);
+  } catch {
+    return;
+  }
+}
+
+/** Call from API routes that cause DB queries. */
 export async function trackNeonRequest(count: number = 1): Promise<void> {
-  const redis = getUpstashRedis();
-  if (!redis) return;
-  try {
-    const key = getDailyKey('neon');
-    const ttl = getSecondsUntilUtcMidnight();
-    await redis.eval(ATOMIC_INCR_EXPIRE_LUA, [key], [String(ttl), String(count)]);
-  } catch {
-    // Best-effort — don't break requests if tracking fails
-  }
+  return track('neon', count);
 }
 
-/**
- * Increment the daily Upstash Redis command counter.
- * Call this from key operations that use Redis.
- */
 export async function trackUpstashCommand(count: number = 1): Promise<void> {
-  const redis = getUpstashRedis();
-  if (!redis) return;
-  try {
-    const key = getDailyKey('upstash');
-    const ttl = getSecondsUntilUtcMidnight();
-    await redis.eval(ATOMIC_INCR_EXPIRE_LUA, [key], [String(ttl), String(count)]);
-  } catch {
-    // Best-effort
-  }
+  return track('upstash', count);
 }
 
-/**
- * Get current daily usage counts.
- * Returns null if Redis is unavailable.
- */
+/** Null when Redis is unavailable. */
 export async function getDailyUsage(): Promise<{
   neonRequests: number;
   upstashCommands: number;
@@ -74,7 +57,7 @@ export async function getDailyUsage(): Promise<{
       redis.get<number>(upstashKey).then((v) => v ?? 0),
     ]);
 
-    // Import here to avoid circular dependency
+    // Deferred import: queue.ts imports back into this module.
     const { getDailyQstashCount } = await import('@/lib/services/queue');
     const qstashMessages = await getDailyQstashCount();
 
@@ -84,15 +67,7 @@ export async function getDailyUsage(): Promise<{
   }
 }
 
-/**
- * Check usage and log warnings if approaching limits.
- * Call this from the daily cron job.
- *
- * IMPORTANT: This is a best-effort tripwire, not a hard guarantee.
- * - Neon CU-hours are estimated, not exact (no API on free tier)
- * - Upstash command count tracks our calls, not their internal counting
- * - QStash count is accurate (we track it ourselves)
- */
+/** Run from the daily cron. Warns only — never blocks anything. */
 export async function checkAndLogUsage(): Promise<void> {
   const usage = await getDailyUsage();
   if (!usage) {
@@ -123,7 +98,6 @@ export async function checkAndLogUsage(): Promise<void> {
     );
   }
 
-  // Log summary at info level for monitoring
   logger.info(
     `[usage-check] Daily usage: neon=${usage.neonRequests}/${NEON_DAILY_BUDGET} requests, ` +
     `upstash=${usage.upstashCommands}/${UPSTASH_DAILY_BUDGET} commands, ` +

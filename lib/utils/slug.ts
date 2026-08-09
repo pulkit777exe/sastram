@@ -1,8 +1,5 @@
 import { randomUUID } from 'crypto';
 
-/**
- * Convert a string to a URL-friendly slug
- */
 export function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -11,13 +8,8 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/**
- * Build a thread slug with optional existing ID for uniqueness
- */
+/** Suffix keeps slugs unique when two threads share a title. */
 export function buildThreadSlug(title: string, existingId?: string): string {
-  const base = slugify(title);
-  const suffix = existingId ?? randomUUID();
-  return `${base}-${suffix}`;
+  return `${slugify(title)}-${existingId ?? randomUUID()}`;
 }
-
 

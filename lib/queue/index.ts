@@ -1,8 +1,4 @@
-export {
-  QUEUE_NAMES,
-  AIJobType,
-  type QueueName,
-} from './config';
+export { AIJobType } from './config';
 
 export type {
   JobMessageData,

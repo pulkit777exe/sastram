@@ -1,13 +1,7 @@
 /**
- * AI cost classification — the canonical cost tier of every AI call path.
- *
- * This module is the promoted core-infra seam: every AI gate (route pre-flight,
- * worker spend-cap, @sai enqueue) reads classification from here instead of
- * re-deriving cost ad hoc. The goal of Phase 3 is to move from a soft per-user
- * quota (3/day) to a hard, cost-aware classification of
- * cheap-and-always-on vs expensive-and-deliberate.
- *
- * Pure and side-effect free — fully unit testable with no Redis/network.
+ * The canonical cost tier of every AI call path. Every gate (route pre-flight,
+ * worker spend-cap, @sai enqueue) reads from here rather than deriving cost
+ * ad hoc. Pure and side-effect free.
  */
 
 export enum AiCostTier {
@@ -40,7 +34,6 @@ export interface AiCostClassification {
   cacheable: boolean;
 }
 
-/** Paths that are cheap, sub-cent, and cacheable (always allowed when under quota). */
 export const CHEAP_PATHS: readonly AiCallPath[] = [
   AiCallPath.TEXT_TOXICITY_MODERATION,
   AiCallPath.IMAGE_MODERATION,
@@ -51,7 +44,6 @@ export const CHEAP_PATHS: readonly AiCallPath[] = [
   AiCallPath.CONFLICT_DETECTION,
 ];
 
-/** Paths that are expensive synthesis / multi-source search — deliberate, hard-gated. */
 export const EXPENSIVE_PATHS: readonly AiCallPath[] = [
   AiCallPath.FORUM_SEARCH_SYNTHESIZE,
   AiCallPath.AI_INLINE_REPLY,
@@ -61,8 +53,7 @@ export const EXPENSIVE_PATHS: readonly AiCallPath[] = [
   AiCallPath.QUERY_WARMING,
 ];
 
-// Conservative per-call cost estimates (USD). Used only for spend-cap pre-flight
-// guesses; the authoritative counter is ai-spend-cap.ts (token-based).
+// Pre-flight guesses only — ai-spend-cap.ts holds the authoritative token count.
 const ESTIMATED_COST_USD: Record<AiCallPath, number> = {
   [AiCallPath.TEXT_TOXICITY_MODERATION]: 0.0002,
   [AiCallPath.IMAGE_MODERATION]: 0.0004,
@@ -81,12 +72,7 @@ const ESTIMATED_COST_USD: Record<AiCallPath, number> = {
 
 const CACHEABLE_PATHS = new Set<AiCallPath>(CHEAP_PATHS);
 
-/**
- * Classify an AI call path by cost tier.
- *
- * EXPENSIVE is the fail-safe default for unknown paths: never fail open on cost.
- * Only paths explicitly listed in CHEAP_PATHS are treated as cheap.
- */
+/** Unknown paths fall through to EXPENSIVE — never fail open on cost. */
 export function classifyAiCallCost(path: AiCallPath): AiCostClassification {
   const isCheap = CHEAP_PATHS.includes(path);
   return {
@@ -108,20 +94,12 @@ export interface AiCostGateResult {
 }
 
 /**
- * The hard cost-aware gate.
- *
- * Cheap-and-always-on paths are always allowed (their cost is bounded and
- * cacheable). Expensive-and-deliberate paths require a passing spend-cap
- * pre-flight: we do NOT enqueue unaffordable expensive work that would then
- * burn the LLM. This is the promoted seam that replaces ad-hoc per-path gating.
- *
- * Cheap paths never consult the spend cap, so moderation (which bypasses the
- * $5 cap by design) is unaffected.
+ * Cheap paths never consult the spend cap — their cost is bounded and cacheable,
+ * and this is what keeps moderation running once the $5 cap is hit. Expensive
+ * paths need a passing pre-flight so we don't enqueue work we can't afford.
  */
 export function evaluateAiCostGate(input: AiCostGateInput): AiCostGateResult {
-  const classification = classifyAiCallCost(input.path);
-
-  if (classification.tier === AiCostTier.CHEAP) {
+  if (classifyAiCallCost(input.path).tier === AiCostTier.CHEAP) {
     return { allowed: true, reason: 'none' };
   }
 

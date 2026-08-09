@@ -4,20 +4,20 @@ let _upstashRedis: Redis | null = null;
 let _upstashRedisConfigKey: string | null = null;
 
 /**
- * Shared Upstash Redis client for quota/rate-limit operations.
- * Uses HTTP REST API — different protocol from ioredis (native TCP).
- * Returns null if Upstash env vars are not configured.
+ * Upstash client for quota/rate-limit work. Speaks HTTP REST, so it is a separate
+ * client from the ioredis (TCP) one used for pub/sub and caching.
+ * Returns null when Upstash isn't configured — callers degrade gracefully.
  */
 export function getUpstashRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   const configKey = url && token ? `${url}:${token}` : null;
 
+  // Re-create if the env changed under us (tests swap credentials at runtime).
   if (_upstashRedis && _upstashRedisConfigKey === configKey) return _upstashRedis;
 
   if (!url || !token) {
-    _upstashRedis = null;
-    _upstashRedisConfigKey = null;
+    resetUpstashRedis();
     return null;
   }
 
@@ -26,20 +26,14 @@ export function getUpstashRedis(): Redis | null {
   return _upstashRedis;
 }
 
-/**
- * Reset the cached Upstash Redis client. Use in tests to avoid stale singletons.
- */
 export function resetUpstashRedis(): void {
   _upstashRedis = null;
   _upstashRedisConfigKey = null;
 }
 
 /**
- * Lua script for atomic INCR + EXPIRE.
- * Prevents orphan keys with no TTL if the process crashes between operations.
- *
- * Usage: await redis.eval(ATOMIC_INCR_EXPIRE_LUA, 1, key, ttlSeconds)
- * Returns the new counter value.
+ * INCR + EXPIRE in one round trip, so a crash between the two can't leave a
+ * TTL-less counter behind. eval(script, [key], [ttlSeconds]) -> new count.
  */
 export const ATOMIC_INCR_EXPIRE_LUA = `
 local count = redis.call('INCR', KEYS[1])
@@ -50,12 +44,8 @@ return count
 `;
 
 /**
- * Lua script for check-then-increment: only increments if current value < limit.
- * Returns -1 if limit already reached (no increment), otherwise returns the new count.
- * Prevents rejected requests from consuming counter capacity.
- *
- * Usage: await redis.eval(CHECK_AND_INCR_EXPIRE_LUA, key, limit, ttlSeconds)
- * Returns the new counter value, or -1 if limit reached.
+ * Increments only while under the limit, so rejected requests don't burn quota.
+ * eval(script, [key], [limit, ttlSeconds]) -> new count, or -1 if already at limit.
  */
 export const CHECK_AND_INCR_EXPIRE_LUA = `
 local current = tonumber(redis.call('GET', KEYS[1]) or '0')
@@ -71,12 +61,8 @@ return count
 `;
 
 /**
- * Lua script for check-then-increment with float values: only increments if current value < limit.
- * Returns -1 if limit already reached (no increment), otherwise returns the new value.
- * Uses INCRBYFLOAT for fractional increments (e.g., dollar amounts).
- *
- * Usage: await redis.eval(CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA, key, limit, ttlSeconds, incrementAmount)
- * Returns the new value, or -1 if limit reached.
+ * Float variant of the above for fractional counters (dollar spend).
+ * eval(script, [key], [limit, ttlSeconds, amount]) -> new value, or -1 if at limit.
  */
 export const CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA = `
 local current = tonumber(redis.call('GET', KEYS[1]) or '0')
@@ -91,17 +77,13 @@ end
 return tonumber(newVal)
 `;
 
-/**
- * Seconds remaining until the next UTC midnight.
- * Used for daily quota TTL.
- */
+// TTL for daily quotas — they reset on the UTC day boundary, not 24h after first use.
 export function getSecondsUntilUtcMidnight(): number {
   const now = new Date();
   const nextUtcMidnight = Date.UTC(
     now.getUTCFullYear(),
     now.getUTCMonth(),
     now.getUTCDate() + 1,
-    0, 0, 0
   );
   return Math.max(1, Math.floor((nextUtcMidnight - now.getTime()) / 1000));
 }

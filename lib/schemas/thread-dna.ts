@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * ThreadDNA Zod schema — validates the JSON field from Thread.threadDna.
- * This is the single source of truth for ThreadDNA shape.
- */
+// Source of truth for the shape stored in the Thread.threadDna JSON column.
 export const threadDnaSchema = z.object({
   questionType: z.enum(['factual', 'opinion', 'technical', 'comparison', 'other']),
   expertiseLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
@@ -13,10 +10,7 @@ export const threadDnaSchema = z.object({
 
 export type ThreadDNA = z.infer<typeof threadDnaSchema>;
 
-/**
- * Safely parse a Prisma Json value into ThreadDNA.
- * Returns null if the value is null/undefined or fails validation.
- */
+// Rows predate the current schema (and the AI can drift), so bad data reads as "no DNA".
 export function parseThreadDna(raw: unknown): ThreadDNA | null {
   if (raw === null || raw === undefined) return null;
   const result = threadDnaSchema.safeParse(raw);

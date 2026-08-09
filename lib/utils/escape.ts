@@ -1,7 +1,4 @@
-/**
- * Escape HTML special characters to prevent XSS injection.
- * Use when interpolating user-provided content into HTML templates.
- */
+/** For interpolating user content into HTML templates (email bodies, etc). */
 export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')

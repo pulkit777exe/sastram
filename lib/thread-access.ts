@@ -23,53 +23,26 @@ export async function canAccessThread(
   userId?: string | null,
   userRole?: Role | null
 ): Promise<boolean> {
-  if (thread.visibility === 'PUBLIC') {
-    return true;
-  }
+  if (thread.visibility === 'PUBLIC') return true;
+  if (!userId) return false;
+  if (canModerate(userRole ?? Role.USER)) return true;
+  if (thread.createdBy === userId) return true;
 
-  if (!userId) {
-    return false;
-  }
-
-  if (canModerate(userRole ?? Role.USER)) {
-    return true;
-  }
-
-  if (thread.createdBy === userId) {
-    return true;
-  }
-
-  const invitation = await prisma.threadInvitation.findFirst({
-    where: {
-      threadId: thread.threadId,
-      status: 'ACCEPTED',
-      OR: [
-        { senderId: userId },
-        // Invitee matched by email requires a user lookup — handled in assertThreadAccess
-      ],
-    },
+  const senderInvitation = await prisma.threadInvitation.findFirst({
+    where: { threadId: thread.threadId, status: 'ACCEPTED', senderId: userId },
     select: { id: true },
   });
+  if (senderInvitation) return true;
 
-  if (invitation) {
-    return true;
-  }
-
+  // Invitations are also addressed by email, so fall back to an email match.
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true },
   });
-
-  if (!user) {
-    return false;
-  }
+  if (!user) return false;
 
   const emailInvitation = await prisma.threadInvitation.findFirst({
-    where: {
-      threadId: thread.threadId,
-      email: user.email,
-      status: 'ACCEPTED',
-    },
+    where: { threadId: thread.threadId, email: user.email, status: 'ACCEPTED' },
     select: { id: true },
   });
 
@@ -81,14 +54,8 @@ export async function canWriteToThread(
   userId: string,
   userRole: Role
 ): Promise<boolean> {
-  if (canModerate(userRole)) {
-    return true;
-  }
-
-  if (thread.visibility === 'PUBLIC') {
-    return true;
-  }
-
+  if (canModerate(userRole)) return true;
+  if (thread.visibility === 'PUBLIC') return true;
   return canAccessThread(thread, userId, userRole);
 }
 
@@ -97,17 +64,10 @@ export function canManageThread(
   userId: string,
   userRole: Role
 ): boolean {
-  if (canModerate(userRole)) {
-    return true;
-  }
-  return thread.createdBy === userId;
+  return canModerate(userRole) || thread.createdBy === userId;
 }
 
-export async function requireThreadAccessOrThrow(
-  threadId: string,
-  userId: string,
-  userRole: Role = Role.USER
-): Promise<void> {
+async function loadThreadContext(threadId: string): Promise<ThreadAccessContext> {
   const thread = await prisma.thread.findUnique({
     where: { id: threadId, deletedAt: null },
     select: { id: true, createdBy: true, visibility: true },
@@ -117,13 +77,16 @@ export async function requireThreadAccessOrThrow(
     throw new AppError('Thread not found', 'NOT_FOUND', 404);
   }
 
-  const allowed = await canAccessThread(
-    { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
-    userId,
-    userRole
-  );
+  return { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility };
+}
 
-  if (!allowed) {
+export async function requireThreadAccessOrThrow(
+  threadId: string,
+  userId: string,
+  userRole: Role = Role.USER
+): Promise<void> {
+  const thread = await loadThreadContext(threadId);
+  if (!(await canAccessThread(thread, userId, userRole))) {
     throw new AppError('Forbidden: no access to this thread', 'FORBIDDEN', 403);
   }
 }
@@ -133,26 +96,13 @@ export async function requireThreadWriteOrThrow(
   userId: string,
   userRole: Role = Role.USER
 ): Promise<void> {
-  const thread = await prisma.thread.findUnique({
-    where: { id: threadId, deletedAt: null },
-    select: { id: true, createdBy: true, visibility: true },
-  });
-
-  if (!thread) {
-    throw new AppError('Thread not found', 'NOT_FOUND', 404);
-  }
-
-  const allowed = await canWriteToThread(
-    { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
-    userId,
-    userRole
-  );
-
-  if (!allowed) {
+  const thread = await loadThreadContext(threadId);
+  if (!(await canWriteToThread(thread, userId, userRole))) {
     throw new AppError('Forbidden: cannot write to this thread', 'FORBIDDEN', 403);
   }
 }
 
+/** Page/server-component variant — bounces to the dashboard instead of throwing. */
 export async function requireThreadAccess(
   threadId: string,
   userId: string,

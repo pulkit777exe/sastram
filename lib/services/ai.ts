@@ -83,6 +83,11 @@ function cleanJsonText(text: string): string {
     .trim();
 }
 
+// Models wrap HTML output in fences despite being told not to.
+function stripHtmlFences(text: string): string {
+  return text.replace(/```html\n?/g, '').replace(/```\n?/g, '');
+}
+
 function parseThreadDNA(text: string): ThreadDNA {
   try {
     const parsed = threadDnaSchema.safeParse(JSON.parse(cleanJsonText(text)));
@@ -115,6 +120,13 @@ function parseConflict(text: string): ConflictResult {
   }
 }
 
+// Scraped with a regex rather than JSON.parse: the surrounding response is
+// often prose or fenced, and a missing score should read as safe, not throw.
+function parseToxicity(text: string): number {
+  const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
+  return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;
+}
+
 function parseResolutionScore(text: string): number | null {
   const score = parseInt(text.trim(), 10);
   if (isNaN(score)) {
@@ -128,6 +140,31 @@ function makeAbortController(): { signal: AbortSignal; clear: () => void } {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
   return { signal: controller.signal, clear: () => clearTimeout(timer) };
+}
+
+const STREAM_STALL_MS = 30_000;
+const STREAM_TOTAL_MS = 90_000;
+
+/**
+ * Streams need two deadlines: a stall timer reset by each chunk (catches a
+ * provider that goes quiet mid-response) and a hard total cap.
+ */
+function makeStreamAbortController() {
+  const controller = new AbortController();
+  let stallTimer = setTimeout(() => controller.abort(), STREAM_STALL_MS);
+  const totalTimer = setTimeout(() => controller.abort(), STREAM_TOTAL_MS);
+
+  return {
+    signal: controller.signal,
+    resetStall: () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => controller.abort(), STREAM_STALL_MS);
+    },
+    clear: () => {
+      clearTimeout(stallTimer);
+      clearTimeout(totalTimer);
+    },
+  };
 }
 
 export interface ImageModerationResult {
@@ -160,34 +197,65 @@ export class GeminiService implements AIService {
     this.proModel = env.GEMINI_PRO_MODEL;
   }
 
+  /** One prompt → text, with retries, an abort deadline, and usage accounting. */
+  private async generate(
+    contents: Parameters<GoogleGenAI['models']['generateContent']>[0]['contents'],
+    operation: string,
+    { model = this.flashModel, timeoutMs = 15_000 }: { model?: string; timeoutMs?: number } = {}
+  ): Promise<string> {
+    const { signal, clear } = makeAbortController();
+    const start = Date.now();
+    try {
+      const result = await withRetry(
+        (retrySignal) =>
+          this.ai.models.generateContent({
+            model,
+            contents,
+            config: { abortSignal: retrySignal },
+          }),
+        3,
+        300,
+        timeoutMs,
+        signal
+      );
+      logAiUsage({
+        operation,
+        provider: 'gemini',
+        model,
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+        latencyMs: Date.now() - start,
+      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
+      return result.text ?? '';
+    } finally {
+      clear();
+    }
+  }
+
   async generateStreamingResponse(
     content: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    const controller = new AbortController();
-    let stallTimer = setTimeout(() => controller.abort(), 30_000);
-    const totalTimer = setTimeout(() => controller.abort(), 90_000);
-    const resetTimer = () => {
-      clearTimeout(stallTimer);
-      stallTimer = setTimeout(() => controller.abort(), 30_000);
-    };
+    const { signal, resetStall, clear } = makeStreamAbortController();
     try {
       const result = await this.ai.models.generateContentStream({
         model: this.flashModel,
         contents: content,
-        config: { abortSignal: controller.signal },
+        config: { abortSignal: signal },
       });
       for await (const chunk of result) {
         const text = chunk.text;
         if (text) onChunk(text);
-        resetTimer();
+        resetStall();
       }
     } catch (error) {
-      logger.error('[GeminiService.generateStreamingResponse]', { error });
+      const detail = error instanceof Error
+        ? { message: error.message, name: error.name, stack: error.stack?.split('\n').slice(0, 3).join(' | ') }
+        : { raw: JSON.stringify(error) ?? String(error) };
+      logger.error('[GeminiService.generateStreamingResponse]', detail);
       throw error;
     } finally {
-      clearTimeout(stallTimer);
-      clearTimeout(totalTimer);
+      clear();
     }
   }
 
@@ -198,36 +266,11 @@ export class GeminiService implements AIService {
       content.substring(0, MAX_CONTENT_CHARS) +
       '\n\nSummary:';
 
-    const { signal, clear } = makeAbortController();
-    const start = Date.now();
     try {
-      const result = await withRetry(
-        (retrySignal) =>
-          this.ai.models.generateContent({
-            model: this.flashModel,
-            contents: prompt,
-            config: { abortSignal: retrySignal },
-          }),
-        3,
-        300,
-        15_000,
-        signal
-      );
-      const latencyMs = Date.now() - start;
-      logAiUsage({
-        operation: 'generate-summary',
-        provider: 'gemini',
-        model: this.flashModel,
-        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
-        latencyMs,
-      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
-      return result.text ?? '';
+      return await this.generate(prompt, 'generate-summary');
     } catch (error) {
       logger.warn('[GeminiService.generateSummary] AI failed, returning fallback', { error });
       return 'Summary unavailable.';
-    } finally {
-      clear();
     }
   }
 
@@ -247,36 +290,11 @@ export class GeminiService implements AIService {
     const content = buildMessageContent(messages);
     const prompt = `${THREAD_DNA_SYSTEM_PROMPT}\n\nMessages:\n${content}\n\nJSON:`;
 
-    const { signal, clear } = makeAbortController();
-    const start = Date.now();
     try {
-      const result = await withRetry(
-        (retrySignal) =>
-          this.ai.models.generateContent({
-            model: this.flashModel,
-            contents: prompt,
-            config: { abortSignal: retrySignal },
-          }),
-        3,
-        300,
-        15_000,
-        signal
-      );
-      const latencyMs = Date.now() - start;
-      logAiUsage({
-        operation: 'thread-dna',
-        provider: 'gemini',
-        model: this.flashModel,
-        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
-        latencyMs,
-      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
-      return parseThreadDNA(result.text ?? '');
+      return parseThreadDNA(await this.generate(prompt, 'thread-dna'));
     } catch (error) {
       logger.error('[GeminiService.generateThreadDNA]', { error });
       throw error;
-    } finally {
-      clear();
     }
   }
 
@@ -289,36 +307,11 @@ export class GeminiService implements AIService {
       content +
       '\n\nScore:';
 
-    const { signal, clear } = makeAbortController();
-    const start = Date.now();
     try {
-      const result = await withRetry(
-        (retrySignal) =>
-          this.ai.models.generateContent({
-            model: this.flashModel,
-            contents: prompt,
-            config: { abortSignal: retrySignal },
-          }),
-        3,
-        300,
-        15_000,
-        signal
-      );
-      const latencyMs = Date.now() - start;
-      logAiUsage({
-        operation: 'resolution-score',
-        provider: 'gemini',
-        model: this.flashModel,
-        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
-        latencyMs,
-      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
-      return parseResolutionScore(result.text ?? '');
+      return parseResolutionScore(await this.generate(prompt, 'resolution-score'));
     } catch (error) {
       logger.error('[GeminiService.calculateResolutionScore]', { error });
       throw error;
-    } finally {
-      clear();
     }
   }
 
@@ -326,36 +319,11 @@ export class GeminiService implements AIService {
     const content = buildIndexedContent(messages);
     const prompt = `${CONFLICT_SYSTEM_PROMPT}\n\nMessages:\n${content}\n\nJSON:`;
 
-    const { signal, clear } = makeAbortController();
-    const start = Date.now();
     try {
-      const result = await withRetry(
-        (retrySignal) =>
-          this.ai.models.generateContent({
-            model: this.flashModel,
-            contents: prompt,
-            config: { abortSignal: retrySignal },
-          }),
-        3,
-        300,
-        15_000,
-        signal
-      );
-      const latencyMs = Date.now() - start;
-      logAiUsage({
-        operation: 'detect-conflicts',
-        provider: 'gemini',
-        model: this.flashModel,
-        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
-        latencyMs,
-      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
-      return parseConflict(result.text ?? '');
+      return parseConflict(await this.generate(prompt, 'detect-conflicts'));
     } catch (error) {
       logger.error('[GeminiService.detectConflicts]', { error });
       throw error;
-    } finally {
-      clear();
     }
   }
 
@@ -369,38 +337,12 @@ export class GeminiService implements AIService {
       'Professional and concise.\n\nMessages:\n' +
       content;
 
-    const { signal, clear } = makeAbortController();
-    const start = Date.now();
     try {
-      const result = await withRetry(
-        (retrySignal) =>
-          this.ai.models.generateContent({
-            model: this.proModel,
-            contents: prompt,
-            config: { abortSignal: retrySignal },
-          }),
-        3,
-        300,
-        15_000,
-        signal
-      );
-      const latencyMs = Date.now() - start;
-      logAiUsage({
-        operation: 'daily-digest',
-        provider: 'gemini',
-        model: this.proModel,
-        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
-        latencyMs,
-      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
-      return (result.text ?? '')
-        .replace(/```html\n?/g, '')
-        .replace(/```\n?/g, '');
+      const text = await this.generate(prompt, 'daily-digest', { model: this.proModel });
+      return stripHtmlFences(text);
     } catch (error) {
       logger.error('[GeminiService.generateDailyDigest]', { error });
       throw error;
-    } finally {
-      clear();
     }
   }
 
@@ -414,38 +356,12 @@ export class GeminiService implements AIService {
       'where 0 means completely safe and 1 means extremely toxic.\n\n' +
       `Text to analyze:\n${wrapUserContent(content.substring(0, MAX_CONTENT_CHARS))}\n\nJSON:`;
 
-    const { signal, clear } = makeAbortController();
-    const start = Date.now();
     try {
-      const result = await withRetry(
-        (retrySignal) =>
-          this.ai.models.generateContent({
-            model: this.flashModel,
-            contents: prompt,
-            config: { abortSignal: retrySignal },
-          }),
-        3,
-        300,
-        10_000,
-        signal
-      );
-      const latencyMs = Date.now() - start;
-      logAiUsage({
-        operation: 'classify-toxicity',
-        provider: 'gemini',
-        model: this.flashModel,
-        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
-        latencyMs,
-      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
-      const text = result.text ?? '';
-      const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
-      return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;
+      const text = await this.generate(prompt, 'classify-toxicity', { timeoutMs: 10_000 });
+      return parseToxicity(text);
     } catch (error) {
       logger.warn('[GeminiService.classifyToxicity] AI failed, returning safe score', { error });
       return 0;
-    } finally {
-      clear();
     }
   }
 
@@ -455,38 +371,20 @@ export class GeminiService implements AIService {
       'NSFW includes explicit, violent, or disturbing content. ' +
       'Respond with JSON: { "classification": string, "confidence": number (0-1), "reason": string }';
 
-    const { signal, clear } = makeAbortController();
-    const start = Date.now();
     try {
-      const result = await withRetry(
-        (retrySignal) =>
-          this.ai.models.generateContent({
-            model: this.flashModel,
-            contents: [
-              { role: 'user', parts: [{ text: prompt }, { fileData: { mimeType: 'image/jpeg', fileUri: imageUrl } }] },
-            ],
-            config: { abortSignal: retrySignal },
-          }),
-        3,
-        300,
-        15_000,
-        signal
+      const text = await this.generate(
+        [
+          {
+            role: 'user',
+            parts: [{ text: prompt }, { fileData: { mimeType: 'image/jpeg', fileUri: imageUrl } }],
+          },
+        ],
+        'moderate-image'
       );
-      const latencyMs = Date.now() - start;
-      logAiUsage({
-        operation: 'moderate-image',
-        provider: 'gemini',
-        model: this.flashModel,
-        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
-        latencyMs,
-      }).catch((e) => logger.warn('[GeminiService] usage log failed', { error: e }));
 
-      const text = cleanJsonText(result.text ?? '');
-      const parsed = JSON.parse(text);
-      const validClassifications = ['SAFE', 'NSFW', 'UNKNOWN'];
+      const parsed = JSON.parse(cleanJsonText(text));
       return {
-        classification: validClassifications.includes(parsed.classification)
+        classification: ['SAFE', 'NSFW', 'UNKNOWN'].includes(parsed.classification)
           ? parsed.classification
           : 'UNKNOWN',
         confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
@@ -495,8 +393,6 @@ export class GeminiService implements AIService {
     } catch (error) {
       logger.warn('[GeminiService.moderateImageContent] AI failed, returning UNKNOWN', { error });
       return { classification: 'UNKNOWN', confidence: 0, reason: 'Image moderation unavailable' };
-    } finally {
-      clear();
     }
   }
 }
@@ -573,15 +469,7 @@ export class OpenAIService implements AIService {
     content: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    const controller = new AbortController();
-    // Stall-based timeout: abort if no data arrives for 30s
-    let stallTimer = setTimeout(() => controller.abort(), 30_000);
-    // Hard total timeout: abort after 90s regardless
-    const totalTimer = setTimeout(() => controller.abort(), 90_000);
-    const resetTimer = () => {
-      clearTimeout(stallTimer);
-      stallTimer = setTimeout(() => controller.abort(), 30_000);
-    };
+    const { signal, resetStall, clear } = makeStreamAbortController();
 
     try {
       const response = await fetch(this.baseUrl, {
@@ -602,7 +490,7 @@ export class OpenAIService implements AIService {
           max_tokens: 400,
           temperature: 0.4,
         }),
-        signal: controller.signal,
+        signal,
       });
 
       if (!response.ok) {
@@ -619,10 +507,10 @@ export class OpenAIService implements AIService {
         const { done, value } = await reader.read();
         if (done) break;
 
-        resetTimer();
+        resetStall();
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        // Keep last potentially incomplete line in buffer
+        // Last line may be a partial SSE frame — hold it for the next read.
         buffer = lines.pop() ?? '';
 
         for (const line of lines) {
@@ -640,11 +528,13 @@ export class OpenAIService implements AIService {
         }
       }
     } catch (error) {
-      logger.error('[OpenAIService.generateStreamingResponse]', { error });
+      const detail = error instanceof Error
+        ? { message: error.message, name: error.name, stack: error.stack?.split('\n').slice(0, 3).join(' | ') }
+        : { raw: JSON.stringify(error) ?? String(error) };
+      logger.error('[OpenAIService.generateStreamingResponse]', detail);
       throw error;
     } finally {
-      clearTimeout(stallTimer);
-      clearTimeout(totalTimer);
+      clear();
     }
   }
 
@@ -731,7 +621,7 @@ export class OpenAIService implements AIService {
         800,
         'daily-digest'
       );
-      return text.replace(/```html\n?/g, '').replace(/```\n?/g, '');
+      return stripHtmlFences(text);
     } catch (error) {
       logger.error('[OpenAIService.generateDailyDigest]', { error });
       throw error;
@@ -751,8 +641,7 @@ export class OpenAIService implements AIService {
         50,
         'classify-toxicity'
       );
-      const match = text.match(/"toxicity"\s*:\s*([0-9.]+)/i);
-      return match ? Math.min(1, Math.max(0, parseFloat(match[1]))) : 0;
+      return parseToxicity(text);
     } catch (error) {
       logger.warn('[OpenAIService.classifyToxicity] AI failed, returning safe score', { error });
       return 0;
@@ -764,14 +653,7 @@ export class OpenAIService implements AIService {
   }
 }
 
-class AIServiceFactory {
-  static create(provider: 'gemini' | 'openai', apiKey: string): AIService {
-    if (provider === 'gemini') return new GeminiService(apiKey);
-    if (provider === 'openai') return new OpenAIService(apiKey);
-    throw new Error(`Unknown AI provider: ${provider}`);
-  }
-}
-
+/** Keeps AI features degraded-but-working when no provider key is set. */
 class NoOpAIService implements AIService {
   async generateSummary() {
     return AI_NOT_CONFIGURED_SENTINEL;
@@ -816,7 +698,7 @@ function createAiService(): AIService {
   }
 
   logger.info(`[AI Service] Initializing with provider: ${provider}`);
-  return AIServiceFactory.create(provider, key);
+  return provider === 'gemini' ? new GeminiService(key) : new OpenAIService(key);
 }
 
 export const aiService: AIService = createAiService();

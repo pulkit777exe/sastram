@@ -2,6 +2,11 @@ const CONFIDENCE_HALF_LIFE_DAYS = 90;
 const RECENCY_THRESHOLD_DAYS = 30;
 const MIN_CONFIDENCE_SCORE = 5;
 
+/**
+ * An old resolution score is less trustworthy than a fresh one, so it decays
+ * exponentially past the recency threshold — but never to zero, since a stale
+ * answer is still worth more than no answer.
+ */
 export function applyConfidenceDecay(
   rawScore: number,
   updatedAt: Date

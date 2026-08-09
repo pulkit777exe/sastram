@@ -4,13 +4,14 @@ import { logger } from '@/lib/infrastructure/logger';
 import { env } from '@/lib/config/env';
 import { getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
 
+// duration is in seconds.
 export const rateLimitConfig = {
-  auth: { points: 5, duration: 900 }, // 5 requests per 15 min
-  api: { points: 100, duration: 60 }, // 100 requests per minute
-  upload: { points: 10, duration: 3600 }, // 10 uploads per hour
-  websocket: { points: 50, duration: 60 }, // 50 messages per minute
-  message: { points: 20, duration: 60 }, // 20 messages per minute (NEW!)
-  newsletter: { points: 3, duration: 86400 }, // 3 subscriptions per day
+  auth: { points: 5, duration: 900 },
+  api: { points: 100, duration: 60 },
+  upload: { points: 10, duration: 3600 },
+  websocket: { points: 50, duration: 60 },
+  message: { points: 20, duration: 60 },
+  newsletter: { points: 3, duration: 86400 },
 } as const;
 
 export type RateLimitBucket = keyof typeof rateLimitConfig;
@@ -30,8 +31,8 @@ export class InMemoryRateLimiter implements RateLimiter {
   private maxPoints: number;
   private duration: number;
   private lastCleanup: number = Date.now();
-  private readonly CLEANUP_INTERVAL = 60000; // Clean up every minute
-  private readonly MAX_IDENTIFIERS = 10000; // Cap tracked identifiers to prevent memory exhaustion
+  private readonly CLEANUP_INTERVAL = 60000;
+  private readonly MAX_IDENTIFIERS = 10000;
 
   constructor(maxPoints: number, duration: number) {
     this.maxPoints = maxPoints;
@@ -41,10 +42,10 @@ export class InMemoryRateLimiter implements RateLimiter {
   private cleanup() {
     const now = Date.now();
     if (now - this.lastCleanup < this.CLEANUP_INTERVAL) return;
-    
+
     this.lastCleanup = now;
     const windowMs = this.duration * 1000;
-    
+
     for (const [identifier, timestamps] of this.requests.entries()) {
       const filtered = timestamps.filter((ts) => now - ts < windowMs);
       if (filtered.length === 0) {
@@ -57,12 +58,13 @@ export class InMemoryRateLimiter implements RateLimiter {
 
   async check(identifier: string): Promise<RateLimitResult> {
     this.cleanup();
-    
-    // If we've hit the cap, reject unknown identifiers to prevent memory exhaustion
+
+    // Once the map is full, reject unseen identifiers rather than let an
+    // attacker grow it without bound by rotating keys.
     if (!this.requests.has(identifier) && this.requests.size >= this.MAX_IDENTIFIERS) {
       return { success: false, remaining: 0, reset: Date.now() + this.duration * 1000 };
     }
-    
+
     const now = Date.now();
     const requests = this.requests.get(identifier) || [];
     const windowMs = this.duration * 1000;
@@ -83,22 +85,18 @@ export class InMemoryRateLimiter implements RateLimiter {
   }
 }
 
-// Memoized rate limiters — one instance per bucket name.
-// Prevents creating new Ratelimit objects on every check.
+// One limiter instance per bucket, so we don't rebuild Ratelimit on every check.
 const _limiters = new Map<RateLimitBucket, RateLimiter>();
 
 export type LimiterMode = 'open' | 'in-memory' | 'redis';
 
 /**
- * Pure decision: given the config, a (possibly null) Redis client, and whether
- * Redis is configured, choose the limiter mode.
+ * - `open`: limiting off, or Redis was never configured — allow all.
+ * - `in-memory`: Redis configured but unreachable; degrade (weak on serverless).
+ * - `redis`: shared global limiting.
  *
- * - `open`: Redis not configured AND limiting disabled/intentionally off — allow all.
- * - `in-memory`: Redis configured but unavailable (degrade, weaker on serverless).
- * - `redis`: Redis available — real shared global limiting with in-memory fallback.
- *
- * This is extracted so the failure-mode decision is unit-testable without a live
- * Redis or the @upstash/ratelimit network wrapper.
+ * Split out from getOrCreateLimiter so the failure-mode decision is testable
+ * without a live Redis.
  */
 export function decideLimiterMode(
   rateLimitEnabled: boolean,
@@ -137,10 +135,8 @@ export function getOrCreateLimiter(
     );
     limiter = new InMemoryRateLimiter(config.points, config.duration);
   } else {
-    // mode === 'redis' => r is non-null here.
-    const redis = r as Redis;
     const ratelimit = new Ratelimit({
-      redis,
+      redis: r as Redis,
       limiter: Ratelimit.slidingWindow(config.points, `${config.duration} s`),
       analytics: false,
     });
@@ -175,16 +171,14 @@ export async function rateLimit(params: {
 export async function rateLimit(
   arg: string | { key: string; type: RateLimitBucket }
 ): Promise<RateLimitResult> {
-  if (typeof arg === 'string') {
-    const limiter = getOrCreateLimiter('api');
-    return limiter.check(arg);
-  }
-  const limiter = getOrCreateLimiter(arg.type);
-  return limiter.check(arg.key);
+  return typeof arg === 'string'
+    ? getOrCreateLimiter('api').check(arg)
+    : getOrCreateLimiter(arg.type).check(arg.key);
 }
 
 export const messageLimiter: RateLimiter = getOrCreateLimiter('message');
 
+/** Test hook — lets a suite re-evaluate limiter mode after changing env. */
 export function resetRateLimiters(): void {
   _limiters.clear();
 }

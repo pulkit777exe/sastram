@@ -4,6 +4,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { toasts } from '@/lib/utils/toast';
 
 let interceptorAttached = false;
+// Latches so a burst of parallel 401s produces one toast and one redirect.
 let sessionExpiryHandled = false;
 
 export function attachApiInterceptor(queryClient: QueryClient) {

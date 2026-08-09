@@ -1,7 +1,3 @@
-/**
- * Custom error classes for better error handling
- */
-
 export class AppError extends Error {
   constructor(
     message: string,
@@ -32,9 +28,6 @@ function isPrismaError(err: unknown): err is PrismaError {
   );
 }
 
-/**
- * Returns a user-facing error message for common Prisma errors.
- */
 export function prismaErrorMessage(err: unknown): string | null {
   if (!isPrismaError(err)) return null;
 
@@ -55,25 +48,18 @@ export function isPrismaUniqueConstraintError(err: unknown): boolean {
 }
 
 /**
- * Provider-side quota / rate-limit errors (HTTP 429). These are transient with
- * respect to the provider's own limits but not something a retry will fix within
- * the same job attempt — the AI spend cap / model quota resets on its own clock.
- * Treating them as terminal prevents background-job retry storms (which only
- * amplify the rate limit and pollute logs).
+ * Provider quota / rate-limit errors (429). Callers treat these as terminal:
+ * a retry within the same job attempt won't help since the quota resets on the
+ * provider's own clock, and retrying only amplifies the limit.
  */
 const QUOTA_PATTERN = /429|quota|RESOURCE_EXHAUSTED|rate.?limit/i;
 
 export function isQuotaError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   if (QUOTA_PATTERN.test(err.message)) return true;
-  const status = (err as { status?: unknown }).status;
-  if (typeof status === 'number' && status === 429) return true;
-  return false;
+  return (err as { status?: unknown }).status === 429;
 }
 
-/**
- * Handle errors consistently, translating Prisma errors to user-facing messages.
- */
 export function handleError(error: unknown): {
   message: string;
   code?: string;
@@ -108,5 +94,3 @@ export function handleError(error: unknown): {
     statusCode: 500,
   };
 }
-
-
