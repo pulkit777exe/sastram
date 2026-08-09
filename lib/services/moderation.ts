@@ -3,7 +3,7 @@ import { env } from '@/lib/config/env';
 import { aiService } from '@/lib/services/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { getMessageLimiter } from '@/lib/services/rate-limit';
-import { createNotification } from '@/modules/notifications';
+import { createBulkNotifications } from '@/modules/notifications';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
 import type { ReportCategory } from '@prisma/client';
@@ -394,16 +394,14 @@ export class MessageService {
             where: { role: { in: ['MODERATOR', 'ADMIN'] }, status: 'ACTIVE', deletedAt: null },
             select: { id: true },
           });
-          await Promise.all(
-            mods.map((mod) =>
-              createNotification({
-                userId: mod.id,
-                type: 'SYSTEM',
-                title: `Auto-mod flagged: ${result.action}`,
-                message: `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
-                data: { messageId: created.id, action: result.action, autoMod: true },
-              })
-            )
+          await createBulkNotifications(
+            mods.map((mod) => ({
+              userId: mod.id,
+              type: 'SYSTEM' as const,
+              title: `Auto-mod flagged: ${result.action}`,
+              message: `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
+              data: { messageId: created.id, action: result.action, autoMod: true },
+            }))
           );
         } catch (err) {
           // The message is already stored; a failed notification shouldn't

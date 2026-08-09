@@ -9,7 +9,6 @@ Core utilities, services, and infrastructure code. The backbone of the applicati
 ### Top-level
 - `thread-access.ts` - Thread authorization primitive (`requireThreadAccessOrThrow`, `canAccessThread`, `canManageThread`)
 - `sanitize.ts` - HTML/content sanitization
-- `dedupe.ts` - Request deduplication
 
 ### `lib/config/`
 Environment variables, permissions, routes, constants.

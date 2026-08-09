@@ -6,7 +6,7 @@
  * Public threads are readable by anyone; write still requires session.
  */
 
-import { Role, ThreadVisibility } from '@prisma/client';
+import { Prisma, Role, ThreadVisibility } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AppError } from '@/lib/utils/errors';
 import { redirect } from 'next/navigation';
@@ -47,6 +47,37 @@ export async function canAccessThread(
   });
 
   return emailInvitation !== null;
+}
+
+/**
+ * Query-level mirror of `canAccessThread`: non-public threads are only visible
+ * to their creator or to someone with an accepted invitation (matched by sender
+ * id or by the email the invitation was addressed to).
+ *
+ * Without a user id only PUBLIC threads are visible.
+ */
+export async function visibilityFilter(memberUserId?: string): Promise<Prisma.ThreadWhereInput> {
+  if (!memberUserId) {
+    return { visibility: 'PUBLIC' };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: memberUserId },
+    select: { email: true },
+  });
+
+  const invitationMatch: Prisma.ThreadInvitationWhereInput[] = [{ senderId: memberUserId }];
+  if (user?.email) {
+    invitationMatch.push({ email: user.email });
+  }
+
+  return {
+    OR: [
+      { visibility: 'PUBLIC' },
+      { createdBy: memberUserId },
+      { invitations: { some: { status: 'ACCEPTED', OR: invitationMatch } } },
+    ],
+  };
 }
 
 export async function canWriteToThread(

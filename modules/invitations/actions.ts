@@ -8,6 +8,8 @@ import { revalidatePath } from 'next/cache';
 import { inviteFriendSchema } from './schemas';
 import { canManageThread } from '@/lib/thread-access';
 import { actionSuccess } from '@/lib/actions/result';
+import { AppError } from '@/lib/utils/errors';
+import type { ActionErrorCode } from '@/lib/actions/result';
 
 export async function inviteFriendToThread(formData: FormData) {
   const threadId = formData.get('threadId') as string;
@@ -15,7 +17,7 @@ export async function inviteFriendToThread(formData: FormData) {
 
   const parsed = inviteFriendSchema.safeParse({ threadId, email });
   if (!parsed.success) {
-    return { data: null, error: 'Invalid input' };
+    return { data: null, error: 'Invalid input', ok: false, errorCode: 'VALIDATION_ERROR' as ActionErrorCode };
   }
 
   try {
@@ -28,11 +30,11 @@ export async function inviteFriendToThread(formData: FormData) {
     });
 
     if (!thread) {
-      return { data: null, error: 'Thread not found' };
+      return { data: null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' as ActionErrorCode };
     }
 
     if (!canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility }, session.user.id, session.user.role)) {
-      return { data: null, error: 'Only the thread creator or moderators can invite people' };
+      return { data: null, error: 'Only the thread creator or moderators can invite people', ok: false, errorCode: 'FORBIDDEN' as ActionErrorCode };
     }
 
     // Clear any declined/expired invitations so the user can be re-invited
@@ -58,6 +60,8 @@ export async function inviteFriendToThread(formData: FormData) {
       return {
         data: null,
         error: 'You have already invited this friend to this thread',
+        ok: false,
+        errorCode: 'CONFLICT' as ActionErrorCode,
       };
     }
 
@@ -100,6 +104,9 @@ export async function inviteFriendToThread(formData: FormData) {
     return actionSuccess(invitation);
   } catch (error) {
     logger.error('[inviteFriendToThread]', error);
+    if (error instanceof AppError) {
+      return { data: null, error: error.message, ok: false, errorCode: error.code as ActionErrorCode };
+    }
     return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 };
@@ -142,6 +149,9 @@ export async function listThreadInvitationsAction(threadId: string) {
     })));
   } catch (error) {
     logger.error('[listThreadInvitationsAction]', error);
+    if (error instanceof AppError) {
+      return { data: null as ThreadInvitationView[] | null, error: error.message, ok: false, errorCode: error.code as ActionErrorCode };
+    }
     return { data: null as ThreadInvitationView[] | null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
@@ -156,7 +166,7 @@ export async function revokeThreadInvitationAction(invitationId: string) {
     });
 
     if (!invitation) {
-      return { data: null, error: 'Invitation not found' };
+      return { data: null, error: 'Invitation not found', ok: false, errorCode: 'NOT_FOUND' as ActionErrorCode };
     }
 
     const thread = await prisma.thread.findFirst({
@@ -165,11 +175,11 @@ export async function revokeThreadInvitationAction(invitationId: string) {
     });
 
     if (!thread) {
-      return { data: null, error: 'Thread not found' };
+      return { data: null, error: 'Thread not found', ok: false, errorCode: 'NOT_FOUND' as ActionErrorCode };
     }
 
     if (!canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility }, session.user.id, session.user.role)) {
-      return { data: null, error: 'Insufficient permissions' };
+      return { data: null, error: 'Insufficient permissions', ok: false, errorCode: 'FORBIDDEN' as ActionErrorCode };
     }
 
     await prisma.threadInvitation.delete({ where: { id: invitationId } });
@@ -178,6 +188,9 @@ export async function revokeThreadInvitationAction(invitationId: string) {
     return actionSuccess({ id: invitationId });
   } catch (error) {
     logger.error('[revokeThreadInvitationAction]', error);
+    if (error instanceof AppError) {
+      return { data: null, error: error.message, ok: false, errorCode: error.code as ActionErrorCode };
+    }
     return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 };

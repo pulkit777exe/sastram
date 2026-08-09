@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Prisma, type NotificationType } from '@prisma/client';
 import { cache } from 'react';
-import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 
 export type NotificationData = Record<string, unknown> | null;
@@ -115,26 +114,24 @@ export const getUserNotifications = cache(async (filters: NotificationFilters) =
 
   try {
     return (
-      (await dedupe(`notifications:list:${JSON.stringify(filters)}`, () =>
-        prisma.notification.findMany({
-          where,
-          select: {
-            id: true,
-            userId: true,
-            type: true,
-            title: true,
-            message: true,
-            data: true,
-            isRead: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          take: filters.limit || 50,
-          skip: filters.offset || 0,
-        })
-      )) ?? []
+      (await prisma.notification.findMany({
+        where,
+        select: {
+          id: true,
+          userId: true,
+          type: true,
+          title: true,
+          message: true,
+          data: true,
+          isRead: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: filters.limit || 50,
+        skip: filters.offset || 0,
+      })) ?? []
     );
   } catch (error) {
     logger.error('[getUserNotifications]', error);
@@ -143,21 +140,19 @@ export const getUserNotifications = cache(async (filters: NotificationFilters) =
 });
 
 export const getNotificationById = cache(async (notificationId: string) => {
-  return dedupe(`notifications:byId:${notificationId}`, () =>
-    prisma.notification.findUnique({
-      where: { id: notificationId },
-          select: {
-            id: true,
-            userId: true,
-            type: true,
-            title: true,
-            message: true,
-            data: true,
-            isRead: true,
-            createdAt: true,
-          },
-    })
-  );
+  return prisma.notification.findUnique({
+    where: { id: notificationId },
+    select: {
+      id: true,
+      userId: true,
+      type: true,
+      title: true,
+      message: true,
+      data: true,
+      isRead: true,
+      createdAt: true,
+    },
+  });
 });
 
 export async function markAsRead(notificationId: string, userId: string) {
@@ -206,9 +201,7 @@ export const getUnreadCount = cache(async (userId: string, type?: NotificationTy
     where.type = type;
   }
 
-  return dedupe(`notifications:unread:${userId}:${type ?? 'all'}`, () =>
-    prisma.notification.count({ where })
-  );
+  return prisma.notification.count({ where });
 });
 
 export async function deleteNotification(notificationId: string, userId?: string) {
@@ -256,25 +249,23 @@ export async function deleteReadNotifications(userId: string, olderThanDays?: nu
 export const getRecentNotifications = cache(async (userId: string, limit: number = 10) => {
   try {
     return (
-      (await dedupe(`notifications:recent:${userId}:${limit}`, () =>
-        prisma.notification.findMany({
-          where: { userId },
-          select: {
-            id: true,
-            userId: true,
-            type: true,
-            title: true,
-            message: true,
-            data: true,
-            isRead: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          take: limit,
-        })
-      )) ?? []
+      (await prisma.notification.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          userId: true,
+          type: true,
+          title: true,
+          message: true,
+          data: true,
+          isRead: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: limit,
+      })) ?? []
     );
   } catch (error) {
     logger.error('[getRecentNotifications]', error);

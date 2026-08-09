@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/threads/types';
+import { visibilityFilter } from '@/lib/thread-access';
 
 export interface ListThreadsParams {
   page?: number;
@@ -42,31 +43,6 @@ async function countActiveUsersByThread(threadIds: string[]): Promise<Map<string
   `;
 
   return new Map(rows.map((row) => [row.threadId, Number(row.uniqueUsers)]));
-}
-
-/**
- * Mirrors `canAccessThread`: non-public threads are only visible to their
- * creator or to someone with an accepted invitation (matched by sender id or
- * by the email the invitation was addressed to).
- */
-async function visibilityFilter(memberUserId: string): Promise<Prisma.ThreadWhereInput> {
-  const user = await prisma.user.findUnique({
-    where: { id: memberUserId },
-    select: { email: true },
-  });
-
-  const invitationMatch: Prisma.ThreadInvitationWhereInput[] = [{ senderId: memberUserId }];
-  if (user?.email) {
-    invitationMatch.push({ email: user.email });
-  }
-
-  return {
-    OR: [
-      { visibility: 'PUBLIC' },
-      { createdBy: memberUserId },
-      { invitations: { some: { status: 'ACCEPTED', OR: invitationMatch } } },
-    ],
-  };
 }
 
 export const listThreads = cache(

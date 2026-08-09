@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Role, type Prisma, type ThreadVisibility } from '@prisma/client';
-import { dedupe } from '@/lib/dedupe';
+import { cache } from 'react';
 import { canAccessThread } from '@/lib/thread-access';
 
 export type ThreadMessageReactionAggregate = {
@@ -252,12 +252,9 @@ export async function getThreadMessagesPaginated(
   };
 }
 
-export async function getThreadWithFullContext(
-  slug: string,
-  userId?: string
-): Promise<ThreadWithFullContext | null> {
-  const uid = userId ?? '';
-  return dedupe(`threads:full:${slug}:${uid}`, async () => {
+export const getThreadWithFullContext = cache(
+  async (slug: string, userId?: string): Promise<ThreadWithFullContext | null> => {
+    const uid = userId ?? '';
     const rows = await prisma.$queryRaw<ThreadRow[]>`
       SELECT
         s.id,
@@ -426,5 +423,5 @@ export async function getThreadWithFullContext(
       isBookmarked: is_bookmarked ?? false,
       isSubscribed: is_subscribed ?? false,
     };
-  });
-}
+  }
+);

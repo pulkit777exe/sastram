@@ -38,11 +38,11 @@ export async function GET(request: NextRequest) {
 
     switch (type) {
       case 'threads': {
-        const result = await searchThreads(q, limit, offset);
+        const result = await searchThreads(q, limit, offset, undefined, session.user.id);
         return NextResponse.json(ok(result));
       }
       case 'messages': {
-        const result = await searchMessages(q, threadId, limit, offset);
+        const result = await searchMessages(q, threadId, limit, offset, session.user.id);
         return NextResponse.json(ok(result));
       }
       case 'users': {

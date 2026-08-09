@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { visibilityFilter } from '@/lib/thread-access';
 import { Prisma } from '@prisma/client';
 
 const insensitive = 'insensitive' as const;
@@ -8,14 +9,20 @@ export async function searchThreads(
   query: string,
   limit: number = 20,
   offset: number = 0,
-  threadIds?: string[]
+  threadIds?: string[],
+  viewerUserId?: string
 ) {
   try {
     const where: Prisma.ThreadWhereInput = {
-      OR: [
-        { name: { contains: query, mode: insensitive } },
-        { description: { contains: query, mode: insensitive } },
-        { aiSummary: { contains: query, mode: insensitive } },
+      AND: [
+        {
+          OR: [
+            { name: { contains: query, mode: insensitive } },
+            { description: { contains: query, mode: insensitive } },
+            { aiSummary: { contains: query, mode: insensitive } },
+          ],
+        },
+        await visibilityFilter(viewerUserId),
       ],
       deletedAt: null,
       ...(threadIds?.length ? { id: { in: threadIds } } : {}),
@@ -25,7 +32,7 @@ export async function searchThreads(
       prisma.thread.findMany({
         where,
         include: {
-          creator: { select: { id: true, name: true, email: true, image: true } },
+          creator: { select: { id: true, name: true, image: true } },
           _count: { select: { messages: true } },
         },
         orderBy: [{ messageCount: 'desc' }, { createdAt: 'desc' }],
@@ -46,14 +53,16 @@ export async function searchMessages(
   query: string,
   threadId?: string,
   limit: number = 20,
-  offset: number = 0
+  offset: number = 0,
+  viewerUserId?: string
 ) {
   try {
     const where: Prisma.MessageWhereInput = {
       deletedAt: null,
       content: { contains: query, mode: insensitive },
       // Exclude messages from soft-deleted threads — the thread is invisible everywhere else.
-      thread: { deletedAt: null },
+      // The visibility filter keeps private/restricted thread content out of results.
+      thread: { deletedAt: null, AND: [await visibilityFilter(viewerUserId)] },
       ...(threadId ? { threadId } : {}),
     };
 
@@ -61,7 +70,7 @@ export async function searchMessages(
       prisma.message.findMany({
         where,
         include: {
-          sender: { select: { id: true, name: true, email: true, image: true } },
+          sender: { select: { id: true, name: true, image: true } },
           thread: { select: { id: true, name: true, slug: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -83,10 +92,7 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     const where: Prisma.UserWhereInput = {
       status: 'ACTIVE',
       deletedAt: null,
-      OR: [
-        { name: { contains: query, mode: insensitive } },
-        { email: { contains: query, mode: insensitive } },
-      ],
+      name: { contains: query, mode: insensitive },
     };
 
     const [users, total] = await Promise.all([
@@ -95,7 +101,6 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
         select: {
           id: true,
           name: true,
-          email: true,
           image: true,
           bio: true,
           followerCount: true,

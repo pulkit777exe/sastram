@@ -6,12 +6,14 @@ import { requireSession } from '@/modules/auth';
 import { z } from 'zod';
 import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
-import { createNotification } from '@/modules/notifications';
+import { createBulkNotifications, createNotification } from '@/modules/notifications';
 import { requireRole, requireModerationRole } from '@/modules/policy';
 import { executeAuditAndRevalidate } from '@/modules/moderation/executors';
 import type { ReportCategory, ReportStatus } from '@prisma/client';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { actionSuccess } from '@/lib/actions/result';
+import { AppError } from '@/lib/utils/errors';
+import type { ActionErrorCode } from '@/lib/actions/result';
 
 const INTERNAL_ERROR = {
   data: null,
@@ -51,17 +53,17 @@ async function notifyModerators(opts: {
       select: { id: true },
     });
 
+    if (mods.length === 0) return;
+
     const label = opts.isAutoMod ? 'Auto-mod flagged' : 'New report';
-    await Promise.all(
-      mods.map((mod) =>
-        createNotification({
-          userId: mod.id,
-          type: 'SYSTEM',
-          title: `${label}: ${opts.category}`,
-          message: `Reported in "${opts.threadName}": ${opts.messagePreview.substring(0, 120)}`,
-          data: { reportId: opts.reportId, autoMod: opts.isAutoMod ?? false },
-        })
-      )
+    await createBulkNotifications(
+      mods.map((mod) => ({
+        userId: mod.id,
+        type: 'SYSTEM' as const,
+        title: `${label}: ${opts.category}`,
+        message: `Reported in "${opts.threadName}": ${opts.messagePreview.substring(0, 120)}`,
+        data: { reportId: opts.reportId, autoMod: opts.isAutoMod ?? false },
+      }))
     );
   } catch (error) {
     logger.error('[notifyModerators] failed', error);
@@ -575,6 +577,9 @@ export async function resolveReport(data: {
     return actionSuccess({ message: `Report ${action === 'DISMISS' ? 'dismissed' : 'resolved'} successfully` });
   } catch (error) {
     logger.error('[resolveReport]', error);
+    if (error instanceof AppError) {
+      return { data: null, error: error.message, ok: false, errorCode: error.code as ActionErrorCode };
+    }
     return INTERNAL_ERROR;
   }
 }

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { createNotification } from '@/modules/notifications';
+import { createBulkNotifications } from '@/modules/notifications';
 import { logger } from '@/lib/infrastructure/logger';
 
 const ESCALATION_24H_MS = 24 * 60 * 60 * 1000;
@@ -16,10 +16,10 @@ async function notifyStaff(
     select: { id: true },
   });
 
-  await Promise.all(
-    recipients.map(user =>
-      createNotification({ userId: user.id, type: 'SYSTEM', title, message, data })
-    )
+  if (recipients.length === 0) return;
+
+  await createBulkNotifications(
+    recipients.map(user => ({ userId: user.id, type: 'SYSTEM' as const, title, message, data }))
   );
 }
 

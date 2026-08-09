@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { ProfilePrivacy } from '@prisma/client';
 import { cache } from 'react';
-import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
 
@@ -49,17 +48,15 @@ export const getPublicProfile = cache(async (userId: string, viewerId?: string) 
 });
 
 export const getUserBootstrapProfile = cache(async (userId: string) => {
-  return dedupe(`users:bootstrap:${userId}`, () =>
-    prisma.user.findUnique({
-      where: { id: userId, deletedAt: null },
-      select: {
-        id: true,
-        name: true,
-        image: true,
-        role: true,
-      },
-    })
-  );
+  return prisma.user.findUnique({
+    where: { id: userId, deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      image: true,
+      role: true,
+    },
+  });
 });
 
 export const getUserThreads = cache(async (userId: string, limit: number = 20, offset: number = 0) => {

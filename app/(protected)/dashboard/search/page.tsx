@@ -134,7 +134,7 @@ export default function SearchPage() {
                       <Card className="p-4 hover:bg-accent transition-colors">
                         <p className="text-sm">{message.content}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          by {message.sender.name || message.sender.email} in {message.thread.name}
+                          by {message.sender.name || 'Unknown'} in {message.thread.name}
                         </p>
                       </Card>
                     </Link>
@@ -153,7 +153,7 @@ export default function SearchPage() {
                   {results.users.users?.map((user) => (
                     <Link key={user.id} href={`/user/${user.id}`}>
                       <Card className="p-4 hover:bg-accent transition-colors">
-                        <h3 className="font-semibold">{user.name || user.email}</h3>
+                        <h3 className="font-semibold">{user.name || 'Unknown'}</h3>
                         {user.bio && (
                           <p className="text-sm text-muted-foreground mt-1">{user.bio}</p>
                         )}

@@ -8,6 +8,7 @@ import {
 import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
 import { actionSuccess } from '@/lib/actions/result';
+import { requireSession } from '@/modules/auth/session';
 
 const searchSchema = z.object({
   query: z.string().min(1).max(200),
@@ -25,7 +26,8 @@ export const searchThreadsAction = withValidation(
   searchSchema,
   'searchThreads',
   async ({ query, limit, offset }) => {
-    const result = await searchThreadsRepo(query, limit, offset);
+    const session = await requireSession();
+    const result = await searchThreadsRepo(query, limit, offset, undefined, session.user.id);
     return actionSuccess(result);
   }
 );
@@ -34,7 +36,8 @@ export const searchMessagesAction = withValidation(
   searchMessagesSchema,
   'searchMessages',
   async ({ query, threadId, limit, offset }) => {
-    const result = await searchMessagesRepo(query, threadId, limit, offset);
+    const session = await requireSession();
+    const result = await searchMessagesRepo(query, threadId, limit, offset, session.user.id);
     return actionSuccess(result);
   }
 );
@@ -43,6 +46,7 @@ export const searchUsersAction = withValidation(
   searchSchema,
   'searchUsers',
   async ({ query, limit, offset }) => {
+    await requireSession();
     const result = await searchUsersRepo(query, limit, offset);
     return actionSuccess(result);
   }

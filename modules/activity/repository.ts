@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
-import { dedupe } from '@/lib/dedupe';
 import { logger } from '@/lib/infrastructure/logger';
 import type { Prisma } from '@prisma/client';
 import { computeHasMore } from '@/lib/db/pagination';
@@ -22,17 +21,15 @@ export async function recordActivity(data: {
 
 export const getUserActivity = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
   try {
-    const [activities, total] = await dedupe(`activity:user:${userId}:${limit}:${offset}`, () =>
-      Promise.all([
-        prisma.userActivity.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          take: limit,
-          skip: offset,
-        }),
-        prisma.userActivity.count({ where: { userId } }),
-      ])
-    );
+    const [activities, total] = await Promise.all([
+      prisma.userActivity.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.userActivity.count({ where: { userId } }),
+    ]);
 
     return { activities, total, hasMore: computeHasMore(offset, limit, total) };
   } catch (error) {
@@ -47,12 +44,10 @@ export const getFollowedUsersActivity = cache(async (
   offset: number = 0
 ) => {
   try {
-    const following = await dedupe(`activity:following:${userId}`, () =>
-      prisma.userFollow.findMany({
-        where: { followerId: userId },
-        select: { followingId: true },
-      })
-    );
+    const following = await prisma.userFollow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    });
 
     const followingIds = following.map((f) => f.followingId);
 
@@ -62,27 +57,25 @@ export const getFollowedUsersActivity = cache(async (
 
     const where = { userId: { in: followingIds } };
 
-    const [activities, total] = await dedupe(`activity:followed:${userId}:${limit}:${offset}`, () =>
-      Promise.all([
-        prisma.userActivity.findMany({
-          where,
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              },
+    const [activities, total] = await Promise.all([
+      prisma.userActivity.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
             },
           },
-          orderBy: { createdAt: 'desc' },
-          take: limit,
-          skip: offset,
-        }),
-        prisma.userActivity.count({ where }),
-      ])
-    );
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.userActivity.count({ where }),
+    ]);
 
     return { activities, total, hasMore: computeHasMore(offset, limit, total) };
   } catch (error) {
