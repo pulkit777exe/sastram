@@ -6,6 +6,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { randomUUID } from 'crypto';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { aiService } from '@/lib/services/ai';
 import { env } from '@/lib/config/env';
@@ -22,7 +23,14 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   }
 
   const formData = await req.formData();
+  const threadId = formData.get('threadId') as string;
   const files = formData.getAll('files') as File[];
+
+  if (!threadId) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Missing threadId'), { status: 400 });
+  }
+
+  await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
   if (!files || files.length === 0) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'No files provided'), { status: 400 });

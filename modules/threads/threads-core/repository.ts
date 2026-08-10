@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
-import { logger } from '@/lib/infrastructure/logger';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 import { visibilityFilter } from '@/lib/thread-access';
@@ -59,65 +58,50 @@ export const listThreads = cache(
       Object.assign(where, await visibilityFilter(memberUserId));
     }
 
-    try {
-      const [totalItems, threadRows] = await Promise.all([
-        prisma.thread.count({ where }),
-        prisma.thread.findMany({
-          where,
-          include: {
-            _count: { select: { messages: { where: { deletedAt: null } } } },
-          },
-          orderBy:
-            sortBy === 'oldest'
-              ? { createdAt: 'asc' }
-              : sortBy === 'popular'
-                ? { messageCount: 'desc' }
-                : { updatedAt: 'desc' },
-          skip: (page - 1) * pageSize,
-          take: pageSize,
-        }),
-      ]);
+    const [totalItems, threadRows] = await Promise.all([
+      prisma.thread.count({ where }),
+      prisma.thread.findMany({
+        where,
+        include: {
+          _count: { select: { messages: { where: { deletedAt: null } } } },
+        },
+        orderBy:
+          sortBy === 'oldest'
+            ? { createdAt: 'asc' }
+            : sortBy === 'popular'
+              ? { messageCount: 'desc' }
+              : { updatedAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
 
-      const activeUsers = await countActiveUsersByThread(threadRows.map((t) => t.id));
+    const activeUsers = await countActiveUsersByThread(threadRows.map((t) => t.id));
 
-      const mappedThreads = threadRows.map((thread) =>
-        buildThreadDTO(thread as ThreadRecord, thread._count.messages, activeUsers.get(thread.id) ?? 0)
+    const mappedThreads = threadRows.map((thread) =>
+      buildThreadDTO(thread as ThreadRecord, thread._count.messages, activeUsers.get(thread.id) ?? 0)
+    );
+
+    // Trending has no SQL equivalent, so it re-orders the current page only.
+    if (sortBy === 'trending') {
+      mappedThreads.sort(
+        (a, b) => b.activeUsers * 2 + b.messageCount - (a.activeUsers * 2 + a.messageCount)
       );
-
-      // Trending has no SQL equivalent, so it re-orders the current page only.
-      if (sortBy === 'trending') {
-        mappedThreads.sort(
-          (a, b) => b.activeUsers * 2 + b.messageCount - (a.activeUsers * 2 + a.messageCount)
-        );
-      }
-
-      const totalPages = Math.ceil(totalItems / pageSize);
-
-      return {
-        threads: mappedThreads,
-        pagination: {
-          page,
-          pageSize,
-          totalItems,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
-        },
-      };
-    } catch (error) {
-      logger.error('[listThreads]', error);
-      return {
-        threads: [],
-        pagination: {
-          page,
-          pageSize,
-          totalItems: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPreviousPage: page > 1,
-        },
-      };
     }
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    return {
+      threads: mappedThreads,
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 );
 

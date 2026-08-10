@@ -112,31 +112,26 @@ export const getUserNotifications = cache(async (filters: NotificationFilters) =
     if (filters.endDate) where.createdAt.lte = filters.endDate;
   }
 
-  try {
-    return (
-      (await prisma.notification.findMany({
-        where,
-        select: {
-          id: true,
-          userId: true,
-          type: true,
-          title: true,
-          message: true,
-          data: true,
-          isRead: true,
-          createdAt: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        take: filters.limit || 50,
-        skip: filters.offset || 0,
-      })) ?? []
-    );
-  } catch (error) {
-    logger.error('[getUserNotifications]', error);
-    return [];
-  }
+  return (
+    (await prisma.notification.findMany({
+      where,
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        title: true,
+        message: true,
+        data: true,
+        isRead: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: filters.limit || 50,
+      skip: filters.offset || 0,
+    })) ?? []
+  );
 });
 
 

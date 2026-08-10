@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postMessage } from '@/modules/messages/actions';
 import { ok, fail } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
@@ -49,6 +50,8 @@ export async function POST(request: NextRequest) {
     if (!rawContent?.trim() && files.length === 0) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Missing content or files'), { status: 400 });
     }
+
+    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
     const { sanitized: content } = sanitizeUserContent(rawContent || '');
 

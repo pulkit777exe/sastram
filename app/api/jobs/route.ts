@@ -25,19 +25,32 @@ import type {
   StalenessCheckJobData,
   EmailJobData,
 } from '@/lib/queue/types';
+import { AppError } from '@/lib/utils/errors';
 
 export const maxDuration = 60;
 
-const jobHandlers: Record<string, (data: unknown) => Promise<unknown>> = {
-  'generate-thread-summary': (data) => handleThreadSummaryJob(data as ThreadSummaryJobData),
-  'generate-thread-dna': (data) => handleThreadDnaJob(data as ThreadDnaJobData),
-  'calculate-resolution-score': (data) => handleResolutionScoreJob(data as ResolutionScoreJobData),
-  'detect-conflicts': (data) => handleConflictDetectionJob(data as ConflictDetectionJobData),
-  'generate-daily-digest': (data) => handleDailyDigestJob(data as DailyDigestJobData),
-  'send-ai-insight-notifications': (data) => handleAIInsightNotificationsJob(data as AIInsightNotificationJobData),
-  'generate-ai-inline': (data) => handleAIInlineJob(data as AIInlineJobData),
-  [AIJobType.STALENESS_CHECK]: (data) => handleStalenessCheckJob(data as StalenessCheckJobData),
-  'email': (data) => handleEmailJob(data as EmailJobData),
+type JobHandlerMap = {
+  'generate-thread-summary': (data: ThreadSummaryJobData) => Promise<unknown>;
+  'generate-thread-dna': (data: ThreadDnaJobData) => Promise<unknown>;
+  'calculate-resolution-score': (data: ResolutionScoreJobData) => Promise<unknown>;
+  'detect-conflicts': (data: ConflictDetectionJobData) => Promise<unknown>;
+  'generate-daily-digest': (data: DailyDigestJobData) => Promise<unknown>;
+  'send-ai-insight-notifications': (data: AIInsightNotificationJobData) => Promise<unknown>;
+  'generate-ai-inline': (data: AIInlineJobData) => Promise<unknown>;
+  [AIJobType.STALENESS_CHECK]: (data: StalenessCheckJobData) => Promise<unknown>;
+  'email': (data: EmailJobData) => Promise<unknown>;
+};
+
+const jobHandlers: JobHandlerMap = {
+  'generate-thread-summary': handleThreadSummaryJob,
+  'generate-thread-dna': handleThreadDnaJob,
+  'calculate-resolution-score': handleResolutionScoreJob,
+  'detect-conflicts': handleConflictDetectionJob,
+  'generate-daily-digest': handleDailyDigestJob,
+  'send-ai-insight-notifications': handleAIInsightNotificationsJob,
+  'generate-ai-inline': handleAIInlineJob,
+  [AIJobType.STALENESS_CHECK]: handleStalenessCheckJob,
+  'email': handleEmailJob,
 };
 
 async function handleJob(request: NextRequest) {
@@ -53,7 +66,7 @@ async function handleJob(request: NextRequest) {
   }
 
   const { jobType, payload } = JSON.parse(body) as {
-    jobType: string;
+    jobType: keyof JobHandlerMap;
     payload: Record<string, unknown>;
   };
 
@@ -65,9 +78,13 @@ async function handleJob(request: NextRequest) {
 
   try {
     logger.info(`[jobs] Processing job: ${jobType}`);
-    await handler(payload);
+    await handler(payload as never);
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (AppError.isAppError(error)) {
+      logger.warn(`[jobs] Job ${jobType} failed (non-retryable): ${error.message}`);
+      return NextResponse.json({ ok: true, error: error.message });
+    }
     logger.error(`[jobs] Job ${jobType} failed:`, error);
     return NextResponse.json({ error: 'Job failed' }, { status: 500 });
   }

@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { AttachmentItem } from './attachment-item';
 import { PollDisplay } from './poll-display';
 import { renderContent } from '@/lib/utils/render-content';
+import { canModerate } from '@/lib/config/permissions';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
@@ -208,7 +209,7 @@ const MessageRow = React.memo(function MessageRow({
   const isOwnMessage = message.senderId === currentUser.id;
   const isShowingReplyBox = activeReplyId === message.id;
   const isDeleted = !!message.deletedAt;
-  const isModerator = ['ADMIN', 'MODERATOR', 'OWNER'].includes(currentUser.role || '');
+  const isModerator = canModerate(currentUser.role);
   const activeReplyTarget = activeReplyId
     ? replies.find((reply) => reply.id === activeReplyId) ?? null
     : null;

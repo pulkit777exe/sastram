@@ -8,6 +8,10 @@ export class AppError extends Error {
     this.name = this.constructor.name;
     Error.captureStackTrace(this, this.constructor);
   }
+
+  static isAppError(error: unknown): error is AppError {
+    return error instanceof AppError;
+  }
 }
 
 const PRISMA_UNIQUE_CONSTRAINT = 'P2002';

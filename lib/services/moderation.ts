@@ -448,36 +448,4 @@ export class ModerationDashboard {
     });
   }
 
-  async resolveCase(reportId: string, action: 'BLOCK' | 'ALLOW' | 'FLAG', reason: string) {
-    const report = await prisma.report.findUnique({
-      where: { id: reportId },
-      include: { message: true },
-    });
-
-    if (!report) {
-      throw new Error('Report not found');
-    }
-
-    await prisma.report.update({
-      where: { id: reportId },
-      data: {
-        status: action === 'ALLOW' ? 'DISMISSED' : 'RESOLVED',
-        resolvedBy: action === 'ALLOW' ? null : report.reporterId,
-        resolution: reason,
-      },
-    });
-
-    if (action === 'BLOCK') {
-      const systemUser = await getSystemUser();
-
-      await prisma.userBan.create({
-        data: {
-          userId: report.message.senderId,
-          bannedBy: systemUser.id,
-          reason,
-          threadId: report.message.threadId,
-        },
-      });
-    }
-  }
 }
