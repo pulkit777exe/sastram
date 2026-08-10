@@ -60,7 +60,7 @@ export type ModerationResult = {
 async function getSystemUser() {
   return prisma.user.upsert({
     where: { email: 'system@sastram.com' },
-    create: { email: 'system@sastram.com', name: 'System', role: 'ADMIN' },
+    create: { email: 'system@sastram.com', name: 'System', role: 'USER' },
     update: {},
   });
 }

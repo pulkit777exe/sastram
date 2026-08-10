@@ -412,41 +412,7 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
   }
 }
 
-export async function getMyReports() {
-  try {
-    const session = await requireSession();
-    const reports = await prisma.report.findMany({
-      where: { reporterId: session.user.id },
-      include: {
-        message: {
-          select: {
-            id: true,
-            content: true,
-            thread: { select: { name: true, slug: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
 
-    const data = reports.map((r) => ({
-      id: r.id,
-      category: r.category,
-      categoryLabel: REPORT_CATEGORY_LABELS[r.category as keyof typeof REPORT_CATEGORY_LABELS],
-      status: r.status,
-      createdAt: r.createdAt,
-      resolvedBy: r.resolvedBy,
-      threadName: r.message.thread.name,
-      messagePreview: r.message.content.substring(0, 100),
-    }));
-
-    return { data, error: null, ok: true, errorCode: null };
-  } catch (error) {
-    logger.error('[getMyReports]', error);
-    return INTERNAL_ERROR;
-  }
-}
 
 export async function resolveReport(data: {
   reportId: string;

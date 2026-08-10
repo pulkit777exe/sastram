@@ -56,7 +56,7 @@ export async function incrementDailyQstashCount(): Promise<number> {
   }
 }
 
-export async function enqueueJob(jobType: string, payload: Record<string, unknown>) {
+export async function enqueueJob<T extends object>(jobType: string, payload: T) {
   // Local dev fallback: run inline when QStash isn't configured.
   if (!QSTASH_CONFIGURED || !client) {
     logger.info(`[queue] QStash not configured, running job inline: ${jobType}`);
@@ -83,7 +83,7 @@ export async function enqueueJob(jobType: string, payload: Record<string, unknow
   }
 }
 
-async function runJobInline(jobType: string, payload: Record<string, unknown>) {
+async function runJobInline<T extends object>(jobType: string, payload: T) {
   try {
     // Deferred imports: the workers import back into this module.
     const ai = await import('@/lib/queue/workers/ai.worker');
@@ -103,7 +103,8 @@ async function runJobInline(jobType: string, payload: Record<string, unknown>) {
 
     const handler = handlers[jobType];
     if (!handler) {
-      logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${payload?.id ?? 'unknown'}`);
+      const id = (payload as { id?: unknown })?.id;
+      logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${id ?? 'unknown'}`);
       return;
     }
 
@@ -114,5 +115,5 @@ async function runJobInline(jobType: string, payload: Record<string, unknown>) {
 }
 
 export async function enqueueInlineJob(data: AIInlineJobData) {
-  await enqueueJob(AIJobType.GENERATE_AI_INLINE, data as unknown as Record<string, unknown>);
+  await enqueueJob(AIJobType.GENERATE_AI_INLINE, data);
 }

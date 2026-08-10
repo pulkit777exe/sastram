@@ -31,6 +31,11 @@ function calculateThreadSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
   const union = new Set([...topics1, ...topics2]).size;
   const topicSimilarity = union === 0 ? 0 : intersection / union;
 
+  // Early termination: even with perfect questionType and expertise alignment,
+  // the weighted result can't reach the 0.7 threshold when topic Jaccard is
+  // below 0.3 (max possible = 0.3*0.5 + 1*0.3 + 1*0.2 = 0.65).
+  if (topicSimilarity < 0.3) return 0;
+
   // A question-type mismatch is penalised but not fatal — the same topic asked
   // two different ways is still worth surfacing.
   const questionTypeSimilarity = dna1.questionType === dna2.questionType ? 1 : 0.3;

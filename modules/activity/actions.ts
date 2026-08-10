@@ -6,7 +6,6 @@ import { requireSession } from '@/modules/auth/session';
 import {
   recordActivity as recordActivityRepo,
   getUserActivity as getUserActivityRepo,
-  getFollowedUsersActivity as getFollowedUsersActivityRepo,
 } from './repository';
 import { withValidation } from '@/lib/utils/server-action';
 import { activityQuerySchema } from '@/lib/utils/validation-common';
@@ -36,12 +35,4 @@ export const getUserActivityAction = withValidation(
   }
 );
 
-export const getFollowedUsersActivityAction = withValidation(
-  activityQuerySchema,
-  'getFollowedUsersActivityAction',
-  async ({ limit, offset }) => {
-    const session = await requireSession();
-    const result = await getFollowedUsersActivityRepo(session.user.id, limit || 20, offset || 0);
-    return actionSuccess(result);
-  }
-);
+

@@ -143,20 +143,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsedBody = body as {
-      query?: string;
-      config?: unknown;
-      keys?: { exa?: string; tavily?: string; gemini?: string; openai?: string };
-      parentSessionId?: string;
-      clientNonce?: string;
-      context?: { query: string; followUp: string };
-    };
-    const keys = parsedBody.keys;
+    const validation = searchRequestSchema.safeParse(body);
+    if (!validation.success) {
+      const firstError = validation.error.issues[0];
+      return NextResponse.json(
+        fail('VALIDATION_ERROR', firstError?.message || 'Invalid request parameters'),
+        { status: 400, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
 
-    const exaKey = keys?.exa || env.SASTRAM_EXA_KEY || '';
-    const tavilyKey = keys?.tavily || env.SASTRAM_TAVILY_KEY || '';
-    const geminiKey = keys?.gemini || env.SASTRAM_GEMINI_KEY || '';
-    const openaiKey = keys?.openai || env.OPENAI_API_KEY || '';
+    const { keys } = validation.data;
+    const exaKey = keys.exa || env.SASTRAM_EXA_KEY || '';
+    const tavilyKey = keys.tavily || env.SASTRAM_TAVILY_KEY || '';
+    const geminiKey = keys.gemini || env.SASTRAM_GEMINI_KEY || '';
+    const openaiKey = keys.openai || env.OPENAI_API_KEY || '';
 
     if (!exaKey || !tavilyKey || !geminiKey) {
       const missing = [];
@@ -182,15 +182,6 @@ export async function POST(request: NextRequest) {
       if (!keyValidation.geminiValid) invalid.push('Gemini');
       return NextResponse.json(
         fail('VALIDATION_ERROR', `Invalid API key format for: ${invalid.join(', ')}. Please check your keys.`),
-        { status: 400, headers: { 'Cache-Control': 'no-store' } }
-      );
-    }
-
-    const validation = searchRequestSchema.safeParse(body);
-    if (!validation.success) {
-      const firstError = validation.error.issues[0];
-      return NextResponse.json(
-        fail('VALIDATION_ERROR', firstError?.message || 'Invalid request parameters'),
         { status: 400, headers: { 'Cache-Control': 'no-store' } }
       );
     }

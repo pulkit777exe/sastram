@@ -100,3 +100,9 @@ export function assertAdmin(user: SessionUser | undefined | null) {
     redirect('/dashboard');
   }
 }
+
+export function assertAdminOrThrow(user: SessionUser | undefined | null): void {
+  if (!isAdminUser(user)) {
+    throw new AppError('Forbidden: admin access required', 'FORBIDDEN', 403);
+  }
+}

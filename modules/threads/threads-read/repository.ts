@@ -192,7 +192,7 @@ export async function getThreadMessagesPaginated(
     }
   }
 
-  const [messages, totalCount] = await Promise.all([
+  const [messages, thread] = await Promise.all([
     prisma.message.findMany({
       where,
       include: {
@@ -203,7 +203,10 @@ export async function getThreadMessagesPaginated(
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
     }),
-    prisma.message.count({ where: { threadId, deletedAt: null } }),
+    prisma.thread.findUnique({
+      where: { id: threadId },
+      select: { messageCount: true },
+    }),
   ]);
 
   const hasMore = messages.length > limit;
@@ -248,7 +251,7 @@ export async function getThreadMessagesPaginated(
     })),
     hasMore,
     nextCursor: hasMore && page.length > 0 ? page[page.length - 1].id : null,
-    totalCount,
+    totalCount: thread?.messageCount ?? 0,
   };
 }
 

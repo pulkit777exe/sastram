@@ -12,7 +12,7 @@ import {
 } from '@/modules/reactions/repository';
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/actions/result';
 
 const toggleReactionSchema = z.object({
   messageId: z.string().cuid(),
@@ -39,12 +39,7 @@ async function authorizeMessage(messageId: string) {
   return { session, notFound: false } as const;
 }
 
-const messageNotFound = {
-  data: null,
-  error: 'Message not found',
-  errorCode: 'NOT_FOUND',
-  ok: false,
-} as const;
+const messageNotFound = actionFailure('NOT_FOUND', 'Message not found');
 
 export const toggleReaction = createServerAction(
   { schema: toggleReactionSchema, actionName: 'toggleReaction' },

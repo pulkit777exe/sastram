@@ -31,7 +31,7 @@ export async function sendEmail({
   data,
 }: EmailOptions) {
   const payload: EmailJobData = { to, subject, text, from, type, metadata, templateId, data };
-  await enqueueJob('email', payload as unknown as Record<string, unknown>);
+  await enqueueJob('email', payload);
 
   logger.info(
     `Queued email job (${type}) for ${Array.isArray(to) ? to.join(', ') : to}`

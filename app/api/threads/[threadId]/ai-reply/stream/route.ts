@@ -132,6 +132,9 @@ export async function GET(
     .map((m) => `${m.sender?.name || 'User'}: ${m.content}`)
     .join('\n');
 
+  // Service identity for AI-generated replies. This email is a reserved
+  // system address — real users must not be able to register it (enforced
+  // by the email domain allowlist in the auth configuration).
   const aiUser = await prisma.user.upsert({
     where: { email: 'ai@sastram.system' },
     update: { name: 'Sastram AI', emailVerified: true },

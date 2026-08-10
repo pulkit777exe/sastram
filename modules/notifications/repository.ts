@@ -139,21 +139,7 @@ export const getUserNotifications = cache(async (filters: NotificationFilters) =
   }
 });
 
-export const getNotificationById = cache(async (notificationId: string) => {
-  return prisma.notification.findUnique({
-    where: { id: notificationId },
-    select: {
-      id: true,
-      userId: true,
-      type: true,
-      title: true,
-      message: true,
-      data: true,
-      isRead: true,
-      createdAt: true,
-    },
-  });
-});
+
 
 export async function markAsRead(notificationId: string, userId: string) {
   const notification = await prisma.notification.findUnique({
@@ -204,74 +190,13 @@ export const getUnreadCount = cache(async (userId: string, type?: NotificationTy
   return prisma.notification.count({ where });
 });
 
-export async function deleteNotification(notificationId: string, userId?: string) {
-  if (userId) {
-    const notification = await prisma.notification.findUnique({
-      where: { id: notificationId },
-      select: { userId: true },
-    });
 
-    if (!notification || notification.userId !== userId) {
-      throw new Error('Notification not found or unauthorized');
-    }
-  }
 
-  return prisma.notification.delete({
-    where: { id: notificationId },
-  });
-}
 
-export async function deleteAllNotifications(userId: string, type?: NotificationType) {
-  const where: Prisma.NotificationWhereInput = { userId };
 
-  if (type) {
-    where.type = type;
-  }
 
-  return prisma.notification.deleteMany({ where });
-}
 
-export async function deleteReadNotifications(userId: string, olderThanDays?: number) {
-  const where: Prisma.NotificationWhereInput = {
-    userId,
-    isRead: true,
-  };
 
-  if (olderThanDays) {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
-    where.createdAt = { lt: cutoffDate };
-  }
-
-  return prisma.notification.deleteMany({ where });
-}
-
-export const getRecentNotifications = cache(async (userId: string, limit: number = 10) => {
-  try {
-    return (
-      (await prisma.notification.findMany({
-        where: { userId },
-        select: {
-          id: true,
-          userId: true,
-          type: true,
-          title: true,
-          message: true,
-          data: true,
-          isRead: true,
-          createdAt: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        take: limit,
-      })) ?? []
-    );
-  } catch (error) {
-    logger.error('[getRecentNotifications]', error);
-    return [];
-  }
-});
 
 export async function notifyMultipleUsers(
   userIds: string[],

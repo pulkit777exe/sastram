@@ -74,28 +74,4 @@ export async function getUserActivities(filters?: UserActivityFilters) {
   }
 }
 
-export async function getUserActivityStats(filters?: {
-  startDate?: Date;
-  endDate?: Date;
-  entityType?: string;
-}) {
-  const where: Prisma.UserActivityWhereInput = {
-    createdAt: createdAtRange(filters),
-    entityType: filters?.entityType,
-  };
 
-  const [totalActions, actionBreakdown, entityTypeBreakdown] = await Promise.all([
-    prisma.userActivity.count({ where }),
-    prisma.userActivity.groupBy({ by: ['type'], where, _count: { type: true } }),
-    prisma.userActivity.groupBy({ by: ['entityType'], where, _count: { entityType: true } }),
-  ]);
-
-  return {
-    totalActions,
-    byAction: actionBreakdown.map((item) => ({ action: item.type, count: item._count.type })),
-    byEntityType: entityTypeBreakdown.map((item) => ({
-      entityType: item.entityType,
-      count: item._count.entityType,
-    })),
-  };
-}

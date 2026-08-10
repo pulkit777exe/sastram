@@ -8,7 +8,7 @@ import { requireSession } from '@/modules/auth';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/actions/result';
 
 export const deleteMessage = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessage' },
@@ -27,19 +27,14 @@ export const deleteMessage = createServerAction(
       });
 
       if (!message) {
-        return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+        return actionFailure('NOT_FOUND', 'Message not found');
       }
 
       const isAuthor = message.senderId === session.user.id;
       const memberRole = isAuthor ? null : await getMemberRole(message.threadId, session.user.id);
 
       if (!isAuthor && !['OWNER', 'MODERATOR'].includes(memberRole?.role ?? '')) {
-        return {
-          data: null,
-          error: 'Insufficient permissions to delete this message',
-          errorCode: 'FORBIDDEN',
-          ok: false,
-        };
+        return actionFailure('FORBIDDEN', 'Insufficient permissions to delete this message');
       }
 
       await prisma.$transaction(async (tx) => {
@@ -75,7 +70,7 @@ export const deleteMessage = createServerAction(
       return actionSuccess(null);
     } catch (error) {
       logger.error('[deleteMessage]', error);
-      return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
+      return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }
   }
 );

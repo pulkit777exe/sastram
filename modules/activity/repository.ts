@@ -38,48 +38,4 @@ export const getUserActivity = cache(async (userId: string, limit: number = 20, 
   }
 });
 
-export const getFollowedUsersActivity = cache(async (
-  userId: string,
-  limit: number = 20,
-  offset: number = 0
-) => {
-  try {
-    const following = await prisma.userFollow.findMany({
-      where: { followerId: userId },
-      select: { followingId: true },
-    });
 
-    const followingIds = following.map((f) => f.followingId);
-
-    if (followingIds.length === 0) {
-      return { activities: [], total: 0, hasMore: false };
-    }
-
-    const where = { userId: { in: followingIds } };
-
-    const [activities, total] = await Promise.all([
-      prisma.userActivity.findMany({
-        where,
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.userActivity.count({ where }),
-    ]);
-
-    return { activities, total, hasMore: computeHasMore(offset, limit, total) };
-  } catch (error) {
-    logger.error('[getFollowedUsersActivity]', error);
-    return { activities: [], total: 0, hasMore: false };
-  }
-});

@@ -9,7 +9,7 @@ import { createServerAction } from '@/lib/utils/server-action';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/actions/result';
 import {
   editMessageSchema,
   pinMessageSchema,
@@ -28,16 +28,11 @@ export const editMessage = createServerAction(
       });
 
       if (!message) {
-        return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+        return actionFailure('NOT_FOUND', 'Message not found');
       }
 
       if (message.senderId !== session.user.id) {
-        return {
-          data: null,
-          error: 'You can only edit your own messages',
-          errorCode: 'FORBIDDEN',
-          ok: false,
-        };
+        return actionFailure('FORBIDDEN', 'You can only edit your own messages');
       }
 
       await prisma.messageEdit.create({
@@ -60,7 +55,7 @@ export const editMessage = createServerAction(
       return actionSuccess(null);
     } catch (error) {
       logger.error('[editMessage]', error);
-      return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
+      return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }
   }
 );
@@ -83,17 +78,12 @@ export const pinMessage = createServerAction(
       });
 
       if (!message) {
-        return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+        return actionFailure('NOT_FOUND', 'Message not found');
       }
 
       const memberRole = await getMemberRole(message.threadId, session.user.id);
       if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-        return {
-          data: null,
-          error: 'Insufficient permissions. Only moderators and owners can pin messages.',
-          errorCode: 'FORBIDDEN',
-          ok: false,
-        };
+        return actionFailure('FORBIDDEN', 'Insufficient permissions. Only moderators and owners can pin messages.');
       }
 
       const shouldPin = !message.isPinned;
@@ -124,7 +114,7 @@ export const pinMessage = createServerAction(
       return actionSuccess(null);
     } catch (error) {
       logger.error('[pinMessage]', error);
-      return { data: null, error: 'Something went wrong', errorCode: 'INTERNAL_ERROR', ok: false };
+      return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }
   }
 );
@@ -141,7 +131,7 @@ export const getMessageEditHistory = createServerAction(
       });
 
       if (!message) {
-        return { data: null, error: 'Message not found', errorCode: 'NOT_FOUND', ok: false };
+        return actionFailure('NOT_FOUND', 'Message not found');
       }
 
       await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
@@ -154,12 +144,7 @@ export const getMessageEditHistory = createServerAction(
       return actionSuccess(edits);
     } catch (error) {
       logger.error('[getMessageEditHistory]', error);
-      return {
-        data: null,
-        error: 'Something went wrong',
-        errorCode: 'INTERNAL_ERROR',
-        ok: false,
-      };
+      return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }
   }
 );

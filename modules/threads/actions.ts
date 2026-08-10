@@ -14,15 +14,21 @@ import { ROUTES } from '@/lib/config/routes';
 import { createServerAction, type ActionResult } from '@/lib/utils/server-action';
 import { actionSuccess } from '@/lib/actions/result';
 import { threadIdSchema } from '@/lib/utils/validation-common';
-import { prismaErrorMessage } from '@/lib/utils/errors';
+import { AppError, prismaErrorMessage } from '@/lib/utils/errors';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 
 const PAGE_SIZE = 50;
 const BACKFILL_LIMIT = 100;
 
-// createServerAction has its own catch-all, but it surfaces raw Error messages.
-// These actions swallow them instead, exposing only the friendly Prisma mapping.
 function failure(actionName: string, error: unknown): ActionResult<never> {
+  if (error instanceof AppError) {
+    return {
+      data: null,
+      error: error.message,
+      ok: false,
+      errorCode: error.code as ActionResult<never>['errorCode'],
+    };
+  }
   logger.error(`[${actionName}]`, error);
   return {
     data: null,
