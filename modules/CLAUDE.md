@@ -4,24 +4,24 @@
 
 Domain modules implementing business logic, organized by feature. 25 modules. Each module typically contains actions, optionally repository, types, and schemas.
 
-## Module Categories
+## Module List
 
 ### Authentication
 - `modules/auth/` - Session management, OAuth
 
 ### Core Features
-- `modules/users/` - User CRUD, profiles, expertise
-- `modules/threads/` - Thread management (split into threads-core, threads-read, threads-write, threads-relations)
+- `modules/users/` - User CRUD, profiles, avatar/banner upload
+- `modules/threads/` - Thread CRUD, slug routing, relations
 - `modules/topics/` - Topic creation with tags
-- `modules/messages/` - Messages with tree threading (ports/adapters)
+- `modules/messages/` - Messages with tree threading (post, edit, delete, mentions, AI inline)
 - `modules/search/` - Full-text thread/message search
 
 ### Social Features
 - `modules/reactions/` - Emoji reactions
 - `modules/follows/` - User following
 - `modules/bookmarks/` - Saved threads
-- `modules/notifications/` - Notifications
-- `modules/read-receipts/` - Per-user message read state
+- `modules/notifications/` - In-app notifications
+- `modules/read-receipts/` - Per-user thread read state
 
 ### Engagement
 - `modules/polls/` - Embedded polls
@@ -44,6 +44,13 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 
 ### Automation
 - `modules/ai-search/` - AI forum search: service, cache, citations, query warming
+
+## Removed Modules
+The following modules no longer exist (removed during refactor):
+- `modules/ws/` - WebSocket layer (removed; replaced by SSE streaming)
+- `modules/chat/` - Chat module (removed; functionality in `components/chat/` and `modules/messages/`)
+- `modules/reputation/` - Reputation system (removed)
+- `modules/badges/` - Badge system (removed)
 
 ## Key Patterns
 
@@ -68,6 +75,14 @@ export const findById = async (id: string) => prisma.xxx.findUnique(...)
 // modules/[feature]/types.ts
 export type FeatureType = { ... }
 ```
+
+### Action Envelope
+All server actions return a standardized envelope:
+```typescript
+{ ok: boolean, data?: T, error?: string, errorCode?: ActionErrorCode }
+```
+
+Use `actionSuccess(data)` and `actionFailure(errorCode, message)` from `lib/actions/result.ts`.
 
 ## Testing Notes
 

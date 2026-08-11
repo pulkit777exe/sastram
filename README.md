@@ -7,37 +7,56 @@
 
 <p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
+  <a href="./CLAUDE.md"><img src="https://img.shields.io/badge/docs-CLAUDE.md-grey" alt="Architecture"></a>
 </p>
 
 ---
 
-An discussion platform with AI-powered search, newsletters, and moderation. Originally a personal project, now open source.
+A discussion platform with AI-powered search, threading, and moderation. Originally a personal project, now open source.
 
-## Tech
+## Tech Stack
 
-next.js, typescript, prisma (postgresql/neon), better-auth, upstash redis, qstash, google gemini / openai, tailwind css, shadcn/ui, tanstack query, zustand
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript (strict mode)
+- **Database**: PostgreSQL via Neon serverless
+- **ORM**: Prisma 7
+- **Auth**: Better Auth (email OTP)
+- **AI**: Google Gemini / OpenAI GPT
+- **Styling**: Tailwind CSS + shadcn/ui
+- **State**: Zustand, TanStack Query
+- **Infra**: Upstash Redis, QStash, Vercel Blob
 
-## Quick start
+## Features
+
+- **Threaded discussions** — public, restricted, and private threads with visibility-based access control
+- **AI-powered search** — semantic forum search with citations (Exa/Tavily + Gemini fallback)
+- **AI thread analysis** — summaries, thread DNA, resolution scores, conflict detection
+- **Moderation** — regex-based content filtering, AI inline moderation, moderator notifications, SLA-based escalation
+- **Background jobs** — QStash-powered workers for summaries, digests, email, and AI insights
+- **Spend caps & quotas** — dollar-based daily AI spend limits and per-user daily quotas via Redis
+- **Reactions, polls, bookmarks, follows** — full engagement toolkit
+- **Newsletters** — scheduled digest emails
+
+## Quick Start
 
 ### Option A: Local setup
 
 ```bash
 pnpm install
+cp .env.sample .env      # fill in required values
 pnpm db:migrate
 pnpm dev
 ```
 
-### Option B: Docker (recommended)
+### Option B: Docker
 
 ```bash
 docker compose up
 ```
 
-Starts PostgreSQL, Redis, and the Next.js app. Local jobs run through the app's inline fallback unless QStash is configured. See [CONTRIBUTING.md](./CONTRIBUTING.md) for environment setup.
+Starts PostgreSQL, Redis, and the Next.js app. See [CONTRIBUTING.md](./CONTRIBUTING.md) for full environment setup.
 
-## Production checks
-
-Before deploying, run the same gates CI expects plus the production readiness check:
+## Production Checks
 
 ```bash
 pnpm typecheck
@@ -46,16 +65,38 @@ pnpm build
 NODE_ENV=production pnpm check:prod
 ```
 
-`pnpm check:prod` validates required production environment variables, URL shape, QStash/Upstash pairs, and warns when optional AI/search infrastructure is missing. The Docker image uses Next.js standalone output and starts on `PORT` with `HOSTNAME=0.0.0.0`.
+`pnpm check:prod` validates required production environment variables, URL shape, and infrastructure pairs.
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup, [CLAUDE.md](./CLAUDE.md) for architecture details, and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.
+## Testing
 
-## Project
+```bash
+pnpm test            # 298 passing (Mocha)
+pnpm test:e2e       # Playwright smoke tests
+```
 
-- `/app` — Next.js App Router pages & API routes
-- `/modules` — Domain logic (auth, threads, messages, search, moderation, ai, etc.)
-- `/lib` — Core services, infrastructure (prisma, redis, qstash, rate-limit)
-- `/components` — shadcn/ui primitives + feature components
+## Project Structure
+
+```
+app/          — Next.js App Router pages & API routes
+modules/      — 25 domain modules (threads, messages, ai-search, moderation, etc.)
+lib/          — Core services, infrastructure, utilities
+  actions/    — Shared action result types
+  config/     — Environment schema, permissions, routes
+  infrastructure/ — Prisma, Redis, logger
+  middleware/ — Content moderation middleware
+  queue/      — QStash job types & workers
+  schemas/    — Shared Zod schemas
+  services/   — AI, auth, rate-limit, moderation, spend-cap, etc.
+  utils/      — Server actions, API helpers, validation
+components/   — shadcn/ui primitives + feature components
+prisma/       — Database schema (30 models)
+test/         — Mocha unit tests (47 files)
+stores/       — Zustand state stores
+```
+
+See [CLAUDE.md](./CLAUDE.md) for architecture details and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.
+
+## License
 
 MIT &mdash; see [LICENSE](./LICENSE).<br>
-Contributions welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md).
+Contributions welcome &mdash; see [CONTRIBUTING.md](./CONTRIBUTING.md).

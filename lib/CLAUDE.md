@@ -4,11 +4,12 @@
 
 Core utilities, services, and infrastructure code. The backbone of the application.
 
-## Subdirectories
+## Top-level Files
 
-### Top-level
 - `thread-access.ts` - Thread authorization primitive (`requireThreadAccessOrThrow`, `canAccessThread`, `canManageThread`)
 - `sanitize.ts` - HTML/content sanitization
+
+## Subdirectories
 
 ### `lib/config/`
 Environment variables, permissions, routes, constants.
@@ -20,8 +21,8 @@ Environment variables, permissions, routes, constants.
 
 ### `lib/services/`
 Business logic services.
-- `ai.ts` - Gemini/OpenAI integration
-- `ai-langchain.ts` - LangChain wrappers
+- `ai.ts` - Gemini/OpenAI integration (summaries, DNA, conflicts, toxicity)
+- `ai-langchain.ts` - LangChain map-reduce summarization
 - `ai-spend-cap.ts` - Dollar-based daily AI spend limit
 - `ai-usage-logger.ts` - Per-request token/cost logging
 - `ai-cost-classification.ts` - Request cost tiering
@@ -29,10 +30,10 @@ Business logic services.
 - `daily-quota.ts` - Per-user/day Redis quotas (AI inline, analysis, search, image moderation)
 - `auth.ts` - Better Auth configuration
 - `auth-client.ts` - Client-side auth
-- `email.ts` - SMTP email sending
+- `email.ts` - Resend email sending
 - `moderation.ts` - Content moderation (regex + AI)
 - `moderation-sla.ts` - Stale report escalation
-- `content-safety.ts` - Profanity filtering
+- `content-safety.ts` - Profanity filtering, file validation
 - `rate-limit.ts` - Redis rate limiting with in-memory fallback
 - `queue.ts` - QStash job enqueueing
 - `job-dedup.ts` - Job deduplication
@@ -46,17 +47,17 @@ Database, cache, logging.
 - `prisma.ts` - Prisma Client (Neon adapter)
 - `logger.ts` - Structured logging
 - `query-cache.ts` - Query result caching
-- `redis.ts` - ioredis connection factory + pub/sub publisher
+- `redis.ts` - ioredis connection factory
 - `redis-upstash.ts` - Upstash REST Redis (quotas, rate limits)
 
 ### `lib/utils/`
 Utility functions.
-- `server-action.ts` - `createServerAction` wrapper
-- `api-response.ts` - API response helpers
+- `server-action.ts` - `createServerAction`, `withValidation` wrappers
+- `api-response.ts` - `ok()`, `fail()` API response helpers
 - `errors.ts` - Error types
 - `slug.ts` - Slug generation
 - `cron-auth.ts` - Cron Bearer token verification
-- `mention-parser.ts` - @mention parsing
+- `mention-parser.ts` - `parseMentions()`, `resolveUserMentions()`
 - `prompt-boundary.ts` - Prompt injection boundaries
 - `render-content.tsx` - Content rendering
 - `file-upload.ts` - Upload helpers
@@ -64,13 +65,15 @@ Utility functions.
 - `confidence-decay.ts` - Score decay over time
 - `retry.ts` - Retry with backoff
 - `escape.ts` - String escaping
-- `cn.ts` - Tailwind class merging
+- `cn.ts` - Tailwind class merging (`cn()`)
 - `toast.ts` - User-facing toast notifications
-- `client-logger.ts` / `api-interceptor.ts` - Client-side logging
-- `validation-common.ts` - Shared Zod fragments
+- `client-logger.ts` - Client-side logging
+- `api-interceptor.ts` - Client API interceptor
+- `validation-common.ts` - Shared Zod fragments (pagination)
+- `index.ts` - Barrel exports
 
 ### `lib/actions/`
-- `result.ts` - `ActionEnvelope` (`{ ok, data, error, errorCode }`) and helpers
+- `result.ts` - `ActionEnvelope` (`{ ok, data, error, errorCode }`), `ActionErrorCode`, `actionSuccess`, `actionFailure`
 
 ### `lib/schemas/`
 Zod validation schemas.
@@ -80,14 +83,27 @@ Zod validation schemas.
 - `user-preferences.ts` - User preference schema
 
 ### `lib/queue/`
-- `config.ts` / `types.ts` - Job definitions
-- `workers/ai.worker.ts`, `workers/email.worker.ts` - Job handlers
+Background job definitions and handlers.
+- `config.ts` - Job configuration
+- `types.ts` - Job data interfaces
+- `workers/ai.worker.ts` - AI job handlers (summary, DNA, score, conflicts, inline, staleness)
+- `workers/email.worker.ts` - Email job handler
 
 ### `lib/middleware/`
-- `moderation.ts` - Request content moderation
+- `moderation.ts` - `requireModerator()`, `requireAdmin()`
 
 ### `lib/db/`
 - `pagination.ts` - Cursor-based pagination
+
+### `lib/types/`
+- `index.ts` - Barrel re-export from module types
+
+## Removed Files
+The following files no longer exist (removed during refactor):
+- `lib/services/blob.ts` - Vercel Blob wrapper (removed)
+- `lib/infrastructure/redis-connection.ts` - Consolidated into `redis.ts`
+- `lib/infrastructure/redis-pubsub.ts` - Consolidated into `redis.ts`
+- `lib/utils/dedupe.ts` - Consolidated into `job-dedup.ts`
 
 ## Testing Notes
 

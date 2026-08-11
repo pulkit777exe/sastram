@@ -1,11 +1,18 @@
 # Sastram Architecture Report
 
 > **⚠️ Superseded by [docs/CANONICAL-REFERENCE.md](./CANONICAL-REFERENCE.md).**
-> This document no longer reflects verified code. Model counts, API route counts, module counts, test counts, real-time architecture, and ThreadDna schema claims in this doc are stale. See the canonical reference for authoritative, code-verified facts. This doc is retained for historical context only.
+> This document reflects a pre-refactor snapshot (June 2026). It is retained for
+> historical context only. For verified, code-accurate facts see the canonical
+> reference. Key differences from current state:
+> - WebSocket layer (`modules/ws/`, `lib/infrastructure/websocket/`) was **removed**
+> - `modules/chat/`, `modules/reputation/`, `modules/badges/` were **removed**
+> - 4 quota services consolidated into `lib/services/daily-quota.ts`
+> - `lib/services/blob.ts`, `lib/services/logger.ts`, `lib/dedupe.ts` were **removed**
+> - `lib/actions/result.ts` (actionSuccess/actionFailure) and `lib/thread-access.ts` (visibilityFilter) were **added**
+> - Current counts: 30 Prisma models, 35 API routes, 25 modules, 47 test files
 
-**Date:** June 19, 2026
-**Status:** Pre-production (superseded)
-**Codebase:** — counts superseded; see canonical reference for verified figures (29 Prisma models, 35 API routes, 25 modules, 40 test files, 199 passing)
+**Date:** June 19, 2026 (snapshot); updated August 2026 (supersede notice)
+**Status:** Superseded
 
 ---
 
@@ -13,7 +20,7 @@
 
 Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns confidence scores. Human community validates and challenges AI output. Knowledge compounds over time.
 
-The backend is mature and well-architected. The frontend has significant gaps between what the backend supports and what the UI exposes. The primary risks are around WebSocket scalability, test coverage, and the ~28 unbuilt frontend features.
+The backend is mature and well-architected. The frontend has significant gaps between what the backend supports and what the UI exposes.
 
 ---
 
@@ -26,9 +33,8 @@ The backend is mature and well-architected. The frontend has significant gaps be
 | UI | React 19, Tailwind CSS 4, shadcn/ui | 19.2.8 |
 | Database | PostgreSQL via Prisma ORM (Neon serverless) | 7.9.1 |
 | Auth | Better Auth (email OTP + Google + GitHub OAuth) | 1.6.26 |
-| Real-time | Custom WebSocket server (ws library) | 8.21.2 |
-| Queue | QStash with Redis | 5.78.1 |
-| Cache/Rate Limit | Upstash Redis + ioredis | — |
+| Queue | QStash with Redis | — |
+| Cache/Rate Limit | Upstash Redis | — |
 | AI | Google Gemini (Flash + Pro), OpenAI GPT | — |
 | AI Search | Exa API (neural), Tavily API (web) | — |
 | File Storage | Vercel Blob | — |
@@ -45,7 +51,7 @@ The backend is mature and well-architected. The frontend has significant gaps be
 ```
 Browser Client
 ├── HTTP / Server Actions → Next.js App Router (Vercel Serverless)
-│   ├── modules/ (30 domain modules: actions → repository → service → types)
+│   ├── modules/ (25 domain modules: actions → repository → service → types)
 │   ├── Prisma → PostgreSQL (Neon)
 │   ├── Upstash Redis (cache + rate limit)
 │   ├── QStash (AI job queue → /api/jobs webhook + inline fallback)
@@ -53,20 +59,20 @@ Browser Client
 │   ├── Gemini / Exa / Tavily (AI)
 │   └── Resend
 │
-├── WebSocket → lib/infrastructure/websocket/server.ts (custom Node.js server)
-│   └── Redis pub/sub (cross-instance relay)
+├── SSE → app/api/threads/[threadId]/ai-reply/stream/route.ts
+│   └── AI reply streaming (token/done/error events)
 │
-└── Cron Jobs → /api/cron/* (GitHub Actions or Vercel Cron)
+└── Cron Jobs → /api/cron/* (Vercel Cron)
     ├── Thread AI metadata refresh
     ├── Email digest
-    ├── Staleness detection
-    └── Worker health check
+    ├── Blob cleanup
+    └── Soft-delete purge
 ```
 
 ### Deployment Model
 
 - **Vercel** hosts the Next.js serverless functions
-- **Custom server** (`server.ts`) starts the WebSocket server alongside Next.js
+- **No custom server** — the WebSocket server was removed; real-time is SSE-only
 - **Jobs** run via QStash webhook to `/api/jobs` (or inline fallback when QStash is unconfigured)
 - **Neon** provides serverless PostgreSQL with connection pooling
 - **Upstash** provides Redis for caching, rate limiting, and QStash
@@ -75,25 +81,25 @@ Browser Client
 
 ## 4. Data Model
 
-### 27 Prisma Models
+### 30 Prisma Models (current verified count)
 
 **Core Content:**
 | Model | Purpose | Key Fields |
 |-------|---------|------------|
-| User | User accounts | `preferences` (JSON), `reputationPoints`, `followerCount`, `isPro`, `status`, `role` |
-| Community | Top-level groups | `visibility` (PUBLIC/PRIVATE/UNLISTED), `settings` (JSON) |
-| Thread | Discussion threads | `resolutionScore`, `aiSummary`, `threadDna` (JSON), `isOutdated` |
-| Message | Thread messages | `parentId` (tree), `depth` (0-4), `isAiResponse`, `deletedAt` (soft delete), denormalized `likeCount`/`replyCount` |
+| User | User accounts | `role` (USER/MODERATOR/ADMIN), `status`, `deletedAt` (soft delete) |
+| Thread | Discussion threads | `visibility` (PUBLIC/PRIVATE/RESTRICTED), `resolutionScore`, `threadDna` (JSON), `deletedAt` |
+| Message | Thread messages | `parentId` (tree), `depth` (0-4), `isAiResponse`, `deletedAt` (soft delete), nullable `senderId` |
 | MessageEdit | Edit history | Content snapshot per edit |
+| MessageMention | @mentions | `messageId`, `userId` |
 | Attachment | File attachments | Typed (IMAGE/GIF/VIDEO/FILE) |
 | Reaction | Emoji reactions | Unique on `[messageId, userId, emoji]` |
 
 **Access Control:**
 | Model | Purpose |
 |-------|---------|
-| ThreadMember | Thread membership with roles (OWNER/MODERATOR/MEMBER) |
 | UserBan | Thread-scoped or site-wide bans with expiry |
 | UserFollow | Social graph (self-referential) |
+| ThreadInvitation | Token-based invites with expiry |
 
 **Engagement:**
 | Model | Purpose |
@@ -114,22 +120,11 @@ Browser Client
 **AI/Analytics:**
 | Model | Purpose |
 |-------|---------|
-| UserReputation | Points + level |
-| UserBadge / UserBadgeEarned | Gamification |
 | UserActivity | Audit trail |
 | AiSearchSession / AiSearchResult | AI search history + cached synthesis |
-| ThreadRelation | Topic/type/expertise similarity (Jaccard index in app code, `modules/threads/threads-relations/repository.ts`, 0.0–1.0). NOT pgvector. |
-| ThreadInvitation | Token-based invites with expiry |
+| AiUsageLog | Per-request token counts and cost estimates |
+| ThreadRelation | Topic/type/expertise similarity (Jaccard index) |
 | Notification | Typed notifications with JSON `data` payload |
-
-### Indexing Strategy
-
-Extensive composite indexes for performance:
-- `Message`: `[threadId, createdAt]`, `[parentId, threadId]`, `[depth]`
-- `Thread`: `[resolutionScore]`, `[communityId]`, `[createdBy]`
-- `User`: `[email]`, `[status]`, `[lastSeenAt]`
-- `ReadReceipt`: `[threadId, userId]` (unique) + `[readAt]`
-- `Notification`: `[userId, isRead]` + `[createdAt]`
 
 ---
 
@@ -140,10 +135,9 @@ Every module follows a consistent pattern:
 ```
 modules/{feature}/
 ├── actions.ts      ← Server Actions (called from UI)
-│                     Always returns { data, error, ok, errorCode }
+│                     Returns { data, error, ok, errorCode }
 │                     Never throws
 ├── repository.ts   ← DB queries via Prisma
-│                     Typed returns, never `any`
 ├── service.ts      ← Business logic, AI calls, cross-module orchestration
 ├── types.ts        ← Module-specific types
 ├── schemas.ts      ← Zod validation schemas
@@ -151,37 +145,37 @@ modules/{feature}/
 └── executors.ts    ← (optional) Orchestration for complex workflows
 ```
 
-### 30 Domain Modules
+### 25 Domain Modules (current verified count)
 
 | Category | Modules |
 |----------|---------|
 | Auth | `auth/`, `users/` |
-| Content | `threads/`, `messages/`, `chat/` |
+| Content | `threads/`, `messages/` |
 | Social | `follows/`, `bookmarks/`, `notifications/`, `invitations/` |
-| Engagement | `polls/`, `tags/`, `reputation/`, `badges/`, `activity/` |
+| Engagement | `polls/`, `tags/`, `activity/`, `reactions/`, `read-receipts/` |
 | Moderation | `moderation/`, `reports/`, `appeals/` |
-| AI | `ai-search/`, `ws/` (WebSocket publisher) |
-| Automation | `newsletter/`, `read-receipts/`, `search/` |
+| AI | `ai-search/` |
+| Automation | `newsletter/`, `search/`, `feedback/`, `policy/`, `audit/`, `topics/`, `members/` |
 
 ### Authorization Pattern
 
-**All API routes and server actions must enforce membership checks:**
+**All API routes and server actions must enforce thread access checks:**
 
-1. `requireSession()` — Authentication only (does NOT check membership)
-2. `getMemberRole(threadId, userId)` — Returns role or null
-3. `assertAdmin(session.user)` — Admin-only actions
-4. `requireAdmin()` / `requireModerator()` — API route middleware
+1. `requireSession()` — Authentication only (does NOT check access)
+2. `requireThreadAccessOrThrow(threadId, userId, role)` — Thread access guard (API routes)
+3. `requireThreadWriteOrThrow(threadId, userId, role)` — Thread write guard (API routes)
+4. `assertAdmin(session.user)` — Admin-only actions
+5. `requireAdmin()` / `requireModerator()` — API route middleware
 
 ```typescript
 // Correct pattern (every action):
 const session = await requireSession();
-const role = await getMemberRole(threadId, session.user.id);
-if (!role) return fail('AUTHORIZATION_ERROR', 'Not a member');
+await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 ```
 
 ---
 
-## 6. API Routes (31 Routes)
+## 6. API Routes (35 Routes — current verified count)
 
 ### Authentication (6)
 - `/api/auth/[...all]` — Better Auth catch-all
@@ -189,35 +183,39 @@ if (!role) return fail('AUTHORIZATION_ERROR', 'Not a member');
 - `/api/email-otp/*` — Send/check/reset OTP
 - `/api/forget-password/email-otp` — Password reset
 
-### AI Features (6)
+### AI Features (7)
 - `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini)
 - `/api/ai/thread-summary` — Generate AI thread summary
 - `/api/ai/thread-dna` — Generate thread DNA analysis
 - `/api/ai/resolution-score` — Calculate resolution score
-- `/api/jobs` — QStash webhook callback (background jobs)
-- `/api/threads/[threadId]/ai-reply` — @sai inline response (fallback enqueue; primary path is `ai-reply/stream` SSE)
+- `/api/ai/search-history` — Get search history
+- `/api/ai/spend` — Get AI spend usage (admin)
+- `/api/threads/[threadId]/ai-reply` + `/ai-reply/stream` — AI reply (SSE streaming)
 
 ### Core Resources (5)
 - `/api/threads` — Thread CRUD
+- `/api/threads/similar` — Similar thread lookup
 - `/api/messages` — Message CRUD
-- `/api/conversations` — Chat conversations
 - `/api/search` — Local search
 - `/api/upload` — File upload (Vercel Blob)
 
 ### Cron / Scheduled (3)
 - `/api/cron/update-threads` — Batch AI metadata refresh
 - `/api/cron/daily-digest` — Email digest trigger
-- `/api/cron/worker` — Worker health check
+- `/api/cron/cleanup-blobs` — Blob cleanup
 
-### Admin / Moderation (6)
+### Admin / Moderation (7)
 - `/api/admin/health` — Admin health check
+- `/api/admin/sla` — Moderation SLA stats
 - `/api/v1/moderation/*` — Moderation rules, queue, appeals, stats
 
-### Other (5)
+### Other (7)
 - `/api/health` — Health check
 - `/api/bootstrap` — Initial app state for React context
 - `/api/newsletter/generate` — Newsletter generation
-- `/api/docs` — API documentation (Swagger UI)
+- `/api/jobs` — QStash webhook callback (background jobs)
+- `/api/csp-report` — CSP violation collector
+- `/api/invitations/accept` — Accept thread invitation
 
 ---
 
@@ -272,13 +270,7 @@ User query → POST /api/ai/forum-search
    → technical=6h, opinion=1h, news=15min
 ```
 
-**Source tiering:**
-- T1: Official docs (MDN, React, Python, etc.)
-- T2: StackOverflow, HN, GitHub
-- T3: Reddit, Quora
-- T4: Everything else
-
-### QStash Background Jobs (9 queue types)
+### QStash Background Jobs
 
 | Job | Trigger | Stores Result In |
 |-----|---------|-----------------|
@@ -288,7 +280,7 @@ User query → POST /api/ai/forum-search
 | `conflict-detection` | New message arrives | Thread.isOutdated + Notification |
 | `daily-digest` | Daily cron | Email via Resend |
 | `ai-insight-notifications` | Score change / outdated / conflict | Notification |
-| `ai-inline` | @sai mention in message | Message (streamed via SSE to the poster; QStash job as fallback) |
+| `ai-inline` | @sai mention in message | Message (streamed via SSE) |
 | `staleness-check` | Daily cron | Thread.isOutdated |
 | `email` | Various | Email delivery |
 
@@ -305,72 +297,37 @@ User posts "@sai How do I fix X?"
 │  1. Fetch thread context (last 8 messages)
 │  2. Get/create AI user (ai@sastram.system)
 │  3. Create empty AI message in DB
-│  4. Emit placeholder via WebSocket (isComplete: false)
-│  5. Stream AI response:
-│     - Each chunk → update DB (throttled 500ms)
-│     - Each chunk → emit via WebSocket (throttled 100ms)
-│  6. Final emit (isComplete: true)
+│  4. Stream AI response via SSE
+│  5. Final emit (isComplete: true)
 │
 └─ Client receives streaming tokens → renders incrementally
 ```
 
 ---
 
-## 8. Real-time Architecture
+## 8. Real-time Architecture (Current State)
 
-### WebSocket Server (`lib/infrastructure/websocket/server.ts`)
+### SSE for AI Streaming
 
-554-line production WebSocket server with:
+- `app/api/threads/[threadId]/ai-reply/stream/route.ts` — Active SSE endpoint for AI reply streaming
+- Events: `token`, `done`, `error`
+- Client uses `hooks/useAIReplyStream.ts` (not WebSocket)
 
-- **Authentication**: Cookie-based session validation during upgrade handshake
-- **Thread scoping**: Connections scoped to `/ws/thread/{threadId}`
-- **Notification channel**: `/ws/notifications` for user-specific events
-- **Membership verification**: Private/restricted threads checked at connection
-- **Per-user connection limit**: Max 10 connections per user
-- **Typing indicators**: 3-second timeout with automatic cleanup
-- **Heartbeat**: 30-second ping/pong with dead connection termination
-- **Redis pub/sub**: Cross-instance message forwarding
-- **Loopback prevention**: `sourceInstance` ID prevents duplicate delivery
-- **Rate limiting**: Per-user WebSocket message rate limiting
+### Redis Pub/Sub (Publish-Only)
 
-### Event Types (Discriminated Union)
+- `lib/infrastructure/redis.ts:84-108` — `publishUserEvent` emits `NOTIFICATION_COUNT_UPDATE` on `user:{id}`
+- No subscriber exists; used for potential future cross-instance notification delivery
 
-```typescript
-type WebSocketEvent =
-  | { type: 'NEW_MESSAGE';           payload: MessagePayload }
-  | { type: 'MESSAGE_DELETED';       payload: { messageId: string } }
-  | { type: 'REACTION_UPDATE';       payload: { messageId, reactionType, count } }
-  | { type: 'PIN_UPDATE';            payload: { messageId, isPinned } }
-  | { type: 'USER_TYPING';           payload: { userId, userName } }
-  | { type: 'USER_STOPPED_TYPING';   payload: { userId } }
-  | { type: 'MENTION_NOTIFICATION';  payload: { ... } }
-  | { type: 'ERROR';                 payload: { error, details? } }
-```
+### Removed: WebSocket Layer
 
-### Client Hook (`hooks/useThreadWebSocket.ts`)
+The following were **removed** during the architecture refactor:
+- `modules/ws/` — entire module deleted
+- `lib/infrastructure/websocket/server.ts` — never existed as functional code
+- `hooks/useThreadWebSocket.ts` — deleted
+- `hooks/chat/use-websocket.ts` — deleted
+- All `emit*` functions — deleted
 
-- Validates all incoming messages against Zod schemas
-- Stores callbacks in refs to prevent reconnection on re-render
-- Handles typing indicators with auto-expiry timers
-- Tracks AI streaming status
-
-### Redis Pub/Sub (`lib/infrastructure/redis-pubsub.ts`)
-
-- Separate Redis pub and sub connections
-- Thread channels (`thread:{id}`) and user channels (`user:{id}`)
-- Lazy subscription with reference counting
-- Cross-instance relay for multi-server deployments
-
-### Message Flow
-
-```
-Publisher (any source)
-  → publishThreadEvent(threadId, event)
-  → Redis PUBLISH thread:{threadId}
-  → WS Server Redis SUBSCRIBER receives
-  → Forwards to all local WebSocket clients subscribed to that thread
-  → Client validates with Zod → dispatches to handler
-```
+Non-AI updates rely on client polling (20s normal, 3s during @sai pending).
 
 ---
 
@@ -379,65 +336,62 @@ Publisher (any source)
 ### Authentication
 - Better Auth with email OTP + OAuth (Google, GitHub)
 - Session cookie: `better-auth.session_token`
-- WebSocket auth: Cookie read during HTTP upgrade handshake
 - CRON_SECRET: Bearer token with min 32 characters
 
 ### Authorization
-- Thread membership is the primary authorization primitive
-- Roles: OWNER > MODERATOR > MEMBER
-- Admin-only actions via `assertAdmin()` / `requireAdmin()`
-- Private/restricted threads verified at WS connection time
+- **Thread access model** is the primary authorization primitive (no membership table)
+- `lib/thread-access.ts` — `requireThreadAccessOrThrow`, `requireThreadWriteOrThrow`, `canAccessThread`, `canManageThread`, `visibilityFilter`
+- Visibility rule: creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN
+- Admin-only: `assertAdmin()` / `requireAdmin()` / `requireModerator()`
 
 ### Input Validation
-- Zod validation at every boundary (env, API, actions, WS, AI)
+- Zod validation at every boundary (env, API, actions, AI)
 - Content sanitization via `sanitize-html` (XSS prevention)
 - Prompt injection protection via `sanitizeSearchQuery()`
-- File upload: size limits (4.5MB), type whitelist
+- File upload: size limits (4.5MB), type whitelist, thread access check on upload
 
 ### Rate Limiting
 - Upstash Redis with sliding window
 - In-memory fallback when Redis unavailable
-- Buckets: auth(5/15min), api(100/min), upload(10/hr), websocket(50/min), message(20/min)
+- Buckets: auth(5/15min), api(100/min), upload(10/hr), message(20/min)
 
-### Security Headers (next.config.ts)
-- `Strict-Transport-Security` (HSTS)
+### Security Headers (proxy.ts)
+- `Content-Security-Policy` — per-request nonce-based (Report-Only by default)
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `Referrer-Policy: strict-origin-when-cross-origin`
+- `Strict-Transport-Security` (HSTS)
 - `Permissions-Policy` (no camera/mic/geo)
 
 ### Secrets Management
 - User API keys (Exa, Tavily, Gemini) stored in localStorage only
 - Never logged, never stored in DB
-- Sent in request headers over HTTPS
 - `BETTER_AUTH_SECRET` min 32 chars enforced by Zod
 
 ---
 
 ## 10. Test Coverage
 
-### Unit Tests (23 files, 230+ tests passing)
+### Unit Tests (47 files, 297+ tests passing)
 
 | Area | Coverage |
 |------|----------|
 | API response helpers | ✅ Full |
 | Content safety (XSS) | ✅ Full |
 | Error handling | ✅ Full |
-| Logger | ✅ Full |
 | Queue config | ✅ Full |
 | FTS search schemas | ✅ Full |
 | Utility functions | ✅ Full |
-| WebSocket cross-instance | ✅ Full |
 | Moderation regex | ✅ Full |
-| Rate limiting | ⚠️ Partial (1 timeout failure) |
-| Redis Upstash | ⚠️ Partial (env-dependent) |
-| Component rendering | ✅ Full (ErrorBoundary, OtpInput, CommentTree, ThreadLiveWrapper) |
-| QStash job handlers | ✅ Input validation only |
+| Rate limiting | ✅ Partial |
+| Component rendering | ✅ Full |
+| QStash job handlers | ✅ Input validation |
+| AI cost classification | ✅ Full |
+| Thread access | ✅ Full |
 
-### E2E Tests (3 specs)
+### E2E Tests
 - `auth-create-thread-reply.spec.ts` — Auth + thread creation + reply
 - `ai-search.spec.ts` — AI search flow
-- `websocket.spec.ts` — WebSocket connection
 
 ### CI Pipeline (GitHub Actions)
 ```
@@ -449,18 +403,6 @@ PostgreSQL 16 service container
 → mocha tests
 ```
 
-### Test Gaps
-
-| Gap | Risk | Recommendation |
-|-----|------|----------------|
-| No API integration tests (HTTP requests) | High | Add supertest-based tests for critical routes |
-| No database integration tests | High | Add Prisma test transactions |
-| No QStash worker integration tests | Medium | Add test containers with Redis |
-| No WebSocket server integration tests | Medium | Add ws client tests |
-| E2E not run in CI | High | Add Playwright to CI pipeline |
-| No build verification in CI | Medium | Add `pnpm build` step |
-| No security scanning | Medium | Add CodeQL or Snyk |
-
 ---
 
 ## 11. Issues & Gaps
@@ -469,74 +411,22 @@ PostgreSQL 16 service container
 
 | # | Issue | Impact | Status |
 |---|-------|--------|--------|
-| 1 | **WebSocket in-memory state** — Thread channels, connections, and typing indicators stored in `Map` objects. Multiple server instances cannot communicate. | Real-time broken at scale | Documented, not fixed |
-| 2 | **No Content-Security-Policy header** — Missing from security headers in `next.config.ts`. XSS risk if any sanitization is bypassed. | Security | Not implemented |
-| 3 | **No CSRF token validation** on server actions — Relies on Next.js built-in SameSite cookie protections. | Security | Acceptable for current scope |
-| 4 | **`moderation.ts` FK violation (RESOLVED)** — Originally `bannedBy: 'system'` was a literal string, not a valid User ID, which would fail the FK on `UserBan`. Now `lib/services/moderation.ts:505-518` upserts a real `system@sastram.com` user and uses `systemUser.id`; the other two create paths use `session.user.id` (`modules/moderation/actions.ts:210`, `modules/reports/actions.ts:581`). No `bannedBy: 'system'` literal remains. | Data integrity | **Fixed (verified 2026-07-18)** |
-| 5 | **AI classifier fragility** — `MLClassifier.analyze()` uses `aiService.generateSummary()` for toxicity analysis. Creative but fragile — prompt changes could break classification. | Reliability | Not addressed |
+| 1 | **No real-time delivery layer** — WebSocket removed; non-AI updates are poll-only | Real-time broken at scale | Known limitation |
+| 2 | **No Content-Security-Policy nonce on Next.js bootstrap script** | XSS risk under enforcing CSP | Report-Only mode; pending review |
+| 3 | **No CSRF token validation** on server actions | Security | Mitigated by proxy.ts origin check |
+| 4 | **AI classifier fragility** — prompt changes could break classification | Reliability | Not addressed |
 
 ### Architecture Gaps
 
 | # | Gap | Current State | Recommendation |
 |---|-----|---------------|----------------|
-| 1 | **WebSocket client** — No reconnection, no heartbeat handling, no message buffering, no offline queue. | Raw WebSocket only | Add reconnection with exponential backoff |
-| 2 | **State management** — Only 1 Zustand store (`thread-view-store.ts`) despite being listed as the state management solution. Most state is in React useState/useContext. | Fragmented | Consolidate critical state into Zustand or TanStack Query |
-| 3 | **Error boundaries** — Only at route level. No per-component error boundaries for granular error recovery. | Route-level only | Add error boundaries around critical sections |
-| 4 | **Optimistic updates** — No optimistic UI for message posting, reactions, or pins. Every action waits for server response. | None | Add optimistic updates for better UX |
-| 5 | **Message pagination** — Thread messages loaded all at once. No cursor-based pagination for long threads. | Full load | Implement cursor pagination |
-| 6 | **File upload validation** — Size check exists but MIME type validation relies on client-provided Content-Type. Server-side magic byte checking missing. | Client-only | Add server-side MIME verification |
-| 7 | **Email templates** — Plain text only. No HTML email templates for digests, mentions, or notifications. | Plain text | Build responsive HTML templates |
-| 8 | **Internationalization** — All strings hardcoded in English. No i18n framework. | English only | Add next-intl or similar |
-| 9 | **Accessibility** — No ARIA labels on most interactive elements. No keyboard navigation testing. No screen reader testing. | Minimal | Audit and add ARIA attributes |
-| 10 | **Performance monitoring** — No Lighthouse CI, no Web Vitals tracking, no custom performance metrics. | None | Add Vercel Speed Insights or custom |
-
-### Missing Frontend Features (28 items from ARCHITECTURE.md)
-
-**High Priority (core UX):**
-- Message editing with history UI
-- @mentions with notifications UI
-- Polls UI (backend exists)
-- Thread tagging UI (backend exists)
-- Typing indicators in thread UI
-- @sai inline in message input (trigger UI)
-- Live notification count via WebSocket
-- Unread notification count in header
-- Mark as read (single + all)
-
-**Medium Priority (engagement):**
-- Read receipts
-- Profile privacy settings
-- User preferences UI
-- Per-thread subscription UI
-- Thread invitations UI (backend exists)
-- Thread access management UI (backend exists)
-- User profile edit form (view exists)
-- Avatar + banner upload UI (backend exists)
-
-**Low Priority (advanced):**
-- Semantic query cache (pgvector dedup) — NOT BUILT. Current AI-search caching is an
-  exact normalized-query SHA-256 hash cache (modules/ai-search/cache.ts), which cuts
-  repeat-query cost but provides no semantic/embedding similarity.
-- Cross-thread knowledge links UI
-- Expert Passport UI
-- Thread merging suggestion
-- Knowledge graph view
-- Anonymous Expert Mode
-- Virtual scrolling for long threads
-- RightPanel data connection (resolution score + DNA + AI summary)
-
-### Partially Implemented Features
-
-| Feature | Backend | Frontend | Gap |
-|---------|---------|----------|-----|
-| RightPanel | ✅ Resolution score + DNA + summary | ❌ Not connected | Data fetching + rendering |
-| Rich text + attachments | ✅ Upload + storage | ⚠️ Basic | No rich text editor, limited preview |
-| Thread invitations | ✅ Token + expiry | ❌ No UI | Invite form + acceptance flow |
-| Thread access management | ✅ Member roles | ❌ No UI | Member list + role management |
-| User profile | ✅ Full CRUD | ⚠️ View only | Edit form missing |
-| Avatar + banner | ✅ Vercel Blob upload | ❌ No UI | Upload component |
-| Notifications | ✅ Full system | ⚠️ Wrong component | Page shows incorrect content |
-| WebSocket thread delivery | ✅ Server + Redis | ⚠️ Partially wired | Not all events connected |
+| 1 | **State management** — Fragmented across React useState/useContext | Fragmented | Consolidate critical state |
+| 2 | **Error boundaries** — Only at route level | Route-level only | Add per-component boundaries |
+| 3 | **Optimistic updates** — No optimistic UI for message posting | None | Add optimistic updates |
+| 4 | **Message pagination** — Messages loaded all at once | Full load | Implement cursor pagination |
+| 5 | **File upload validation** — MIME type validation relies on client-provided Content-Type | Client-only | Add server-side MIME verification |
+| 6 | **Internationalization** — All strings hardcoded in English | English only | Add i18n framework |
+| 7 | **Accessibility** — No ARIA labels on most interactive elements | Minimal | Audit and add ARIA attributes |
 
 ---
 
@@ -548,11 +438,8 @@ PostgreSQL 16 service container
 Dashboard initial load:    ≤ 2 DB queries
 Thread page load:          ≤ 1 DB query (full JOIN)
 Navigation between pages:  0 DB queries (context)
-WebSocket update:          0 DB queries (payload carries data)
-AI search cache hit:       0 external API calls (exact normalized-query SHA-256 match, see modules/ai-search/cache.ts)
+AI search cache hit:       0 external API calls (exact normalized-query SHA-256 match)
 AI search cache miss:      2 parallel calls (classify + cross-reference) + 1 synthesize + 1 write
-                         NOTE: the cache is query-hash based — there is NO embedding step and NO pgvector.
-                         A "semantic" / pgvector similarity cache does NOT exist (see Low Priority list below).
 ```
 
 ### Caching Hierarchy
@@ -561,17 +448,8 @@ AI search cache miss:      2 parallel calls (classify + cross-reference) + 1 syn
 Middleware (Redis session check, ~1ms)
   → Bootstrap context (zero DB reads on navigation)
     → Thread JOIN query (one round trip per thread)
-      → WebSocket updates (zero DB reads)
-        → Optimistic UI (zero wait on user actions)
+      → Client polling (20s normal, 3s during @sai pending)
 ```
-
-### Known Performance Issues
-
-1. **Thread messages loaded all at once** — No pagination. Threads with 1000+ messages will have slow initial loads.
-2. **Virtual scrolling exists but is not wired** — `useVirtualizer` is set up in `MessageList` but may not be handling dynamic heights correctly.
-3. **AI streaming throttled to 100ms** — Could be more aggressive (50ms) for better perceived performance.
-4. **No image lazy loading** — All images loaded eagerly.
-5. **No code splitting** — All thread components loaded together.
 
 ---
 
@@ -579,30 +457,23 @@ Middleware (Redis session check, ~1ms)
 
 ### Immediate (Pre-Launch)
 
-1. **Fix the `bannedBy: 'system'` FK violation** — Use a system user ID or make the field nullable.
-2. **Add Content-Security-Policy header** — At minimum, restrict script-src and style-src.
-3. **Wire E2E tests into CI** — Playwright tests should run on every PR.
-4. **Add `pnpm build` to CI** — Catch build errors before merge.
-5. **Fix the notifications page** — Currently shows wrong component.
-6. **Add WebSocket reconnection** — Critical for reliability on flaky connections.
+1. **Add Content-Security-Policy nonce on Next.js bootstrap script** — or keep Report-Only
+2. **Wire E2E tests into CI** — Playwright tests should run on every PR
+3. **Add `pnpm build` to CI** — Catch build errors before merge
+4. **Add optimistic updates** — Message posting, reactions, pins
 
 ### Short-Term (1-2 months)
 
-7. **Add API integration tests** — Test critical routes with actual HTTP requests.
-8. **Implement message pagination** — Cursor-based for long threads.
-9. **Add optimistic updates** — Message posting, reactions, pins.
-10. **Wire RightPanel** — Connect resolution score + DNA + AI summary to the UI.
-11. **Add typing indicators to thread UI** — Backend exists, UI missing.
-12. **Build @sai inline trigger UI** — Make it easy for users to invoke AI.
+5. **Add API integration tests** — Test critical routes with actual HTTP requests
+6. **Implement message pagination** — Cursor-based for long threads
+7. **Add typing indicators to thread UI** — Backend exists, UI missing
+8. **Build @sai inline trigger UI** — Make it easy for users to invoke AI
 
 ### Medium-Term (3-6 months)
 
-13. **Migrate WebSocket state to Redis** — Enable multi-instance deployment.
-14. **Add CSP + security scanning** — CodeQL or Snyk in CI.
-15. **Build email templates** — HTML digests, mention notifications.
-16. **Add i18n** — Internationalization framework.
-17. **Performance monitoring** — Lighthouse CI, Web Vitals, custom metrics.
-18. **Accessibility audit** — ARIA labels, keyboard navigation, screen reader testing.
+9. **Add i18n** — Internationalization framework
+10. **Performance monitoring** — Lighthouse CI, Web Vitals, custom metrics
+11. **Accessibility audit** — ARIA labels, keyboard navigation, screen reader testing
 
 ---
 
@@ -610,9 +481,9 @@ Middleware (Redis session check, ~1ms)
 
 Sastram has a solid backend foundation with well-structured modules, comprehensive validation, and a sophisticated AI pipeline. The primary risks are:
 
-1. **WebSocket scalability** — In-memory state limits to single-instance deployment
-2. **Frontend gaps** — ~28 features have backend support but no UI
+1. **No real-time delivery** — WebSocket removed; non-AI updates depend on polling
+2. **Frontend gaps** — Multiple features have backend support but no UI
 3. **Test coverage** — No integration tests, E2E not in CI
-4. **Security** — Missing CSP header, no security scanning
+4. **Security** — CSP not yet enforcing, no security scanning
 
 The architecture is clean and extensible. The module pattern is consistent and well-documented. The AI pipeline is robust with proper retry, timeout, and fallback mechanisms. The main work ahead is filling in the frontend gaps and hardening the deployment pipeline.

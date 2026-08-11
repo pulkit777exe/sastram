@@ -1,214 +1,120 @@
-# Backlog — post engagement (Phases 1–4)
+# Backlog — post-refactor actionable items
 
-> **⚠️ System architecture, data model, routes, and features are now documented in [docs/CANONICAL-REFERENCE.md](../docs/CANONICAL-REFERENCE.md).**
-> This backlog file tracks actionable work items. For the verified system description, see the canonical reference above.
+> **Last updated:** August 2026 (post-architecture refactor)
+> **Canonical reference:** [docs/CANONICAL-REFERENCE.md](./CANONICAL-REFERENCE.md)
+> This backlog tracks actionable work items. For the verified system description, see the canonical reference.
 
-Vertical slices left over from the security / doc-hygiene / `@sai` cost-gating
-engagement. Slices are tracer bullets: each cuts end-to-end and is independently
-grabbable. HITL = needs a human decision; AFK = implementable and mergeable
-without human interaction.
+---
 
-> Founder-level decisions (slices 6–7) are intentionally NOT engineering tickets.
-> They are brought to the owner directly via `plan-ceo-review` framing.
-
-## Triage (state machine, applied 2026-07-18)
-
-Canonical roles: category `bug | enhancement`; state
-`needs-triage | needs-info | ready-for-agent | ready-for-human | wontfix`.
+## Completed Slices (from pre-refactor engagement)
 
 | Slice | Category | State | Why |
 |---|---|---|---|
-| 1 Cost classifier → all gates | enhancement | ready-for-agent | fully specified, tests defined, AFK-grabbable |
-| 2 Spend telemetry dashboard | enhancement | ready-for-agent | clear acceptance criteria, AFK |
-| 3 Moderation/image spend-cap gap | enhancement | ready-for-agent | bounded fix, fail-open required, AFK |
-| 4 Thread-create/cron enqueue gates | enhancement | ready-for-agent | code paths identified, AFK |
-| 5 Daily-digest/query-warming cap | enhancement | ready-for-agent | code paths identified, AFK |
-| 6 Monetization / cap ceiling | decision | ready-for-human | founder-level, not engineering |
-| 7 Cold-start population | decision | ready-for-human | founder-level, not engineering |
-| 8 `prisma.poll.findUnique({ where: { threadId } })` typecheck error | bug | **RESOLVED 2026-07-20** | `getPollByThreadId` switched to `findFirst({ where: { message: { threadId } } })`; `pnpm typecheck` now clean |
-| 9 `thread-components.test.tsx:318` pinned-message render test fails | bug | **RESOLVED 2026-07-20** | test asserted `📌 Pinned Message` but component renders `Pinned Message` (icon, no emoji); corrected the assertion; test passes |
-| 10 Apply message-level polls migration | bug/blocker | **RESOLVED 2026-07-20** | live DB already had polls.messageId + unique idx + FK (from prior `db push`); history reconciled via `migrate resolve --applied`; `migrate status` now "up to date" | 
-| 11 `Appeal.userId` SetNull relation warning | bug | **RESOLVED 2026-07-20** | schema fixed + migration `20260720000000_appeals_userid_nullable` applied; `prisma generate` emits zero warnings |
-
-None are `bug` (no regression found in Phase 4). None `wontfix`. No `needs-info`
-(open questions would block an agent — none exist). New contributors: pick any
-slice 1–5; slices 6–7 are owned by the founder.
-
-## Slice 1 — Wire cost classifier into all AI gates
-- **Type:** AFK
-- **Blocked by:** None
-- **What to build:** `evaluateAiCostGate` (lib/services/ai-cost-classification.ts)
-  currently only gates the `@sai` inline enqueue path. Extend the pre-flight to
-  the other expensive paths: forum-search synthesize (app/api/ai/forum-search),
-  thread-summary enqueue, and ai-reply-stream route. Each should call
-  `evaluateAiCostGate` with its `AiCallPath` before firing/spending.
-- **Acceptance criteria:**
-  - [ ] forum-search synthesize path blocks when `evaluateAiCostGate` returns `allowed:false`
-  - [ ] thread-summary enqueue pre-flights the gate
-  - [ ] ai-reply-stream route pre-flights the gate
-  - [ ] unit tests cover each new gated path (cheap allowed, expensive blocked on cap)
-  - [ ] `tsc --noEmit`, `eslint .`, `pnpm test` clean
-
-## Slice 2 — Plumb AI spend telemetry to a dashboard
-- **Type:** AFK
-- **Blocked by:** None
-- **What to build:** The `$5/day` cap (lib/services/ai-spend-cap.ts) and per-request
-  token logging (lib/services/ai-usage-logger.ts) exist but are not surfaced.
-  Expose `getAiSpendUsage()` via an admin endpoint and publish per-user estimates
-  from measured token counts, replacing the static `ESTIMATED_COST_USD` table in
-  ai-cost-classification.ts.
-- **Acceptance criteria:**
-  - [ ] admin endpoint returns current spend vs cap
-  - [ ] `@sai` cost estimate switches from static table to measured tokens where available
-  - [ ] [docs/AI-COST-ESTIMATE.md](./AI-COST-ESTIMATE.md) updated with measured numbers
-
-## Slice 3 — Close moderation / image spend-cap gap
-- **Type:** AFK
-- **Blocked by:** None
-- **Status: RESOLVED.** Both paths now charge the global `$5/day` cap via
-  `consumeSpendCap` (`lib/services/ai-spend-cap.ts`), priced through
-  `classifyAiCallCost`:
-  - Text toxicity — `lib/services/moderation.ts:184` (`AiCallPath.TEXT_TOXICITY_MODERATION`)
-  - Image moderation — `app/api/upload/route.ts:75` (`AiCallPath.IMAGE_MODERATION`),
-    behind `consumeImageModerationQuota` from `lib/services/daily-quota.ts`
-- **Acceptance criteria:**
-  - [x] toxicity + image moderation consult the spend cap
-  - [x] fails open on Redis outage (posting unaffected) — `consumeSpendCap` returns
-        `allowed: true` when Redis is unreachable
-  - [ ] unit tests for the gate
-
-## Slice 4 — Gate thread-create / cron DNA-score-conflict enqueues
-- **Type:** AFK
-- **Blocked by:** None
-- **What to build:** Thread-create (modules/threads/threads-write/repository.ts) and
-  cron (app/api/cron/update-threads/route.ts) enqueue DNA/score/conflict jobs that
-  are only gated at worker time (assertSpendCapAvailable). Add enqueue-time pre-flight
-  so unaffordable work is not enqueued.
-- **Acceptance criteria:**
-  - [ ] thread-create path pre-flights gate
-  - [ ] cron enqueue paths pre-flight gate
-  - [ ] no double-counting with worker-level consumeSpendCap
-
-## Slice 5 — Daily-digest cron route + query-warming spend-cap gate
-- **Type:** AFK
-- **Blocked by:** None
-- **What to build:** `GET /api/cron/daily-digest` and the cron query-warming path
-  (modules/ai-search/query-warming.ts) have NO spend-cap gate today. Add a pre-flight
-  so these server-triggered, multi-call paths respect the global cap.
-- **Acceptance criteria:**
-  - [ ] daily-digest cron route pre-flights cap
-  - [ ] query-warming pre-flights cap (or is explicitly exempted with a documented reason)
-  - [ ] cron auth (verifyCronAuth) still enforced
-
-## Slice 6 — FOUNDER DECISION: AI monetization / unit-economics & spend-cap ceiling
-- **Type:** HITL
-- **Blocked by:** None
-- **RESOLVED 2026-07-18 — DECISION: Keep the `$5/day` global cap, no monetization.**
-  Zero onboarding friction; owner funds ≤$150/mo. Reversible (5/5). Matches the
-  current open-source / not-yet-monetizing posture. Revisit only if active-user
-  count grows enough that the cap throttles real usage (then see slice 2 telemetry).
-- **Acceptance criteria:** N/A (decision record, not code)
-
-## Slice 7 — FOUNDER DECISION: cold-start population strategy
-- **Type:** HITL
-- **Blocked by:** None
-- **RESOLVED 2026-07-18 — DECISION: Invited alpha cohort first.** Onboard 10–25 known
-  users to populate threads before broad public onboarding. Preserves the "real
-  strangers" goal without the empty-room first impression. Broad public signups open
-  after critical mass is reached.
-- **Acceptance criteria:** N/A (decision record, not code)
+| 1 Cost classifier → all gates | enhancement | **RESOLVED** | `evaluateAiCostGate` wired into `@sai` inline, forum-search, thread-summary, ai-reply-stream |
+| 2 Spend telemetry dashboard | enhancement | **RESOLVED** | `app/api/ai/spend/route.ts` exposes `getAiSpendUsage()`; admin spend link added |
+| 3 Moderation/image spend-cap gap | enhancement | **RESOLVED** | Both paths charge global `$5/day` cap via `consumeSpendCap`; fail-open on Redis outage |
+| 4 Thread-create/cron enqueue gates | enhancement | **RESOLVED** | `enforceAiSpendCap` wired into thread-create and cron enqueue paths |
+| 5 Daily-digest/query-warming cap | enhancement | **RESOLVED** | Cron routes and query-warming pre-flight the spend cap |
+| 6 Monetization / cap ceiling | decision | **RESOLVED** | Founder decision: keep `$5/day` global cap, no monetization |
+| 7 Cold-start population | decision | **RESOLVED** | Founder decision: invited alpha cohort first |
+| 8 `prisma.poll.findUnique` typecheck error | bug | **RESOLVED** | Switched to `findFirst` |
+| 9 pinned-message render test | bug | **RESOLVED** | Test assertion corrected |
+| 10 Apply message-level polls migration | bug/blocker | **RESOLVED** | Migration reconciled via `migrate resolve --applied` |
+| 11 `Appeal.userId` SetNull warning | bug | **RESOLVED** | Schema fixed + migration applied |
 
 ---
 
-## Slice 8 — Fix `prisma.poll.findUnique({ where: { threadId } })` typecheck error
+## Architecture Refactor (completed August 2026)
 
-- **Type:** bug (pre-existing, NOT introduced by the newsletter/account/loading work)
-- **Discovered:** 2026-07-20 engagement close-out. `pnpm typecheck` fails at
-  `modules/polls/repository.ts:133` (`getPollByThreadId`) with
-  `Type '{ threadId: string; }' is not assignable to type 'PollWhereUniqueInput'`.
-- **Root cause:** `PollWhereUniqueInput` requires `{ id }` or `{ messageId }`, not
-  `threadId`. A `threadId` lookup needs `findFirst`/`findMany` (or a unique
-  compound/relation), not `findUnique`.
-- **Blocked by:** None — AFK-grabbable.
-- **Acceptance criteria:**
-  - [ ] `pnpm typecheck` passes with zero errors (this is the only known failure).
-  - [ ] `getPollByThreadId` returns the poll for a thread via a valid query.
-  - [ ] Add/adjust a test if one covers poll-by-thread lookup.
+The following structural changes were made to simplify the codebase:
 
-## Slice 10 — Apply message-level polls migration (RESOLVED 2026-07-20)
+### Removed
+- `modules/ws/` — WebSocket publisher module (was no-op stubs)
+- `modules/chat/` — Chat module (unused)
+- `modules/reputation/` — Reputation system (never built)
+- `modules/badges/` — Badge system (never built)
+- `lib/services/blob.ts` — Blob service (consolidated)
+- `lib/services/logger.ts` — Logger service (consolidated into infrastructure)
+- `lib/dedupe.ts` — Deduplication utility (consolidated into job-dedup.ts)
+- `lib/services/ai-inline-rate-limit.ts` — Consolidated into `daily-quota.ts`
+- `lib/services/ai-search-quota.ts` — Consolidated into `daily-quota.ts`
+- `lib/services/image-moderation-quota.ts` — Consolidated into `daily-quota.ts`
 
-- **Type:** bug/blocker (pre-existing migration history out of sync with live DB)
-- **Symptom:** `prisma migrate dev` demanded a destructive reset because the live
-  Neon DB was synced via `prisma db push` (no `_prisma_migrations` history rows for
-  those changes), so Prisma's shadow-DB diff thought the schema was missing many
-  tables/columns.
-- **Resolution (non-destructive — no reset, no data loss):**
-  1. Confirmed via `prisma migrate diff --from-config-datasource` that the live DB
-     already contained every out-of-band change (users.deletedAt, user_bans
-     nullability, reports.escalatedAt/firstResponseAt, polls.messageId + unique idx +
-     FK, community removal, indexes). The ONLY real delta was `appeals.userId` NOT NULL.
-  2. `migrate resolve --applied 20260714120000_remove_community_thread_member` —
-     recorded the already-applied migration in history.
-  3. `migrate status` now reports **"Database schema is up to date!"** — the reset
-     demand is gone. The two standalone `pending_*.sql` files were redundant (their
-     changes already existed in the DB) and were removed; the appeals change was
-     captured as a proper migration `20260720000000_appeals_userid_nullable`.
-- **Acceptance criteria:** all met — history reconciled, no reset, `migrate status`
-  clean, polls.messageId present in DB, message-level polls render on messages.
+### Consolidated
+- 4 quota services → `lib/services/daily-quota.ts` (single `createDailyQuota` factory)
+- Redis connection logic → `lib/infrastructure/redis.ts` + `lib/infrastructure/redis-upstash.ts`
+- Deduplication → `lib/services/job-dedup.ts`
 
-## Slice 11 — `Appeal.userId` SetNull relation warning (RESOLVED 2026-07-20)
+### Added
+- `lib/thread-access.ts` — Thread access control (visibilityFilter, requireThreadAccessOrThrow, etc.)
+- `lib/actions/result.ts` — Action envelope helpers (actionSuccess, actionFailure)
 
-- **Type:** bug (pre-existing schema wart)
-- **Discovered:** 2026-07-20. Prisma warned:
-  `The onDelete referential action of a relation should not be set to SetNull
-  when a referenced field is required` — for `Appeal.user` (`AppealSubmitter`,
-  `fields: [userId]`, `onDelete: SetNull`).
-- **Root cause:** `Appeal.userId` was declared `String` (required / NOT NULL),
-  but the relation deletes the user with `SetNull` — a NOT NULL column cannot
-  accept NULL. All other `SetNull` relations in the schema
-  (Thread.createdBy, Message.senderId, Appeal.moderatorId, Report.reporterId,
-  UserBan.userId/bannedBy, ReadReceipt.lastReadMessageId) already had nullable
-  FK fields, so `Appeal.userId` was the only genuinely broken one.
-- **Fix applied (schema):** `Appeal.userId` changed to `String?`. `prisma generate`
-  now emits no SetNull warning; `pnpm typecheck` clean.
-- **DB change applied:** captured as proper migration
-  `20260720000000_appeals_userid_nullable/migration.sql`
-  (`ALTER TABLE "appeals" ALTER COLUMN "userId" DROP NOT NULL;`), recorded via
-  `migrate resolve --applied` and executed against the live DB. Post-apply,
-  `information_schema` confirms `appeals.userId` is nullable; `prisma generate`
-  emits zero warnings.
-- **Acceptance criteria:** all met.
+### Simplified
+- All domain modules cleaned of dead code
+- Thread access enforced on upload route
+- QStash verification fail-close (rejects invalid signatures)
+- Search visibility enforced (private/restricted threads not leaked)
 
-## Slice 9 — Fix `thread-components.test.tsx:318` pinned-message render test
-
-- **Type:** bug (pre-existing, NOT introduced by the current work)
-- **Discovered:** 2026-07-20 engagement close-out. `pnpm test` fails a test that
-  renders `ThreadLiveWrapper` with a pinned message and asserts
-  `screen.getByText('📌 Pinned Message')` is present — it is not found, so the
-  pinned-message rendering either regressed or the test fixture no longer matches
-  the component output.
-- **Blocked by:** None — AFK-grabbable (verify against current `ThreadLiveWrapper`
-  / pinned-message rendering, not `comment-tree.tsx` which is separately excluded).
-- **Acceptance criteria:**
-  - [ ] `pnpm test` shows the pinned-message test passing, OR the test is corrected
-        to match intended rendering and the change is documented.
-  - [ ] Confirm the fix is unrelated to the excluded comment-tree flat/nested bug.
+### Current State
+- 25 modules (verified: `find modules/ -mindepth 1 -maxdepth 1 -type d | wc -l`)
+- 35 API routes (verified: `find app/api/ -type f -name 'route.ts' | wc -l`)
+- 30 Prisma models (verified: `grep -c "^model " prisma/schema.prisma`)
+- 47 test files, 297+ passing (verified: `pnpm test`)
 
 ---
 
-## Out-of-scope open list (NOT covered by the Phase 1–5 engagement)
+## Open Items (out-of-scope, still open)
 
-These were flagged in the STRATEGY-READOUT / architecture critical-issues review
-but are **explicitly outside** Phases 1–5 of this engagement. They are NOT "done",
-NOT verified by this work, and are recorded here as a separate, still-open list so
-they are not mistaken for closed. (See ARCHITECTURE-REPORT.md Critical Issues #1, #2.)
+| # | Issue | Why open | State |
+|---|-------|----------|-------|
+| O1 | **CSP / security headers** — Active in `proxy.ts` (per-request nonce). Report-Only by default. | Flip to enforcing after report-log review | **Open pending report-log review** |
+| O1a | **CSP XSS gap** — Next.js bootstrap `<script>` not nonced. | Next 16 does not auto-nonce bootstrap scripts | **Open.** Keep Report-Only until bootstrap nonced |
+| O1b | **CSRF on server actions** | Mitigated by proxy.ts origin/referer check | **Mitigated in practice** |
+| O2 | **No real-time delivery layer.** WebSocket removed. Non-AI updates poll-only (20s normal, 3s during @sai pending). SSE for AI replies. Redis pub/sub publish-only. | Needs design decision (SSE vs WS) before horizontal scaling | **Open. Acceptable at single-instance scale** |
 
-| # | Issue | Why out of scope | State |
-|---|-------|------------------|-------|
-| O1 | **CSP / security headers** — RESOLVED & upgraded (2026-07-20). The active CSP now lives in `proxy.ts` (per-request, nonce-based), not `next.config.ts` (which no longer sets a CSP to avoid duplicate headers). `proxy.ts` sets `Content-Security-Policy` (or `-Report-Only` when `CSP_REPORT_ONLY=true`, the default) with frame-ancestors 'none', base-uri/form-action 'self', connect-src scoped to AI APIs, plus XFO DENY, nosniff, Referrer-Policy, Permissions-Policy. Report collector at `app/api/csp-report/route.ts`. | Was founder-owned; policy decided, implemented + nonce upgrade. | **Closed pending report-log review.** Flip to enforcing (`CSP_REPORT_ONLY=false`) once the `/api/csp-report` log is clean across real traffic. |
-| O1a | **CSP XSS gap — `script-src 'unsafe-inline'` without nonce.** PARTIALLY RESOLVED (2026-07-20). `proxy.ts` now generates a per-request nonce, emits `script-src 'self' 'nonce-<req>'` (NO `'unsafe-inline'`), and forwards it via the `x-csp-nonce` request header so Next.js tags its framework inline scripts. Verified: the CSP header nonce matches the inline-script nonce within a single request (49/50 scripts nonced; the 1 exception is the Next.js bootstrap `<script>` which Next does not auto-nonce yet). Under Report-Only (default) that bootstrap script still executes and only reports a violation; under enforcing it would be blocked until Next nonces it. | Follows from O1 implementation. | **Not yet "XSS fully mitigated."** Next steps: (1) keep Report-Only and review `/api/csp-report` across real traffic; (2) before enforcing, ensure the bootstrap script is nonced (Next 16 does not currently nonce it — may need `experimental.nonce` or a manual injection). Only then flip `CSP_REPORT_ONLY=false`. |
-| O1b | **CSRF token validation on server actions** (ARCHITECTURE-REPORT Critical Issue #3). RE-ASSESSED (2026-07-20): `proxy.ts` ALREADY performs origin/referer validation on all unsafe methods (POST/PUT/DELETE/PATCH) — it rejects cross-origin requests lacking a matching Origin/Referer (lines ~116-145). So CSRF is effectively mitigated today by same-site origin enforcement + `frame-ancestors 'none'`, not by a double-submit token. Lower risk than originally framed. | Architecture report Critical Issue #3; proxy.ts origin check. | **Mitigated in practice.** Keep the origin check; add a double-submit/header token only if the attack surface changes (CORS exposure, iframe embeds). |
-| O2 | **No real-time delivery layer.** The WebSocket layer was removed entirely — `modules/ws/`, `hooks/useThreadWebSocket.ts`, and the `emit*` functions are all deleted (they were no-ops). Multi-instance fan-out does **not** work: what survives is `publishUserEvent` in `lib/infrastructure/redis.ts:84-108`, publish-only on a single `user:{id}` channel for notification counts, with no subscriber. Thread updates are poll-only (20-60s, 3s while an `@sai` job is pending); AI reply streaming uses SSE. | Not in Phase 1–5 scope; needs its own design decision (WS vs SSE, sticky sessions vs external store). | Open. Acceptable at single-instance / low-scale; must be designed before horizontal scaling. |
+---
 
-Neither O1 nor O2 was touched, fixed, or verified by the Phase 1–5 work. Treat
-them as a separate backlog from slices 1–5.
+## Future Work (not yet started)
+
+### Security Hardening
+- [ ] Flip CSP to enforcing (`CSP_REPORT_ONLY=false`) after report-log review
+- [ ] Add nonce to Next.js bootstrap script (or wait for Next 16 `experimental.nonce`)
+- [ ] Add double-submit CSRF token (only if attack surface changes)
+- [ ] Security scanning in CI (CodeQL or Snyk)
+
+### Real-Time Delivery
+- [ ] Design real-time delivery for non-AI events (SSE or WebSocket)
+- [ ] Add Redis subscriber for cross-instance notification fan-out
+- [ ] Client hook for real-time connection (replacing poll-only delivery)
+
+### Frontend Parity
+- [ ] Message editing with history UI
+- [ ] @mentions with notifications UI
+- [ ] Polls UI (backend exists)
+- [ ] Thread tagging UI (backend exists)
+- [ ] Typing indicators in thread UI
+- [ ] @sai inline trigger UI
+- [ ] Notification count in header
+- [ ] Mark notifications as read (single + all)
+- [ ] Read receipts UI
+- [ ] User preferences UI
+- [ ] Thread invitations UI
+- [ ] Access management UI
+- [ ] User profile edit form
+- [ ] Avatar + banner upload UI
+
+### Testing & CI
+- [ ] Add API integration tests (supertest or similar)
+- [ ] Wire E2E tests into CI pipeline
+- [ ] Add `pnpm build` to CI
+- [ ] Add security scanning to CI
+
+### Performance
+- [ ] Message pagination (cursor-based for long threads)
+- [ ] Optimistic UI updates
+- [ ] Image lazy loading
+- [ ] Performance monitoring (Lighthouse CI, Web Vitals)
+
+### Infrastructure
+- [ ] Internationalization (i18n framework)
+- [ ] Accessibility audit (ARIA labels, keyboard nav, screen reader)

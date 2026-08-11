@@ -1,69 +1,47 @@
 # Handoff — security / doc-hygiene / @sai cost-gating engagement
 
-> Compact context for a future session or agent. Do NOT duplicate what's already
-> in commits, `docs/BACKLOG.md`, or `docs/AI-COST-ESTIMATE.md` — reference them.
+> **⚠️ HISTORICAL — pre-refactor handoff document.**
+> Compacted context from the Phases 0–5 engagement (July 2026). The architecture
+> refactor (August 2026) subsequently removed the WebSocket layer, consolidated
+> quota services, and cleaned up dead code. See [docs/CANONICAL-REFERENCE.md](./CANONICAL-REFERENCE.md)
+> for current state.
+>
+> **Last updated:** 2026-08-11 (marked historical; retained for context)
 
 ## What was done (Phases 0–5)
 
 - **Phase 0 — Shared understanding.** Repo is ground truth. Key discovery: the repo
-  was already **public** (github.com/pulkit777exe/sastram, HTTP 200), so Phase 1
-  became incident-response-but-clean (no secrets found). Installed git guardrails.
-- **Phase 1 — Secrets & security.** No real secret in 489 commits. Launch-blockers
-  all PASS (moderation reachability, purge cron wiring, NSFW pre-publish). Rate-limit
-  fail-open hardened. Gitleaks added to CI + pre-commit.
-- **Phase 2 — Doc hygiene.** Reconciled docs vs code: 29 models (no 33 discrepancy),
-  tracked ARCHITECTURE-REPORT + UBIQUITOUS_LANGUAGE, fixed `.env.sample`, module
-  count 26→25, removed nonexistent `modules/chat` refs, license confirmed MIT.
-- **Phase 3 — @sai cost gating.** Added pure cost classifier + hard gate seam
-  (`lib/services/ai-cost-classification.ts`, TDD 10 tests). Wired pre-flight spend-cap
-  gate at `@sai` enqueue. NOTE: prompt assumed a pgvector/similarity>0.92 cache that
-  **does not exist** — classifier is path-based instead.
-- **Phase 4 — Review.** Two-axis review (Standards + Spec). Fixed 2 HARD env-access
-  violations. Bar holds: tsc/eslint clean, 244 tests pass (16 DB-pending).
-- **Phase 5 — Handoff.** `docs/BACKLOG.md` (7 vertical slices, triaged). Two founder
-  decisions resolved (see below).
+  was already **public**, so Phase 1 became incident-response-but-clean.
+- **Phase 1 — Secrets and security.** No real secret in 489 commits. Gitleaks added.
+- **Phase 2 — Doc hygiene.** Reconciled docs vs code: 29 models, module count 26→25,
+  removed nonexistent `modules/chat` refs.
+- **Phase 3 — @sai cost gating.** Added cost classifier + hard gate seam
+  (`lib/services/ai-cost-classification.ts`). Wired pre-flight spend-cap gate.
+- **Phase 4 — Review.** Two-axis review. Fixed env-access violations.
+- **Phase 5 — Handoff.** `docs/BACKLOG.md` (7 vertical slices, triaged).
 
-## Commits landed (local only — NOT pushed; push is guardrail-blocked)
-13 commits since `1ab2442`. Key ones:
-- `baa958e c4611a3 b444625` — gitleaks CI/pre-commit + .env allowlist fix
-- `02c4a0f` — rate-limit fail-open hardening
-- `acf4046 707b8ab 65bc585 4aa91bd 128a04e` — doc hygiene
-- `e76bef2 ad5ff02 41e523d` — @sai cost classification + gate + cost estimate
-- `style: route env access through validated env object` — Phase 4 standards fix
+## Post-refactor status (August 2026)
 
-## Pending (what's NOT done)
-- **Backlog slices 1–5** (AFK, `ready-for-agent`): wire classifier to all AI gates,
-  spend telemetry, moderation/image cap gap, enqueue-time gates, daily-digest/warming cap.
+All 11 backlog slices are **RESOLVED**. The architecture refactor additionally:
+- Removed `modules/ws/`, `modules/chat/`, `modules/reputation/`, `modules/badges/`
+- Consolidated 4 quota services into `lib/services/daily-quota.ts`
+- Added `lib/thread-access.ts` and `lib/actions/result.ts`
+- Cleaned dead code from all domain modules
 
-## Two verification items — resolved vs still owner-evidence
-- **Rate-limit fail-open under Redis outage — RESOLVED (verified by test).**
-  Previously UNKNOWN. Now covered by `test/rate-limit.test.mts`:
-  `decideLimiterMode` asserts that "Redis configured but unavailable" => `in-memory`
-  (NOT `open`), and the in-memory fallback is proven to enforce limits. The real
-  outage path is the try/catch at rate-limit.ts:148-162. No longer an open question.
-- **Purge cron actual prod execution — STILL NEEDS OWNER EVIDENCE (not code).**
-  Wiring is verified in code: `app/api/cron/update-threads/route.ts:116` calls
-  `purgeSoftDeleted()`, registered in `vercel.json` (`0 3 * * *`), CRON_SECRET auth
-  via `lib/utils/cron-auth.ts`. What remains unconfirmed is whether Vercel has
-  **actually invoked** the cron in production. Owner action: open Vercel dashboard →
-  the project → Cron Jobs (or Function Logs filtered to `/api/cron/update-threads`)
-  and confirm at least one successful run since deploy. If none, the purge logic is
-  correct but dormant — not a security hole, just unproven. This requires owner
-  credentials; cannot be done by the agent.
+## Pending (as of refactor completion)
 
-## Founder decisions (resolved, not engineering)
-- D1: Keep `$5/day` global AI spend cap, no monetization (reversible).
+- **Backlog slices 1–5** — RESOLVED
+- **WebSocket replacement** — Open design decision (SSE vs WS)
+- **CSP flip to enforcing** — Pending report-log review
+
+## Founder decisions (resolved)
+- D1: Keep `/day` global AI spend cap, no monetization (reversible).
 - D2: Cold-start = invited alpha cohort first, then broad public onboarding.
 
-## Suggested skills for next session
-- `/to-issues` or direct backlog pick for slices 1–5
-- `/diagnose` if any slice 1–5 surfaces a regression
-- `/review` before merging any slice PR (fixed point = current HEAD)
-- `/triage` if GitHub issues get created (no tracker config exists yet — `gh` not installed)
-
-## Gotchas for the next agent
+## Gotchas for future agents
 - `SESSION-REPORT.md` / `STRATEGY-READOUT.md` were present at session start but are
-  NOT in the working tree now — don't rely on them.
-- `.env` is gitignored and never committed; tests need `.env.test` + CI-style RESEND_*
-  vars when run locally (see CI workflow).
+  NOT in the working tree — do not rely on them.
+- `.env` is gitignored and never committed; tests need `.env.test` when run locally.
 - gitleaks pre-commit is graceful-skip if `gitleaks` binary absent locally.
+- Current module count: 25 (verified: `find modules/ -mindepth 1 -maxdepth 1 -type d | wc -l`)
+- Current API route count: 35 (verified: `find app/api/ -type f -name "route.ts" | wc -l`)

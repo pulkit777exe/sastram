@@ -1,7 +1,7 @@
 # Sastram Architecture Documentation
 
 > **⚠️ Superseded by [docs/CANONICAL-REFERENCE.md](../docs/CANONICAL-REFERENCE.md).**
-> This document no longer reflects verified code. The `hasResolution` claim in the ThreadDna schema, the WebSocket server references, and several model/route counts are stale or fabricated. See the canonical reference for authoritative, code-verified facts. This doc is retained for historical context only.
+> This document no longer reflects verified code. The `hasResolution` claim in the ThreadDna schema, and several model/route counts may be stale or fabricated. See the canonical reference for authoritative, code-verified facts. This doc is retained for historical context only.
 
 ## Overview
 
@@ -28,17 +28,18 @@ accumulates knowledge. More users = better answers for the next user.
 
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend:** Next.js App Router (API routes + Server Actions), Node.js
-- **Database:** PostgreSQL via Prisma ORM (Neon serverless), 29 models
-- **Real-time:** Background Jobs: Upstash QStash + Vercel Cron
+- **Database:** PostgreSQL via Prisma ORM (Neon serverless), 30 models
+- **Real-time:** SSE streaming for AI replies; client polling for message updates
+- **Background Jobs:** Upstash QStash + Vercel Cron
 - **Authentication:** Better Auth (email OTP + Google + GitHub)
 - **Cache / Rate Limit:** Upstash Redis
-- **File Storage:** Vercel Blob Storage (`lib/services/blob.ts`)
+- **File Storage:** Vercel Blob Storage
 - **Email:** Resend — `lib/services/email.ts`
 - **AI — Search:** Exa API + Tavily API (via `modules/ai-search/service.ts`)
 - **AI — Synthesis:** Google Gemini Flash (classify/DNA) + Pro (synthesis)
 - **AI — LangChain:** Map-reduce summarization via `lib/services/ai-langchain.ts`
-- **State Management:** Zustand + `useSyncExternalStore` (thread view)
-- **E2E Testing:** Playwright (`e2e/`)
+- **State Management:** Zustand (thread view)
+- **E2E Testing:** Playwright (`test/e2e/`)
 
 ---
 
@@ -49,7 +50,7 @@ Browser Client
 │
 ├── HTTP / Server Actions → Next.js App Router
 │   │
-│   ├── modules/ (domain logic — 29 modules)
+│   ├── modules/ (domain logic — 25 modules)
 │   │   │
 │   │   ├── Prisma → PostgreSQL (Neon)
 │   │   ├── Upstash Redis (cache + rate limit)
@@ -59,7 +60,7 @@ Browser Client
 │   │   ├── Gemini / Exa / Tavily (AI)
 │   │   └── Resend (email)
 │   │
-│   └── API Routes (32 REST endpoints)
+│   └── API Routes (REST endpoints)
 │
 └── SSE → AI reply streaming (app/api/threads/[threadId]/ai-reply/stream)
 ```
@@ -80,7 +81,7 @@ sastram/
 │   ├── (protected)/
 │   │   ├── dashboard/
 │   │   │   ├── page.tsx                  # Main dashboard
-│   │   │   ├── threads/                  # Thread list
+│   │   │   ├── threads/                  # Thread list + detail
 │   │   │   ├── messages/                 # Messages/inbox
 │   │   │   ├── notifications/            # Notifications page
 │   │   │   ├── bookmarks/                # Bookmarked threads
@@ -106,7 +107,6 @@ sastram/
 │       ├── jobs/                         # QStash webhook callback (background AI/email jobs)
 │       ├── threads/                      # Thread REST + [threadId]/ai-reply
 │       ├── messages/                     # Message REST (POST)
-│       ├── conversations/                # Chat conversations (GET, POST)
 │       ├── search/                       # Full-text search (threads, messages, users)
 │       ├── upload/                       # File upload (Vercel Blob)
 │       ├── sign-in/email-otp/            # Sign in with OTP
@@ -121,16 +121,17 @@ sastram/
 │
 ├── components/
 │   ├── ai-search/                        # SearchBox, Sidebar, PhaseTracker, SynthesisCard, SourceCard, TableView, ApiKeysModal
-│   ├── thread/                           # comment-tree, message-list, message-node, RightPanel, poll-*, subscribe-button, thread-live-wrapper
+│   ├── thread/                           # comment-tree, message-list, poll-*, subscribe-button, thread-live-wrapper, thread-details-panel
 │   ├── chat/                             # post-message-form, mention-suggest
-│   ├── dashboard/                        # settings-form, preferences-form, header, sidebar, StatsCard, TopicCard
-│   ├── panels/                           # RightPanel (ThreadInfoCard, ThreadDnaCard, AiSynthesisCard, RelatedThreadsCard, ParticipantsCard)
+│   ├── dashboard/                        # sidebar, settings-form, preferences-form, stats-card, topic-card, message-grid
+│   ├── panels/                           # ThreadInfoCard, ThreadDnaCard, AiSynthesisCard, RelatedThreadsCard, ParticipantsCard, ThreadResolutionCard
 │   ├── notifications/                    # notification-list
 │   ├── landing/                          # LandingPage
 │   ├── layout/                           # Layout components
 │   ├── auth/                             # LoginForm, ForgotPasswordModal
 │   ├── admin/                            # Admin components
 │   ├── appeals/                          # Appeal components
+│   ├── user/                             # follow-button, profile-header, profile-tabs, user-stats, user-threads-list
 │   └── ui/                               # shadcn/ui + TimeAgo, ErrorBoundary, LoadingVideo, ThemeToggle
 │
 ├── hooks/
@@ -138,17 +139,14 @@ sastram/
 │   ├── use-debounce.ts                   # Generic debounce hook
 │   └── chat/use-message-composer.ts      # Message composition, drafts, mentions
 │
-├── stores/
-│   └── thread-view-store.ts             # useSyncExternalStore: current thread slug
-│
 ├── modules/                              # Domain logic (25 modules)
 │   ├── auth/                             # Session management, OAuth
 │   ├── users/                            # User CRUD, profiles, avatar/banner upload
-│   ├── threads/                          # Thread CRUD, membership, slug routing, relations
+│   ├── threads/                          # Thread CRUD, slug routing, relations
 │   ├── messages/                         # Post, edit, pin, delete, mentions, AI inline
 │   ├── ai-search/                        # Exa + Tavily + Gemini pipeline, caching, query warming
 │   ├── moderation/                       # Regex rules, content filtering, AI inline moderation
-│   ├── reports/                          # Report creation, resolution, executors
+│   ├── reports/                          # Report creation, resolution
 │   ├── appeals/                          # Ban appeal submission and review
 │   ├── notifications/                    # In-app notifications, bulk creation
 │   ├── newsletter/                       # Email digest subscriptions, processing
@@ -173,16 +171,17 @@ sastram/
 │   │   ├── env.ts                        # Zod-validated environment variables
 │   │   ├── constants.ts                  # File limits, magic numbers
 │   │   ├── permissions.ts                # Role-based access control
-│   │   └── routes.ts                     # Route constants
+│   │   ├── routes.ts                     # Route constants
+│   │   └── resend.ts                     # Resend email client
 │   ├── infrastructure/
-│   │   ├── logger.ts                     # Structured logger with request IDs
+│   │   ├── logger.ts                     # Structured logging
 │   │   ├── prisma.ts                     # Prisma Client (Neon adapter)
-│   │   ├── redis.ts                     # ioredis connection factory + pub/sub publisher
-│   │   ├── redis-upstash.ts             # Upstash Redis client
-│   │   └── query-cache.ts              # Redis/in-memory query cache
+│   │   ├── redis.ts                      # ioredis connection factory
+│   │   ├── redis-upstash.ts              # Upstash REST Redis client
+│   │   └── query-cache.ts                # Redis/in-memory query cache
 │   ├── queue/
-│   │   ├── config.ts                     # AIJobType enum (8)
-│   │   ├── types.ts                      # Job data interfaces (ThreadSummaryJobData, etc.)
+│   │   ├── config.ts                     # AIJobType enum
+│   │   ├── types.ts                      # Job data interfaces
 │   │   └── workers/
 │   │       ├── ai.worker.ts              # AI job handlers (summary, DNA, score, conflicts, inline, staleness)
 │   │       └── email.worker.ts           # Email job handler
@@ -190,48 +189,65 @@ sastram/
 │   │   ├── api.ts                        # API request/response schemas
 │   │   ├── database.ts                   # Prisma model schemas
 │   │   ├── thread-dna.ts                 # ThreadDNA Zod schema
-│   │   ├── user-preferences.ts           # User preferences schema
-│   │   └── websocket.ts                  # WebSocket message validation
+│   │   └── user-preferences.ts           # User preference schema
 │   ├── services/
 │   │   ├── ai.ts                         # GeminiService + OpenAIService (summaries, DNA, conflicts, toxicity)
-│   │   ├── ai-langchain.ts              # LangChain map-reduce summarization
-│   │   ├── ai-inline-rate-limit.ts       # AI inline rate limiting
-│   │   ├── ai-search-quota.ts            # Per-user daily AI search quota (20/day)
+│   │   ├── ai-langchain.ts               # LangChain map-reduce summarization
+│   │   ├── ai-spend-cap.ts               # Dollar-based daily AI spend limit
+│   │   ├── ai-usage-logger.ts            # Per-request token/cost logging
+│   │   ├── ai-cost-classification.ts     # Request cost tiering
+│   │   ├── ai-sentinel.ts                # AI-not-configured guard
+│   │   ├── daily-quota.ts                # Per-user/day Redis quotas
 │   │   ├── auth.ts                       # Better Auth configuration
-│   │   ├── auth-client.ts               # Client-side auth
-│   │   ├── blob.ts                       # Vercel Blob storage wrapper
-│   │   ├── content-safety.ts            # Profanity filtering, file validation
+│   │   ├── auth-client.ts                # Client-side auth
 │   │   ├── email.ts                      # Resend (sendEmail, sendOTPEmail, etc.)
 │   │   ├── moderation.ts                 # Regex + AI content moderation
-│   │   └── rate-limit.ts                 # Redis-based rate limiting with buckets
+│   │   ├── moderation-sla.ts             # Stale report escalation
+│   │   ├── content-safety.ts             # Profanity filtering, file validation
+│   │   ├── rate-limit.ts                 # Redis-based rate limiting with in-memory fallback
+│   │   ├── queue.ts                      # QStash job enqueueing
+│   │   ├── job-dedup.ts                  # Job deduplication
+│   │   ├── idempotency.ts                # Idempotency keys
+│   │   ├── counter-reconciliation.ts     # Denormalized counter repair
+│   │   ├── soft-delete-purge.ts          # Purges soft-deleted users after 30 days
+│   │   └── usage-check.ts                # Usage limit checks
 │   ├── middleware/
-│   │   └── moderation.ts                # requireModerator(), requireAdmin()
+│   │   └── moderation.ts                 # requireModerator(), requireAdmin()
 │   ├── actions/
-│   │   └── result.ts                     # ActionErrorCode, actionFailure
-│   ├── templates/
-│   │   └── email-templates.ts            # Email HTML templates
+│   │   └── result.ts                     # ActionEnvelope, ActionErrorCode, actionSuccess/actionFailure
 │   ├── types/
 │   │   └── index.ts                      # Barrel re-export from module types
 │   ├── utils/
-│   │   ├── api-response.ts              # ok(), fail() API response helpers
+│   │   ├── api-response.ts               # ok(), fail() API response helpers
 │   │   ├── confidence-decay.ts           # applyConfidenceDecay() for resolution scores
 │   │   ├── retry.ts                      # withRetry() for external API calls
 │   │   ├── server-action.ts              # createServerAction, withValidation
 │   │   ├── slug.ts                       # Slug generation
 │   │   ├── toast.ts                      # Client-side toast notifications
-│   │   ├── mention-parser.ts            # parseMentions(), resolveUserMentions()
-│   │   └── validation-common.ts         # Shared validation schemas (pagination)
+│   │   ├── mention-parser.ts             # parseMentions(), resolveUserMentions()
+│   │   ├── cron-auth.ts                  # Cron Bearer token verification
+│   │   ├── prompt-boundary.ts            # Prompt injection boundaries
+│   │   ├── render-content.tsx            # Content rendering
+│   │   ├── file-upload.ts                # Upload helpers
+│   │   ├── password-validation.ts        # Password rules
+│   │   ├── escape.ts                     # String escaping
+│   │   ├── cn.ts                         # Tailwind class merging
+│   │   ├── errors.ts                     # Error types
+│   │   ├── validation-common.ts          # Shared validation schemas (pagination)
+│   │   ├── client-logger.ts              # Client-side logging
+│   │   └── api-interceptor.ts            # Client API interceptor
 │   ├── db/
-│   │   └── pagination.ts                # Cursor-based pagination
-│   └── sanitize.ts                       # API key validation, input sanitization
+│   │   └── pagination.ts                 # Cursor-based pagination
+│   ├── thread-access.ts                  # Thread authorization primitive
+│   └── sanitize.ts                       # Input sanitization
 │
 ├── prisma/
-│   ├── schema.prisma                     # 29 models
+│   ├── schema.prisma                     # 30 models
 │   ├── seed.ts                           # Database seed script
 │   └── migrations/                       # Database migrations
 │
-├── test/                                 # Mocha unit tests (256+ passing)
-├── e2e/                                  # Playwright end-to-end tests
+├── test/                                 # Mocha unit tests (297+ passing)
+├── test/e2e/                             # Playwright end-to-end tests
 ├── docs/                                 # Documentation
 ├── scripts/                              # Build/dev scripts
 └── shared/
@@ -242,7 +258,7 @@ sastram/
 
 ## Module Pattern
 
-Modules follow a consistent pattern, with `schemas.ts` present in every module.
+Modules follow a consistent pattern, with `schemas.ts` present in most modules.
 
 ```
 modules/{feature}/
@@ -252,29 +268,29 @@ modules/{feature}/
 ├── repository.ts   — DB queries via Prisma. Typed returns, never `any`.
 ├── service.ts      — Business logic, AI calls, cross-module orchestration (optional)
 ├── types.ts        — Module-specific types (optional)
-├── schemas.ts      — Zod validation schemas (present in all 29 modules)
+├── schemas.ts      — Zod validation schemas (present in most modules)
 ├── index.ts        — Public exports (optional)
 └── ...             — Module-specific files (executors.ts, policy.ts, cache.ts, etc.)
 ```
 
-**Actual file counts across 29 modules:**
-- `actions.ts`: 26/29 (missing in ai-search, audit, ws)
-- `repository.ts`: 25/29 (missing in appeals, chat, messages, reports)
-- `service.ts`: 4/29 (threads, ai-search, messages, newsletter)
-- `types.ts`: 17/29
-- `schemas.ts`: 29/29 (universal)
-- `index.ts`: 18/29
+**25 modules total:**
+- `actions.ts`: present in most
+- `repository.ts`: present in most
+- `service.ts`: few (threads, ai-search, messages, newsletter)
+- `types.ts`: ~half
+- `schemas.ts`: present in most
+- `index.ts`: ~half
 
 ---
 
-## Data Model — Key Entities (29 Prisma models)
+## Data Model — Key Entities (30 Prisma models)
 
 ### Thread
 The central entity. Stores AI metadata directly:
 - `resolutionScore: Int?` — 0-100, calculated by QStash job
 - `isOutdated: Boolean` — set by staleness detection cron
 - `aiSummary: String?` — cached summary, regenerated via LangChain
-- `threadDna: Json?` — `{ questionType, expertiseLevel, topics[], readTimeMinutes, hasResolution }`
+- `threadDna: Json?` — `{ questionType, expertiseLevel, topics[], readTimeMinutes }`
 - `lastVerifiedAt: DateTime?` — when AI last checked sources
 - `visibility: Enum` — PUBLIC, PRIVATE, RESTRICTED
 - `deletedAt: DateTime?` — soft delete
@@ -295,9 +311,9 @@ The central entity. Stores AI metadata directly:
 - `profilePrivacy: Enum` — PUBLIC, PRIVATE, FOLLOWERS_ONLY
 - `isPro: Boolean` — pro subscription status
 - `preferences: Json` — notification, theme, AI settings
+- `deletedAt: DateTime?` — soft delete
 
 ### Other Key Models
-- `ThreadMember` — membership with roles (OWNER, MODERATOR, MEMBER)
 - `Notification` — typed notifications (MENTION, REPLY, REACTION, NEW_MESSAGE, PINNED)
 - `Report` / `Appeal` / `UserBan` — moderation pipeline
 - `Poll` / `PollVote` — in-thread polls
@@ -307,6 +323,14 @@ The central entity. Stores AI metadata directly:
 - `MessageMention` — @mention records
 - `ReadReceipt` — thread read tracking
 - `ThreadSubscription` — newsletter/digest subscriptions
+- `ThreadInvitation` — thread invite records
+- `UserFollow` / `UserBookmark` — social features
+- `ThreadTag` / `ThreadTagRelation` — tagging
+- `ModerationRule` — CHECK constraints on rules
+- `UserActivity` — CHECK constraint on activity
+- `AiUsageLog` — costUsd tracking
+- `Feedback` — user feedback
+- `Account` / `Session` / `Verification` — Better Auth tables
 
 ---
 
@@ -343,16 +367,13 @@ The central entity. Stores AI metadata directly:
 | Thread list (dashboard) | `app/(protected)/dashboard/threads/page.tsx` |
 | Thread detail (by slug) | `app/(protected)/dashboard/threads/[slug]/page.tsx` |
 | Nested reply tree (depth 4) | `components/thread/comment-tree.tsx` + `message-list.tsx` |
-| Virtual scrolling | `@tanstack/react-virtual` in `message-list.tsx` |
-| Load older messages | `thread-live-wrapper.tsx:loadMoreMessages` (cursor pagination) |
-| Pinned message banner | `thread-live-wrapper.tsx` lines 379-399 |
 | Thread DNA analysis | `POST /api/ai/thread-dna` → QStash → `Thread.threadDna` |
 | Resolution score | `POST /api/ai/resolution-score` → QStash → `Thread.resolutionScore` |
 | Thread summary (LangChain) | `POST /api/ai/thread-summary` → QStash → `Thread.aiSummary` |
 | Thread tagging (backend) | `modules/tags/actions.ts` (CRUD, thread-tag associations) |
 | Thread invitations (backend) | `modules/invitations/actions.ts` |
-| Thread membership | `modules/members/actions.ts` (join, leave, invite, role management) |
-| Thread access control | PRIVATE/RESTRICTED visibility with membership checks |
+| Thread membership | `modules/members/actions.ts` |
+| Thread access control | PRIVATE/RESTRICTED visibility via `lib/thread-access.ts` |
 | Related threads | `components/panels/RelatedThreadsCard.tsx` → `ThreadRelation` |
 | Create topic | `modules/topics/actions.ts:createTopic` |
 | Tags browser | `app/(protected)/dashboard/tags/[slug]/page.tsx` |
@@ -363,16 +384,12 @@ The central entity. Stores AI metadata directly:
 |---------|---------------|
 | Post message | `modules/messages/actions/post.ts:postMessage` |
 | Edit message (with history) | `modules/messages/actions/edit.ts:editMessage` |
-| Edit history | `modules/messages/actions/edit.ts:getMessageEditHistory` |
 | Pin message | `modules/messages/actions/edit.ts:pinMessage` (one per thread) |
 | Delete message (soft) | `modules/messages/actions/delete.ts:deleteMessage` |
-| Message attachments | `app/api/messages/route.ts` (multipart upload) |
 | @mentions | `modules/messages/actions/mentions.ts` (create, search, notify) |
 | Mention autocomplete | `components/chat/mention-suggest.tsx` (debounced search) |
 | @sai inline responses | `modules/messages/actions/ai-inline.ts` → SSE stream to poster (primary) or QStash job (fallback) |
 | AI inline pending status | `thread-live-wrapper.tsx` (2-min timeout, pending/failed tracking) |
-| "Edited" label | `message-list.tsx` line 304-306 |
-| Deleted placeholder | `message-list.tsx` lines 230-248 ("This message was deleted") |
 
 ### Real-time Communication
 
@@ -382,7 +399,6 @@ The central entity. Stores AI metadata directly:
 | AI reply tokens | Streamed via Server-Sent Events |
 | Message updates | Client-side polling |
 | Typing indicators | Not implemented (forum-style platform) |
-
 
 ### AI-Powered Features
 
@@ -394,22 +410,17 @@ The central entity. Stores AI metadata directly:
 | Source tier assignment | T1=official, T2=SO/HN, T3=Reddit, T4=blogs |
 | Synthesis (streamed) | Gemini Pro → ReadableStream response |
 | Confidence scoring | 0-100 based on tier mix, agreement, freshness |
-| Semantic cache | SHA-256 query-hash cache (`modules/ai-search/cache.ts`) → exact-hash hit skips API calls. No embedding, no pgvector |
-| Daily search quota | 20 searches/user/day (`ai-search-quota.ts`) |
-| User-supplied API keys | localStorage only, sent in headers, never stored |
+| Semantic cache | SHA-256 query-hash cache (`modules/ai-search/cache.ts`) |
+| Daily search quota | Per-user/day Redis quota (`daily-quota.ts`) |
 | Thread DNA | questionType, expertiseLevel, topics[], readTimeMinutes |
 | Resolution score | 0-100 with confidence decay over time |
 | Conflict detection | AI identifies contradictory facts in threads |
 | Thread summary (LangChain) | Map-reduce: split → parallel summarize → combine |
-| AI inline (@sai) | User types @sai in message → SSE stream (`ai-reply/stream`, instant tokens for the poster) with QStash-job fallback → polling delivery for other viewers (best-effort, graceful placeholder on failure) |
-| Staleness detection | 30-day threshold, checks if thread needs updating |
+| AI inline (@sai) | User types @sai in message → SSE stream with QStash-job fallback |
+| Staleness detection | Thread age threshold, checks if thread needs updating |
 | AI insight notifications | Score change ≥20pts or conflict detected → notify subscribers |
 
 ### Background Jobs (QStash + Vercel Cron)
-
-**QStash jobs** are triggered by API routes and enqueued via `lib/services/queue.ts`.
-
-**Vercel Cron** runs scheduled tasks via `vercel.json`.
 
 | Job | Trigger | Result |
 |-----|---------|--------|
@@ -417,13 +428,11 @@ The central entity. Stores AI metadata directly:
 | Thread DNA | 3rd message posted | `Thread.threadDna` |
 | Resolution score | 5+ messages or daily cron | `Thread.resolutionScore` |
 | Conflict detection | New message arrives | Notification to subscribers |
-| Daily digest | Daily cron (3 AM UTC) | Email via Resend |
+| Daily digest | Daily cron | Email via Resend |
 | AI insight notifications | Score change / conflict | Notification table |
-| AI inline | @sai in message (fallback path; primary is client SSE stream) | Streaming AI response |
+| AI inline | @sai in message (fallback path) | Streaming AI response |
 | Staleness check | Daily cron | `Thread.isOutdated` flag |
 | Email | Various | Resend send |
-
-**Job options:** critical jobs (email) retry 3× via QStash; AI jobs retry once. Provider quota/rate-limit failures are treated as terminal (no retry storm) — the inline @sai reply writes a graceful placeholder instead of rethrowing.
 
 ### Moderation & Administration
 
@@ -434,58 +443,33 @@ The central entity. Stores AI metadata directly:
 | Report creation | `modules/reports/actions.ts:createReport` |
 | Report resolution | `modules/reports/actions.ts:resolveReport` |
 | Moderation queue | `app/api/v1/moderation/queue/route.ts` |
-| Moderation stats | `app/api/v1/moderation/stats/route.ts` |
-| Moderation rules CRUD | `app/api/v1/moderation/rules/route.ts` |
 | Ban user | `modules/moderation/actions.ts:banUser` |
-| Unban user | `modules/moderation/actions.ts:unbanUser` |
 | Ban appeals | `modules/appeals/actions.ts` (submit, review, resolve) |
 | Bulk delete messages | `modules/moderation/actions.ts:bulkDeleteMessages` |
 | Admin dashboard | `app/(protected)/dashboard/admin/page.tsx` |
-| Admin reports page | `app/(protected)/dashboard/admin/reports/page.tsx` |
-| Admin appeals page | `app/(protected)/dashboard/admin/appeals/page.tsx` |
-| Admin tags management | `app/(protected)/dashboard/admin/tags/page.tsx` |
-| Admin health page | `app/(protected)/dashboard/admin/health/page.tsx` |
 | System health endpoint | `GET /api/health` (DB, Redis, AI checks) |
-| Admin health endpoint | `GET /api/admin/health` (memory, uptime, WS stats) |
 
 ### Notifications & Engagement
 
 | Feature | Implementation |
 |---------|---------------|
 | In-app notifications | `modules/notifications/` (typed: MENTION, REPLY, REACTION, NEW_MESSAGE, PINNED) |
-| Notification list | `components/notifications/notification-list.tsx` (grouped by time) |
-| Mark read (single) | `modules/notifications/actions.ts:markNotificationRead` |
-| Mark all read | `modules/notifications/actions.ts:markAllNotificationsRead` |
-| Unread count | `modules/notifications/actions.ts:getUnreadNotificationCount` |
-| Bulk notification creation | `modules/notifications/repository.ts:createBulkNotifications` |
-| Email notifications | `lib/services/email.ts` (mention, follow, invitation emails) |
 | Follow/unfollow users | `modules/follows/actions.ts` |
 | Thread bookmarking | `modules/bookmarks/actions.ts:toggleBookmark` |
 | Emoji reactions | `modules/reactions/actions.ts:toggleReaction` |
-| Read receipts | `modules/read-receipts/actions.ts:markThreadReadAction` (auto after 30s) |
-| Activity feed | `modules/activity/actions.ts` (record, get, followed users) |
-| Thread subscriptions | `modules/newsletter/actions.ts` (Daily, Weekly, Never frequency) |
-| Polls | `modules/polls/actions.ts` (create, vote, close, results) |
+| Read receipts | `modules/read-receipts/actions.ts:markThreadReadAction` |
+| Activity feed | `modules/activity/actions.ts` |
+| Thread subscriptions | `modules/newsletter/actions.ts` |
+| Polls | `modules/polls/actions.ts` |
 
 ### Search & Discovery
 
 | Feature | Implementation |
 |---------|---------------|
 | Local full-text search | `app/api/search/route.ts` + `modules/search/actions.ts` |
-| Thread search | `modules/search/actions.ts:searchThreadsAction` |
-| Message search | `modules/search/actions.ts:searchMessagesAction` |
-| User search | `modules/search/actions.ts:searchUsersAction` |
 | AI-powered search | `app/(protected)/dashboard/sai-search/page.tsx` |
-| Mention user search | `modules/messages/actions/mentions.ts:searchMentionUsers` |
 | Tags browser | `app/(protected)/dashboard/tags/[slug]/page.tsx` |
 | Related threads | `components/panels/RelatedThreadsCard.tsx` |
-
-### Community Management
-
-| Feature | Implementation |
-|---------|---------------|
-| Create thread | `modules/threads/actions.ts:createThreadAction` |
-| Thread detail (by slug) | `app/(protected)/dashboard/threads/[slug]/page.tsx` |
 
 ### Email
 
@@ -495,88 +479,7 @@ The central entity. Stores AI metadata directly:
 | Welcome email | `lib/services/email.ts:sendWelcomeEmail` |
 | Password reset email | `lib/services/email.ts:sendPasswordResetEmail` |
 | Mention notification email | `lib/services/email.ts:sendMentionNotification` |
-| Follow notification email | `lib/services/email.ts:sendFollowNotification` |
-| Thread invitation email | `lib/services/email.ts:sendThreadInvitation` |
 | Daily digest email | `lib/services/email.ts:sendNewsletterDigest` |
-
----
-
-## AI Pipeline Architecture
-
-### AI Search (User-facing)
-
-```
-User query (with own API keys from localStorage)
-↓
-POST /api/ai/forum-search
-↓
-Phase 1: Query classification (Gemini Flash)
-→ type: factual | opinion | technical | comparison
-→ suggestedSources, searchTerms[3], isControversial
-↓
-Phase 2: Parallel search (Promise.allSettled)
-→ Exa: neural search for forum/technical content
-→ Tavily: general web + news
-↓
-Phase 3: Cross-reference + conflict detection (Gemini Flash)
-→ Tier assignment (T1=official docs, T2=SO/HN, T3=Reddit, T4=blogs)
-→ Freshness check (isOutdated if >2 years)
-→ Conflict detection prompt
-↓
-Phase 4: Synthesis (Gemini Pro)
-→ Max 400 words, cite tier inline [official] [community]
-→ Confidence score (0-100, factors: tier mix, agreement, freshness)
-↓
-Phase 5: Cache result (SHA-256 query-hash in PostgreSQL — no embedding, no pgvector)
-→ TTL: technical=6h, opinion=1h, news=15min
-↓
-Stream response to client via ReadableStream
-```
-
-**Query cache:** Before Phase 1, hash the normalized query (SHA-256) and
-look it up in `modules/ai-search/cache.ts`. Exact-hash hit → serve cache
-instantly, skip all API calls. There is NO embedding step and NO pgvector.
-
-**API keys:** User supplies own Exa, Tavily, Gemini keys.
-Stored in localStorage only. Sent in request headers.
-Never logged, never stored in DB.
-
-### Thread Analysis Pipeline (Background Jobs)
-
-```
-Message posted
-↓
-├── 3rd message → generateThreadDNA (QStash)
-│   → Gemini Flash → Thread.threadDna
-│
-├── 50+ messages → generateThreadSummary (QStash)
-│   → LangChain map-reduce → Thread.aiSummary
-│
-├── 5+ messages → calculateResolutionScore (QStash)
-│   → Gemini Flash + confidence decay → Thread.resolutionScore
-│
-├── New message → detectConflicts (QStash)
-│   → Gemini Flash → Notification to subscribers
-│
-└── Daily cron → stalenessCheck (QStash)
-    → Check Thread.updatedAt vs threshold → Thread.isOutdated
-```
-
-### LangChain Thread Summarization
-
-```
-All messages (up to 200)
-↓
-RecursiveCharacterTextSplitter (8K chunks, 500 overlap)
-↓
-Parallel map: summarize each chunk (Gemini Flash)
-↓
-Reduce: combine partial summaries (Gemini Flash)
-↓
-200-400 word comprehensive summary
-↓
-Fallback: basic 12K-char prompt if LangChain fails
-```
 
 ---
 
@@ -585,7 +488,7 @@ Fallback: basic 12K-char prompt if LangChain fails
 This is a serverless, forum-style platform. There are no persistent WebSocket connections.
 
 - **AI reply streaming**: GET endpoint at `/api/threads/[threadId]/ai-reply/stream` uses Server-Sent Events
-- **Message updates**: Clients poll for new messages (not implemented yet - forum-style, no real-time needed)
+- **Message updates**: Clients poll for new messages
 - **Typing indicators**: Not implemented (forum-style platform)
 
 Background jobs are processed via Upstash QStash webhooks and Vercel Cron.
@@ -598,7 +501,6 @@ Background jobs are processed via Upstash QStash webhooks and Vercel Cron.
 - All server actions return `{ data, error, ok, errorCode }`, never throw
 - API keys (Exa, Tavily, Gemini) never logged, never stored in DB
 - User content sanitized before passing to AI prompts
-  (strip HTML, remove prompt injection patterns)
 - Path traversal prevention on all file operations
 - DB + Redis state updated atomically via Prisma $transaction
 - AbortController + 15s timeout on every external API call
@@ -607,8 +509,8 @@ Background jobs are processed via Upstash QStash webhooks and Vercel Cron.
 - Error boundaries at every route level
 - Internal DB errors never leaked to client error messages
 - Rate limiting on all AI endpoints (Upstash Redis)
-- Per-user daily AI search quota (20/day)
-- Thread visibility enforcement (PRIVATE/RESTRICTED membership checks)
+- Per-user daily AI search quota via Redis
+- Thread visibility enforcement via `lib/thread-access.ts`
 
 ---
 
