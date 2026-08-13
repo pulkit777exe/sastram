@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
+import path from 'path';
 
 // NOTE: The active CSP is set in proxy.ts (per-request, with a nonce for
 // script-src). This file no longer sets a CSP to avoid sending two conflicting
@@ -31,6 +32,7 @@ const isVercel = process.env.VERCEL === '1';
 
 const nextConfig: NextConfig = {
   ...(isVercel ? {} : { output: 'standalone' as const }),
+  outputFileTracingRoot: path.join(__dirname),
   async headers() {
     return [
       {
