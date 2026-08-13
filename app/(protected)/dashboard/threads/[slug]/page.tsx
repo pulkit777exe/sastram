@@ -1,11 +1,11 @@
-import { Suspense } from 'react';
+import { Suspense, cache } from 'react';
 import { notFound } from 'next/navigation';
 import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Activity } from 'lucide-react';
 import type { Message } from '@/lib/types/index';
 import { isAdminUser as isAdmin, requireSession, type SessionUser } from '@/modules/auth/session';
-import { getThreadWithFullContext, toClientMessage } from '@/modules/threads';
+import { getThreadWithFullContext, getThreadMessagesPaginated, toClientMessage } from '@/modules/threads';
 import Link from 'next/link';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
@@ -17,6 +17,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 
 const INITIAL_MESSAGE_LIMIT = 50;
+
+const getThreadCached = cache((slug: string, userId: string) =>
+  getThreadWithFullContext(slug, userId)
+);
 
 function ThreadContentSkeleton() {
   return (
@@ -63,32 +67,38 @@ function ThreadSidebarSkeleton() {
 }
 
 async function ThreadContent({
-  thread,
+  slug,
   session,
-  subscription,
 }: {
-  thread: Awaited<ReturnType<typeof getThreadWithFullContext>>;
-  session: { user: { id: string; name: string | null; image: string | null; role: string } };
-  subscription: { frequency: string } | null;
+  slug: string;
+  session: { user: SessionUser };
 }) {
-  if (!thread) return null;
+  const thread = await getThreadCached(slug, session.user.id);
+  if (!thread) notFound();
+
+  const subscription = await prisma.threadSubscription.findUnique({
+    where: {
+      threadId_userId: {
+        threadId: thread.id,
+        userId: session.user.id,
+      },
+    },
+    select: { frequency: true },
+  });
 
   const threadRef = { id: thread.id, name: thread.name, slug: thread.slug };
 
-  // getThreadWithFullContext already returned every message (ASC, including
-  // soft-deleted ones); no second paginated query is needed here.
-  const liveMessages = thread.messages.filter((m) => m.deletedAt === null);
-  const hasMoreMessages = liveMessages.length > INITIAL_MESSAGE_LIMIT;
-  const visibleMessages = hasMoreMessages
-    ? liveMessages.slice(-INITIAL_MESSAGE_LIMIT)
-    : liveMessages;
+  const { messages: messagePage, hasMore: hasMoreMessages, nextCursor: oldestCursor } =
+    await getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT);
+  const visibleMessages = [...messagePage].reverse();
 
   const allMessages: Message[] = visibleMessages.map((m) => toClientMessage(m, threadRef));
 
   const unreadMessages = allMessages.filter((message) => message.senderId !== session.user.id);
 
   const initialUnreadCount = unreadMessages.length;
-  const firstUnreadMessageId = unreadMessages[unreadMessages.length - 1]?.id ?? null;
+
+  const firstUnreadMessageId = unreadMessages[0]?.id ?? null;
 
   return (
     <ThreadLiveWrapper
@@ -97,7 +107,7 @@ async function ThreadContent({
       initialUnreadCount={initialUnreadCount}
       initialFirstUnreadMessageId={firstUnreadMessageId}
       hasMoreMessages={hasMoreMessages}
-      nextCursor={hasMoreMessages ? (visibleMessages[0]?.id ?? null) : null}
+      nextCursor={hasMoreMessages ? oldestCursor : null}
       totalMessageCount={thread._count.messages}
       poll={
         thread.poll
@@ -129,13 +139,14 @@ async function ThreadContent({
 }
 
 async function ThreadSidebar({
-  thread,
+  slug,
   session,
 }: {
-  thread: Awaited<ReturnType<typeof getThreadWithFullContext>>;
+  slug: string;
   session: { user: SessionUser };
 }) {
-  if (!thread) return null;
+  const thread = await getThreadCached(slug, session.user.id);
+  if (!thread) notFound();
 
   const threadDna = parseThreadDna(thread.threadDna);
 
@@ -216,66 +227,19 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const session = await requireSession();
 
-  const thread = await getThreadWithFullContext(slug, session.user.id);
-  if (!thread) notFound();
-
-  const subscription = await prisma.threadSubscription.findUnique({
-    where: {
-      threadId_userId: {
-        threadId: thread.id,
-        userId: session.user.id,
-      },
-    },
-    select: { frequency: true },
-  });
-
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
         <Suspense fallback={<ThreadContentSkeleton />}>
-          <ThreadContent
-            thread={thread}
-            session={{
-              user: {
-                id: session.user.id,
-                name: session.user.name ?? 'User',
-                image: session.user.image ?? null,
-                role: session.user.role,
-              },
-            }}
-            subscription={subscription}
-          />
+          <ThreadContent slug={slug} session={session} />
         </Suspense>
       </main>
 
       <ThreadDetailsPanel>
         <Suspense fallback={<ThreadSidebarSkeleton />}>
-          <ThreadSidebar
-            thread={thread}
-            session={{ user: { id: session.user.id, email: session.user.email, name: session.user.name, image: session.user.image, role: session.user.role, status: session.user.status } }}
-          />
+          <ThreadSidebar slug={slug} session={session} />
         </Suspense>
       </ThreadDetailsPanel>
-    </div>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="flex flex-col p-3 rounded-xl border border-border/60 bg-card/50">
-      <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
-        {icon}
-        <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
-      </div>
-      <span className="text-lg font-bold text-foreground tabular-nums">{value}</span>
     </div>
   );
 }

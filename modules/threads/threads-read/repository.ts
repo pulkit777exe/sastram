@@ -102,7 +102,6 @@ export type ThreadWithFullContext = {
     name: string | null;
     image: string | null;
   };
-  messages: ThreadMessage[];
   tags: ThreadTag[];
   aiSearchSession: ThreadAiSearchSession;
   poll: ThreadPoll;
@@ -113,14 +112,11 @@ export type ThreadWithFullContext = {
   isSubscribed: boolean;
 };
 
-// Shape returned by the raw SQL below: same scalars as ThreadWithFullContext but
-// with snake_case aggregates and every json_agg nullable (empty LATERAL -> NULL).
 type ThreadRow = Omit<
   ThreadWithFullContext,
-  'tags' | 'messages' | 'aiSearchSession' | '_count' | 'isBookmarked' | 'isSubscribed'
+  'tags' | '_count' | 'isBookmarked' | 'isSubscribed'
 > & {
   tags: ThreadTag[] | null;
-  messages: ThreadMessage[] | null;
   message_count: number | null;
   is_bookmarked: boolean | null;
   is_subscribed: boolean | null;
@@ -180,15 +176,12 @@ export async function getThreadMessagesPaginated(
 ): Promise<PaginatedMessagesResult> {
   const where: Prisma.MessageWhereInput = { threadId, deletedAt: null };
 
-  // Cursors are message ids, but we page on createdAt — a missing cursor row
-  // (deleted mid-scroll) silently falls back to the first page.
   if (cursor) {
     const cursorMessage = await prisma.message.findUnique({
       where: { id: cursor },
       select: { createdAt: true },
     });
     if (cursorMessage) {
-      // Feed is ordered newest-first, so the next page is strictly older.
       where.createdAt = { lt: cursorMessage.createdAt };
     }
   }
@@ -213,6 +206,21 @@ export async function getThreadMessagesPaginated(
   const hasMore = messages.length > limit;
   const page = hasMore ? messages.slice(0, limit) : messages;
 
+  const messageIds = page.map((m) => m.id);
+  const reactionsByMessage = new Map<string, ThreadMessageReactionAggregate[]>();
+  if (messageIds.length > 0) {
+    const reactionRows = await prisma.reaction.groupBy({
+      by: ['messageId', 'emoji'],
+      where: { messageId: { in: messageIds } },
+      _count: { _all: true },
+    });
+    for (const r of reactionRows) {
+      const list = reactionsByMessage.get(r.messageId) ?? [];
+      list.push({ type: r.emoji, _count: r._count._all });
+      reactionsByMessage.set(r.messageId, list);
+    }
+  }
+
   return {
     messages: page.map((m) => ({
       id: m.id,
@@ -230,7 +238,7 @@ export async function getThreadMessagesPaginated(
       likeCount: m.likeCount,
       replyCount: m.replyCount,
       author: m.sender ?? { id: '', name: null, image: null },
-      reactions: [],
+      reactions: reactionsByMessage.get(m.id) ?? [],
       _count: { replies: m.replyCount },
       attachments: m.attachments.map((a) => ({
         id: a.id,
@@ -281,7 +289,6 @@ export const getThreadWithFullContext = cache(
           'image', u.image
         ) as author,
         COALESCE(tags.tags, '[]'::json) as tags,
-        COALESCE(msgs.messages, '[]'::json) as messages,
         COALESCE(poll.poll, 'null'::json) as poll,
         COALESCE(counts.message_count, 0) as message_count,
         EXISTS (
@@ -303,80 +310,6 @@ export const getThreadWithFullContext = cache(
         WHERE ttr."threadId" = s.id
       ) tags ON true
       LEFT JOIN LATERAL (
-        SELECT json_agg(mrow.message ORDER BY mrow.created_at) as messages
-        FROM (
-          SELECT
-            m."createdAt" as created_at,
-            json_build_object(
-              'id', m.id,
-              'content', m.content,
-              'threadId', m."threadId",
-              'senderId', m."senderId",
-              'parentId', m."parentId",
-              'depth', m.depth,
-              'createdAt', m."createdAt",
-              'isEdited', m."isEdited",
-              'isPinned', m."isPinned",
-              'isAI', m."isAiResponse",
-              'deletedAt', m."deletedAt",
-              'likeCount', m."likeCount",
-              'replyCount', m."replyCount",
-              'author', json_build_object('id', su.id, 'name', su.name, 'image', su.image),
-              'reactions', COALESCE(r.reactions, '[]'::json),
-              'attachments', COALESCE(a.attachments, '[]'::json),
-              'poll', p.poll,
-              '_count', json_build_object('replies', m."replyCount")
-            ) as message
-          FROM "messages" m
-          JOIN "users" su ON su.id = m."senderId"
-          LEFT JOIN LATERAL (
-            SELECT json_agg(
-              json_build_object('type', rc.emoji, '_count', rc.count)
-            ) as reactions
-            FROM (
-              SELECT emoji, COUNT(*)::int as count
-              FROM "reactions"
-              WHERE "messageId" = m.id
-              GROUP BY emoji
-            ) rc
-          ) r ON true
-          LEFT JOIN LATERAL (
-            SELECT json_agg(
-              json_build_object('id', a.id, 'url', a.url, 'type', a.type, 'name', a.name, 'size', a.size)
-            ) as attachments
-            FROM "attachments" a
-            WHERE a."messageId" = m.id
-          ) a ON true
-          LEFT JOIN LATERAL (
-            SELECT json_build_object(
-              'id', p.id,
-              'question', p.question,
-              'options', p.options,
-              'isActive', p."isActive",
-              'expiresAt', p."expiresAt",
-              'createdAt', p."createdAt",
-              'votes', COALESCE(pv.votes, '[]'::json)
-            ) as poll
-            FROM "polls" p
-            LEFT JOIN LATERAL (
-              SELECT json_agg(
-                json_build_object(
-                  'id', v.id,
-                  'pollId', v."pollId",
-                  'userId', v."userId",
-                  'optionIndex', v."optionIndex",
-                  'createdAt', v."createdAt"
-                )
-              ) as votes
-              FROM "poll_votes" v
-              WHERE v."pollId" = p.id
-            ) pv ON true
-            WHERE p."messageId" = m.id
-          ) p ON true
-          WHERE m."threadId" = s.id
-        ) mrow
-      ) msgs ON true
-      LEFT JOIN LATERAL (
         SELECT json_build_object(
           'id', p.id,
           'question', p.question,
@@ -397,11 +330,10 @@ export const getThreadWithFullContext = cache(
       LIMIT 1
     `;
 
+
     const row = rows[0];
     if (!row) return null;
 
-    // The query itself doesn't filter on visibility, so non-public threads get
-    // an explicit access check here rather than leaking a row.
     if (row.visibility !== 'PUBLIC') {
       if (!userId) return null;
       const user = await prisma.user.findUnique({
@@ -416,13 +348,11 @@ export const getThreadWithFullContext = cache(
       if (!allowed) return null;
     }
 
-    const { message_count, is_bookmarked, is_subscribed, tags, messages, ...thread } = row;
+    const { message_count, is_bookmarked, is_subscribed, tags, ...thread } = row;
 
     return {
       ...thread,
-      messages: messages ?? [],
       tags: tags ?? [],
-      // Search sessions aren't joined into this query yet; the panel renders empty.
       aiSearchSession: null,
       _count: { messages: message_count ?? 0 },
       isBookmarked: is_bookmarked ?? false,

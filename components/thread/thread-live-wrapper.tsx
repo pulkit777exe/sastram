@@ -148,6 +148,11 @@ export function ThreadLiveWrapper({
     unreadCountRef.current = unreadCount;
   }, [unreadCount]);
 
+  const aiInlineStatusRef = useRef(aiInlineStatus);
+  useEffect(() => {
+    aiInlineStatusRef.current = aiInlineStatus;
+  }, [aiInlineStatus]);
+
   const pinnedMessage = useMemo(() => liveMessages.find((m) => m.isPinned) ?? null, [liveMessages]);
 
   const hasAiMention = useCallback((content: string) => /\B@sai\b/i.test(content), []);
@@ -192,9 +197,6 @@ export function ThreadLiveWrapper({
     }
   }, []);
 
-  // --- Instant @sai reply via SSE streaming ---
-  // Tokens are streamed straight into the message list; polling remains the
-  // fallback path (queued jobs, other viewers, stream failures).
   const streamParentRef = useRef<string | null>(null);
 
   const handleStreamStart = useCallback(
@@ -245,9 +247,6 @@ export function ThreadLiveWrapper({
     (_err: AIStreamError) => {
       const parentId = streamParentRef.current;
       streamParentRef.current = null;
-      // Fall back to the background job path so the reply can still arrive via
-      // polling. Only mark the mention as failed if the fallback can't be queued;
-      // the 2-minute pending timeout remains the last-resort failure signal.
       fetch(`/api/threads/${threadId}/ai-reply`, { method: 'POST' })
         .then((res) => {
           if (!res.ok) throw new Error('fallback enqueue failed');
@@ -284,9 +283,6 @@ export function ThreadLiveWrapper({
       const result = await markThreadReadAction({ threadId, lastReadMessageId: latestId });
       isMarkingReadRef.current = false;
 
-      // Best-effort: a failed read-receipt must not surface a scary, repeating
-      // error toast to the user (the action logs server-side). Treat as done so
-      // it is not retried.
       if (result.error) return;
 
       setUnreadCount(0);
@@ -317,9 +313,6 @@ export function ThreadLiveWrapper({
         lastMessageTimestampRef.current = msgTimestamp;
       }
 
-      // Prefer the server's verdict (streaming/queued/limited/null) over the
-      // local regex so quota-limited or query-less mentions don't hang in
-      // "pending" forever.
       const aiInline =
         meta?.aiInline !== undefined
           ? meta.aiInline
@@ -382,25 +375,30 @@ export function ThreadLiveWrapper({
     };
   }, [stopStream]);
 
-  // Poll for new messages (AI responses, other users' messages) since WebSocket is not connected.
-  // Adaptive: pauses when tab hidden, backs off when quiet, resets on new messages.
   useEffect(() => {
     const BASE_INTERVAL = 20_000;
+    const FAST_INTERVAL = 3_000;
     const MAX_INTERVAL = 60_000;
     const BACKOFF_MULTIPLIER = 2;
     const BACKOFF_THRESHOLD = 3; // consecutive empty polls before backing off
 
     let currentInterval = BASE_INTERVAL;
     let emptyPollCount = 0;
-    let timer: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-    async function poll() {
+    const hasPendingAi = () => Object.values(aiInlineStatusRef.current).includes('pending');
+
+    async function pollOnce() {
+      const fastMode = hasPendingAi();
       try {
         const since = lastMessageTimestampRef.current;
         const result = await backfillThreadMessages({ threadId, since });
 
-        // Piggyback poll vote refresh on every message poll tick
-        if (currentPollRef.current) {
+        // Piggyback poll-vote refresh only on normal-cadence ticks — no
+        // reason to hit the votes endpoint every 3s while just waiting on
+        // an AI reply (the original fast-poll effect never did this either).
+        if (!fastMode && currentPollRef.current) {
           try {
             const pollId = currentPollRef.current.id;
             const [freshPollResult, freshResultsResult] = await Promise.all([
@@ -423,9 +421,11 @@ export function ThreadLiveWrapper({
         }
 
         if (!result?.ok || !result.data?.messages?.length) {
-          emptyPollCount++;
-          if (emptyPollCount >= BACKOFF_THRESHOLD) {
-            currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL);
+          if (!fastMode) {
+            emptyPollCount++;
+            if (emptyPollCount >= BACKOFF_THRESHOLD) {
+              currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL);
+            }
           }
           return;
         }
@@ -443,19 +443,14 @@ export function ThreadLiveWrapper({
         });
 
         if (hasNew) {
-          // Reset backoff on new message
           emptyPollCount = 0;
           currentInterval = BASE_INTERVAL;
-          // Defer status clears to avoid state updates during render.
-          // Only clear once the AI reply has actual content — the worker first
-          // creates an EMPTY placeholder, and clearing on it would stop the
-          // fast poll before the answer exists.
           for (const msg of newMessages) {
             if (msg.isAiResponse && msg.parentId && msg.content.trim().length > 0) {
               setTimeout(() => clearAiStatus(msg.parentId!), 0);
             }
           }
-        } else {
+        } else if (!fastMode) {
           emptyPollCount++;
           if (emptyPollCount >= BACKOFF_THRESHOLD) {
             currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL);
@@ -466,37 +461,40 @@ export function ThreadLiveWrapper({
       }
     }
 
-    function startTimer() {
-      if (timer) clearInterval(timer);
-      timer = setInterval(poll, currentInterval);
+    function scheduleNext() {
+      if (cancelled) return;
+      const delay = hasPendingAi() ? FAST_INTERVAL : currentInterval;
+      timeoutId = setTimeout(async () => {
+        if (document.visibilityState === 'visible') {
+          await pollOnce();
+        }
+        scheduleNext();
+      }, delay);
     }
 
-    // Page Visibility API: pause when hidden, immediate poll + resume on visible
+    // Page Visibility API: pause the schedule loop when hidden (the
+    // scheduled tick above already no-ops while hidden, this additionally
+    // triggers an immediate poll + fresh schedule the moment the tab comes
+    // back, matching the original's "immediate poll on foreground" behavior).
     function onVisibilityChange() {
       if (document.visibilityState === 'visible') {
-        poll(); // immediate poll on foreground
-        startTimer(); // restart with current interval
-      } else {
-        if (timer) clearInterval(timer);
-        timer = null;
+        if (timeoutId) clearTimeout(timeoutId);
+        pollOnce().finally(scheduleNext);
       }
     }
 
-    // Start initial poll and timer
-    poll();
-    startTimer();
+    // Initial poll + schedule
+    pollOnce().finally(scheduleNext);
 
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
-      if (timer) clearInterval(timer);
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [threadId, title, slug, mapBackfillMessage, clearAiStatus]);
+  }, [threadId, mapBackfillMessage, clearAiStatus]);
 
-  // Safety net: when a pending AI inline status has a corresponding AI response
-  // message in liveMessages (regardless of how it arrived), clear the status.
-  // Covers edge cases where polling misses the AI message (e.g., timestamp races).
   useEffect(() => {
     for (const [pendingMsgId, status] of Object.entries(aiInlineStatus)) {
       if (status !== 'pending') continue;
@@ -510,45 +508,6 @@ export function ThreadLiveWrapper({
     }
   }, [liveMessages, aiInlineStatus, clearAiStatus]);
 
-  // Fast poll while an @sai reply is generating. The WebSocket runs in noop mode
-  // in dev, so real-time delivery is dropped and the 20s poll would make inline
-  // AI replies feel like they never arrived. Poll every 3s while any AI status is
-  // pending so the reply (or its quota message) surfaces promptly.
-  useEffect(() => {
-    const hasPending = Object.values(aiInlineStatus).includes('pending');
-    if (!hasPending) return;
-
-    let timer: ReturnType<typeof setInterval> | null = null;
-    const fastPoll = async () => {
-      try {
-        const result = await backfillThreadMessages({ threadId, since: lastMessageTimestampRef.current });
-        if (!result?.ok || !result.data?.messages?.length) return;
-        const incoming = result.data.messages.map(mapBackfillMessage);
-        setLiveMessages((prev) => {
-          const { merged, hasNew } = mergeMessages(prev, incoming);
-          if (hasNew) {
-            lastMessageTimestampRef.current = new Date(merged[merged.length - 1].createdAt).toISOString();
-          }
-          return merged;
-        });
-        for (const msg of incoming) {
-          // Empty placeholder = generation still running; keep fast-polling.
-          if (msg.isAiResponse && msg.parentId && msg.content.trim().length > 0) {
-            setTimeout(() => clearAiStatus(msg.parentId!), 0);
-          }
-        }
-      } catch {
-        // best-effort
-      }
-    };
-
-    fastPoll();
-    timer = setInterval(fastPoll, 3000);
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [aiInlineStatus, threadId, mapBackfillMessage, clearAiStatus]);
-
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Fixed header */}
@@ -561,7 +520,7 @@ export function ThreadLiveWrapper({
 
       {/* Fixed pinned message banner just below header */}
       {pinnedMessage && (
-        <div className="border-b border-chart-4/20 bg-chart-4/10 px-6 py-2.5 flex-shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="border-b border-chart-4/20 bg-chart-4/10 px-6 py-2.5 shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
             <div className="min-w-0 flex items-start gap-2">
               <Pin size={13} className="text-chart-4 mt-0.5 shrink-0" />
@@ -709,7 +668,7 @@ export function ThreadLiveWrapper({
       )}
 
       {/* Composer container */}
-      <div className="p-4 bg-background border-t border-border/60 flex-shrink-0">
+      <div className="p-4 bg-background border-t border-border/60 shrink-0">
         <div className="max-w-4xl mx-auto">
           <PostMessageForm
             threadId={threadId}

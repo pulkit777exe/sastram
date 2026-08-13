@@ -27,23 +27,28 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
 
   const { user } = session;
 
-  // Better Auth's session doesn't carry role/status, so read them from our own
-  // row. A DB blip shouldn't log the user out — fall back to least privilege.
-  let role: Role = Role.USER;
-  let status: User['status'] = 'ACTIVE';
+  let fullUser: Pick<User, 'role' | 'status'> | null = null;
 
-  try {
-    const fullUser = await prisma.user.findUnique({
-      where: { id: user.id, deletedAt: null },
-      select: { role: true, status: true },
-    });
-
-    if (fullUser) {
-      role = fullUser.role as Role;
-      status = fullUser.status;
+  for (let attempt = 0; attempt < 2 && fullUser === null; attempt++) {
+    try {
+      fullUser = await prisma.user.findUnique({
+        where: { id: user.id, deletedAt: null },
+        select: { role: true, status: true },
+      });
+    } catch (err) {
+      logger.warn('[auth] Failed to fetch full user profile', {
+        userId: user.id,
+        attempt: attempt + 1,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
-  } catch {
-    logger.warn('[auth] Failed to fetch full user profile, using auth defaults', { userId: user.id });
+  }
+
+  if (!fullUser) {
+    logger.error('[auth] Could not verify user role/status after retry — failing closed', {
+      userId: user.id,
+    });
+    return null;
   }
 
   return {
@@ -52,8 +57,8 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
       email: user.email,
       name: user.name,
       image: user.image ?? null,
-      role,
-      status,
+      role: fullUser.role as Role,
+      status: fullUser.status,
     },
   };
 });
@@ -75,7 +80,6 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
   return session;
 }
 
-/** API route variant — throws instead of redirecting. */
 export async function requireSessionOrThrow(checkBanStatus = true): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) {
