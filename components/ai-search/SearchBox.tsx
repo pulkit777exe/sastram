@@ -286,7 +286,7 @@ export function SearchBox({
               aria-expanded={modelOpen}
               aria-label="Choose search mode"
               onClick={() => { setModelOpen((o) => !o); }}
-              className="flex h-6 shrink-0 items-center gap-0.5 px-1 text-[11px] text-ink-3 rounded-md transition-colors duration-150 hover:bg-hover hover:text-ink col-start-1 row-start-2"
+              className="flex h-6 shrink-0 items-center gap-1 px-1.5 text-[11px] font-medium text-ink-2 border border-line rounded-md transition-colors duration-150 hover:border-line-strong hover:text-ink col-start-1 row-start-2"
             >
               {model.name}
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
