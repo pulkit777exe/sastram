@@ -1,4 +1,4 @@
-export { createThreadAction, deleteThreadAction, getDashboardThreads, loadThreadMessages } from './actions';
+export { createThreadAction, deleteThreadAction, loadThreadMessages } from './actions';
 
 export {
   listThreads,

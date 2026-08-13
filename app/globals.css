@@ -156,6 +156,22 @@
   --color-brand: var(--brand);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-field: var(--field);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-hover: var(--hover);
+  --color-hover-2: var(--hover-2);
+  --color-inset: var(--inset);
+  --color-sai-green: var(--sai-green);
+  --color-sai-red: var(--sai-red);
+  --color-sai-orange: var(--sai-orange);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-tint: var(--accent-tint);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif-heading: var(--font-instrument-serif);
@@ -910,6 +926,7 @@
   .bg-green      { background-color: var(--sai-green); }
   .bg-red        { background-color: var(--sai-red); }
   .bg-orange     { background-color: var(--sai-orange); }
+  .bg-ink        { background-color: var(--ink); }
 
   .text-ink      { color: var(--ink); }
   .text-ink-2    { color: var(--ink-2); }
@@ -922,6 +939,7 @@
 
   .border-line       { border-color: var(--line); }
   .border-line-strong{ border-color: var(--line-strong); }
+  .border-ink        { border-color: var(--ink); }
   .border-t-ink-2    { border-top-color: var(--ink-2); }
 
   .shadow-btn      { box-shadow: var(--shadow-btn); }

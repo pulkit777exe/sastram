@@ -96,25 +96,6 @@ export const deleteThreadAction = createServerAction(
   }
 );
 
-export const getDashboardThreads = createServerAction(
-  {
-    schema: z.object({
-      page: z.number().int().positive().optional(),
-      pageSize: z.number().int().positive().max(100).optional(),
-      sortBy: z.enum(['recent', 'popular', 'trending', 'oldest']).optional(),
-    }),
-    actionName: 'getDashboardThreads',
-  },
-  async (params) => {
-    try {
-      const session = await requireSession();
-      return actionSuccess(await listThreads({ ...params, memberUserId: session.user.id }));
-    } catch (error) {
-      return failure('getDashboardThreads', error);
-    }
-  }
-);
-
 export const loadThreadMessages = createServerAction(
   {
     schema: threadIdOnly.extend({ cursor: z.string().cuid().optional() }),

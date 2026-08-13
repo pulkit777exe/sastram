@@ -21,6 +21,7 @@ import { SourceCard } from './SourceCard';
 import { TableView } from './TableView';
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from './ApiKeysModal';
 import { Sidebar, type HistoryItem } from './Sidebar';
+import type { RetryStyle, FeedbackType } from './StreamingText';
 
 const apiKeysListeners = new Set<() => void>();
 function subscribeToApiKeys(cb: () => void) {
@@ -396,6 +397,24 @@ export function SearchPage({ user }: SearchPageProps) {
     setQuery(suggestion);
   }, [stream.suggestion]);
 
+  const handleRetry = useCallback(
+    (style: RetryStyle) => {
+      if (!query) return;
+      const styledQuery = style === 'same'
+        ? query
+        : `${query} (Please provide a ${style} response)`;
+      runSearch(styledQuery, lastConfig);
+    },
+    [query, lastConfig, runSearch]
+  );
+
+  const handleFeedback = useCallback(
+    (_type: FeedbackType, _reason?: string) => {
+      // Feedback is handled via toast in StreamingText; extend here if backend logging is needed
+    },
+    []
+  );
+
   const handleNewSearch = useCallback(() => {
     abortRef.current?.abort();
     phaseTimerRef.current.forEach(clearTimeout);
@@ -711,6 +730,9 @@ export function SearchPage({ user }: SearchPageProps) {
                       queryType={synthesis.queryType}
                       onCiteClick={handleCiteClick}
                       isStreaming={isStreaming}
+                      fromHistory={fromHistory}
+                      onRetry={handleRetry}
+                      onFeedback={handleFeedback}
                     />
 
                     {stream.followUps.length > 0 && (

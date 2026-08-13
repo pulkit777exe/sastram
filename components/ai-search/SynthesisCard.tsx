@@ -3,7 +3,7 @@
 import { Sparkles, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { ConflictInfo, Citation, Source } from '@/modules/ai-search/types';
-import { StreamingText } from './StreamingText';
+import { StreamingText, type RetryStyle, type FeedbackType } from './StreamingText';
 
 interface SynthesisCardProps {
   text: string;
@@ -14,6 +14,9 @@ interface SynthesisCardProps {
   queryType: 'factual' | 'opinion' | 'technical' | 'comparison';
   onCiteClick?: (sourceId: string) => void;
   isStreaming?: boolean;
+  fromHistory?: boolean;
+  onRetry?: (style: RetryStyle) => void;
+  onFeedback?: (type: FeedbackType, reason?: string) => void;
 }
 
 const QUERY_TYPE_LABELS: Record<string, { label: string; variant: 'live' | 'warning' | 'success' | 'secondary' }> = {
@@ -32,6 +35,9 @@ export function SynthesisCard({
   queryType,
   onCiteClick,
   isStreaming = false,
+  fromHistory = false,
+  onRetry,
+  onFeedback,
 }: SynthesisCardProps) {
   const typeConfig = QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
 
@@ -81,7 +87,10 @@ export function SynthesisCard({
           text={text}
           sources={sources}
           isStreaming={isStreaming}
+          fromHistory={fromHistory}
           onDone={() => {}}
+          onRetry={onRetry}
+          onFeedback={onFeedback}
         />
       </div>
 

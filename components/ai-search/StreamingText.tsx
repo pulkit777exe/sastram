@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Source } from '@/modules/ai-search/types';
+import { toasts } from '@/lib/utils/toast';
 
 /* ─────────────────────────────────────────────────────────
  * STREAMING TEXT
@@ -12,6 +13,10 @@ import type { Source } from '@/modules/ai-search/types';
 const WORD_MS = 30;
 
 type Token = { text: string; cite?: Source };
+
+export type FeedbackType = 'up' | 'down';
+
+export type RetryStyle = 'same' | 'professional' | 'general' | 'tactical';
 
 interface StreamingTextProps {
   /** Raw streaming text from the API (grows as chunks arrive). */
@@ -24,6 +29,12 @@ interface StreamingTextProps {
   followUps?: string[];
   /** Whether the stream is still active. */
   isStreaming: boolean;
+  /** Whether this content was loaded from history (skip animation). */
+  fromHistory?: boolean;
+  /** Called when user wants to retry/regenerate. */
+  onRetry?: (style: RetryStyle) => void;
+  /** Called when user gives feedback. */
+  onFeedback?: (type: FeedbackType, reason?: string) => void;
 }
 
 function SourceChip({ source }: { source: Source }) {
@@ -75,36 +86,20 @@ function buildTokens(text: string, sources: Source[]): Token[] {
   return tokens;
 }
 
-const ACTION_ICONS: { key: string; path: React.ReactNode; label: string }[] = [
-  {
-    key: 'copy',
-    label: 'Copy',
-    path: (
-      <g>
-        <rect x="9" y="9" width="12" height="12" rx="2.5" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-      </g>
-    ),
-  },
-  {
-    key: 'retry',
-    label: 'Retry',
-    path: <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />,
-  },
-  {
-    key: 'up',
-    label: 'Helpful',
-    path: (
-      <path d="M7 10v12M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z" />
-    ),
-  },
-  {
-    key: 'down',
-    label: 'Not helpful',
-    path: (
-      <path d="M17 14V2M9 18.12L10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88z" />
-    ),
-  },
+const RETRY_STYLES: { key: RetryStyle; label: string; desc: string }[] = [
+  { key: 'same',         label: 'Same prompt',    desc: 'Regenerate with the exact same query' },
+  { key: 'professional', label: 'Professional',   desc: 'Rewrite with a formal, professional tone' },
+  { key: 'general',      label: 'General',        desc: 'Rewrite for a broader, more accessible audience' },
+  { key: 'tactical',     label: 'Tactical',       desc: 'Rewrite with actionable, step-by-step focus' },
+];
+
+const DISLIKE_REASONS: { key: string; label: string }[] = [
+  { key: 'inaccurate',   label: 'Factually inaccurate' },
+  { key: 'irrelevant',   label: 'Not relevant to my query' },
+  { key: 'incomplete',   label: 'Incomplete or missing info' },
+  { key: 'outdated',     label: 'Outdated information' },
+  { key: 'unclear',      label: 'Hard to understand' },
+  { key: 'other',        label: 'Something else' },
 ];
 
 export function StreamingText({
@@ -113,36 +108,105 @@ export function StreamingText({
   onDone,
   followUps = [],
   isStreaming,
+  fromHistory = false,
+  onRetry,
+  onFeedback,
 }: StreamingTextProps) {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(fromHistory ? Infinity : 0);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const allTokens = buildTokens(text, sources);
   const done = !isStreaming && count >= allTokens.length;
 
-  // Animate words in
+  // Feedback state
+  const [copied, setCopied] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
+  const [showRetryPopover, setShowRetryPopover] = useState(false);
+  const [showDislikePopover, setShowDislikePopover] = useState(false);
+  const [dislikeReason, setDislikeReason] = useState<string | null>(null);
+  const retryRef = useRef<HTMLDivElement>(null);
+  const dislikeRef = useRef<HTMLDivElement>(null);
+
+  // Animate words in (skip animation when loaded from history)
   useEffect(() => {
+    if (fromHistory) return;
     if (count >= allTokens.length) {
       if (!isStreaming) onDone?.();
       return;
     }
     const t = setTimeout(() => setCount((c) => c + 1), WORD_MS);
     return () => clearTimeout(t);
-  }, [count, allTokens.length, isStreaming, onDone]);
+  }, [count, allTokens.length, isStreaming, onDone, fromHistory]);
 
-const isStreamingRef = useRef(isStreaming);
+  const isStreamingRef = useRef(isStreaming);
 
-useEffect(() => {
-  isStreamingRef.current = isStreaming;
-}, [isStreaming]);
+  useEffect(() => {
+    isStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
-// Reset count when streaming starts: only when isStreaming changes from false to true
-useEffect(() => {
-  if (!isStreamingRef.current && isStreaming) {
-    setCount(0);
-  }
-}, [isStreaming]);
+  // Reset count when streaming starts: only when isStreaming changes from false to true
+  useEffect(() => {
+    if (!fromHistory && !isStreamingRef.current && isStreaming) {
+      setCount(0);
+    }
+  }, [isStreaming, fromHistory]);
+
+  // Close popovers on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (retryRef.current && !retryRef.current.contains(e.target as Node)) {
+        setShowRetryPopover(false);
+      }
+      if (dislikeRef.current && !dislikeRef.current.contains(e.target as Node)) {
+        setShowDislikePopover(false);
+        setDislikeReason(null);
+      }
+    }
+    if (showRetryPopover || showDislikePopover) {
+      document.addEventListener('mousedown', handleClick);
+      return () => document.removeEventListener('mousedown', handleClick);
+    }
+  }, [showRetryPopover, showDislikePopover]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toasts.copied();
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toasts.error('Failed to copy', 'Please try selecting and copying manually.');
+    }
+  };
+
+  const handleRetry = (style: RetryStyle) => {
+    setShowRetryPopover(false);
+    onRetry?.(style);
+  };
+
+  const handleUpvote = () => {
+    if (feedbackGiven) return;
+    setFeedbackGiven('up');
+    toasts.success('Thanks for your feedback!', 'This helps improve Sai synthesis.');
+    onFeedback?.('up');
+  };
+
+  const handleDownvote = () => {
+    if (feedbackGiven === 'up') return;
+    if (showDislikePopover) return;
+    setShowDislikePopover(true);
+  };
+
+  const handleDislikeSubmit = () => {
+    setFeedbackGiven('down');
+    setShowDislikePopover(false);
+    toasts.success('Thanks for your feedback!', "We'll use this to improve results.");
+    onFeedback?.('down', dislikeReason ?? undefined);
+    setDislikeReason(null);
+  };
 
   const displayedSources = sources.slice(0, 10);
+
+  const plainText = text;
 
   return (
     <div className="w-full">
@@ -155,13 +219,13 @@ useEffect(() => {
             <span
               key={i}
               className="inline [will-change:filter,opacity]"
-              style={{ animation: 'stream-in 420ms cubic-bezier(0.22,0.61,0.25,1) both' }}
+              style={fromHistory ? undefined : { animation: 'stream-in 420ms cubic-bezier(0.22,0.61,0.25,1) both' }}
             >
               {token.text}{' '}
             </span>
           ),
         )}
-        {!done && (
+        {!done && !fromHistory && (
           <span
             className="ml-0.5 inline-block h-3 w-0.5 translate-y-0.5 rounded-full bg-ink"
             style={{ animation: 'fade-in 150ms ease-out both' }}
@@ -174,28 +238,144 @@ useEffect(() => {
         className="mt-2 flex items-center gap-0.5 transition-opacity duration-400"
         style={{ opacity: done ? 1 : 0, pointerEvents: done ? 'auto' : 'none' }}
       >
-        {ACTION_ICONS.map(({ key, path, label }) => (
+        {/* Copy */}
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label={copied ? 'Copied' : 'Copy'}
+          className={`flex size-6 items-center justify-center rounded-[6px] transition-colors duration-100 hover:bg-hover-2 ${
+            copied ? 'text-sai-green' : 'text-ink-3 hover:text-ink-2'
+          }`}
+        >
+          {copied ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <g>
+                <rect x="9" y="9" width="12" height="12" rx="2.5" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </g>
+            </svg>
+          )}
+        </button>
+
+        {/* Retry/Regenerate */}
+        <div ref={retryRef} className="relative">
           <button
-            key={key}
             type="button"
-            aria-label={label}
+            onClick={() => { setShowRetryPopover((o) => !o); }}
+            aria-label="Regenerate"
             className="flex size-6 items-center justify-center rounded-[6px] text-ink-3
               transition-colors duration-100 hover:bg-hover-2 hover:text-ink-2"
           >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {path}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
             </svg>
           </button>
-        ))}
+          {showRetryPopover && (
+            <div
+              className="absolute left-0 bottom-full z-20 mb-2 w-56 rounded-[10px] bg-surface p-1 shadow-raised"
+              style={{ animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both' }}
+            >
+              <p className="px-2 pt-1.5 pb-1 text-[11px] font-medium text-ink-3 uppercase tracking-wider">Regenerate as</p>
+              {RETRY_STYLES.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => handleRetry(s.key)}
+                  className="flex w-full flex-col rounded-[6px] px-2 py-1.5 text-left transition-colors duration-100 hover:bg-hover"
+                >
+                  <span className="text-[12.5px] font-medium text-ink">{s.label}</span>
+                  <span className="text-[11px] text-ink-3">{s.desc}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Upvote */}
+        <button
+          type="button"
+          onClick={handleUpvote}
+          aria-label="Helpful"
+          disabled={feedbackGiven !== null}
+          className={`flex size-6 items-center justify-center rounded-[6px] transition-colors duration-100 ${
+            feedbackGiven === 'up'
+              ? 'text-sai-green'
+              : feedbackGiven === 'down'
+                ? 'text-ink-3/40 cursor-not-allowed'
+                : 'text-ink-3 hover:bg-hover-2 hover:text-ink-2'
+          }`}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill={feedbackGiven === 'up' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7 10v12M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z" />
+          </svg>
+        </button>
+
+        {/* Downvote */}
+        <div ref={dislikeRef} className="relative">
+          <button
+            type="button"
+            onClick={handleDownvote}
+            aria-label="Not helpful"
+            disabled={feedbackGiven === 'up'}
+            className={`flex size-6 items-center justify-center rounded-[6px] transition-colors duration-100 ${
+              feedbackGiven === 'down'
+                ? 'text-sai-red'
+                : feedbackGiven === 'up'
+                  ? 'text-ink-3/40 cursor-not-allowed'
+                  : 'text-ink-3 hover:bg-hover-2 hover:text-ink-2'
+            }`}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill={feedbackGiven === 'down' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 14V2M9 18.12L10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88z" />
+            </svg>
+          </button>
+          {showDislikePopover && (
+            <div
+              className="absolute right-0 bottom-full z-20 mb-2 w-60 rounded-[10px] bg-surface p-2 shadow-raised"
+              style={{ animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both' }}
+            >
+              <p className="px-1 pb-1.5 text-[12px] font-medium text-ink">What didn&apos;t you like?</p>
+              <div className="space-y-0.5">
+                {DISLIKE_REASONS.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => setDislikeReason(r.key)}
+                    className={`flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] transition-colors duration-100 ${
+                      dislikeReason === r.key
+                        ? 'bg-hover text-ink font-medium'
+                        : 'text-ink-2 hover:bg-hover hover:text-ink'
+                    }`}
+                  >
+                    <span className={`size-3.5 rounded-full border ${dislikeReason === r.key ? 'border-ink bg-ink/10' : 'border-line-strong'}`} />
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1.5 flex gap-1.5 px-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowDislikePopover(false); setDislikeReason(null); }}
+                  className="flex-1 rounded-[6px] border border-line py-1 text-[11px] text-ink-2 transition-colors hover:bg-hover"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDislikeSubmit}
+                  disabled={!dislikeReason}
+                  className="flex-1 rounded-[6px] bg-ink py-1 text-[11px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-30"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {displayedSources.length > 0 && (
           <button
@@ -263,9 +443,9 @@ useEffect(() => {
         >
           <p className="text-[12px] font-medium text-ink-2">Follow-ups</p>
           <div className="mt-0.5 flex flex-col">
-            {followUps.map((text, i) => (
+            {followUps.map((fText, i) => (
               <button
-                key={text}
+                key={fText}
                 className="-mx-1.5 flex items-center gap-2 rounded-[7px] border-b border-line
                   px-1.5 py-1.5 text-left text-[12.5px] text-ink transition-colors
                   duration-100 hover:bg-hover-2"
@@ -289,7 +469,7 @@ useEffect(() => {
                   <path d="M9 10l-5 5 5 5" />
                   <path d="M20 4v7a4 4 0 0 1-4 4H4" />
                 </svg>
-                {text}
+                {fText}
               </button>
             ))}
           </div>

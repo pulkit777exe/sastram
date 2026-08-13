@@ -1,5 +1,4 @@
-import type { ReportCategory } from '@/lib/config/constants';
-import type { ReportStatus, UserStatus } from '@prisma/client';
+import type { ReportCategory, ReportStatus, UserStatus } from '@prisma/client';
 
 /**
  * Report domain types

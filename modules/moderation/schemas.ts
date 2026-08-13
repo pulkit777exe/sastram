@@ -33,11 +33,6 @@ export const deleteMessageSchema = z.object({
   reason: z.string().max(500, 'Reason too long (max 500 characters)').optional(),
 });
 
-export const deleteEntitySchema = z.object({
-  entityId: z.string().cuid('Invalid entity ID'),
-  reason: z.string().max(500, 'Reason too long (max 500 characters)').optional(),
-});
-
 export const getBannedUsersSchema = z.object({
   isActive: z.boolean().optional(),
   threadId: z.string().cuid().optional(),
