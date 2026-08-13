@@ -2,13 +2,6 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 
-/* ─────────────────────────────────────────────────────────
- * SEARCH BOX (updated to new PromptBar design)
- * A composer with: attach, @-mention, /commands,
- * model picker, and send. No glimm dependency — uses
- * a CSS gradient sweep fallback instead.
- * ───────────────────────────────────────────────────────── */
-
 import type { SearchConfig } from '@/modules/ai-search/types';
 
 interface SearchBoxProps {
@@ -84,7 +77,6 @@ export function SearchBox({
     if (target) setRowBox({ top: target.offsetTop, height: target.offsetHeight });
   }, [menu, query, active, rows.length]);
 
-  // Auto-resize textarea and toggle expanded layout
   useLayoutEffect(() => {
     const input = inputRef.current;
     const controls = controlsRef.current;
@@ -125,9 +117,8 @@ export function SearchBox({
 
   return (
     <div className="w-full transition-all duration-300">
-      {/* Source filter pills — idle only */}
       {!compact && (
-        <div className="flex items-center gap-2 mb-3 justify-center flex-wrap">
+        <div className="flex items-center gap-2 mb-3 justify-between flex-wrap">
           {SOURCE_FILTERS.map((f) => (
             <button
               key={f.value}
@@ -185,34 +176,6 @@ export function SearchBox({
             <div className="mt-1 border-t border-line px-2 pt-1.5 pb-1 text-[11px] text-ink-3">
               Type to search commands · ↑↓ to navigate · Enter to pick
             </div>
-          </div>
-        )}
-
-        {/* Model picker menu */}
-        {modelOpen && (
-          <div
-            className="absolute right-0 bottom-full z-10 mb-2 w-fit min-w-[120px] rounded-[10px] bg-surface p-1 shadow-raised"
-            style={{
-              animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
-              transformOrigin: 'bottom right',
-            }}
-          >
-            {MODELS.map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => { setModel(m); setModelOpen(false); inputRef.current?.focus(); }}
-                className="flex h-7.5 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors duration-100 hover:bg-hover"
-              >
-                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{m.name}</span>
-                <span className={`shrink-0 text-ink ${m.key === model.key ? '' : 'invisible'}`}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
-                </span>
-              </button>
-            ))}
           </div>
         )}
 
@@ -280,19 +243,48 @@ export function SearchBox({
             />
 
             {/* Model picker */}
-            <button
-              ref={modelRef}
-              type="button"
-              aria-expanded={modelOpen}
-              aria-label="Choose search mode"
-              onClick={() => { setModelOpen((o) => !o); }}
-              className="flex h-6 shrink-0 items-center gap-1 px-1.5 text-[11px] font-medium text-ink-2 border border-line rounded-md transition-colors duration-150 hover:border-line-strong hover:text-ink col-start-1 row-start-2"
-            >
-              {model.name}
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
+            <div className="relative col-start-1 row-start-2">
+              <button
+                ref={modelRef}
+                type="button"
+                aria-expanded={modelOpen}
+                aria-label="Choose search mode"
+                onClick={() => { setModelOpen((o) => !o); }}
+                className="flex h-6 shrink-0 items-center gap-1 px-1.5 text-[11px] font-medium text-ink-2 border border-line rounded-md transition-colors duration-150 hover:border-line-strong hover:text-ink"
+              >
+                {model.name}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+
+              {modelOpen && (
+                <div
+                  className="absolute left-0 bottom-full z-20 mb-1 w-fit min-w-[120px] rounded-[10px] bg-surface p-1 shadow-raised"
+                  style={{
+                    animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
+                    transformOrigin: 'bottom left',
+                  }}
+                >
+                  {MODELS.map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { setModel(m); setModelOpen(false); inputRef.current?.focus(); }}
+                      className="flex h-7.5 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors duration-100 hover:bg-hover"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{m.name}</span>
+                      <span className={`shrink-0 text-ink ${m.key === model.key ? '' : 'invisible'}`}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {!compact && (
               <span className="col-start-2 row-start-2 text-[11px] text-ink-3 flex items-center gap-1 h-6 px-0.5">
