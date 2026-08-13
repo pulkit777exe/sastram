@@ -191,7 +191,7 @@ export function SearchBox({
         {/* Model picker menu */}
         {modelOpen && (
           <div
-            className="absolute right-0 bottom-full z-10 mb-2 w-36 rounded-[10px] bg-surface p-1 shadow-raised"
+            className="absolute right-0 bottom-full z-10 mb-2 w-fit min-w-[120px] rounded-[10px] bg-surface p-1 shadow-raised"
             style={{
               animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
               transformOrigin: 'bottom right',
