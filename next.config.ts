@@ -25,9 +25,12 @@ const securityHeaders = [
   },
 ];
 
+// Vercel ignores the standalone directory and building it causes ENOENT on
+// next-server.js.nft.json. Only enable for Docker / self-hosted deploys.
+const isVercel = process.env.VERCEL === '1';
+
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  serverExternalPackages: ['@prisma/client', '@prisma/adapter-neon', '@neondatabase/serverless'],
+  ...(isVercel ? {} : { output: 'standalone' as const }),
   async headers() {
     return [
       {
