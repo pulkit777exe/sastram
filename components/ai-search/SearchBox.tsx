@@ -218,7 +218,7 @@ export function SearchBox({
 
         {/* Composer */}
         <div
-          className={`relative flex flex-col gap-1.5 overflow-hidden border border-line bg-surface p-1.5 shadow-card transition-[border-color,border-radius] duration-150 focus-within:border-line-strong ${
+          className={`relative flex flex-col gap-1 overflow-hidden border border-line bg-surface p-1 shadow-card transition-[border-color,border-radius] duration-150 focus-within:border-line-strong ${
             compact ? 'rounded-[12px]' : 'rounded-[16px]'
           }`}
         >
@@ -233,10 +233,10 @@ export function SearchBox({
 
           <div
             ref={controlsRef}
-            className={`grid items-end gap-x-1 gap-y-1.5 ${
+            className={`grid items-end gap-x-0.5 gap-y-1 ${
               expanded
-                ? 'grid-cols-[minmax(0,1fr)_auto_28px_28px]'
-                : 'grid-cols-[minmax(0,1fr)_auto_28px_28px]'
+                ? 'grid-cols-[minmax(0,1fr)_auto_24px_24px]'
+                : 'grid-cols-[minmax(0,1fr)_auto_24px_24px]'
             }`}
           >
             {/* Textarea */}
@@ -276,7 +276,7 @@ export function SearchBox({
                   : 'Search or type / for commands…'
               }
               aria-label="Search query"
-              className="min-h-7 min-w-0 w-full col-span-full resize-none bg-transparent px-1 py-[5px] text-[13px] leading-[18px] text-ink outline-none [overflow-wrap:anywhere] placeholder:text-ink-3"
+              className="min-h-6 min-w-0 w-full col-span-full resize-none bg-transparent px-1 py-[3px] text-[13px] leading-[18px] text-ink outline-none [overflow-wrap:anywhere] placeholder:text-ink-3"
             />
 
             {/* Model picker */}
@@ -286,18 +286,18 @@ export function SearchBox({
               aria-expanded={modelOpen}
               aria-label="Choose search mode"
               onClick={() => { setModelOpen((o) => !o); }}
-              className="flex h-7 shrink-0 items-center gap-1 px-1.5 text-[12px] font-medium text-ink-2 rounded-[8px] transition-colors duration-150 hover:bg-hover hover:text-ink col-start-1 row-start-2"
+              className="flex h-6 shrink-0 items-center gap-0.5 px-1 text-[11px] text-ink-3 rounded-md transition-colors duration-150 hover:bg-hover hover:text-ink col-start-1 row-start-2"
             >
               {model.name}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </button>
 
             {!compact && (
-              <span className="col-start-2 row-start-2 text-[11px] text-ink-3 flex items-center gap-1 h-7 px-1">
+              <span className="col-start-2 row-start-2 text-[11px] text-ink-3 flex items-center gap-1 h-6 px-0.5">
                 {sourceFilter !== 'all' && (
-                  <span className="inline-flex h-5 items-center rounded-[5px] bg-inset px-1.5 text-[11px] text-ink-2 shadow-hairline gap-1">
+                  <span className="inline-flex h-4.5 items-center rounded px-1 text-[10px] text-ink-2 shadow-hairline gap-0.5">
                     {SOURCE_FILTERS.find(f => f.value === sourceFilter)?.label}
                     <button type="button" onClick={() => setSourceFilter('all')} className="text-ink-3 hover:text-ink">×</button>
                   </span>
@@ -311,13 +311,13 @@ export function SearchBox({
               aria-label="Send"
               disabled={!canSend}
               onClick={send}
-              className="flex size-7 shrink-0 items-center justify-center rounded-[8px] transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
+              className="flex size-6 shrink-0 items-center justify-center rounded-md transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
               style={{
                 background: canSend ? 'var(--ink)' : 'var(--line-strong)',
                 color: canSend ? 'var(--surface)' : 'var(--ink-2)',
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 19V5M5 12l7-7 7 7" />
               </svg>
             </button>
