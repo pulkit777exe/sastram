@@ -78,7 +78,9 @@ function formatIssues(error: z.ZodError): string {
 export const clientEnv: FullyClientSafeEnv = (() => {
   const result = fullyClientSafeSchema.safeParse(process.env);
   if (!result.success) {
-    console.warn('Client env validation error:', result.error.issues.map((err) => err.message));
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Client env validation error:', result.error.issues.map((err) => err.message));
+    }
     return result.data || ({} as FullyClientSafeEnv);
   }
   return result.data;

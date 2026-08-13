@@ -130,6 +130,7 @@ export function ThreadLiveWrapper({
         toasts.serverError();
       }
     } catch (error) {
+      console.error('[thread-live] Failed to load more messages:', error);
       toasts.serverError();
     } finally {
       isLoadingMoreRef.current = false;
@@ -251,7 +252,8 @@ export function ThreadLiveWrapper({
         .then((res) => {
           if (!res.ok) throw new Error('fallback enqueue failed');
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error('[thread-live] AI-reply fallback enqueue failed:', error);
           if (parentId) {
             setAiInlineStatus((prev) =>
               prev[parentId] === 'pending' ? { ...prev, [parentId]: 'failed' } : prev
