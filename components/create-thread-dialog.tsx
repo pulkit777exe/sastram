@@ -126,7 +126,7 @@ export function CreateThreadDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="bg-brand hover:bg-brand-hover cursor-pointer">
+        <Button className="bg-brand text-white font-bold hover:bg-brand-hover cursor-pointer">
           <Plus className="h-4 w-4 mr-2" />
           Create Thread
         </Button>

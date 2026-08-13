@@ -21,7 +21,7 @@ interface SearchBoxProps {
 const MODELS = [
   { key: 'standard', name: 'Standard' },
   { key: 'instant',  name: 'Instant'  },
-  { key: 'deep',     name: 'Deep'     },
+  { key: 'table',    name: 'Table'    },
 ];
 
 const COMMANDS = [
