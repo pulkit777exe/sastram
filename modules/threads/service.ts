@@ -18,7 +18,7 @@ export function toClientMessage(
 ): Message {
   return {
     id: message.id,
-    content: message.body,
+    content: message.content,
     threadId: thread.id,
     senderId: message.senderId,
     parentId: message.parentId,

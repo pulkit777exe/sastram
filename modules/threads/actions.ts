@@ -176,14 +176,15 @@ export const backfillThreadMessages = createServerAction(
 
       // Normalise to the read-model shape so clients reuse the same mapper as
       // the paginated loader instead of hand-rolling a second conversion.
-      const normalised: ThreadMessage[] = messages.map((m) => ({
+const normalised: ThreadMessage[] = messages.map((m) => ({
         id: m.id,
-        body: m.content,
+        content: m.content,
         threadId: m.threadId,
         senderId: m.senderId,
         parentId: m.parentId,
         depth: m.depth,
         createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
         isEdited: m.isEdited,
         isPinned: m.isPinned,
         isAI: m.isAiResponse,

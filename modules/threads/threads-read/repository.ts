@@ -10,12 +10,13 @@ export type ThreadMessageReactionAggregate = {
 
 export type ThreadMessage = {
   id: string;
-  body: string;
+  content: string;
   threadId: string;
   senderId: string | null;
   parentId: string | null;
   depth: number;
   createdAt: Date;
+  updatedAt: Date;
   isEdited: boolean;
   isPinned: boolean;
   isAI: boolean;
@@ -215,12 +216,13 @@ export async function getThreadMessagesPaginated(
   return {
     messages: page.map((m) => ({
       id: m.id,
-      body: m.content,
+      content: m.content,
       threadId: m.threadId,
       senderId: m.senderId,
       parentId: m.parentId,
       depth: m.depth,
       createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
       isEdited: m.isEdited,
       isPinned: m.isPinned,
       isAI: m.isAiResponse,
@@ -307,7 +309,7 @@ export const getThreadWithFullContext = cache(
             m."createdAt" as created_at,
             json_build_object(
               'id', m.id,
-              'body', m.content,
+              'content', m.content,
               'threadId', m."threadId",
               'senderId', m."senderId",
               'parentId', m."parentId",

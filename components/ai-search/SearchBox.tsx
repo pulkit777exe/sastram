@@ -1,9 +1,15 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { Search, Zap, TableProperties, ArrowUp } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
+
+/* ─────────────────────────────────────────────────────────
+ * SEARCH BOX (updated to new PromptBar design)
+ * A composer with: attach, @-mention, /commands,
+ * model picker, and send. No glimm dependency — uses
+ * a CSS gradient sweep fallback instead.
+ * ───────────────────────────────────────────────────────── */
+
 import type { SearchConfig } from '@/modules/ai-search/types';
-import { ModeDropdown } from './ModeDropdown';
 
 interface SearchBoxProps {
   onSearch: (query: string, config: SearchConfig) => void;
@@ -12,66 +18,124 @@ interface SearchBoxProps {
   initialQuery?: string;
 }
 
-const EXA_MODES = [
-  { value: 'agentic', label: 'Agentic' },
-  { value: 'instant', label: 'Instant' },
-  { value: 'websets', label: 'Websets' },
-] as const;
+const MODELS = [
+  { key: 'standard', name: 'Standard' },
+  { key: 'instant',  name: 'Instant'  },
+  { key: 'deep',     name: 'Deep'     },
+];
 
-const TAVILY_MODES = [
-  { value: 'search', label: 'Search' },
-  { value: 'extract', label: 'Extract' },
-  { value: 'crawl', label: 'Crawl' },
-  { value: 'research', label: 'Research' },
-] as const;
+const COMMANDS = [
+  { key: 'compare',    name: '/compare',    desc: 'Compare sources side-by-side' },
+  { key: 'summarize',  name: '/summarize',  desc: 'Summarize results so far'      },
+  { key: 'restock',    name: '/restock',    desc: 'Build a reorder list'           },
+  { key: 'table',      name: '/table',      desc: 'Return results as a table'      },
+  { key: 'draft',      name: '/draft',      desc: 'Draft a report from results'    },
+];
 
 const SOURCE_FILTERS = [
-  { value: 'all', label: 'All Sources' },
-  { value: 'technical', label: 'Technical' },
-  { value: 'reddit-hn', label: 'Reddit & HN' },
-  { value: 'docs', label: 'Official Docs' },
+  { value: 'all',        label: 'All Sources'    },
+  { value: 'technical',  label: 'Technical'      },
+  { value: 'reddit-hn',  label: 'Reddit & HN'   },
+  { value: 'docs',       label: 'Official Docs'  },
 ] as const;
 
-export function SearchBox({ onSearch, isLoading, compact = false, initialQuery = '' }: SearchBoxProps) {
-  const [query, setQuery] = useState(initialQuery);
-  const [searchMode, setSearchMode] = useState<SearchConfig['searchMode']>('standard');
-  const [exaMode, setExaMode] = useState<SearchConfig['exaMode']>('agentic');
-  const [tavilyMode, setTavilyMode] = useState<SearchConfig['tavilyMode']>('search');
+function parseToken(draft: string): { kind: 'slash'; query: string; start: number } | null {
+  const match = /(^|\s)(\/)([\w-]*)$/.exec(draft);
+  if (!match) return null;
+  return {
+    kind: 'slash',
+    query: match[3].toLowerCase(),
+    start: match.index + match[1].length,
+  };
+}
+
+export function SearchBox({
+  onSearch,
+  isLoading,
+  compact = false,
+  initialQuery = '',
+}: SearchBoxProps) {
+  const [draft, setDraft] = useState(initialQuery);
+  const [model, setModel] = useState(MODELS[0]);
+  const [modelOpen, setModelOpen] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SearchConfig['sourceFilter']>('all');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const [active, setActive] = useState(0);
+  const [expanded, setExpanded] = useState(false);
 
-  const handleSubmit = useCallback(() => {
-    const trimmed = query.trim();
-    if (!trimmed || trimmed.length < 3 || isLoading) return;
-    onSearch(trimmed, { exaMode, tavilyMode, sourceFilter, searchMode });
-  }, [query, exaMode, tavilyMode, sourceFilter, searchMode, isLoading, onSearch]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const modelRef = useRef<HTMLButtonElement>(null);
+  const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [rowBox, setRowBox] = useState<{ top: number; height: number } | null>(null);
+  const [engaged, setEngaged] = useState(false);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
+  const token = dismissed ? null : parseToken(draft);
+  const menu = token?.kind ?? null;
+  const query = token?.query ?? '';
+  const rows = menu === 'slash'
+    ? COMMANDS.filter((c) => c.name.slice(1).startsWith(query))
+    : [];
+
+  // Sync active row highlight position
+  useLayoutEffect(() => {
+    const target = rowRefs.current[active];
+    if (target) setRowBox({ top: target.offsetTop, height: target.offsetHeight });
+  }, [menu, query, active, rows.length]);
+
+  // Auto-resize textarea and toggle expanded layout
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    const controls = controlsRef.current;
+    const measure = measureRef.current;
+    const modelButton = modelRef.current;
+    if (!input || !controls || !measure || !modelButton) return;
+
+    const fixedWidth = 28 * 2 + modelButton.offsetWidth;
+    const inlineWidth = controls.clientWidth - fixedWidth - 16;
+    const needsFullWidth = draft.includes('\n') || measure.offsetWidth + 8 > inlineWidth;
+    if (needsFullWidth !== expanded) setExpanded(needsFullWidth);
+
+    input.style.height = '0px';
+    const content = input.scrollHeight;
+    input.style.height = `${Math.min(Math.max(content, 28), 120)}px`;
+    input.style.overflowY = content > 120 ? 'auto' : 'hidden';
+  }, [draft, expanded]);
+
+  const pick = (row: { name: string }) => {
+    setDraft(`${token ? draft.slice(0, token.start) : draft}${row.name} `);
+    setDismissed(false);
+    inputRef.current?.focus();
   };
 
-  const modeButtons = [
-    { mode: 'standard' as const, icon: Search, label: 'Standard' },
-    { mode: 'instant' as const, icon: Zap, label: 'Instant' },
-    { mode: 'table' as const, icon: TableProperties, label: 'Table' },
-  ];
+  const canSend = draft.trim().length >= 3 && !isLoading;
+
+  const send = () => {
+    if (!canSend) return;
+    onSearch(draft.trim(), {
+      exaMode: 'agentic',
+      tavilyMode: 'search',
+      sourceFilter,
+      searchMode: model.key as SearchConfig['searchMode'],
+    });
+    setDraft('');
+    setDismissed(true);
+  };
 
   return (
     <div className="w-full transition-all duration-300">
       {/* Source filter pills — idle only */}
       {!compact && (
-        <div className="flex items-center gap-2 mb-3 justify-center">
+        <div className="flex items-center gap-2 mb-3 justify-center flex-wrap">
           {SOURCE_FILTERS.map((f) => (
             <button
               key={f.value}
-              onClick={() => setSourceFilter(f.value as SearchConfig['sourceFilter'])}
+              onClick={() => setSourceFilter(f.value)}
               className={`px-3 py-1 text-xs rounded-full border transition-all duration-200 cursor-pointer ${
                 sourceFilter === f.value
-                  ? 'bg-foreground text-background border-foreground'
-                  : 'bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground'
+                  ? 'bg-ink text-canvas border-ink'
+                  : 'bg-transparent text-ink-2 border-line hover:border-line-strong hover:text-ink'
               }`}
             >
               {f.label}
@@ -80,80 +144,190 @@ export function SearchBox({ onSearch, isLoading, compact = false, initialQuery =
         </div>
       )}
 
-      {/* Search input container */}
-      <div
-        className={`relative bg-card border border-border shadow-linear-sm hover:shadow-linear-md transition-shadow duration-300 ${
-          compact ? 'rounded-xl' : 'rounded-2xl'
-        }`}
-      >
-        <textarea
-          ref={textareaRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value.substring(0, 500))}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            compact ? 'Search again...' : 'Search across Reddit, HN, ArchWiki, Stack Overflow...'
-          }
-          rows={compact ? 1 : 2}
-          className={`w-full bg-transparent resize-none outline-none text-foreground placeholder:text-muted-foreground px-4 ${
-            compact ? 'py-3 text-sm' : 'py-4 text-base'
-          }`}
-          disabled={isLoading}
-          aria-label="Search query"
-          maxLength={500}
-        />
-
-        {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 pb-3 gap-2">
-          {/* Left: Mode toggles */}
-          <div className="flex items-center gap-1">
-            {modeButtons.map(({ mode, icon: Icon, label }) => (
+      {/* Composer card */}
+      <div className="relative">
+        {/* /command menu */}
+        {menu && rows.length > 0 && (
+          <div
+            onMouseLeave={() => setEngaged(false)}
+            className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-[10px] bg-surface p-1 shadow-raised"
+            style={{
+              animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
+              transformOrigin: 'bottom center',
+            }}
+          >
+            {/* Gliding highlight */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-1 rounded-[6px] bg-hover"
+              style={{
+                top: rowBox?.top ?? 0,
+                height: rowBox?.height ?? 0,
+                opacity: rowBox && engaged ? 1 : 0,
+                transition:
+                  'top 220ms cubic-bezier(0.23,1,0.32,1), height 220ms cubic-bezier(0.23,1,0.32,1), opacity 150ms ease',
+              }}
+            />
+            {rows.map((row, i) => (
               <button
-                key={mode}
-                onClick={() => setSearchMode(mode)}
-                title={label}
-                aria-pressed={searchMode === mode}
-                className={`min-h-11 min-w-11 p-1.5 rounded-lg transition-all duration-200 cursor-pointer ${
-                  searchMode === mode
-                    ? 'bg-foreground/10 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
-                }`}
+                key={row.key}
+                type="button"
+                ref={(el) => { rowRefs.current[i] = el; }}
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => { setActive(i); setEngaged(true); }}
+                onClick={() => pick(row)}
+                className="relative z-10 flex h-9 w-full items-center gap-2.5 rounded-[6px] px-2 text-left"
               >
-                <Icon size={compact ? 14 : 16} />
+                <span className="shrink-0 text-[12.5px] font-medium text-ink font-mono">{row.name}</span>
+                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-3">{row.desc}</span>
+              </button>
+            ))}
+            <div className="mt-1 border-t border-line px-2 pt-1.5 pb-1 text-[11px] text-ink-3">
+              Type to search commands · ↑↓ to navigate · Enter to pick
+            </div>
+          </div>
+        )}
+
+        {/* Model picker menu */}
+        {modelOpen && (
+          <div
+            className="absolute right-0 bottom-full z-10 mb-2 w-36 rounded-[10px] bg-surface p-1 shadow-raised"
+            style={{
+              animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
+              transformOrigin: 'bottom right',
+            }}
+          >
+            {MODELS.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { setModel(m); setModelOpen(false); inputRef.current?.focus(); }}
+                className="flex h-7.5 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors duration-100 hover:bg-hover"
+              >
+                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{m.name}</span>
+                <span className={`shrink-0 text-ink ${m.key === model.key ? '' : 'invisible'}`}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </span>
               </button>
             ))}
           </div>
+        )}
 
-          {/* Right: Dropdowns + Submit */}
-          <div className="flex items-center gap-2">
-            <ModeDropdown label="Exa" value={exaMode} options={EXA_MODES} onChange={setExaMode} />
-            <ModeDropdown
-              label="Tavily"
-              value={tavilyMode}
-              options={TAVILY_MODES}
-              onChange={setTavilyMode}
+        {/* Composer */}
+        <div
+          className={`relative flex flex-col gap-1.5 overflow-hidden border border-line bg-surface p-1.5 shadow-card transition-[border-color,border-radius] duration-150 focus-within:border-line-strong ${
+            compact ? 'rounded-[12px]' : 'rounded-[16px]'
+          }`}
+        >
+          {/* Hidden measure span */}
+          <span
+            ref={measureRef}
+            aria-hidden
+            className="pointer-events-none absolute invisible whitespace-pre text-[13px] leading-[18px]"
+          >
+            {draft}
+          </span>
+
+          <div
+            ref={controlsRef}
+            className={`grid items-end gap-x-1 gap-y-1.5 ${
+              expanded
+                ? 'grid-cols-[minmax(0,1fr)_auto_28px_28px]'
+                : 'grid-cols-[minmax(0,1fr)_auto_28px_28px]'
+            }`}
+          >
+            {/* Textarea */}
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value.substring(0, 500));
+                setDismissed(false);
+                setModelOpen(false);
+              }}
+              onKeyDown={(e) => {
+                if (menu && rows.length > 0) {
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setEngaged(true);
+                    setActive((a) => (a + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length);
+                    return;
+                  }
+                  if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Tab') {
+                    e.preventDefault();
+                    pick(rows[active]);
+                    return;
+                  }
+                }
+                if (e.key === 'Escape') { setDismissed(true); setModelOpen(false); return; }
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              disabled={isLoading}
+              placeholder={
+                compact
+                  ? 'Search again…'
+                  : 'Search or type / for commands…'
+              }
+              aria-label="Search query"
+              className="min-h-7 min-w-0 w-full col-span-full resize-none bg-transparent px-1 py-[5px] text-[13px] leading-[18px] text-ink outline-none [overflow-wrap:anywhere] placeholder:text-ink-3"
             />
 
-            {/* Submit button */}
+            {/* Model picker */}
             <button
-              onClick={handleSubmit}
-              disabled={!query.trim() || query.trim().length < 3 || isLoading}
-              aria-label="Submit search"
-              className={`min-h-11 min-w-11 p-2 rounded-xl transition-all duration-200 cursor-pointer ${
-                query.trim().length >= 3 && !isLoading
-                  ? 'bg-foreground text-background hover:opacity-90 shadow-linear-sm'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed'
-              }`}
+              ref={modelRef}
+              type="button"
+              aria-expanded={modelOpen}
+              aria-label="Choose search mode"
+              onClick={() => { setModelOpen((o) => !o); }}
+              className="flex h-7 shrink-0 items-center gap-1 px-1.5 text-[12px] font-medium text-ink-2 rounded-[8px] transition-colors duration-150 hover:bg-hover hover:text-ink col-start-1 row-start-2"
             >
-              <ArrowUp size={16} />
+              {model.name}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+
+            {!compact && (
+              <span className="col-start-2 row-start-2 text-[11px] text-ink-3 flex items-center gap-1 h-7 px-1">
+                {sourceFilter !== 'all' && (
+                  <span className="inline-flex h-5 items-center rounded-[5px] bg-inset px-1.5 text-[11px] text-ink-2 shadow-hairline gap-1">
+                    {SOURCE_FILTERS.find(f => f.value === sourceFilter)?.label}
+                    <button type="button" onClick={() => setSourceFilter('all')} className="text-ink-3 hover:text-ink">×</button>
+                  </span>
+                )}
+              </span>
+            )}
+
+            {/* Send */}
+            <button
+              type="button"
+              aria-label="Send"
+              disabled={!canSend}
+              onClick={send}
+              className="flex size-7 shrink-0 items-center justify-center rounded-[8px] transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
+              style={{
+                background: canSend ? 'var(--ink)' : 'var(--line-strong)',
+                color: canSend ? 'var(--surface)' : 'var(--ink-2)',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19V5M5 12l7-7 7 7" />
+              </svg>
             </button>
           </div>
         </div>
       </div>
 
       {/* Character count */}
-      {!compact && query.length > 400 && (
-        <p className="text-xs text-muted-foreground mt-1 text-right">{query.length}/500</p>
+      {!compact && draft.length > 400 && (
+        <p className="text-xs text-ink-3 mt-1 text-right">{draft.length}/500</p>
       )}
     </div>
   );

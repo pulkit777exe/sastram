@@ -812,3 +812,201 @@
   .t-avatar { transition: none !important; transform: none !important; }
   .t-input { animation: none !important; transform: none !important; }
 }
+
+/* ─────────────────────────────────────────────────────────
+ * SAI DESIGN SYSTEM — token aliases for the new AI components
+ * These map Sastram's existing OKLCH theme tokens to the
+ * shorter ink/surface/line naming convention used by the
+ * new Sai search agent components.
+ * ───────────────────────────────────────────────────────── */
+:root {
+  /* Ink scale — foreground text */
+  --ink:        oklch(0.18 0.006 264);
+  --ink-2:      oklch(0.42 0.012 264);
+  --ink-3:      oklch(0.62 0.012 264);
+
+  /* Canvas — page background */
+  --canvas:     oklch(0.99 0.002 264);
+
+  /* Surface — card / floating elements */
+  --surface:    oklch(1 0 0);
+
+  /* Field — input backgrounds */
+  --field:      oklch(0.965 0.003 264);
+
+  /* Lines & borders */
+  --line:       oklch(0.91 0.005 264);
+  --line-strong:oklch(0.80 0.007 264);
+
+  /* Hover states */
+  --hover:      oklch(0.97 0.003 264);
+  --hover-2:    oklch(0.945 0.005 264);
+
+  /* Inset — slightly recessed surface */
+  --inset:      oklch(0.97 0.003 264);
+
+  /* Accent */
+  --accent:     oklch(0.45 0.19 264);
+  --accent-tint:oklch(0.94 0.04 264);
+  --accent-ink: oklch(0.30 0.19 264);
+
+  /* Semantic colours */
+  --sai-green:  oklch(0.60 0.18 148);
+  --sai-red:    oklch(0.62 0.21 25);
+  --sai-orange: oklch(0.70 0.18 60);
+
+  /* Shadows */
+  --shadow-btn:     0 1px 2px rgba(15,15,20,0.06), 0 0 0 1px rgba(15,15,20,0.08);
+  --shadow-card:    0 1px 3px rgba(15,15,20,0.07), 0 2px 8px rgba(15,15,20,0.05);
+  --shadow-raised:  0 4px 16px rgba(15,15,20,0.10), 0 1px 4px rgba(15,15,20,0.06);
+  --shadow-overlay: 0 8px 32px rgba(15,15,20,0.14), 0 2px 8px rgba(15,15,20,0.08);
+  --shadow-hairline:0 0 0 1px rgba(15,15,20,0.08);
+
+  /* Border-radius tokens */
+  --rounded-control: 6px;
+  --rounded-card:    14px;
+  --rounded-chip:    6px;
+}
+
+.dark {
+  --ink:        oklch(0.97 0.002 264);
+  --ink-2:      oklch(0.72 0.012 264);
+  --ink-3:      oklch(0.52 0.012 264);
+  --canvas:     oklch(0.10 0.004 264);
+  --surface:    oklch(0.145 0.005 264);
+  --field:      oklch(0.185 0.006 264);
+  --line:       oklch(1 0 0 / 8%);
+  --line-strong:oklch(1 0 0 / 16%);
+  --hover:      oklch(0.21 0.02 264);
+  --hover-2:    oklch(0.19 0.015 264);
+  --inset:      oklch(0.17 0.006 264);
+  --accent:     oklch(0.58 0.20 264);
+  --accent-tint:oklch(0.20 0.06 264);
+  --accent-ink: oklch(0.78 0.18 264);
+  --sai-green:  oklch(0.70 0.20 148);
+  --sai-red:    oklch(0.69 0.19 22);
+  --sai-orange: oklch(0.75 0.18 60);
+  --shadow-btn:     0 1px 2px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.05);
+  --shadow-card:    0 1px 3px rgba(0,0,0,0.40), 0 2px 8px rgba(0,0,0,0.28);
+  --shadow-raised:  0 4px 16px rgba(0,0,0,0.50), 0 1px 4px rgba(0,0,0,0.30);
+  --shadow-overlay: 0 8px 32px rgba(0,0,0,0.60), 0 2px 8px rgba(0,0,0,0.40);
+  --shadow-hairline:0 0 0 1px rgba(255,255,255,0.08);
+}
+
+/* Tailwind utilities for the sai design tokens */
+@layer utilities {
+  .bg-surface    { background-color: var(--surface); }
+  .bg-canvas     { background-color: var(--canvas); }
+  .bg-field      { background-color: var(--field); }
+  .bg-inset      { background-color: var(--inset); }
+  .bg-hover      { background-color: var(--hover); }
+  .bg-hover-2    { background-color: var(--hover-2); }
+  .bg-line       { background-color: var(--line); }
+  .bg-line-strong{ background-color: var(--line-strong); }
+  .bg-accent-tint{ background-color: var(--accent-tint); }
+  .bg-green-tint { background-color: color-mix(in oklch, var(--sai-green) 12%, var(--surface)); }
+  .bg-red-tint   { background-color: color-mix(in oklch, var(--sai-red) 12%, var(--surface)); }
+  .bg-orange-tint{ background-color: color-mix(in oklch, var(--sai-orange) 12%, var(--surface)); }
+  .bg-green      { background-color: var(--sai-green); }
+  .bg-red        { background-color: var(--sai-red); }
+  .bg-orange     { background-color: var(--sai-orange); }
+
+  .text-ink      { color: var(--ink); }
+  .text-ink-2    { color: var(--ink-2); }
+  .text-ink-3    { color: var(--ink-3); }
+  .text-canvas   { color: var(--canvas); }
+  .text-green    { color: var(--sai-green); }
+  .text-red      { color: var(--sai-red); }
+  .text-orange   { color: var(--sai-orange); }
+  .text-accent-ink { color: var(--accent-ink); }
+
+  .border-line       { border-color: var(--line); }
+  .border-line-strong{ border-color: var(--line-strong); }
+  .border-t-ink-2    { border-top-color: var(--ink-2); }
+
+  .shadow-btn      { box-shadow: var(--shadow-btn); }
+  .shadow-card     { box-shadow: var(--shadow-card); }
+  .shadow-raised   { box-shadow: var(--shadow-raised); }
+  .shadow-overlay  { box-shadow: var(--shadow-overlay); }
+  .shadow-hairline { box-shadow: var(--shadow-hairline); }
+
+  .rounded-control { border-radius: var(--rounded-control); }
+  .rounded-card    { border-radius: var(--rounded-card); }
+  .rounded-chip    { border-radius: var(--rounded-chip); }
+
+  /* Animated underline — hover reveals an underline via background-size */
+  .animated-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0 1px;
+    transition: background-size 200ms ease;
+  }
+  .animated-underline:hover { background-size: 100% 1px; }
+
+  /* Primitive card helpers */
+  .primitive-card-pad    { padding: 12px 14px 8px; }
+  .primitive-card-footer { padding: 6px 10px 8px; border-top: 1px solid var(--line); }
+  .primitive-icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+  }
+}
+
+/* ─── Keyframe animations ───────────────────────────────── */
+
+/* Pixel loader cell lighting up */
+@keyframes pixel-on {
+  0%, 100% { opacity: 0.15; }
+  50%       { opacity: 0.85; }
+}
+
+/* Shimmer text sweep */
+@keyframes shimmer-text {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Fade + slide up */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade in */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Pop in — scale from centre */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Stream in — blur resolves */
+@keyframes stream-in {
+  from { opacity: 0; filter: blur(4px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+
+/* Equalizer bounce bars */
+@keyframes eq-bounce {
+  0%, 100% { transform: scaleY(0.3); }
+  50%       { transform: scaleY(1); }
+}
+
+/* Spin (already used in old code, ensure it's here) */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sai-pixel-cell,
+  .sai-shimmer { animation: none !important; }
+}
