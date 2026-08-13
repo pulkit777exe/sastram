@@ -181,7 +181,7 @@ export function SearchBox({
 
         {/* Composer */}
         <div
-          className={`relative flex flex-col gap-1 overflow-hidden border border-line bg-surface p-1 shadow-card transition-[border-color,border-radius] duration-150 focus-within:border-line-strong ${
+          className={`relative flex flex-col gap-1 overflow-x-hidden border border-line bg-surface p-1 shadow-card transition-[border-color,border-radius] duration-150 focus-within:border-line-strong ${
             compact ? 'rounded-[12px]' : 'rounded-[16px]'
           }`}
         >
