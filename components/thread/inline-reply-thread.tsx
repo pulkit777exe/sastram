@@ -44,7 +44,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
         tabIndex={0}
         onClick={() => onReplyClick?.()}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onReplyClick?.(); }}
-        className="flex items-center gap-2.5 w-full min-h-8 text-left group/bar rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/35 dark:bg-muted/15 dark:hover:bg-muted/25 px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
+        className="flex items-center gap-2.5 w-full min-h-8 text-left group/bar rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/20 dark:bg-muted/15 dark:hover:bg-muted/15 px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
       >
         <div className="flex -space-x-1.5 shrink-0">
           {uniqueSenders.map((sender) => (
@@ -165,7 +165,7 @@ function ReplyItem({
 }) {
   return (
     <div
-      className="flex items-start gap-2 text-xs py-1 px-2 rounded-lg hover:bg-muted/35 cursor-pointer group/reply transition-colors"
+      className="flex items-start gap-2 text-xs py-1 px-2 rounded-lg hover:bg-muted/20 cursor-pointer group/reply transition-colors"
       onClick={() => onReplyClick?.(reply.id)}
     >
       <Avatar className="w-4 h-4 mt-0.5 shrink-0">

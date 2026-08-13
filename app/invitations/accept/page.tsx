@@ -107,7 +107,7 @@ export default function InvitationAcceptPage() {
           <button
             type="button"
             onClick={() => router.push('/dashboard')}
-            className="mt-2 px-4 py-2 text-sm font-medium rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+            className="mt-2 px-4 py-2 text-sm font-medium rounded-lg bg-muted hover:bg-muted transition-colors"
           >
             Go to Dashboard
           </button>

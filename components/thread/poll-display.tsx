@@ -205,7 +205,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
                     'w-full text-left px-3.5 py-2 rounded-lg border text-sm font-medium transition-all duration-200',
                     isSelected
                       ? 'bg-brand/10 border-brand text-brand'
-                      : 'bg-transparent border-border/60 text-foreground hover:border-border hover:bg-muted/10 disabled:opacity-50'
+                      : 'bg-transparent border-border/60 text-foreground hover:border-border hover:bg-muted/20 disabled:opacity-50'
                   )}
                 >
                   {option}

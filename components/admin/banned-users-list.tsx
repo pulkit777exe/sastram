@@ -168,14 +168,14 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2 text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
+                        className="h-8 px-2 text-xs text-brand hover:text-brand hover:bg-brand/10"
                       >
                         [View Appeal]
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                        className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         [Unban]
                       </Button>

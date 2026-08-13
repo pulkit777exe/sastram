@@ -113,7 +113,7 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
               opt.value === 'DISMISS'
                 ? 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                 : opt.value === 'BAN_USER'
-                  ? 'bg-red-600 hover:bg-red-500 text-white dark:bg-red-700 dark:hover:bg-red-600'
+                  ? 'bg-destructive hover:bg-destructive/90 text-white dark:bg-destructive/80 dark:hover:bg-destructive/70'
                   : opt.value === 'REMOVE_MESSAGE'
                     ? 'bg-amber-600 hover:bg-amber-500 text-white dark:bg-amber-700 dark:hover:bg-amber-600'
                     : ''
@@ -206,7 +206,7 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
               disabled={submitting}
               className={
                 selectedAction === 'BAN_USER'
-                  ? 'bg-red-600 hover:bg-red-500 text-white'
+                  ? 'bg-destructive hover:bg-destructive/90 text-white'
                   : selectedAction === 'REMOVE_MESSAGE'
                     ? 'bg-amber-600 hover:bg-amber-500 text-white'
                     : selectedAction === 'DISMISS'

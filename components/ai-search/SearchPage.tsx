@@ -503,7 +503,7 @@ export function SearchPage({ user }: SearchPageProps) {
                 aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 aria-expanded={!sidebarCollapsed}
                 title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+                    className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-xl border border-border transition-colors"
               >
                 {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
              </button>
@@ -515,7 +515,7 @@ export function SearchPage({ user }: SearchPageProps) {
               <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetTrigger asChild>
                   <button
-                    className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+                className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-xl border border-border transition-colors"
                     aria-label="Open sidebar"
                   >
                     <Menu size={16} />
@@ -543,14 +543,14 @@ export function SearchPage({ user }: SearchPageProps) {
         {appState === 'results' || appState === 'refine' ? (
           <button
             onClick={handleNewSearch}
-            className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+            className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-xl border border-border transition-colors"
           >
             New Search
           </button>
         ) : null}
         <button
           onClick={() => setShowApiKeys(true)}
-          className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded-xl border border-border transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-xl border border-border transition-colors"
         >
           <KeyRound size={14} />
           <span className="hidden sm:inline">API Keys</span>

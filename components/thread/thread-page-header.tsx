@@ -65,7 +65,7 @@ function LiveBadge() {
 
 function HeaderBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/60 hover:bg-muted/30 text-xs font-semibold text-muted-foreground transition-all cursor-default select-none h-9">
+    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/60 hover:bg-muted/40 text-xs font-semibold text-muted-foreground transition-all cursor-default select-none h-9">
       {icon}
       <span>{label}</span>
     </div>

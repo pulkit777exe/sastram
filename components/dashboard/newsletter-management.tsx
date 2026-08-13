@@ -124,7 +124,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                     size="sm"
                     onClick={() => handleUnsubscribe(subscription.threadId)}
                     disabled={isPending}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10 border-red-200 dark:border-red-900/50"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/10 border-red-200 dark:border-red-900/50"
                   >
                     {isPending ? (
                       'Unsubscribing...'

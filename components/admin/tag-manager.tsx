@@ -285,7 +285,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </thead>
                 <tbody className="divide-y divide-border">
                   {tags.map((tag) => (
-                    <tr key={tag.id} className="group hover:bg-muted/30 transition-colors">
+                    <tr key={tag.id} className="group hover:bg-muted/40 transition-colors">
                       {editingId === tag.id ? (
                         <>
                           <td className="px-4 py-2">
@@ -317,7 +317,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                                 size="sm"
                                 variant="ghost"
                                 disabled={!editName.trim()}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green/10"
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </Button>
@@ -368,7 +368,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                                 onClick={() => setDeletingId(tag.id)}
                                 size="sm"
                                 variant="ghost"
-                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>

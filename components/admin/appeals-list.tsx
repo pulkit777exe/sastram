@@ -124,7 +124,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                         setSelectedAppeal(appeal);
                         setActionType('REJECT');
                       }}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -135,7 +135,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                         setSelectedAppeal(appeal);
                         setActionType('APPROVE');
                       }}
-                      className="text-green-500 hover:text-green-700 hover:bg-green-50"
+                      className="text-green-600 hover:text-green-700 hover:bg-green/10"
                     >
                       <Check className="h-4 w-4" />
                     </Button>

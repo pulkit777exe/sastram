@@ -92,7 +92,7 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
             >
               Answers sent
             </span>
-            <button type="button" onClick={reset} className="text-[12px] font-medium text-accent-ink hover:underline">
+            <button type="button" onClick={reset} className="text-[12px] font-medium text-sai-accent-ink hover:underline">
               Start over
             </button>
           </div>

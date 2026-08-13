@@ -82,8 +82,8 @@ export function ModeDropdown<T extends string>({
               }}
               className={`w-full text-left px-3 py-1.5 text-xs transition-colors cursor-pointer ${
                 value === opt.value
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  ? 'bg-sai-accent text-foreground'
+                  : 'text-muted-foreground hover:bg-sai-accent/10 hover:text-foreground'
               }`}
             >
               {opt.label}
