@@ -297,18 +297,12 @@ export function SearchPage({ user }: SearchPageProps) {
                 logStep(event.phase, nextSourceCount);
                 const phase = event.phase as SSEPhase;
                 const sources = event.sources;
-                // Each setTimeout pushes the update to its own macrotask so
-                // React renders every phase instead of batching them all.
-                const id = setTimeout(() => {
-                  phaseTimerRef.current.delete(id);
-                  setStream((prev) => ({
-                    ...prev,
-                    phase,
-                    sources: sources ?? prev.sources,
-                  }));
-                  if (phase === 'reading') setMobileTab('sources');
-                }, 0);
-                phaseTimerRef.current.add(id);
+                setStream((prev) => ({
+                  ...prev,
+                  phase,
+                  sources: sources ?? prev.sources,
+                }));
+                if (phase === 'reading') setMobileTab('sources');
                 break;
               }
               case 'refine':
@@ -331,6 +325,7 @@ export function SearchPage({ user }: SearchPageProps) {
                   synthesis: event.synthesis ?? prev.synthesis,
                   followUps: event.followUps ?? [],
                   sessionId: event.sessionId,
+                  sources: event.sources ?? prev.sources,
                 }));
                 setCurrentSessionId(event.sessionId ?? currentSessionId);
                 setAppState('results');

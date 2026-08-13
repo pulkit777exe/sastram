@@ -55,7 +55,9 @@ const PHASE_ACTIVE_LABEL: Record<SSEPhase, string> = {
 
 function formatElapsed(ms: number): string {
   const s = ms / 1000;
-  return s < 10 ? `${s.toFixed(1)}s` : `${Math.round(s)}s`;
+  if (s < 10) return `${s.toFixed(1)}s`;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
 }
 
 import { LoadingState } from './LoadingState';

@@ -54,7 +54,7 @@ export type SSEEvent =
   | { phase: 'reading'; sources: AISearchPipelineResult['sources'] }
   | { phase: 'crossref' }
   | { phase: 'synthesizing' }
-  | { phase: 'done'; synthesis: AISearchPipelineResult['synthesis']; followUps: string[]; sessionId?: string }
+  | { phase: 'done'; synthesis: AISearchPipelineResult['synthesis']; followUps: string[]; sessionId?: string; sources?: AISearchPipelineResult['sources'] }
   | { phase: 'refine'; sources: AISearchPipelineResult['sources']; suggestion?: string }
   | { phase: 'blocked'; message: string }
   | { phase: 'error'; message: string; errorCode?: string };
@@ -215,15 +215,16 @@ export async function POST(request: NextRequest) {
               controller.enqueue(encoder.encode(sseChunk({ phase: 'reading', sources: cached.sources })));
               controller.enqueue(encoder.encode(sseChunk({ phase: 'crossref' })));
               controller.enqueue(encoder.encode(sseChunk({ phase: 'synthesizing' })));
-              controller.enqueue(
-                encoder.encode(
-                  sseChunk({
-                    phase: 'done',
-                    synthesis: { ...cached.synthesis, cachedAt: cached.synthesis.cachedAt },
-                    followUps: (cached as AISearchPipelineResult).followUps ?? [],
-                  })
-                )
-              );
+          controller.enqueue(
+            encoder.encode(
+              sseChunk({
+                phase: 'done',
+                synthesis: { ...cached.synthesis, cachedAt: cached.synthesis.cachedAt },
+                followUps: (cached as AISearchPipelineResult).followUps ?? [],
+                sources: cached.sources,
+              })
+            )
+          );
               controller.close();
             },
           });
@@ -314,6 +315,7 @@ export async function POST(request: NextRequest) {
             synthesis: result.synthesis,
             followUps: result.followUps,
             sessionId: createdSessionId,
+            sources: result.sources,
           });
           controller.close();
         } catch (error) {
