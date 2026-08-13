@@ -162,7 +162,6 @@ export const postMessage = createServerAction(
           email: session.user.email,
         },
         content: message.content,
-        parentId: message.parentId ?? null,
         threadSlug: message.thread?.slug ?? null,
         sideEffects: infraMessageSideEffects,
       });

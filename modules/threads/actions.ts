@@ -149,7 +149,7 @@ export const markThreadVerified = createServerAction(
   }
 );
 
-// Used by the live wrapper to recover messages missed while the socket was down.
+// Used by the live wrapper to recover messages missed while the stream was down.
 export const backfillThreadMessages = createServerAction(
   {
     schema: threadIdOnly.extend({ since: z.string().datetime() }),

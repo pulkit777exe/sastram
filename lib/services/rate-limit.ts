@@ -9,7 +9,6 @@ export const rateLimitConfig = {
   auth: { points: 5, duration: 900 },
   api: { points: 100, duration: 60 },
   upload: { points: 10, duration: 3600 },
-  websocket: { points: 50, duration: 60 },
   message: { points: 20, duration: 60 },
   newsletter: { points: 3, duration: 86400 },
 } as const;

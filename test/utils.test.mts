@@ -35,7 +35,6 @@ describe('Real Utilities', () => {
       expect(rateLimitConfig).to.have.property('auth');
       expect(rateLimitConfig).to.have.property('api');
       expect(rateLimitConfig).to.have.property('upload');
-      expect(rateLimitConfig).to.have.property('websocket');
       expect(rateLimitConfig).to.have.property('message');
       expect(rateLimitConfig).to.have.property('newsletter');
     });

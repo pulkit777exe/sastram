@@ -20,6 +20,7 @@ import {
 import { createServerAction } from '@/lib/utils/server-action';
 import { actionFailure, actionSuccess } from '@/lib/actions/result';
 import { ROUTES } from '@/lib/config/routes';
+import { computeHasMore } from '@/lib/db/pagination';
 import type { Prisma } from '@prisma/client';
 
 const bulkDeleteSchema = z.object({
@@ -363,7 +364,7 @@ export const getBannedUsers = createServerAction(
         total: totalCount,
         limit,
         offset,
-        hasMore: offset + limit < totalCount,
+        hasMore: computeHasMore(offset, limit, totalCount),
       },
     });
   }
@@ -384,8 +385,8 @@ export const deleteThread = createServerAction(
     });
 
     await executeAuditAndRevalidate({
-      action: 'SECTION_DELETED',
-      entityType: 'Section',
+      action: 'THREAD_DELETED',
+      entityType: 'Thread',
       entityId: threadId,
       userId: session.user.id,
       details: {
@@ -495,7 +496,7 @@ export const getModerationQueue = createServerAction(
 
     return actionSuccess({
       reports,
-      pagination: { total: totalCount, limit, offset, hasMore: offset + limit < totalCount },
+      pagination: { total: totalCount, limit, offset, hasMore: computeHasMore(offset, limit, totalCount) },
     });
   }
 );

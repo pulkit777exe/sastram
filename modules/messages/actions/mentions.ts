@@ -31,7 +31,6 @@ export async function createMentionsForMessage({
     email: string;
   };
   content: string;
-  parentId: string | null;
   threadSlug: string | null;
   sideEffects: MessageSideEffectsPort;
 }) {

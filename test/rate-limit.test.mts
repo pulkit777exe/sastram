@@ -15,7 +15,6 @@ describe('Rate Limiting Service', () => {
       expect(rateLimitConfig).to.have.property('auth');
       expect(rateLimitConfig).to.have.property('api');
       expect(rateLimitConfig).to.have.property('upload');
-      expect(rateLimitConfig).to.have.property('websocket');
       expect(rateLimitConfig).to.have.property('message');
       expect(rateLimitConfig).to.have.property('newsletter');
     });
@@ -34,7 +33,7 @@ describe('Rate Limiting Service', () => {
     });
 
     it('should accept object params with type', async () => {
-      const result = await rateLimit({ key: `test-ws-${Date.now()}`, type: 'websocket' });
+      const result = await rateLimit({ key: `test-msg-${Date.now()}`, type: 'message' });
       expect(result.success).to.be.true;
     });
 

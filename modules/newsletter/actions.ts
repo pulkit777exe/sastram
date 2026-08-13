@@ -96,8 +96,8 @@ export async function getUserNewsletterSubscriptions() {
   } catch (error) {
     logger.error('[getUserNewsletterSubscriptions]', error);
     const prismaMsg = prismaErrorMessage(error);
-    if (prismaMsg) return { data: [], error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-    return { data: [], error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+    if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
+    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
   }
 }
 
