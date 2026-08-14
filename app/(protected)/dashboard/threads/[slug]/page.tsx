@@ -49,7 +49,7 @@ function ThreadContentSkeleton() {
 
 function ThreadSidebarSkeleton() {
   return (
-    <aside className="w-80 hidden xl:flex flex-col overflow-y-auto bg-background/50">
+    <aside className="w-80 hidden xl:flex flex-col overflow-y-auto bg-muted/30">
       <div className="p-6 border-b border-border/60">
         <Skeleton className="h-3 w-24 mb-4" />
         <Skeleton className="h-6 w-3/4 mb-2" />
@@ -151,7 +151,7 @@ async function ThreadSidebar({
   const threadDna = parseThreadDna(thread.threadDna);
 
   return (
-    <aside className="w-80 flex flex-col overflow-y-auto bg-background/50 shadow-linear-md">
+    <aside className="w-80 flex flex-col overflow-y-auto bg-muted/30 shadow-linear-md">
       <div className="p-6 border-b border-border/60">
         <div className="flex items-center gap-2 mb-6">
           <Activity size={14} />
@@ -228,7 +228,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
   const session = await requireSession();
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background">
+    <div className="flex h-full w-full overflow-hidden">
       <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
         <Suspense fallback={<ThreadContentSkeleton />}>
           <ThreadContent slug={slug} session={session} />

@@ -1,10 +1,9 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { SearchPage } from '@/components/ai-search/SearchPage';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search } from 'lucide-react';
 import { getSession } from '@/modules/auth/session';
+import { SearchPage } from '@/components/ai-search/SearchPage';
 
 export const metadata: Metadata = {
   title: 'Sai Search — Sastram',
@@ -14,53 +13,48 @@ export const metadata: Metadata = {
 
 function SearchPageSkeleton() {
   return (
-    <div className="flex gap-4 items-start">
-      {/* Sidebar placeholder — matches Sidebar's expanded width */}
-      <div className="w-55 shrink-0 h-120 bg-card border border-border rounded-2xl p-4 space-y-3">
-        <Skeleton className="h-4 w-10" />
-        <Skeleton className="h-8 w-full rounded-lg" />
-        <Skeleton className="h-8 w-full rounded-lg" />
-        <div className="pt-2 space-y-2">
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-4/5" />
-          <Skeleton className="h-3 w-3/5" />
+    <div className="flex h-screen bg-zinc-950">
+      {/* Primary Nav Skeleton */}
+      <div className="w-[250px] shrink-0 bg-zinc-900 border-r border-zinc-800 p-4">
+        <Skeleton className="h-6 w-24 mb-6" />
+        <Skeleton className="h-8 w-full mb-4" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
         </div>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="mx-auto w-full max-w-4xl px-4 md:px-6 space-y-6 sm:space-y-8">
-          {/* Top bar skeleton — toggle + spacer + action button */}
-          <div className="flex items-center gap-2">
-            <Skeleton className="min-w-11 min-h-11 h-11 w-11 rounded-xl" />
-            <div className="flex-1" />
-            <Skeleton className="hidden sm:inline-block h-10 w-24 rounded-xl" />
-            <Skeleton className="h-10 w-24 rounded-xl" />
-          </div>
+      {/* History Sidebar Skeleton */}
+      <div className="w-[300px] shrink-0 border-r border-zinc-800 p-4">
+        <Skeleton className="h-5 w-12 mb-4" />
+        <Skeleton className="h-8 w-full mb-4" />
+        <Skeleton className="h-px w-full mb-4" />
+        <Skeleton className="h-4 w-16 mb-2" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full" />
+        </div>
+      </div>
 
-          {/* Compact search box skeleton */}
-          <Skeleton className="h-12 w-full rounded-xl" />
-
-          {/* Phase tracker row skeleton — same width as search box */}
-          <div className="flex items-center gap-1 w-full">
-            <Skeleton className="h-6 flex-1 rounded-full" />
-            <Skeleton className="h-6 flex-1 rounded-full" />
-            <Skeleton className="h-6 flex-1 rounded-full" />
-            <Skeleton className="h-6 flex-1 rounded-full" />
-            <Skeleton className="h-6 w-20 rounded-full shrink-0" />
-          </div>
-
-          {/* Two-pane synthesis + sources skeleton — matches the real grid ratio */}
-          <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
-            <div className="space-y-3">
-              <Skeleton className="h-40 w-full rounded-2xl" />
-              <Skeleton className="h-40 w-full rounded-2xl" />
-            </div>
-            <div className="space-y-3">
-              <Skeleton className="h-24 w-full rounded-xl" />
-              <Skeleton className="h-24 w-full rounded-xl" />
-              <Skeleton className="h-24 w-full rounded-xl" />
-            </div>
-          </div>
+      {/* Main Content Skeleton */}
+      <div className="flex-1 p-8">
+        <div className="flex items-center gap-2 mb-8">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <div className="flex flex-col items-center">
+          <Skeleton className="w-32 h-32 mb-8" />
+          <Skeleton className="h-8 w-80 mb-4" />
+          <Skeleton className="h-4 w-96 mb-8" />
+          <Skeleton className="h-4 w-64 mb-2" />
+          <Skeleton className="h-4 w-72 mb-2" />
+          <Skeleton className="h-4 w-60 mb-8" />
+          <Skeleton className="h-12 w-full max-w-2xl rounded-2xl" />
         </div>
       </div>
     </div>
@@ -74,23 +68,10 @@ export default async function AISearchPage() {
     : null;
 
   return (
-    <div>
-      <div className="mx-auto w-full max-w-4xl px-4 md:px-6 mb-6">
-        <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
-          <Search size={14} />
-          <span>Sai Search</span>
-        </div>
-        <h1 className="text-4xl font-bold tracking-tight">Search with Sai</h1>
-        <p className="text-muted-foreground mt-2">
-          Search across Reddit, Hacker News, ArchWiki, Stack Overflow and more.
-        </p>
-      </div>
-
-      <ErrorBoundary>
-        <Suspense fallback={<SearchPageSkeleton />}>
-          <SearchPage user={user} />
-        </Suspense>
-      </ErrorBoundary>
-    </div>
+    <ErrorBoundary>
+      <Suspense fallback={<SearchPageSkeleton />}>
+        <SearchPage user={user} />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
