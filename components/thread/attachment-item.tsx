@@ -24,7 +24,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
           className="w-full h-auto max-h-45 object-cover transition-transform duration-500 ease-out group-hover:scale-102"
         />
         {file.name && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-foreground/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <p className="text-xs text-background truncate font-medium">{file.name}</p>
           </div>
         )}
@@ -38,7 +38,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
 
   return (
     <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-lg border border-border/60 bg-card p-2.5 transition-all duration-200 hover:border-border hover:shadow-linear-sm group max-w-70">
-      <div className="p-2 rounded-lg border border-border/50 bg-background text-muted-foreground shadow-linear-sm transition-transform duration-200 group-hover:scale-105">
+      <div className="p-2 rounded-lg border border-border/50 bg-muted/40 text-muted-foreground shadow-linear-sm transition-transform duration-200 group-hover:scale-105">
         <FileIcon size={16} className="text-foreground opacity-80" />
       </div>
       <div className="flex-1 min-w-0">
@@ -53,7 +53,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
         download={file.name || 'attachment'}
         target="_blank"
         rel="noopener noreferrer"
-        className="p-1.5 rounded-full transition-all duration-200 opacity-60 hover:opacity-100 hover:bg-background text-foreground border border-transparent hover:border-border"
+        className="p-1.5 rounded-full transition-all duration-200 opacity-60 hover:opacity-100 hover:bg-muted/40 text-foreground border border-transparent hover:border-border"
         title="Download file"
       >
         <Download size={14} />
@@ -88,7 +88,7 @@ function VideoPlayer({ file }: { file: Attachment }) {
 
   return (
     <div 
-      className="relative group animate-in fade-in duration-200 overflow-hidden rounded-lg border border-border/50 bg-foreground max-w-80 aspect-video cursor-pointer"
+      className="relative group animate-in fade-in duration-200 overflow-hidden rounded-lg border border-border/50 bg-card max-w-80 aspect-video cursor-pointer"
       onClick={togglePlay}
     >
       <video
@@ -102,19 +102,19 @@ function VideoPlayer({ file }: { file: Attachment }) {
       />
       
       {/* Overlay controls */}
-      <div className="absolute inset-0 bg-foreground/20 opacity-100 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-2">
+      <div className="absolute inset-0 bg-white/10 opacity-100 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-2">
         <div className="flex justify-end">
           <button
             type="button"
             onClick={toggleMute}
-            className="p-1.5 rounded-full bg-foreground/40 text-background hover:bg-foreground/60 transition-colors"
+            className="p-1.5 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
           >
             {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
           </button>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-background/90 font-medium truncate max-w-50 drop-shadow-sm">
+          <span className="text-xs text-white/90 font-medium truncate max-w-50 drop-shadow-sm">
             {file.name || 'Video'}
           </span>
           <button

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { VerifyNowButton } from '@/components/thread/verify-now-button';
+import { computeConfidence } from '@/lib/utils/confidence-decay';
 
 interface ThreadResolutionCardProps {
   threadId: string;
@@ -34,7 +35,11 @@ export default function ThreadResolutionCard({
   const lastVerifiedDays = lastVerifiedRef
     ? Math.floor((now - new Date(lastVerifiedRef).getTime()) / (1000 * 60 * 60 * 24))
     : null;
-  const isStale = lastVerifiedDays !== null && lastVerifiedDays > 30;
+
+  const { confidence } = lastVerifiedRef
+    ? computeConfidence(new Date(lastVerifiedRef))
+    : { confidence: 0 };
+  const isStale = confidence < 1;
 
   if (score === null || score === undefined) {
     return (
@@ -75,7 +80,7 @@ export default function ThreadResolutionCard({
           <div className="min-w-0">
             <p className="text-xs font-semibold text-chart-4">Confidence aged</p>
             <p className="text-xs text-muted-foreground">
-              Last verified {lastVerifiedDays > 90 ? `${Math.floor(lastVerifiedDays / 30)} months` : `${lastVerifiedDays} days`} ago
+              Last verified {lastVerifiedDays !== null && lastVerifiedDays > 90 ? `${Math.floor(lastVerifiedDays / 30)} months` : `${lastVerifiedDays} days`} ago
             </p>
           </div>
           <VerifyNowButton threadId={threadId} />

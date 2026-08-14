@@ -14,14 +14,17 @@ import {
   AlertCircle,
   Menu,
 } from 'lucide-react';
-import { SearchBox } from './SearchBox';
-import type { SSEPhase } from './PhaseTracker';
-import { SynthesisCard } from './SynthesisCard';
-import { SourceCard } from './SourceCard';
-import { TableView } from './TableView';
-import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from './ApiKeysModal';
-import { Sidebar, type HistoryItem } from './Sidebar';
-import type { RetryStyle, FeedbackType } from './StreamingText';
+import { SearchBox } from '@/components/ai-search/SearchBox';
+import type { SSEPhase } from '@/components/ai-search/PhaseTracker';
+import { SynthesisCard } from '@/components/ai-search/SynthesisCard';
+import { SourceCard } from '@/components/ai-search/SourceCard';
+import { TableView } from '@/components/ai-search/TableView';
+import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
+import { SaiSearchLayout, type HistoryItem } from '@/components/ai-search/sai-search-layout';
+import type { RetryStyle, FeedbackType } from '@/components/ai-search/StreamingText';
+import { StepLogEntry, ThinkingTrace } from '@/components/ai-search/ThinkingTrace';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import type { SearchConfig, Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 
 const apiKeysListeners = new Set<() => void>();
 function subscribeToApiKeys(cb: () => void) {
@@ -34,19 +37,6 @@ function getHasApiKeys() {
 function notifyApiKeysChanged(_hasAll?: boolean) {
   apiKeysListeners.forEach((fn) => fn());
 }
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import type {
-  SearchConfig,
-  Source,
-  SynthesisResult,
-  Citation,
-} from '@/modules/ai-search/types';
-import { StepLogEntry, ThinkingTrace } from './ThinkingTrace';
 
 type AppState = 'idle' | 'loading' | 'results' | 'refine' | 'error' | 'blocked';
 type MobileTab = 'answer' | 'sources';
@@ -106,7 +96,6 @@ export function SearchPage({ user }: SearchPageProps) {
 
   const [showApiKeys, setShowApiKeys] = useState(false);
   const hasKeys = useSyncExternalStore(subscribeToApiKeys, getHasApiKeys, () => false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLowerQualitySources, setShowLowerQualitySources] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -120,16 +109,6 @@ export function SearchPage({ user }: SearchPageProps) {
     () => false
   );
 
-  // Auto-collapse sidebar on small screens
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (mq.matches) setSidebarCollapsed(true);
-    const handler = (e: MediaQueryListEvent) => { if (e.matches) setSidebarCollapsed(true); };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
   const sourceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
   const phaseTimerRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -142,11 +121,7 @@ export function SearchPage({ user }: SearchPageProps) {
   }, []);
 
   const runSearch = useCallback(
-    async (
-      q: string,
-      config: SearchConfig,
-      context?: { query: string; followUp: string }
-    ) => {
+    async (q: string, config: SearchConfig, context?: { query: string; followUp: string }) => {
       const trimmed = q.trim();
       if (!trimmed || trimmed.length < 3) {
         toasts.error('Query too short', 'Please enter at least 3 characters.');
@@ -159,7 +134,10 @@ export function SearchPage({ user }: SearchPageProps) {
 
       const keys = getStoredApiKeys();
       if (!keys.exa || !keys.tavily || !keys.gemini) {
-        toasts.error('Please configure your API keys first', 'Click the API Keys button to get started.');
+        toasts.error(
+          'Please configure your API keys first',
+          'Click the API Keys button to get started.'
+        );
         setShowApiKeys(true);
         return;
       }
@@ -230,13 +208,18 @@ export function SearchPage({ user }: SearchPageProps) {
           const retryAfter = response.headers.get('Retry-After');
           toasts.error(
             'Rate limit exceeded',
-            retryAfter ? `Please wait ${retryAfter} seconds.` : 'Please wait a moment before searching again.'
+            retryAfter
+              ? `Please wait ${retryAfter} seconds.`
+              : 'Please wait a moment before searching again.'
           );
           setAppState('idle');
           return;
         }
         if (response.status === 503) {
-          toasts.error('Service unavailable', 'AI features are temporarily over quota. Try again later.');
+          toasts.error(
+            'Service unavailable',
+            'AI features are temporarily over quota. Try again later.'
+          );
           setAppState('error');
           setErrorMessage('AI features are temporarily unavailable due to high demand.');
           return;
@@ -395,20 +378,16 @@ export function SearchPage({ user }: SearchPageProps) {
   const handleRetry = useCallback(
     (style: RetryStyle) => {
       if (!query) return;
-      const styledQuery = style === 'same'
-        ? query
-        : `${query} (Please provide a ${style} response)`;
+      const styledQuery =
+        style === 'same' ? query : `${query} (Please provide a ${style} response)`;
       runSearch(styledQuery, lastConfig);
     },
     [query, lastConfig, runSearch]
   );
 
-  const handleFeedback = useCallback(
-    (_type: FeedbackType, _reason?: string) => {
-      // Feedback is handled via toast in StreamingText; extend here if backend logging is needed
-    },
-    []
-  );
+  const handleFeedback = useCallback((_type: FeedbackType, _reason?: string) => {
+    // Feedback is handled via toast in StreamingText; extend here if backend logging is needed
+  }, []);
 
   const handleNewSearch = useCallback(() => {
     abortRef.current?.abort();
@@ -473,300 +452,171 @@ export function SearchPage({ user }: SearchPageProps) {
   const synthesis = stream.synthesis;
   const citations: Citation[] = useMemo(() => synthesis?.citations ?? [], [synthesis]);
 
-  const sidebarProps = {
-    onSelectSession: handleSelectSession,
-    onNewSearch: handleNewSearch,
-    collapsed: sidebarCollapsed,
-    onOpenApiKeys: () => setShowApiKeys(true),
-    hasApiKeys: hasKeys,
-    currentSessionId,
-    user,
-  };
-
   return (
-    <div className="flex gap-4 items-start">
-      {/* Desktop: inline sidebar */}
-      {!isMobile && <div className="shrink-0"><Sidebar {...sidebarProps} /></div>}
-
-      <div className="flex-1 min-w-0">
-        <div className="mx-auto w-full max-w-4xl space-y-6 sm:space-y-8 px-4 md:px-6">
-          <div className="flex items-center gap-2">
-            {/* Desktop: collapse toggle */}
-            {!isMobile && (
-              <button
-                onClick={() => setSidebarCollapsed((c) => !c)}
-                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                aria-expanded={!sidebarCollapsed}
-                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                    className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-xl border border-border transition-colors"
-              >
-                {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-             </button>
-            )}
-
-            {/* Mobile: drawer trigger — SheetContent portals out, so the
-                trigger's parent container doesn't influence drawer positioning. */}
-            {isMobile && (
-              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetTrigger asChild>
-                  <button
-                className="flex items-center justify-center min-w-11 min-h-11 p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-xl border border-border transition-colors"
-                    aria-label="Open sidebar"
-                  >
-                    <Menu size={16} />
-                 </button>
-               </SheetTrigger>
-                <SheetContent side="left" className="w-64 p-0">
-                  <SheetTitle className="sr-only">Search history</SheetTitle>
-                  <Sidebar
-                    {...sidebarProps}
-                    collapsed={false}
-                    onSelectSession={(item) => {
-                      handleSelectSession(item);
-                      setSheetOpen(false);
-                    }}
-                    onNewSearch={() => {
-                      handleNewSearch();
-                      setSheetOpen(false);
-                    }}
-                  />
-               </SheetContent>
-             </Sheet>
-            )}
-
-            <div className="flex-1" />
-        {appState === 'results' || appState === 'refine' ? (
-          <button
-            onClick={handleNewSearch}
-            className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-xl border border-border transition-colors"
-          >
-            New Search
-          </button>
-        ) : null}
-        <button
-          onClick={() => setShowApiKeys(true)}
-          className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-xl border border-border transition-colors"
-        >
-          <KeyRound size={14} />
-          <span className="hidden sm:inline">API Keys</span>
-          {hasKeys && <span className="w-2 h-2 rounded-full bg-chart-2" />}
-        </button>
-      </div>
-
-      <AnimatePresence mode="wait">
-        {appState === 'idle' && (
-          <motion.div
-            key="idle"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex flex-col items-center pt-10 sm:pt-16 pb-8"
-          >
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold tracking-tight mb-2">What do you want to search?</h2>
-              <p className="text-sm text-muted-foreground">
-                Sai synthesizes answers from multiple sources with inline citations.
-              </p>
-            </div>
-            <SearchBox onSearch={handleSearch} isLoading={false} compact={false} initialQuery={initialQuery} />
-          </motion.div>
-        )}
-
-        {(appState === 'loading' || appState === 'results' || appState === 'refine' || appState === 'error' || appState === 'blocked') && (
-          <motion.div
-            key="active"
-            initial={fromHistory ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-6"
-          >
-            <SearchBox onSearch={handleSearch} isLoading={appState === 'loading'} compact={true} initialQuery={query} />
-
-            {!fromHistory && (
-              <ThinkingTrace
-                query={query}
-                currentPhase={stream.phase}
-                steps={stepLog}
-                sourceCount={stream.sources.length}
-                startedAt={startedAt}
-                completedAt={completedAt}
-                isLoading={appState === 'loading'}
-              />
-            )}
-
-            {slowHint && appState === 'loading' && (
-              <p className="text-xs text-muted-foreground animate-pulse">
-                This is taking longer than usual — still working on it…
-              </p>
-            )}
-
-            {/* Refine prompt */}
-            {appState === 'refine' && (
-              <div className="w-full bg-chart-4/10 border border-chart-4/20 rounded-2xl p-5 text-center">
-                <p className="text-sm font-medium text-chart-4 mb-1">
-                  Not enough quality sources
-                </p>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Sai found fewer than 2 reliable sources for this query. Try refining it with more specifics.
-                </p>
-                {stream.suggestion && (
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Suggested query: <span className="italic text-foreground">&quot;{stream.suggestion}&quot;</span>
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2 justify-center">
-                  <button
-                    onClick={handleNewSearch}
-                    className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
-                  >
-                    Start a new search
-                  </button>
-                  {stream.suggestion && (
-                    <button
-                      onClick={handleRefineSuggestion}
-                      className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full border border-chart-4/30 text-chart-4 hover:bg-chart-4/10 transition-colors"
-                    >
-                      Try suggested query
-                    </button>
-                  )}
-              </div>
-              {stream.sources.length > 0 && (
-                <>
-                  <p className="text-xs text-muted-foreground/60 mt-3">
-                    {stream.sources.length} lower-quality source{stream.sources.length !== 1 ? 's' : ''} were still found.
-                  </p>
-                  <button
-                    onClick={() => setShowLowerQualitySources((prev) => !prev)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1"
-                  >
-                    <span>{showLowerQualitySources ? 'Hide' : 'View'}</span>
-                    {showLowerQualitySources ? <ChevronDown size={12} className="rotate-180" /> : <ChevronDown size={12} />}
-                  </button>
-                  {showLowerQualitySources && (
-                    <div className="mt-3 grid gap-3 animate-in slide-in-from-top-2">
-                      {stream.sources.map((source, idx) => (
-                        <SourceCard
-                          key={source.id}
-                          id={source.id}
-                          title={source.title}
-                          url={source.url}
-                          source={source.domain}
-                          snippet={source.snippet}
-                          confidence={source.confidence}
-                          tier={source.tier}
-                          publishedDate={source.publishedDate}
-                          isOutdated={source.isOutdated}
-                          provider={source.provider}
-                          index={idx}
-                          isLowerQuality={true}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            )}
-
-            {appState === 'blocked' && (
-              <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <Clock size={20} className="text-muted-foreground" />
-                </div>
-                <h2 className="text-lg font-semibold mb-2">Search limit reached</h2>
-                <p className="text-sm text-muted-foreground max-w-md mb-6">{errorMessage}</p>
-                <p className="text-xs text-muted-foreground/70">This resets automatically — no need to retry right now.</p>
-              </div>
-            )}
-
-            {appState === 'error' && (
-              <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
-                <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-                  <AlertCircle size={20} className="text-destructive" />
-                </div>
-                <h2 className="text-lg font-semibold mb-2">
-                  {isOffline ? "You're offline" : 'Something went wrong'}
-                </h2>
-                <p className="text-sm text-muted-foreground max-w-md mb-6">{errorMessage}</p>
-                <button
-                  onClick={handleNewSearch}
-                  className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-xl hover:opacity-90 transition-opacity"
+    <SaiSearchLayout
+      onSelectSession={handleSelectSession}
+      onNewSearch={handleNewSearch}
+      currentSessionId={currentSessionId}
+      hasApiKeys={hasKeys}
+      onOpenApiKeys={() => setShowApiKeys(true)}
+    >
+      <div className="flex flex-col items-center justify-center min-h-full px-4 md:px-6 py-10">
+        <AnimatePresence mode="wait">
+          {appState === 'idle' && (
+            <motion.div
+              key="idle"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-col items-center pt-16 sm:pt-24 pb-8 w-full"
+            >
+              <div className="mb-6 relative">
+                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
+                <svg
+                  viewBox="0 0 200 200"
+                  className="w-16 h-16 text-zinc-600 relative"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
                 >
-                  {isOffline ? 'Retry when back online' : 'Try Again'}
-                </button>
+                  <circle cx="100" cy="100" r="4" fill="currentColor" opacity="0.8" />
+                  <circle cx="100" cy="60" r="3" fill="currentColor" opacity="0.6" />
+                  <circle cx="130" cy="75" r="3" fill="currentColor" opacity="0.6" />
+                  <circle cx="130" cy="125" r="3" fill="currentColor" opacity="0.6" />
+                  <circle cx="100" cy="140" r="3" fill="currentColor" opacity="0.6" />
+                  <circle cx="70" cy="125" r="3" fill="currentColor" opacity="0.6" />
+                  <circle cx="70" cy="75" r="3" fill="currentColor" opacity="0.6" />
+                  <line x1="100" y1="100" x2="100" y2="60" opacity="0.3" />
+                  <line x1="100" y1="100" x2="130" y2="75" opacity="0.3" />
+                  <line x1="100" y1="100" x2="130" y2="125" opacity="0.3" />
+                  <line x1="100" y1="100" x2="100" y2="140" opacity="0.3" />
+                  <line x1="100" y1="100" x2="70" y2="125" opacity="0.3" />
+                  <line x1="100" y1="100" x2="70" y2="75" opacity="0.3" />
+                </svg>
               </div>
-            )}
 
-            {appState === 'results' && synthesis && (
-              <>
-                <div className="flex md:hidden gap-2 justify-center">
-                  {(['answer', 'sources'] as MobileTab[]).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setMobileTab(tab)}
-                      className={`px-4 py-1.5 text-xs rounded-full border transition-colors ${
-                        mobileTab === tab
-                          ? 'bg-foreground text-background border-foreground'
-                            : 'bg-transparent text-muted-foreground border-border'
-                      }`}
-                    >
-                      {tab === 'answer' ? 'Answer' : `Sources (${stream.sources.length})`}
-                    </button>
-                  ))}
+              <div className="mb-2 text-center">
+                <h1 className="text-3xl font-bold tracking-tight mb-3 text-zinc-100">
+                  What do you want to search?
+                </h1>
+                <p className="text-sm text-zinc-400 max-w-md mx-auto">
+                  Sai synthesizes answers from multiple sources with inline citations.
+                </p>
+              </div>
+
+              <div className="relative w-full max-w-2xl mt-8">
+                <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-3xl" />
+                <div className="relative">
+                  <SearchBox
+                    onSearch={handleSearch}
+                    isLoading={false}
+                    compact={false}
+                    initialQuery={initialQuery}
+                  />
                 </div>
+              </div>
 
-                <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
-                  <div className={mobileTab === 'answer' ? 'block' : 'hidden md:block'}>
-                    <SynthesisCard
-                      text={synthesis.text || synthesis.content}
-                      citations={citations}
-                      sources={stream.sources}
-                      conflictData={synthesis.conflictData}
-                      sourceCount={synthesis.sourceCount}
-                      queryType={synthesis.queryType}
-                      onCiteClick={handleCiteClick}
-                      isStreaming={isStreaming}
-                      fromHistory={fromHistory}
-                      onRetry={handleRetry}
-                      onFeedback={handleFeedback}
-                    />
+              <div className="mt-6 text-center">
+                <p className="text-xs text-zinc-500 mb-2">For example:</p>
+                <ul className="text-sm text-zinc-400 space-y-1">
+                  <li>• What are the best patterns for managing state in React?</li>
+                  <li>• Latest threads on Hacker News about AI in healthcare.</li>
+                  <li>• Compare Arch Linux vs Debian for a developer machine.</li>
+                </ul>
+              </div>
+            </motion.div>
+          )}
 
-                    {stream.followUps.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Related
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {stream.followUps.map((f) => (
-                            <button
-                              key={f}
-                              onClick={() => handleFollowUp(f)}
-                              className="group flex items-center gap-2 text-left text-sm text-foreground/90 bg-card border border-border hover:border-foreground/30 rounded-xl px-4 py-2.5 transition-colors"
-                            >
-                              <span className="flex-1">{f}</span>
-                              <ArrowRight size={14} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+          {(appState === 'loading' ||
+            appState === 'results' ||
+            appState === 'refine' ||
+            appState === 'error' ||
+            appState === 'blocked') && (
+            <motion.div
+              key="active"
+              initial={fromHistory ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="w-full max-w-4xl space-y-6"
+            >
+              <SearchBox
+                onSearch={handleSearch}
+                isLoading={appState === 'loading'}
+                compact={true}
+                initialQuery={query}
+              />
+
+              {!fromHistory && (
+                <ThinkingTrace
+                  query={query}
+                  currentPhase={stream.phase}
+                  steps={stepLog}
+                  sourceCount={stream.sources.length}
+                  startedAt={startedAt}
+                  completedAt={completedAt}
+                  isLoading={appState === 'loading'}
+                />
+              )}
+
+              {slowHint && appState === 'loading' && (
+                <p className="text-xs text-zinc-500 animate-pulse">
+                  This is taking longer than usual — still working on it…
+                </p>
+              )}
+
+              {/* Refine prompt */}
+              {appState === 'refine' && (
+                <div className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-5 text-center">
+                  <p className="text-sm font-medium text-zinc-300 mb-1">
+                    Not enough quality sources
+                  </p>
+                  <p className="text-xs text-zinc-500 mb-4">
+                    Sai found fewer than 2 reliable sources for this query. Try refining it with
+                    more specifics.
+                  </p>
+                  {stream.suggestion && (
+                    <p className="text-xs text-zinc-500 mb-2">
+                      Suggested query:{' '}
+                      <span className="italic text-zinc-300">&quot;{stream.suggestion}&quot;</span>
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <button
+                      onClick={handleNewSearch}
+                      className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 transition-colors"
+                    >
+                      Start a new search
+                    </button>
+                    {stream.suggestion && (
+                      <button
+                        onClick={handleRefineSuggestion}
+                        className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors"
+                      >
+                        Try suggested query
+                      </button>
                     )}
                   </div>
-
-                  <div className={mobileTab === 'sources' ? 'block' : 'hidden md:block'}>
-                    {lastConfig.searchMode === 'table' ? (
-                      <TableView sources={stream.sources} />
-                    ) : (
-                      <div className="space-y-3">
-                        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
-                          Sources ({stream.sources.length})
-                        </h3>
-                        <div className="grid gap-3">
-                          {stream.sources.map((source, i) => (
+                  {stream.sources.length > 0 && (
+                    <>
+                      <p className="text-xs text-zinc-600 mt-3">
+                        {stream.sources.length} lower-quality source
+                        {stream.sources.length !== 1 ? 's' : ''} were still found.
+                      </p>
+                      <button
+                        onClick={() => setShowLowerQualitySources((prev) => !prev)}
+                        className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 mt-1 mx-auto"
+                      >
+                        <span>{showLowerQualitySources ? 'Hide' : 'View'}</span>
+                        {showLowerQualitySources ? (
+                          <ChevronDown size={12} className="rotate-180" />
+                        ) : (
+                          <ChevronDown size={12} />
+                        )}
+                      </button>
+                      {showLowerQualitySources && (
+                        <div className="mt-3 grid gap-3 animate-in slide-in-from-top-2">
+                          {stream.sources.map((source, idx) => (
                             <SourceCard
                               key={source.id}
-                              ref={(el) => {
-                                if (el) sourceRefs.current.set(source.id, el);
-                                else sourceRefs.current.delete(source.id);
-                              }}
                               id={source.id}
                               title={source.title}
                               url={source.url}
@@ -777,39 +627,152 @@ export function SearchPage({ user }: SearchPageProps) {
                               publishedDate={source.publishedDate}
                               isOutdated={source.isOutdated}
                               provider={source.provider}
-                              index={i}
-                              highlighted={highlightedSourceId === source.id}
-                              onSelect={handleCiteClick}
+                              index={idx}
+                              isLowerQuality={true}
                             />
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {appState === 'blocked' && (
+                <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+                    <Clock size={20} className="text-zinc-400" />
+                  </div>
+                  <h2 className="text-lg font-semibold mb-2 text-zinc-100">Search limit reached</h2>
+                  <p className="text-sm text-zinc-400 max-w-md mb-6">{errorMessage}</p>
+                  <p className="text-xs text-zinc-600">
+                    This resets automatically — no need to retry right now.
+                  </p>
+                </div>
+              )}
+
+              {appState === 'error' && (
+                <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
+                  <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                    <AlertCircle size={20} className="text-red-400" />
+                  </div>
+                  <h2 className="text-lg font-semibold mb-2 text-zinc-100">
+                    {isOffline ? "You're offline" : 'Something went wrong'}
+                  </h2>
+                  <p className="text-sm text-zinc-400 max-w-md mb-6">{errorMessage}</p>
+                  <button
+                    onClick={handleNewSearch}
+                    className="px-4 py-2 text-sm font-medium bg-zinc-100 text-zinc-900 rounded-xl hover:bg-zinc-200 transition-colors"
+                  >
+                    {isOffline ? 'Retry when back online' : 'Try Again'}
+                  </button>
+                </div>
+              )}
+
+              {appState === 'results' && synthesis && (
+                <>
+                  <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
+                    <div>
+                      <SynthesisCard
+                        text={synthesis.text || synthesis.content}
+                        citations={citations}
+                        sources={stream.sources}
+                        conflictData={synthesis.conflictData}
+                        sourceCount={synthesis.sourceCount}
+                        queryType={synthesis.queryType}
+                        onCiteClick={handleCiteClick}
+                        isStreaming={isStreaming}
+                        fromHistory={fromHistory}
+                        onRetry={handleRetry}
+                        onFeedback={handleFeedback}
+                      />
+
+                      {stream.followUps.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            Related
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {stream.followUps.map((f) => (
+                              <button
+                                key={f}
+                                onClick={() => handleFollowUp(f)}
+                                className="group flex items-center gap-2 text-left text-sm text-zinc-300 bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600 rounded-xl px-4 py-2.5 transition-colors"
+                              >
+                                <span className="flex-1">{f}</span>
+                                <ArrowRight
+                                  size={14}
+                                  className="text-zinc-500 group-hover:text-zinc-300 transition-colors shrink-0"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      {lastConfig.searchMode === 'table' ? (
+                        <TableView sources={stream.sources} />
+                      ) : (
+                        <div className="space-y-3">
+                          <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider px-1">
+                            Sources ({stream.sources.length})
+                          </h3>
+                          <div className="grid gap-3">
+                            {stream.sources.map((source, i) => (
+                              <SourceCard
+                                key={source.id}
+                                ref={(el) => {
+                                  if (el) sourceRefs.current.set(source.id, el);
+                                  else sourceRefs.current.delete(source.id);
+                                }}
+                                id={source.id}
+                                title={source.title}
+                                url={source.url}
+                                source={source.domain}
+                                snippet={source.snippet}
+                                confidence={source.confidence}
+                                tier={source.tier}
+                                publishedDate={source.publishedDate}
+                                isOutdated={source.isOutdated}
+                                provider={source.provider}
+                                index={i}
+                                highlighted={highlightedSourceId === source.id}
+                                onSelect={handleCiteClick}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {appState === 'loading' && (
+                <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start animate-pulse">
+                  <div className="space-y-3">
+                    <div className="bg-zinc-800/50 rounded-2xl h-40" />
+                    <div className="bg-zinc-800/50 rounded-2xl h-40" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="bg-zinc-800/50 rounded-xl h-24" />
+                    <div className="bg-zinc-800/50 rounded-xl h-24" />
+                    <div className="bg-zinc-800/50 rounded-xl h-24" />
                   </div>
                 </div>
-              </>
-            )}
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-            {appState === 'loading' && (
-              <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start animate-pulse">
-                <div className="space-y-3">
-                  <div className="bg-muted rounded-2xl h-40" />
-                  <div className="bg-muted rounded-2xl h-40" />
-               </div>
-                <div className="space-y-3">
-                  <div className="bg-muted rounded-xl h-24" />
-                  <div className="bg-muted rounded-xl h-24" />
-                  <div className="bg-muted rounded-xl h-24" />
-               </div>
-             </div>
-            )}
-         </motion.div>
-        )}
-       </AnimatePresence>
-       </div>
-     </div>
-
-      <ApiKeysModal isOpen={showApiKeys} onClose={() => setShowApiKeys(false)} onKeysChange={notifyApiKeysChanged} />
-   </div>
+      <ApiKeysModal
+        isOpen={showApiKeys}
+        onClose={() => setShowApiKeys(false)}
+        onKeysChange={notifyApiKeysChanged}
+      />
+    </SaiSearchLayout>
   );
 }

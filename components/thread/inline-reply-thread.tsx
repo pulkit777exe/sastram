@@ -79,7 +79,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
             e.stopPropagation();
             setExpanded((p) => !p);
           }}
-          className="ml-auto flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-background/60 hover:text-brand transition-colors"
+          className="ml-auto flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-muted/60 hover:text-brand transition-colors"
           title={expanded ? 'Collapse replies' : 'Expand replies'}
         >
           {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}

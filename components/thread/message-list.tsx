@@ -261,7 +261,7 @@ const MessageRow = React.memo(function MessageRow({
       {isFirstUnread && (
         <div className="flex items-center gap-2.5 my-3" role="separator" aria-label="New messages indicator">
           <div className="flex-1 h-px bg-brand/30" />
-          <span className="text-xs text-brand font-bold uppercase tracking-wider whitespace-nowrap bg-background px-2.5">
+          <span className="text-xs text-brand font-bold uppercase tracking-wider whitespace-nowrap bg-card px-2.5">
             New messages
           </span>
           <div className="flex-1 h-px bg-brand/30" />
@@ -487,7 +487,7 @@ const MessageRow = React.memo(function MessageRow({
         )}
 
         {showDeleteConfirm && (
-          <div className="absolute right-4 top-2 bg-background border border-border shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
+          <div className="absolute right-4 top-2 bg-card border border-border shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
             <span className="font-medium text-destructive">Delete message?</span>
             <Button
               size="sm"

@@ -20,7 +20,7 @@ export function ThreadPageHeader({
   initialFrequency,
 }: ThreadPageHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-4 sm:px-6 h-16 border-b border-border/60 flex-shrink-0 bg-background/95 backdrop-blur z-30">
+    <header className="flex items-center justify-between px-4 sm:px-6 h-16 border-b border-border/60 shrink-0 bg-card/95 backdrop-blur z-30">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Link
           href={ROUTES.DASHBOARD_THREADS}

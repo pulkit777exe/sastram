@@ -24,9 +24,9 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
         clickable && !onRemove && 'hover:opacity-80'
       )}
       style={{
-        backgroundColor: `${tag.color ?? '#3736fc'}20`,
-        color: tag.color ?? '#3736fc',
-        border: `1px solid ${tag.color ?? '#3736fc'}40`,
+        backgroundColor: tag.color ? `${tag.color}20` : 'color-mix(in srgb, var(--brand) 12%, transparent)',
+        color: tag.color ?? 'var(--brand)',
+        border: `1px solid ${tag.color ? `${tag.color}40` : 'color-mix(in srgb, var(--brand) 25%, transparent)'}`,
       }}
     >
       <span>#{tag.name}</span>

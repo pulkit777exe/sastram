@@ -15,7 +15,8 @@ import { toasts } from '@/lib/utils/toast';
 import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
-import { ChevronDown, Loader2, Pin } from 'lucide-react';
+import { ChevronDown, Loader2, Pin, Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[]; hasNew: boolean } {
   const idToIdx = new Map(prev.map((m, i) => [m.id, i]));
@@ -60,6 +61,8 @@ interface ThreadLiveWrapperProps {
   title: string;
   slug: string;
   initialFrequency: 'DAILY' | 'WEEKLY' | 'NEVER' | null;
+  resolutionScore?: number | null;
+  aiSummary?: string | null;
 }
 
 export function ThreadLiveWrapper({
@@ -76,6 +79,8 @@ export function ThreadLiveWrapper({
   title,
   slug,
   initialFrequency,
+  resolutionScore = null,
+  aiSummary = null,
 }: ThreadLiveWrapperProps) {
   const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
   const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed'>>({});
@@ -92,6 +97,7 @@ export function ThreadLiveWrapper({
   const [pollRefreshKey, setPollRefreshKey] = useState(0);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMarkingReadRef = useRef(false);
@@ -137,6 +143,23 @@ export function ThreadLiveWrapper({
       setIsLoadingMore(false);
     }
   }, [hasMoreMessages, nextCursor, threadId, title, slug]);
+
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root || !hasMoreMessages) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void loadMoreMessages();
+        }
+      },
+      { root, rootMargin: '200px 0px 0px 0px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreMessages, loadMoreMessages]);
 
   const liveMessagesRef = useRef<Message[]>(messages);
   useEffect(() => {
@@ -293,9 +316,7 @@ export function ThreadLiveWrapper({
 
   const handleMessagePosted = useCallback(
     (newMessage: Message, meta?: AiInlineMeta) => {
-      ownPendingIds.current.add(newMessage.id);
       setLiveMessages((prev) => {
-        // Remove any pending optimistic message (temp ID) for this sender+parent
         const cleaned = prev.filter(
           (m) => !ownPendingIds.current.has(m.id) || m.id === newMessage.id
         );
@@ -395,9 +416,6 @@ export function ThreadLiveWrapper({
         const since = lastMessageTimestampRef.current;
         const result = await backfillThreadMessages({ threadId, since });
 
-        // Piggyback poll-vote refresh only on normal-cadence ticks — no
-        // reason to hit the votes endpoint every 3s while just waiting on
-        // an AI reply (the original fast-poll effect never did this either).
         if (!fastMode && currentPollRef.current) {
           try {
             const pollId = currentPollRef.current.id;
@@ -472,10 +490,6 @@ export function ThreadLiveWrapper({
       }, delay);
     }
 
-    // Page Visibility API: pause the schedule loop when hidden (the
-    // scheduled tick above already no-ops while hidden, this additionally
-    // triggers an immediate poll + fresh schedule the moment the tab comes
-    // back, matching the original's "immediate poll on foreground" behavior).
     function onVisibilityChange() {
       if (document.visibilityState === 'visible') {
         if (timeoutId) clearTimeout(timeoutId);
@@ -483,7 +497,6 @@ export function ThreadLiveWrapper({
       }
     }
 
-    // Initial poll + schedule
     pollOnce().finally(scheduleNext);
 
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -509,7 +522,7 @@ export function ThreadLiveWrapper({
   }, [liveMessages, aiInlineStatus, clearAiStatus]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Fixed header */}
       <ThreadPageHeader
         title={title}
@@ -518,37 +531,64 @@ export function ThreadLiveWrapper({
         initialFrequency={initialFrequency}
       />
 
-      {/* Fixed pinned message banner just below header */}
-      {pinnedMessage && (
-        <div className="border-b border-chart-4/20 bg-chart-4/10 px-6 py-2.5 shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-            <div className="min-w-0 flex items-start gap-2">
-              <Pin size={13} className="text-chart-4 mt-0.5 shrink-0" />
-              <div className="min-w-0">
-              <p className="text-xs font-bold text-chart-4 uppercase tracking-wider">
-                Pinned Message
-              </p>
-              <p className="mt-0.5 truncate text-xs text-chart-4/90 font-medium">
-                {pinnedMessage.content}
-              </p>
+      {(pinnedMessage || resolutionScore !== null || aiSummary) && (
+        <div className="shrink-0 px-6 pt-3 flex flex-col gap-2">
+          {pinnedMessage && (
+            <div className="rounded-lg border border-chart-4/20 bg-chart-4/5 px-4 py-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+                <div className="min-w-0 flex items-start gap-2">
+                  <Pin size={13} className="text-chart-4 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-chart-4 uppercase tracking-wider">
+                      Pinned Message
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-chart-4/90 font-medium">
+                      {pinnedMessage.content}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 text-xs font-semibold text-brand hover:text-brand underline"
+                  onClick={() =>
+                    document
+                      .getElementById(`message-${pinnedMessage.id}`)
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }
+                >
+                  Jump to message
+                </button>
               </div>
             </div>
-            <button
-              type="button"
-              className="shrink-0 text-xs font-semibold text-brand hover:text-brand underline"
-              onClick={() =>
-                document
-                  .getElementById(`message-${pinnedMessage.id}`)
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              }
-            >
-              Jump to message
-            </button>
-          </div>
+          )}
+
+          {(resolutionScore !== null || aiSummary) && (
+            <div className="xl:hidden max-w-4xl mx-auto w-full rounded-lg border border-border/60 bg-card/50 px-4 py-2.5 flex items-start gap-3">
+              {resolutionScore !== null && (
+                <span
+                  className={cn(
+                    'shrink-0 text-xs font-bold tabular-nums rounded-full px-2 py-0.5',
+                    resolutionScore >= 70
+                      ? 'bg-chart-2/10 text-chart-2'
+                      : resolutionScore >= 40
+                        ? 'bg-chart-4/10 text-chart-4'
+                        : 'bg-destructive/10 text-destructive'
+                  )}
+                >
+                  {Math.round(resolutionScore)}/100
+                </span>
+              )}
+              {aiSummary && (
+                <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                  <Sparkles size={11} className="inline mr-1 -mt-0.5 text-brand" />
+                  {aiSummary}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Scrollable messages — flex-1 */}
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto px-6 py-4"
@@ -610,25 +650,28 @@ export function ThreadLiveWrapper({
           ) : (
             <ErrorBoundary>
               {hasMoreMessages && (
-                <div className="mb-4 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={loadMoreMessages}
-                    disabled={isLoadingMore}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoadingMore ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        Load older messages ({totalMessageCount - displayedCount} remaining)
-                      </>
-                    )}
-                  </button>
-                </div>
+                <>
+                  <div ref={loadMoreSentinelRef} aria-hidden className="h-px" />
+                  <div className="mb-4 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={loadMoreMessages}
+                      disabled={isLoadingMore}
+                      className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          Load older messages ({totalMessageCount - displayedCount} remaining)
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
               )}
               <CommentTree
                 messages={liveMessages}
@@ -645,7 +688,6 @@ export function ThreadLiveWrapper({
         </div>
       </div>
 
-      {/* Scroll-to-bottom floating button */}
       {isScrolledUp && (
         <div className="absolute bottom-32 right-6 z-30 flex flex-col items-center gap-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
           <button
@@ -667,8 +709,7 @@ export function ThreadLiveWrapper({
         </div>
       )}
 
-      {/* Composer container */}
-      <div className="p-4 bg-background border-t border-border/60 shrink-0">
+      <div className="p-4 border-t border-border/60 shrink-0">
         <div className="max-w-4xl mx-auto">
           <PostMessageForm
             threadId={threadId}

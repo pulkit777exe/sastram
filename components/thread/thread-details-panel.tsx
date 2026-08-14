@@ -23,7 +23,7 @@ export function ThreadDetailsPanel({ children }: { children: ReactNode }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="xl:hidden fixed top-19 right-4 z-40 flex items-center gap-1.5 px-3 h-9 rounded-lg border border-border/60 bg-background/95 backdrop-blur text-xs font-semibold text-muted-foreground shadow-linear-sm hover:bg-muted/40 hover:text-foreground transition-colors"
+        className="xl:hidden fixed top-19 right-4 z-40 flex items-center gap-1.5 px-3 h-9 rounded-lg border border-border/60 bg-card/95 backdrop-blur text-xs font-semibold text-muted-foreground shadow-linear-sm hover:bg-muted/40 hover:text-foreground transition-colors"
         aria-label="Show thread details"
       >
         Details
@@ -33,11 +33,11 @@ export function ThreadDetailsPanel({ children }: { children: ReactNode }) {
       {open && (
         <div className="fixed inset-0 z-50 xl:hidden">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
+            className="absolute inset-0 bg-background/40 backdrop-blur-sm animate-in fade-in duration-150"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-0 bottom-0 w-[88%] max-w-90 bg-background border-l border-border/60 shadow-linear-lg animate-in slide-in-from-right-2 duration-200 overflow-y-auto">
-            <div className="flex items-center justify-between px-4 h-12 border-b border-border/60 sticky top-0 bg-background/95 backdrop-blur z-10">
+          <div className="absolute right-0 top-0 bottom-0 w-[88%] max-w-90 bg-card border-l border-border/60 shadow-linear-lg animate-in slide-in-from-right-2 duration-200 overflow-y-auto">
+            <div className="flex items-center justify-between px-4 h-12 border-b border-border/60 sticky top-0 bg-card/95 backdrop-blur z-10">
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Thread Details
               </span>

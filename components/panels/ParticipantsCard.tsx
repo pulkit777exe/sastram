@@ -45,7 +45,7 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
                 </div>
               )}
               {p.id === ownerId && (
-                <span className="absolute -bottom-0 -right-0 h-2 w-2 rounded-full border-card bg-chart-2" />
+                <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border-card bg-chart-2" />
               )}
             </div>
           ))}

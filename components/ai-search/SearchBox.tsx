@@ -71,7 +71,6 @@ export function SearchBox({
     ? COMMANDS.filter((c) => c.name.slice(1).startsWith(query))
     : [];
 
-  // Sync active row highlight position
   useLayoutEffect(() => {
     const target = rowRefs.current[active];
     if (target) setRowBox({ top: target.offsetTop, height: target.offsetHeight });
@@ -118,15 +117,15 @@ export function SearchBox({
   return (
     <div className="w-full transition-all duration-300">
       {!compact && (
-        <div className="flex items-center gap-2 mb-3 justify-between flex-wrap">
+        <div className="flex items-center gap-4 mb-3 flex-wrap border-b border-zinc-800/70">
           {SOURCE_FILTERS.map((f) => (
             <button
               key={f.value}
               onClick={() => setSourceFilter(f.value)}
-              className={`px-3 py-1 text-xs rounded-full border transition-all duration-200 cursor-pointer ${
+              className={`pb-2 text-xs font-medium transition-colors cursor-pointer border-b-2 -mb-px ${
                 sourceFilter === f.value
-                  ? 'bg-ink text-canvas border-ink'
-                  : 'bg-transparent text-ink-2 border-line hover:border-line-strong hover:text-ink'
+                  ? 'text-zinc-100 border-zinc-100'
+                  : 'text-zinc-500 border-transparent hover:text-zinc-300'
               }`}
             >
               {f.label}
@@ -141,16 +140,15 @@ export function SearchBox({
         {menu && rows.length > 0 && (
           <div
             onMouseLeave={() => setEngaged(false)}
-            className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-[10px] bg-surface p-1 shadow-raised"
+            className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-[10px] bg-zinc-900 border border-zinc-800 p-1 shadow-xl"
             style={{
               animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
               transformOrigin: 'bottom center',
             }}
           >
-            {/* Gliding highlight */}
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-x-1 rounded-[6px] bg-hover"
+              className="pointer-events-none absolute inset-x-1 rounded-[6px] bg-zinc-800"
               style={{
                 top: rowBox?.top ?? 0,
                 height: rowBox?.height ?? 0,
@@ -169,11 +167,11 @@ export function SearchBox({
                 onClick={() => pick(row)}
                 className="relative z-10 flex h-9 w-full items-center gap-2.5 rounded-[6px] px-2 text-left"
               >
-                <span className="shrink-0 text-[12.5px] font-medium text-ink font-mono">{row.name}</span>
-                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-3">{row.desc}</span>
+                <span className="shrink-0 text-[12.5px] font-medium text-zinc-100 font-mono">{row.name}</span>
+                <span className="min-w-0 flex-1 truncate text-[12px] text-zinc-500">{row.desc}</span>
               </button>
             ))}
-            <div className="mt-1 border-t border-line px-2 pt-1.5 pb-1 text-[11px] text-ink-3">
+            <div className="mt-1 border-t border-zinc-800 px-2 pt-1.5 pb-1 text-[11px] text-zinc-500">
               Type to search commands · ↑↓ to navigate · Enter to pick
             </div>
           </div>
@@ -181,26 +179,21 @@ export function SearchBox({
 
         {/* Composer */}
         <div
-          className={`relative flex flex-col gap-1 overflow-x-hidden border border-line bg-surface p-1 shadow-card transition-[border-color,border-radius] duration-150 focus-within:border-line-strong ${
-            compact ? 'rounded-[12px]' : 'rounded-[16px]'
+          className={`relative flex flex-col gap-1 border border-zinc-700/50 bg-zinc-900/80 backdrop-blur-sm p-3 shadow-lg transition-[border-color,border-radius] duration-150 focus-within:border-zinc-600 ${
+            compact ? 'rounded-[12px]' : 'rounded-2xl'
           }`}
         >
-          {/* Hidden measure span */}
           <span
             ref={measureRef}
             aria-hidden
-            className="pointer-events-none absolute invisible whitespace-pre text-[13px] leading-[18px]"
+            className="pointer-events-none absolute invisible whitespace-pre text-[14px] leading-[20px]"
           >
             {draft}
           </span>
 
           <div
             ref={controlsRef}
-            className={`grid items-end gap-x-0.5 gap-y-1 ${
-              expanded
-                ? 'grid-cols-[minmax(0,1fr)_auto_24px_24px]'
-                : 'grid-cols-[minmax(0,1fr)_auto_24px_24px]'
-            }`}
+            className="grid items-end gap-x-0.5 gap-y-2 grid-cols-[minmax(0,1fr)_auto_24px_24px]"
           >
             {/* Textarea */}
             <textarea
@@ -239,7 +232,7 @@ export function SearchBox({
                   : 'Search or type / for commands…'
               }
               aria-label="Search query"
-              className="min-h-6 min-w-0 w-full col-span-full resize-none bg-transparent px-1 py-[3px] text-[13px] leading-[18px] text-ink outline-none [overflow-wrap:anywhere] placeholder:text-ink-3"
+              className="min-h-6 min-w-0 w-full col-span-full resize-none bg-transparent px-1 py-[3px] text-[14px] leading-[20px] text-zinc-100 outline-none [overflow-wrap:anywhere] placeholder:text-zinc-500"
             />
 
             {/* Model picker */}
@@ -249,8 +242,8 @@ export function SearchBox({
                 type="button"
                 aria-expanded={modelOpen}
                 aria-label="Choose search mode"
-                onClick={() => { setModelOpen((o) => !o); }}
-                className="flex h-6 shrink-0 items-center gap-1 px-1.5 text-[11px] font-medium text-ink-2 border border-line rounded-md transition-colors duration-150 hover:border-line-strong hover:text-ink"
+                onClick={() => setModelOpen((o) => !o)}
+                className="flex h-6 shrink-0 items-center gap-1 px-2 text-[11px] font-medium text-zinc-400 border border-zinc-700 rounded-md transition-colors duration-150 hover:border-zinc-600 hover:text-zinc-100"
               >
                 {model.name}
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -260,7 +253,7 @@ export function SearchBox({
 
               {modelOpen && (
                 <div
-                  className="absolute left-0 bottom-full z-20 mb-1 w-fit min-w-[120px] rounded-[10px] bg-surface p-1 shadow-raised"
+                  className="absolute left-0 bottom-full z-20 mb-1 w-fit min-w-[120px] rounded-[10px] bg-zinc-900 border border-zinc-800 p-1 shadow-xl"
                   style={{
                     animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
                     transformOrigin: 'bottom left',
@@ -272,10 +265,10 @@ export function SearchBox({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => { setModel(m); setModelOpen(false); inputRef.current?.focus(); }}
-                      className="flex h-7.5 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors duration-100 hover:bg-hover"
+                      className="flex h-7.5 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors duration-100 hover:bg-zinc-800"
                     >
-                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{m.name}</span>
-                      <span className={`shrink-0 text-ink ${m.key === model.key ? '' : 'invisible'}`}>
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-zinc-100">{m.name}</span>
+                      <span className={`shrink-0 text-zinc-100 ${m.key === model.key ? '' : 'invisible'}`}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 6L9 17l-5-5" />
                         </svg>
@@ -287,11 +280,11 @@ export function SearchBox({
             </div>
 
             {!compact && (
-              <span className="col-start-2 row-start-2 text-[11px] text-ink-3 flex items-center gap-1 h-6 px-0.5">
+              <span className="col-start-2 row-start-2 text-[11px] text-zinc-500 flex items-center gap-1 h-6 px-0.5">
                 {sourceFilter !== 'all' && (
-                  <span className="inline-flex h-4.5 items-center rounded px-1 text-[10px] text-ink-2 shadow-hairline gap-0.5">
+                  <span className="inline-flex h-4.5 items-center rounded px-1 text-[10px] text-zinc-300 bg-zinc-800 gap-0.5">
                     {SOURCE_FILTERS.find(f => f.value === sourceFilter)?.label}
-                    <button type="button" onClick={() => setSourceFilter('all')} className="text-ink-3 hover:text-ink">×</button>
+                    <button type="button" onClick={() => setSourceFilter('all')} className="text-zinc-500 hover:text-zinc-100">×</button>
                   </span>
                 )}
               </span>
@@ -303,10 +296,10 @@ export function SearchBox({
               aria-label="Send"
               disabled={!canSend}
               onClick={send}
-              className="flex size-6 shrink-0 items-center justify-center rounded-md transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
+              className="flex size-7 shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
               style={{
-                background: canSend ? 'var(--ink)' : 'var(--line-strong)',
-                color: canSend ? 'var(--surface)' : 'var(--ink-2)',
+                background: canSend ? '#3b6ef5' : '#3f3f46',
+                color: canSend ? '#ffffff' : '#71717a',
               }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -317,9 +310,8 @@ export function SearchBox({
         </div>
       </div>
 
-      {/* Character count */}
       {!compact && draft.length > 400 && (
-        <p className="text-xs text-ink-3 mt-1 text-right">{draft.length}/500</p>
+        <p className="text-xs text-zinc-500 mt-1 text-right">{draft.length}/500</p>
       )}
     </div>
   );

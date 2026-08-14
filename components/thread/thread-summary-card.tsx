@@ -17,6 +17,7 @@ interface ThreadSummaryCardProps {
 
 const POLL_INTERVAL_MS = 3_000;
 const MAX_POLL_MS = 90_000;
+const SUMMARY_UNAVAILABLE = 'Summary unavailable.';
 
 export function ThreadSummaryCard({ threadId, initialSummary, className }: ThreadSummaryCardProps) {
   const router = useRouter();
@@ -51,7 +52,12 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   }, []);
 
   useEffect(() => {
-    if (isPendingRef.current && initialSummary !== summaryAtRequestRef.current) {
+    // Stop as soon as ANY summary value appears. With inline (degraded-mode)
+    // execution the DB write happens before the POST returns, so the first
+    // refresh after the request always carries the result — even if it is the
+    // same fallback value as before. Comparing only for "changed" values let a
+    // repeated failure poll for the full 90s and report a misleading timeout.
+    if (isPendingRef.current && initialSummary) {
       isPendingRef.current = false;
       setIsPending(false);
       setTimedOut(false);
@@ -113,7 +119,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   return (
     <div
       className={cn(
-        'rounded-xl border p-5 relative overflow-hidden bg-background/50 shadow-linear-sm',
+        'rounded-xl border p-5 relative overflow-hidden bg-card/50 shadow-linear-sm',
         className
       )}
     >
@@ -168,6 +174,21 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         ) : summary ? (
           isAiNotConfigured(summary) ? (
             <AiNotConfiguredNotice />
+          ) : summary === SUMMARY_UNAVAILABLE ? (
+            <div className="flex flex-col items-center justify-center py-2 text-center">
+              <p className="text-xs text-muted-foreground mb-3">
+                Sai couldn&apos;t generate a summary this time. Please try again.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void requestSummary()}
+                className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
+              >
+                <Sparkles size={12} className="mr-2" />
+                Try Again
+              </Button>
+            </div>
           ) : (
             <div className="prose prose-sm prose-neutral max-w-none">
               <p className="text-xs text-brand/80 leading-relaxed">{summary}</p>
