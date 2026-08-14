@@ -66,8 +66,8 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     where: { threadId: threadId, deletedAt: null },
   });
 
-  if (totalMessageCount < 50) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Thread needs at least 50 messages before a summary can be generated.'), { status: 400 });
+  if (totalMessageCount < 20) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Thread needs at least 20 messages before a summary can be generated.'), { status: 400 });
   }
 
   const thread = await prisma.thread.findFirst({

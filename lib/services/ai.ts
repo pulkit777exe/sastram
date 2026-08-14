@@ -128,12 +128,23 @@ function parseToxicity(text: string): number {
 }
 
 function parseResolutionScore(text: string): number | null {
-  const score = parseInt(text.trim(), 10);
-  if (isNaN(score)) {
-    logger.warn('[parseResolutionScore] Non-integer response from AI — treating as unavailable', { text });
-    return null;
+  // Try plain integer first
+  const plain = parseInt(text.trim(), 10);
+  if (!isNaN(plain)) {
+    return Math.max(0, Math.min(100, plain));
   }
-  return Math.max(0, Math.min(100, score));
+
+  // Fallback: extract from JSON-wrapped or prose-wrapped output
+  const match = text.match(/(?: score|"score"|score:\s*)(\d{1,3})\b/i);
+  if (match) {
+    const score = parseInt(match[1], 10);
+    if (!isNaN(score)) {
+      return Math.max(0, Math.min(100, score));
+    }
+  }
+
+  logger.warn('[parseResolutionScore] Non-integer response from AI — treating as unavailable', { text: text.slice(0, 200) });
+  return null;
 }
 
 function makeAbortController(): { signal: AbortSignal; clear: () => void } {

@@ -1,7 +1,6 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
-import { applyConfidenceDecay } from '@/lib/utils/confidence-decay';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 import { sanitizeUserContent, sanitizeHtmlContent } from '@/lib/services/content-safety';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
@@ -53,7 +52,14 @@ export async function handleThreadDnaJob(data: ThreadDnaJobData) {
 export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
   logger.info('[worker:ai] resolution-score job');
   assertThreadJob(data);
-  const { threadId, messages, subscriberIds, threadName, oldScore, isOutdated, cronJob } = data;
+  const { threadId, messages, subscriberIds, threadName, isOutdated, cronJob } = data;
+
+  // Fetch the current score from DB to avoid stale-oldScore race with on-demand API
+  const currentThread = await prisma.thread.findUnique({
+    where: { id: threadId },
+    select: { resolutionScore: true },
+  });
+  const oldScore = currentThread?.resolutionScore ?? data.oldScore ?? null;
 
   const resolutionScore = await calculateResolutionScore(threadId, messages);
 
@@ -295,25 +301,15 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
   const score = result.value;
 
   if (score === null) {
-    logger.info(`Resolution score unavailable (AI not configured) for ${threadId}, skipping DB write`);
+    logger.warn(`Resolution score unavailable (malformed AI response) for ${threadId}, skipping DB write`);
     return null;
-  }
-
-  const thread = await prisma.thread.findFirst({
-    where: { id: threadId, deletedAt: null },
-    select: { updatedAt: true },
-  });
-
-  const { decayedScore, ageDays } = applyConfidenceDecay(score, thread?.updatedAt ?? new Date());
-  if (ageDays >= 30) {
-    logger.info(`Confidence decay applied for ${threadId}: raw=${score}, decayed=${decayedScore}, ageDays=${Math.round(ageDays)}`);
   }
 
   await prisma.thread.update({
     where: { id: threadId },
-    data: { resolutionScore: decayedScore, lastVerifiedAt: new Date() },
+    data: { resolutionScore: score, lastVerifiedAt: new Date() },
   });
-  return decayedScore;
+  return score;
 }
 
 async function detectConflicts(threadId: string, messages: JobMessageData[]) {

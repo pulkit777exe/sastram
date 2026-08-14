@@ -4,11 +4,11 @@ import { requireSessionOrThrow } from '@/modules/auth/session';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/services/ai';
-import { applyConfidenceDecay } from '@/lib/utils/confidence-decay';
+import { logger } from '@/lib/infrastructure/logger';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { consumeAiAnalysisQuota } from '@/lib/services/daily-quota';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { z } from 'zod';
 
 const scoreRequestSchema = z.object({
@@ -30,15 +30,9 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('RATE_LIMITED', `Daily AI analysis limit reached. Resets at UTC midnight.`), { status: 429 });
   }
 
-   // Global daily spend cap
+   // Global daily spend cap (RESOLUTION_SCORE is CHEAP — always allowed when cap service is up)
    const spendCap = await enforceAiSpendCap(AiCallPath.RESOLUTION_SCORE);
    if (!spendCap.allowed) {
-     return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
-   }
-
-   // Hard cost-aware gate: resolution score is an EXPENSIVE synthesis.
-   const gate = evaluateAiCostGate({ path: AiCallPath.RESOLUTION_SCORE, spendCapAllowed: spendCap.allowed });
-   if (!gate.allowed) {
      return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
    }
 
@@ -64,10 +58,13 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
   }
 
-  // Fetch thread and messages
+  // Fetch thread and messages — snapshot lastVerifiedAt for optimistic locking
   const thread = await prisma.thread.findFirst({
     where: { id: threadId, deletedAt: null },
-    include: {
+    select: {
+      id: true,
+      updatedAt: true,
+      lastVerifiedAt: true,
       messages: {
         take: Math.min(parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10) || 50, 100),
         orderBy: { createdAt: 'desc' },
@@ -79,6 +76,8 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   if (!thread) {
     return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: 404 });
   }
+
+  const previousLastVerifiedAt = thread.lastVerifiedAt;
 
   // Reverse to chronological order for AI
   const messages = thread.messages.reverse();
@@ -93,14 +92,20 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(ok({ score: null }));
   }
 
-  const { decayedScore } = applyConfidenceDecay(score, thread.updatedAt);
-
-  await prisma.thread.update({
-    where: { id: threadId },
-    data: { resolutionScore: decayedScore, lastVerifiedAt: new Date() },
+  // Optimistic locking: only write if no other process updated lastVerifiedAt
+  const updated = await prisma.thread.updateMany({
+    where: {
+      id: threadId,
+      lastVerifiedAt: previousLastVerifiedAt,
+    },
+    data: { resolutionScore: score, lastVerifiedAt: new Date() },
   });
 
-  return NextResponse.json(ok({ score: decayedScore }));
+  if (updated.count === 0) {
+    logger.info(`[resolution-score] Skipped write for ${threadId} — score was updated concurrently`);
+  }
+
+  return NextResponse.json(ok({ score }));
 });
 
 export { handler as POST };

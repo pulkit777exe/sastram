@@ -1,28 +1,30 @@
 const CONFIDENCE_HALF_LIFE_DAYS = 90;
 const RECENCY_THRESHOLD_DAYS = 30;
-const MIN_CONFIDENCE_SCORE = 5;
+const MIN_CONFIDENCE = 0.05;
 
 /**
- * An old resolution score is less trustworthy than a fresh one, so it decays
- * exponentially past the recency threshold — but never to zero, since a stale
- * answer is still worth more than no answer.
+ * Computes a confidence factor (0–1) representing how trustworthy a resolution
+ * score is based on age. The resolution score itself is NOT decayed — it reflects
+ * how resolved the thread is (a permanent property of the discussion). Only our
+ * confidence that the score is still accurate decays over time.
+ *
+ * @param scoreTime - when the score was last computed (lastVerifiedAt)
+ * @returns confidence factor (0–1) and age in days
  */
-export function applyConfidenceDecay(
-  rawScore: number,
-  updatedAt: Date
-): { decayedScore: number; ageDays: number } {
-  const ageMs = Date.now() - updatedAt.getTime();
+export function computeConfidence(
+  scoreTime: Date
+): { confidence: number; ageDays: number } {
+  const ageMs = Date.now() - scoreTime.getTime();
   const ageDays = Math.max(0, ageMs / (1000 * 60 * 60 * 24));
 
   if (ageDays < RECENCY_THRESHOLD_DAYS) {
-    return { decayedScore: Math.round(rawScore), ageDays };
+    return { confidence: 1, ageDays };
   }
 
-  const decayFactor = Math.pow(0.5, ageDays / CONFIDENCE_HALF_LIFE_DAYS);
-  const decayedScore = Math.round(rawScore * decayFactor);
+  const confidence = Math.max(
+    MIN_CONFIDENCE,
+    Math.pow(0.5, (ageDays - RECENCY_THRESHOLD_DAYS) / CONFIDENCE_HALF_LIFE_DAYS),
+  );
 
-  return {
-    decayedScore: Math.max(MIN_CONFIDENCE_SCORE, decayedScore),
-    ageDays,
-  };
+  return { confidence, ageDays };
 }

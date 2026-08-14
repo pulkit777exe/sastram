@@ -4,7 +4,12 @@ import { AIJobType } from '@/lib/queue/config';
 import { getUpstashRedis, ATOMIC_INCR_EXPIRE_LUA, getSecondsUntilUtcMidnight } from '@/lib/infrastructure/redis-upstash';
 import type { AIInlineJobData } from '@/lib/queue/types';
 
-const QSTASH_CONFIGURED = !!(process.env.QSTASH_TOKEN && process.env.QSTASH_URL);
+// QSTASH_DEV points the SDK at a local dev server (127.0.0.1:8080) that does
+// not reliably deliver jobs to a local Next.js app. In dev mode, run jobs
+// inline (degraded mode) so summaries and @sai replies complete synchronously
+// and the client-side polling loops terminate.
+const QSTASH_DEV = process.env.QSTASH_DEV === 'true';
+const QSTASH_CONFIGURED = !QSTASH_DEV && !!(process.env.QSTASH_TOKEN && process.env.QSTASH_URL);
 let client: Client | null = null;
 if (QSTASH_CONFIGURED) {
   try {

@@ -16,6 +16,8 @@ import { AiCallPath } from '@/lib/services/ai-cost-classification';
 
 const BATCH_SIZE = 25;
 const QSTASH_GUARD_THRESHOLD = 400;
+const SCORE_FRESHNESS_HOURS = 24;
+const HIGH_SCORE_THRESHOLD = 70;
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
@@ -48,12 +50,24 @@ export async function GET(req: NextRequest) {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           },
           deletedAt: null,
+          // Skip threads with a high score verified recently — no need to re-enqueue
+          NOT: {
+            AND: [
+              { resolutionScore: { gte: HIGH_SCORE_THRESHOLD } },
+              { lastVerifiedAt: { gte: new Date(Date.now() - SCORE_FRESHNESS_HOURS * 60 * 60 * 1000) } },
+            ],
+          },
           ...(cursor ? { id: { gt: cursor } } : {}),
         },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          updatedAt: true,
+          resolutionScore: true,
+          isOutdated: true,
           messages: {
             take: env.AI_ANALYSIS_MESSAGE_LIMIT,
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: 'desc' as const },
             select: {
               id: true,
               content: true,
@@ -80,8 +94,10 @@ export async function GET(req: NextRequest) {
         const subscriberIds = thread.subscriptions
           .filter((sub): sub is { userId: string } & Omit<typeof sub, 'userId'> => sub.userId !== null)
           .map((sub) => sub.userId);
-        const isOutdated = thread.updatedAt < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const oldScore = thread.resolutionScore;
+        // Use the thread's maintained isOutdated flag (set by staleness check job)
+        // instead of computing it at enqueue time, which would be stale by execution.
+        const { isOutdated } = thread;
 
          const jobs: Promise<void>[] = [];
 
