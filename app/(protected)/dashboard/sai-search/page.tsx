@@ -13,9 +13,9 @@ export const metadata: Metadata = {
 
 function SearchPageSkeleton() {
   return (
-    <div className="flex h-screen bg-zinc-950">
+    <div className="flex h-screen bg-canvas">
       {/* Primary Nav Skeleton */}
-      <div className="w-[250px] shrink-0 bg-zinc-900 border-r border-zinc-800 p-4">
+      <div className="w-65 shrink-0 bg-surface border-r border-line p-4">
         <Skeleton className="h-6 w-24 mb-6" />
         <Skeleton className="h-8 w-full mb-4" />
         <div className="space-y-2">
@@ -28,7 +28,7 @@ function SearchPageSkeleton() {
       </div>
 
       {/* History Sidebar Skeleton */}
-      <div className="w-[300px] shrink-0 border-r border-zinc-800 p-4">
+      <div className="w-75 shrink-0 border-r border-line p-4">
         <Skeleton className="h-5 w-12 mb-4" />
         <Skeleton className="h-8 w-full mb-4" />
         <Skeleton className="h-px w-full mb-4" />
