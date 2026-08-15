@@ -489,7 +489,7 @@ export function SearchPage({ user }: SearchPageProps) {
                 <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
                 <svg
                   viewBox="0 0 200 200"
-                  className="w-32 h-32 text-zinc-500 relative"
+                  className="w-32 h-32 text-ink-3 relative"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1"
@@ -533,17 +533,17 @@ export function SearchPage({ user }: SearchPageProps) {
               </div>
 
               <div className="mb-8 text-center">
-                <h1 className="text-3xl font-bold tracking-tight mb-3 text-zinc-100">
+                <h1 className="text-3xl font-bold tracking-tight mb-3 text-ink">
                   What do you want to search?
                 </h1>
-                <p className="text-sm text-zinc-400 max-w-md mx-auto">
+                <p className="text-sm text-ink-2 max-w-md mx-auto">
                   Sai synthesizes answers from across multiple sources with inline citations.
                 </p>
               </div>
 
               <div className="mb-8 text-center">
-                <p className="text-xs text-zinc-500 mb-2">For example:</p>
-                <ul className="text-sm text-zinc-400 space-y-1">
+                <p className="text-xs text-ink-2 mb-2">For example:</p>
+                <ul className="text-sm text-ink-2 space-y-1">
                   <li>• What are the best patterns for managing state in React?</li>
                   <li>• Latest threads on Hacker News about AI in healthcare.</li>
                   <li>• Compare Arch Linux vs Debian for a developer machine.</li>
@@ -592,38 +592,38 @@ export function SearchPage({ user }: SearchPageProps) {
               )}
 
               {slowHint && appState === 'loading' && (
-                <p className="text-xs text-zinc-500 animate-pulse">
+                <p className="text-xs text-ink-2 animate-pulse">
                   This is taking longer than usual — still working on it…
                 </p>
               )}
 
               {/* Refine prompt */}
               {appState === 'refine' && (
-                <div className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-5 text-center">
-                  <p className="text-sm font-medium text-zinc-300 mb-1">
+                <div className="w-full bg-hover/50 border border-line/50 rounded-2xl p-5 text-center">
+                  <p className="text-sm font-medium text-ink mb-1">
                     Not enough quality sources
                   </p>
-                  <p className="text-xs text-zinc-500 mb-4">
+                  <p className="text-xs text-ink-2 mb-4">
                     Sai found fewer than 2 reliable sources for this query. Try refining it with
                     more specifics.
                   </p>
                   {stream.suggestion && (
-                    <p className="text-xs text-zinc-500 mb-2">
+                    <p className="text-xs text-ink-2 mb-2">
                       Suggested query:{' '}
-                      <span className="italic text-zinc-300">&quot;{stream.suggestion}&quot;</span>
+                      <span className="italic text-ink">&quot;{stream.suggestion}&quot;</span>
                     </p>
                   )}
                   <div className="flex flex-wrap gap-2 justify-center">
                     <button
                       onClick={handleNewSearch}
-                      className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 transition-colors"
+                      className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full bg-ink text-canvas hover:bg-ink/90 transition-colors"
                     >
                       Start a new search
                     </button>
                     {stream.suggestion && (
                       <button
                         onClick={handleRefineSuggestion}
-                        className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors"
+                        className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full border border-line-strong text-ink hover:bg-hover transition-colors"
                       >
                         Try suggested query
                       </button>
@@ -631,13 +631,13 @@ export function SearchPage({ user }: SearchPageProps) {
                   </div>
                   {stream.sources.length > 0 && (
                     <>
-                      <p className="text-xs text-zinc-600 mt-3">
+                      <p className="text-xs text-ink-3 mt-3">
                         {stream.sources.length} lower-quality source
                         {stream.sources.length !== 1 ? 's' : ''} were still found.
                       </p>
                       <button
                         onClick={() => setShowLowerQualitySources((prev) => !prev)}
-                        className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 mt-1 mx-auto"
+                        className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink mt-1 mx-auto"
                       >
                         <span>{showLowerQualitySources ? 'Hide' : 'View'}</span>
                         {showLowerQualitySources ? (
@@ -674,12 +674,12 @@ export function SearchPage({ user }: SearchPageProps) {
 
               {appState === 'blocked' && (
                 <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
-                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
-                    <Clock size={20} className="text-zinc-400" />
+                  <div className="w-12 h-12 rounded-full bg-hover flex items-center justify-center mb-4">
+                    <Clock size={20} className="text-ink-2" />
                   </div>
-                  <h2 className="text-lg font-semibold mb-2 text-zinc-100">Search limit reached</h2>
-                  <p className="text-sm text-zinc-400 max-w-md mb-6">{errorMessage}</p>
-                  <p className="text-xs text-zinc-600">
+                  <h2 className="text-lg font-semibold mb-2 text-ink">Search limit reached</h2>
+                  <p className="text-sm text-ink-2 max-w-md mb-6">{errorMessage}</p>
+                  <p className="text-xs text-ink-3">
                     This resets automatically — no need to retry right now.
                   </p>
                 </div>
@@ -690,13 +690,13 @@ export function SearchPage({ user }: SearchPageProps) {
                   <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
                     <AlertCircle size={20} className="text-red-400" />
                   </div>
-                  <h2 className="text-lg font-semibold mb-2 text-zinc-100">
+                  <h2 className="text-lg font-semibold mb-2 text-ink">
                     {isOffline ? "You're offline" : 'Something went wrong'}
                   </h2>
-                  <p className="text-sm text-zinc-400 max-w-md mb-6">{errorMessage}</p>
+                  <p className="text-sm text-ink-2 max-w-md mb-6">{errorMessage}</p>
                   <button
                     onClick={handleNewSearch}
-                    className="px-4 py-2 text-sm font-medium bg-zinc-100 text-zinc-900 rounded-xl hover:bg-zinc-200 transition-colors"
+                    className="px-4 py-2 text-sm font-medium bg-ink text-canvas rounded-xl hover:bg-ink/90 transition-colors"
                   >
                     {isOffline ? 'Retry when back online' : 'Try Again'}
                   </button>
@@ -723,7 +723,7 @@ export function SearchPage({ user }: SearchPageProps) {
 
                       {stream.followUps.length > 0 && (
                         <div className="mt-4 space-y-2">
-                          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                          <p className="text-xs font-medium text-ink-2 uppercase tracking-wider">
                             Related
                           </p>
                           <div className="flex flex-wrap gap-2">
@@ -731,12 +731,12 @@ export function SearchPage({ user }: SearchPageProps) {
                               <button
                                 key={f}
                                 onClick={() => handleFollowUp(f)}
-                                className="group flex items-center gap-2 text-left text-sm text-zinc-300 bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600 rounded-xl px-4 py-2.5 transition-colors"
+                                className="group flex items-center gap-2 text-left text-sm text-ink bg-hover/50 border border-line/50 hover:border-line-strong rounded-xl px-4 py-2.5 transition-colors"
                               >
                                 <span className="flex-1">{f}</span>
                                 <ArrowRight
                                   size={14}
-                                  className="text-zinc-500 group-hover:text-zinc-300 transition-colors shrink-0"
+                                  className="text-ink-2 group-hover:text-ink transition-colors shrink-0"
                                 />
                               </button>
                             ))}
@@ -750,7 +750,7 @@ export function SearchPage({ user }: SearchPageProps) {
                         <TableView sources={stream.sources} />
                       ) : (
                         <div className="space-y-3">
-                          <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider px-1">
+                          <h3 className="text-xs font-medium text-ink-2 uppercase tracking-wider px-1">
                             Sources ({stream.sources.length})
                           </h3>
                           <div className="grid gap-3">
@@ -793,13 +793,13 @@ export function SearchPage({ user }: SearchPageProps) {
                   skeleton={
                     <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
                       <div className="space-y-3">
-                        <div className="bg-zinc-800/50 rounded-2xl h-40" />
-                        <div className="bg-zinc-800/50 rounded-2xl h-40" />
+                    <div className="bg-hover/50 rounded-2xl h-40" />
+                    <div className="bg-hover/50 rounded-2xl h-40" />
                       </div>
                       <div className="space-y-3">
-                        <div className="bg-zinc-800/50 rounded-xl h-24" />
-                        <div className="bg-zinc-800/50 rounded-xl h-24" />
-                        <div className="bg-zinc-800/50 rounded-xl h-24" />
+                    <div className="bg-hover/50 rounded-xl h-24" />
+                    <div className="bg-hover/50 rounded-xl h-24" />
+                    <div className="bg-hover/50 rounded-xl h-24" />
                       </div>
                     </div>
                   }
