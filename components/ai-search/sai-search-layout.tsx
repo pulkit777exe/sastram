@@ -157,15 +157,6 @@ export function SaiSearchLayout({
     [pendingDeleteId, armDelete, confirmDelete]
   );
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const input = form.querySelector('input') as HTMLInputElement;
-    if (input?.value.trim()) {
-      router.push(`/dashboard/sai-search?q=${encodeURIComponent(input.value.trim())}`);
-    }
-  };
-
   const groupedSearches: { group: string; items: HistoryItem[] }[] = [];
   for (const item of searches) {
     const group = dateGroup(item.createdAt);
@@ -180,28 +171,28 @@ export function SaiSearchLayout({
 
     return (
       <div key={item.id} className="group relative">
-        {isSelected && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-zinc-100" />}
+        {isSelected && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-sai-accent" />}
         <button
           onClick={() => onSelectSession?.(item)}
           aria-current={isSelected ? 'true' : undefined}
           className={cn(
             'w-full text-left pr-3 py-1.5 text-xs rounded-lg transition-colors truncate flex items-center gap-1.5',
             isSelected
-              ? 'bg-zinc-800/80 text-zinc-100 font-medium'
-              : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40'
+              ? 'bg-hover/80 text-ink font-medium'
+              : 'text-ink-2 hover:text-ink hover:bg-hover/40'
           )}
           style={{ paddingLeft: depth > 0 ? 22 : 12 }}
         >
-          {depth > 0 && <CornerDownRight size={11} className="shrink-0 text-zinc-600" />}
+          {depth > 0 && <CornerDownRight size={11} className="shrink-0 text-ink-3" />}
           <span className="truncate block flex-1">{label(item)}</span>
         </button>
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {!isPendingDelete && <span className="text-xs text-zinc-600 pointer-events-none">{item.sourceCount} src</span>}
+          {!isPendingDelete && <span className="text-xs text-ink-3 pointer-events-none">{item.sourceCount} src</span>}
           <button
             onClick={(e) => handleDeleteClick(item.id, e)}
             className={cn(
               'p-0.5 transition-colors rounded',
-              isPendingDelete ? 'text-red-400 bg-red-500/10 opacity-100' : 'text-zinc-600 hover:text-red-400'
+              isPendingDelete ? 'text-red-400 bg-red-500/10 opacity-100' : 'text-ink-3 hover:text-red-400'
             )}
             aria-label={isPendingDelete ? 'Confirm delete' : 'Remove from history'}
             title={isPendingDelete ? 'Click again to delete' : 'Remove from history'}
@@ -214,37 +205,29 @@ export function SaiSearchLayout({
   };
 
   return (
+    // ── Row 1: TWO SIBLINGS — history column, then content column ──
     <div className="flex h-full w-full overflow-hidden">
-      {/* History column — this is the ONLY sidebar this component owns */}
-      <div className="w-70 h-full shrink-0 border-r border-zinc-800 flex flex-col overflow-hidden">
+
+      {/* ══ SIBLING A: History column (fixed 280px) ══ */}
+      <div className="w-80 h-full shrink-0 border-r border-line flex flex-col overflow-hidden">
         <div className="px-4 pt-4 pb-3 shrink-0">
-          <h2 className="text-sm font-semibold text-zinc-100 tracking-tight">Sai</h2>
+          <h2 className="text-sm font-semibold text-ink tracking-tight">Sai</h2>
         </div>
 
-        <div className="px-3 shrink-0 space-y-0.5">
+        <div className="px-3 shrink-0">
           <button
             onClick={onNewSearch}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 rounded-lg transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-ink-2 hover:text-ink hover:bg-hover/40 rounded-lg transition-colors"
           >
             <Plus size={14} />
             New Search
           </button>
-          <button
-            onClick={onOpenApiKeys}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 rounded-lg transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <KeyRound size={14} />
-              API Keys
-            </span>
-            {hasApiKeys && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-          </button>
         </div>
 
-        <div className="mx-3 my-3 h-px bg-zinc-800 shrink-0" />
+        <div className="mx-3 my-3 h-px bg-line shrink-0" />
 
         <div className="flex items-center justify-between px-3 shrink-0">
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-2 uppercase tracking-wider">
             <Search size={11} />
             History
           </span>
@@ -253,7 +236,7 @@ export function SaiSearchLayout({
             disabled={loading}
             aria-label="Refresh search history"
             title="Refresh"
-            className="p-1 text-zinc-600 hover:text-zinc-300 rounded-md hover:bg-zinc-800/40 transition-colors disabled:opacity-40"
+            className="p-1 text-ink-3 hover:text-ink rounded-md hover:bg-hover/40 transition-colors disabled:opacity-40"
           >
             <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -269,12 +252,12 @@ export function SaiSearchLayout({
           }}
         >
           {searches.length === 0 ? (
-            <p className="px-3 text-xs text-zinc-600 italic">{loading ? 'Loading…' : 'No recent searches'}</p>
+            <p className="px-3 text-xs text-ink-3 italic">{loading ? 'Loading…' : 'No recent searches'}</p>
           ) : (
             <div ref={listEndRef} className="px-3">
               {groupedSearches.map(({ group, items }) => (
                 <div key={group} className="mb-3 last:mb-0">
-                  <p className="pb-1 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider">{group}</p>
+                  <p className="pb-1 text-[11px] font-semibold text-ink-3 uppercase tracking-wider">{group}</p>
                   <div className="space-y-0.5">
                     {items.map((s) => (
                       <div key={s.id}>
@@ -287,23 +270,37 @@ export function SaiSearchLayout({
                   </div>
                 </div>
               ))}
-              {hasMore && <p className="py-2 text-xs text-zinc-700 text-center">Load more…</p>}
+              {hasMore && <p className="py-2 text-xs text-ink-3 text-center">Load more…</p>}
             </div>
           )}
         </div>
       </div>
+      {/* ══ END SIBLING A ══ */}
 
-      {/* Content area — header bar + page content */}
+      {/* ══ SIBLING B: Content column (flex-1, fills remaining width) ══ */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <div className="h-14 flex items-center justify-between px-6 border-b border-zinc-800 shrink-0">
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <span className="font-semibold text-zinc-300">SASTRAM</span>
+
+        {/* Header bar — full width of Sibling B, NOT inside the history div above */}
+        <div className="h-14 flex items-center justify-between px-6 border-b border-line shrink-0">
+          <div className="flex items-center gap-2 text-xs text-ink-2 whitespace-nowrap">
+            <span className="font-semibold text-ink">SASTRAM</span>
             <span>›</span>
             <span className="uppercase tracking-wider">SAI SEARCH</span>
           </div>
+          <button
+            onClick={onOpenApiKeys}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-ink-2 hover:text-ink bg-surface hover:bg-hover rounded-full border border-line transition-colors shrink-0"
+          >
+            <KeyRound size={14} />
+            <span>API Keys</span>
+            {hasApiKeys && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
+          </button>
         </div>
+
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
+      {/* ══ END SIBLING B ══ */}
+
     </div>
   );
 }
