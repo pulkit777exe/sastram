@@ -22,9 +22,9 @@ import { TableView } from '@/components/ai-search/TableView';
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
 import { SaiSearchLayout, type HistoryItem } from '@/components/ai-search/sai-search-layout';
 import type { RetryStyle, FeedbackType } from '@/components/ai-search/StreamingText';
-import { StepLogEntry, ThinkingTrace } from '@/components/ai-search/ThinkingTrace';
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { TaskSteps, type TaskStep } from '@/components/ai-search/TaskSteps';
 import type { SearchConfig, Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
+import { SkeletonSwap } from '@/components/ui/skeleton-swap';
 
 const apiKeysListeners = new Set<() => void>();
 function subscribeToApiKeys(cb: () => void) {
@@ -53,6 +53,20 @@ const PHASE_SLOW_MS: Record<string, number> = {
   reading: 12_000,
   crossref: 12_000,
   synthesizing: 25_000,
+};
+
+const SEARCH_PHASES: TaskStep[] = [
+  { id: 'searching', label: 'Searching' },
+  { id: 'reading', label: 'Reading' },
+  { id: 'crossref', label: 'Cross-referencing' },
+  { id: 'synthesizing', label: 'Synthesizing' },
+];
+
+const PHASE_TO_STEP: Record<string, number> = {
+  searching: 0,
+  reading: 1,
+  crossref: 2,
+  synthesizing: 3,
 };
 
 interface StreamState {
@@ -90,7 +104,8 @@ export function SearchPage({ user }: SearchPageProps) {
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
   const [fromHistory, setFromHistory] = useState(false);
 
-  const [stepLog, setStepLog] = useState<StepLogEntry[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [taskFailed, setTaskFailed] = useState(false);
   const [completedAt, setCompletedAt] = useState<number | undefined>();
   const [startedAt, setStartedAt] = useState<number>(0);
 
@@ -112,13 +127,6 @@ export function SearchPage({ user }: SearchPageProps) {
   const sourceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
   const phaseTimerRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-
-  const logStep = useCallback((phase: SSEPhase, sourceCount: number) => {
-    setStepLog((prev) => {
-      if (prev.length > 0 && prev[prev.length - 1].phase === phase) return prev;
-      return [...prev, { phase, at: Date.now(), sourceCount }];
-    });
-  }, []);
 
   const runSearch = useCallback(
     async (q: string, config: SearchConfig, context?: { query: string; followUp: string }) => {
@@ -152,7 +160,8 @@ export function SearchPage({ user }: SearchPageProps) {
       setSlowHint(false);
       setFromHistory(false);
       setStartedAt(Date.now());
-      setStepLog([]);
+      setCurrentStep(0);
+      setTaskFailed(false);
       setCompletedAt(undefined);
       if (typeof navigator !== 'undefined') setIsOffline(!navigator.onLine);
       setStream({ phase: 'searching', sources: [], synthesis: null, followUps: [] });
@@ -276,8 +285,7 @@ export function SearchPage({ user }: SearchPageProps) {
               case 'synthesizing': {
                 setSlowHint(false);
                 armSlowTimer(event.phase);
-                const nextSourceCount = (event.sources ?? stream.sources).length;
-                logStep(event.phase, nextSourceCount);
+                setCurrentStep(PHASE_TO_STEP[event.phase] ?? 0);
                 const phase = event.phase as SSEPhase;
                 const sources = event.sources;
                 setStream((prev) => ({
@@ -289,6 +297,7 @@ export function SearchPage({ user }: SearchPageProps) {
                 break;
               }
               case 'refine':
+                setCurrentStep(SEARCH_PHASES.length);
                 setStream((prev) => ({
                   ...prev,
                   phase: 'refine',
@@ -302,6 +311,7 @@ export function SearchPage({ user }: SearchPageProps) {
                 phaseTimerRef.current.forEach(clearTimeout);
                 phaseTimerRef.current.clear();
                 setCompletedAt(Date.now());
+                setCurrentStep(SEARCH_PHASES.length);
                 setStream((prev) => ({
                   ...prev,
                   phase: 'done',
@@ -316,12 +326,14 @@ export function SearchPage({ user }: SearchPageProps) {
                 break;
               case 'blocked':
                 setCompletedAt(Date.now());
+                setTaskFailed(true);
                 setErrorMessage(event.message || 'Search blocked by quota or usage cap.');
                 setAppState('blocked');
                 setIsStreaming(false);
                 break;
               case 'error':
                 setCompletedAt(Date.now());
+                setTaskFailed(true);
                 setErrorMessage(event.message || 'Search failed.');
                 setAppState('error');
                 setIsStreaming(false);
@@ -336,6 +348,7 @@ export function SearchPage({ user }: SearchPageProps) {
         phaseTimerRef.current.forEach(clearTimeout);
         phaseTimerRef.current.clear();
         setCompletedAt(Date.now());
+        setTaskFailed(true);
         if (error instanceof DOMException && error.name === 'AbortError') {
           setErrorMessage('Request timed out. Please try again with a simpler query.');
         } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -349,7 +362,7 @@ export function SearchPage({ user }: SearchPageProps) {
         toasts.error('Search failed');
       }
     },
-    [currentSessionId, logStep, stream.sources]
+    [currentSessionId, stream.sources]
   );
 
   const handleSearch = useCallback(
@@ -399,7 +412,8 @@ export function SearchPage({ user }: SearchPageProps) {
     setSlowHint(false);
     setIsOffline(false);
     setCurrentSessionId(undefined);
-    setStepLog([]);
+    setCurrentStep(0);
+    setTaskFailed(false);
     setCompletedAt(undefined);
     setQuery(initialQuery);
   }, [initialQuery]);
@@ -413,7 +427,8 @@ export function SearchPage({ user }: SearchPageProps) {
     setSlowHint(false);
     setIsStreaming(false);
     setFromHistory(true);
-    setStepLog([]);
+    setCurrentStep(SEARCH_PHASES.length);
+    setTaskFailed(false);
     setCompletedAt(undefined);
     setCurrentSessionId(item.id);
     setAppState('results');
@@ -468,43 +483,74 @@ export function SearchPage({ user }: SearchPageProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex flex-col items-center pt-16 sm:pt-24 pb-8 w-full"
+              className="flex flex-col items-center justify-center min-h-full px-4 py-10"
             >
-              <div className="mb-6 relative">
+              <div className="mb-8 relative">
                 <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
                 <svg
                   viewBox="0 0 200 200"
-                  className="w-16 h-16 text-zinc-600 relative"
+                  className="w-32 h-32 text-zinc-500 relative"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1"
                 >
-                  <circle cx="100" cy="100" r="4" fill="currentColor" opacity="0.8" />
-                  <circle cx="100" cy="60" r="3" fill="currentColor" opacity="0.6" />
-                  <circle cx="130" cy="75" r="3" fill="currentColor" opacity="0.6" />
-                  <circle cx="130" cy="125" r="3" fill="currentColor" opacity="0.6" />
-                  <circle cx="100" cy="140" r="3" fill="currentColor" opacity="0.6" />
-                  <circle cx="70" cy="125" r="3" fill="currentColor" opacity="0.6" />
-                  <circle cx="70" cy="75" r="3" fill="currentColor" opacity="0.6" />
-                  <line x1="100" y1="100" x2="100" y2="60" opacity="0.3" />
-                  <line x1="100" y1="100" x2="130" y2="75" opacity="0.3" />
-                  <line x1="100" y1="100" x2="130" y2="125" opacity="0.3" />
-                  <line x1="100" y1="100" x2="100" y2="140" opacity="0.3" />
-                  <line x1="100" y1="100" x2="70" y2="125" opacity="0.3" />
-                  <line x1="100" y1="100" x2="70" y2="75" opacity="0.3" />
+                  <circle cx="100" cy="100" r="4" fill="currentColor" opacity="0.9" />
+                  <circle cx="100" cy="60" r="3" fill="currentColor" opacity="0.7" />
+                  <circle cx="130" cy="75" r="3" fill="currentColor" opacity="0.7" />
+                  <circle cx="130" cy="125" r="3" fill="currentColor" opacity="0.7" />
+                  <circle cx="100" cy="140" r="3" fill="currentColor" opacity="0.7" />
+                  <circle cx="70" cy="125" r="3" fill="currentColor" opacity="0.7" />
+                  <circle cx="70" cy="75" r="3" fill="currentColor" opacity="0.7" />
+                  <circle cx="100" cy="30" r="2.5" fill="currentColor" opacity="0.5" />
+                  <circle cx="145" cy="55" r="2.5" fill="currentColor" opacity="0.5" />
+                  <circle cx="165" cy="100" r="2.5" fill="currentColor" opacity="0.5" />
+                  <circle cx="145" cy="145" r="2.5" fill="currentColor" opacity="0.5" />
+                  <circle cx="100" cy="170" r="2.5" fill="currentColor" opacity="0.5" />
+                  <circle cx="55" cy="145" r="2.5" fill="currentColor" opacity="0.5" />
+                  <circle cx="35" cy="100" r="2.5" fill="currentColor" opacity="0.5" />
+                  <circle cx="55" cy="55" r="2.5" fill="currentColor" opacity="0.5" />
+                  <line x1="100" y1="100" x2="100" y2="60" opacity="0.4" />
+                  <line x1="100" y1="100" x2="130" y2="75" opacity="0.4" />
+                  <line x1="100" y1="100" x2="130" y2="125" opacity="0.4" />
+                  <line x1="100" y1="100" x2="100" y2="140" opacity="0.4" />
+                  <line x1="100" y1="100" x2="70" y2="125" opacity="0.4" />
+                  <line x1="100" y1="100" x2="70" y2="75" opacity="0.4" />
+                  <line x1="100" y1="60" x2="100" y2="30" opacity="0.25" />
+                  <line x1="100" y1="60" x2="145" y2="55" opacity="0.25" />
+                  <line x1="130" y1="75" x2="145" y2="55" opacity="0.25" />
+                  <line x1="130" y1="75" x2="165" y2="100" opacity="0.25" />
+                  <line x1="130" y1="125" x2="165" y2="100" opacity="0.25" />
+                  <line x1="130" y1="125" x2="145" y2="145" opacity="0.25" />
+                  <line x1="100" y1="140" x2="145" y2="145" opacity="0.25" />
+                  <line x1="100" y1="140" x2="100" y2="170" opacity="0.25" />
+                  <line x1="70" y1="125" x2="100" y2="170" opacity="0.25" />
+                  <line x1="70" y1="125" x2="55" y2="145" opacity="0.25" />
+                  <line x1="70" y1="75" x2="55" y2="55" opacity="0.25" />
+                  <line x1="70" y1="75" x2="35" y2="100" opacity="0.25" />
+                  <line x1="70" y1="125" x2="35" y2="100" opacity="0.25" />
+                  <line x1="100" y1="60" x2="55" y2="55" opacity="0.25" />
                 </svg>
               </div>
 
-              <div className="mb-2 text-center">
+              <div className="mb-8 text-center">
                 <h1 className="text-3xl font-bold tracking-tight mb-3 text-zinc-100">
                   What do you want to search?
                 </h1>
                 <p className="text-sm text-zinc-400 max-w-md mx-auto">
-                  Sai synthesizes answers from multiple sources with inline citations.
+                  Sai synthesizes answers from across multiple sources with inline citations.
                 </p>
               </div>
 
-              <div className="relative w-full max-w-2xl mt-8">
+              <div className="mb-8 text-center">
+                <p className="text-xs text-zinc-500 mb-2">For example:</p>
+                <ul className="text-sm text-zinc-400 space-y-1">
+                  <li>• What are the best patterns for managing state in React?</li>
+                  <li>• Latest threads on Hacker News about AI in healthcare.</li>
+                  <li>• Compare Arch Linux vs Debian for a developer machine.</li>
+                </ul>
+              </div>
+
+              <div className="relative w-full max-w-2xl">
                 <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-3xl" />
                 <div className="relative">
                   <SearchBox
@@ -514,15 +560,6 @@ export function SearchPage({ user }: SearchPageProps) {
                     initialQuery={initialQuery}
                   />
                 </div>
-              </div>
-
-              <div className="mt-6 text-center">
-                <p className="text-xs text-zinc-500 mb-2">For example:</p>
-                <ul className="text-sm text-zinc-400 space-y-1">
-                  <li>• What are the best patterns for managing state in React?</li>
-                  <li>• Latest threads on Hacker News about AI in healthcare.</li>
-                  <li>• Compare Arch Linux vs Debian for a developer machine.</li>
-                </ul>
               </div>
             </motion.div>
           )}
@@ -546,14 +583,11 @@ export function SearchPage({ user }: SearchPageProps) {
               />
 
               {!fromHistory && (
-                <ThinkingTrace
-                  query={query}
-                  currentPhase={stream.phase}
-                  steps={stepLog}
-                  sourceCount={stream.sources.length}
-                  startedAt={startedAt}
-                  completedAt={completedAt}
-                  isLoading={appState === 'loading'}
+                <TaskSteps
+                  steps={SEARCH_PHASES}
+                  current={currentStep}
+                  failed={taskFailed}
+                  label="Search progress"
                 />
               )}
 
@@ -751,17 +785,25 @@ export function SearchPage({ user }: SearchPageProps) {
               )}
 
               {appState === 'loading' && (
-                <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start animate-pulse">
-                  <div className="space-y-3">
-                    <div className="bg-zinc-800/50 rounded-2xl h-40" />
-                    <div className="bg-zinc-800/50 rounded-2xl h-40" />
-                  </div>
-                  <div className="space-y-3">
-                    <div className="bg-zinc-800/50 rounded-xl h-24" />
-                    <div className="bg-zinc-800/50 rounded-xl h-24" />
-                    <div className="bg-zinc-800/50 rounded-xl h-24" />
-                  </div>
-                </div>
+                <SkeletonSwap
+                  ready={false}
+                  lines={5}
+                  reserve={320}
+                  className="w-full"
+                  skeleton={
+                    <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
+                      <div className="space-y-3">
+                        <div className="bg-zinc-800/50 rounded-2xl h-40" />
+                        <div className="bg-zinc-800/50 rounded-2xl h-40" />
+                      </div>
+                      <div className="space-y-3">
+                        <div className="bg-zinc-800/50 rounded-xl h-24" />
+                        <div className="bg-zinc-800/50 rounded-xl h-24" />
+                        <div className="bg-zinc-800/50 rounded-xl h-24" />
+                      </div>
+                    </div>
+                  }
+                />
               )}
             </motion.div>
           )}
