@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { ThumbsUp, Pin, Loader2 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
+import { SkeletonSwap } from '@/components/ui/skeleton-swap';
 
 interface MessageListProps {
   firstUnreadMessageId: string | null;
@@ -341,23 +342,20 @@ const MessageRow = React.memo(function MessageRow({
                 }}
               />
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <PressDepth
                   onClick={() => {
                     setIsEditing(false);
                     setEditContent(message.content);
                   }}
                 >
                   Cancel
-                </Button>
-                <Button
-                  size="sm"
+                </PressDepth>
+                <PressDepth
                   disabled={isSavingEdit || !editContent.trim() || editContent === message.content}
                   onClick={() => void handleSaveEdit()}
                 >
                   {isSavingEdit ? 'Saving...' : 'Save'}
-                </Button>
+                </PressDepth>
               </div>
             </div>
           ) : message.isAiResponse ? (
@@ -386,10 +384,19 @@ const MessageRow = React.memo(function MessageRow({
           )}
 
           {aiStatus === 'pending' && !message.isAiResponse && (
-            <div className="mt-2 space-y-2 animate-pulse max-w-sm">
-              <div className="h-3 w-full bg-brand/10 rounded" />
-              <div className="h-3 w-5/6 bg-brand/10 rounded" />
-            </div>
+            <SkeletonSwap
+              ready={false}
+              lines={2}
+              barHeight={12}
+              lineHeight={16}
+              className="mt-2 max-w-sm"
+              skeleton={
+                <div className="space-y-2">
+                  <div className="h-3 w-full bg-brand/10 rounded" />
+                  <div className="h-3 w-5/6 bg-brand/10 rounded" />
+                </div>
+              }
+            />
           )}
 
           {aiStatus === 'failed' && !message.isAiResponse && (
@@ -489,9 +496,7 @@ const MessageRow = React.memo(function MessageRow({
         {showDeleteConfirm && (
           <div className="absolute right-4 top-2 bg-card border border-border shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
             <span className="font-medium text-destructive">Delete message?</span>
-            <Button
-              size="sm"
-              variant="destructive"
+            <PressDepth
               className="h-6 px-2 text-xs"
               disabled={isDeleting}
               onClick={async () => {
@@ -507,15 +512,13 @@ const MessageRow = React.memo(function MessageRow({
               }}
             >
               Delete
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
+            </PressDepth>
+            <PressDepth
               className="h-6 px-2 text-xs"
               onClick={() => setShowDeleteConfirm(false)}
             >
               Cancel
-            </Button>
+            </PressDepth>
           </div>
         )}
       </div>
