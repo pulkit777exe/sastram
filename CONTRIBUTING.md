@@ -68,7 +68,7 @@ modules/<feature>/
 
 **All API routes and server actions must enforce thread access checks.**
 
-- Thread access is the primary authorization primitive — see `lib/thread-access.ts`
+- Thread access is the primary authorization primitive — see `modules/threads/access.ts`
 - Visibility rule: creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN for private/restricted threads; public threads are readable by anyone
 - Use `requireThreadAccessOrThrow(threadId, userId, role)` for reads
 - Use `requireThreadWriteOrThrow(threadId, userId, role)` for writes
@@ -79,7 +79,7 @@ modules/<feature>/
 ```typescript
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireSession } from '@/lib/services/auth';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireThreadWriteOrThrow } from '@/modules/threads/access';
 
 export const myAction = createServerAction(
   { schema: mySchema, actionName: 'myAction' },

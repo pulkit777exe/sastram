@@ -6,7 +6,7 @@ Personal project, open sourced. Built with Next.js, Prisma, and AI.
 
 Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, PostgreSQL (Neon), serverless architecture, Better Auth authentication, and AI integration.
 
-For the verified system reference, see [docs/CANONICAL-REFERENCE.md](docs/CANONICAL-REFERENCE.md).
+For the verified system reference, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Tech Stack
 
@@ -29,7 +29,7 @@ pnpm build           # Prisma generate + Next build
 pnpm start           # Production server
 
 # Testing & Linting
-pnpm test            # Mocha tests (297 passing)
+pnpm test            # Mocha tests (281 passing)
 pnpm test:e2e       # Playwright e2e tests
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
@@ -49,11 +49,10 @@ pnpm db:studio   # Prisma studio
 
 - `app/` - Next.js App Router pages and API routes
 - `lib/` - Core utilities, services, infrastructure
-- `modules/` - Domain modules (25 feature modules)
+- `modules/` - Domain modules (23 feature modules)
 - `components/` - UI components
 - `prisma/` - Database schema
 - `test/` - Mocha unit tests
-- `stores/` - Zustand stores
 
 ### Database Models
 
@@ -77,13 +76,13 @@ pnpm db:studio   # Prisma studio
 
 ### Key Services
 
-- **AI** (`lib/services/ai.ts`): GeminiService, OpenAIService with summaries, thread DNA, resolution scores, image NSFW moderation
+- **AI** (`lib/ai/`): GeminiService, OpenAIService with summaries, thread DNA, resolution scores, image NSFW moderation
 - **Auth** (`lib/services/auth.ts`): Better Auth with email OTP
 - **Rate Limit** (`lib/services/rate-limit.ts`): Redis-based rate limiting with in-memory fallback
 - **Moderation** (`lib/services/moderation.ts`): Regex-based content filtering + AI inline + moderator notifications
-- **AI Spend Cap** (`lib/services/ai-spend-cap.ts`): Dollar-based daily limit ($5.00) via Redis INCRBYFLOAT
-- **AI Usage Logger** (`lib/services/ai-usage-logger.ts`): Per-request token counts and cost estimates
-- **Daily Quota** (`lib/services/daily-quota.ts`): Per-user/day Redis quotas for AI inline, AI analysis, AI search, image moderation
+- **AI Spend Cap** (`lib/ai/spend-cap.ts`): Dollar-based daily limit ($5.00) via Redis INCRBYFLOAT
+- **AI Usage Logger** (`lib/ai/usage-logger.ts`): Per-request token counts and cost estimates
+- **Daily Quota** (`lib/ai/daily-quota.ts`): Per-user/day Redis quotas for AI inline, AI analysis, AI search, image moderation
 - **Moderation SLA** (`lib/services/moderation-sla.ts`): Stale report escalation (>24h/72h)
 - **Soft-Delete Purge** (`lib/services/soft-delete-purge.ts`): Purges soft-deleted users after 30 days
 
@@ -109,7 +108,7 @@ pnpm db:studio   # Prisma studio
 
 **All API routes and server actions must enforce thread access checks.**
 
-- **Thread access model** is the primary authorization primitive — see `lib/thread-access.ts` (`requireThreadAccessOrThrow`, `requireThreadWriteOrThrow`, `canAccessThread`, `canManageThread`). There is no membership table; access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows.
+- **Thread access model** is the primary authorization primitive — see `modules/threads/access.ts` (`requireThreadAccessOrThrow`, `requireThreadWriteOrThrow`, `canAccessThread`, `canManageThread`). There is no membership table; access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows.
 - **Visibility rule (private/restricted threads):** creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN. Public threads are readable by anyone; writes still require a session.
 - Routes/actions that read/write thread data must call `requireThreadAccessOrThrow(threadId, userId, role)` / `requireThreadWriteOrThrow(...)`.
 - `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check access.
@@ -119,7 +118,7 @@ pnpm db:studio   # Prisma studio
 
 ## Test Coverage
 
-- **Current**: 48 Mocha test files (297 passing) covering utilities, services, API routes, and some components
+- **Current**: 47 Mocha test files (281 passing) covering utilities, services, API routes, and some components
 - **E2E**: Playwright smoke tests in `test/e2e/`
 - **Missing**: integration tests with real DB, component storybook
 

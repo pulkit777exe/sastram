@@ -16,7 +16,7 @@ Quick reference for the main features and functions in Sastram.
 ### Role-Based Access Control
 - **User Roles:** USER, MODERATOR, ADMIN
 - **Permissions:** `lib/config/permissions.ts`
-- **Thread Access:** `lib/thread-access.ts` (visibility + invitation based)
+- **Thread Access:** `modules/threads/access.ts` (visibility + invitation based)
 - **Middleware:** `app/(protected)/layout.tsx` (protected routes)
 
 ## Core Forum Features
@@ -69,7 +69,7 @@ Quick reference for the main features and functions in Sastram.
 ### Bookmarks
 - **Purpose:** Save and manage bookmarks
 - **Location:** `modules/bookmarks/`
-- **UI:** `app/(protected)/dashboard/bookmarks/`, `components/thread/bookmark-button.tsx`
+- **UI:** `app/(protected)/dashboard/bookmarks/`
 
 ### Notifications
 - **Purpose:** In-app notifications
@@ -129,7 +129,7 @@ Quick reference for the main features and functions in Sastram.
 ### Digest Generation
 - **Purpose:** Generate and send email digests
 - **Key Files:**
-  - `lib/services/ai.ts` - AI summarization
+  - `lib/ai/` - AI summarization
   - `lib/services/email.ts` - Email sending
 
 ## Additional Features
@@ -147,15 +147,11 @@ Quick reference for the main features and functions in Sastram.
 ### Tags and Categories
 - **Purpose:** Organize content with tags
 - **Location:** `modules/tags/`
-- **UI:** `components/thread/tag-chip.tsx`
+- **UI:** tag chips rendered inline in thread views
 
 ### Thread Membership
 - **Purpose:** Thread membership management
 - **Location:** `modules/members/`
-
-### Topics
-- **Purpose:** Thread categories
-- **Location:** `modules/topics/`
 
 ### Feedback
 - **Purpose:** In-app feedback widget
@@ -190,7 +186,7 @@ Quick reference for the main features and functions in Sastram.
 - **Server Action Wrapper:** `lib/utils/server-action.ts`
 
 ### External Services
-- **AI Integration:** `lib/services/ai.ts` (Google Gemini, OpenAI) — user-facing brand "Sai"
+- **AI Integration:** `lib/ai/` (Google Gemini, OpenAI) — user-facing brand "Sai"
 - **Email:** `lib/services/email.ts` (Resend)
 - **Queue:** `lib/services/queue.ts` (Upstash QStash)
 
@@ -206,8 +202,8 @@ Quick reference for the main features and functions in Sastram.
 - **Dashboard:** `components/dashboard/` - Dashboard and home page
 - **Thread:** `components/thread/` - Thread view and management
 - **User:** `components/user/` - User profile and related
-- **Chat:** `components/chat/` - Message composition
-- **Panels:** `components/panels/` - Thread info panels
+- **Chat:** `components/thread/` - Message composition
+- **Panels:** `components/thread/` - Thread info panels
 - **AI Search:** `components/ai-search/` - Search interface
 
 ## State Management
@@ -249,7 +245,7 @@ prisma/                   # Database schema and migrations
 public/                   # Static assets
 scripts/                  # Helper scripts
 test/                     # Test files
-shared/                   # Shared documentation
+docs/                     # Documentation (incl. former shared/)
 ```
 
 ## How to Navigate the Codebase

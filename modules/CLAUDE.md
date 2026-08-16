@@ -12,7 +12,6 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 ### Core Features
 - `modules/users/` - User CRUD, profiles, avatar/banner upload
 - `modules/threads/` - Thread CRUD, slug routing, relations
-- `modules/topics/` - Topic creation with tags
 - `modules/messages/` - Messages with tree threading (post, edit, delete, mentions, AI inline)
 - `modules/search/` - Full-text thread/message search
 
@@ -40,7 +39,6 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 - `modules/reports/` - Report management
 - `modules/policy/` - Policy lookups
 - `modules/audit/` - Audit logging
-- `modules/admin/` - Admin functions
 
 ### Automation
 - `modules/ai-search/` - AI forum search: service, cache, citations, query warming
@@ -48,7 +46,7 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 ## Removed Modules
 The following modules no longer exist (removed during refactor):
 - `modules/ws/` - WebSocket layer (removed; replaced by SSE streaming)
-- `modules/chat/` - Chat module (removed; functionality in `components/chat/` and `modules/messages/`)
+- `modules/chat/` - Chat module (removed; functionality in `components/thread/` and `modules/messages/`)
 - `modules/reputation/` - Reputation system (removed)
 - `modules/badges/` - Badge system (removed)
 

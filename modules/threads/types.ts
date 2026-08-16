@@ -9,7 +9,7 @@ import type {
 import type { ThreadDNA } from '@/lib/schemas/thread-dna';
 import type { MessageWithDetails } from '@/modules/messages/types';
 
-export type { ThreadWithFullContext } from './threads-read/repository';
+export type { ThreadWithFullContext } from './read/repository';
 export type { ThreadDNA };
 
 export type ThreadRecord = Thread & {

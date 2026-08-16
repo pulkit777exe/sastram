@@ -22,4 +22,4 @@ export type {
   ThreadMessageReactionAggregate,
   PaginatedMessagesResult,
   ThreadParticipant,
-} from './threads-read/repository';
+} from './read/repository';

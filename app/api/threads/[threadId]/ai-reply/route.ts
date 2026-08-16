@@ -3,11 +3,11 @@ import { enqueueInlineJob } from '@/lib/services/queue';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
 import { requireSessionOrThrow } from '@/modules/auth/session';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireThreadAccessOrThrow } from '@/modules/threads/access';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { enforceAiSpendCap } from '@/lib/ai/spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/ai/cost-classification';
 import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
 

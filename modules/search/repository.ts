@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import { visibilityFilter } from '@/lib/thread-access';
+import { visibilityFilter } from '@/modules/threads/access';
 import { Prisma } from '@prisma/client';
 
 const insensitive = 'insensitive' as const;

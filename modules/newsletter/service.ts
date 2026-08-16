@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/services/auth';
 import { headers } from 'next/headers';
-import { aiService, isAiNotConfigured } from '@/lib/services/ai';
+import { aiService, isAiNotConfigured } from '@/lib/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { sanitizeHtmlContent } from '@/lib/services/content-safety';
 import { prisma } from '@/lib/infrastructure/prisma';

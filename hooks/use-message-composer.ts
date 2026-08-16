@@ -5,7 +5,7 @@ import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
 import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
-import type { MentionCandidate } from '@/components/chat/mention-suggest';
+import type { MentionCandidate } from '@/components/thread/mention-suggest';
 
 export function draftKey(threadId: string, parentId?: string): string {
   return `sastram:draft:${threadId}:${parentId ?? 'root'}`;

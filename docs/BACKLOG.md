@@ -1,7 +1,7 @@
 # Backlog — post-refactor actionable items
 
 > **Last updated:** August 2026 (post-architecture refactor)
-> **Canonical reference:** [docs/CANONICAL-REFERENCE.md](./CANONICAL-REFERENCE.md)
+> **Canonical reference:** [docs/ARCHITECTURE.md](./ARCHITECTURE.md)
 > This backlog tracks actionable work items. For the verified system description, see the canonical reference.
 
 ---
@@ -36,8 +36,8 @@ The following structural changes were made to simplify the codebase:
 - `lib/services/blob.ts` — Blob service (consolidated)
 - `lib/services/logger.ts` — Logger service (consolidated into infrastructure)
 - `lib/dedupe.ts` — Deduplication utility (consolidated into job-dedup.ts)
-- `lib/services/ai-inline-rate-limit.ts` — Consolidated into `daily-quota.ts`
-- `lib/services/ai-search-quota.ts` — Consolidated into `daily-quota.ts`
+- `lib/ai/daily-quota.ts` — Consolidated into `daily-quota.ts`
+- `lib/ai/daily-quota.ts` — Consolidated into `daily-quota.ts`
 - `lib/services/image-moderation-quota.ts` — Consolidated into `daily-quota.ts`
 
 ### Consolidated
@@ -46,7 +46,7 @@ The following structural changes were made to simplify the codebase:
 - Deduplication → `lib/services/job-dedup.ts`
 
 ### Added
-- `lib/thread-access.ts` — Thread access control (visibilityFilter, requireThreadAccessOrThrow, etc.)
+- `modules/threads/access.ts` — Thread access control (visibilityFilter, requireThreadAccessOrThrow, etc.)
 - `lib/actions/result.ts` — Action envelope helpers (actionSuccess, actionFailure)
 
 ### Simplified
@@ -56,7 +56,7 @@ The following structural changes were made to simplify the codebase:
 - Search visibility enforced (private/restricted threads not leaked)
 
 ### Current State
-- 25 modules (verified: `find modules/ -mindepth 1 -maxdepth 1 -type d | wc -l`)
+- 24 modules (verified: `find modules/ -mindepth 1 -maxdepth 1 -type d | wc -l`)
 - 35 API routes (verified: `find app/api/ -type f -name 'route.ts' | wc -l`)
 - 30 Prisma models (verified: `grep -c "^model " prisma/schema.prisma`)
 - 47 test files, 297+ passing (verified: `pnpm test`)

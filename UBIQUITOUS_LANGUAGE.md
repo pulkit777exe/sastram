@@ -68,7 +68,7 @@
 > **Domain expert:** "The thread has a `visibility` field. Public threads are readable by anyone. Private/restricted threads are accessible only by the creator, accepted invitees, or MODERATOR/ADMIN roles."
 
 > **Dev:** "And when a **User** is BANNED from a **Thread**, how is that enforced?"
-> **Domain expert:** "The `UserBan` record blocks their write operations. Thread access checks in `lib/thread-access.ts` verify bans before allowing posts."
+> **Domain expert:** "The `UserBan` record blocks their write operations. Thread access checks in `modules/threads/access.ts` verify bans before allowing posts."
 
 > **Dev:** "What triggers **Confidence Decay** on a **Resolution Score**?"
 > **Domain expert:** "When a new **Message** is posted, the `lastVerifiedAt` field is checked. If older than the threshold, the score decays proportionally until recalculated by the **AI Pipeline**."

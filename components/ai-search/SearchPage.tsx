@@ -20,7 +20,7 @@ import { SynthesisCard } from '@/components/ai-search/SynthesisCard';
 import { SourceCard } from '@/components/ai-search/SourceCard';
 import { TableView } from '@/components/ai-search/TableView';
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
-import { SaiSearchLayout, type HistoryItem } from '@/components/ai-search/sai-search-layout';
+import { SaiSearchLayout, type HistoryItem } from '@/components/ai-search/SaiSearchLayout';
 import type { RetryStyle, FeedbackType } from '@/components/ai-search/StreamingText';
 import { StepLogEntry, ThinkingTrace } from '@/components/ai-search/ThinkingTrace';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';

@@ -6,13 +6,13 @@ import { logger } from '@/lib/infrastructure/logger';
 import { randomUUID } from 'crypto';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth/session';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireThreadWriteOrThrow } from '@/modules/threads/access';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { aiService } from '@/lib/services/ai';
+import { aiService } from '@/lib/ai';
 import { env } from '@/lib/config/env';
-import { consumeImageModerationQuota } from '@/lib/services/daily-quota';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { consumeImageModerationQuota } from '@/lib/ai/daily-quota';
+import { enforceAiSpendCap } from '@/lib/ai/spend-cap';
+import { AiCallPath } from '@/lib/ai/cost-classification';
 
 const handler = withErrorHandling(async (req: NextRequest) => {
   const session = await requireSessionOrThrow();

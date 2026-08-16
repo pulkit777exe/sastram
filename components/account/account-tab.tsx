@@ -6,7 +6,7 @@ import { EmailChangeCard } from './email-change-card';
 import { ConnectedAccountsCard } from './connected-accounts-card';
 import { ActiveSessionsCard } from './active-sessions-card';
 import { AccountApiKeysCard } from './account-api-keys-card';
-import { AccountDangerZone } from '@/components/dashboard/account-danger-zone';
+import { AccountDangerZone } from '@/components/account/account-danger-zone';
 import { getLinkedAccountsAction } from '@/modules/users/account-actions';
 import { useEffect, useState } from 'react';
 

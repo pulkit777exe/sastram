@@ -8,8 +8,8 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import type { LLMResult } from '@langchain/core/outputs';
 import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
-import { logAiUsage } from '@/lib/services/ai-usage-logger';
-import type { MessageInput } from './ai';
+import { logAiUsage } from './usage-logger';
+import type { MessageInput } from './types';
 
 const MAX_CHUNK_CHARS = 8000;
 

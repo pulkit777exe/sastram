@@ -1,7 +1,6 @@
 # Sastram Architecture Documentation
 
-> **⚠️ Superseded by [docs/CANONICAL-REFERENCE.md](../docs/CANONICAL-REFERENCE.md).**
-> This document no longer reflects verified code. The `hasResolution` claim in the ThreadDna schema, and several model/route counts may be stale or fabricated. See the canonical reference for authoritative, code-verified facts. This doc is retained for historical context only.
+> **Canonical reference.** This document is the verified, code-accurate system reference for Sastram.
 
 ## Overview
 
@@ -37,7 +36,7 @@ accumulates knowledge. More users = better answers for the next user.
 - **Email:** Resend — `lib/services/email.ts`
 - **AI — Search:** Exa API + Tavily API (via `modules/ai-search/service.ts`)
 - **AI — Synthesis:** Google Gemini Flash (classify/DNA) + Pro (synthesis)
-- **AI — LangChain:** Map-reduce summarization via `lib/services/ai-langchain.ts`
+- **AI — LangChain:** Map-reduce summarization via `lib/ai/langchain.ts`
 - **State Management:** Zustand (thread view)
 - **E2E Testing:** Playwright (`test/e2e/`)
 
@@ -50,7 +49,7 @@ Browser Client
 │
 ├── HTTP / Server Actions → Next.js App Router
 │   │
-│   ├── modules/ (domain logic — 25 modules)
+│   ├── modules/ (domain logic — 23 modules)
 │   │   │
 │   │   ├── Prisma → PostgreSQL (Neon)
 │   │   ├── Upstash Redis (cache + rate limit)
@@ -121,25 +120,25 @@ sastram/
 │
 ├── components/
 │   ├── ai-search/                        # SearchBox, Sidebar, PhaseTracker, SynthesisCard, SourceCard, TableView, ApiKeysModal
-│   ├── thread/                           # comment-tree, message-list, poll-*, subscribe-button, thread-live-wrapper, thread-details-panel
-│   ├── chat/                             # post-message-form, mention-suggest
-│   ├── dashboard/                        # sidebar, settings-form, preferences-form, stats-card, topic-card, message-grid
-│   ├── panels/                           # ThreadInfoCard, ThreadDnaCard, AiSynthesisCard, RelatedThreadsCard, ParticipantsCard, ThreadResolutionCard
+│   ├── thread/                           # comment-tree, message-list, post-message-form, mention-suggest, poll-*, panels, subscribe-button, create-thread-dialog
+│   ├── dashboard/                        # dashboard-shell, sidebar, dashboard-providers, topic-card, topic-grid
+│   ├── account/                          # account-tab, account-danger-zone, sessions/connected/email/password cards
+│   ├── settings/                         # settings-form, settings-tabs, preferences-form
+│   ├── newsletter/                       # newsletter-management
 │   ├── notifications/                    # notification-list
 │   ├── landing/                          # LandingPage
 │   ├── layout/                           # Layout components
-│   ├── auth/                             # LoginForm, ForgotPasswordModal
+│   ├── auth/                             # LoginForm, ForgotPasswordModal, OtpInput
 │   ├── admin/                            # Admin components
 │   ├── appeals/                          # Appeal components
-│   ├── user/                             # follow-button, profile-header, profile-tabs, user-stats, user-threads-list
+│   ├── user/                             # follow-button, profile-header, user-stats
 │   └── ui/                               # shadcn/ui + TimeAgo, ErrorBoundary, LoadingVideo, ThemeToggle
 │
 ├── hooks/
 │   ├── useAIReplyStream.ts               # SSE consumer for @sai reply streaming
-│   ├── use-debounce.ts                   # Generic debounce hook
-│   └── chat/use-message-composer.ts      # Message composition, drafts, mentions
+│   └── use-message-composer.ts           # Message composition, drafts, mentions
 │
-├── modules/                              # Domain logic (25 modules)
+├── modules/                              # Domain logic (23 modules)
 │   ├── auth/                             # Session management, OAuth
 │   ├── users/                            # User CRUD, profiles, avatar/banner upload
 │   ├── threads/                          # Thread CRUD, slug routing, relations
@@ -155,7 +154,6 @@ sastram/
 │   ├── reactions/                        # Emoji reactions on messages
 │   ├── read-receipts/                    # Thread read tracking
 │   ├── tags/                             # Tag CRUD, thread-tag associations
-│   ├── topics/                           # Topic creation (thread categories)
 │   ├── members/                          # Thread membership management
 │   ├── polls/                            # Poll creation, voting, results
 │   ├── invitations/                      # Thread invitations
@@ -246,12 +244,10 @@ sastram/
 │   ├── seed.ts                           # Database seed script
 │   └── migrations/                       # Database migrations
 │
-├── test/                                 # Mocha unit tests (297+ passing)
+├── test/                                 # Mocha unit tests (281 passing)
 ├── test/e2e/                             # Playwright end-to-end tests
-├── docs/                                 # Documentation
+├── docs/                                 # Documentation (incl. former shared/)
 ├── scripts/                              # Build/dev scripts
-└── shared/
-    └── ARCHITECTURE.md                   # This file
 ```
 
 ---
@@ -273,7 +269,7 @@ modules/{feature}/
 └── ...             — Module-specific files (executors.ts, policy.ts, cache.ts, etc.)
 ```
 
-**25 modules total:**
+**23 modules total:**
 - `actions.ts`: present in most
 - `repository.ts`: present in most
 - `service.ts`: few (threads, ai-search, messages, newsletter)
@@ -351,7 +347,7 @@ The central entity. Stores AI metadata directly:
 | Profile settings | `app/(protected)/dashboard/settings/profile/page.tsx` |
 | Avatar upload | `modules/users/actions.ts:uploadAvatar` → Vercel Blob |
 | Banner upload | `modules/users/actions.ts:uploadBanner` → Vercel Blob |
-| User preferences | `components/dashboard/preferences-form.tsx` (theme, notifications) |
+| User preferences | `components/settings/preferences-form.tsx` (theme, notifications) |
 | Profile privacy | `modules/users/actions.ts:updateProfilePrivacyAction` |
 | Role system | USER, MODERATOR, ADMIN (Prisma enum) |
 | Status system | ACTIVE, SUSPENDED, BANNED (Prisma enum) |
@@ -372,10 +368,9 @@ The central entity. Stores AI metadata directly:
 | Thread summary (LangChain) | `POST /api/ai/thread-summary` → QStash → `Thread.aiSummary` |
 | Thread tagging (backend) | `modules/tags/actions.ts` (CRUD, thread-tag associations) |
 | Thread invitations (backend) | `modules/invitations/actions.ts` |
-| Thread membership | `modules/members/actions.ts` |
-| Thread access control | PRIVATE/RESTRICTED visibility via `lib/thread-access.ts` |
-| Related threads | `components/panels/RelatedThreadsCard.tsx` → `ThreadRelation` |
-| Create topic | `modules/topics/actions.ts:createTopic` |
+| Thread membership | `modules/members/repository.ts:getMemberRole` |
+| Thread access control | PRIVATE/RESTRICTED visibility via `modules/threads/access.ts` |
+| Related threads | `components/thread/related-threads-card.tsx` → `ThreadRelation` |
 | Tags browser | `app/(protected)/dashboard/tags/[slug]/page.tsx` |
 
 ### Messages
@@ -387,7 +382,7 @@ The central entity. Stores AI metadata directly:
 | Pin message | `modules/messages/actions/edit.ts:pinMessage` (one per thread) |
 | Delete message (soft) | `modules/messages/actions/delete.ts:deleteMessage` |
 | @mentions | `modules/messages/actions/mentions.ts` (create, search, notify) |
-| Mention autocomplete | `components/chat/mention-suggest.tsx` (debounced search) |
+| Mention autocomplete | `components/thread/mention-suggest.tsx` (debounced search) |
 | @sai inline responses | `modules/messages/actions/ai-inline.ts` → SSE stream to poster (primary) or QStash job (fallback) |
 | AI inline pending status | `thread-live-wrapper.tsx` (2-min timeout, pending/failed tracking) |
 
@@ -469,7 +464,7 @@ The central entity. Stores AI metadata directly:
 | Local full-text search | `app/api/search/route.ts` + `modules/search/actions.ts` |
 | AI-powered search | `app/(protected)/dashboard/sai-search/page.tsx` |
 | Tags browser | `app/(protected)/dashboard/tags/[slug]/page.tsx` |
-| Related threads | `components/panels/RelatedThreadsCard.tsx` |
+| Related threads | `components/thread/related-threads-card.tsx` |
 
 ### Email
 
@@ -510,7 +505,7 @@ Background jobs are processed via Upstash QStash webhooks and Vercel Cron.
 - Internal DB errors never leaked to client error messages
 - Rate limiting on all AI endpoints (Upstash Redis)
 - Per-user daily AI search quota via Redis
-- Thread visibility enforcement via `lib/thread-access.ts`
+- Thread visibility enforcement via `modules/threads/access.ts`
 
 ---
 

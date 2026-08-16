@@ -1,7 +1,7 @@
 import type { UserStatus } from '@prisma/client';
 import type { Message } from '@/lib/types/index';
 import type { ThreadDetail, ThreadDNA, ThreadRecord, ThreadSummary } from './types';
-import type { ThreadMessage as ReadThreadMessage } from './threads-read/repository';
+import type { ThreadMessage as ReadThreadMessage } from './read/repository';
 
 export type ThreadMessage = ReadThreadMessage;
 

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { aiService, isAiNotConfigured } from '@/lib/services/ai';
+import { aiService, isAiNotConfigured } from '@/lib/ai';
 import { sendNewsletterDigest } from '@/lib/services/email';
 import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay, subDays, getDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { enforceAiSpendCap } from '@/lib/ai/spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/ai/cost-classification';
 import type { DigestFrequency } from '@prisma/client';
 
 /**

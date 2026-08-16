@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { requireAdmin } from '@/lib/middleware/moderation';
-import { getAiSpendUsage } from '@/lib/services/ai-spend-cap';
+import { getAiSpendUsage } from '@/lib/ai/spend-cap';
 import { prisma } from '@/lib/infrastructure/prisma';
 
 interface DailySpend {

@@ -11,8 +11,8 @@ import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { enforceAiSpendCap } from '@/lib/ai/spend-cap';
+import { AiCallPath } from '@/lib/ai/cost-classification';
 
 const BATCH_SIZE = 25;
 const QSTASH_GUARD_THRESHOLD = 400;

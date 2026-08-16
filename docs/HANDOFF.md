@@ -3,7 +3,7 @@
 > **⚠️ HISTORICAL — pre-refactor handoff document.**
 > Compacted context from the Phases 0–5 engagement (July 2026). The architecture
 > refactor (August 2026) subsequently removed the WebSocket layer, consolidated
-> quota services, and cleaned up dead code. See [docs/CANONICAL-REFERENCE.md](./CANONICAL-REFERENCE.md)
+> quota services, and cleaned up dead code. See [docs/ARCHITECTURE.md](./ARCHITECTURE.md)
 > for current state.
 >
 > **Last updated:** 2026-08-11 (marked historical; retained for context)
@@ -25,7 +25,7 @@
 All 11 backlog slices are **RESOLVED**. The architecture refactor additionally:
 - Removed `modules/ws/`, `modules/chat/`, `modules/reputation/`, `modules/badges/`
 - Consolidated 4 quota services into `lib/services/daily-quota.ts`
-- Added `lib/thread-access.ts` and `lib/actions/result.ts`
+- Added `modules/threads/access.ts` and `lib/actions/result.ts`
 - Cleaned dead code from all domain modules
 
 ## Pending (as of refactor completion)

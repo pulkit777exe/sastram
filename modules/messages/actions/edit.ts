@@ -8,7 +8,7 @@ import { sanitizeContent } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
 import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireThreadAccessOrThrow } from '@/modules/threads/access';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 import {
   editMessageSchema,

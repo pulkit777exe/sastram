@@ -70,7 +70,7 @@ NODE_ENV=production pnpm check:prod
 ## Testing
 
 ```bash
-pnpm test            # 298 passing (Mocha)
+pnpm test            # 281 passing (Mocha)
 pnpm test:e2e       # Playwright smoke tests
 ```
 
@@ -78,7 +78,7 @@ pnpm test:e2e       # Playwright smoke tests
 
 ```
 app/          — Next.js App Router pages & API routes
-modules/      — 25 domain modules (threads, messages, ai-search, moderation, etc.)
+modules/      — 23 domain modules (threads, messages, ai-search, moderation, etc.)
 lib/          — Core services, infrastructure, utilities
   actions/    — Shared action result types
   config/     — Environment schema, permissions, routes
@@ -86,15 +86,15 @@ lib/          — Core services, infrastructure, utilities
   middleware/ — Content moderation middleware
   queue/      — QStash job types & workers
   schemas/    — Shared Zod schemas
-  services/   — AI, auth, rate-limit, moderation, spend-cap, etc.
+  ai/         — AI providers, spend cap, usage logging, quotas
+  services/   — auth, rate-limit, email, moderation-SLA, soft-delete purge, etc.
   utils/      — Server actions, API helpers, validation
 components/   — shadcn/ui primitives + feature components
 prisma/       — Database schema (30 models)
 test/         — Mocha unit tests (47 files)
-stores/       — Zustand state stores
 ```
 
-See [CLAUDE.md](./CLAUDE.md) for architecture details and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.
+See [CLAUDE.md](./CLAUDE.md) for architecture details and [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the verified system reference.
 
 ## License
 

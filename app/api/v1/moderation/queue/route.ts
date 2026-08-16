@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ModerationDashboard } from '@/lib/services/moderation';
+import { ModerationDashboard } from '@/modules/moderation/dashboard';
 import { requireModerator } from '@/lib/middleware/moderation';
 import { ok, fail } from '@/lib/utils/api-response';
 import { logger } from '@/lib/infrastructure/logger';

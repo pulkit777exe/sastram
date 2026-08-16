@@ -1,6 +1,6 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { isAiNotConfigured, AI_NOT_CONFIGURED_SENTINEL } from '@/lib/services/ai-sentinel';
+import { isAiNotConfigured, AI_NOT_CONFIGURED_SENTINEL } from '@/lib/ai/sentinel';
 
 describe('AI Not Configured Sentinel', () => {
   describe('isAiNotConfigured', () => {

@@ -10,7 +10,7 @@ import { createBulkNotifications, createNotification } from '@/modules/notificat
 import { requireRole, requireModerationRole } from '@/modules/policy';
 import { executeAuditAndRevalidate } from '@/modules/moderation/executors';
 import type { ReportCategory, ReportStatus } from '@prisma/client';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireThreadAccessOrThrow } from '@/modules/threads/access';
 import { actionSuccess } from '@/lib/actions/result';
 import { AppError } from '@/lib/utils/errors';
 import type { ActionErrorCode } from '@/lib/actions/result';

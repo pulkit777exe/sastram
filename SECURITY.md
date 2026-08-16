@@ -29,7 +29,7 @@ You should receive a response within 48 hours. If you don't, follow up by pingin
 
 ### Thread Access Control
 
-Authorization is enforced via `lib/thread-access.ts`. Thread visibility follows these rules:
+Authorization is enforced via `modules/threads/access.ts`. Thread visibility follows these rules:
 
 - **Public threads**: readable by anyone; writes require a session
 - **Private/Restricted threads**: creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN
@@ -38,7 +38,7 @@ All API routes and server actions must call `requireThreadAccessOrThrow` (reads)
 
 ### AI Spend Cap
 
-Daily AI spend is capped at $5.00 via Redis `INCRBYFLOAT`. See `lib/services/ai-spend-cap.ts`.
+Daily AI spend is capped at $5.00 via Redis `INCRBYFLOAT`. See `lib/ai/spend-cap.ts`.
 
 ### Rate Limiting
 

@@ -5,8 +5,8 @@ import { Reply, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useMessageComposer } from '@/hooks/chat/use-message-composer';
-import { MentionSuggest } from '@/components/chat/mention-suggest';
+import { useMessageComposer } from '@/hooks/use-message-composer';
+import { MentionSuggest } from '@/components/thread/mention-suggest';
 import { cn } from '@/lib/utils/cn';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 

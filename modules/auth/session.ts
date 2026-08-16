@@ -8,7 +8,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { AppError } from '@/lib/utils/errors';
 import { isAdmin } from '@/lib/config/permissions';
-import { requireThreadAccessOrThrow, requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireThreadAccessOrThrow, requireThreadWriteOrThrow } from '@/modules/threads/access';
 
 export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status'>;
 

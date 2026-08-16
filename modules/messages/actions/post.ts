@@ -15,7 +15,7 @@ import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireThreadWriteOrThrow } from '@/modules/threads/access';
 import { createServerAction, type ActionResult } from '@/lib/utils/server-action';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 

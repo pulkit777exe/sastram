@@ -3,7 +3,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
 import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/threads/types';
-import { visibilityFilter } from '@/lib/thread-access';
+import { visibilityFilter } from '@/modules/threads/access';
 
 export interface ListThreadsParams {
   page?: number;

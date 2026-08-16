@@ -17,10 +17,10 @@ import {
   X,
   MessageSquare,
 } from 'lucide-react';
-import { useMessageComposer } from '@/hooks/chat/use-message-composer';
+import { useMessageComposer } from '@/hooks/use-message-composer';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { InlinePollButton } from '@/components/thread/inline-poll-button';
-import { MentionSuggest } from '@/components/chat/mention-suggest';
+import { MentionSuggest } from '@/components/thread/mention-suggest';
 import { cn } from '@/lib/utils/cn';
 
 const COMMON_EMOJIS = [

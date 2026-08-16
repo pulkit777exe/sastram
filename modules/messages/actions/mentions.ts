@@ -5,7 +5,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { searchMentionUsersSchema } from '@/modules/messages/schemas';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireThreadAccessOrThrow } from '@/modules/threads/access';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { ROUTES } from '@/lib/config/routes';
 import { createBulkNotifications } from '@/modules/notifications/repository';

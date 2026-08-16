@@ -11,7 +11,7 @@ import {
   getUserReaction,
 } from '@/modules/reactions/repository';
 import { createServerAction } from '@/lib/utils/server-action';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireThreadAccessOrThrow } from '@/modules/threads/access';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 
 const toggleReactionSchema = z.object({

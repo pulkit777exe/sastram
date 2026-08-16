@@ -1,9 +1,9 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { aiService } from '@/lib/services/ai';
+import { aiService } from '@/lib/ai';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
 import { sanitizeUserContent, sanitizeHtmlContent } from '@/lib/services/content-safety';
-import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
+import { consumeSpendCap } from '@/lib/ai/spend-cap';
 import { NotificationType } from '@prisma/client';
 import { isQuotaError } from '@/lib/utils/errors';
 import { notifyMultipleUsers } from '@/modules/notifications';

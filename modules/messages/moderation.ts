@@ -1,12 +1,17 @@
+/**
+ * Moderation pipeline — regex, ML, and contextual filters for incoming messages.
+ *
+ * Extracted from lib/services/moderation.ts during the architecture restructure.
+ * This file contains only moderation logic; message creation lives in message-service.ts.
+ */
+
 import { prisma } from '@/lib/infrastructure/prisma';
 import { env } from '@/lib/config/env';
-import { aiService } from '@/lib/services/ai';
+import { aiService } from '@/lib/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { getMessageLimiter } from '@/lib/services/rate-limit';
-import { createBulkNotifications } from '@/modules/notifications';
-import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
-import { classifyAiCallCost, AiCallPath } from '@/lib/services/ai-cost-classification';
-import type { ReportCategory } from '@prisma/client';
+import { consumeSpendCap } from '@/lib/ai/spend-cap';
+import { classifyAiCallCost, AiCallPath } from '@/lib/ai/cost-classification';
 
 export type MessageLike = {
   id?: string;
@@ -55,15 +60,6 @@ export type ModerationResult = {
   } | null;
   pendingModeration?: boolean;
 };
-
-// Auto-mod reports and bans need an actor row; this is that placeholder.
-async function getSystemUser() {
-  return prisma.user.upsert({
-    where: { email: 'system@sastram.com' },
-    create: { email: 'system@sastram.com', name: 'System', role: 'USER' },
-    update: {},
-  });
-}
 
 export class RateLimitFilter {
   async check(message: MessageLike, _context: ConversationContext): Promise<ModerationResult> {
@@ -302,150 +298,4 @@ export class MessageModerationPipeline {
       pendingModeration: finalAction !== 'ALLOW',
     };
   }
-}
-
-export class MessageService {
-  private pipeline = new MessageModerationPipeline();
-
-  async processMessage(
-    message: MessageLike,
-    context: ConversationContext
-  ): Promise<ModerationResult> {
-    const result = await this.pipeline.process(message, context);
-
-    try {
-      // Replies are nested at most 4 deep; beyond that they flatten onto the parent.
-      let depth = 0;
-      if (message.parentId) {
-        const parent = await prisma.message.findUnique({
-          where: { id: message.parentId },
-          select: { depth: true },
-        });
-        if (parent) {
-          depth = Math.min(parent.depth + 1, 4);
-        }
-      }
-
-      const created = await prisma.$transaction(async (tx) => {
-        const msg = await tx.message.create({
-          data: {
-            content: message.content,
-            threadId: message.threadId,
-            senderId: message.authorId,
-            parentId: message.parentId ?? null,
-            depth,
-            attachments: message.attachments ? {
-              create: message.attachments.map(att => ({
-                url: att.url,
-                type: (att.type || 'IMAGE') as 'IMAGE' | 'GIF' | 'VIDEO' | 'FILE',
-                name: att.name ?? null,
-                size: att.size !== undefined && att.size !== null ? BigInt(att.size) : null
-              }))
-            } : undefined
-          },
-          include: {
-            attachments: true
-          }
-        });
-
-        if (message.poll) {
-          await tx.poll.create({
-            data: {
-              threadId: message.threadId,
-              messageId: msg.id,
-              question: message.poll.question,
-              options: message.poll.options,
-              expiresAt: message.poll.expiresAt ? new Date(message.poll.expiresAt) : null,
-              isActive: true
-            }
-          });
-        }
-
-        if (message.parentId) {
-          await tx.message.update({
-            where: { id: message.parentId },
-            data: { replyCount: { increment: 1 } },
-          });
-        }
-
-        await tx.thread.update({
-          where: { id: message.threadId },
-          data: { messageCount: { increment: 1 } },
-        });
-
-        return msg;
-      });
-
-      if (result.action !== 'ALLOW') {
-        const systemUser = await getSystemUser();
-
-        await prisma.report.create({
-          data: {
-            messageId: created.id,
-            reporterId: systemUser.id,
-            category: 'OTHER' as ReportCategory,
-            details: result.reason || undefined,
-            status: 'PENDING',
-          },
-        });
-
-        try {
-          const mods = await prisma.user.findMany({
-            where: { role: { in: ['MODERATOR', 'ADMIN'] }, status: 'ACTIVE', deletedAt: null },
-            select: { id: true },
-          });
-          await createBulkNotifications(
-            mods.map((mod) => ({
-              userId: mod.id,
-              type: 'SYSTEM' as const,
-              title: `Auto-mod flagged: ${result.action}`,
-              message: `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
-              data: { messageId: created.id, action: result.action, autoMod: true },
-            }))
-          );
-        } catch (err) {
-          // The message is already stored; a failed notification shouldn't
-          // fail the post.
-          logger.error('[moderation] Failed to notify moderators', err);
-        }
-      }
-
-      return {
-        ...result,
-        messageId: created.id,
-        message: {
-          ...created,
-          sender: null,
-          thread: null,
-          attachments: created.attachments ?? [],
-        },
-      };
-    } catch (error) {
-      logger.error('Message processing error:', error);
-      throw new Error(
-        `Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-  }
-}
-
-export class ModerationDashboard {
-  async getQueue(params?: { status?: string }) {
-    const whereClause: Record<string, unknown> = { status: params?.status || 'PENDING' };
-
-    return prisma.report.findMany({
-      where: whereClause,
-      include: {
-        message: {
-          include: {
-            sender: { select: { id: true, name: true, email: true } },
-            thread: { select: { id: true, name: true } },
-          },
-        },
-      },
-      orderBy: [{ createdAt: 'desc' }],
-      take: 50,
-    });
-  }
-
 }

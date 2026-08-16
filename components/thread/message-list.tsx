@@ -19,7 +19,7 @@ import { renderContent } from '@/lib/utils/render-content';
 import { canModerate } from '@/lib/config/permissions';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
+import { isAiNotConfigured } from '@/lib/ai/sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 
 interface MessageListProps {

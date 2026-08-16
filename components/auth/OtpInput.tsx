@@ -9,7 +9,12 @@ interface OtpInputProps {
   onComplete?: (fullOtp: string) => void;
   disabled?: boolean;
   autoFocus?: boolean;
+  /** Replaces the default input styling. */
+  className?: string;
 }
+
+const DEFAULT_INPUT_CLASS =
+  'w-10 h-12 text-center text-lg font-semibold border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50';
 
 export function OtpInput({
   length = 6,
@@ -18,6 +23,7 @@ export function OtpInput({
   onComplete,
   disabled = false,
   autoFocus = false,
+  className,
 }: OtpInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -78,13 +84,13 @@ export function OtpInput({
           ref={setRef(index)}
           type="text"
           inputMode="numeric"
-          maxLength={1}
+          maxLength={6}
           value={value[index] || ''}
           onChange={(e) => handleChange(index, e.target.value)}
           onKeyDown={(e) => handleKeyDown(index, e)}
           disabled={disabled}
           autoFocus={autoFocus && index === 0}
-          className="w-10 h-12 text-center text-lg font-semibold border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50"
+          className={className ?? DEFAULT_INPUT_CLASS}
           aria-label={`Digit ${index + 1}`}
         />
       ))}

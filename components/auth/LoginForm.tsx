@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoaderIcon, Eye, EyeOff, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { signIn, signUp, authClient } from '@/lib/services/auth-client';
+import { OtpInput } from '@/components/auth/OtpInput';
 import { GithubIcon } from '@/public/icons/github';
 import { ChromeIcon } from '@/public/icons/google';
 import { toasts } from '@/lib/utils/toast';
@@ -52,9 +53,9 @@ function UserAuthForm({
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [otpEmail, setOtpEmail] = useState('');
+  const [otpNonce, setOtpNonce] = useState(0);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const hasShownReasonToast = useRef(false);
   const verifyingOtpRef = useRef(false);
 
@@ -138,7 +139,6 @@ function UserAuthForm({
           }
           setMode('otp-verify');
           setCountdown(60);
-          setTimeout(() => inputRefs.current[0]?.focus(), 100);
         } catch {
           setError('Failed to send verification code. Please try again.');
         } finally {
@@ -164,7 +164,6 @@ function UserAuthForm({
               if (!otpData?.error) {
                 setMode('otp-verify');
                 setCountdown(60);
-                setTimeout(() => inputRefs.current[0]?.focus(), 100);
               }
             } catch {}
           }
@@ -230,7 +229,6 @@ function UserAuthForm({
 
       setMode('otp-verify');
       setCountdown(60);
-      setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
       clientLogger.error('LoginForm', 'Send OTP error', err);
       setError('Failed to send verification code. Please try again.');
@@ -278,45 +276,6 @@ function UserAuthForm({
     }
   };
 
-  const handleOTPChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      const pastedValues = value.slice(0, 6).split('');
-      const newOtp = [...otp];
-      pastedValues.forEach((char, i) => {
-        if (index + i < 6) {
-          newOtp[index + i] = char;
-        }
-      });
-      setOtp(newOtp);
-      const nextIndex = Math.min(index + pastedValues.length, 5);
-      inputRefs.current[nextIndex]?.focus();
-      const pastedOtp = newOtp.join('');
-      if (pastedOtp.length === 6) {
-        void verifyOtpCode(pastedOtp);
-      }
-      return;
-    }
-
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    const currentOtp = newOtp.join('');
-    if (currentOtp.length === 6) {
-      void verifyOtpCode(currentOtp);
-    }
-  };
-
-  const handleOTPKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     const otpCode = otp.join('');
@@ -348,7 +307,7 @@ function UserAuthForm({
 
       setCountdown(60);
       setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
+      setOtpNonce((n) => n + 1);
     } catch {
       setError('Failed to resend code. Please try again.');
     } finally {
@@ -450,26 +409,23 @@ function UserAuthForm({
               <Label className="text-muted-foreground text-center block text-sm">
                 Enter 6-digit code
               </Label>
-              <div className="flex justify-center gap-2 sm:gap-3">
-                {otp.map((digit, index) => (
-                  <Input
-                    key={index}
-                    ref={(el) => {
-                      inputRefs.current[index] = el;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={6}
-                    aria-label={`Digit ${index + 1} of verification code`}
-                    value={digit}
-                    onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
-                    onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                    disabled={loadingState !== null}
-                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
-                  />
-                ))}
-              </div>
+              <OtpInput
+                key={otpNonce}
+                value={otp}
+                onChange={(index, value) => {
+                  setOtp((prev) => {
+                    const next = [...prev];
+                    next[index] = value;
+                    return next;
+                  });
+                }}
+                onComplete={(code) => {
+                  void verifyOtpCode(code);
+                }}
+                disabled={loadingState !== null}
+                autoFocus
+                className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
+              />
             </div>
 
             {error && (

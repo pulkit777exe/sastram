@@ -6,7 +6,7 @@ import { expect } from 'chai';
 let draftKey: (threadId: string, parentId?: string) => string;
 
 async function loadDraftKey(): Promise<void> {
-  ({ draftKey } = await import('@/hooks/chat/use-message-composer'));
+  ({ draftKey } = await import('@/hooks/use-message-composer'));
 }
 
 describe('draft key scoping', function () {

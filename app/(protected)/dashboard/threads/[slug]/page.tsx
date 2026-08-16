@@ -10,9 +10,9 @@ import Link from 'next/link';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
 import { prisma } from '@/lib/infrastructure/prisma';
-import ThreadResolutionCard from '@/components/panels/ThreadResolutionCard';
-import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
-import ParticipantsCard from '@/components/panels/ParticipantsCard';
+import ThreadResolutionCard from '@/components/thread/thread-resolution-card';
+import RelatedThreadsCard from '@/components/thread/related-threads-card';
+import ParticipantsCard from '@/components/thread/participants-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 

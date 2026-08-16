@@ -57,6 +57,9 @@ docs/*
 !docs/AI-COST-ESTIMATE.md
 !docs/BACKLOG.md
 !docs/HANDOFF.md
+!docs/ARCHITECTURE.md
+!docs/context.md
+!docs/DESIGN_SYSTEM.md
 !UBIQUITOUS_LANGUAGE.md
 
 e2e/.env.e2e

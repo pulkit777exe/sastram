@@ -23,36 +23,33 @@ Authentication components:
 - ForgotPasswordModal
 
 ### `components/dashboard/`
-Dashboard-specific components:
-- Sidebar, DashboardShell
-- StatsCard, TopicCard, TopicGrid
-- MessageGrid, CreateTopicButton
-- SettingsForm, SettingsTabs, PreferencesForm
-- NewsletterManagement
-- Account settings, AccountDangerZone
+Dashboard shell and composition only:
+- DashboardShell, DashboardProviders, Sidebar
+- TopicCard, TopicGrid
 
 ### `components/thread/`
-Thread-specific components:
+Thread-specific components (detail view, message composition, panels):
 - CommentTree, MessageList
-- ThreadLiveWrapper, ThreadDetailsPanel, ThreadPageHeader
-- ThreadSummaryCard
-- InlinePoll, InlinePollButton, InlineReplyBox, InlineReplyThread
-- PollDisplay, PollPanel
-- BookmarkButton, SubscribeButton, InviteFriendButton
-- TagChip, AttachmentItem, MessageActions
-- AccessManagementModal, AppealMessageModal
-- VerifyNowButton
-- TimeAgo
+- PostMessageForm, MentionSuggest, InlineReplyBox, InlineReplyThread
+- ThreadLiveWrapper, ThreadDetailsPanel, ThreadPageHeader, ThreadSummaryCard
+- thread-resolution-card, related-threads-card, participants-card
+- InlinePoll, InlinePollButton, PollDisplay, PollPanel
+- SubscribeButton, InviteFriendButton, AttachmentItem, MessageActions
+- VerifyNowButton, CreateThreadDialog, TimeAgo
 
-### `components/chat/`
-Message composition components:
-- PostMessageForm
-- MentionSuggest
+### `components/account/`
+Account management components:
+- AccountTab, AccountDangerZone
+- ActiveSessionsCard, ConnectedAccountsCard, EmailChangeCard
+- PasswordResetCard, AccountApiKeysCard
 
-### `components/panels/`
-Thread info panel components:
-- ThreadInfoCard, ThreadDnaCard, ThreadResolutionCard
-- AiSynthesisCard, RelatedThreadsCard, ParticipantsCard
+### `components/settings/`
+Settings components:
+- SettingsForm, SettingsTabs, PreferencesForm
+
+### `components/newsletter/`
+Newsletter subscription components:
+- NewsletterManagement
 
 ### `components/admin/`
 Admin dashboard components
@@ -65,9 +62,7 @@ Notification list components
 
 ### `components/user/`
 User profile components:
-- ProfileHeader, ProfileTabs
-- UserStats, UserThreadsList
-- FollowButton
+- ProfileHeader, UserStats, FollowButton
 
 ### `components/landing/`
 Landing page components
@@ -84,12 +79,11 @@ AI search interface:
 ### Top-level
 - `providers.tsx` - Client providers
 - `bootstrap-provider.tsx` - Bootstrap data provider
-- `create-thread-dialog.tsx` - Thread creation dialog
 - `logo.tsx` - Logo component
 
 ## Pattern
 
-Components use client-side rendering where needed. Zustand for state management.
+Components use client-side rendering where needed.
 
 ## Testing Notes
 

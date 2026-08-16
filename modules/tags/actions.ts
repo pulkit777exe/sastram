@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { requireSession } from '@/modules/auth/session';
 import { requireRole } from '@/modules/policy';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireThreadWriteOrThrow } from '@/modules/threads/access';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
 import {

@@ -6,7 +6,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth/session';
 import { revalidatePath } from 'next/cache';
 import { inviteFriendSchema } from './schemas';
-import { canManageThread } from '@/lib/thread-access';
+import { canManageThread } from '@/modules/threads/access';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 import type { ActionEnvelope, ActionErrorCode } from '@/lib/actions/result';
 import { AppError } from '@/lib/utils/errors';

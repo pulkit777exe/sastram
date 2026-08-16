@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth/session';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireThreadAccessOrThrow } from '@/modules/threads/access';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { consumeAiAnalysisQuota } from '@/lib/services/daily-quota';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { consumeAiAnalysisQuota } from '@/lib/ai/daily-quota';
+import { enforceAiSpendCap } from '@/lib/ai/spend-cap';
+import { evaluateAiCostGate, AiCallPath } from '@/lib/ai/cost-classification';
 import { getEnv } from '@/lib/config/env';
 import { z } from 'zod';
 

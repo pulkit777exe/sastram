@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommentTree } from '@/components/thread/comment-tree';
-import { PostMessageForm } from '@/components/chat/post-message-form';
+import { PostMessageForm } from '@/components/thread/post-message-form';
 import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hooks/useAIReplyStream';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';

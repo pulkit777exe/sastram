@@ -6,8 +6,8 @@ import { z } from 'zod';
 import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { enforceAiSpendCap } from '@/lib/ai/spend-cap';
+import { AiCallPath } from '@/lib/ai/cost-classification';
 import type { JobMessageData } from '@/lib/queue/types';
 
 type InitialMessage = Pick<JobMessageData, 'id' | 'content' | 'senderId' | 'sender' | 'createdAt'>;

@@ -1,5 +1,5 @@
 import { logger } from '@/lib/infrastructure/logger';
-import { classifyAiCallCost, AiCostTier, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { classifyAiCallCost, AiCostTier, AiCallPath } from './cost-classification';
 import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
 
 const DAILY_DOLLAR_LIMIT = 5.00;

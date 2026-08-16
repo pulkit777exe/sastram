@@ -1,9 +1,9 @@
-import { SettingsForm } from '@/components/dashboard/settings-form';
-import { NewsletterManagement } from '@/components/dashboard/newsletter-management';
-import { PreferencesForm } from '@/components/dashboard/preferences-form';
-import { AccountTab } from '@/components/dashboard/account/account-tab';
+import { SettingsForm } from '@/components/settings/settings-form';
+import { NewsletterManagement } from '@/components/newsletter/newsletter-management';
+import { PreferencesForm } from '@/components/settings/preferences-form';
+import { AccountTab } from '@/components/account/account-tab';
 import { getUserNewsletterSubscriptions } from '@/modules/newsletter/actions';
-import { SettingsTabs } from '@/components/dashboard/settings-tabs';
+import { SettingsTabs } from '@/components/settings/settings-tabs';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { getSession } from '@/modules/auth';
 

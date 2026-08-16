@@ -34,6 +34,6 @@
 ## Authorization
 
 <!-- If this change touches thread data or API routes: -->
-- [ ] Thread access checks present (`requireThreadAccessOrThrow` / `requireThreadWriteOrThrow` from `lib/thread-access.ts`)
+- [ ] Thread access checks present (`requireThreadAccessOrThrow` / `requireThreadWriteOrThrow` from `modules/threads/access.ts`)
 - [ ] Admin-only routes use `requireAdmin()` / `requireModerator()`
 - [ ] No `as any` casts added

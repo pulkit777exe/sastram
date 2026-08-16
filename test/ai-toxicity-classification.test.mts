@@ -10,7 +10,7 @@ describe('AI Service — classifyToxicity', function () {
 
   describe('GeminiService — classifyToxicity parsing', function () {
     function makeGeminiService() {
-      const { GeminiService } = require('@/lib/services/ai');
+      const { GeminiService } = require('@/lib/ai/gemini');
       const service = new (GeminiService as any)();
       service.ai = {
         models: {
@@ -90,7 +90,7 @@ describe('AI Service — classifyToxicity', function () {
     }
 
     it('parses valid JSON toxicity response', async function () {
-      const { OpenAIService } = await import('@/lib/services/ai');
+      const { OpenAIService } = await import('@/lib/ai/openai');
       const service = new OpenAIService('test-key');
       mockOpenAIResponse('{"toxicity": 0.72}');
 
@@ -99,7 +99,7 @@ describe('AI Service — classifyToxicity', function () {
     });
 
     it('clamps score > 1 to 1', async function () {
-      const { OpenAIService } = await import('@/lib/services/ai');
+      const { OpenAIService } = await import('@/lib/ai/openai');
       const service = new OpenAIService('test-key');
       mockOpenAIResponse('{"toxicity": 99}');
 
@@ -108,7 +108,7 @@ describe('AI Service — classifyToxicity', function () {
     });
 
     it('returns 0 when AI call fails', async function () {
-      const { OpenAIService } = await import('@/lib/services/ai');
+      const { OpenAIService } = await import('@/lib/ai/openai');
       const service = new OpenAIService('test-key');
       fetchStub.rejects(new Error('API timeout'));
 
@@ -117,7 +117,7 @@ describe('AI Service — classifyToxicity', function () {
     });
 
     it('returns 0 when response has no toxicity field', async function () {
-      const { OpenAIService } = await import('@/lib/services/ai');
+      const { OpenAIService } = await import('@/lib/ai/openai');
       const service = new OpenAIService('test-key');
       mockOpenAIResponse('{"error": "invalid"}');
 

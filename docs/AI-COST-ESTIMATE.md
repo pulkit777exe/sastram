@@ -2,9 +2,9 @@
 
 > Planning artifact for the `@sai` cost-gating decision. Not code.
 > Estimates are conservative upper bounds derived from per-call cost tiers in
-> `lib/services/ai-cost-classification.ts` and the per-user quotas enforced in
+> `lib/ai/cost-classification.ts` and the per-user quotas enforced in
 > code (see citations). The authoritative hard stop is the **.00/day global
-> spend cap** (`lib/services/ai-spend-cap.ts`).
+> spend cap** (`lib/ai/spend-cap.ts`).
 >
 > **Last updated:** 2026-08-11 (post-refactor: quota sources updated to reflect
 > consolidation into `lib/services/daily-quota.ts`).
@@ -18,7 +18,7 @@
 | AI analysis (DNA, resolution) | 30 / user / day | `lib/services/daily-quota.ts` (`consumeAiAnalysisQuota`) |
 | Image moderation | 50 / day global | `lib/services/daily-quota.ts` (`consumeImageModerationQuota`) |
 | Background jobs (QStash) | 450 / day global | `lib/services/queue.ts` |
-| Global AI spend | **.00 / day** | `lib/services/ai-spend-cap.ts` |
+| Global AI spend | **.00 / day** | `lib/ai/spend-cap.ts` |
 
 **Note:** The pre-refactor codebase had 4 separate quota files (`ai-inline-rate-limit.ts`,
 `ai-search-quota.ts`, `image-moderation-quota.ts`, and the spend cap). These were
@@ -48,7 +48,7 @@ Expensive-and-deliberate (synthesis, multi-source search): forum-search
 synthesize (~/usr/bin/zsh.01/call), `@sai` inline reply (~/usr/bin/zsh.008/call), ai-reply
 stream (~/usr/bin/zsh.008/call), thread summary (~/usr/bin/zsh.012), daily digest (~/usr/bin/zsh.015),
 query warming (~/usr/bin/zsh.01/call). Source: `ESTIMATED_COST_USD` in
-`lib/services/ai-cost-classification.ts`.
+`lib/ai/cost-classification.ts`.
 
 ## Per-active-user monthly estimate
 
@@ -91,7 +91,7 @@ is why founder decision D1 (keep the /day global cap, no monetization) holds:
 the cap is a hard /mo ceiling independent of caching.
 
 ## Risk note (UNKNOWN without telemetry)
-Actual per-call costs depend on token counts logged in `lib/services/ai-usage-logger.ts`.
+Actual per-call costs depend on token counts logged in `lib/ai/usage-logger.ts`.
 The estimates above use the static `ESTIMATED_COST_USD` table, not live token
 accounting. Promote to measured cost once `getAiSpendUsage()` telemetry is
 plumbed to a dashboard (see `app/api/ai/spend/route.ts`).

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Role, type Prisma, type ThreadVisibility } from '@prisma/client';
 import { cache } from 'react';
-import { canAccessThread } from '@/lib/thread-access';
+import { canAccessThread } from '@/modules/threads/access';
 
 export type ThreadMessageReactionAggregate = {
   type: string;

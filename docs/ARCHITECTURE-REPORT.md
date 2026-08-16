@@ -1,6 +1,6 @@
 # Sastram Architecture Report
 
-> **⚠️ Superseded by [docs/CANONICAL-REFERENCE.md](./CANONICAL-REFERENCE.md).**
+> **⚠️ Superseded by [docs/ARCHITECTURE.md](./ARCHITECTURE.md).**
 > This document reflects a pre-refactor snapshot (June 2026). It is retained for
 > historical context only. For verified, code-accurate facts see the canonical
 > reference. Key differences from current state:
@@ -8,7 +8,7 @@
 > - `modules/chat/`, `modules/reputation/`, `modules/badges/` were **removed**
 > - 4 quota services consolidated into `lib/services/daily-quota.ts`
 > - `lib/services/blob.ts`, `lib/services/logger.ts`, `lib/dedupe.ts` were **removed**
-> - `lib/actions/result.ts` (actionSuccess/actionFailure) and `lib/thread-access.ts` (visibilityFilter) were **added**
+> - `lib/actions/result.ts` (actionSuccess/actionFailure) and `modules/threads/access.ts` (visibilityFilter) were **added**
 > - Current counts: 30 Prisma models, 35 API routes, 25 modules, 47 test files
 
 **Date:** June 19, 2026 (snapshot); updated August 2026 (supersede notice)
@@ -221,7 +221,7 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 
 ## 7. AI Architecture
 
-### AI Service (`lib/services/ai.ts`)
+### AI Service (`lib/ai/`)
 
 Factory pattern with provider abstraction:
 
@@ -340,7 +340,7 @@ Non-AI updates rely on client polling (20s normal, 3s during @sai pending).
 
 ### Authorization
 - **Thread access model** is the primary authorization primitive (no membership table)
-- `lib/thread-access.ts` — `requireThreadAccessOrThrow`, `requireThreadWriteOrThrow`, `canAccessThread`, `canManageThread`, `visibilityFilter`
+- `modules/threads/access.ts` — `requireThreadAccessOrThrow`, `requireThreadWriteOrThrow`, `canAccessThread`, `canManageThread`, `visibilityFilter`
 - Visibility rule: creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN
 - Admin-only: `assertAdmin()` / `requireAdmin()` / `requireModerator()`
 

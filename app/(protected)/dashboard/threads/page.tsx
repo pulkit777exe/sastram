@@ -6,7 +6,7 @@ import { requireSession } from '@/modules/auth/session';
 import { listThreads } from '@/modules/threads/repository';
 import type { ThreadSummary } from '@/modules/threads/types';
 import TimeAgo from '@/components/ui/TimeAgo';
-import { CreateThreadDialog } from '@/components/create-thread-dialog';
+import { CreateThreadDialog } from '@/components/thread/create-thread-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const metadata: Metadata = {

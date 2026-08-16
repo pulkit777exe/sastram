@@ -6,7 +6,7 @@ import {
   AiCostTier,
   EXPENSIVE_PATHS,
   CHEAP_PATHS,
-} from '@/lib/services/ai-cost-classification';
+} from '@/lib/ai/cost-classification';
 
 describe('AI cost classification', () => {
   describe('classifyAiCallCost', () => {
