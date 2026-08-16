@@ -70,7 +70,7 @@ NODE_ENV=production pnpm check:prod
 ## Testing
 
 ```bash
-pnpm test            # 281 passing (Mocha)
+pnpm test            # 297 passing (Mocha)
 pnpm test:e2e       # Playwright smoke tests
 ```
 

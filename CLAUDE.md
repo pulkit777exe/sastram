@@ -29,7 +29,7 @@ pnpm build           # Prisma generate + Next build
 pnpm start           # Production server
 
 # Testing & Linting
-pnpm test            # Mocha tests (281 passing)
+pnpm test            # Mocha tests (297 passing)
 pnpm test:e2e       # Playwright e2e tests
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
@@ -118,7 +118,7 @@ pnpm db:studio   # Prisma studio
 
 ## Test Coverage
 
-- **Current**: 47 Mocha test files (281 passing) covering utilities, services, API routes, and some components
+- **Current**: 47 Mocha test files (297 passing) covering utilities, services, API routes, and some components
 - **E2E**: Playwright smoke tests in `test/e2e/`
 - **Missing**: integration tests with real DB, component storybook
 

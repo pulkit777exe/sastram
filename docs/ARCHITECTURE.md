@@ -244,7 +244,7 @@ sastram/
 │   ├── seed.ts                           # Database seed script
 │   └── migrations/                       # Database migrations
 │
-├── test/                                 # Mocha unit tests (281 passing)
+├── test/                                 # Mocha unit tests (297 passing)
 ├── test/e2e/                             # Playwright end-to-end tests
 ├── docs/                                 # Documentation (incl. former shared/)
 ├── scripts/                              # Build/dev scripts
