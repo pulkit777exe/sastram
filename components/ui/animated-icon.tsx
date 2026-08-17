@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
 interface AnimatedIconProps {
   icon: LucideIcon;

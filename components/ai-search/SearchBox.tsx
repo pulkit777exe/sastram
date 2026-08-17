@@ -186,16 +186,8 @@ export function SearchBox({
 
         {/* Composer */}
         <div className="relative">
-          {/* Gradient border glow */}
           <div
-            className="absolute -inset-[1px] rounded-2xl opacity-60 pointer-events-none"
-            style={{
-              background: 'linear-gradient(135deg, rgba(59, 110, 245, 0.5) 0%, rgba(99, 102, 241, 0.3) 50%, rgba(59, 110, 245, 0.5) 100%)',
-              filter: 'blur(0.5px)',
-            }}
-          />
-          <div
-            className={`relative flex flex-col gap-1 bg-surface/90 backdrop-blur-sm p-4 shadow-lg transition-[border-radius] duration-150 ${
+            className={`relative flex flex-col gap-1 bg-surface border border-line p-4 transition-[border-radius,border-color] duration-150 ${
               compact ? 'rounded-[12px]' : 'rounded-2xl'
             }`}
           >
@@ -348,9 +340,8 @@ export function SearchBox({
               onClick={send}
               className="flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
               style={{
-                background: canSend ? 'linear-gradient(135deg, #3b6ef5 0%, #6366f1 100%)' : '#27272a',
-                color: canSend ? '#ffffff' : '#52525b',
-                boxShadow: canSend ? '0 4px 14px rgba(59, 110, 245, 0.4)' : 'none',
+                background: canSend ? 'var(--ink)' : 'var(--field)',
+                color: canSend ? 'var(--canvas)' : 'var(--ink-2)',
               }}
             >
               <svg

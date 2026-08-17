@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { RefreshCw, Server, HardDrive, AlertTriangle, Clock } from 'lucide-react';
 
 interface HealthData {
@@ -116,15 +116,15 @@ export default function AdminHealthPage() {
             Real-time metrics for the Sastram server instance.
           </p>
         </div>
-        <Button variant="outline" onClick={fetchHealth} disabled={loading}>
+        <PressDepth onClick={fetchHealth} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
-        </Button>
+        </PressDepth>
       </header>
 
       {error && (
-        <Card className="rounded-3xl border-red-200 bg-red-50">
-          <CardContent className="p-6 text-red-700 text-sm">{error}</CardContent>
+        <Card className="rounded-3xl border-destructive/30 bg-destructive/5">
+          <CardContent className="p-6 text-destructive text-sm">{error}</CardContent>
         </Card>
       )}
 
@@ -188,7 +188,7 @@ export default function AdminHealthPage() {
                     <p className="text-2xl font-bold text-foreground mt-1">{slaData.totalPending}</p>
                   </CardContent>
                 </Card>
-                <Card className={`rounded-3xl ${slaData.pendingOver24h > 0 ? 'border-yellow-200 bg-yellow-50' : ''}`}>
+                <Card className={`rounded-3xl ${slaData.pendingOver24h > 0 ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
                   <CardContent className="p-6">
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       {slaData.pendingOver24h > 0 && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
@@ -199,7 +199,7 @@ export default function AdminHealthPage() {
                     </p>
                   </CardContent>
                 </Card>
-                <Card className={`rounded-3xl ${slaData.pendingOver72h > 0 ? 'border-red-200 bg-red-50' : ''}`}>
+                <Card className={`rounded-3xl ${slaData.pendingOver72h > 0 ? 'border-destructive/30 bg-destructive/5' : ''}`}>
                   <CardContent className="p-6">
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       {slaData.pendingOver72h > 0 && <AlertTriangle className="w-4 h-4 text-red-600" />}

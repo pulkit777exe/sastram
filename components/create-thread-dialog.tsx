@@ -10,7 +10,7 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -126,10 +126,10 @@ export function CreateThreadDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="bg-brand text-white font-bold hover:bg-brand-hover cursor-pointer">
+        <PressDepth className="bg-brand text-white font-bold hover:bg-brand-hover cursor-pointer">
           <Plus className="h-4 w-4 mr-2" />
           Create Thread
-        </Button>
+        </PressDepth>
       </DialogTrigger>
       <DialogContent className="sm:max-w-120">
         <DialogHeader>
@@ -217,9 +217,9 @@ export function CreateThreadDialog() {
             <p className="text-xs text-muted-foreground">One option per line, at least 2.</p>
             <Input name="pollExpiresAt" type="datetime-local" />
           </div>
-          <Button type="submit" className="w-full bg-brand hover:bg-brand-hover text-white font-bold" disabled={isPending}>
+          <PressDepth type="submit" className="w-full bg-brand hover:bg-brand-hover text-white font-bold" disabled={isPending}>
             {isPending ? 'Creating...' : 'Publish thread'}
-          </Button>
+          </PressDepth>
         </form>
       </DialogContent>
     </Dialog>

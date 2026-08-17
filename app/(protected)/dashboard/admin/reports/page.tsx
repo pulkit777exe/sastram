@@ -1,5 +1,5 @@
-import { assertAdmin } from '@/modules/auth/session';
-import { getSession } from '@/modules/auth/session';
+import { assertAdmin } from '@/modules/auth';
+import { getSession } from '@/modules/auth';
 import { getReports } from '@/modules/reports/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -109,7 +109,7 @@ function ReportCard({ report }: { report: Report }) {
     RESOLVED:
       'bg-green-500/10 text-green-600 border-green-200 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/20',
     DISMISSED:
-      'bg-zinc-500/10 text-zinc-600 border-zinc-200 dark:bg-zinc-500/20 dark:text-zinc-500 dark:border-zinc-500/20',
+      'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border',
   };
 
   return (
@@ -145,7 +145,7 @@ function ReportCard({ report }: { report: Report }) {
                 <span className="text-muted-foreground">Thread:</span>
                 <Link
                   href={`/dashboard/threads/${report.message.thread.slug}`}
-                  className="text-indigo-500 hover:text-indigo-600 underline"
+                  className="text-brand hover:text-brand/80 underline"
                 >
                   {report.message.thread.name}
                 </Link>

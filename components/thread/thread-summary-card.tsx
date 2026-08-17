@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { PressDepth } from '@/components/ui/button-press-depth';
 import { toasts } from '@/lib/utils/toast';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 import { SkeletonSwap } from '@/components/ui/skeleton-swap';
@@ -137,7 +137,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
           <PressDepth
             className="h-6 w-6 text-muted-foreground hover:text-brand"
             onClick={() => void requestSummary()}
-            title="Refresh summary"
+            aria-label="Refresh summary"
           >
             <RefreshCw size={12} />
           </PressDepth>

@@ -6,9 +6,6 @@ import { PostMessageForm } from '@/components/chat/post-message-form';
 import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hooks/useAIReplyStream';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
-import { markThreadReadAction } from '@/modules/read-receipts/actions';
-import { loadThreadMessages, backfillThreadMessages } from '@/modules/threads/actions';
-import { toClientMessage, type ThreadMessage } from '@/modules/threads/service';
 import { getPollResultsAction, getPollByThreadAction } from '@/modules/polls/actions';
 import type { PollResults } from '@/modules/polls/types';
 import { toasts } from '@/lib/utils/toast';
@@ -17,24 +14,9 @@ import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
 import { ChevronDown, Loader2, Pin, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-
-function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[]; hasNew: boolean } {
-  const idToIdx = new Map(prev.map((m, i) => [m.id, i]));
-  let next = prev;
-  for (const msg of incoming) {
-    const idx = idToIdx.get(msg.id);
-    if (idx !== undefined && next[idx].content !== msg.content) {
-      if (next === prev) next = [...prev];
-      next[idx] = { ...next[idx], content: msg.content };
-    }
-  }
-  const toAdd = incoming.filter((m) => !idToIdx.has(m.id));
-  if (toAdd.length === 0 && next === prev) return { merged: prev, hasNew: false };
-  const merged = [...next, ...toAdd].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-  return { merged, hasNew: true };
-}
+import { useThreadMessages } from '@/hooks/thread/use-thread-messages';
+import { useThreadPolling } from '@/hooks/thread/use-thread-polling';
+import { useThreadReadReceipts } from '@/hooks/thread/use-thread-read-receipts';
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
@@ -82,108 +64,37 @@ export function ThreadLiveWrapper({
   resolutionScore = null,
   aiSummary = null,
 }: ThreadLiveWrapperProps) {
-  const [liveMessages, setLiveMessages] = useState<Message[]>(messages);
-  const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed'>>({});
-  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(initialFirstUnreadMessageId);
+  // Poll state
   const [showPoll, setShowPoll] = useState(false);
   const [currentPoll, setCurrentPoll] = useState(poll);
-  const [isScrolledUp, setIsScrolledUp] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState(initialHasMore);
-  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [displayedCount, setDisplayedCount] = useState(messages.length);
   const [pollResults, setPollResults] = useState<PollResults | null>(null);
   const [pollRefreshKey, setPollRefreshKey] = useState(0);
+  const currentPollRef = useRef(currentPoll);
+  useEffect(() => { currentPollRef.current = currentPoll; });
 
+  // AI inline status
+  const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed'>>({});
+  const aiInlineStatusRef = useRef(aiInlineStatus);
+  useEffect(() => { aiInlineStatusRef.current = aiInlineStatus; });
+
+  // Scroll state
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isMarkingReadRef = useRef(false);
-  const ownPendingIds = useRef<Set<string>>(new Set());
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const isLoadingMoreRef = useRef(false);
-  const currentPollRef = useRef(currentPoll);
-  useEffect(() => {
-    currentPollRef.current = currentPoll;
+
+  // Sub-hooks
+  const threadMessages = useThreadMessages({
+    initialMessages: messages,
+    threadId,
+    title,
+    slug,
+    hasMoreMessages: initialHasMore,
+    nextCursor: initialNextCursor,
+    totalMessageCount,
   });
-  const lastMessageTimestampRef = useRef<string>(
-    messages.length > 0 ? new Date(messages[messages.length - 1].createdAt).toISOString() : new Date().toISOString()
-  );
-
-  const loadMoreMessages = useCallback(async () => {
-    if (!hasMoreMessages || !nextCursor || isLoadingMoreRef.current) return;
-
-    isLoadingMoreRef.current = true;
-    setIsLoadingMore(true);
-
-    try {
-      const result = await loadThreadMessages({ threadId, cursor: nextCursor });
-
-      if (result.ok && result.data) {
-        const { messages: olderMessages, hasMore, nextCursor: newCursor } = result.data;
-
-        const mappedMessages: Message[] = olderMessages.map((m) =>
-          toClientMessage(m, { id: threadId, name: title, slug })
-        );
-
-        setLiveMessages((prev) => [...mappedMessages, ...prev]);
-        setHasMoreMessages(hasMore);
-        setNextCursor(newCursor);
-        setDisplayedCount((prev) => prev + mappedMessages.length);
-      } else {
-        toasts.serverError();
-      }
-    } catch (error) {
-      console.error('[thread-live] Failed to load more messages:', error);
-      toasts.serverError();
-    } finally {
-      isLoadingMoreRef.current = false;
-      setIsLoadingMore(false);
-    }
-  }, [hasMoreMessages, nextCursor, threadId, title, slug]);
-
-  useEffect(() => {
-    const sentinel = loadMoreSentinelRef.current;
-    const root = scrollContainerRef.current;
-    if (!sentinel || !root || !hasMoreMessages) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          void loadMoreMessages();
-        }
-      },
-      { root, rootMargin: '200px 0px 0px 0px' }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMoreMessages, loadMoreMessages]);
-
-  const liveMessagesRef = useRef<Message[]>(messages);
-  useEffect(() => {
-    liveMessagesRef.current = liveMessages;
-  }, [liveMessages]);
-
-  const unreadCountRef = useRef(initialUnreadCount);
-  useEffect(() => {
-    unreadCountRef.current = unreadCount;
-  }, [unreadCount]);
-
-  const aiInlineStatusRef = useRef(aiInlineStatus);
-  useEffect(() => {
-    aiInlineStatusRef.current = aiInlineStatus;
-  }, [aiInlineStatus]);
-
-  const pinnedMessage = useMemo(() => liveMessages.find((m) => m.isPinned) ?? null, [liveMessages]);
-
-  const hasAiMention = useCallback((content: string) => /\B@sai\b/i.test(content), []);
-
-  const mapBackfillMessage = useCallback(
-    (m: ThreadMessage): Message => toClientMessage(m, { id: threadId, name: title, slug }),
-    [threadId, title, slug]
-  );
 
   const isAtBottom = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -191,11 +102,19 @@ export function ThreadLiveWrapper({
     return el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
   }, []);
 
+  const readReceipts = useThreadReadReceipts({
+    threadId,
+    initialUnreadCount,
+    initialFirstUnreadMessageId,
+    liveMessagesRef: threadMessages.liveMessagesRef,
+    isAtBottom,
+  });
+
+  // AI inline helpers
   const setAiPending = useCallback((messageId: string) => {
     setAiInlineStatus((prev) => ({ ...prev, [messageId]: 'pending' }));
     const existing = aiInlineTimerRef.current.get(messageId);
     if (existing) clearTimeout(existing);
-    // 2 minute timeout to allow for worker cold starts
     const timer = setTimeout(() => {
       setAiInlineStatus((prev) => {
         if (prev[messageId] !== 'pending') return prev;
@@ -221,7 +140,10 @@ export function ThreadLiveWrapper({
   }, []);
 
   const streamParentRef = useRef<string | null>(null);
+  const pinnedMessage = useMemo(() => threadMessages.liveMessages.find((m) => m.isPinned) ?? null, [threadMessages.liveMessages]);
+  const hasAiMention = useCallback((content: string) => /\B@sai\b/i.test(content), []);
 
+  // AI stream handlers
   const handleStreamStart = useCallback(
     (info: AIStreamStart) => {
       const aiMsg: Message = {
@@ -247,18 +169,14 @@ export function ThreadLiveWrapper({
         thread: { id: threadId, name: title, slug },
         attachments: [],
       };
-      setLiveMessages((prev) =>
-        prev.some((m) => m.id === aiMsg.id) ? prev : [...prev, aiMsg]
-      );
+      threadMessages.addMessage(aiMsg);
     },
-    [threadId, title, slug]
+    [threadId, title, slug, threadMessages.addMessage]
   );
 
   const handleStreamUpdate = useCallback((messageId: string, content: string) => {
-    setLiveMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, content } : m))
-    );
-  }, []);
+    threadMessages.updateMessageContent(messageId, content);
+  }, [threadMessages.updateMessageContent]);
 
   const handleStreamDone = useCallback(() => {
     const parentId = streamParentRef.current;
@@ -294,45 +212,9 @@ export function ThreadLiveWrapper({
     onError: handleStreamError,
   });
 
-  const markThreadAsRead = useCallback(
-    async (force: boolean = false) => {
-      if (unreadCountRef.current <= 0) return;
-      if (isMarkingReadRef.current) return;
-      if (!force && !isAtBottom()) return;
-
-      const latestId = liveMessagesRef.current[liveMessagesRef.current.length - 1]?.id ?? null;
-
-      isMarkingReadRef.current = true;
-      const result = await markThreadReadAction({ threadId, lastReadMessageId: latestId });
-      isMarkingReadRef.current = false;
-
-      if (result.error) return;
-
-      setUnreadCount(0);
-      setFirstUnreadMessageId(null);
-    },
-    [isAtBottom, threadId]
-  );
-
   const handleMessagePosted = useCallback(
     (newMessage: Message, meta?: AiInlineMeta) => {
-      setLiveMessages((prev) => {
-        const cleaned = prev.filter(
-          (m) => !ownPendingIds.current.has(m.id) || m.id === newMessage.id
-        );
-        // Replace if already exists
-        const idx = cleaned.findIndex((m) => m.id === newMessage.id);
-        if (idx !== -1) {
-          const updated = [...cleaned];
-          updated[idx] = newMessage;
-          return updated;
-        }
-        return [...cleaned, newMessage];
-      });
-      const msgTimestamp = new Date(newMessage.createdAt).toISOString();
-      if (msgTimestamp > lastMessageTimestampRef.current) {
-        lastMessageTimestampRef.current = msgTimestamp;
-      }
+      threadMessages.addMessage(newMessage);
 
       const aiInline =
         meta?.aiInline !== undefined
@@ -349,40 +231,53 @@ export function ThreadLiveWrapper({
         setAiPending(newMessage.id);
       }
     },
-    [hasAiMention, setAiPending, startStream]
+    [hasAiMention, setAiPending, startStream, threadMessages.addMessage]
   );
 
   const handleOptimisticMessage = useCallback(
     (optimisticMsg: Message) => {
-      ownPendingIds.current.add(optimisticMsg.id);
-      setLiveMessages((prev) => [...prev, optimisticMsg]);
+      threadMessages.addOptimistic(optimisticMsg);
     },
-    []
+    [threadMessages.addOptimistic]
   );
 
-  const handleMessageError = useCallback((tempId: string) => {
-    setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
-    ownPendingIds.current.delete(tempId);
-  }, []);
+  const handleMessageError = useCallback(
+    (tempId: string) => {
+      threadMessages.removeOptimistic(tempId);
+    },
+    [threadMessages.removeOptimistic]
+  );
 
-  const scrollToFirstUnread = useCallback(() => {
-    if (firstUnreadMessageId) {
-      document
-        .getElementById(`message-${firstUnreadMessageId}`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [firstUnreadMessageId]);
-
+  // Load more observer
   useEffect(() => {
-    if (unreadCount <= 0) return;
-    const timer = setTimeout(() => {
-      void markThreadAsRead(true);
-    }, 30_000);
-    return () => clearTimeout(timer);
-  }, [unreadCount, markThreadAsRead]);
+    const sentinel = loadMoreSentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root || !threadMessages.hasMoreMessages) return;
 
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void threadMessages.loadMoreMessages();
+        }
+      },
+      { root, rootMargin: '200px 0px 0px 0px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
+
+  // Polling
+  useThreadPolling({
+    threadId,
+    lastMessageTimestampRef: threadMessages.lastMessageTimestampRef,
+    aiInlineStatusRef,
+    liveMessagesRef: threadMessages.liveMessagesRef,
+    mapBackfillMessage: threadMessages.mapBackfillMessage,
+    mergeBackfill: threadMessages.mergeBackfill,
+    onAiStatusCleared: clearAiStatus,
+  });
+
+  // Cleanup
   useEffect(() => {
     const timers = aiInlineTimerRef.current;
     return () => {
@@ -396,134 +291,49 @@ export function ThreadLiveWrapper({
     };
   }, [stopStream]);
 
-  useEffect(() => {
-    const BASE_INTERVAL = 20_000;
-    const FAST_INTERVAL = 3_000;
-    const MAX_INTERVAL = 60_000;
-    const BACKOFF_MULTIPLIER = 2;
-    const BACKOFF_THRESHOLD = 3; // consecutive empty polls before backing off
-
-    let currentInterval = BASE_INTERVAL;
-    let emptyPollCount = 0;
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const hasPendingAi = () => Object.values(aiInlineStatusRef.current).includes('pending');
-
-    async function pollOnce() {
-      const fastMode = hasPendingAi();
-      try {
-        const since = lastMessageTimestampRef.current;
-        const result = await backfillThreadMessages({ threadId, since });
-
-        if (!fastMode && currentPollRef.current) {
-          try {
-            const pollId = currentPollRef.current.id;
-            const [freshPollResult, freshResultsResult] = await Promise.all([
-              getPollByThreadAction({ threadId }),
-              getPollResultsAction({ pollId }),
-            ]);
-            if (freshPollResult?.data) {
-              const freshPoll = freshPollResult.data;
-              setCurrentPoll((prev) =>
-                prev ? { ...prev, isActive: freshPoll.isActive, expiresAt: freshPoll.expiresAt } : prev
-              );
-            }
-            if (freshResultsResult?.data) {
-              setPollResults(freshResultsResult.data);
-              setPollRefreshKey((k) => k + 1);
-            }
-          } catch {
-            // Poll refresh is best-effort — don't block message polling
-          }
-        }
-
-        if (!result?.ok || !result.data?.messages?.length) {
-          if (!fastMode) {
-            emptyPollCount++;
-            if (emptyPollCount >= BACKOFF_THRESHOLD) {
-              currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL);
-            }
-          }
-          return;
-        }
-
-        const newMessages: Message[] = result.data.messages.map(mapBackfillMessage);
-
-        let hasNew = false;
-        setLiveMessages((prev) => {
-          const { merged, hasNew: foundNew } = mergeMessages(prev, newMessages);
-          hasNew = foundNew;
-          if (foundNew) {
-            lastMessageTimestampRef.current = new Date(merged[merged.length - 1].createdAt).toISOString();
-          }
-          return merged;
-        });
-
-        if (hasNew) {
-          emptyPollCount = 0;
-          currentInterval = BASE_INTERVAL;
-          for (const msg of newMessages) {
-            if (msg.isAiResponse && msg.parentId && msg.content.trim().length > 0) {
-              setTimeout(() => clearAiStatus(msg.parentId!), 0);
-            }
-          }
-        } else if (!fastMode) {
-          emptyPollCount++;
-          if (emptyPollCount >= BACKOFF_THRESHOLD) {
-            currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL);
-          }
-        }
-      } catch {
-        // Silent — poll is best-effort
-      }
-    }
-
-    function scheduleNext() {
-      if (cancelled) return;
-      const delay = hasPendingAi() ? FAST_INTERVAL : currentInterval;
-      timeoutId = setTimeout(async () => {
-        if (document.visibilityState === 'visible') {
-          await pollOnce();
-        }
-        scheduleNext();
-      }, delay);
-    }
-
-    function onVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        if (timeoutId) clearTimeout(timeoutId);
-        pollOnce().finally(scheduleNext);
-      }
-    }
-
-    pollOnce().finally(scheduleNext);
-
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, [threadId, mapBackfillMessage, clearAiStatus]);
-
+  // Poll AI inline status — check if response arrived
   useEffect(() => {
     for (const [pendingMsgId, status] of Object.entries(aiInlineStatus)) {
       if (status !== 'pending') continue;
       if (
-        liveMessages.some(
+        threadMessages.liveMessages.some(
           (m) => m.parentId === pendingMsgId && m.isAiResponse && m.content.trim().length > 0
         )
       ) {
         setTimeout(() => clearAiStatus(pendingMsgId), 0);
       }
     }
-  }, [liveMessages, aiInlineStatus, clearAiStatus]);
+  }, [threadMessages.liveMessages, aiInlineStatus, clearAiStatus]);
+
+  // Poll refresh (non-fast-mode)
+  useEffect(() => {
+    if (!currentPoll) return;
+    const interval = setInterval(async () => {
+      try {
+        const pollId = currentPoll.id;
+        const [freshPollResult, freshResultsResult] = await Promise.all([
+          getPollByThreadAction({ threadId }),
+          getPollResultsAction({ pollId }),
+        ]);
+        if (freshPollResult?.data) {
+          const freshPoll = freshPollResult.data;
+          setCurrentPoll((prev) =>
+            prev ? { ...prev, isActive: freshPoll.isActive, expiresAt: freshPoll.expiresAt } : prev
+          );
+        }
+        if (freshResultsResult?.data) {
+          setPollResults(freshResultsResult.data);
+          setPollRefreshKey((k) => k + 1);
+        }
+      } catch {
+        // Poll refresh is best-effort
+      }
+    }, 20_000);
+    return () => clearInterval(interval);
+  }, [currentPoll, threadId]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Fixed header */}
       <ThreadPageHeader
         title={title}
         threadId={threadId}
@@ -598,7 +408,7 @@ export function ThreadLiveWrapper({
         onScroll={() => {
           if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
           readDebounceRef.current = setTimeout(() => {
-            void markThreadAsRead(false);
+            void readReceipts.markThreadAsRead(false);
           }, 250);
           if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
           scrollDebounceRef.current = setTimeout(() => {
@@ -635,7 +445,7 @@ export function ThreadLiveWrapper({
         </div>
 
         <div className="max-w-4xl mx-auto">
-          {liveMessages.length === 0 ? (
+          {threadMessages.liveMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center select-none">
               <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-brand/10 border border-brand/15 dark:bg-brand/20 dark:border-brand/30 shadow-linear-sm">
                 <svg className="w-8 h-8 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -649,24 +459,24 @@ export function ThreadLiveWrapper({
             </div>
           ) : (
             <ErrorBoundary>
-              {hasMoreMessages && (
+              {threadMessages.hasMoreMessages && (
                 <>
                   <div ref={loadMoreSentinelRef} aria-hidden className="h-px" />
                   <div className="mb-4 flex justify-center">
                     <button
                       type="button"
-                      onClick={loadMoreMessages}
-                      disabled={isLoadingMore}
+                      onClick={threadMessages.loadMoreMessages}
+                      disabled={threadMessages.isLoadingMore}
                       className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isLoadingMore ? (
+                      {threadMessages.isLoadingMore ? (
                         <>
                           <Loader2 size={14} className="animate-spin" />
                           Loading...
                         </>
                       ) : (
                         <>
-                          Load older messages ({totalMessageCount - displayedCount} remaining)
+                          Load older messages ({threadMessages.totalMessageCount - threadMessages.displayedCount} remaining)
                         </>
                       )}
                     </button>
@@ -674,13 +484,13 @@ export function ThreadLiveWrapper({
                 </>
               )}
               <CommentTree
-                messages={liveMessages}
+                messages={threadMessages.liveMessages}
                 threadId={threadId}
                 currentUser={currentUser}
                 aiInlineStatus={aiInlineStatus}
                 onOptimisticMessage={handleOptimisticMessage}
                 onMessagePosted={handleMessagePosted}
-                firstUnreadMessageId={firstUnreadMessageId}
+                firstUnreadMessageId={readReceipts.firstUnreadMessageId}
                 scrollContainerRef={scrollContainerRef}
               />
             </ErrorBoundary>
@@ -694,14 +504,14 @@ export function ThreadLiveWrapper({
             type="button"
             onClick={() => {
               scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
-              void markThreadAsRead(true);
+              void readReceipts.markThreadAsRead(true);
             }}
             className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-primary-foreground shadow-linear-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
             title="Scroll to bottom"
           >
-            {unreadCount > 0 && (
+            {readReceipts.unreadCount > 0 && (
               <span className="absolute -top-2 -right-2 min-w-4.5 h-4.5 rounded-full bg-brand text-primary-foreground text-xs font-bold flex items-center justify-center px-1 border-2 border-background">
-                {unreadCount > 99 ? '99+' : unreadCount}
+                {readReceipts.unreadCount > 99 ? '99+' : readReceipts.unreadCount}
               </span>
             )}
             <ChevronDown size={16} strokeWidth={2.5} />

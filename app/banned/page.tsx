@@ -1,4 +1,4 @@
-import { getSession } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { redirect } from 'next/navigation';
 import TimeAgo from '@/components/ui/TimeAgo';

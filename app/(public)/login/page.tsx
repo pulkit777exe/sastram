@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import LoginPageClient from './LoginPageClient';
 import type { Metadata } from 'next';
-import { getSession } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth';
 
 export const metadata: Metadata = {
   title: 'Sign In - Sastram',

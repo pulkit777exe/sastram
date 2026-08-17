@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { ProfileHeader } from '@/components/user/profile-header';
-import { getSession } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth';
 
 export default async function PublicProfilePage({ params }: { params: { userId: string } }) {
   const { userId } = await params;

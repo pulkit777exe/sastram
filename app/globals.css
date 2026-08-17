@@ -7,49 +7,49 @@
   --light-primary: #ffffff;
   --light-secondary: #f4f4f5;
   --text-primary: #0e0e10;
-  --text-secondary: #3736fc;
+  --text-secondary: #3872e9;
   --dark-primary: #08090a;
   --dark-secondary: #131316;
   --text-primary-hover: #27272a;
-  --text-secondary-hover: #4f4eff;
+  --text-secondary-hover: #5084ed;
   --radius: 0.75rem;
 
-  /* Brand Color — unchanged, this is Sastram's identity */
-  --brand: #3736fc;
-  --brand-hover: #2c2be0;
+  /* Brand Color — Sastram's identity, now the requested warm-neutral system */
+  --brand: #3872E9;
+  --brand-hover: #2159cd;
 
-  /* Light Mode — layered cool-neutral surfaces, not pure white */
-  --background: oklch(0.99 0.002 264);
-  --foreground: oklch(0.28 0.006 264);
+  /* Light Mode — warm off-white surfaces on a warm-white canvas */
+  --background: oklch(0.9848 0.0013 106.42);
+  --foreground: oklch(0.2393 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.006 264);
+  --card-foreground: oklch(0.2393 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.006 264);
-  --primary: oklch(0.16 0.006 264);
-  --primary-foreground: oklch(0.99 0.002 264);
-  --secondary: oklch(0.965 0.003 264);
-  --secondary-foreground: oklch(0.28 0.006 264);
-  --muted: oklch(0.965 0.003 264);
-  --muted-foreground: oklch(0.5 0.012 264);
-  --accent: oklch(0.955 0.014 264);
-  --accent-foreground: oklch(0.16 0.006 264);
+  --popover-foreground: oklch(0.2393 0 0);
+  --primary: oklch(0.2393 0 0);
+  --primary-foreground: oklch(0.9848 0.0013 106.42);
+  --secondary: oklch(0.965 0.0013 106.42);
+  --secondary-foreground: oklch(0.2393 0 0);
+  --muted: oklch(0.965 0.0013 106.42);
+  --muted-foreground: oklch(0.6927 0 0);
+  --accent: oklch(0.9694 0.0115 264.51);
+  --accent-foreground: oklch(0.2393 0 0);
   --destructive: oklch(0.62 0.21 25);
-  --border: oklch(0.91 0.005 264);
-  --input: oklch(0.91 0.005 264);
-  --ring: oklch(0.45 0.19 264);
+  --border: oklch(0.89 0 0);
+  --input: oklch(0.89 0 0);
+  --ring: oklch(0.5801 0.1905 262.52);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.975 0.003 264);
-  --sidebar-foreground: oklch(0.16 0.006 264);
-  --sidebar-primary: oklch(0.16 0.006 264);
-  --sidebar-primary-foreground: oklch(0.99 0.002 264);
-  --sidebar-accent: oklch(0.955 0.014 264);
-  --sidebar-accent-foreground: oklch(0.16 0.006 264);
-  --sidebar-border: oklch(0.91 0.005 264);
-  --sidebar-ring: oklch(0.45 0.19 264);
+  --sidebar: oklch(0.975 0.0013 106.42);
+  --sidebar-foreground: oklch(0.2393 0 0);
+  --sidebar-primary: oklch(0.2393 0 0);
+  --sidebar-primary-foreground: oklch(0.9848 0.0013 106.42);
+  --sidebar-accent: oklch(0.9694 0.0115 264.51);
+  --sidebar-accent-foreground: oklch(0.2393 0 0);
+  --sidebar-border: oklch(0.89 0 0);
+  --sidebar-ring: oklch(0.5801 0.1905 262.52);
 
   /* Soft layered shadows — Linear leans on shadow for elevation instead of
      hard borders. Additive, doesn't replace --border, just softens it. */
@@ -60,13 +60,13 @@
   --shadow-xl: 0 20px 50px rgba(15, 15, 20, 0.15), 0 8px 16px rgba(15, 15, 20, 0.08);
 
   /* Sastram thread page design system */
-  --blue: #3736fc;
-  --blue-light: #eeeeff;
-  --blue-dim: rgba(55, 54, 252, 0.08);
-  --bg: #fafafb;
-  --surface: #ffffff;
-  --text: #2c2c34;
-  --thread-muted: #6b6b76;
+  --blue: #3872E9;
+  --blue-light: #eaf1fe;
+  --blue-dim: rgba(56, 114, 233, 0.08);
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+  --text: #1F1F1F;
+  --thread-muted: #9C9C9C;
   --green: #1a9c5c;
   --amber: #d99a1b;
   --red: #e5484d;
@@ -204,6 +204,9 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-green: var(--sai-green);
+  --color-red: var(--sai-red);
+  --color-orange: var(--sai-orange);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -211,37 +214,37 @@
 }
 
 .dark {
-  --background: oklch(0.1 0.004 264);
-  --foreground: oklch(0.97 0.002 264);
-  --card: oklch(0.145 0.005 264);
-  --card-foreground: oklch(0.97 0.002 264);
-  --popover: oklch(0.145 0.005 264);
-  --popover-foreground: oklch(0.97 0.002 264);
-  --primary: oklch(0.97 0.002 264);
-  --primary-foreground: oklch(0.1 0.004 264);
-  --secondary: oklch(0.185 0.006 264);
-  --secondary-foreground: oklch(0.97 0.002 264);
-  --muted: oklch(0.185 0.006 264);
-  --muted-foreground: oklch(0.63 0.014 264);
-  --accent: oklch(0.21 0.02 264);
-  --accent-foreground: oklch(0.97 0.002 264);
+  --background: oklch(0.1875 0.0026 67.67);
+  --foreground: oklch(0.9780 0.0053 106.50);
+  --card: oklch(0.2634 0.0055 106.77);
+  --card-foreground: oklch(0.9780 0.0053 106.50);
+  --popover: oklch(0.2634 0.0055 106.77);
+  --popover-foreground: oklch(0.9780 0.0053 106.50);
+  --primary: oklch(0.9780 0.0053 106.50);
+  --primary-foreground: oklch(0.1875 0.0026 67.67);
+  --secondary: oklch(0.2296 0.0057 106.84);
+  --secondary-foreground: oklch(0.9780 0.0053 106.50);
+  --muted: oklch(0.2296 0.0057 106.84);
+  --muted-foreground: oklch(0.7552 0.0098 106.63);
+  --accent: oklch(0.3253 0.0421 263.72);
+  --accent-foreground: oklch(0.9780 0.0053 106.50);
   --destructive: oklch(0.69 0.19 22);
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.58 0.2 264);
+  --ring: oklch(0.6295 0.1676 262.72);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.085 0.004 264);
-  --sidebar-foreground: oklch(0.97 0.002 264);
-  --sidebar-primary: oklch(0.97 0.002 264);
-  --sidebar-primary-foreground: oklch(0.1 0.004 264);
-  --sidebar-accent: oklch(0.21 0.02 264);
-  --sidebar-accent-foreground: oklch(0.97 0.002 264);
+  --sidebar: oklch(0.1599 0.0027 67.63);
+  --sidebar-foreground: oklch(0.9780 0.0053 106.50);
+  --sidebar-primary: oklch(0.9780 0.0053 106.50);
+  --sidebar-primary-foreground: oklch(0.1875 0.0026 67.67);
+  --sidebar-accent: oklch(0.3253 0.0421 263.72);
+  --sidebar-accent-foreground: oklch(0.9780 0.0053 106.50);
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.58 0.2 264);
+  --sidebar-ring: oklch(0.6295 0.1676 262.72);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -250,11 +253,11 @@
   --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.4);
 
   /* Sastram thread page design system — dark */
-  --blue-dim: rgba(55, 54, 252, 0.18);
-  --bg: #08090a;
-  --surface: #131316;
-  --text: #f2f2f4;
-  --thread-muted: #8a8f98;
+  --blue-dim: rgba(56, 114, 233, 0.18);
+  --bg: #141312;
+  --surface: #252522;
+  --text: #F8F8F4;
+  --thread-muted: #B0B0A9;
   --green: #3dd68c;
   --amber: #f2b544;
   --red: #f2555a;
@@ -450,11 +453,11 @@
 /* Admin header gradient — shared across admin/dashboard pages */
 .admin-header-gradient {
   background: var(--foreground);
-  background: radial-gradient(circle at top, oklch(0.18 0.01 264), oklch(0.06 0.004 264));
+  background: radial-gradient(circle at top, oklch(0.30 0.006 106.7), oklch(0.12 0.003 67.6));
 }
 
 .bg-thread-cover {
-  background-image: radial-gradient(circle at 1px 1px, rgba(24, 24, 27, 0.06) 1px, transparent 0);
+  background-image: radial-gradient(circle at 1px 1px, rgba(31, 31, 31, 0.06) 1px, transparent 0);
   background-size: 20px 20px;
 }
 
@@ -830,41 +833,41 @@
 }
 
 /* ─────────────────────────────────────────────────────────
- * SAI DESIGN SYSTEM — token aliases for the new AI components
- * These map Sastram's existing OKLCH theme tokens to the
- * shorter ink/surface/line naming convention used by the
- * new Sai search agent components.
+ * SAI DESIGN SYSTEM — token aliases for the AI components
+ * Mapped to the requested warm-neutral + brand-blue palette:
+ * dark  #1D1D1A / #141312 / #252522 / #F8F8F4 / #B0B0A9 / #3872E9
+ * light #FFFFFF / #1F1F1F / #9C9C9C / #FAFAF9
  * ───────────────────────────────────────────────────────── */
 :root {
   /* Ink scale — foreground text */
-  --ink:        oklch(0.18 0.006 264);
-  --ink-2:      oklch(0.42 0.012 264);
-  --ink-3:      oklch(0.62 0.012 264);
+  --ink:        oklch(0.2393 0 0);
+  --ink-2:      oklch(0.6927 0 0);
+  --ink-3:      oklch(0.7952 0 0);
 
   /* Canvas — page background */
-  --canvas:     oklch(0.99 0.002 264);
+  --canvas:     oklch(0.9848 0.0013 106.42);
 
   /* Surface — card / floating elements */
   --surface:    oklch(1 0 0);
 
   /* Field — input backgrounds */
-  --field:      oklch(0.965 0.003 264);
+  --field:      oklch(0.965 0.0013 106.42);
 
   /* Lines & borders */
-  --line:       oklch(0.91 0.005 264);
-  --line-strong:oklch(0.80 0.007 264);
+  --line:       oklch(0.89 0 0);
+  --line-strong:oklch(0.8172 0 0);
 
   /* Hover states */
-  --hover:      oklch(0.97 0.003 264);
-  --hover-2:    oklch(0.945 0.005 264);
+  --hover:      oklch(0.9642 0 0);
+  --hover-2:    oklch(0.9370 0 0);
 
   /* Inset — slightly recessed surface */
-  --inset:      oklch(0.97 0.003 264);
+  --inset:      oklch(0.965 0.0013 106.42);
 
   /* Accent — brand blue (SAI design system) */
-  --sai-accent:     oklch(0.45 0.19 264);
-  --sai-accent-tint:oklch(0.94 0.04 264);
-  --sai-accent-ink: oklch(0.30 0.19 264);
+  --sai-accent:     oklch(0.5801 0.1905 262.52);
+  --sai-accent-tint:oklch(0.9517 0.0199 267.29);
+  --sai-accent-ink: oklch(0.3999 0.1914 262.56);
 
   /* Semantic colours */
   --sai-green:  oklch(0.60 0.18 148);
@@ -885,21 +888,21 @@
 }
 
 .dark {
-  --ink:        oklch(0.97 0.002 264);
-  --ink-2:      oklch(0.72 0.012 264);
-  --ink-3:      oklch(0.52 0.012 264);
-  --canvas:     oklch(0.10 0.004 264);
-  --surface:    oklch(0.145 0.005 264);
-  --field:      oklch(0.185 0.006 264);
+  --ink:        oklch(0.9780 0.0053 106.50);
+  --ink-2:      oklch(0.7552 0.0098 106.63);
+  --ink-3:      oklch(0.5332 0.0077 106.66);
+  --canvas:     oklch(0.1875 0.0026 67.67);
+  --surface:    oklch(0.2634 0.0055 106.77);
+  --field:      oklch(0.2296 0.0057 106.84);
   --line:       oklch(1 0 0 / 8%);
   --line-strong:oklch(1 0 0 / 16%);
-  --hover:      oklch(0.21 0.02 264);
-  --hover-2:    oklch(0.19 0.015 264);
-  --inset:      oklch(0.17 0.006 264);
+  --hover:      oklch(0.3513 0.0051 106.66);
+  --hover-2:    oklch(0.3236 0.0069 106.78);
+  --inset:      oklch(0.1599 0.0027 67.63);
   /* Accent — brand blue (SAI design system) — dark */
-  --sai-accent:     oklch(0.58 0.20 264);
-  --sai-accent-tint:oklch(0.20 0.06 264);
-  --sai-accent-ink: oklch(0.78 0.18 264);
+  --sai-accent:     oklch(0.6295 0.1676 262.72);
+  --sai-accent-tint:oklch(0.3528 0.0588 261.85);
+  --sai-accent-ink: oklch(0.7274 0.1244 262.35);
   --sai-green:  oklch(0.70 0.20 148);
   --sai-red:    oklch(0.69 0.19 22);
   --sai-orange: oklch(0.75 0.18 60);
@@ -924,18 +927,12 @@
   .bg-green-tint { background-color: color-mix(in oklch, var(--sai-green) 12%, var(--surface)); }
   .bg-red-tint   { background-color: color-mix(in oklch, var(--sai-red) 12%, var(--surface)); }
   .bg-orange-tint{ background-color: color-mix(in oklch, var(--sai-orange) 12%, var(--surface)); }
-  .bg-green      { background-color: var(--sai-green); }
-  .bg-red        { background-color: var(--sai-red); }
-  .bg-orange     { background-color: var(--sai-orange); }
   .bg-ink        { background-color: var(--ink); }
 
   .text-ink      { color: var(--ink); }
   .text-ink-2    { color: var(--ink-2); }
   .text-ink-3    { color: var(--ink-3); }
   .text-canvas   { color: var(--canvas); }
-  .text-green    { color: var(--sai-green); }
-  .text-red      { color: var(--sai-red); }
-  .text-orange   { color: var(--sai-orange); }
   .text-sai-accent-ink { color: var(--sai-accent-ink); }
 
   .border-line       { border-color: var(--line); }

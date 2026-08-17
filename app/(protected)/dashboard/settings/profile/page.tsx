@@ -1,9 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { isAdminUser as isAdmin } from '@/modules/auth/session';
-import { getSession } from '@/modules/auth/session';
+import { isAdminUser as isAdmin } from '@/modules/auth';
+import { getSession } from '@/modules/auth';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { ArrowLeft, Settings } from 'lucide-react';
 
 export default async function ProfilePage() {
@@ -15,10 +15,10 @@ export default async function ProfilePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-4 mb-4">
         <Link href="/dashboard/settings">
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
+          <PressDepth className="text-muted-foreground">
             <ArrowLeft size={16} className="mr-2" />
             Back to Settings
-          </Button>
+          </PressDepth>
         </Link>
       </div>
 
@@ -43,15 +43,17 @@ export default async function ProfilePage() {
           </div>
           <div className="flex flex-col gap-2">
             <Link href="/dashboard/settings">
-              <Button variant="outline" className="rounded-lg">
+              <PressDepth className="rounded-lg">
                 <Settings size={14} className="mr-2" />
                 Edit Settings
-              </Button>
+              </PressDepth>
             </Link>
             {isAdmin(user) && (
-              <Button asChild variant="outline" className="rounded-lg">
-                <Link href="/dashboard/admin">Admin Tools</Link>
-              </Button>
+              <Link href="/dashboard/admin">
+                <PressDepth className="rounded-lg">
+                  Admin Tools
+                </PressDepth>
+              </Link>
             )}
           </div>
         </CardContent>

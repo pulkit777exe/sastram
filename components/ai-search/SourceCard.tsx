@@ -77,10 +77,10 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
       ref={ref}
       id={`source-${id}`}
       onClick={() => onSelect?.(id)}
-      className={`bg-card border border-border rounded-xl p-4 transition-all duration-500 ease-out hover:border-foreground/20 hover:shadow-linear-sm group scroll-mt-4 cursor-pointer ${
+      className={`bg-surface border border-line rounded-xl p-4 transition-all duration-500 ease-out hover:border-line-strong group scroll-mt-4 cursor-pointer ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-      } ${highlighted ? 'ring-2 ring-foreground/40 border-foreground/40' : ''} ${
-        isLowerQuality ? 'border-chart-4/30 bg-chart-4/5 hover:border-chart-4/50' : ''
+      } ${highlighted ? 'ring-2 ring-sai-accent/40 border-sai-accent/40' : ''} ${
+        isLowerQuality ? 'border-sai-orange/30 bg-sai-orange/5 hover:border-sai-orange/50' : ''
       }`}
     >
       {/* Header */}
@@ -91,7 +91,7 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="text-sm font-medium text-foreground hover:underline inline-flex items-center gap-1 group/link"
+            className="text-sm font-medium text-ink hover:underline inline-flex items-center gap-1 group/link"
           >
             <span className="truncate">{title}</span>
             <ExternalLink
@@ -100,13 +100,13 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
             />
           </a>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground truncate">{source}</span>
+            <span className="text-xs text-ink-2 truncate">{source}</span>
             {publishedDate && (
-              <span className="text-xs text-muted-foreground/70">
+              <span className="text-xs text-ink-3">
                 · <TimeAgo date={publishedDate} />
               </span>
             )}
-            <span className="text-xs text-muted-foreground/40">via {provider}</span>
+            <span className="text-xs text-ink-3/40">via {provider}</span>
           </div>
         </div>
 
@@ -117,11 +117,11 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
       </div>
 
       {/* Snippet */}
-      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 mb-3">{snippet}</p>
+      <p className="text-xs text-ink-2 leading-relaxed line-clamp-3 mb-3">{snippet}</p>
 
       {/* Outdated warning */}
       {isOutdated && (
-        <div className="flex items-center gap-1.5 text-xs text-chart-4">
+        <div className="flex items-center gap-1.5 text-xs text-sai-orange">
           <AlertTriangle size={10} />
           <span>
             Content from {publishedDate ? <TimeAgo date={publishedDate} /> : 'unknown date'} — may

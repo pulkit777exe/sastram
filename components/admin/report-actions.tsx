@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { XCircle } from 'lucide-react';
 import { resolveReport } from '@/modules/reports/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -104,10 +104,8 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
     <>
       <div className="flex gap-2 flex-wrap">
         {ACTION_OPTIONS.map((opt) => (
-          <Button
+          <PressDepth
             key={opt.value}
-            size="sm"
-            variant={opt.value === 'DISMISS' ? 'outline' : 'default'}
             onClick={() => handleOpen(opt.value)}
             className={
               opt.value === 'DISMISS'
@@ -121,7 +119,7 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
           >
             {opt.value === 'DISMISS' && <XCircle className="w-4 h-4 mr-1" />}
             {opt.label}
-          </Button>
+          </PressDepth>
         ))}
       </div>
 
@@ -198,10 +196,10 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            <PressDepth onClick={() => setOpen(false)} disabled={submitting}>
               Cancel
-            </Button>
-            <Button
+            </PressDepth>
+            <PressDepth
               onClick={handleSubmit}
               disabled={submitting}
               className={
@@ -210,12 +208,12 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
                   : selectedAction === 'REMOVE_MESSAGE'
                     ? 'bg-amber-600 hover:bg-amber-500 text-white'
                     : selectedAction === 'DISMISS'
-                      ? 'bg-zinc-600 hover:bg-zinc-500'
+                      ? 'bg-muted hover:bg-muted/80 text-foreground'
                       : 'bg-green-600 hover:bg-green-500 text-white'
               }
             >
               {submitting ? 'Submitting...' : 'Submit'}
-            </Button>
+            </PressDepth>
           </DialogFooter>
         </DialogContent>
       </Dialog>

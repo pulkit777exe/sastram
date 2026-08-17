@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getSession } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth';
 import { SearchPage } from '@/components/ai-search/SearchPage';
 
 export const metadata: Metadata = {

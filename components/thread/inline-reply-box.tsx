@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { Reply, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Textarea } from '@/components/ui/textarea';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import { MentionSuggest } from '@/components/chat/mention-suggest';
@@ -144,23 +144,20 @@ export function InlineReplyBox({
             <p className="t-error-msg text-xs text-destructive mt-1">{error || 'Reply cannot be empty'}</p>
 
             <div className="flex items-center justify-end gap-2 mt-1.5">
-              <Button
-                variant="ghost"
-                size="sm"
+              <PressDepth
                 onClick={onCancel}
                 className="h-7 text-xs text-muted-foreground"
               >
                 Cancel
-              </Button>
-              <Button
-                size="sm"
+              </PressDepth>
+              <PressDepth
                 onClick={handleSubmitWithShake}
                 disabled={isSubmitting || !content.trim()}
                 className="h-7 text-xs bg-brand hover:bg-brand/90 text-primary-foreground"
               >
                 {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 {isSubmitting ? 'Posting...' : 'Reply'}
-              </Button>
+              </PressDepth>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { getSession } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth';
 import { getNotifications } from '@/modules/notifications/actions';
 import { NotificationList } from '@/components/notifications/notification-list';
 import { Bell } from 'lucide-react';

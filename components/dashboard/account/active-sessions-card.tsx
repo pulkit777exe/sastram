@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Monitor, Smartphone, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { listSessionsAction, revokeSessionAction } from '@/modules/users/account-actions';
 
@@ -109,15 +109,13 @@ export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
                   </div>
                 </div>
                 {!session.isCurrent && (
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <PressDepth
                     disabled={revoking === session.token}
                     onClick={() => handleRevoke(session.token)}
                   >
                     <LogOut className="mr-1 h-3 w-3" />
                     {revoking === session.token ? 'Revoking…' : 'Revoke'}
-                  </Button>
+                  </PressDepth>
                 )}
               </div>
             );

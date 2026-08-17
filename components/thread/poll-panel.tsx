@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PollDisplay } from '@/components/thread/poll-display';
@@ -223,15 +223,13 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                 <div className="space-y-3">
                   <PollDisplay poll={poll} pollResults={pollResults} refreshKey={pollRefreshKey} />
                   {canManagePoll && isEffectivelyActive && (
-                    <Button
-                      size="sm"
-                      variant="outline"
+                    <PressDepth
                       disabled={isSaving}
                       onClick={handleClosePoll}
                       className="text-xs"
                     >
                       {isSaving ? 'Closing...' : 'Close poll'}
-                    </Button>
+                    </PressDepth>
                   )}
                 </div>
               ) : showCreateForm ? (
@@ -279,27 +277,23 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                     </AnimatePresence>
 
                     <div className="flex items-center gap-2 pt-1">
-                      <Button
+                      <PressDepth
                         type="button"
-                        size="sm"
-                        variant="ghost"
                         disabled={options.length >= MAX_OPTIONS}
                         onClick={handleAddOption}
                         className="h-7 text-xs gap-1"
                       >
                         <Plus size={11} />
                         Add option
-                      </Button>
-                      <Button
+                      </PressDepth>
+                      <PressDepth
                         type="button"
-                        size="sm"
-                        variant="ghost"
                         disabled={options.length <= MIN_OPTIONS}
                         onClick={handleRemoveOption}
                         className="h-7 text-xs text-muted-foreground"
                       >
                         Remove last
-                      </Button>
+                      </PressDepth>
                     </div>
                   </div>
 
@@ -318,23 +312,20 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
-                    <Button
+                    <PressDepth
                       onClick={handleCreatePoll}
                       disabled={isSaving || !isFormValid}
-                      size="sm"
                       className="flex-1"
                     >
                       {isSaving ? 'Creating...' : 'Create poll'}
-                    </Button>
-                    <Button
+                    </PressDepth>
+                    <PressDepth
                       type="button"
-                      variant="ghost"
-                      size="sm"
                       onClick={handleCancelCreate}
                       disabled={isSaving}
                     >
                       Cancel
-                    </Button>
+                    </PressDepth>
                   </div>
                 </div>
               ) : (
@@ -343,15 +334,13 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                     No poll has been added to this thread yet.
                   </p>
                   {canManagePoll && (
-                    <Button
-                      size="sm"
-                      variant="outline"
+                    <PressDepth
                       onClick={() => setShowCreateForm(true)}
                       className="gap-1.5 text-xs"
                     >
                       <Plus size={12} />
                       Add poll
-                    </Button>
+                    </PressDepth>
                   )}
                 </div>
               )}

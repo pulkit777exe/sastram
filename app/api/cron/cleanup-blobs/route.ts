@@ -2,7 +2,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { del } from '@vercel/blob';
-import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { verifyCronAuth } from '@/lib/middleware/cron-auth';
 import { ok, fail } from '@/lib/utils/api-response';
 
 const BATCH_SIZE = 50;

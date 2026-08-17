@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { toasts } from '@/lib/utils/toast';
 import { createThreadAction, deleteThreadAction } from '@/modules/threads/actions';
 
@@ -55,22 +55,22 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
           </div>
 <div className="flex gap-3">
             <Link href="/dashboard/admin/reports">
-              <Button className="bg-red-600 hover:bg-red-500 text-white">
+              <PressDepth className="bg-red-600 hover:bg-red-500 text-white">
                 <Flag className="w-4 h-4 mr-2" />
                 View Reports
-              </Button>
+              </PressDepth>
             </Link>
             <Link href="/dashboard/admin/moderation">
-              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
+              <PressDepth className="border-white/20 text-white/70 hover:bg-white/10">
                 <Flag className="w-4 h-4 mr-2" />
                 Moderation
-              </Button>
+              </PressDepth>
             </Link>
             <Link href="/dashboard/admin/spend">
-              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
+              <PressDepth className="border-white/20 text-white/70 hover:bg-white/10">
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Spend Telemetry
-              </Button>
+              </PressDepth>
             </Link>
           </div>
         </div>
@@ -140,15 +140,15 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
                 </div>
               </div>
 
-              <Button type="submit" className="w-full rounded-2xl">
+              <PressDepth type="submit" className="w-full rounded-2xl">
                 Publish thread
-              </Button>
+              </PressDepth>
             </form>
           </CardContent>
         </Card>
       </section>
 
-      <section className="rounded-3xl border border-border bg-white p-6 shadow-linear-sm">
+      <section className="rounded-3xl border border-border bg-card p-6 shadow-linear-sm">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Threads</h2>
@@ -176,14 +176,13 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
                     </a>
                   </td>
                   <td className="py-3 text-right">
-                    <Button
-                      variant="ghost"
+                    <PressDepth
                       className="text-red-500 hover:text-red-600"
                       disabled={isPending}
                       onClick={() => handleDeleteThread(thread.id)}
                     >
                       Delete
-                    </Button>
+                    </PressDepth>
                   </td>
                 </tr>
               ))}

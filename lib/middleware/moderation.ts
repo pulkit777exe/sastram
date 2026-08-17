@@ -1,6 +1,6 @@
 'use server';
 
-import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth';
 import { canModerate, isAdmin } from '@/lib/config/permissions';
 
 export async function requireModerator() {

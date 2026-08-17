@@ -48,14 +48,14 @@ export function StatsCard({
               key={i}
               className={cn(
                 'w-1.5 rounded-t-sm',
-                chartType === 'bar' ? 'bg-blue-500/20' : 'bg-emerald-500/20'
+                chartType === 'bar' ? 'bg-brand/20' : 'bg-emerald-500/20'
               )}
               style={{ height: `${h}%` }}
             >
               <div
                 className={cn(
                   'w-full rounded-t-sm h-full opacity-50',
-                  chartType === 'bar' ? 'bg-blue-500' : 'bg-emerald-500'
+                  chartType === 'bar' ? 'bg-brand' : 'bg-emerald-500'
                 )}
                 style={{ height: i === 5 ? '100%' : '0%' }}
               />

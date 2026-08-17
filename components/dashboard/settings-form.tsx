@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -48,13 +48,13 @@ interface SettingsFormProps {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button
+    <PressDepth
       type="submit"
       disabled={pending}
       className="h-11 rounded-xl bg-brand hover:bg-brand/90 text-white font-medium shadow-lg shadow-brand/30 transition-all hover:shadow-brand/40 disabled:opacity-50"
     >
       {pending ? 'Saving...' : 'Save Changes'}
-    </Button>
+    </PressDepth>
   );
 }
 
@@ -207,10 +207,8 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   id="avatar-upload"
                   disabled={uploadingAvatar}
                 />
-                <Button
+                <PressDepth
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={uploadingAvatar}
                   className="border-border text-foreground hover:bg-muted"
@@ -223,7 +221,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                       Upload Avatar
                     </>
                   )}
-                </Button>
+                </PressDepth>
                 <p className="text-xs text-muted-foreground">JPG, PNG, GIF or WebP. Max 4.5MB</p>
               </div>
             </div>
@@ -267,10 +265,8 @@ export function SettingsForm({ user }: SettingsFormProps) {
                 id="banner-upload"
                 disabled={uploadingBanner}
               />
-              <Button
+              <PressDepth
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => bannerInputRef.current?.click()}
                 disabled={uploadingBanner}
                 className="mt-2 border-border text-foreground hover:bg-muted"
@@ -283,7 +279,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                     {bannerUrl ? 'Change Banner' : 'Upload Banner'}
                   </>
                 )}
-              </Button>
+              </PressDepth>
             </div>
           </div>
 

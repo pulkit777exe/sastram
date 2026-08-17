@@ -13,7 +13,7 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 - `modules/users/` - User CRUD, profiles, avatar/banner upload
 - `modules/threads/` - Thread CRUD, slug routing, relations
 - `modules/topics/` - Topic creation with tags
-- `modules/messages/` - Messages with tree threading (post, edit, delete, mentions, AI inline)
+- `modules/messages/` - Messages with tree threading (post, edit, delete, mentions, AI inline, moderation processor)
 - `modules/search/` - Full-text thread/message search
 
 ### Social Features
@@ -35,9 +35,9 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 - `modules/members/` - Thread membership views
 
 ### Moderation
-- `modules/moderation/` - Moderation rules, policy, executors
+- `modules/moderation/` - Moderation rules, policy, executors, dashboard
 - `modules/appeals/` - Moderation appeals
-- `modules/reports/` - Report management
+- `modules/reports/` - Report management (actions + service for transactional logic)
 - `modules/policy/` - Policy lookups
 - `modules/audit/` - Audit logging
 - `modules/admin/` - Admin functions

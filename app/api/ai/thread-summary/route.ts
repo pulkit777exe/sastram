@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
-import { requireSessionOrThrow } from '@/modules/auth/session';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
-import { rateLimit } from '@/lib/services/rate-limit';
-import { consumeAiAnalysisQuota } from '@/lib/services/daily-quota';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { getEnv } from '@/lib/config/env';
+import { withAiPreflight } from '@/lib/middleware/ai-preflight';
 import { z } from 'zod';
 
 const summaryRequestSchema = z.object({
@@ -30,37 +26,11 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   }
   const { threadId } = parsed.data;
 
-  const session = await requireSessionOrThrow();
-
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rateLimitResult = await rateLimit(ip);
-  if (!rateLimitResult.success) {
-    return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
-  }
-
-  // Per-user daily AI analysis quota
-  const quota = await consumeAiAnalysisQuota(session.user.id);
-  if (!quota.allowed) {
-    return NextResponse.json(fail('RATE_LIMITED', `Daily AI analysis limit reached. Resets at UTC midnight.`), { status: 429 });
-  }
-
-  // Global daily spend cap
-  const spendCap = await enforceAiSpendCap(AiCallPath.THREAD_SUMMARY);
-  if (!spendCap.allowed) {
-    return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
-  }
-
-  // Hard cost-aware gate: thread summary is an EXPENSIVE synthesis.
-  const gate = evaluateAiCostGate({ path: AiCallPath.THREAD_SUMMARY, spendCapAllowed: spendCap.allowed });
-  if (!gate.allowed) {
-    return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
-  }
-
-  try {
-    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
-  } catch {
-    return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
-  }
+  const preflight = await withAiPreflight(req, {
+    aiCallPath: AiCallPath.THREAD_SUMMARY,
+    threadId,
+  });
+  if (preflight instanceof NextResponse) return preflight;
 
   const totalMessageCount = await prisma.message.count({
     where: { threadId: threadId, deletedAt: null },
@@ -87,7 +57,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
   const messages = thread.messages;
 
-  await enqueueJob(AIJobType.GENERATE_THREAD_SUMMARY, { threadId, messages, userId: session.user.id });
+  await enqueueJob(AIJobType.GENERATE_THREAD_SUMMARY, { threadId, messages, userId: preflight.session.user.id });
 
   return NextResponse.json(ok({ status: 'pending', message: 'Summary generation started' }));
 });

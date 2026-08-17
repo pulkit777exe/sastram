@@ -33,12 +33,12 @@ function SortHeader({
   return (
     <button
       onClick={() => onToggle(sortKeyVal)}
-      className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+      className="flex items-center gap-1 text-xs font-medium text-ink-2 hover:text-ink transition-colors"
     >
       {label}
       <ArrowUpDown
         size={10}
-        className={sortKey === sortKeyVal ? 'text-foreground' : 'opacity-30'}
+        className={sortKey === sortKeyVal ? 'text-ink' : 'opacity-30'}
       />
     </button>
   );
@@ -92,13 +92,13 @@ export function TableView({ sources }: TableViewProps) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden max-w-full">
+    <div className="bg-surface border border-line rounded-2xl overflow-hidden max-w-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-medium text-foreground">{sources.length} Results</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+        <span className="text-sm font-medium text-ink">{sources.length} Results</span>
         <button
           onClick={exportCSV}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-foreground/5 hover:bg-foreground/10 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-ink-2 hover:text-ink bg-hover/40 hover:bg-hover rounded-lg transition-colors"
         >
           <Download size={12} />
           Export CSV
@@ -109,11 +109,11 @@ export function TableView({ sources }: TableViewProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-xs table-fixed min-w-150">
           <thead>
-            <tr className="border-b border-border">
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground w-[18%]">
+            <tr className="border-b border-line">
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-ink-2 w-[18%]">
                 Source
               </th>
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground w-[30%]">
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-ink-2 w-[30%]">
                 Title
               </th>
               <th className="px-4 py-2.5 w-[16%]">
@@ -140,7 +140,7 @@ export function TableView({ sources }: TableViewProps) {
                   onToggle={toggleSort}
                 />
               </th>
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground w-[14%]">
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-ink-2 w-[14%]">
                 Provider
               </th>
             </tr>
@@ -149,15 +149,15 @@ export function TableView({ sources }: TableViewProps) {
             {sorted.map((s) => (
               <tr
                 key={s.id}
-                className="border-b border-border/50 hover:bg-foreground/2 transition-colors"
+                className="border-b border-line/50 hover:bg-hover/30 transition-colors"
               >
-                <td className="px-4 py-2.5 text-muted-foreground truncate">{s.domain}</td>
+                <td className="px-4 py-2.5 text-ink-2 truncate">{s.domain}</td>
                 <td className="px-4 py-2.5">
                   <a
                     href={s.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-foreground hover:underline inline-flex items-center gap-1 truncate max-w-full"
+                    className="text-ink hover:underline inline-flex items-center gap-1 truncate max-w-full"
                   >
                     <span className="truncate">{s.title}</span>
                     <ExternalLink size={10} className="shrink-0 opacity-40" />
@@ -165,25 +165,25 @@ export function TableView({ sources }: TableViewProps) {
                 </td>
                 <td className="px-4 py-2.5 text-center">
                   <div className="flex items-center justify-center gap-1.5">
-                    <div className="w-10 h-1 bg-muted rounded-full overflow-hidden">
+                    <div className="w-10 h-1 bg-hover rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{
                           width: `${s.confidence}%`,
-                          backgroundColor: 'var(--color-foreground)',
+                          backgroundColor: 'var(--ink)',
                         }}
                       />
                     </div>
-                    <span className="tabular-nums text-muted-foreground">{s.confidence}%</span>
+                    <span className="tabular-nums text-ink-2">{s.confidence}%</span>
                   </div>
                 </td>
                 <td className="px-4 py-2.5 text-center">
-                  <span className="text-muted-foreground">{TIER_LABELS[s.tier]}</span>
+                  <span className="text-ink-2">{TIER_LABELS[s.tier]}</span>
                 </td>
-                <td className="px-4 py-2.5 text-center text-muted-foreground">
+                <td className="px-4 py-2.5 text-center text-ink-2">
                   {s.publishedDate ? <TimeAgo date={s.publishedDate} /> : '—'}
                 </td>
-                <td className="px-4 py-2.5 text-muted-foreground capitalize">{s.provider}</td>
+                <td className="px-4 py-2.5 text-ink-2 capitalize">{s.provider}</td>
               </tr>
             ))}
           </tbody>

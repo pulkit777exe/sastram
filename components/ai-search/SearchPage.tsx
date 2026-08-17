@@ -483,13 +483,12 @@ export function SearchPage({ user }: SearchPageProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex flex-col items-center justify-center min-h-full px-4 py-10"
+              className="flex flex-col items-center justify-center min-h-full px-4 py-16"
             >
-              <div className="mb-8 relative">
-                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
+              <div className="mb-10 relative">
                 <svg
                   viewBox="0 0 200 200"
-                  className="w-32 h-32 text-ink-3 relative"
+                  className="w-28 h-28 text-ink-3 relative"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1"
@@ -532,26 +531,17 @@ export function SearchPage({ user }: SearchPageProps) {
                 </svg>
               </div>
 
-              <div className="mb-8 text-center">
-                <h1 className="text-3xl font-bold tracking-tight mb-3 text-ink">
-                  What do you want to search?
+              <div className="mb-10 text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-3 mb-3">SAI</p>
+                <h1 className="text-3xl md:text-4xl tracking-tight text-ink mb-4" style={{ fontFamily: 'var(--font-instrument-serif)' }}>
+                  Search across Sastram
                 </h1>
-                <p className="text-sm text-ink-2 max-w-md mx-auto">
-                  Sai synthesizes answers from across multiple sources with inline citations.
+                <p className="text-sm text-ink-2 max-w-md mx-auto leading-relaxed">
+                  Ask anything. Sai synthesizes relevant discussions,<br className="hidden sm:block" /> sources and context into one answer.
                 </p>
               </div>
 
-              <div className="mb-8 text-center">
-                <p className="text-xs text-ink-2 mb-2">For example:</p>
-                <ul className="text-sm text-ink-2 space-y-1">
-                  <li>• What are the best patterns for managing state in React?</li>
-                  <li>• Latest threads on Hacker News about AI in healthcare.</li>
-                  <li>• Compare Arch Linux vs Debian for a developer machine.</li>
-                </ul>
-              </div>
-
-              <div className="relative w-full max-w-2xl">
-                <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-3xl" />
+              <div className="relative w-full max-w-2xl mb-10">
                 <div className="relative">
                   <SearchBox
                     onSearch={handleSearch}
@@ -560,6 +550,15 @@ export function SearchPage({ user }: SearchPageProps) {
                     initialQuery={initialQuery}
                   />
                 </div>
+              </div>
+
+              <div className="text-center">
+                <p className="text-xs text-ink-3 mb-3">For example:</p>
+                <ul className="text-sm text-ink-2 space-y-1.5">
+                  <li>What are the best patterns for managing state in React?</li>
+                  <li>Latest threads on Hacker News about AI in healthcare.</li>
+                  <li>Compare Arch Linux vs Debian for a developer machine.</li>
+                </ul>
               </div>
             </motion.div>
           )}
@@ -687,8 +686,8 @@ export function SearchPage({ user }: SearchPageProps) {
 
               {appState === 'error' && (
                 <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
-                  <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                    <AlertCircle size={20} className="text-red-400" />
+                  <div className="w-12 h-12 rounded-full bg-sai-red/10 flex items-center justify-center mb-4">
+                    <AlertCircle size={20} className="text-sai-red" />
                   </div>
                   <h2 className="text-lg font-semibold mb-2 text-ink">
                     {isOffline ? "You're offline" : 'Something went wrong'}
@@ -696,7 +695,7 @@ export function SearchPage({ user }: SearchPageProps) {
                   <p className="text-sm text-ink-2 max-w-md mb-6">{errorMessage}</p>
                   <button
                     onClick={handleNewSearch}
-                    className="px-4 py-2 text-sm font-medium bg-ink text-canvas rounded-xl hover:bg-ink/90 transition-colors"
+                    className="px-4 py-2 text-sm font-medium bg-ink text-canvas rounded-xl hover:opacity-90 transition-opacity"
                   >
                     {isOffline ? 'Retry when back online' : 'Try Again'}
                   </button>

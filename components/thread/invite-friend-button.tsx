@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Dialog,
   DialogContent,
@@ -78,14 +78,12 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
+        <PressDepth
           className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <UserPlus className="w-4 h-4 mr-2" />
           Invite Friend
-        </Button>
+        </PressDepth>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -127,16 +125,16 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+            <PressDepth type="button" onClick={() => setOpen(false)}>
               Cancel
-            </Button>
-            <Button
+            </PressDepth>
+            <PressDepth
               type="submit"
               disabled={isSubmitting || !email.trim()}
               className="bg-brand hover:bg-brand/90 text-primary-foreground"
             >
               {isSubmitting ? 'Sending...' : 'Send Invitation'}
-            </Button>
+            </PressDepth>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,45 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
-import { postMessage, searchMentionUsers } from '@/modules/messages/actions';
+import { postMessage } from '@/modules/messages/actions';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
-import type { MentionCandidate } from '@/components/chat/mention-suggest';
+import { useMessageDraft } from './use-message-draft';
+import { useMentions } from './use-mentions';
+import { useToolbar } from './use-toolbar';
 
-export function draftKey(threadId: string, parentId?: string): string {
-  return `sastram:draft:${threadId}:${parentId ?? 'root'}`;
-}
-
-function readDraft(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeDraft(key: string, content: string): void {
-  try {
-    if (content) {
-      localStorage.setItem(key, content);
-    } else {
-      localStorage.removeItem(key);
-    }
-  } catch {
-    // quota exceeded or localStorage unavailable — silent fail
-  }
-}
-
-function clearDraft(key: string): void {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // localStorage unavailable — silent fail
-  }
-}
-
-type ToolbarAction = 'bold' | 'italic' | 'code' | 'link';
+export { draftKey } from './use-message-draft';
 
 interface UseMessageComposerOptions {
   threadId: string;
@@ -59,71 +29,46 @@ interface UseMessageComposerOptions {
   onMessageError?: (tempId: string) => void;
   onSuccess?: () => void;
   onCancelReply?: () => void;
-  /**
-   * When true, @sai replies are streamed to this client over SSE (instant
-   * tokens) instead of a background job. Only enable in views that wire
-   * useAIReplyStream via the onMessagePosted meta ('streaming'), otherwise
-   * the AI reply would never be generated.
-   */
   aiClientStream?: boolean;
 }
 
 interface UseMessageComposerReturn {
-  // Content
   content: string;
   setContent: (value: string) => void;
-
-  // File
   selectedFile: File | null;
   setSelectedFile: (file: File | null) => void;
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
-
-  // Markdown toolbar
   handleBold: () => void;
   handleItalic: () => void;
   handleCode: () => void;
   handleLink: () => void;
-
-  // @mentions
   mentionedUserIds: string[];
-  mentionCandidates: MentionCandidate[];
+  mentionCandidates: import('@/components/chat/mention-suggest').MentionCandidate[];
   mentionOpen: boolean;
   activeMentionIndex: number;
   setActiveMentionIndex: (index: number) => void;
   detectMentionQuery: (value: string, caretIndex: number) => void;
-  applyMentionSelection: (candidate: MentionCandidate) => void;
+  applyMentionSelection: (candidate: import('@/components/chat/mention-suggest').MentionCandidate) => void;
   closeMentions: () => void;
   mentionListRef: React.RefObject<HTMLDivElement | null>;
-
-  // Emoji
   handleEmojiSelect: (emoji: string) => void;
   insertAtCursor: (text: string) => void;
-
-  // @sai
   handleAtSai: () => void;
-
-  // Submit
   handleSubmit: (formData?: FormData) => Promise<void>;
   isSubmitting: boolean;
   error: string | null;
   canSubmit: boolean;
-
-  // Poll Builder
   showPollBuilder: boolean;
   setShowPollBuilder: (val: boolean) => void;
   pollQuestion: string;
   setPollQuestion: (val: string) => void;
   pollOptions: string[];
   setPollOptions: (val: string[]) => void;
-
-  // Textarea
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleBlur: () => void;
-
-  // Cleanup
   cleanup: () => void;
 }
 
@@ -142,208 +87,21 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     aiClientStream = false,
   } = options;
 
-  // Content
   const [content, setContent] = useState('');
-
-  // Draft autosave
-  const draftKeyRef = useRef<string | null>(null);
-  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Restore draft on mount
-  useEffect(() => {
-    const key = draftKey(threadId, parentId);
-    draftKeyRef.current = key;
-    const saved = readDraft(key);
-    if (saved) setContent(saved); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [threadId, parentId]);
-
-  // Debounced draft write on content change
-  useEffect(() => {
-    if (!draftKeyRef.current) return;
-    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    draftTimerRef.current = setTimeout(() => {
-      writeDraft(draftKeyRef.current!, content);
-    }, 700);
-    return () => {
-      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    };
-  }, [content]);
-
-  // File
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Loading/error
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Mentions
-  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
-  const [mentionCandidates, setMentionCandidates] = useState<MentionCandidate[]>([]);
-  const [mentionOpen, setMentionOpen] = useState(false);
-  const [activeMentionIndex, setActiveMentionIndex] = useState(0);
-  const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
-  const mentionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mentionRequestIdRef = useRef(0);
-  const mentionListRef = useRef<HTMLDivElement>(null);
 
   // Poll states
   const [showPollBuilder, setShowPollBuilder] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
 
-  // Textarea
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const closeMentions = useCallback(() => {
-    setMentionOpen(false);
-    setMentionCandidates([]);
-    setActiveMentionIndex(0);
-    setMentionStartIndex(null);
-  }, []);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (mentionTimeoutRef.current) {
-        clearTimeout(mentionTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // --- @mentions ---
-  const resolveMentionCandidates = useCallback(
-    async (query: string) => {
-      const requestId = ++mentionRequestIdRef.current;
-      const result = await searchMentionUsers({ threadId, query });
-      if (requestId !== mentionRequestIdRef.current) return;
-
-      const users = Array.isArray(result.data) ? result.data : [];
-      setMentionCandidates(users);
-      setMentionOpen(users.length > 0);
-      setActiveMentionIndex(0);
-    },
-    [threadId]
-  );
-
-  const detectMentionQuery = useCallback(
-    (value: string, caretIndex: number) => {
-      const beforeCaret = value.slice(0, caretIndex);
-      const match = beforeCaret.match(/(^|\s)@([\w.-]{1,50})$/);
-
-      if (!match || !match[2]) {
-        closeMentions();
-        return;
-      }
-
-      const query = match[2];
-      const atIndex = caretIndex - query.length - 1;
-      setMentionStartIndex(atIndex);
-
-      if (mentionTimeoutRef.current) {
-        clearTimeout(mentionTimeoutRef.current);
-      }
-
-      mentionTimeoutRef.current = setTimeout(() => {
-        void resolveMentionCandidates(query);
-      }, 300);
-    },
-    [closeMentions, resolveMentionCandidates]
-  );
-
-  const applyMentionSelection = useCallback(
-    (candidate: MentionCandidate) => {
-      const textarea = textareaRef.current;
-      if (!textarea || mentionStartIndex === null) return;
-
-      const cursor = textarea.selectionStart ?? content.length;
-      const before = content.slice(0, mentionStartIndex);
-      const after = content.slice(cursor);
-      const mentionToken = `@${candidate.handle}`;
-      const nextContent = `${before}${mentionToken} ${after}`;
-
-      setContent(nextContent);
-      setMentionedUserIds((prev) => Array.from(new Set([...prev, candidate.id])));
-      closeMentions();
-
-      requestAnimationFrame(() => {
-        const nextCursor = before.length + mentionToken.length + 1;
-        textarea.focus();
-        textarea.setSelectionRange(nextCursor, nextCursor);
-      });
-    },
-    [content, mentionStartIndex, closeMentions]
-  );
-
-  // --- Text manipulation helpers ---
-  const wrapSelection = useCallback(
-    (before: string, after: string) => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const selected = content.substring(start, end);
-      const next = content.slice(0, start) + before + selected + after + content.slice(end);
-      setContent(next);
-      requestAnimationFrame(() => {
-        textarea.focus();
-        const cursor = start + before.length;
-        if (selected) {
-          textarea.setSelectionRange(cursor, cursor + selected.length);
-        } else {
-          textarea.setSelectionRange(cursor, cursor);
-        }
-      });
-    },
-    [content]
-  );
-
-  const insertAtCursor = useCallback(
-    (text: string) => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const next = content.slice(0, start) + text + content.slice(textarea.selectionEnd);
-      setContent(next);
-      requestAnimationFrame(() => {
-        textarea.focus();
-        const cursor = start + text.length;
-        textarea.setSelectionRange(cursor, cursor);
-      });
-    },
-    [content]
-  );
-
-  // --- Toolbar ---
-  const handleBold = useCallback(() => wrapSelection('**', '**'), [wrapSelection]);
-  const handleItalic = useCallback(() => wrapSelection('*', '*'), [wrapSelection]);
-  const handleCode = useCallback(() => wrapSelection('`', '`'), [wrapSelection]);
-  const handleLink = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = content.substring(start, end);
-    const url = window.prompt('Enter URL:', 'https://');
-    if (!url) return;
-    const linkText = selected || 'link';
-    const next = content.slice(0, start) + '[' + linkText + '](' + url + ')' + content.slice(end);
-    setContent(next);
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start, start + next.length - (content.length - end));
-    });
-  }, [content]);
-
-  const handleAtSai = useCallback(() => insertAtCursor('@sai '), [insertAtCursor]);
-
-  // --- Emoji ---
-  const handleEmojiSelect = useCallback(
-    (emoji: string) => {
-      insertAtCursor(emoji);
-    },
-    [insertAtCursor]
-  );
+  // Sub-hooks
+  const draft = useMessageDraft(threadId, parentId, content, setContent);
+  const mentions = useMentions({ threadId, content, setContent });
+  const toolbar = useToolbar({ content, setContent, textareaRef: mentions.textareaRef });
 
   // --- File ---
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -372,7 +130,6 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       const messageContent = content.trim() || (hasPoll ? `Poll: ${pollQuestion.trim()}` : '');
       const tempId = `temp-${crypto.randomUUID()}`;
 
-      // Build optimistic message
       const optimisticMessage: Message = {
         id: tempId,
         content: messageContent,
@@ -393,16 +150,14 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         attachments: [],
       };
 
-      // Optimistic: add message to UI immediately
       onOptimisticMessage?.(optimisticMessage);
 
-      // Clear form immediately
       setContent('');
-      clearDraft(draftKey(threadId, parentId));
+      draft.clear();
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      setMentionedUserIds([]);
-      closeMentions();
+      mentions.setMentionedUserIds([]);
+      mentions.closeMentions();
       onCancelReply?.();
       setShowPollBuilder(false);
       setPollQuestion('');
@@ -411,7 +166,6 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       setIsSubmitting(true);
       setError(null);
 
-      // Build FormData
       const data = formData ?? new FormData();
       data.set('threadId', threadId);
       data.set('content', messageContent);
@@ -426,7 +180,6 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         }));
       }
 
-      // Upload file if selected, then include attachment metadata
       if (selectedFile) {
         try {
           const uploadFormData = new FormData();
@@ -462,8 +215,8 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         }
       }
 
-      if (mentionedUserIds.length > 0) {
-        data.append('mentions', JSON.stringify(mentionedUserIds));
+      if (mentions.mentionedUserIds.length > 0) {
+        data.append('mentions', JSON.stringify(mentions.mentionedUserIds));
       }
 
       if (aiClientStream) {
@@ -525,13 +278,15 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       replyTo,
       depth,
       currentUser,
-      mentionedUserIds,
+      mentions.mentionedUserIds,
+      mentions.setMentionedUserIds,
+      mentions.closeMentions,
       onOptimisticMessage,
       onMessagePosted,
       onMessageError,
       onSuccess,
       onCancelReply,
-      closeMentions,
+      draft.clear,
       showPollBuilder,
       pollQuestion,
       pollOptions,
@@ -542,52 +297,51 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
   // --- Keyboard ---
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Mention navigation
-      if (mentionOpen && mentionCandidates.length > 0) {
+      if (mentions.mentionOpen && mentions.mentionCandidates.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          setActiveMentionIndex((prev) =>
-            prev + 1 >= mentionCandidates.length ? 0 : prev + 1
+          mentions.setActiveMentionIndex((prev) =>
+            prev + 1 >= mentions.mentionCandidates.length ? 0 : prev + 1
           );
           return;
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault();
-          setActiveMentionIndex((prev) =>
-            prev - 1 < 0 ? mentionCandidates.length - 1 : prev - 1
+          mentions.setActiveMentionIndex((prev) =>
+            prev - 1 < 0 ? mentions.mentionCandidates.length - 1 : prev - 1
           );
           return;
         }
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          const selected = mentionCandidates[activeMentionIndex];
+          const selected = mentions.mentionCandidates[mentions.activeMentionIndex];
           if (selected) {
-            applyMentionSelection(selected);
+            mentions.applyMentionSelection(selected);
           }
           return;
         }
         if (e.key === 'Escape') {
           e.preventDefault();
-          closeMentions();
+          mentions.closeMentions();
           return;
         }
       }
 
-      // Submit on Cmd/Ctrl+Enter (always) or Enter (default)
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         void handleSubmit();
       } else if (e.key === 'Escape' && replyTo) {
         onCancelReply?.();
-        closeMentions();
+        mentions.closeMentions();
       }
     },
     [
-      mentionOpen,
-      mentionCandidates,
-      activeMentionIndex,
-      applyMentionSelection,
-      closeMentions,
+      mentions.mentionOpen,
+      mentions.mentionCandidates,
+      mentions.activeMentionIndex,
+      mentions.setActiveMentionIndex,
+      mentions.applyMentionSelection,
+      mentions.closeMentions,
       handleSubmit,
       replyTo,
       onCancelReply,
@@ -600,20 +354,16 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       const nextValue = e.target.value;
       const caret = e.target.selectionStart ?? nextValue.length;
       setContent(nextValue);
-      detectMentionQuery(nextValue, caret);
+      mentions.detectMentionQuery(nextValue, caret);
     },
-    [detectMentionQuery]
+    [mentions.detectMentionQuery]
   );
 
-  const handleBlur = useCallback(() => {
-    // no-op: typing indicators removed
-  }, []);
+  const handleBlur = useCallback(() => {}, []);
 
   // --- Cleanup ---
   const cleanup = useCallback(() => {
-    if (mentionTimeoutRef.current) {
-      clearTimeout(mentionTimeoutRef.current);
-    }
+    // mentionTimeoutRef cleanup is handled by useMentions
   }, []);
 
   // --- canSubmit ---
@@ -625,61 +375,42 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
   }, [content, selectedFile, showPollBuilder, pollQuestion, pollOptions]);
 
   return {
-    // Content
     content,
     setContent,
-
-    // File
     selectedFile,
     setSelectedFile,
     handleFileSelect,
     fileInputRef,
-
-    // Toolbar
-    handleBold,
-    handleItalic,
-    handleCode,
-    handleLink,
-
-    // Mentions
-    mentionedUserIds,
-    mentionCandidates,
-    mentionOpen,
-    activeMentionIndex,
-    setActiveMentionIndex,
-    detectMentionQuery,
-    applyMentionSelection,
-    closeMentions,
-    mentionListRef,
-
-    // Emoji
-    handleEmojiSelect,
-    insertAtCursor,
-
-    // @sai
-    handleAtSai,
-
-    // Submit
+    handleBold: toolbar.handleBold,
+    handleItalic: toolbar.handleItalic,
+    handleCode: toolbar.handleCode,
+    handleLink: toolbar.handleLink,
+    mentionedUserIds: mentions.mentionedUserIds,
+    mentionCandidates: mentions.mentionCandidates,
+    mentionOpen: mentions.mentionOpen,
+    activeMentionIndex: mentions.activeMentionIndex,
+    setActiveMentionIndex: mentions.setActiveMentionIndex,
+    detectMentionQuery: mentions.detectMentionQuery,
+    applyMentionSelection: mentions.applyMentionSelection,
+    closeMentions: mentions.closeMentions,
+    mentionListRef: mentions.mentionListRef,
+    handleEmojiSelect: toolbar.handleEmojiSelect,
+    insertAtCursor: toolbar.insertAtCursor,
+    handleAtSai: toolbar.handleAtSai,
     handleSubmit,
     isSubmitting,
     error,
     canSubmit,
-
-    // Poll Builder
     showPollBuilder,
     setShowPollBuilder,
     pollQuestion,
     setPollQuestion,
     pollOptions,
     setPollOptions,
-
-    // Textarea
-    textareaRef,
+    textareaRef: mentions.textareaRef,
     handleKeyDown,
     handleChange,
     handleBlur,
-
-    // Cleanup
     cleanup,
   };
 }

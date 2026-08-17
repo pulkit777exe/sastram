@@ -15,7 +15,7 @@ import { InlineReplyBox } from './inline-reply-box';
 import { Badge } from '@/components/ui/badge';
 import { AttachmentItem } from './attachment-item';
 import { PollDisplay } from './poll-display';
-import { renderContent } from '@/lib/utils/render-content';
+import { renderContent } from '@/components/thread/render-content';
 import { canModerate } from '@/lib/config/permissions';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';

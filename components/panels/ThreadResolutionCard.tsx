@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { VerifyNowButton } from '@/components/thread/verify-now-button';
-import { computeConfidence } from '@/lib/utils/confidence-decay';
+import { computeConfidence } from '@/modules/threads/confidence-decay';
 
 interface ThreadResolutionCardProps {
   threadId: string;

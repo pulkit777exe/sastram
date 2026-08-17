@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   subscribeToThreadAction,
   unsubscribeFromThread,
@@ -115,9 +115,8 @@ export function ThreadSubscribeButton({
 
   return (
     <div ref={containerRef} className="relative">
-      <Button
+      <PressDepth
         type="button"
-        variant="outline"
         disabled={isSaving}
         onClick={() => {
           if (isOpen) {
@@ -135,7 +134,7 @@ export function ThreadSubscribeButton({
           {triggerLabel}
         </span>
         <span className="text-xs text-muted-foreground">{isSaving ? 'Saving...' : 'Change'}</span>
-      </Button>
+      </PressDepth>
 
       {isOpen && (
         <div

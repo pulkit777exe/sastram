@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { MoreHorizontal } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { cn } from '@/lib/utils/cn';
@@ -33,7 +33,7 @@ const actionColors: Record<string, string> = {
   USER_WARNED: 'bg-orange-500/20 text-orange-400',
   USER_SUSPENDED: 'bg-orange-500/20 text-orange-400',
   REPORT_RESOLVED: 'bg-green-500/20 text-green-400',
-  REPORT_DISMISSED: 'bg-zinc-500/20 text-zinc-400',
+  REPORT_DISMISSED: 'bg-muted text-muted-foreground',
   APPEAL_APPROVED: 'bg-green-500/20 text-green-400',
   APPEAL_DENIED: 'bg-red-500/20 text-red-400',
 };
@@ -79,9 +79,9 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
               <TableCell className="text-sm text-foreground">{entry.target}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{entry.performedBy}</TableCell>
               <TableCell className="text-right">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <PressDepth className="h-8 w-8">
                   <MoreHorizontal className="w-4 h-4" />
-                </Button>
+                </PressDepth>
               </TableCell>
             </TableRow>
           ))}

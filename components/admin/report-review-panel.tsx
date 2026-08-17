@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 
 import { Separator } from '@/components/ui/separator';
 import {
@@ -192,7 +192,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                       className={cn(
                         'text-xs',
                         similar.status === 'RESOLVED' && 'border-green-500/30 text-green-400',
-                        similar.status === 'DISMISSED' && 'border-zinc-500/30'
+                        similar.status === 'DISMISSED' && 'border-border'
                       )}
                     >
                       {similar.status}
@@ -274,10 +274,8 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
             {actionButtons.map((action) => {
               const Icon = action.icon;
               return (
-                <Button
+                <PressDepth
                   key={action.key}
-                  variant={action.variant}
-                  size="sm"
                   className={cn(
                     'w-full justify-start text-xs',
                     selectedAction === action.key && 'ring-2 ring-brand'
@@ -293,7 +291,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                   <kbd className="ml-auto text-xs bg-background/50 px-1.5 py-0.5 rounded border border-border">
                     {action.shortcut}
                   </kbd>
-                </Button>
+                </PressDepth>
               );
             })}
           </div>

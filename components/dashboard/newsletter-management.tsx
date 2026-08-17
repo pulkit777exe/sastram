@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mail, X } from 'lucide-react';
 import { unsubscribeFromThread } from '@/modules/newsletter/actions';
@@ -65,9 +65,9 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
             receive digests.
           </p>
           <Link href="/dashboard/threads">
-            <Button className="mt-4 bg-brand hover:bg-brand/90 text-white">
+            <PressDepth className="mt-4 bg-brand hover:bg-brand/90 text-white">
               Browse Threads
-            </Button>
+            </PressDepth>
           </Link>
         </div>
       </div>
@@ -119,9 +119,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                       </Link>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <PressDepth
                     onClick={() => handleUnsubscribe(subscription.threadId)}
                     disabled={isPending}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/10 border-red-200 dark:border-red-900/50"
@@ -134,7 +132,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                         Unsubscribe
                       </>
                     )}
-                  </Button>
+                  </PressDepth>
                 </div>
               </CardContent>
             </Card>

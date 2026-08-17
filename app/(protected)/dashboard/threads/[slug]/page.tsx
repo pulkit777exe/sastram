@@ -4,7 +4,7 @@ import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Activity } from 'lucide-react';
 import type { Message } from '@/lib/types/index';
-import { isAdminUser as isAdmin, requireSession, type SessionUser } from '@/modules/auth/session';
+import { isAdminUser as isAdmin, requireSession, type SessionUser } from '@/modules/auth';
 import { getThreadWithFullContext, getThreadMessagesPaginated, toClientMessage } from '@/modules/threads';
 import Link from 'next/link';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';

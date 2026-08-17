@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import {
   recordActivity as recordActivityRepo,
   getUserActivity as getUserActivityRepo,

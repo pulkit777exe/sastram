@@ -146,17 +146,17 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`t-modal ${isClosing ? 'is-closing' : 'is-open'} relative bg-card border border-border rounded-2xl shadow-linear-md w-full max-w-md mx-4 sm:mx-4 overflow-hidden md:my-auto my-0 md:rounded-2xl rounded-none md:h-auto h-full`}
+        className={`t-modal ${isClosing ? 'is-closing' : 'is-open'} relative bg-surface border border-line rounded-2xl shadow-linear-md w-full max-w-md mx-4 sm:mx-4 overflow-hidden md:my-auto my-0 md:rounded-2xl rounded-none md:h-auto h-full`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <div className="flex items-center gap-2">
-            <KeyRound size={16} className="text-foreground/70" />
-            <h3 className="text-sm font-semibold text-foreground">API Keys</h3>
+            <KeyRound size={16} className="text-ink-2" />
+            <h3 className="text-sm font-semibold text-ink">API Keys</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-foreground/5 transition-colors"
+            className="p-1 text-ink-2 hover:text-ink rounded-md hover:bg-hover/40 transition-colors"
             aria-label="Close API Keys Configuration"
           >
             <X size={16} />
@@ -164,8 +164,8 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
         </div>
 
         {/* Info */}
-        <div className="px-5 py-3 bg-foreground/2">
-          <p className="text-xs text-muted-foreground leading-relaxed">
+        <div className="px-5 py-3 bg-hover/30">
+          <p className="text-xs text-ink-2 leading-relaxed">
             Your API keys are stored <strong>only in your browser</strong> and never sent to our
             servers for storage. They are passed securely via request headers for each search.
           </p>
@@ -181,15 +181,15 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
             return (
               <div key={config.id}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-foreground">{config.label}</label>
+                  <label className="text-xs font-medium text-ink">{config.label}</label>
                   {value && (
                     <span className="flex items-center gap-1 text-xs">
                       {isValid ? (
-                        <span className="text-chart-2 flex items-center gap-0.5">
+                        <span className="text-sai-green flex items-center gap-0.5">
                           <Check size={10} /> Valid
                         </span>
                       ) : (
-                        <span className="text-chart-4 flex items-center gap-0.5">
+                        <span className="text-sai-orange flex items-center gap-0.5">
                           <X size={10} /> Invalid format
                         </span>
                       )}
@@ -202,36 +202,36 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
                     value={value}
                     onChange={(e) => handleKeyChange(config.id, e.target.value.trim())}
                     placeholder={config.placeholder}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-foreground/20 pr-16 font-mono"
+                    className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-3/40 focus:outline-none focus:ring-1 focus:ring-line-strong pr-16 font-mono"
                   />
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                     <button
                       onClick={() => setShowKeys({ ...showKeys, [config.id]: !show })}
-                      className="p-1.5 text-muted-foreground/50 hover:text-foreground transition-colors"
+                      className="p-1.5 text-ink-3 hover:text-ink transition-colors"
                     >
                       {show ? <EyeOff size={12} /> : <Eye size={12} />}
                     </button>
                     {value && (
                       <button
                         onClick={() => clearKey(config.id)}
-                        className="p-1.5 text-muted-foreground/50 hover:text-destructive transition-colors"
+                        className="p-1.5 text-ink-3 hover:text-sai-red transition-colors"
                       >
                         <X size={12} />
                       </button>
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground/50 mt-1">{config.description}</p>
+                <p className="text-xs text-ink-3/50 mt-1">{config.description}</p>
               </div>
             );
           })}
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-border flex justify-end">
+        <div className="px-5 py-3 border-t border-line flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-medium bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
+            className="px-4 py-1.5 text-xs font-medium bg-ink text-canvas rounded-lg hover:opacity-90 transition-opacity"
           >
             Done
           </button>

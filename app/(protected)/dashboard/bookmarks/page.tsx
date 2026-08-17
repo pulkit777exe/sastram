@@ -1,5 +1,5 @@
 import { getBookmarkedThreads } from '@/modules/bookmarks/actions';
-import { getSession } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Bookmark, MessageSquare, Users, Calendar } from 'lucide-react';

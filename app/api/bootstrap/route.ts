@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail } from '@/lib/utils/api-response';
 import { getUserBootstrapProfile } from '@/modules/users/repository';
 import { getUnreadCount } from '@/modules/notifications/repository';

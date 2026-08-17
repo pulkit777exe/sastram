@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Trash2, Merge, Check, X, Search, AlertTriangle } from 'lucide-react';
@@ -32,7 +32,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newColor, setNewColor] = useState('#3736fc');
+  const [newColor, setNewColor] = useState('#3872E9');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
@@ -60,7 +60,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
 
     setTags((prev) => [optimisticTag, ...prev]);
     setNewName('');
-    setNewColor('#3736fc');
+    setNewColor('#3872E9');
     setShowCreate(false);
     toasts.success('Tag created');
 
@@ -141,20 +141,20 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
               className="pl-9 h-9 text-sm"
             />
           </div>
-          <Button type="submit" size="sm" variant="secondary" className="h-9">
+          <PressDepth type="submit" className="h-9">
             Search
-          </Button>
+          </PressDepth>
         </form>
 
-        <Button onClick={() => setShowCreate(true)} size="sm" className="h-9">
+        <PressDepth onClick={() => setShowCreate(true)} className="h-9">
           <Plus className="w-4 h-4 mr-1.5" />
           New Tag
-        </Button>
+        </PressDepth>
 
-        <Button onClick={() => setShowMerge(true)} size="sm" variant="outline" className="h-9" disabled={tags.length < 2}>
+        <PressDepth onClick={() => setShowMerge(true)} className="h-9" disabled={tags.length < 2}>
           <Merge className="w-4 h-4 mr-1.5" />
           Merge Tags
-        </Button>
+        </PressDepth>
       </div>
 
       {/* Create tag form */}
@@ -185,13 +185,13 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button onClick={handleCreate} size="sm" disabled={!newName.trim()} className="h-9">
+                <PressDepth onClick={handleCreate} disabled={!newName.trim()} className="h-9">
                   <Check className="w-3.5 h-3.5 mr-1" />
                   Create
-                </Button>
-                <Button onClick={() => setShowCreate(false)} size="sm" variant="ghost" className="h-9">
+                </PressDepth>
+                <PressDepth onClick={() => setShowCreate(false)} className="h-9">
                   <X className="w-3.5 h-3.5" />
-                </Button>
+                </PressDepth>
               </div>
             </div>
           </CardContent>
@@ -240,17 +240,16 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button
+                <PressDepth
                   onClick={handleMerge}
-                  size="sm"
                   disabled={!mergeSource || !mergeTarget || mergeSource === mergeTarget}
                   className="h-9"
                 >
                   Merge
-                </Button>
-                <Button onClick={() => setShowMerge(false)} size="sm" variant="ghost" className="h-9">
+                </PressDepth>
+                <PressDepth onClick={() => setShowMerge(false)} className="h-9">
                   Cancel
-                </Button>
+                </PressDepth>
               </div>
             </div>
           </CardContent>
@@ -312,23 +311,19 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                           </td>
                           <td className="px-4 py-2 text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button
+                              <PressDepth
                                 onClick={handleUpdate}
-                                size="sm"
-                                variant="ghost"
                                 disabled={!editName.trim()}
                                 className="min-h-10 min-w-10 h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green/10"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
+                              </PressDepth>
+                              <PressDepth
                                 onClick={() => setEditingId(null)}
-                                size="sm"
-                                variant="ghost"
                                 className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <X className="w-3.5 h-3.5" />
-                              </Button>
+                              </PressDepth>
                             </div>
                           </td>
                         </>
@@ -352,26 +347,22 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                              <Button
+                              <PressDepth
                                 onClick={() => {
                                   setEditingId(tag.id);
                                   setEditName(tag.name);
                                   setEditColor(tag.color);
                                 }}
-                                size="sm"
-                                variant="ghost"
                                 className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
+                              </PressDepth>
+                              <PressDepth
                                 onClick={() => setDeletingId(tag.id)}
-                                size="sm"
-                                variant="ghost"
                                 className="min-h-10 min-w-10 h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
+                              </PressDepth>
                             </div>
                           </td>
                         </>
@@ -389,11 +380,9 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Button
+            <PressDepth
               key={p}
-              size="sm"
-              variant={p === currentPage ? 'default' : 'outline'}
-              className="h-8 min-w-8"
+              className={`h-8 min-w-8 ${p === currentPage ? 'bg-primary text-primary-foreground' : ''}`}
               onClick={() => {
                 const params = new URLSearchParams();
                 if (searchQuery) params.set('search', searchQuery);
@@ -402,7 +391,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
               }}
             >
               {p}
-            </Button>
+            </PressDepth>
           ))}
         </div>
       )}
@@ -433,15 +422,15 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button onClick={() => {
+                <PressDepth onClick={() => {
                   setDeleteClosing(true);
                   setTimeout(() => { setDeletingId(null); setDeleteClosing(false); }, 150);
-                }} size="sm" variant="outline">
+                }}>
                   Cancel
-                </Button>
-                <Button onClick={handleDelete} size="sm" variant="destructive">
+                </PressDepth>
+                <PressDepth onClick={handleDelete}>
                   Delete
-                </Button>
+                </PressDepth>
               </div>
             </CardContent>
           </Card>

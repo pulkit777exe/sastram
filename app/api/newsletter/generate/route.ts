@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { processPendingDigests } from '@/modules/newsletter/service';
 import { logger } from '@/lib/infrastructure/logger';
-import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { verifyCronAuth } from '@/lib/middleware/cron-auth';
 
 export async function POST(req: NextRequest) {
   const authError = verifyCronAuth(req);

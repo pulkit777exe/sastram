@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { revalidatePath } from 'next/cache';
 

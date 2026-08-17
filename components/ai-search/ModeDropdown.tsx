@@ -15,12 +15,6 @@ interface ModeDropdownProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-/**
- * Shared trigger + listbox pattern, replacing the two duplicated inline
- * dropdown implementations that previously lived in SearchBox (Exa mode,
- * Tavily mode). Closes on outside click and Escape, exposes proper
- * listbox semantics for a11y.
- */
 export function ModeDropdown<T extends string>({
   label,
   value,

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Hash, MessageSquare, Clock } from 'lucide-react';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { listThreads } from '@/modules/threads/repository';
 import type { ThreadSummary } from '@/modules/threads/types';
 import TimeAgo from '@/components/ui/TimeAgo';

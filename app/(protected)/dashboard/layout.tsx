@@ -1,5 +1,5 @@
 import { DashboardShell } from '@/components/dashboard/dashboard-shell';
-import { getSession } from '@/modules/auth/session';
+import { getSession } from '@/modules/auth';
 import { DashboardProviders } from '@/components/dashboard/dashboard-providers';
 import { redirect } from 'next/navigation';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Paperclip,
@@ -113,7 +113,7 @@ export function PostMessageForm({
   });
 
   const formRef = useRef<HTMLFormElement>(null);
-  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const emojiButtonRef = useRef<HTMLDivElement>(null);
   const emojiPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -215,38 +215,38 @@ export function PostMessageForm({
         {/* Bottom Tier: Toolbar */}
         <div className="flex items-center justify-between px-2 sm:px-3 py-2 bg-muted/10 border-t border-border/40 select-none">
           <div className="flex items-center gap-0.5 sm:gap-1.5 flex-wrap">
-            <Button
+            <PressDepth
               type="button"
-              variant="ghost"
-              size="icon"
               className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-4.5 w-4.5" />
-            </Button>
+            </PressDepth>
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
 
             <div className="h-4 w-px bg-border/60 mx-1" />
 
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleBold}>
+            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleBold}>
               <Bold className="h-4 w-4" />
-            </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleItalic}>
+            </PressDepth>
+            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleItalic}>
               <Italic className="h-4 w-4" />
-            </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleCode}>
+            </PressDepth>
+            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleCode}>
               <Code2 className="h-4 w-4" />
-            </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleLink}>
+            </PressDepth>
+            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleLink}>
               <Link2 className="h-4 w-4" />
-            </Button>
+            </PressDepth>
 
             <div className="h-4 w-px bg-border/60 mx-1" />
 
             <div className="relative">
-              <Button ref={emojiButtonRef} type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setEmojiOpen((p) => !p)}>
-                <SmilePlus className="h-4 w-4" />
-              </Button>
+              <div ref={emojiButtonRef}>
+                <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setEmojiOpen((p) => !p)}>
+                  <SmilePlus className="h-4 w-4" />
+                </PressDepth>
+              </div>
               {emojiOpen && (
                 <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border/80 bg-popover p-2.5 shadow-linear-xl">
                   <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
@@ -265,19 +265,19 @@ export function PostMessageForm({
               )}
             </div>
 
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtSai}>
+            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtSai}>
               <AtSign className="h-4 w-4" />
-            </Button>
+            </PressDepth>
 
             <div className="flex items-center gap-0.5">
               <InlinePollButton onClick={() => setShowPoll(true)} disabled={!canManagePoll} />
             </div>
           </div>
 
-          <Button type="submit" disabled={isSubmitting || !canSubmit} size="sm" className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-linear-sm font-semibold transition-all">
+          <PressDepth type="submit" disabled={isSubmitting || !canSubmit} className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-linear-sm font-semibold transition-all">
             {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             <span>Send</span>
-          </Button>
+          </PressDepth>
         </div>
       </div>
 

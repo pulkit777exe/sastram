@@ -7,7 +7,6 @@ Core utilities, services, and infrastructure code. The backbone of the applicati
 ## Top-level Files
 
 - `thread-access.ts` - Thread authorization primitive (`requireThreadAccessOrThrow`, `canAccessThread`, `canManageThread`)
-- `sanitize.ts` - HTML/content sanitization
 
 ## Subdirectories
 
@@ -31,7 +30,8 @@ Business logic services.
 - `auth.ts` - Better Auth configuration
 - `auth-client.ts` - Client-side auth
 - `email.ts` - Resend email sending
-- `moderation.ts` - Content moderation (regex + AI)
+- `moderation.ts` - Content moderation pipeline (RateLimitFilter, RegexFilter, MLClassifier, ContextualAnalyzer, MessageModerationPipeline)
+- `image-moderation.ts` - Shared image NSFW moderation for upload routes (quota + spend cap + AI check)
 - `moderation-sla.ts` - Stale report escalation
 - `content-safety.ts` - Profanity filtering, file validation
 - `rate-limit.ts` - Redis rate limiting with in-memory fallback
@@ -46,38 +46,33 @@ Business logic services.
 Database, cache, logging.
 - `prisma.ts` - Prisma Client (Neon adapter)
 - `logger.ts` - Structured logging
-- `query-cache.ts` - Query result caching
 - `redis.ts` - ioredis connection factory
 - `redis-upstash.ts` - Upstash REST Redis (quotas, rate limits)
 
+### `lib/ai/`
+AI security and prompt utilities.
+- `prompt-boundary.ts` - LLM prompt injection defense delimiters
+
 ### `lib/utils/`
-Utility functions.
+Genuinely shared utility functions.
 - `server-action.ts` - `createServerAction`, `withValidation` wrappers
 - `api-response.ts` - `ok()`, `fail()` API response helpers
 - `errors.ts` - Error types
-- `slug.ts` - Slug generation
-- `cron-auth.ts` - Cron Bearer token verification
-- `mention-parser.ts` - `parseMentions()`, `resolveUserMentions()`
-- `prompt-boundary.ts` - Prompt injection boundaries
-- `render-content.tsx` - Content rendering
+- `slug.ts` - Generic `slugify()` function
 - `file-upload.ts` - Upload helpers
 - `password-validation.ts` - Password rules
-- `confidence-decay.ts` - Score decay over time
 - `retry.ts` - Retry with backoff
-- `escape.ts` - String escaping
 - `cn.ts` - Tailwind class merging (`cn()`)
 - `toast.ts` - User-facing toast notifications
 - `client-logger.ts` - Client-side logging
 - `api-interceptor.ts` - Client API interceptor
 - `validation-common.ts` - Shared Zod fragments (pagination)
-- `index.ts` - Barrel exports
 
 ### `lib/actions/`
 - `result.ts` - `ActionEnvelope` (`{ ok, data, error, errorCode }`), `ActionErrorCode`, `actionSuccess`, `actionFailure`
 
 ### `lib/schemas/`
 Zod validation schemas.
-- `database.ts` - Prisma model schemas
 - `api.ts` - API request/response schemas
 - `thread-dna.ts` - Thread DNA output schema
 - `user-preferences.ts` - User preference schema
@@ -91,12 +86,14 @@ Background job definitions and handlers.
 
 ### `lib/middleware/`
 - `moderation.ts` - `requireModerator()`, `requireAdmin()`
+- `cron-auth.ts` - Cron Bearer token verification
+- `ai-preflight.ts` - Shared AI route preflight (auth, rate limit, quota, spend cap, cost gate, thread access)
 
 ### `lib/db/`
 - `pagination.ts` - Cursor-based pagination
 
 ### `lib/types/`
-- `index.ts` - Barrel re-export from module types
+- `index.ts` - Shared client-side types (Message, Sender, Attachment, Poll, etc.)
 
 ## Removed Files
 The following files no longer exist (removed during refactor):
@@ -104,6 +101,15 @@ The following files no longer exist (removed during refactor):
 - `lib/infrastructure/redis-connection.ts` - Consolidated into `redis.ts`
 - `lib/infrastructure/redis-pubsub.ts` - Consolidated into `redis.ts`
 - `lib/utils/dedupe.ts` - Consolidated into `job-dedup.ts`
+- `lib/infrastructure/query-cache.ts` - Dead code (no consumers)
+- `lib/utils/index.ts` - Unnecessary barrel export (consumers migrated to direct imports)
+- `lib/sanitize.ts` - Moved to `modules/ai-search/sanitize.ts` (single consumer)
+- `lib/utils/mention-parser.ts` - Moved to `modules/messages/mention-parser.ts` (domain logic)
+- `lib/utils/confidence-decay.ts` - Moved to `modules/threads/confidence-decay.ts` (domain logic)
+- `lib/utils/prompt-boundary.ts` - Moved to `lib/ai/prompt-boundary.ts` (AI security)
+- `lib/utils/cron-auth.ts` - Moved to `lib/middleware/cron-auth.ts` (infrastructure)
+- `lib/utils/render-content.tsx` - Moved to `components/thread/render-content.tsx` (UI component)
+- `lib/utils/slug.ts` - `buildThreadSlug` moved to `modules/threads/slug.ts` (domain logic)
 
 ## Testing Notes
 

@@ -17,7 +17,7 @@ describe('CRON Auth Verification', () => {
   it('returns 401 when CRON_SECRET is set but no auth header', async () => {
     process.env.CRON_SECRET = 'test-secret-that-is-at-least-32-chars-long';
 
-    const { verifyCronAuth } = require('@/lib/utils/cron-auth');
+    const { verifyCronAuth } = require('@/lib/middleware/cron-auth');
     const req = mockRequest('/api/cron/update-threads');
     const result = verifyCronAuth(req);
 
@@ -28,7 +28,7 @@ describe('CRON Auth Verification', () => {
   it('returns 401 when auth header has wrong secret', async () => {
     process.env.CRON_SECRET = 'test-secret-that-is-at-least-32-chars-long';
 
-    const { verifyCronAuth } = require('@/lib/utils/cron-auth');
+    const { verifyCronAuth } = require('@/lib/middleware/cron-auth');
     const req = mockRequest('/api/cron/update-threads', {
       headers: { Authorization: 'Bearer wrong-secret' },
     });
@@ -41,7 +41,7 @@ describe('CRON Auth Verification', () => {
   it('returns null when auth header matches CRON_SECRET', async () => {
     process.env.CRON_SECRET = 'test-secret-that-is-at-least-32-chars-long';
 
-    const { verifyCronAuth } = require('@/lib/utils/cron-auth');
+    const { verifyCronAuth } = require('@/lib/middleware/cron-auth');
     const req = mockRequest('/api/cron/update-threads', {
       headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
     });
@@ -57,7 +57,7 @@ describe('CRON Auth Verification', () => {
     delete process.env.CRON_SECRET;
 
     try {
-      const { verifyCronAuth } = require('@/lib/utils/cron-auth');
+      const { verifyCronAuth } = require('@/lib/middleware/cron-auth');
       const req = mockRequest('/api/cron/update-threads');
       const result = verifyCronAuth(req);
 

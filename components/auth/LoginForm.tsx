@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { cn } from '@/lib/utils/cn';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoaderIcon, Eye, EyeOff, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
@@ -396,7 +396,7 @@ function UserAuthForm({
               </p>
             )}
 
-            <Button
+            <PressDepth
               type="submit"
               disabled={loadingState !== null || !otpEmail}
               className={primaryButtonStyles + ' w-full'}
@@ -407,11 +407,10 @@ function UserAuthForm({
                 <Mail className="mr-2 h-4 w-4" />
               )}
               Send Verification Code
-            </Button>
+            </PressDepth>
 
-            <Button
+            <PressDepth
               type="button"
-              variant="ghost"
               onClick={() => {
                 setMode('signin');
                 setError(null);
@@ -420,7 +419,7 @@ function UserAuthForm({
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to sign in
-            </Button>
+            </PressDepth>
           </form>
         </motion.div>
       </div>
@@ -478,14 +477,14 @@ function UserAuthForm({
               </p>
             )}
 
-            <Button
+            <PressDepth
               type="submit"
               disabled={loadingState !== null || otp.join('').length !== 6}
               className={primaryButtonStyles + ' w-full'}
             >
               {loadingState === 'otp' ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : null}
               Verify & Sign In
-            </Button>
+            </PressDepth>
 
             <div className="text-center text-sm space-y-3">
               <button
@@ -611,10 +610,10 @@ function UserAuthForm({
             </p>
           )}
 
-          <Button disabled={loadingState !== null} type="submit" className={primaryButtonStyles}>
+          <PressDepth disabled={loadingState !== null} type="submit" className={primaryButtonStyles}>
             {loadingState === 'email' && <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />}
             {mode === 'signup' ? 'Create Account' : 'Sign In'}
-          </Button>
+          </PressDepth>
         </div>
       </form>
 
@@ -630,8 +629,7 @@ function UserAuthForm({
       </div>
 
       <div className="flex gap-4">
-        <Button
-          variant="outline"
+        <PressDepth
           type="button"
           disabled={loadingState !== null}
           onClick={() => handleSocialLogin('github')}
@@ -645,9 +643,8 @@ function UserAuthForm({
             </div>
           )}
           GitHub
-        </Button>
-        <Button
-          variant="outline"
+        </PressDepth>
+        <PressDepth
           type="button"
           disabled={loadingState !== null}
           onClick={() => handleSocialLogin('google')}
@@ -661,7 +658,7 @@ function UserAuthForm({
             </div>
           )}
           Google
-        </Button>
+        </PressDepth>
       </div>
 
       <div className="text-center text-sm mt-4">

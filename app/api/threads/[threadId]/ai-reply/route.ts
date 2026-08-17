@@ -2,7 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { enqueueInlineJob } from '@/lib/services/queue';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
-import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
 import { rateLimit } from '@/lib/services/rate-limit';

@@ -10,7 +10,7 @@ import {
   markAllNotificationsRead,
 } from '@/modules/notifications/actions';
 import { useNotification } from '@/components/bootstrap-provider';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
@@ -205,16 +205,14 @@ export function NotificationList({ notifications: initial }: NotificationListPro
       {unreadCount > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">{unreadCount} unread</span>
-          <Button
-            variant="ghost"
-            size="sm"
+          <PressDepth
             onClick={handleMarkAllRead}
             disabled={isPending}
             className="text-xs text-brand hover:text-brand"
           >
             <CheckCheck size={14} className="mr-1" />
             Mark all read
-          </Button>
+          </PressDepth>
         </div>
       )}
 

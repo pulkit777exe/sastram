@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Select,
   SelectContent,
@@ -44,9 +44,9 @@ const priorityConfig = {
   },
   LOW: {
     label: 'Low',
-    color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+    color: 'bg-muted text-muted-foreground border-border',
     icon: Clock,
-    iconColor: 'text-zinc-500',
+    iconColor: 'text-muted-foreground',
   },
 };
 
@@ -148,9 +148,9 @@ export function ModerationQueue({
                         </div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="shrink-0">
+                    <PressDepth className="shrink-0">
                       <ChevronRight className="w-4 h-4" />
-                    </Button>
+                    </PressDepth>
                   </div>
                   {report.aiConfidence !== null && (
                     <div className="mt-3 pt-3 border-t border-border">

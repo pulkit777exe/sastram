@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listThreads } from '@/modules/threads/repository';
 import { ok, fail } from '@/lib/utils/api-response';
-import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 
 export async function GET(request: NextRequest) {

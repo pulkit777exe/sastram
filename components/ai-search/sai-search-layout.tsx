@@ -205,12 +205,11 @@ export function SaiSearchLayout({
   };
 
   return (
-    // ── Row 1: TWO SIBLINGS — history column, then content column ──
     <div className="flex h-full w-full overflow-hidden">
 
-      {/* ══ SIBLING A: History column (fixed 280px) ══ */}
-      <div className="w-80 h-full shrink-0 border-r border-line flex flex-col overflow-hidden">
-        <div className="px-4 pt-4 pb-3 shrink-0">
+      {/* History sidebar — integrated into canvas, no hard border */}
+      <div className="w-72 h-full shrink-0 flex flex-col overflow-hidden border-r border-line/60">
+        <div className="px-5 pt-5 pb-3 shrink-0">
           <h2 className="text-sm font-semibold text-ink tracking-tight">Sai</h2>
         </div>
 
@@ -224,10 +223,10 @@ export function SaiSearchLayout({
           </button>
         </div>
 
-        <div className="mx-3 my-3 h-px bg-line shrink-0" />
+        <div className="mx-5 my-3 h-px bg-line/60 shrink-0" />
 
-        <div className="flex items-center justify-between px-3 shrink-0">
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-2 uppercase tracking-wider">
+        <div className="flex items-center justify-between px-5 shrink-0">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
             <Search size={11} />
             History
           </span>
@@ -252,12 +251,12 @@ export function SaiSearchLayout({
           }}
         >
           {searches.length === 0 ? (
-            <p className="px-3 text-xs text-ink-3 italic">{loading ? 'Loading…' : 'No recent searches'}</p>
+            <p className="px-5 text-xs text-ink-3 italic">{loading ? 'Loading…' : 'No recent searches'}</p>
           ) : (
             <div ref={listEndRef} className="px-3">
               {groupedSearches.map(({ group, items }) => (
                 <div key={group} className="mb-3 last:mb-0">
-                  <p className="pb-1 text-[11px] font-semibold text-ink-3 uppercase tracking-wider">{group}</p>
+                  <p className="px-2 pb-1 text-[11px] font-semibold text-ink-3 uppercase tracking-wider">{group}</p>
                   <div className="space-y-0.5">
                     {items.map((s) => (
                       <div key={s.id}>
@@ -275,31 +274,25 @@ export function SaiSearchLayout({
           )}
         </div>
       </div>
-      {/* ══ END SIBLING A ══ */}
 
-      {/* ══ SIBLING B: Content column (flex-1, fills remaining width) ══ */}
+      {/* Content column */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-        {/* Header bar — full width of Sibling B, NOT inside the history div above */}
-        <div className="h-14 flex items-center justify-between px-6 border-b border-line shrink-0">
-          <div className="flex items-center gap-2 text-xs text-ink-2 whitespace-nowrap">
-            <span className="font-semibold text-ink">SASTRAM</span>
-            <span>›</span>
-            <span className="uppercase tracking-wider">SAI SEARCH</span>
-          </div>
+        {/* Header bar — clean, editorial */}
+        <div className="h-12 flex items-center justify-between px-6 border-b border-line/60 shrink-0">
+          <span className="text-xs font-semibold text-ink tracking-tight">Sai Search</span>
           <button
             onClick={onOpenApiKeys}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-ink-2 hover:text-ink bg-surface hover:bg-hover rounded-full border border-line transition-colors shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-2 hover:text-ink rounded-lg hover:bg-hover/40 transition-colors shrink-0"
           >
-            <KeyRound size={14} />
+            <KeyRound size={13} />
             <span>API Keys</span>
-            {hasApiKeys && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
+            {hasApiKeys && <span className="w-1.5 h-1.5 rounded-full bg-sai-green" />}
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
-      {/* ══ END SIBLING B ══ */}
 
     </div>
   );

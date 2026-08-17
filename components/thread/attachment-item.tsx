@@ -102,12 +102,12 @@ function VideoPlayer({ file }: { file: Attachment }) {
       />
       
       {/* Overlay controls */}
-      <div className="absolute inset-0 bg-white/10 opacity-100 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-2">
+      <div className="absolute inset-0 bg-foreground/10 opacity-100 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-2">
         <div className="flex justify-end">
           <button
             type="button"
             onClick={toggleMute}
-            className="p-1.5 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
+            className="p-1.5 rounded-full bg-foreground/20 text-white hover:bg-foreground/30 transition-colors"
           >
             {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
           </button>

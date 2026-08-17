@@ -1,5 +1,5 @@
-import { assertAdmin } from '@/modules/auth/session';
-import { getSession } from '@/modules/auth/session';
+import { assertAdmin } from '@/modules/auth';
+import { getSession } from '@/modules/auth';
 import { getAppeals } from '@/modules/appeals/actions';
 import { AppealsList } from '@/components/admin/appeals-list';
 

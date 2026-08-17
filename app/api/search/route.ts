@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail } from '@/lib/utils/api-response';
 import { searchThreads, searchMessages, searchUsers } from '@/modules/search/repository';
-import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { rateLimit } from '@/lib/services/rate-limit';
 

@@ -15,8 +15,8 @@ interface LogoProps {
 }
 
 const THEME_COLORS: Record<ResolvedTheme, string> = {
-  light: '#111111',
-  dark: '#F5F5F5',
+  light: 'var(--ink)',
+  dark: 'var(--foreground)',
 };
 
 export function Logo({ theme, brand = false, className }: LogoProps) {
@@ -36,7 +36,7 @@ export function Logo({ theme, brand = false, className }: LogoProps) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 100 100"
-      className={cn(followsTheme && 'text-[#111111] dark:text-[#F5F5F5]', className)}
+      className={cn(followsTheme && 'text-ink dark:text-foreground', className)}
     >
       <path
         fillRule="evenodd"
