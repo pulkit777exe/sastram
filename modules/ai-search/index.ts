@@ -1,5 +1,6 @@
 export { executeAISearch } from './service';
 export type { AISearchPipelineResult } from './service';
+export { AISearchError } from './synthesis';
 export { getCachedResult, cacheResult } from './cache';
 export {
   persistSearchSession,
