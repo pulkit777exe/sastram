@@ -8,7 +8,7 @@ import {
 import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
 import { actionSuccess } from '@/lib/actions/result';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 
 const searchSchema = z.object({
   query: z.string().min(1).max(200),

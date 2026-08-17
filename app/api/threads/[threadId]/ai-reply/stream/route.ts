@@ -1,14 +1,14 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { NextRequest } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
-import { requireSessionOrThrow } from '@/modules/auth/session';
+import { requireSessionOrThrow } from '@/modules/auth';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
-import { aiService, isAiNotConfigured } from '@/lib/services/ai';
+import { aiService, isAiNotConfigured } from '@/lib/ai';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
-import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
+import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/ai/prompt-boundary';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';

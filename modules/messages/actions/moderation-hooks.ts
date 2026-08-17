@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { MessageService } from '@/lib/services/moderation';
+import { MessageService } from '@/modules/messages/moderation-processor';
 
 const messageService = new MessageService();
 

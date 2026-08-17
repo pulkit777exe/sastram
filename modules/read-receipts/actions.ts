@@ -1,6 +1,6 @@
 'use server';
 
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { markThreadReadSchema } from '@/modules/read-receipts/schemas';
 import { upsertThreadReadReceipt } from '@/modules/read-receipts/repository';
 import { logger } from '@/lib/infrastructure/logger';

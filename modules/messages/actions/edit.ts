@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { sanitizeContent } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';

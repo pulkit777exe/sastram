@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { put } from '@vercel/blob';
 import { FILE_LIMITS } from '@/lib/config/constants';

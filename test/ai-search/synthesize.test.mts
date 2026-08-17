@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import '../api/helpers'; // Loads prisma, which auto-loads .env so getEnv() validates.
-import { parseStructuredSynthesis } from '@/modules/ai-search/service';
+import { parseStructuredSynthesis } from '@/modules/ai-search/synthesis';
 import type { Source } from '@/modules/ai-search/types';
 
 function makeSource(id: string, tier: 1 | 2 | 3 | 4 = 1): Source {

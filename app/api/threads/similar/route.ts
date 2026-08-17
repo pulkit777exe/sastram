@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
-import { requireSessionOrThrow } from '@/modules/auth/session';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { aiService } from '@/lib/services/ai';
-import { rateLimit } from '@/lib/services/rate-limit';
-import { consumeAiAnalysisQuota } from '@/lib/services/daily-quota';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { aiService } from '@/lib/ai';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { parseThreadDna, type ThreadDNA } from '@/lib/schemas/thread-dna';
+import { withAiPreflight } from '@/lib/middleware/ai-preflight';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
@@ -40,24 +37,10 @@ function calculateSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
 }
 
 const handler = withErrorHandling(async (req: NextRequest) => {
-  const session = await requireSessionOrThrow();
-
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rateLimitResult = await rateLimit(ip);
-  if (!rateLimitResult.success) {
-    return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
-  }
-
-  const quota = await consumeAiAnalysisQuota(session.user.id);
-  if (!quota.allowed) {
-    return NextResponse.json(fail('RATE_LIMITED', 'Daily AI analysis limit reached. Resets at UTC midnight.'), { status: 429 });
-  }
-
-  const spendCap = await enforceAiSpendCap(AiCallPath.THREAD_DNA);
-  const gate = evaluateAiCostGate({ path: AiCallPath.THREAD_DNA, spendCapAllowed: spendCap.allowed });
-  if (!gate.allowed) {
-    return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable.'), { status: 503 });
-  }
+  const preflight = await withAiPreflight(req, {
+    aiCallPath: AiCallPath.THREAD_DNA,
+  });
+  if (preflight instanceof NextResponse) return preflight;
 
   let body: unknown;
   try {
@@ -77,7 +60,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   const { title, description } = parsed.data;
 
   const draftText = description ? `${title}\n\n${description}` : title;
-  const draftMessage = [{ content: draftText, sender: { name: session.user.name ?? 'User' } }];
+  const draftMessage = [{ content: draftText, sender: { name: preflight.session.user.name ?? 'User' } }];
 
   let draftDna: ThreadDNA;
   try {

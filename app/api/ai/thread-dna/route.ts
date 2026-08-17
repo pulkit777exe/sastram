@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
-import { requireSessionOrThrow } from '@/modules/auth/session';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { aiService } from '@/lib/services/ai';
-import { rateLimit } from '@/lib/services/rate-limit';
-import { consumeAiAnalysisQuota } from '@/lib/services/daily-quota';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { aiService } from '@/lib/ai';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { withAiPreflight } from '@/lib/middleware/ai-preflight';
 import { z } from 'zod';
 
 const dnaRequestSchema = z.object({
@@ -15,33 +11,7 @@ const dnaRequestSchema = z.object({
 });
 
 const handler = withErrorHandling(async (req: NextRequest) => {
-  const session = await requireSessionOrThrow();
-
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rateLimitResult = await rateLimit(ip);
-  if (!rateLimitResult.success) {
-    return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
-  }
-
-  // Per-user daily AI analysis quota
-  const quota = await consumeAiAnalysisQuota(session.user.id);
-  if (!quota.allowed) {
-    return NextResponse.json(fail('RATE_LIMITED', `Daily AI analysis limit reached. Resets at UTC midnight.`), { status: 429 });
-  }
-
-   // Global daily spend cap
-   const spendCap = await enforceAiSpendCap(AiCallPath.THREAD_DNA);
-   if (!spendCap.allowed) {
-     return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
-   }
-
-   // Hard cost-aware gate: thread DNA is an EXPENSIVE synthesis.
-   const gate = evaluateAiCostGate({ path: AiCallPath.THREAD_DNA, spendCapAllowed: spendCap.allowed });
-   if (!gate.allowed) {
-     return NextResponse.json(fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'), { status: 503 });
-   }
-
-   let body: unknown;
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
@@ -57,13 +27,12 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   }
   const { threadId } = parsed.data;
 
-  try {
-    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
-  } catch {
-    return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: 403 });
-  }
+  const preflight = await withAiPreflight(req, {
+    aiCallPath: AiCallPath.THREAD_DNA,
+    threadId,
+  });
+  if (preflight instanceof NextResponse) return preflight;
 
-  // Fetch thread and messages
   const thread = await prisma.thread.findFirst({
     where: { id: threadId, deletedAt: null },
     include: {
@@ -79,7 +48,6 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: 404 });
   }
 
-  // Reverse to chronological order for AI
   const messages = thread.messages.reverse();
 
   if (messages.length === 0) {
@@ -93,10 +61,8 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     }));
   }
 
-  // Generate thread DNA
   const threadDNA = await aiService.generateThreadDNA(messages);
 
-  // Update thread with new DNA
   await prisma.thread.update({
     where: { id: threadId },
     data: { threadDna: threadDNA },

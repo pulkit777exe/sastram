@@ -6,7 +6,7 @@ import { requireSession } from '@/modules/auth';
 import { z } from 'zod';
 import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
-import { createBulkNotifications, createNotification } from '@/modules/notifications';
+import { createBulkNotifications } from '@/modules/notifications';
 import { requireRole, requireModerationRole } from '@/modules/policy';
 import { executeAuditAndRevalidate } from '@/modules/moderation/executors';
 import type { ReportCategory, ReportStatus } from '@prisma/client';
@@ -14,6 +14,7 @@ import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { actionSuccess } from '@/lib/actions/result';
 import { AppError } from '@/lib/utils/errors';
 import type { ActionErrorCode } from '@/lib/actions/result';
+import { resolveReport as resolveReportService } from './service';
 
 const INTERNAL_ERROR = {
   data: null,
@@ -28,15 +29,6 @@ const INVALID_INPUT = {
   ok: false,
   errorCode: 'VALIDATION_ERROR',
 } as const;
-
-const SUSPENSION_DURATIONS_MS: Record<string, number> = {
-  '1h': 60 * 60 * 1000,
-  '6h': 6 * 60 * 60 * 1000,
-  '24h': 24 * 60 * 60 * 1000,
-  '3d': 3 * 24 * 60 * 60 * 1000,
-  '7d': 7 * 24 * 60 * 60 * 1000,
-  '30d': 30 * 24 * 60 * 60 * 1000,
-};
 
 // Fanning out to every moderator is best-effort — a notification failure must
 // not roll back a report that was already written.
@@ -426,121 +418,15 @@ export async function resolveReport(data: {
     return INVALID_INPUT;
   }
 
-  const { reportId, action, note, notifyReporter, duration } = parsed.data;
-
   try {
     const session = await requireModerationRole();
 
-    const report = await prisma.report.findUnique({
-      where: { id: reportId },
-      include: {
-        message: {
-          include: {
-            sender: { select: { id: true, name: true, email: true } },
-            thread: { select: { id: true, name: true, slug: true } },
-          },
-        },
-        reporter: { select: { id: true, name: true, email: true } },
-      },
+    const result = await resolveReportService({
+      ...parsed.data,
+      resolverId: session.user.id,
     });
 
-    if (!report) {
-      return { data: null, error: 'Report not found', ok: false, errorCode: 'NOT_FOUND' };
-    }
-
-    const removesMessage = action !== 'DISMISS';
-    const restrictsAccount = action === 'SUSPEND_USER' || action === 'BAN_USER';
-    const banExpiresAt =
-      action === 'SUSPEND_USER' && duration
-        ? new Date(Date.now() + (SUSPENSION_DURATIONS_MS[duration] ?? 24 * 60 * 60 * 1000))
-        : null;
-
-    await prisma.$transaction(async (tx) => {
-      await tx.report.update({
-        where: { id: reportId },
-        data: {
-          status: action === 'DISMISS' ? 'DISMISSED' : 'RESOLVED',
-          resolution: note,
-          resolvedBy: session.user.id,
-          // firstResponseAt feeds the moderation SLA, so only stamp it once.
-          ...(report.status === 'PENDING' && !report.firstResponseAt
-            ? { firstResponseAt: new Date() }
-            : {}),
-        },
-      });
-
-      if (removesMessage) {
-        await tx.message.update({
-          where: { id: report.messageId },
-          data: { deletedAt: new Date() },
-        });
-      }
-
-      if (restrictsAccount) {
-        await tx.userBan.create({
-          data: {
-            userId: report.message.senderId,
-            bannedBy: session.user.id,
-            reason: note,
-            isActive: true,
-            expiresAt: banExpiresAt,
-          },
-        });
-
-        await tx.user.update({
-          where: { id: report.message.senderId! },
-          data: { status: action === 'BAN_USER' ? 'BANNED' : 'SUSPENDED' },
-        });
-      }
-    });
-
-    if (report.message.senderId) {
-      if (action === 'WARN_USER') {
-        await createNotification({
-          userId: report.message.senderId,
-          type: 'SYSTEM',
-          title: 'Official Warning',
-          message: `Your message has been removed for violating community guidelines. Reason: ${note}`,
-          data: { reportId, threadSlug: report.message.thread.slug },
-        });
-      } else if (restrictsAccount) {
-        await createNotification({
-          userId: report.message.senderId,
-          type: 'SYSTEM',
-          title: action === 'BAN_USER' ? 'Account Banned' : 'Account Suspended',
-          message:
-            action === 'BAN_USER'
-              ? `Your account has been permanently banned. Reason: ${note}`
-              : `Your account has been suspended until ${
-                  banExpiresAt?.toLocaleDateString() ?? 'indefinitely'
-                }. Reason: ${note}`,
-          data: { reportId, duration },
-        });
-      }
-    }
-
-    if (notifyReporter && report.reporterId) {
-      await createNotification({
-        userId: report.reporterId,
-        type: 'SYSTEM',
-        title: 'Report Updated',
-        message:
-          action === 'DISMISS'
-            ? 'Your report has been reviewed. No violation was found.'
-            : 'Thank you for your report. Action has been taken.',
-        data: { reportId },
-      });
-    }
-
-    await executeAuditAndRevalidate({
-      action: 'REPORT_RESOLVED',
-      entityType: 'Report',
-      entityId: reportId,
-      userId: session.user.id,
-      details: { action, note, duration },
-    });
-
-    return actionSuccess({ message: `Report ${action === 'DISMISS' ? 'dismissed' : 'resolved'} successfully` });
+    return actionSuccess({ message: result.message });
   } catch (error) {
     logger.error('[resolveReport]', error);
     if (error instanceof AppError) {

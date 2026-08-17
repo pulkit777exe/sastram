@@ -2,9 +2,9 @@
 
 import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
-import { buildThreadSlug } from '@/lib/utils/slug';
+import { buildThreadSlug } from '@/modules/threads/slug';
 import { createTag } from '@/modules/tags/repository';
 import { createServerAction } from '@/lib/utils/server-action';
 import { actionSuccess } from '@/lib/actions/result';

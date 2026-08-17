@@ -13,7 +13,7 @@ export {
 } from './repository';
 
 export { buildThreadDTO, buildThreadDetailDTO, toClientMessage } from './service';
-export { buildThreadSlug } from '@/lib/utils/slug';
+export { buildThreadSlug } from '@/modules/threads/slug';
 
 export type { ThreadRecord, ThreadSummary, ThreadDetail } from './types';
 export type {

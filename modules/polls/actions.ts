@@ -1,6 +1,6 @@
 'use server';
 
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import {
   createPoll as createPollRepo,

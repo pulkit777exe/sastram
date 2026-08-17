@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import type { Role } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '@/modules/notifications';
 import { createServerAction } from '@/lib/utils/server-action';

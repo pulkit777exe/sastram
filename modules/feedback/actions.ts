@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { createServerAction } from '@/lib/utils/server-action';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { submitFeedbackSchema } from '@/modules/feedback/schemas';

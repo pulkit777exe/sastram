@@ -1,7 +1,7 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { aiService } from '@/lib/services/ai';
-import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/utils/prompt-boundary';
+import { aiService } from '@/lib/ai';
+import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/ai/prompt-boundary';
 import { sanitizeUserContent, sanitizeHtmlContent } from '@/lib/services/content-safety';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { NotificationType } from '@prisma/client';

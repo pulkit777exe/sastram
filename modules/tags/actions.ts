@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { requireRole } from '@/modules/policy';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 import { revalidatePath } from 'next/cache';

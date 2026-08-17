@@ -9,7 +9,7 @@ import type { LLMResult } from '@langchain/core/outputs';
 import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
 import { logAiUsage } from '@/lib/services/ai-usage-logger';
-import type { MessageInput } from './ai';
+import type { MessageInput } from '@/lib/ai';
 
 const MAX_CHUNK_CHARS = 8000;
 

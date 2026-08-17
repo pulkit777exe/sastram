@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession } from '@/modules/auth/session';
+import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import {
   followUser as followUserRepo,

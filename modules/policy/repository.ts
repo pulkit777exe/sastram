@@ -1,4 +1,4 @@
-import { requireSession, type SessionPayload } from '@/modules/auth/session';
+import { requireSession, type SessionPayload } from '@/modules/auth';
 import type { AuthPolicyRole } from './types';
 import { canModerate } from '@/lib/config/permissions';
 
