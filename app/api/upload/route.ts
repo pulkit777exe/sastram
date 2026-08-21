@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
-import { validateFileUpload, getFileCategory, detectMimeTypeFromFile, getExtensionFromMime } from '@/lib/utils/file-upload';
+import { put, del } from '@vercel/blob';
+import { validateFileUpload, getFileCategory, detectMimeTypeFromFile, getExtensionFromMime, type FileCategory } from '@/lib/utils/file-upload';
 import { uploadResponseSchema } from '@/lib/schemas/api';
 import { logger } from '@/lib/infrastructure/logger';
 import { randomUUID } from 'crypto';
 import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
+import { AppError } from '@/lib/utils/errors';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -43,8 +44,17 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     }
   }
 
-  const uploadedFiles = await Promise.all(
-    files.map(async (file) => {
+  // Sequential so a rejected/crashed moderation never strands concurrently
+  // uploading blobs: every uploaded file is fully moderated before the next one.
+  const uploadedFiles: Array<{
+    url: string;
+    type: FileCategory;
+    name: string;
+    size: number;
+    flagged?: true;
+  }> = [];
+  try {
+    for (const file of files) {
       // Verify file content matches declared MIME type via magic bytes
       const detectedMime = await detectMimeTypeFromFile(file);
       if (detectedMime && detectedMime !== file.type) {
@@ -54,7 +64,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
           filename: file.name,
         });
         // Reject: declared type doesn't match actual content
-        throw new Error(`File content does not match declared type. Detected: ${detectedMime}`);
+        throw new AppError('File content does not match declared type', 'VALIDATION_ERROR', 400);
       }
 
       // Derive extension from detected or declared MIME type, not from filename
@@ -71,19 +81,23 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
       const modResult = await moderateImageUpload(blob.url, type);
       if (!modResult.allowed) {
-        throw new Error(modResult.reason);
+        throw new AppError(modResult.reason ?? 'Image rejected', 'FORBIDDEN', 403);
       }
       const flagged = modResult.flagged ?? false;
 
-      return {
+      uploadedFiles.push({
         url: blob.url,
         type,
         name: file.name,
         size: file.size,
         ...(flagged && { flagged: true }),
-      };
-    })
-  );
+      });
+    }
+  } catch (error) {
+    // The batch failed — don't strand already-uploaded blobs as storage garbage.
+    await Promise.all(uploadedFiles.map((f) => del(f.url).catch(() => {})));
+    throw error;
+  }
 
   const response = { files: uploadedFiles };
   const validatedResponse = uploadResponseSchema.safeParse(response);

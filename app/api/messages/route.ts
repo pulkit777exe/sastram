@@ -6,9 +6,10 @@ import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
-import { put } from '@vercel/blob';
+import { AppError } from '@/lib/utils/errors';
+import { put, del } from '@vercel/blob';
 import { randomUUID } from 'crypto';
-import { detectMimeTypeFromFile, getFileCategory, getExtensionFromMime, validateFileUpload } from '@/lib/utils/file-upload';
+import { detectMimeTypeFromFile, getFileCategory, getExtensionFromMime, validateFileUpload, type FileCategory } from '@/lib/utils/file-upload';
 import { logger } from '@/lib/infrastructure/logger';
 import { moderateImageUpload } from '@/lib/services/image-moderation';
 
@@ -75,9 +76,16 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Upload raw files and convert to attachment metadata
-      const uploadedAttachments = await Promise.all(
-        files.map(async (file) => {
+      // Sequential so a rejected/crashed moderation never strands concurrently
+      // uploading blobs: every uploaded file is fully moderated before the next.
+      const uploadedAttachments: Array<{
+        url: string;
+        type: FileCategory;
+        name: string;
+        size: number;
+      }> = [];
+      try {
+        for (const file of files) {
           const detectedMime = await detectMimeTypeFromFile(file);
           const mimeForExt = detectedMime ?? file.type;
           const ext = getExtensionFromMime(mimeForExt);
@@ -87,17 +95,21 @@ export async function POST(request: NextRequest) {
           const fileCategory = getFileCategory(mimeForExt);
           const modResult = await moderateImageUpload(blob.url, fileCategory);
           if (!modResult.allowed) {
-            throw new Error(modResult.reason);
+            throw new AppError(modResult.reason ?? 'Image rejected', 'FORBIDDEN', 403);
           }
 
-          return {
+          uploadedAttachments.push({
             url: blob.url,
-            type: getFileCategory(mimeForExt),
+            type: fileCategory,
             name: file.name,
             size: file.size,
-          };
-        })
-      );
+          });
+        }
+      } catch (error) {
+        // The batch failed — don't strand already-uploaded blobs as storage garbage.
+        await Promise.all(uploadedAttachments.map((a) => del(a.url).catch(() => {})));
+        throw error;
+      }
       postFormData.append('attachments', JSON.stringify(uploadedAttachments));
     }
 
@@ -113,11 +125,15 @@ export async function POST(request: NextRequest) {
     const resultData = (result as { data: { message: unknown } }).data;
     return NextResponse.json(ok({ message: resultData.message }));
   } catch (error) {
-    const isAuth = error instanceof Error && error.message.includes('Unauthorized');
-    if (!isAuth) logger.error('[messages] POST failed', error);
-    return NextResponse.json(
-      fail(isAuth ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', isAuth ? 'Unauthorized' : 'Failed to post message'),
-      { status: isAuth ? 401 : 500 }
-    );
+    // AppErrors (auth, thread access, moderation rejections) carry a
+    // user-facing message and status; everything else stays generic.
+    if (AppError.isAppError(error)) {
+      if (error.statusCode >= 500) logger.error('[messages] POST failed', error);
+      return NextResponse.json(fail(error.code ?? 'INTERNAL_ERROR', error.message), {
+        status: error.statusCode,
+      });
+    }
+    logger.error('[messages] POST failed', error);
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to post message'), { status: 500 });
   }
 }
