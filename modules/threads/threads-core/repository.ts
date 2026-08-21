@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
 import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
@@ -10,6 +10,7 @@ export interface ListThreadsParams {
   pageSize?: number;
   sortBy?: 'recent' | 'popular' | 'trending' | 'oldest';
   memberUserId?: string;
+  memberRole?: Role | null;
   threadIds?: string[];
 }
 
@@ -46,7 +47,7 @@ async function countActiveUsersByThread(threadIds: string[]): Promise<Map<string
 
 export const listThreads = cache(
   async (params: ListThreadsParams = {}): Promise<PaginatedThreads> => {
-    const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, threadIds } = params;
+    const { page = 1, pageSize = 10, sortBy = 'recent', memberUserId, memberRole, threadIds } = params;
 
     const where: Prisma.ThreadWhereInput = { deletedAt: null };
     if (threadIds && threadIds.length > 0) {
@@ -55,7 +56,7 @@ export const listThreads = cache(
     // Omitting memberUserId is an admin/system-level listing (callers are
     // already role-gated); any user-facing call must pass it.
     if (memberUserId) {
-      Object.assign(where, await visibilityFilter(memberUserId));
+      Object.assign(where, await visibilityFilter(memberUserId, memberRole));
     }
 
     const [totalItems, threadRows] = await Promise.all([

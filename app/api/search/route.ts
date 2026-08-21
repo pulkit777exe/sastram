@@ -4,6 +4,7 @@ import { searchThreads, searchMessages, searchUsers } from '@/modules/search/rep
 import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { AppError } from '@/lib/utils/errors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,11 +39,11 @@ export async function GET(request: NextRequest) {
 
     switch (type) {
       case 'threads': {
-        const result = await searchThreads(q, limit, offset, undefined, session.user.id);
+        const result = await searchThreads(q, limit, offset, undefined, session.user.id, session.user.role);
         return NextResponse.json(ok(result));
       }
       case 'messages': {
-        const result = await searchMessages(q, threadId, limit, offset, session.user.id);
+        const result = await searchMessages(q, threadId, limit, offset, session.user.id, session.user.role);
         return NextResponse.json(ok(result));
       }
       case 'users': {
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
         );
     }
   } catch (error) {
-    const isAuth = error instanceof Error && error.message.includes('Unauthorized');
+    const isAuth = AppError.isAppError(error) && error.code === 'AUTH_REQUIRED';
     if (!isAuth) logger.error('[search] GET failed', error);
     return NextResponse.json(
       fail(isAuth ? 'AUTH_REQUIRED' : 'INTERNAL_ERROR', isAuth ? 'Unauthorized' : 'Search failed'),

@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Hash, MessageSquare, Clock } from 'lucide-react';
+import type { Role } from '@prisma/client';
 import { requireSession } from '@/modules/auth';
 import { listThreads } from '@/modules/threads/repository';
 import type { ThreadSummary } from '@/modules/threads/types';
@@ -67,8 +68,12 @@ function ThreadRow({ thread }: { thread: ThreadSummary }) {
   );
 }
 
-async function ThreadList({ userId }: { userId: string }) {
-  const { threads } = await listThreads({ memberUserId: userId, pageSize: 50 });
+async function ThreadList({ userId, userRole }: { userId: string; userRole: Role }) {
+  const { threads } = await listThreads({
+    memberUserId: userId,
+    memberRole: userRole,
+    pageSize: 50,
+  });
 
   if (threads.length === 0) {
     return (
@@ -103,7 +108,7 @@ export default async function ThreadsPage() {
       </div>
 
       <Suspense fallback={<ThreadListSkeleton />}>
-        <ThreadList userId={session.user.id} />
+        <ThreadList userId={session.user.id} userRole={session.user.role} />
       </Suspense>
     </div>
   );

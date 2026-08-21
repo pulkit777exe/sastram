@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { visibilityFilter } from '@/lib/thread-access';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 const insensitive = 'insensitive' as const;
 
@@ -10,7 +10,8 @@ export async function searchThreads(
   limit: number = 20,
   offset: number = 0,
   threadIds?: string[],
-  viewerUserId?: string
+  viewerUserId?: string,
+  viewerRole?: Role | null
 ) {
   try {
     const where: Prisma.ThreadWhereInput = {
@@ -22,7 +23,7 @@ export async function searchThreads(
             { aiSummary: { contains: query, mode: insensitive } },
           ],
         },
-        await visibilityFilter(viewerUserId),
+        await visibilityFilter(viewerUserId, viewerRole),
       ],
       deletedAt: null,
       ...(threadIds?.length ? { id: { in: threadIds } } : {}),
@@ -54,7 +55,8 @@ export async function searchMessages(
   threadId?: string,
   limit: number = 20,
   offset: number = 0,
-  viewerUserId?: string
+  viewerUserId?: string,
+  viewerRole?: Role | null
 ) {
   try {
     const where: Prisma.MessageWhereInput = {
@@ -62,7 +64,7 @@ export async function searchMessages(
       content: { contains: query, mode: insensitive },
       // Exclude messages from soft-deleted threads — the thread is invisible everywhere else.
       // The visibility filter keeps private/restricted thread content out of results.
-      thread: { deletedAt: null, AND: [await visibilityFilter(viewerUserId)] },
+      thread: { deletedAt: null, AND: [await visibilityFilter(viewerUserId, viewerRole)] },
       ...(threadId ? { threadId } : {}),
     };
 
