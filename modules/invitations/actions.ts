@@ -9,9 +9,15 @@ import { inviteFriendSchema } from './schemas';
 import { canManageThread } from '@/lib/thread-access';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 import type { ActionEnvelope, ActionErrorCode } from '@/lib/actions/result';
-import { AppError } from '@/lib/utils/errors';
+import { AppError, isPrismaUniqueConstraintError } from '@/lib/utils/errors';
+
+// Invitations lapse after a week; the schema's EXPIRED status exists for this.
+const INVITATION_TTL_DAYS = 7;
 
 function toEnvelope<T>(error: unknown): ActionEnvelope<T> {
+  if (isPrismaUniqueConstraintError(error)) {
+    return actionFailure<T>('CONFLICT', 'You have already invited this friend to this thread');
+  }
   if (error instanceof AppError) {
     return actionFailure<T>((error.code as ActionErrorCode) ?? 'INTERNAL_ERROR', error.message);
   }
@@ -54,50 +60,60 @@ export async function inviteFriendToThread(formData: FormData) {
       );
     }
 
-    // Clear any declined/expired invitations so the user can be re-invited
-    await prisma.threadInvitation.deleteMany({
-      where: {
-        threadId: parsed.data.threadId,
-        email: parsed.data.email,
-        status: { in: ['DECLINED', 'EXPIRED'] },
-      },
-    });
-
-    const existingInvitation = await prisma.threadInvitation.findUnique({
-      where: {
-        threadId_email: {
+    // Clear declined/expired invitations, then re-check for a live one — all in
+    // one transaction so concurrent invites can't interleave between the
+    // delete and the create. A racing create still hits the unique constraint,
+    // which toEnvelope maps to CONFLICT.
+    const invitation = await prisma.$transaction(async (tx) => {
+      await tx.threadInvitation.deleteMany({
+        where: {
           threadId: parsed.data.threadId,
           email: parsed.data.email,
+          status: { in: ['DECLINED', 'EXPIRED'] },
         },
-      },
+      });
+
+      const existingInvitation = await tx.threadInvitation.findUnique({
+        where: {
+          threadId_email: {
+            threadId: parsed.data.threadId,
+            email: parsed.data.email,
+          },
+        },
+      });
+
+      if (existingInvitation) {
+        return null;
+      }
+
+      return tx.threadInvitation.create({
+        data: {
+          threadId: parsed.data.threadId,
+          senderId: session.user.id,
+          email: parsed.data.email,
+          status: 'PENDING',
+          expiresAt: new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000),
+        },
+        include: {
+          thread: {
+            select: {
+              slug: true,
+              name: true,
+            },
+          },
+          sender: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
     });
 
-    if (existingInvitation) {
+    if (!invitation) {
       return actionFailure('CONFLICT', 'You have already invited this friend to this thread');
     }
-
-    const invitation = await prisma.threadInvitation.create({
-      data: {
-        threadId: parsed.data.threadId,
-        senderId: session.user.id,
-        email: parsed.data.email,
-        status: 'PENDING',
-      },
-      include: {
-        thread: {
-          select: {
-            slug: true,
-            name: true,
-          },
-        },
-        sender: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
 
     const { sendThreadInvitation } = await import('@/lib/services/email');
 
