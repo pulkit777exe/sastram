@@ -1,7 +1,7 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 import { actionFailure, type ActionErrorCode } from '@/lib/actions/result';
-import { AppError } from './errors';
+import { AppError, handleError } from './errors';
 
 // redirect() signals by throwing; these must propagate rather than be caught
 // and reported as an action failure.
@@ -76,10 +76,13 @@ export function createServerAction<In, Out = unknown, Raw = In>(
       }
 
       logger.error(`[${actionName}]`, error);
+      // Unexpected errors (Prisma, SDKs, drivers) can embed table names,
+      // connection strings or user content — never surface their raw message.
+      const handled = handleError(error);
       return {
         ok: false,
         data: null,
-        error: (error instanceof Error && error.message) || 'Something went wrong',
+        error: handled.message,
         errorCode: 'INTERNAL_ERROR',
       };
     }

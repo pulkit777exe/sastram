@@ -52,11 +52,19 @@ export async function canAccessThread(
 /**
  * Query-level mirror of `canAccessThread`: non-public threads are only visible
  * to their creator or to someone with an accepted invitation (matched by sender
- * id or by the email the invitation was addressed to).
+ * id or by the email the invitation was addressed to). Moderators and admins
+ * see everything, matching `canAccessThread`.
  *
  * Without a user id only PUBLIC threads are visible.
  */
-export async function visibilityFilter(memberUserId?: string): Promise<Prisma.ThreadWhereInput> {
+export async function visibilityFilter(
+  memberUserId?: string,
+  userRole?: Role | null
+): Promise<Prisma.ThreadWhereInput> {
+  if (canModerate(userRole ?? Role.USER)) {
+    return {};
+  }
+
   if (!memberUserId) {
     return { visibility: 'PUBLIC' };
   }
@@ -141,7 +149,13 @@ export async function requireThreadAccess(
 ): Promise<void> {
   try {
     await requireThreadAccessOrThrow(threadId, userId, userRole);
-  } catch {
-    redirect('/dashboard');
+  } catch (error) {
+    // Access outcomes (no permission / no thread) bounce to the dashboard.
+    // Infrastructure failures must still reach the error boundary instead of
+    // masquerading as "no access".
+    if (AppError.isAppError(error)) {
+      redirect('/dashboard');
+    }
+    throw error;
   }
 }
