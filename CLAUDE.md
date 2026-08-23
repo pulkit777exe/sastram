@@ -87,6 +87,83 @@ pnpm db:studio   # Prisma studio
 - **Moderation SLA** (`lib/services/moderation-sla.ts`): Stale report escalation (>24h/72h)
 - **Soft-Delete Purge** (`lib/services/soft-delete-purge.ts`): Purges soft-deleted users after 30 days
 
+### Design System
+
+All UI follows SAI design tokens defined in `app/globals.css`:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--rounded-card: 14px` | Cards, panels, modals | `rounded-card` |
+| `--rounded-control: 6px` | Buttons, inputs, small interactive | `rounded-control` |
+| `--rounded-chip: 6px` | Badges, tags, pills | `rounded-chip` |
+| `--shadow-card` | Card elevation | `shadow-card` |
+| `--ink`, `--ink-2`, `--ink-3` | Primary/secondary/tertiary text | `text-ink`, `text-ink-2`, `text-ink-3` |
+| `--canvas` | Page background | `bg-canvas` |
+| `--surface` | Card/panel background | `bg-surface` |
+| `--line` | Borders | `border-line` |
+| `--hover` | Hover states | `bg-hover` |
+
+**Enforcement rules:**
+- Every card/panel: `border border-line rounded-card shadow-card`
+- No `rounded-xl`, `rounded-2xl`, `rounded-lg` on card-level containers
+- Fonts: Geist sans (`font-sans`), Instrument Serif headings (`font-serif-heading`), Geist Mono (`font-mono`)
+- No inline `style={{ fontFamily: '...' }}` — use Tailwind font classes
+
+### Shared Components
+
+- `components/ui/detail-card.tsx` — `<DetailCard>`: standard card wrapper (`rounded-card border border-line bg-surface shadow-card p-5`). Used by ThreadResolutionCard, ThreadSummaryCard, RelatedThreadsCard, ParticipantsCard.
+- `components/ui/overflow-menu.tsx` — `<OverflowMenu>`: kebab "..." menu for rare actions (retry/feedback in StreamingText, formatting in PostMessageForm).
+
+### SaiSearch Architecture
+
+The search page (`/dashboard/sai-search`) is a **chat-style interface** with conversation continuity:
+
+**State** (`components/ai-search/SearchPage.tsx`):
+- `messages: ChatMessage[]` — conversation history (user + assistant turns)
+- `streamingMessage: ChatMessage | null` — in-progress response during SSE stream
+- `currentSessionId` — UUID persisted across the conversation, sent to API
+- `sessionIdRef` — ref mirror of `currentSessionId` to avoid stale closures in SSE handlers
+- `streamingDataRef` — accumulates SSE data outside React state, finalized on `done` event
+
+**ChatMessage type:**
+```typescript
+interface ChatMessage {
+  id: string;           // crypto.randomUUID()
+  role: 'user' | 'assistant';
+  query: string;
+  text?: string;        // synthesis text (assistant only)
+  sources?: Source[];
+  citations?: Citation[];
+  followUps?: string[];
+  conflictData?: ConflictInfo;
+  queryType?: QueryType;
+  sourceCount?: number;
+  timestamp: number;
+}
+```
+
+**Flow:**
+1. User types query → `runSearch()` adds user message to `messages`, creates empty assistant message in `streamingMessage`
+2. SSE events update `streamingDataRef` and `streamingMessage` (sources, phase)
+3. On `done`: finalize `streamingDataRef` into a `ChatMessage`, append to `messages`, clear `streamingMessage`
+4. Follow-up queries send `conversationHistory` (last 10 messages) to API for context
+
+**API** (`app/api/ai/forum-search/route.ts`):
+- Accepts `sessionId` (UUID) and `conversationHistory` (last N messages)
+- Passes history to `executeAISearch()` → `synthesize()` which includes it in the LLM prompt
+- First query in a session creates a new `AiSearchSession` row; subsequent queries reuse the `sessionId`
+
+**Sources:** No separate sources section. Sources appear only as inline citation chips in `StreamingText` and in the expandable sources drawer within `SynthesisCard`.
+
+### Thread Page Architecture
+
+The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
+
+- **Header** (`thread-page-header.tsx`): `h-14`, icon-only subscribe/invite buttons, green dot for live indicator, no Hash icon box
+- **Sidebar** (`thread-details-panel.tsx`): Slide-over drawer triggered by `PanelRightOpen` icon at `fixed top-[4.5rem] right-4`. Contains DetailCard-wrapped panels (resolution, summary, DNA, related, participants)
+- **Composer** (`post-message-form.tsx`): 4 visible toolbar icons (Paperclip, Emoji, @sai, format overflow with Bold/Italic/Code/Link/Poll), icon-only Send button
+- **Messages** (`thread-live-wrapper.tsx`): No mobile summary bar, InlinePoll kept as poll creation drawer
+
 ### Background Jobs
 
 - QStash webhook callback at `app/api/jobs/route.ts`

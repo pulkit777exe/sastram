@@ -1,17 +1,11 @@
 # Sastram Architecture Report
 
-> **⚠️ Superseded by [docs/CANONICAL-REFERENCE.md](./CANONICAL-REFERENCE.md).**
+> **⚠️ Superseded by [shared/ARCHITECTURE.md](../shared/ARCHITECTURE.md).**
 > This document reflects a pre-refactor snapshot (June 2026). It is retained for
-> historical context only. For verified, code-accurate facts see the canonical
-> reference. Key differences from current state:
-> - WebSocket layer (`modules/ws/`, `lib/infrastructure/websocket/`) was **removed**
-> - `modules/chat/`, `modules/reputation/`, `modules/badges/` were **removed**
-> - 4 quota services consolidated into `lib/services/daily-quota.ts`
-> - `lib/services/blob.ts`, `lib/services/logger.ts`, `lib/dedupe.ts` were **removed**
-> - `lib/actions/result.ts` (actionSuccess/actionFailure) and `lib/thread-access.ts` (visibilityFilter) were **added**
-> - Current counts: 30 Prisma models, 35 API routes, 25 modules, 47 test files
+> historical context only. For verified, code-accurate facts see the architecture
+> reference.
 
-**Date:** June 19, 2026 (snapshot); updated August 2026 (supersede notice)
+**Date:** June 19, 2026 (snapshot)
 **Status:** Superseded
 
 ---
