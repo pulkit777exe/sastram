@@ -156,7 +156,8 @@ export async function synthesize(
   conflictData: ConflictInfo,
   geminiKey: string,
   tavilyAnswer?: string,
-  openaiKey?: string
+  openaiKey?: string,
+  conversationHistory?: { role: string; content: string }[]
 ): Promise<SynthesisResult> {
   const model = getEnv().GEMINI_SEARCH_MODEL;
 
@@ -170,13 +171,18 @@ export async function synthesize(
     )
     .join('\n---\n');
 
+  const historyBlock =
+    conversationHistory && conversationHistory.length > 0
+      ? `\n\nConversation history (for context only — synthesize the NEW query using the sources below):\n${conversationHistory.map((m) => `${m.role}: ${m.content.substring(0, 500)}`).join('\n')}\n`
+      : '';
+
   const synthesisPrompt = `You are a knowledge synthesis engine for a developer forum.
 ${DATA_ONLY_INSTRUCTION}
 
 Query: "${query}"
 Query type: ${classification.type}
 ${tavilyAnswer ? `Quick pre-answer from Tavily: ${wrapUserContent(tavilyAnswer)}` : ''}
-
+${historyBlock}
 Sources (ranked by trust tier):
 ${wrapUserContent(sourcesText)}
 
@@ -202,7 +208,9 @@ ${conflictData.detected ? `NOTE: A conflict was already detected — ${conflictD
 IMPORTANT:
 - Do NOT hallucinate. Only state what sources explicitly say.
 - If sources conflict, acknowledge it — don't pick a side without evidence.
-- Freshness matters: prefer recent sources for fast-moving topics.`;
+- Freshness matters: prefer recent sources for fast-moving topics.
+- If conversation history is provided, use it to understand context but always synthesize from the NEW sources.
+- If fewer than 2 quality sources are available, be transparent about this in your response. State what you found and note the limited source base. Do not fabricate additional sources or claims.`;
 
   try {
     const content = await generateText(synthesisPrompt, {

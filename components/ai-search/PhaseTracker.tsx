@@ -10,7 +10,6 @@ export type SSEPhase =
   | 'crossref'
   | 'synthesizing'
   | 'done'
-  | 'refine'
   | 'error';
 
 interface PhaseTrackerProps {
@@ -26,7 +25,7 @@ const PHASES: { key: SSEPhase; label: string; description: string }[] = [
   { key: 'synthesizing', label: 'Synthesize', description: 'Formulating answer' },
 ];
 
-const TERMINAL_PHASES: SSEPhase[] = ['done', 'refine', 'error'];
+const TERMINAL_PHASES: SSEPhase[] = ['done', 'error'];
 
 function formatDuration(seconds: number): string {
   if (seconds < 1) return '<1s';
@@ -82,7 +81,7 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
   }, [currentPhase, isTerminal]);
 
   return (
-    <div className="w-full space-y-2 rounded-xl border border-border/50 bg-card/60 p-3 shadow-xs backdrop-blur-xs">
+    <div className="w-full space-y-2 rounded-card border border-border/50 bg-card/60 p-3 shadow-xs backdrop-blur-xs">
       {/* Header bar with total time elapsed */}
       <div className="flex items-center justify-between text-xs font-medium text-muted-foreground px-1">
         <span className="flex items-center gap-1.5 font-semibold text-foreground">
@@ -153,16 +152,6 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
           >
             <Check size={12} className="shrink-0" />
             Complete
-          </Badge>
-        )}
-
-        {currentPhase === 'refine' && (
-          <Badge
-            variant="outline"
-            className="flex shrink-0 items-center gap-1 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1.5 text-xs font-medium"
-          >
-            <RefreshCw size={12} className="shrink-0 animate-spin" />
-            Refining
           </Badge>
         )}
 

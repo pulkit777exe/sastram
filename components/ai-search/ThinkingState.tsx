@@ -26,7 +26,7 @@ interface ThinkingStateProps {
   isLoading: boolean;
 }
 
-const PHASES: Exclude<SSEPhase, 'done' | 'refine' | 'error'>[] = [
+const PHASES: Exclude<SSEPhase, 'done' | 'error'>[] = [
   'searching',
   'reading',
   'crossref',
@@ -49,7 +49,6 @@ const PHASE_ACTIVE_LABEL: Record<SSEPhase, string> = {
   crossref:     'Cross-referencing',
   synthesizing: 'Writing answer',
   done:         'Done',
-  refine:       'Refining',
   error:        'Error',
 };
 

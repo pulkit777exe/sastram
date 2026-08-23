@@ -40,13 +40,16 @@ const searchRequestSchema = z.object({
     sourceFilter: z.enum(['all', 'technical', 'reddit-hn', 'docs']),
     searchMode: z.enum(['standard', 'instant', 'table']),
   }),
-  parentSessionId: z.string().uuid().optional(),
+  sessionId: z.string().uuid().optional(),
   clientNonce: z.string().min(8).max(64).optional(),
-  context: z
-    .object({
-      query: z.string(),
-      followUp: z.string(),
-    })
+  conversationHistory: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string(),
+      })
+    )
+    .max(20)
     .optional(),
 });
 
@@ -56,7 +59,6 @@ export type SSEEvent =
   | { phase: 'crossref' }
   | { phase: 'synthesizing' }
   | { phase: 'done'; synthesis: AISearchPipelineResult['synthesis']; followUps: string[]; sessionId?: string; sources?: AISearchPipelineResult['sources'] }
-  | { phase: 'refine'; sources: AISearchPipelineResult['sources']; suggestion?: string }
   | { phase: 'blocked'; message: string }
   | { phase: 'error'; message: string; errorCode?: string };
 
@@ -187,7 +189,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { query, config, parentSessionId, clientNonce, context } = validation.data;
+    const { query, config, sessionId, clientNonce, conversationHistory } = validation.data;
 
     if (!query || query.trim().length < QUERY_MIN) {
       return NextResponse.json(
@@ -203,9 +205,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const effectiveQuery = context ? `${context.query} — follow-up: ${context.followUp}` : query;
+    const effectiveQuery = query;
 
-    if (!context) {
+    const hasHistory = conversationHistory && conversationHistory.length > 0;
+
+    if (!hasHistory) {
       try {
         const cached = await getCachedResult(query);
         if (cached) {
@@ -260,26 +264,16 @@ export async function POST(request: NextRequest) {
             tavily: tavilyKey,
             gemini: geminiKey,
             openai: openaiKey,
-          });
+          }, conversationHistory);
 
           send({ phase: 'reading', sources: result.sources });
           send({ phase: 'crossref' });
 
-          if (result.phase === 'refine' && result.sources.length === 0) {
+          if (result.sources.length === 0) {
             send({
               phase: 'error',
-              message: 'Both search providers failed to return results. Please try again.',
-              errorCode: 'PROVIDER_FAILURE',
-            });
-            controller.close();
-            return;
-          }
-
-          if (result.phase === 'refine') {
-            send({
-              phase: 'refine',
-              sources: result.sources,
-              suggestion: `Try broadening your search: ${query} explained`,
+              message: 'No results found for this query. Please try a different search.',
+              errorCode: 'NO_RESULTS',
             });
             controller.close();
             return;
@@ -288,8 +282,8 @@ export async function POST(request: NextRequest) {
           send({ phase: 'synthesizing' });
 
           let createdSessionId: string | undefined;
-          if (!context) {
-            createdSessionId = crypto.randomUUID();
+          if (!hasHistory) {
+            createdSessionId = sessionId || crypto.randomUUID();
             const sid = createdSessionId;
             persistSearchSession(
               session.user.id,
@@ -299,14 +293,13 @@ export async function POST(request: NextRequest) {
               result.followUps,
               {
                 id: sid,
-                parentSessionId,
                 title: deriveTitle(query),
                 timings: result.timings,
               }
             ).catch((e) => logger.error('[forum-search] persist session failed', { error: e }));
           }
 
-          if (!context) {
+          if (!hasHistory) {
             cacheResult(query, result, result.synthesis.queryType)
               .catch((e) => logger.error('[forum-search] cache write failed', { error: e }));
           }

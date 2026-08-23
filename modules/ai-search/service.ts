@@ -25,7 +25,8 @@ function phaseProviderLabel(config: SearchConfig): string {
 export async function executeAISearch(
   query: string,
   config: SearchConfig,
-  keys: { exa: string; tavily: string; gemini: string; openai?: string }
+  keys: { exa: string; tavily: string; gemini: string; openai?: string },
+  conversationHistory?: { role: string; content: string }[]
 ): Promise<AISearchPipelineResult> {
   const startTime = Date.now();
   const t0 = Date.now();
@@ -51,23 +52,6 @@ export async function executeAISearch(
 
   const rankedSources = crossRefResult.rankedSources;
 
-  const qualitySourceCount = rankedSources.filter((s) => s.tier <= 3).length;
-  if (qualitySourceCount < 2) {
-    return {
-      synthesis: {
-        content: '',
-        queryType: classification.type,
-        sourceCount: rankedSources.length,
-        conflictData: crossRefResult.conflictData,
-        processingTimeMs: Date.now() - startTime,
-      },
-      sources: rankedSources,
-      phase: 'refine',
-      followUps: [],
-      timings: { classifyMs, searchMs, crossrefMs, synthesizeMs: 0, provider: phaseProviderLabel(config) },
-    };
-  }
-
   const t3 = Date.now();
   let synthesis: SynthesisResult;
   if (config.searchMode === 'instant') {
@@ -86,7 +70,8 @@ export async function executeAISearch(
       crossRefResult.conflictData,
       keys.gemini,
       rawResults.tavilyAnswer,
-      keys.openai
+      keys.openai,
+      conversationHistory
     );
     synthesis.processingTimeMs = Date.now() - startTime;
   }
