@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { VerifyNowButton } from '@/components/thread/verify-now-button';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
+import { DetailCard } from '@/components/ui/detail-card';
 
 interface ThreadResolutionCardProps {
   threadId: string;
@@ -43,12 +44,12 @@ export default function ThreadResolutionCard({
 
   if (score === null || score === undefined) {
     return (
-      <div className="space-y-2">
+      <DetailCard className="space-y-2">
         <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Resolution</p>
         <p className="text-sm text-foreground/80">
           Not yet resolved. As the thread reaches conclusions, Sai scores how settled it is.
         </p>
-      </div>
+      </DetailCard>
     );
   }
 
@@ -56,13 +57,13 @@ export default function ThreadResolutionCard({
   const barColor = score >= 70 ? 'var(--chart-2)' : score >= 40 ? 'var(--chart-4)' : 'var(--destructive)';
 
   return (
-    <div className="space-y-3">
+    <DetailCard className="space-y-3">
       <div className="flex items-end justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Resolution</p>
           <p className="mt-0.5 text-xs text-muted-foreground/70">{label}</p>
         </div>
-        <span className="text-3xl leading-none font-bold tabular-nums text-foreground">
+        <span className="text-2xl leading-none font-bold tabular-nums text-foreground">
           {Math.round(score)}
           <span className="text-sm text-muted-foreground font-medium">/100</span>
         </span>
@@ -86,6 +87,6 @@ export default function ThreadResolutionCard({
           <VerifyNowButton threadId={threadId} />
         </div>
       )}
-    </div>
+    </DetailCard>
   );
 }

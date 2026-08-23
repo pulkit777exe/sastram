@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   subscribeToThreadAction,
   unsubscribeFromThread,
@@ -18,6 +17,7 @@ interface ThreadSubscribeButtonProps {
   threadId: string;
   slug: string;
   initialFrequency: SubscriptionFrequency;
+  iconOnly?: boolean;
 }
 
 const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
@@ -33,6 +33,7 @@ export function ThreadSubscribeButton({
   threadId,
   slug,
   initialFrequency,
+  iconOnly = false,
 }: ThreadSubscribeButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -115,7 +116,7 @@ export function ThreadSubscribeButton({
 
   return (
     <div ref={containerRef} className="relative">
-      <PressDepth
+      <button
         type="button"
         disabled={isSaving}
         onClick={() => {
@@ -127,14 +128,18 @@ export function ThreadSubscribeButton({
             setIsOpen(true);
           }
         }}
-        className="w-full justify-between rounded-xl border-border/70"
+        aria-label={`Subscription: ${triggerLabel}`}
+        className={iconOnly
+          ? 'h-8 w-8 !p-0 flex items-center justify-center !rounded-lg border-border/70'
+          : 'w-full justify-between rounded-xl border-border/70'
+        }
       >
         <span className="inline-flex items-center gap-2">
           <Bell className="h-4 w-4" />
-          {triggerLabel}
+          {!iconOnly && triggerLabel}
         </span>
-        <span className="text-xs text-muted-foreground">{isSaving ? 'Saving...' : 'Change'}</span>
-      </PressDepth>
+        {!iconOnly && <span className="text-xs text-muted-foreground">{isSaving ? 'Saving...' : 'Change'}</span>}
+      </button>
 
       {isOpen && (
         <div

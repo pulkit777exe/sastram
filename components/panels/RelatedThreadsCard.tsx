@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getRelatedThreads } from '@/modules/threads';
 import type { ThreadDNA } from '@/lib/schemas/thread-dna';
+import { DetailCard } from '@/components/ui/detail-card';
 
 interface RelatedThreadsCardProps {
   threadId: string;
@@ -18,8 +19,8 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <p className="font-(--font-dm-mono) text-xs uppercase tracking-[0.12em] text-muted-foreground">
+    <DetailCard>
+      <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
         Related Threads
       </p>
 
@@ -49,7 +50,7 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
                   {topics.map((topic: string) => (
                     <span
                       key={topic}
-                      className="inline-flex items-center rounded-full bg-background px-2 py-0.5 font-(--font-dm-mono) text-xs uppercase tracking-[0.08em] text-foreground"
+                      className="inline-flex items-center rounded-full bg-background px-2 py-0.5 font-mono text-xs uppercase tracking-[0.08em] text-foreground"
                     >
                       {topic}
                     </span>
@@ -60,6 +61,6 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
           );
         })}
       </div>
-    </section>
+    </DetailCard>
   );
 }

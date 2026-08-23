@@ -2,7 +2,6 @@ import { Suspense, cache } from 'react';
 import { notFound } from 'next/navigation';
 import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
 import { Badge } from '@/components/ui/badge';
-import { ShieldCheck, Activity } from 'lucide-react';
 import type { Message } from '@/lib/types/index';
 import { isAdminUser as isAdmin, requireSession, type SessionUser } from '@/modules/auth';
 import { getThreadWithFullContext, getThreadMessagesPaginated, toClientMessage } from '@/modules/threads';
@@ -15,6 +14,7 @@ import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
 import ParticipantsCard from '@/components/panels/ParticipantsCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
+import { DetailCard } from '@/components/ui/detail-card';
 
 const INITIAL_MESSAGE_LIMIT = 50;
 
@@ -49,20 +49,12 @@ function ThreadContentSkeleton() {
 
 function ThreadSidebarSkeleton() {
   return (
-    <aside className="w-80 hidden xl:flex flex-col overflow-y-auto bg-muted/30">
-      <div className="p-6 border-b border-border/60">
-        <Skeleton className="h-3 w-24 mb-4" />
-        <Skeleton className="h-6 w-3/4 mb-2" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3 mt-1" />
-      </div>
-      <div className="p-4 flex flex-col gap-4">
-        <Skeleton className="h-20 w-full rounded-xl" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <Skeleton className="h-24 w-full rounded-xl" />
-        <Skeleton className="h-16 w-full rounded-xl" />
-      </div>
-    </aside>
+    <div className="flex flex-col gap-4 p-5">
+      <Skeleton className="h-20 w-full rounded-card" />
+      <Skeleton className="h-32 w-full rounded-card" />
+      <Skeleton className="h-16 w-full rounded-card" />
+      <Skeleton className="h-24 w-full rounded-card" />
+    </div>
   );
 }
 
@@ -151,73 +143,48 @@ async function ThreadSidebar({
   const threadDna = parseThreadDna(thread.threadDna);
 
   return (
-    <aside className="w-80 flex flex-col overflow-y-auto bg-muted/30 shadow-linear-md">
-      <div className="p-6 border-b border-border/60">
-        <div className="flex items-center gap-2 mb-6">
-          <Activity size={14} />
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-            Thread Details
-          </p>
-        </div>
+    <aside className="flex flex-col gap-4 p-5">
+      <ThreadResolutionCard
+        threadId={thread.id}
+        score={thread.resolutionScore}
+        lastVerifiedAt={thread.lastVerifiedAt ?? thread.updatedAt}
+      />
 
-        <h2 className="text-xl font-bold mb-3 text-foreground">{thread.name}</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">{thread.description}</p>
-      </div>
+      <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
 
-      <div className="p-6 border-b border-border/60">
-        <ThreadResolutionCard
-          threadId={thread.id}
-          score={thread.resolutionScore}
-          lastVerifiedAt={thread.lastVerifiedAt ?? thread.updatedAt}
-        />
-      </div>
-
-      <div className="p-6 flex flex-col gap-6">
-        <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
-
-        {threadDna && (
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Thread DNA</p>
-            <div className="flex flex-wrap gap-1.5">
-              <Badge variant="live" className="px-2.5 py-1 text-xs">
-                {threadDna.questionType}
+      {threadDna && (
+        <DetailCard className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="live" className="px-2.5 py-1 text-xs">
+              {threadDna.questionType}
+            </Badge>
+            <Badge variant="secondary" className="px-2.5 py-1 text-xs">
+              {threadDna.expertiseLevel}
+            </Badge>
+            {threadDna.topics.slice(0, 4).map((topic) => (
+              <Badge
+                key={topic}
+                variant="outline"
+                className="px-2.5 py-1 text-xs font-mono uppercase tracking-[0.08em]"
+              >
+                {topic}
               </Badge>
-              <Badge variant="secondary" className="px-2.5 py-1 text-xs">
-                {threadDna.expertiseLevel}
-              </Badge>
-              {threadDna.topics.slice(0, 4).map((topic) => (
-                <Badge
-                  key={topic}
-                  variant="outline"
-                  className="px-2.5 py-1 text-xs font-(--font-dm-mono) uppercase tracking-[0.08em]"
-                >
-                  {topic}
-                </Badge>
-              ))}
-            </div>
+            ))}
           </div>
-        )}
+        </DetailCard>
+      )}
 
-        <RelatedThreadsCard threadId={thread.id} />
+      <RelatedThreadsCard threadId={thread.id} />
 
-        <ParticipantsCard threadId={thread.id} ownerId={thread.createdBy} />
-      </div>
+      <ParticipantsCard threadId={thread.id} ownerId={thread.createdBy} />
 
       {isAdmin(session.user) && (
-        <div className="p-6 mt-auto border-t border-border/60">
-          <div className="flex items-center gap-2 mb-4">
-            <ShieldCheck size={14} className="text-muted-foreground" />
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-              Admin Controls
-            </span>
-          </div>
-          <Link
-            href={`/dashboard/admin?threadId=${thread.id}`}
-            className="flex items-center justify-center w-full py-2.5 text-xs font-medium border rounded-lg hover:text-foreground transition-all shadow-linear-sm"
-          >
-            Manage Thread
-          </Link>
-        </div>
+        <Link
+          href={`/dashboard/admin?threadId=${thread.id}`}
+          className="flex items-center justify-center w-full py-2.5 text-xs font-medium border border-line rounded-card text-ink-2 hover:text-ink hover:bg-hover transition-colors"
+        >
+          Manage Thread
+        </Link>
       )}
     </aside>
   );
@@ -229,7 +196,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
 
   return (
     <div className="flex h-full w-full overflow-hidden">
-      <main className="flex flex-1 flex-col min-w-0 border-r border-border/60">
+      <main className="flex flex-1 flex-col min-w-0">
         <Suspense fallback={<ThreadContentSkeleton />}>
           <ThreadContent slug={slug} session={session} />
         </Suspense>

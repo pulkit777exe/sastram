@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Dialog,
   DialogContent,
@@ -23,9 +22,10 @@ import { cn } from '@/lib/utils/cn';
 interface InviteFriendButtonProps {
   threadId: string;
   threadName: string;
+  iconOnly?: boolean;
 }
 
-export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonProps) {
+export function InviteFriendButton({ threadId, threadName, iconOnly = false }: InviteFriendButtonProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -78,12 +78,16 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <PressDepth
-          className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+        <button type="button"
+          aria-label="Invite friend"
+          className={iconOnly
+            ? 'h-8 w-8 !p-0 flex items-center justify-center !rounded-lg border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+            : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+          }
         >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Invite Friend
-        </PressDepth>
+          <UserPlus className="w-4 h-4" />
+          {!iconOnly && <span className="ml-2">Invite Friend</span>}
+        </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -125,16 +129,16 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
             </div>
           </div>
           <DialogFooter>
-            <PressDepth type="button" onClick={() => setOpen(false)}>
+            <button type="button" onClick={() => setOpen(false)}>
               Cancel
-            </PressDepth>
-            <PressDepth
+            </button>
+            <button
               type="submit"
               disabled={isSubmitting || !email.trim()}
               className="bg-brand hover:bg-brand/90 text-primary-foreground"
             >
               {isSubmitting ? 'Sending...' : 'Send Invitation'}
-            </PressDepth>
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>

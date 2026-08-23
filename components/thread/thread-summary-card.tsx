@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, RefreshCw } from 'lucide-react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 import { SkeletonSwap } from '@/components/ui/skeleton-swap';
+import { DetailCard } from '@/components/ui/detail-card';
 
 interface ThreadSummaryCardProps {
   threadId: string;
@@ -118,12 +118,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   );
 
   return (
-    <div
-      className={cn(
-        'rounded-xl border p-5 relative overflow-hidden bg-card/50 shadow-linear-sm',
-        className
-      )}
-    >
+    <DetailCard className={cn('relative', className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
         <div className="flex items-center gap-2">
@@ -134,13 +129,13 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         </div>
 
         {summary && !isPending && (
-          <PressDepth
+          <button type="button"
             className="h-6 w-6 text-muted-foreground hover:text-brand"
             onClick={() => void requestSummary()}
             aria-label="Refresh summary"
           >
             <RefreshCw size={12} />
-          </PressDepth>
+          </button>
         )}
       </div>
 
@@ -158,13 +153,13 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
               <p className="text-xs text-muted-foreground mb-3">
                 This is taking longer than expected. You can try again.
               </p>
-            <PressDepth
+            <button type="button"
               onClick={() => void requestSummary()}
               className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
             >
               <Sparkles size={12} className="mr-2" />
               Try Again
-            </PressDepth>
+            </button>
             </div>
           ) : summary ? (
             isAiNotConfigured(summary) ? (
@@ -174,13 +169,13 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
                 <p className="text-xs text-muted-foreground mb-3">
                   Sai couldn&apos;t generate a summary this time. Please try again.
                 </p>
-              <PressDepth
+              <button type="button"
                 onClick={() => void requestSummary()}
                 className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
               >
                 <Sparkles size={12} className="mr-2" />
                 Try Again
-              </PressDepth>
+              </button>
               </div>
             ) : (
               <div className="prose prose-sm prose-neutral max-w-none">
@@ -192,20 +187,17 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
               <p className="text-xs text-muted-foreground mb-3">
                 Get a quick Sai-powered summary of this thread.
               </p>
-            <PressDepth
+            <button type="button"
               onClick={() => void requestSummary()}
               className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
             >
               <Sparkles size={12} className="mr-2" />
               Generate Summary
-            </PressDepth>
+            </button>
             </div>
           )}
         </SkeletonSwap>
       </div>
-
-      {/* Decorative blur */}
-      <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-brand/10 blur-2xl rounded-full pointer-events-none" />
-    </div>
+    </DetailCard>
   );
 }

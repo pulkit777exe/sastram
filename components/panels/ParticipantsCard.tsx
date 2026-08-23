@@ -1,5 +1,6 @@
 import { getThreadParticipants } from '@/modules/threads';
 import type { ThreadParticipant } from '@/modules/threads';
+import { DetailCard } from '@/components/ui/detail-card';
 
 interface ParticipantsCardProps {
   threadId: string;
@@ -23,8 +24,8 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
   );
 
   return (
-    <section>
-      <p className="font-(--font-dm-mono) text-xs uppercase tracking-[0.12em] text-muted-foreground">
+    <DetailCard>
+      <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
         {participants.length} {participants.length === 1 ? 'person' : 'people'} in this thread
       </p>
 
@@ -54,6 +55,6 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
           <span className="text-xs font-medium text-muted-foreground">+{overflow}</span>
         )}
       </div>
-    </section>
+    </DetailCard>
   );
 }

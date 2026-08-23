@@ -6,14 +6,12 @@ import { PostMessageForm } from '@/components/chat/post-message-form';
 import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hooks/useAIReplyStream';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
+import { InlinePoll } from '@/components/thread/inline-poll';
 import { getPollResultsAction, getPollByThreadAction } from '@/modules/polls/actions';
 import type { PollResults } from '@/modules/polls/types';
-import { toasts } from '@/lib/utils/toast';
-import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
-import { ChevronDown, Loader2, Pin, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+import { ChevronDown, Loader2, Pin } from 'lucide-react';
 import { useThreadMessages } from '@/hooks/thread/use-thread-messages';
 import { useThreadPolling } from '@/hooks/thread/use-thread-polling';
 import { useThreadReadReceipts } from '@/hooks/thread/use-thread-read-receipts';
@@ -341,61 +339,25 @@ export function ThreadLiveWrapper({
         initialFrequency={initialFrequency}
       />
 
-      {(pinnedMessage || resolutionScore !== null || aiSummary) && (
-        <div className="shrink-0 px-6 pt-3 flex flex-col gap-2">
-          {pinnedMessage && (
-            <div className="rounded-lg border border-chart-4/20 bg-chart-4/5 px-4 py-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
-              <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-                <div className="min-w-0 flex items-start gap-2">
-                  <Pin size={13} className="text-chart-4 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-chart-4 uppercase tracking-wider">
-                      Pinned Message
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-chart-4/90 font-medium">
-                      {pinnedMessage.content}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-xs font-semibold text-brand hover:text-brand underline"
-                  onClick={() =>
-                    document
-                      .getElementById(`message-${pinnedMessage.id}`)
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  }
-                >
-                  Jump to message
-                </button>
-              </div>
-            </div>
-          )}
-
-          {(resolutionScore !== null || aiSummary) && (
-            <div className="xl:hidden max-w-4xl mx-auto w-full rounded-lg border border-border/60 bg-card/50 px-4 py-2.5 flex items-start gap-3">
-              {resolutionScore !== null && (
-                <span
-                  className={cn(
-                    'shrink-0 text-xs font-bold tabular-nums rounded-full px-2 py-0.5',
-                    resolutionScore >= 70
-                      ? 'bg-chart-2/10 text-chart-2'
-                      : resolutionScore >= 40
-                        ? 'bg-chart-4/10 text-chart-4'
-                        : 'bg-destructive/10 text-destructive'
-                  )}
-                >
-                  {Math.round(resolutionScore)}/100
-                </span>
-              )}
-              {aiSummary && (
-                <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                  <Sparkles size={11} className="inline mr-1 -mt-0.5 text-brand" />
-                  {aiSummary}
-                </p>
-              )}
-            </div>
-          )}
+      {(pinnedMessage) && (
+        <div className="shrink-0 px-6 pt-3">
+          <div className="max-w-4xl mx-auto flex items-center gap-2 px-4 py-2 rounded-card border border-line bg-surface animate-in fade-in slide-in-from-top-1 duration-150">
+            <Pin size={13} className="text-ink-3 shrink-0" />
+            <span className="min-w-0 truncate text-xs text-ink-2 font-medium">
+              {pinnedMessage.content}
+            </span>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-semibold text-sai-accent hover:underline"
+              onClick={() =>
+                document
+                  .getElementById(`message-${pinnedMessage.id}`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
+            >
+              Jump
+            </button>
+          </div>
         </div>
       )}
 
@@ -420,17 +382,15 @@ export function ThreadLiveWrapper({
         }}
       >
         <div className="max-w-4xl mx-auto">
-          <div className="mb-4">
-            <InlinePoll
-              threadId={threadId}
-              canManagePoll={canManagePoll}
-              isOpen={showPoll}
-              onToggle={setShowPoll}
-              onPollCreated={(newPoll) => {
-                setCurrentPoll(newPoll);
-              }}
-            />
-          </div>
+          <InlinePoll
+            threadId={threadId}
+            canManagePoll={canManagePoll}
+            isOpen={showPoll}
+            onToggle={setShowPoll}
+            onPollCreated={(newPoll) => {
+              setCurrentPoll(newPoll);
+            }}
+          />
           {currentPoll && (
             <div className="mb-4">
               <PollPanel
@@ -447,11 +407,6 @@ export function ThreadLiveWrapper({
         <div className="max-w-4xl mx-auto">
           {threadMessages.liveMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-brand/10 border border-brand/15 dark:bg-brand/20 dark:border-brand/30 shadow-linear-sm">
-                <svg className="w-8 h-8 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-3.037-.476 4.5 4.5 0 01-5.014-4.986L3 20.25l3.5-1.75A8.956 8.956 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                </svg>
-              </div>
               <h3 className="text-foreground font-semibold text-base mb-1.5">No messages yet</h3>
               <p className="text-muted-foreground/70 text-sm max-w-65 leading-relaxed">
                 Be the first to share something — ask a question, share a thought, or just say hi!
