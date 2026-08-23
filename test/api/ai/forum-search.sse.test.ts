@@ -174,7 +174,7 @@ describe('POST /api/ai/forum-search (SSE)', () => {
     expect(doneEvent.followUps).to.have.length(3);
   });
 
-  it('emits a refine phase (not done) when fewer than 2 quality sources', async () => {
+  it('still synthesizes when fewer than 2 quality sources (no refine phase)', async () => {
     // Only one low-tier source returns.
     stubs.push(
       sinon.stub(globalThis, 'fetch').callsFake(async (url: string | URL | Request) => {
@@ -208,9 +208,9 @@ describe('POST /api/ai/forum-search (SSE)', () => {
     expect(res.status).to.equal(200);
     const events = await collectSSE(res);
     const phases = events.map((e) => JSON.parse(e).phase);
-    expect(phases).to.include('refine');
-    expect(phases[phases.length - 1]).to.equal('refine');
-    expect(phases).to.not.include('done');
+    expect(phases).to.not.include('refine');
+    expect(phases).to.include('done');
+    expect(phases[phases.length - 1]).to.equal('done');
   });
 
   it('emits an error event when synthesis fails after sources are found', async function () {
@@ -253,8 +253,8 @@ describe('POST /api/ai/forum-search (SSE)', () => {
     expect(errorEvent.message).to.be.a('string');
   });
 
-  it('emits a distinct error (PROVIDER_FAILURE) when both providers return nothing', async () => {
-    // Both Exa and Tavily return zero results → hard failure, not refine.
+  it('emits a distinct error (NO_RESULTS) when both providers return nothing', async () => {
+    // Both Exa and Tavily return zero results → hard failure.
     stubs.push(
       sinon.stub(globalThis, 'fetch').callsFake(async (url: string | URL | Request) => {
         const u = String(url);
@@ -285,7 +285,7 @@ describe('POST /api/ai/forum-search (SSE)', () => {
     const events = await collectSSE(res);
     const errorEvent = JSON.parse(events[events.length - 1]);
     expect(errorEvent.phase).to.equal('error');
-    expect(errorEvent.errorCode).to.equal('PROVIDER_FAILURE');
+    expect(errorEvent.errorCode).to.equal('NO_RESULTS');
   });
 
   it('snapshots the done payload shape (text, citations, followUps, sessionId)', async () => {
