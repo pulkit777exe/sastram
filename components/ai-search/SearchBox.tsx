@@ -1,6 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState } from 'react';
+import { Filter } from 'lucide-react';
 
 import type { SearchConfig } from '@/modules/ai-search/types';
 
@@ -52,6 +53,7 @@ export function SearchBox({
   const [model, setModel] = useState(MODELS[0]);
   const [modelOpen, setModelOpen] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SearchConfig['sourceFilter']>('all');
+  const [sourceOpen, setSourceOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [active, setActive] = useState(0);
   const [expanded, setExpanded] = useState(false);
@@ -115,20 +117,42 @@ export function SearchBox({
   return (
     <div className="w-full transition-all duration-300">
       {!compact && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {SOURCE_FILTERS.map((f) => (
+        <div className="flex items-center gap-2 mb-3">
+          <div className="relative">
             <button
-              key={f.value}
-              onClick={() => setSourceFilter(f.value)}
-              className={`px-3 py-1 text-xs rounded-full border transition-all duration-200 cursor-pointer ${
-                sourceFilter === f.value
-                  ? 'bg-ink text-canvas border-ink'
-                  : 'bg-transparent text-ink-2 border-line hover:border-line-strong hover:text-ink'
-              }`}
+              type="button"
+              onClick={() => setSourceOpen((o) => !o)}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-control border border-line text-ink-2 hover:border-line-strong hover:text-ink transition-colors"
             >
-              {f.label}
+              <Filter size={12} />
+              {SOURCE_FILTERS.find((f) => f.value === sourceFilter)?.label ?? 'All Sources'}
             </button>
-          ))}
+            {sourceOpen && (
+              <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-card bg-surface border border-line p-1 shadow-xl">
+                {SOURCE_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setSourceFilter(f.value);
+                      setSourceOpen(false);
+                    }}
+                    className="flex h-8 w-full items-center gap-2 rounded-control px-2 text-left text-sm transition-colors hover:bg-hover"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
+                      {f.label}
+                    </span>
+                    {sourceFilter === f.value && (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -138,7 +162,7 @@ export function SearchBox({
         {menu && rows.length > 0 && (
           <div
             onMouseLeave={() => setEngaged(false)}
-            className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-[10px] bg-surface border border-line p-1 shadow-xl"
+            className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-card bg-surface border border-line p-1 shadow-xl"
             style={{
               animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
               transformOrigin: 'bottom center',
@@ -187,9 +211,7 @@ export function SearchBox({
         {/* Composer */}
         <div className="relative">
           <div
-            className={`relative flex flex-col gap-1 bg-surface border border-line p-4 transition-[border-radius,border-color] duration-150 ${
-              compact ? 'rounded-[12px]' : 'rounded-2xl'
-            }`}
+            className={`relative flex flex-col gap-1 bg-surface border border-line p-4 transition-[border-radius,border-color,box-shadow] duration-150 rounded-card shadow-card focus-within:shadow-raised focus-within:border-line-strong`}
           >
           <span
             ref={measureRef}
@@ -272,7 +294,7 @@ export function SearchBox({
 
               {modelOpen && (
                 <div
-                  className="absolute left-0 bottom-full z-20 mb-1 w-fit min-w-30 rounded-[10px] bg-surface border border-line p-1 shadow-xl"
+                  className="absolute left-0 bottom-full z-20 mb-1 w-fit min-w-30 rounded-card bg-surface border border-line p-1 shadow-xl"
                   style={{
                     animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
                     transformOrigin: 'bottom left',
@@ -340,8 +362,8 @@ export function SearchBox({
               onClick={send}
               className="flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
               style={{
-                background: canSend ? 'var(--ink)' : 'var(--field)',
-                color: canSend ? 'var(--canvas)' : 'var(--ink-2)',
+                background: canSend ? 'var(--sai-accent)' : 'var(--field)',
+                color: canSend ? 'white' : 'var(--ink-2)',
               }}
             >
               <svg

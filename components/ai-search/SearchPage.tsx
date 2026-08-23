@@ -1,30 +1,18 @@
 'use client';
 
-import { useState, useCallback, useRef, useMemo, useEffect, useSyncExternalStore } from 'react';
+import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toasts } from '@/lib/utils/toast';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  KeyRound,
-  ArrowRight,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ChevronDown,
-  Clock,
-  AlertCircle,
-  Menu,
-} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Clock, AlertCircle, Send, Loader2, Plus } from 'lucide-react';
 import { SearchBox } from '@/components/ai-search/SearchBox';
 import type { SSEPhase } from '@/components/ai-search/PhaseTracker';
 import { SynthesisCard } from '@/components/ai-search/SynthesisCard';
-import { SourceCard } from '@/components/ai-search/SourceCard';
-import { TableView } from '@/components/ai-search/TableView';
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
 import { SaiSearchLayout, type HistoryItem } from '@/components/ai-search/sai-search-layout';
 import type { RetryStyle, FeedbackType } from '@/components/ai-search/StreamingText';
 import { TaskSteps, type TaskStep } from '@/components/ai-search/TaskSteps';
 import type { SearchConfig, Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
-import { SkeletonSwap } from '@/components/ui/skeleton-swap';
 
 const apiKeysListeners = new Set<() => void>();
 function subscribeToApiKeys(cb: () => void) {
@@ -38,8 +26,7 @@ function notifyApiKeysChanged(_hasAll?: boolean) {
   apiKeysListeners.forEach((fn) => fn());
 }
 
-type AppState = 'idle' | 'loading' | 'results' | 'refine' | 'error' | 'blocked';
-type MobileTab = 'answer' | 'sources';
+type AppState = 'idle' | 'loading' | 'results' | 'error' | 'blocked';
 
 const DEFAULT_CONFIG: SearchConfig = {
   exaMode: 'agentic',
@@ -69,13 +56,18 @@ const PHASE_TO_STEP: Record<string, number> = {
   synthesizing: 3,
 };
 
-interface StreamState {
-  phase: SSEPhase;
-  sources: Source[];
-  synthesis: SynthesisResult | null;
-  followUps: string[];
-  sessionId?: string;
-  suggestion?: string;
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  query: string;
+  text?: string;
+  sources?: Source[];
+  citations?: Citation[];
+  followUps?: string[];
+  conflictData?: SynthesisResult['conflictData'];
+  queryType?: SynthesisResult['queryType'];
+  sourceCount?: number;
+  timestamp: number;
 }
 
 interface SearchPageProps {
@@ -87,17 +79,9 @@ export function SearchPage({ user }: SearchPageProps) {
   const initialQuery = searchParams.get('q') ?? '';
 
   const [appState, setAppState] = useState<AppState>('idle');
-  const [stream, setStream] = useState<StreamState>({
-    phase: 'searching',
-    sources: [],
-    synthesis: null,
-    followUps: [],
-  });
   const [query, setQuery] = useState(initialQuery);
   const [lastConfig, setLastConfig] = useState<SearchConfig>(DEFAULT_CONFIG);
   const [errorMessage, setErrorMessage] = useState('');
-  const [mobileTab, setMobileTab] = useState<MobileTab>('answer');
-  const [highlightedSourceId, setHighlightedSourceId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [slowHint, setSlowHint] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -106,30 +90,33 @@ export function SearchPage({ user }: SearchPageProps) {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [taskFailed, setTaskFailed] = useState(false);
-  const [completedAt, setCompletedAt] = useState<number | undefined>();
-  const [startedAt, setStartedAt] = useState<number>(0);
 
   const [showApiKeys, setShowApiKeys] = useState(false);
   const hasKeys = useSyncExternalStore(subscribeToApiKeys, getHasApiKeys, () => false);
-  const [showLowerQualitySources, setShowLowerQualitySources] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
 
-  const isMobile = useSyncExternalStore(
-    (callback) => {
-      const mq = window.matchMedia('(max-width: 768px)');
-      mq.addEventListener('change', callback);
-      return () => mq.removeEventListener('change', callback);
-    },
-    () => window.matchMedia('(max-width: 768px)').matches,
-    () => false
-  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [streamingMessage, setStreamingMessage] = useState<ChatMessage | null>(null);
 
-  const sourceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
   const phaseTimerRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sessionIdRef = useRef<string | undefined>(undefined);
+  const streamingDataRef = useRef<ChatMessage | null>(null);
+
+  useEffect(() => {
+    sessionIdRef.current = currentSessionId;
+  }, [currentSessionId]);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, streamingMessage, scrollToBottom]);
 
   const runSearch = useCallback(
-    async (q: string, config: SearchConfig, context?: { query: string; followUp: string }) => {
+    async (q: string, config: SearchConfig) => {
       const trimmed = q.trim();
       if (!trimmed || trimmed.length < 3) {
         toasts.error('Query too short', 'Please enter at least 3 characters.');
@@ -153,18 +140,30 @@ export function SearchPage({ user }: SearchPageProps) {
       setQuery(trimmed);
       setLastConfig(config);
       setErrorMessage('');
-      setHighlightedSourceId(null);
-      setMobileTab('answer');
       setAppState('loading');
       setIsStreaming(true);
       setSlowHint(false);
       setFromHistory(false);
-      setStartedAt(Date.now());
       setCurrentStep(0);
       setTaskFailed(false);
-      setCompletedAt(undefined);
       if (typeof navigator !== 'undefined') setIsOffline(!navigator.onLine);
-      setStream({ phase: 'searching', sources: [], synthesis: null, followUps: [] });
+
+      const userMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        query: trimmed,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+
+      const assistantMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        query: trimmed,
+        timestamp: Date.now(),
+      };
+      streamingDataRef.current = assistantMsg;
+      setStreamingMessage(assistantMsg);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -178,6 +177,11 @@ export function SearchPage({ user }: SearchPageProps) {
       armSlowTimer('searching');
 
       try {
+        const conversationHistory = messages.slice(-10).map((m) => ({
+          role: m.role,
+          content: m.text || m.query,
+        }));
+
         const body: Record<string, unknown> = {
           query: trimmed,
           config,
@@ -186,12 +190,9 @@ export function SearchPage({ user }: SearchPageProps) {
             tavily: keys.tavily || undefined,
             gemini: keys.gemini || undefined,
           },
+          conversationHistory,
         };
-        if (context) {
-          body.context = context;
-          if (currentSessionId) body.parentSessionId = currentSessionId;
-          body.clientNonce = crypto.randomUUID();
-        }
+        if (currentSessionId) body.sessionId = currentSessionId;
 
         const response = await fetch('/api/ai/forum-search', {
           method: 'POST',
@@ -206,11 +207,15 @@ export function SearchPage({ user }: SearchPageProps) {
         if (response.status === 401) {
           toasts.error('Authentication required', 'Please sign in again.');
           setAppState('idle');
+          streamingDataRef.current = null;
+          setStreamingMessage(null);
           return;
         }
         if (response.status === 415) {
           setErrorMessage('Unsupported request format.');
           setAppState('error');
+          streamingDataRef.current = null;
+          setStreamingMessage(null);
           return;
         }
         if (response.status === 429) {
@@ -222,6 +227,8 @@ export function SearchPage({ user }: SearchPageProps) {
               : 'Please wait a moment before searching again.'
           );
           setAppState('idle');
+          streamingDataRef.current = null;
+          setStreamingMessage(null);
           return;
         }
         if (response.status === 503) {
@@ -231,6 +238,8 @@ export function SearchPage({ user }: SearchPageProps) {
           );
           setAppState('error');
           setErrorMessage('AI features are temporarily unavailable due to high demand.');
+          streamingDataRef.current = null;
+          setStreamingMessage(null);
           return;
         }
         if (!response.ok || !response.body) {
@@ -241,6 +250,8 @@ export function SearchPage({ user }: SearchPageProps) {
             `Search failed (${response.status}). Please try again.`;
           setErrorMessage(typeof msg === 'string' ? msg : 'Search failed. Please try again.');
           setAppState('error');
+          streamingDataRef.current = null;
+          setStreamingMessage(null);
           toasts.error('Search failed');
           return;
         }
@@ -286,55 +297,55 @@ export function SearchPage({ user }: SearchPageProps) {
                 setSlowHint(false);
                 armSlowTimer(event.phase);
                 setCurrentStep(PHASE_TO_STEP[event.phase] ?? 0);
-                const phase = event.phase as SSEPhase;
                 const sources = event.sources;
-                setStream((prev) => ({
-                  ...prev,
-                  phase,
-                  sources: sources ?? prev.sources,
-                }));
-                if (phase === 'reading') setMobileTab('sources');
+                if (streamingDataRef.current && sources) {
+                  streamingDataRef.current = { ...streamingDataRef.current, sources };
+                  setStreamingMessage((prev) =>
+                    prev ? { ...prev, sources } : prev
+                  );
+                }
                 break;
               }
-              case 'refine':
-                setCurrentStep(SEARCH_PHASES.length);
-                setStream((prev) => ({
-                  ...prev,
-                  phase: 'refine',
-                  sources: event.sources ?? prev.sources,
-                  suggestion: event.suggestion,
-                }));
-                setAppState('refine');
-                setIsStreaming(false);
-                break;
               case 'done':
                 phaseTimerRef.current.forEach(clearTimeout);
                 phaseTimerRef.current.clear();
-                setCompletedAt(Date.now());
                 setCurrentStep(SEARCH_PHASES.length);
-                setStream((prev) => ({
-                  ...prev,
-                  phase: 'done',
-                  synthesis: event.synthesis ?? prev.synthesis,
-                  followUps: event.followUps ?? [],
-                  sessionId: event.sessionId,
-                  sources: event.sources ?? prev.sources,
-                }));
-                setCurrentSessionId(event.sessionId ?? currentSessionId);
+                if (event.sessionId) {
+                  sessionIdRef.current = event.sessionId;
+                  setCurrentSessionId(event.sessionId);
+                }
+
+                if (streamingDataRef.current) {
+                  const finalized: ChatMessage = {
+                    ...streamingDataRef.current,
+                    text: event.synthesis?.text || event.synthesis?.content || streamingDataRef.current.text,
+                    sources: event.sources ?? streamingDataRef.current.sources,
+                    citations: event.synthesis?.citations,
+                    followUps: event.followUps,
+                    conflictData: event.synthesis?.conflictData,
+                    queryType: event.synthesis?.queryType,
+                    sourceCount: event.synthesis?.sourceCount,
+                  };
+                  streamingDataRef.current = null;
+                  setStreamingMessage(null);
+                  setMessages((msgs) => [...msgs, finalized]);
+                }
                 setAppState('results');
                 setIsStreaming(false);
                 break;
               case 'blocked':
-                setCompletedAt(Date.now());
                 setTaskFailed(true);
                 setErrorMessage(event.message || 'Search blocked by quota or usage cap.');
+                streamingDataRef.current = null;
+                setStreamingMessage(null);
                 setAppState('blocked');
                 setIsStreaming(false);
                 break;
               case 'error':
-                setCompletedAt(Date.now());
                 setTaskFailed(true);
                 setErrorMessage(event.message || 'Search failed.');
+                streamingDataRef.current = null;
+                setStreamingMessage(null);
                 setAppState('error');
                 setIsStreaming(false);
                 toasts.error('Search failed');
@@ -347,7 +358,6 @@ export function SearchPage({ user }: SearchPageProps) {
         if (slowTimer) clearTimeout(slowTimer);
         phaseTimerRef.current.forEach(clearTimeout);
         phaseTimerRef.current.clear();
-        setCompletedAt(Date.now());
         setTaskFailed(true);
         if (error instanceof DOMException && error.name === 'AbortError') {
           setErrorMessage('Request timed out. Please try again with a simpler query.');
@@ -359,10 +369,13 @@ export function SearchPage({ user }: SearchPageProps) {
         }
         setAppState('error');
         setIsStreaming(false);
+        streamingDataRef.current = null;
+        setStreamingMessage(null);
         toasts.error('Search failed');
       }
     },
-    [currentSessionId, stream.sources]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionIdRef used instead of currentSessionId to avoid stale closure
+    [messages]
   );
 
   const handleSearch = useCallback(
@@ -374,19 +387,10 @@ export function SearchPage({ user }: SearchPageProps) {
 
   const handleFollowUp = useCallback(
     (followUp: string) => {
-      if (!query) return;
-      runSearch(query, lastConfig, { query, followUp });
+      runSearch(followUp, lastConfig);
     },
-    [query, lastConfig, runSearch]
+    [lastConfig, runSearch]
   );
-
-  const handleRefineSuggestion = useCallback(() => {
-    const suggestion = stream.suggestion;
-    if (!suggestion) return;
-    setAppState('idle');
-    setStream({ phase: 'searching', sources: [], synthesis: null, followUps: [] });
-    setQuery(suggestion);
-  }, [stream.suggestion]);
 
   const handleRetry = useCallback(
     (style: RetryStyle) => {
@@ -399,7 +403,7 @@ export function SearchPage({ user }: SearchPageProps) {
   );
 
   const handleFeedback = useCallback((_type: FeedbackType, _reason?: string) => {
-    // Feedback is handled via toast in StreamingText; extend here if backend logging is needed
+    // Feedback handled via toast in StreamingText
   }, []);
 
   const handleNewSearch = useCallback(() => {
@@ -407,65 +411,62 @@ export function SearchPage({ user }: SearchPageProps) {
     phaseTimerRef.current.forEach(clearTimeout);
     phaseTimerRef.current.clear();
     setAppState('idle');
-    setStream({ phase: 'searching', sources: [], synthesis: null, followUps: [] });
     setErrorMessage('');
     setSlowHint(false);
     setIsOffline(false);
     setCurrentSessionId(undefined);
+    sessionIdRef.current = undefined;
     setCurrentStep(0);
     setTaskFailed(false);
-    setCompletedAt(undefined);
     setQuery(initialQuery);
+    setMessages([]);
+    streamingDataRef.current = null;
+    setStreamingMessage(null);
   }, [initialQuery]);
 
   const handleSelectSession = useCallback((item: HistoryItem) => {
     abortRef.current?.abort();
-    setQuery(item.query);
     setErrorMessage('');
-    setMobileTab('answer');
-    setHighlightedSourceId(null);
     setSlowHint(false);
     setIsStreaming(false);
     setFromHistory(true);
     setCurrentStep(SEARCH_PHASES.length);
     setTaskFailed(false);
-    setCompletedAt(undefined);
     setCurrentSessionId(item.id);
+    sessionIdRef.current = item.id;
     setAppState('results');
-    setStream({
-      phase: 'done',
+    streamingDataRef.current = null;
+    setStreamingMessage(null);
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      query: item.query,
+      timestamp: new Date(item.createdAt).getTime(),
+    };
+    const assistantMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      query: item.query,
+      text: item.synthesis,
       sources: item.sources ?? [],
-      synthesis: {
-        content: item.synthesis,
-        text: item.synthesis,
-        citations: item.citations ?? [],
-        queryType: (item.queryType as SynthesisResult['queryType']) || 'technical',
-        sourceCount: item.sourceCount,
-        conflictData: (item.conflictData as SynthesisResult['conflictData']) ?? {
-          detected: false,
-          description: '',
-          sideA: '',
-          sideB: '',
-        },
-        processingTimeMs: 0,
-      },
+      citations: item.citations ?? [],
       followUps: item.followUps ?? [],
-      sessionId: item.id,
-    });
+      conflictData: (item.conflictData as SynthesisResult['conflictData']) ?? {
+        detected: false,
+        description: '',
+        sideA: '',
+        sideB: '',
+      },
+      queryType: (item.queryType as SynthesisResult['queryType']) || 'technical',
+      sourceCount: item.sourceCount,
+      timestamp: new Date(item.createdAt).getTime(),
+    };
+    setMessages([userMsg, assistantMsg]);
+    setQuery(item.query);
   }, []);
 
-  const handleCiteClick = useCallback((sourceId: string) => {
-    setHighlightedSourceId(sourceId);
-    setMobileTab('sources');
-    const el = sourceRefs.current.get(sourceId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => setHighlightedSourceId(null), 1600);
-    }
-  }, []);
-
-  const synthesis = stream.synthesis;
-  const citations: Citation[] = useMemo(() => synthesis?.citations ?? [], [synthesis]);
+  const isChatActive = messages.length > 0 || streamingMessage !== null;
 
   return (
     <SaiSearchLayout
@@ -475,338 +476,200 @@ export function SearchPage({ user }: SearchPageProps) {
       hasApiKeys={hasKeys}
       onOpenApiKeys={() => setShowApiKeys(true)}
     >
-      <div className="flex flex-col items-center justify-center min-h-full px-4 md:px-6 py-10">
-        <AnimatePresence mode="wait">
-          {appState === 'idle' && (
+      <div className="flex flex-col h-full">
+        {/* Idle state: centered search */}
+        {!isChatActive && appState === 'idle' && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 py-10">
             <motion.div
-              key="idle"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex flex-col items-center justify-center min-h-full px-4 py-16"
+              className="flex flex-col items-center"
             >
-              <div className="mb-10 relative">
-                <svg
-                  viewBox="0 0 200 200"
-                  className="w-28 h-28 text-ink-3 relative"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                >
-                  <circle cx="100" cy="100" r="4" fill="currentColor" opacity="0.9" />
-                  <circle cx="100" cy="60" r="3" fill="currentColor" opacity="0.7" />
-                  <circle cx="130" cy="75" r="3" fill="currentColor" opacity="0.7" />
-                  <circle cx="130" cy="125" r="3" fill="currentColor" opacity="0.7" />
-                  <circle cx="100" cy="140" r="3" fill="currentColor" opacity="0.7" />
-                  <circle cx="70" cy="125" r="3" fill="currentColor" opacity="0.7" />
-                  <circle cx="70" cy="75" r="3" fill="currentColor" opacity="0.7" />
-                  <circle cx="100" cy="30" r="2.5" fill="currentColor" opacity="0.5" />
-                  <circle cx="145" cy="55" r="2.5" fill="currentColor" opacity="0.5" />
-                  <circle cx="165" cy="100" r="2.5" fill="currentColor" opacity="0.5" />
-                  <circle cx="145" cy="145" r="2.5" fill="currentColor" opacity="0.5" />
-                  <circle cx="100" cy="170" r="2.5" fill="currentColor" opacity="0.5" />
-                  <circle cx="55" cy="145" r="2.5" fill="currentColor" opacity="0.5" />
-                  <circle cx="35" cy="100" r="2.5" fill="currentColor" opacity="0.5" />
-                  <circle cx="55" cy="55" r="2.5" fill="currentColor" opacity="0.5" />
-                  <line x1="100" y1="100" x2="100" y2="60" opacity="0.4" />
-                  <line x1="100" y1="100" x2="130" y2="75" opacity="0.4" />
-                  <line x1="100" y1="100" x2="130" y2="125" opacity="0.4" />
-                  <line x1="100" y1="100" x2="100" y2="140" opacity="0.4" />
-                  <line x1="100" y1="100" x2="70" y2="125" opacity="0.4" />
-                  <line x1="100" y1="100" x2="70" y2="75" opacity="0.4" />
-                  <line x1="100" y1="60" x2="100" y2="30" opacity="0.25" />
-                  <line x1="100" y1="60" x2="145" y2="55" opacity="0.25" />
-                  <line x1="130" y1="75" x2="145" y2="55" opacity="0.25" />
-                  <line x1="130" y1="75" x2="165" y2="100" opacity="0.25" />
-                  <line x1="130" y1="125" x2="165" y2="100" opacity="0.25" />
-                  <line x1="130" y1="125" x2="145" y2="145" opacity="0.25" />
-                  <line x1="100" y1="140" x2="145" y2="145" opacity="0.25" />
-                  <line x1="100" y1="140" x2="100" y2="170" opacity="0.25" />
-                  <line x1="70" y1="125" x2="100" y2="170" opacity="0.25" />
-                  <line x1="70" y1="125" x2="55" y2="145" opacity="0.25" />
-                  <line x1="70" y1="75" x2="55" y2="55" opacity="0.25" />
-                  <line x1="70" y1="75" x2="35" y2="100" opacity="0.25" />
-                  <line x1="70" y1="125" x2="35" y2="100" opacity="0.25" />
-                  <line x1="100" y1="60" x2="55" y2="55" opacity="0.25" />
-                </svg>
-              </div>
-
-              <div className="mb-10 text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-3 mb-3">SAI</p>
-                <h1 className="text-3xl md:text-4xl tracking-tight text-ink mb-4" style={{ fontFamily: 'var(--font-instrument-serif)' }}>
+              <div className="mb-8 text-center">
+                <h1 className="text-2xl tracking-tight text-ink mb-4 font-serif-heading">
                   Search across Sastram
                 </h1>
-                <p className="text-sm text-ink-2 max-w-md mx-auto leading-relaxed">
-                  Ask anything. Sai synthesizes relevant discussions,<br className="hidden sm:block" /> sources and context into one answer.
-                </p>
               </div>
 
-              <div className="relative w-full max-w-2xl mb-10">
-                <div className="relative">
-                  <SearchBox
-                    onSearch={handleSearch}
-                    isLoading={false}
-                    compact={false}
-                    initialQuery={initialQuery}
-                  />
-                </div>
+              <div className="relative w-full max-w-2xl mb-8">
+                <SearchBox
+                  onSearch={handleSearch}
+                  isLoading={false}
+                  compact={false}
+                  initialQuery={initialQuery}
+                />
               </div>
 
-              <div className="text-center">
-                <p className="text-xs text-ink-3 mb-3">For example:</p>
-                <ul className="text-sm text-ink-2 space-y-1.5">
-                  <li>What are the best patterns for managing state in React?</li>
-                  <li>Latest threads on Hacker News about AI in healthcare.</li>
-                  <li>Compare Arch Linux vs Debian for a developer machine.</li>
-                </ul>
+              <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
+                {[
+                  'What are the best patterns for managing state in React?',
+                  'Latest threads on Hacker News about AI in healthcare.',
+                  'Compare Arch Linux vs Debian for a developer machine.',
+                ].map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleSearch(q, DEFAULT_CONFIG)}
+                    className="px-3.5 py-2 text-xs text-ink-2 bg-surface border border-line rounded-card hover:border-line-strong hover:text-ink hover:bg-hover transition-all duration-150"
+                  >
+                    {q}
+                  </button>
+                ))}
               </div>
             </motion.div>
-          )}
+          </div>
+        )}
 
-          {(appState === 'loading' ||
-            appState === 'results' ||
-            appState === 'refine' ||
-            appState === 'error' ||
-            appState === 'blocked') && (
-            <motion.div
-              key="active"
-              initial={fromHistory ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="w-full max-w-4xl space-y-6"
-            >
-              <SearchBox
-                onSearch={handleSearch}
-                isLoading={appState === 'loading'}
-                compact={true}
-                initialQuery={query}
-              />
+        {/* Chat state: messages + input */}
+        {isChatActive && (
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Messages scroll area */}
+            <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
+              <div className="max-w-3xl mx-auto space-y-6">
+                {messages.map((msg) => (
+                  <ChatMessageBubble
+                    key={msg.id}
+                    message={msg}
+                    onFollowUp={handleFollowUp}
+                    onRetry={handleRetry}
+                    onFeedback={handleFeedback}
+                    isLatest={msg.id === messages[messages.length - 1]?.id}
+                  />
+                ))}
 
-              {!fromHistory && (
-                <TaskSteps
-                  steps={SEARCH_PHASES}
-                  current={currentStep}
-                  failed={taskFailed}
-                  label="Search progress"
-                />
-              )}
+                {/* Streaming message */}
+                {streamingMessage && appState === 'loading' && (
+                  <div className="space-y-4">
+                    <TaskSteps
+                      steps={SEARCH_PHASES}
+                      current={currentStep}
+                      failed={taskFailed}
+                      label="Search progress"
+                    />
 
-              {slowHint && appState === 'loading' && (
-                <p className="text-xs text-ink-2 animate-pulse">
-                  This is taking longer than usual — still working on it…
-                </p>
-              )}
+                    {slowHint && (
+                      <p className="text-xs text-ink-2 animate-pulse">
+                        This is taking longer than usual — still working on it…
+                      </p>
+                    )}
 
-              {/* Refine prompt */}
-              {appState === 'refine' && (
-                <div className="w-full bg-hover/50 border border-line/50 rounded-2xl p-5 text-center">
-                  <p className="text-sm font-medium text-ink mb-1">
-                    Not enough quality sources
-                  </p>
-                  <p className="text-xs text-ink-2 mb-4">
-                    Sai found fewer than 2 reliable sources for this query. Try refining it with
-                    more specifics.
-                  </p>
-                  {stream.suggestion && (
-                    <p className="text-xs text-ink-2 mb-2">
-                      Suggested query:{' '}
-                      <span className="italic text-ink">&quot;{stream.suggestion}&quot;</span>
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    <button
-                      onClick={handleNewSearch}
-                      className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full bg-ink text-canvas hover:bg-ink/90 transition-colors"
-                    >
-                      Start a new search
-                    </button>
-                    {stream.suggestion && (
-                      <button
-                        onClick={handleRefineSuggestion}
-                        className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-full border border-line-strong text-ink hover:bg-hover transition-colors"
-                      >
-                        Try suggested query
-                      </button>
+                    {streamingMessage.text && (
+                      <SynthesisCard
+                        text={streamingMessage.text}
+                        citations={streamingMessage.citations}
+                        sources={streamingMessage.sources}
+                        conflictData={streamingMessage.conflictData}
+                        sourceCount={streamingMessage.sourceCount ?? 0}
+                        queryType={streamingMessage.queryType ?? 'technical'}
+                        isStreaming={true}
+                        fromHistory={false}
+                      />
+                    )}
+
+                    {!streamingMessage.text && (
+                      <div className="space-y-3">
+                        <div className="bg-hover/50 rounded-card h-32 animate-pulse" />
+                        <div className="bg-hover/50 rounded-card h-20 animate-pulse" />
+                      </div>
                     )}
                   </div>
-                  {stream.sources.length > 0 && (
-                    <>
-                      <p className="text-xs text-ink-3 mt-3">
-                        {stream.sources.length} lower-quality source
-                        {stream.sources.length !== 1 ? 's' : ''} were still found.
-                      </p>
-                      <button
-                        onClick={() => setShowLowerQualitySources((prev) => !prev)}
-                        className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink mt-1 mx-auto"
-                      >
-                        <span>{showLowerQualitySources ? 'Hide' : 'View'}</span>
-                        {showLowerQualitySources ? (
-                          <ChevronDown size={12} className="rotate-180" />
-                        ) : (
-                          <ChevronDown size={12} />
-                        )}
-                      </button>
-                      {showLowerQualitySources && (
-                        <div className="mt-3 grid gap-3 animate-in slide-in-from-top-2">
-                          {stream.sources.map((source, idx) => (
-                            <SourceCard
-                              key={source.id}
-                              id={source.id}
-                              title={source.title}
-                              url={source.url}
-                              source={source.domain}
-                              snippet={source.snippet}
-                              confidence={source.confidence}
-                              tier={source.tier}
-                              publishedDate={source.publishedDate}
-                              isOutdated={source.isOutdated}
-                              provider={source.provider}
-                              index={idx}
-                              isLowerQuality={true}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+                )}
 
-              {appState === 'blocked' && (
-                <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
-                  <div className="w-12 h-12 rounded-full bg-hover flex items-center justify-center mb-4">
-                    <Clock size={20} className="text-ink-2" />
+                {/* Blocked state */}
+                {appState === 'blocked' && (
+                  <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
+                    <div className="w-12 h-12 rounded-full bg-hover flex items-center justify-center mb-4">
+                      <Clock size={20} className="text-ink-2" />
+                    </div>
+                    <h2 className="text-lg font-semibold mb-2 text-ink">Search limit reached</h2>
+                    <p className="text-sm text-ink-2 max-w-md mb-6">{errorMessage}</p>
+                    <p className="text-xs text-ink-3">
+                      This resets automatically — no need to retry right now.
+                    </p>
                   </div>
-                  <h2 className="text-lg font-semibold mb-2 text-ink">Search limit reached</h2>
-                  <p className="text-sm text-ink-2 max-w-md mb-6">{errorMessage}</p>
-                  <p className="text-xs text-ink-3">
-                    This resets automatically — no need to retry right now.
-                  </p>
-                </div>
-              )}
+                )}
 
-              {appState === 'error' && (
-                <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
-                  <div className="w-12 h-12 rounded-full bg-sai-red/10 flex items-center justify-center mb-4">
-                    <AlertCircle size={20} className="text-sai-red" />
+                {/* Error state */}
+                {appState === 'error' && (
+                  <div className="w-full flex flex-col items-center pt-8 pb-4 text-center">
+                    <div className="w-12 h-12 rounded-full bg-sai-red/10 flex items-center justify-center mb-4">
+                      <AlertCircle size={20} className="text-sai-red" />
+                    </div>
+                    <h2 className="text-lg font-semibold mb-2 text-ink">
+                      {isOffline ? "You're offline" : 'Something went wrong'}
+                    </h2>
+                    <p className="text-sm text-ink-2 max-w-md mb-6">{errorMessage}</p>
+                    <button
+                      type="button"
+                      onClick={handleNewSearch}
+                      className="px-4 py-2 text-sm font-medium bg-ink text-canvas rounded-card hover:opacity-90 transition-opacity"
+                    >
+                      {isOffline ? 'Retry when back online' : 'Try Again'}
+                    </button>
                   </div>
-                  <h2 className="text-lg font-semibold mb-2 text-ink">
-                    {isOffline ? "You're offline" : 'Something went wrong'}
-                  </h2>
-                  <p className="text-sm text-ink-2 max-w-md mb-6">{errorMessage}</p>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            {/* Bottom search input */}
+            <div className="border-t border-line bg-canvas px-4 md:px-6 py-4">
+              <div className="max-w-3xl mx-auto">
+                <div className="relative bg-surface border border-line rounded-card shadow-card overflow-hidden transition-shadow duration-150 focus-within:shadow-raised focus-within:border-line-strong">
+                  <textarea
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (query.trim().length >= 3 && !isStreaming) {
+                          runSearch(query, lastConfig);
+                          e.currentTarget.style.height = 'auto';
+                        }
+                      }
+                    }}
+                    placeholder={isChatActive ? 'Ask a follow-up question...' : 'Search across Sastram...'}
+                    rows={1}
+                    className="w-full resize-none bg-transparent px-4 py-3 pr-14 text-sm text-ink placeholder:text-ink-3 focus:outline-none"
+                    style={{ minHeight: '48px', maxHeight: '120px' }}
+                  />
                   <button
-                    onClick={handleNewSearch}
-                    className="px-4 py-2 text-sm font-medium bg-ink text-canvas rounded-xl hover:opacity-90 transition-opacity"
+                    type="button"
+                    onClick={() => {
+                      if (query.trim().length >= 3 && !isStreaming) {
+                        runSearch(query, lastConfig);
+                      }
+                    }}
+                    disabled={isStreaming || query.trim().length < 3}
+                    className="absolute right-3 bottom-3 flex h-8 w-8 items-center justify-center rounded-control bg-sai-accent text-white transition-all duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    {isOffline ? 'Retry when back online' : 'Try Again'}
+                    {isStreaming ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <Send size={15} />
+                    )}
                   </button>
                 </div>
-              )}
+                {isChatActive && (
+                  <button
+                    type="button"
+                    onClick={handleNewSearch}
+                    className="mt-2.5 flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink transition-colors"
+                  >
+                    <Plus size={12} />
+                    New conversation
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
-              {appState === 'results' && synthesis && (
-                <>
-                  <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
-                    <div>
-                      <SynthesisCard
-                        text={synthesis.text || synthesis.content}
-                        citations={citations}
-                        sources={stream.sources}
-                        conflictData={synthesis.conflictData}
-                        sourceCount={synthesis.sourceCount}
-                        queryType={synthesis.queryType}
-                        onCiteClick={handleCiteClick}
-                        isStreaming={isStreaming}
-                        fromHistory={fromHistory}
-                        onRetry={handleRetry}
-                        onFeedback={handleFeedback}
-                      />
-
-                      {stream.followUps.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                          <p className="text-xs font-medium text-ink-2 uppercase tracking-wider">
-                            Related
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {stream.followUps.map((f) => (
-                              <button
-                                key={f}
-                                onClick={() => handleFollowUp(f)}
-                                className="group flex items-center gap-2 text-left text-sm text-ink bg-hover/50 border border-line/50 hover:border-line-strong rounded-xl px-4 py-2.5 transition-colors"
-                              >
-                                <span className="flex-1">{f}</span>
-                                <ArrowRight
-                                  size={14}
-                                  className="text-ink-2 group-hover:text-ink transition-colors shrink-0"
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      {lastConfig.searchMode === 'table' ? (
-                        <TableView sources={stream.sources} />
-                      ) : (
-                        <div className="space-y-3">
-                          <h3 className="text-xs font-medium text-ink-2 uppercase tracking-wider px-1">
-                            Sources ({stream.sources.length})
-                          </h3>
-                          <div className="grid gap-3">
-                            {stream.sources.map((source, i) => (
-                              <SourceCard
-                                key={source.id}
-                                ref={(el) => {
-                                  if (el) sourceRefs.current.set(source.id, el);
-                                  else sourceRefs.current.delete(source.id);
-                                }}
-                                id={source.id}
-                                title={source.title}
-                                url={source.url}
-                                source={source.domain}
-                                snippet={source.snippet}
-                                confidence={source.confidence}
-                                tier={source.tier}
-                                publishedDate={source.publishedDate}
-                                isOutdated={source.isOutdated}
-                                provider={source.provider}
-                                index={i}
-                                highlighted={highlightedSourceId === source.id}
-                                onSelect={handleCiteClick}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {appState === 'loading' && (
-                <SkeletonSwap
-                  ready={false}
-                  lines={5}
-                  reserve={320}
-                  className="w-full"
-                  skeleton={
-                    <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
-                      <div className="space-y-3">
-                    <div className="bg-hover/50 rounded-2xl h-40" />
-                    <div className="bg-hover/50 rounded-2xl h-40" />
-                      </div>
-                      <div className="space-y-3">
-                    <div className="bg-hover/50 rounded-xl h-24" />
-                    <div className="bg-hover/50 rounded-xl h-24" />
-                    <div className="bg-hover/50 rounded-xl h-24" />
-                      </div>
-                    </div>
-                  }
-                />
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       <ApiKeysModal
@@ -815,5 +678,65 @@ export function SearchPage({ user }: SearchPageProps) {
         onKeysChange={notifyApiKeysChanged}
       />
     </SaiSearchLayout>
+  );
+}
+
+function ChatMessageBubble({
+  message,
+  onFollowUp,
+  onRetry,
+  onFeedback,
+  isLatest,
+}: {
+  message: ChatMessage;
+  onFollowUp: (q: string) => void;
+  onRetry: (style: RetryStyle) => void;
+  onFeedback: (type: FeedbackType, reason?: string) => void;
+  isLatest: boolean;
+}) {
+  if (message.role === 'user') {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[80%] rounded-card bg-sai-accent-tint border border-sai-accent/20 px-4 py-2.5 text-sm text-ink">
+          {message.query}
+        </div>
+      </div>
+    );
+  }
+
+  if (!message.text) return null;
+
+  const citations: Citation[] = message.citations ?? [];
+
+  return (
+    <div className="space-y-3">
+      <SynthesisCard
+        text={message.text}
+        citations={citations}
+        sources={message.sources}
+        conflictData={message.conflictData}
+        sourceCount={message.sourceCount ?? 0}
+        queryType={message.queryType ?? 'technical'}
+        isStreaming={false}
+        fromHistory={true}
+        onRetry={isLatest ? onRetry : undefined}
+        onFeedback={isLatest ? onFeedback : undefined}
+      />
+
+      {isLatest && message.followUps && message.followUps.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {message.followUps.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => onFollowUp(f)}
+              className="group flex items-center gap-2 text-left text-sm text-ink bg-hover/50 border border-line/50 hover:border-line-strong rounded-card px-4 py-2.5 transition-colors"
+            >
+              <span className="flex-1">{f}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

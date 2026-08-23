@@ -163,7 +163,7 @@ export function Sidebar({
         {isSelected && (
           <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-foreground" />
         )}
-        <button
+        <button type="button"
           onClick={() => onSelectSession(item)}
           aria-current={isSelected ? 'true' : undefined}
           className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors truncate flex items-center gap-1.5 ${
@@ -182,7 +182,7 @@ export function Sidebar({
               {item.sourceCount} src
             </span>
           )}
-          <button
+          <button type="button"
             onClick={(e) => handleDeleteClick(item.id, e)}
             className={`p-0.5 transition-colors rounded ${
               isPendingDelete
@@ -228,7 +228,7 @@ export function Sidebar({
         </div>
 
           <div className="px-3 space-y-0.5">
-            <button
+            <button type="button"
               onClick={onNewSearch}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
             >
@@ -236,7 +236,7 @@ export function Sidebar({
               New Search
           </button>
 
-            <button
+            <button type="button"
               onClick={onOpenApiKeys}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
             >
@@ -254,7 +254,7 @@ export function Sidebar({
               <Search size={11} />
               History
           </span>
-            <button
+            <button type="button"
               onClick={() => loadHistory(true)}
               disabled={loading}
               aria-label="Refresh search history"

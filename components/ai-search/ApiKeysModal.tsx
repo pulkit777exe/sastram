@@ -146,7 +146,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`t-modal ${isClosing ? 'is-closing' : 'is-open'} relative bg-surface border border-line rounded-2xl shadow-linear-md w-full max-w-md mx-4 sm:mx-4 overflow-hidden md:my-auto my-0 md:rounded-2xl rounded-none md:h-auto h-full`}
+        className={`t-modal ${isClosing ? 'is-closing' : 'is-open'} relative bg-surface border border-line rounded-card shadow-linear-md w-full max-w-md mx-4 sm:mx-4 overflow-hidden md:my-auto my-0 md:rounded-card rounded-none md:h-auto h-full`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
@@ -154,7 +154,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
             <KeyRound size={16} className="text-ink-2" />
             <h3 className="text-sm font-semibold text-ink">API Keys</h3>
           </div>
-          <button
+          <button type="button"
             onClick={onClose}
             className="p-1 text-ink-2 hover:text-ink rounded-md hover:bg-hover/40 transition-colors"
             aria-label="Close API Keys Configuration"
@@ -205,14 +205,14 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
                     className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-3/40 focus:outline-none focus:ring-1 focus:ring-line-strong pr-16 font-mono"
                   />
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-                    <button
+                    <button type="button"
                       onClick={() => setShowKeys({ ...showKeys, [config.id]: !show })}
                       className="p-1.5 text-ink-3 hover:text-ink transition-colors"
                     >
                       {show ? <EyeOff size={12} /> : <Eye size={12} />}
                     </button>
                     {value && (
-                      <button
+                      <button type="button"
                         onClick={() => clearKey(config.id)}
                         className="p-1.5 text-ink-3 hover:text-sai-red transition-colors"
                       >
@@ -229,7 +229,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-line flex justify-end">
-          <button
+          <button type="button"
             onClick={onClose}
             className="px-4 py-1.5 text-xs font-medium bg-ink text-canvas rounded-lg hover:opacity-90 transition-opacity"
           >

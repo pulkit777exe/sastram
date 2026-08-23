@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import {
-  Search,
+  Clock,
   Plus,
-  RefreshCw,
   Check,
   Trash2,
   CornerDownRight,
   KeyRound,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
@@ -66,7 +65,7 @@ export function SaiSearchLayout({
   hasApiKeys = false,
   onOpenApiKeys,
 }: SaiSearchLayoutProps) {
-  const router = useRouter();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [searches, setSearches] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -172,11 +171,14 @@ export function SaiSearchLayout({
     return (
       <div key={item.id} className="group relative">
         {isSelected && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-sai-accent" />}
-        <button
-          onClick={() => onSelectSession?.(item)}
+        <button type="button"
+          onClick={() => {
+            onSelectSession?.(item);
+            setHistoryOpen(false);
+          }}
           aria-current={isSelected ? 'true' : undefined}
           className={cn(
-            'w-full text-left pr-3 py-1.5 text-xs rounded-lg transition-colors truncate flex items-center gap-1.5',
+            'w-full text-left pr-3 py-1.5 text-xs rounded-control transition-colors truncate flex items-center gap-1.5',
             isSelected
               ? 'bg-hover/80 text-ink font-medium'
               : 'text-ink-2 hover:text-ink hover:bg-hover/40'
@@ -188,7 +190,7 @@ export function SaiSearchLayout({
         </button>
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {!isPendingDelete && <span className="text-xs text-ink-3 pointer-events-none">{item.sourceCount} src</span>}
-          <button
+          <button type="button"
             onClick={(e) => handleDeleteClick(item.id, e)}
             className={cn(
               'p-0.5 transition-colors rounded',
@@ -207,93 +209,94 @@ export function SaiSearchLayout({
   return (
     <div className="flex h-full w-full overflow-hidden">
 
-      {/* History sidebar — integrated into canvas, no hard border */}
-      <div className="w-72 h-full shrink-0 flex flex-col overflow-hidden border-r border-line/60">
-        <div className="px-5 pt-5 pb-3 shrink-0">
-          <h2 className="text-sm font-semibold text-ink tracking-tight">Sai</h2>
-        </div>
-
-        <div className="px-3 shrink-0">
-          <button
-            onClick={onNewSearch}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-ink-2 hover:text-ink hover:bg-hover/40 rounded-lg transition-colors"
-          >
-            <Plus size={14} />
-            New Search
-          </button>
-        </div>
-
-        <div className="mx-5 my-3 h-px bg-line/60 shrink-0" />
-
-        <div className="flex items-center justify-between px-5 shrink-0">
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
-            <Search size={11} />
-            History
-          </span>
-          <button
-            onClick={() => loadHistory(true)}
-            disabled={loading}
-            aria-label="Refresh search history"
-            title="Refresh"
-            className="p-1 text-ink-3 hover:text-ink rounded-md hover:bg-hover/40 transition-colors disabled:opacity-40"
-          >
-            <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-
-        <div
-          className="flex-1 min-h-0 overflow-y-auto mt-1"
-          onScroll={(e) => {
-            const el = e.currentTarget;
-            if (hasMore && !loading && el.scrollHeight - el.scrollTop - el.clientHeight < 80 && listEndRef.current) {
-              loadHistory(false);
-            }
-          }}
-        >
-          {searches.length === 0 ? (
-            <p className="px-5 text-xs text-ink-3 italic">{loading ? 'Loading…' : 'No recent searches'}</p>
-          ) : (
-            <div ref={listEndRef} className="px-3">
-              {groupedSearches.map(({ group, items }) => (
-                <div key={group} className="mb-3 last:mb-0">
-                  <p className="px-2 pb-1 text-[11px] font-semibold text-ink-3 uppercase tracking-wider">{group}</p>
-                  <div className="space-y-0.5">
-                    {items.map((s) => (
-                      <div key={s.id}>
-                        {renderItem(s, 0)}
-                        {s.children && s.children.length > 0 && (
-                          <div className="ml-2">{s.children.map((c) => renderItem(c, 1))}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {hasMore && <p className="py-2 text-xs text-ink-3 text-center">Load more…</p>}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Content column */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-        {/* Header bar — clean, editorial */}
-        <div className="h-12 flex items-center justify-between px-6 border-b border-line/60 shrink-0">
-          <span className="text-xs font-semibold text-ink tracking-tight">Sai Search</span>
-          <button
+        {/* Header bar */}
+        <div className="h-12 flex items-center justify-between px-4 border-b border-line/60 shrink-0">
+          <div className="flex items-center gap-1">
+            <button type="button"
+              onClick={onNewSearch}
+              className="h-8 w-8 flex items-center justify-center rounded-lg text-ink-2 hover:text-ink hover:bg-hover/40 transition-colors"
+              title="New search"
+            >
+              <Plus size={16} />
+            </button>
+            <button type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="h-8 w-8 flex items-center justify-center rounded-lg text-ink-2 hover:text-ink hover:bg-hover/40 transition-colors"
+              title="Search history"
+            >
+              <Clock size={16} />
+            </button>
+            <span className="ml-2 text-sm font-semibold text-ink tracking-tight">Sai Search</span>
+          </div>
+          <button type="button"
             onClick={onOpenApiKeys}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-2 hover:text-ink rounded-lg hover:bg-hover/40 transition-colors shrink-0"
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-ink-2 hover:text-ink hover:bg-hover/40 transition-colors shrink-0 relative"
+            title="API Keys"
           >
-            <KeyRound size={13} />
-            <span>API Keys</span>
-            {hasApiKeys && <span className="w-1.5 h-1.5 rounded-full bg-sai-green" />}
+            <KeyRound size={15} />
+            {hasApiKeys && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-sai-green" />}
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
 
+      {/* History drawer */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-50 xl:hidden">
+          <div
+            className="absolute inset-0 bg-ink/20 backdrop-blur-sm"
+            onClick={() => setHistoryOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-canvas border-r border-line shadow-overlay flex flex-col animate-in slide-in-from-left duration-200">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+              <span className="text-sm font-semibold text-ink tracking-tight">History</span>
+              <button type="button"
+                onClick={() => setHistoryOpen(false)}
+                className="h-7 w-7 flex items-center justify-center rounded-lg text-ink-3 hover:text-ink hover:bg-hover/40 transition-colors"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div
+              className="flex-1 min-h-0 overflow-y-auto"
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                if (hasMore && !loading && el.scrollHeight - el.scrollTop - el.clientHeight < 80 && listEndRef.current) {
+                  loadHistory(false);
+                }
+              }}
+            >
+              {searches.length === 0 ? (
+                <p className="px-5 text-xs text-ink-3 italic">{loading ? 'Loading…' : 'No recent searches'}</p>
+              ) : (
+                <div ref={listEndRef} className="px-3">
+                  {groupedSearches.map(({ group, items }) => (
+                    <div key={group} className="mb-3 last:mb-0">
+                      <p className="px-2 pb-1 text-[11px] text-ink-3">{group}</p>
+                      <div className="space-y-0.5">
+                        {items.map((s) => (
+                          <div key={s.id}>
+                            {renderItem(s, 0)}
+                            {s.children && s.children.length > 0 && (
+                              <div className="ml-2">{s.children.map((c) => renderItem(c, 1))}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {hasMore && <p className="py-2 text-xs text-ink-3 text-center">Load more…</p>}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -77,7 +77,7 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
       ref={ref}
       id={`source-${id}`}
       onClick={() => onSelect?.(id)}
-      className={`bg-surface border border-line rounded-xl p-4 transition-all duration-500 ease-out hover:border-line-strong group scroll-mt-4 cursor-pointer ${
+      className={`bg-surface border border-line rounded-card p-4 transition-all duration-500 ease-out hover:border-line-strong group scroll-mt-4 cursor-pointer ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
       } ${highlighted ? 'ring-2 ring-sai-accent/40 border-sai-accent/40' : ''} ${
         isLowerQuality ? 'border-sai-orange/30 bg-sai-orange/5 hover:border-sai-orange/50' : ''
