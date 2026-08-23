@@ -44,8 +44,7 @@ function buildCsp(nonce: string): string {
     "default-src 'self'",
     // Nonce-based script-src with 'unsafe-inline' fallback: nonces take precedence
     // for scripts we control, 'unsafe-inline' covers Next.js bootstrap/HMR scripts
-    // that don't carry the nonce attribute. Remove 'unsafe-inline' only after all
-    // framework inline scripts are nonce-tagged (see docs/BACKLOG.md O1a).
+    // that don't carry the nonce attribute.
     `script-src-elem 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} 'unsafe-inline' https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
     `script-src 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} 'unsafe-inline' https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
