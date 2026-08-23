@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { followUser, unfollowUser } from '@/modules/follows/actions';
 import { toasts } from '@/lib/utils/toast';
 import { UserPlus, UserMinus } from 'lucide-react';
@@ -42,7 +41,7 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing, onFollow
 
   return (
     <div className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-100">
-      <PressDepth
+      <button type="button"
         onClick={handleToggle}
         className={`min-w-30 ${isFollowing ? 'border border-border' : 'bg-primary text-primary-foreground'}`}
       >
@@ -57,7 +56,7 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing, onFollow
             Follow
           </>
         )}
-      </PressDepth>
+      </button>
     </div>
   );
 }

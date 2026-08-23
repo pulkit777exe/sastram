@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { clientLogger } from '@/lib/utils/client-logger';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { toasts } from '@/lib/utils/toast';
 
 interface AppealMessageModalProps {
@@ -64,12 +63,12 @@ export function AppealMessageModal({ messageId, isOpen, onClose }: AppealMessage
             className="min-h-25"
           />
           <div className="flex justify-end gap-2">
-            <PressDepth onClick={onClose} disabled={loading}>
+            <button type="button" onClick={onClose} disabled={loading}>
               Cancel
-            </PressDepth>
-            <PressDepth onClick={handleSubmit} disabled={loading}>
+            </button>
+            <button type="button" onClick={handleSubmit} disabled={loading}>
               {loading ? 'Submitting...' : 'Submit appeal'}
-            </PressDepth>
+            </button>
           </div>
         </div>
       </DialogContent>

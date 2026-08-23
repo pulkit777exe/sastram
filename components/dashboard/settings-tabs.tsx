@@ -29,7 +29,7 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button
+            <button type="button"
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={cn(

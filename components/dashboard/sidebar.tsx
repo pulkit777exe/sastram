@@ -189,7 +189,7 @@ export function Sidebar({
         {!effectiveCollapsed && !mobile && (
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <button
+            <button type="button"
               onClick={toggleCollapse}
               className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
             >
@@ -202,7 +202,7 @@ export function Sidebar({
         )}
         {effectiveCollapsed && (
           <div className="flex justify-center w-full">
-            <button
+            <button type="button"
               onClick={toggleCollapse}
               className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
             >
@@ -351,7 +351,7 @@ export function Sidebar({
               <AnimatedIcon icon={Mail} size={14} />
               <span>Newsletters</span>
             </Link>
-            <button
+            <button type="button"
               onClick={() => { handleLogout(); onNavigate?.(); }}
               className="flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full"
             >

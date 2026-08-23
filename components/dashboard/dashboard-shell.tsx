@@ -49,7 +49,7 @@ export function DashboardShell({
         <div className="flex items-center justify-between px-3 py-2 bg-card border-b border-border shrink-0">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <button
+              <button type="button"
                 className="flex items-center justify-center h-11 w-11 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="Open navigation menu"
               >

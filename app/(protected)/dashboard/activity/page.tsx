@@ -131,7 +131,7 @@ export default async function ActivityPage() {
                 </Link>
               ))}
               {messagesResult.hasMore && (
-                <button className="block w-full text-center text-sm text-brand hover:underline py-2">
+                <button type="button" className="block w-full text-center text-sm text-brand hover:underline py-2">
                   Load more comments
                 </button>
               )}

@@ -61,7 +61,7 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
           {/* Mobile hamburger */}
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <button
+              <button type="button"
                 className="md:hidden flex items-center justify-center h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="Open navigation menu"
               >

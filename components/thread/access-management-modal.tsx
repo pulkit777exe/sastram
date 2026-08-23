@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Trash2, Mail } from 'lucide-react';
@@ -126,7 +125,7 @@ export function ThreadAccessModal({
                       >
                         {invitation.status}
                       </Badge>
-                      <PressDepth
+                      <button type="button"
                         disabled={revokingId === invitation.id}
                         className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => handleRevoke(invitation.id)}
@@ -136,7 +135,7 @@ export function ThreadAccessModal({
                         ) : (
                           <Trash2 size={14} />
                         )}
-                      </PressDepth>
+                      </button>
                     </div>
                   </div>
                 ))}

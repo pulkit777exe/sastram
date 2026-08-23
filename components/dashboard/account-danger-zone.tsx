@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Download, Trash2 } from 'lucide-react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,10 +77,10 @@ export function AccountDangerZone() {
         <p className="text-sm text-muted-foreground mt-1">
           Download a copy of all your data including messages, threads, and activity.
         </p>
-        <PressDepth className="mt-4" onClick={handleExport} disabled={exporting}>
+        <button type="button" className="mt-4" onClick={handleExport} disabled={exporting}>
           <Download className="mr-2 h-4 w-4" />
           {exporting ? 'Exporting...' : 'Export Data'}
-        </PressDepth>
+        </button>
       </div>
 
       <div className="border-t pt-6">
@@ -90,10 +89,10 @@ export function AccountDangerZone() {
           Permanently delete your account and all associated data. This action cannot be undone.
           Your data will be purged after 30 days.
         </p>
-        <PressDepth className="mt-4" onClick={() => setShowDeleteDialog(true)}>
+        <button type="button" className="mt-4" onClick={() => setShowDeleteDialog(true)}>
           <Trash2 className="mr-2 h-4 w-4" />
           Delete Account
-        </PressDepth>
+        </button>
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { X, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -93,12 +92,12 @@ const validOptions = options.filter(option => option.trim().length > 0);
     <div className="space-y-4 p-4 bg-card rounded-lg shadow-linear-lg border border-border">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Create a Poll</h3>
-        <PressDepth 
+        <button type="button" 
           onClick={() => onToggle(false)}
           className="h-6 w-6 p-0"
         >
           <X className="h-4 w-4" />
-        </PressDepth>
+        </button>
       </div>
       
       <div className="space-y-4">
@@ -121,26 +120,26 @@ const validOptions = options.filter(option => option.trim().length > 0);
                 placeholder={`Option ${index + 1}`}
               />
               {index >= 2 && (
-                <PressDepth 
+                <button type="button" 
                   className="h-8 w-8 p-0"
                   onClick={() => handleRemoveOption(index)}
                 >
                   <X className="h-4 w-4" />
-                </PressDepth>
+                </button>
               )}
             </div>
           ))}
         </div>
         
         <div className="flex items-center gap-2">
-          <PressDepth 
+          <button 
             type="button" 
             onClick={handleAddOption}
             disabled={options.length >= MAX_OPTIONS}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Option
-          </PressDepth>
+          </button>
         </div>
         
         <div className="space-y-2">
@@ -153,13 +152,13 @@ const validOptions = options.filter(option => option.trim().length > 0);
         </div>
         
         <div className="flex items-center justify-between pt-2">
-          <PressDepth 
+          <button type="button" 
             onClick={createPoll}
             disabled={isSaving || !question.trim() || options.some((opt, i) => i < 2 && !opt.trim())}
             className="w-full"
           >
             {isSaving ? 'Creating...' : 'Create Poll'}
-          </PressDepth>
+          </button>
         </div>
       </div>
     </div>

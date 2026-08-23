@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Search, MessageSquare, Users, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { ROUTES } from '@/lib/config/routes';
 import { clientLogger } from '@/lib/utils/client-logger';
 import {
@@ -75,20 +74,20 @@ export default function SearchPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1"
             />
-            <PressDepth onClick={handleSearch} disabled={isSearching}>
+            <button type="button" onClick={handleSearch} disabled={isSearching}>
               {isSearching ? 'Searching...' : 'Search'}
-            </PressDepth>
+            </button>
           </div>
 
           <div className="flex flex-wrap gap-2">
             {(['all', 'threads', 'messages', 'users'] as SearchType[]).map((type) => (
-              <PressDepth
+              <button type="button"
                 key={type}
                 onClick={() => setSearchType(type)}
                 className={searchType === type ? 'bg-primary text-primary-foreground' : ''}
               >
                 {type.charAt(0).toUpperCase() + type.slice(1)}
-              </PressDepth>
+              </button>
             ))}
           </div>
         </Card>

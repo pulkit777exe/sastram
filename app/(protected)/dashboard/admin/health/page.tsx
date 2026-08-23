@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { RefreshCw, Server, HardDrive, AlertTriangle, Clock } from 'lucide-react';
 
 interface HealthData {
@@ -116,10 +115,10 @@ export default function AdminHealthPage() {
             Real-time metrics for the Sastram server instance.
           </p>
         </div>
-        <PressDepth onClick={fetchHealth} disabled={loading}>
+        <button type="button" onClick={fetchHealth} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
-        </PressDepth>
+        </button>
       </header>
 
       {error && (

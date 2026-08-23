@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toasts } from '@/lib/utils/toast';
@@ -130,13 +129,13 @@ export default function ForgotPasswordResetPage() {
           <p className={validation.matches ? 'text-emerald-500' : ''}>Passwords match</p>
         </div>
 
-        <PressDepth
+        <button
           type="submit"
           className="w-full h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           disabled={isSubmitting || !validation.valid}
         >
           {isSubmitting ? 'Updating...' : 'Update Password'}
-        </PressDepth>
+        </button>
       </form>
     </main>
   );

@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PressDepth } from '@/components/ui/button-press-depth';
-
 import { Separator } from '@/components/ui/separator';
 import {
   User,
@@ -274,7 +272,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
             {actionButtons.map((action) => {
               const Icon = action.icon;
               return (
-                <PressDepth
+                <button type="button"
                   key={action.key}
                   className={cn(
                     'w-full justify-start text-xs',
@@ -291,7 +289,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                   <kbd className="ml-auto text-xs bg-background/50 px-1.5 py-0.5 rounded border border-border">
                     {action.shortcut}
                   </kbd>
-                </PressDepth>
+                </button>
               );
             })}
           </div>

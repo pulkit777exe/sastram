@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { ThumbsUp, Pin, Loader2 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
@@ -342,20 +341,20 @@ const MessageRow = React.memo(function MessageRow({
                 }}
               />
               <div className="flex justify-end gap-2">
-                <PressDepth
+                <button type="button"
                   onClick={() => {
                     setIsEditing(false);
                     setEditContent(message.content);
                   }}
                 >
                   Cancel
-                </PressDepth>
-                <PressDepth
+                </button>
+                <button type="button"
                   disabled={isSavingEdit || !editContent.trim() || editContent === message.content}
                   onClick={() => void handleSaveEdit()}
                 >
                   {isSavingEdit ? 'Saving...' : 'Save'}
-                </PressDepth>
+                </button>
               </div>
             </div>
           ) : message.isAiResponse ? (
@@ -496,7 +495,7 @@ const MessageRow = React.memo(function MessageRow({
         {showDeleteConfirm && (
           <div className="absolute right-4 top-2 bg-card border border-border shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
             <span className="font-medium text-destructive">Delete message?</span>
-            <PressDepth
+            <button type="button"
               className="h-6 px-2 text-xs"
               disabled={isDeleting}
               onClick={async () => {
@@ -512,13 +511,13 @@ const MessageRow = React.memo(function MessageRow({
               }}
             >
               Delete
-            </PressDepth>
-            <PressDepth
+            </button>
+            <button type="button"
               className="h-6 px-2 text-xs"
               onClick={() => setShowDeleteConfirm(false)}
             >
               Cancel
-            </PressDepth>
+            </button>
           </div>
         )}
       </div>

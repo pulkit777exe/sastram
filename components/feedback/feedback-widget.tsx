@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { MessageSquarePlus } from 'lucide-react';
 import { toasts } from '@/lib/utils/toast';
 import { submitFeedback } from '@/modules/feedback/actions';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
@@ -61,7 +60,7 @@ export function FeedbackWidget() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button
+        <button type="button"
           className="fixed bottom-4 right-4 z-40 rounded-full shadow-lg h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5"
         >
           <MessageSquarePlus className="h-4 w-4" />
@@ -107,15 +106,15 @@ export function FeedbackWidget() {
         </div>
 
         <DialogFooter>
-          <PressDepth onClick={() => setOpen(false)} disabled={submitting}>
+          <button type="button" onClick={() => setOpen(false)} disabled={submitting}>
             Cancel
-          </PressDepth>
-          <PressDepth
+          </button>
+          <button type="button"
             onClick={handleSubmit}
             disabled={submitting || message.trim().length < 10}
           >
             {submitting ? 'Sending…' : 'Submit'}
-          </PressDepth>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { XCircle } from 'lucide-react';
 import { resolveReport } from '@/modules/reports/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -104,7 +103,7 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
     <>
       <div className="flex gap-2 flex-wrap">
         {ACTION_OPTIONS.map((opt) => (
-          <PressDepth
+          <button type="button"
             key={opt.value}
             onClick={() => handleOpen(opt.value)}
             className={
@@ -119,7 +118,7 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
           >
             {opt.value === 'DISMISS' && <XCircle className="w-4 h-4 mr-1" />}
             {opt.label}
-          </PressDepth>
+          </button>
         ))}
       </div>
 
@@ -196,10 +195,10 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
           </div>
 
           <DialogFooter>
-            <PressDepth onClick={() => setOpen(false)} disabled={submitting}>
+            <button type="button" onClick={() => setOpen(false)} disabled={submitting}>
               Cancel
-            </PressDepth>
-            <PressDepth
+            </button>
+            <button type="button"
               onClick={handleSubmit}
               disabled={submitting}
               className={
@@ -213,7 +212,7 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
               }
             >
               {submitting ? 'Submitting...' : 'Submit'}
-            </PressDepth>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

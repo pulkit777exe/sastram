@@ -1,7 +1,6 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { MoreHorizontal } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { cn } from '@/lib/utils/cn';
@@ -79,9 +78,9 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
               <TableCell className="text-sm text-foreground">{entry.target}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{entry.performedBy}</TableCell>
               <TableCell className="text-right">
-                <PressDepth className="h-8 w-8">
+                <button type="button" className="h-8 w-8">
                   <MoreHorizontal className="w-4 h-4" />
-                </PressDepth>
+                </button>
               </TableCell>
             </TableRow>
           ))}

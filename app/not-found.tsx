@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Home, ArrowLeft } from 'lucide-react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { PublicNavbar } from '@/components/layout/public-navbar';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { SerifHeading } from '@/components/layout/serif-heading';
@@ -31,15 +30,15 @@ export default function NotFound() {
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
             <Link href="/dashboard">
-              <PressDepth className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
+              <button type="button" className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
                 <Home className="w-4 h-4 mr-2" />
                 Go to Dashboard
-              </PressDepth>
+              </button>
             </Link>
-            <PressDepth onClick={() => router.back()}>
+            <button type="button" onClick={() => router.back()}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Go Back
-            </PressDepth>
+            </button>
           </div>
         </div>
       </div>

@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { isAdminUser as isAdmin } from '@/modules/auth';
 import { getSession } from '@/modules/auth';
 import { Card, CardContent } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { ArrowLeft, Settings } from 'lucide-react';
 
 export default async function ProfilePage() {
@@ -15,10 +14,10 @@ export default async function ProfilePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-4 mb-4">
         <Link href="/dashboard/settings">
-          <PressDepth className="text-muted-foreground">
+          <button type="button" className="text-muted-foreground">
             <ArrowLeft size={16} className="mr-2" />
             Back to Settings
-          </PressDepth>
+          </button>
         </Link>
       </div>
 
@@ -43,16 +42,16 @@ export default async function ProfilePage() {
           </div>
           <div className="flex flex-col gap-2">
             <Link href="/dashboard/settings">
-              <PressDepth className="rounded-lg">
+              <button type="button" className="rounded-lg">
                 <Settings size={14} className="mr-2" />
                 Edit Settings
-              </PressDepth>
+              </button>
             </Link>
             {isAdmin(user) && (
               <Link href="/dashboard/admin">
-                <PressDepth className="rounded-lg">
+                <button type="button" className="rounded-lg">
                   Admin Tools
-                </PressDepth>
+                </button>
               </Link>
             )}
           </div>

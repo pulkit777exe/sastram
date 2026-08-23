@@ -31,7 +31,7 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
     >
       <span>#{tag.name}</span>
       {onRemove && (
-        <button
+        <button type="button"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();

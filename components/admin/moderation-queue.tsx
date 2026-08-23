@@ -2,7 +2,6 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Select,
   SelectContent,
@@ -148,9 +147,9 @@ export function ModerationQueue({
                         </div>
                       </div>
                     </div>
-                    <PressDepth className="shrink-0">
+                    <button type="button" className="shrink-0">
                       <ChevronRight className="w-4 h-4" />
-                    </PressDepth>
+                    </button>
                   </div>
                   {report.aiConfidence !== null && (
                     <div className="mt-3 pt-3 border-t border-border">

@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,9 +96,9 @@ function ForgotPasswordEmailForm({
       </div>
 
       <DialogFooter>
-        <PressDepth type="submit" disabled={isSubmitting || !email}>
+        <button type="submit" disabled={isSubmitting || !email}>
           {isSubmitting ? 'Sending...' : 'Send Reset Code'}
-        </PressDepth>
+        </button>
       </DialogFooter>
     </form>
   );
@@ -289,32 +288,32 @@ function ForgotPasswordOtpForm({
         </div>
 
         <div className="flex gap-2">
-          <PressDepth
+          <button
             type="button"
             onClick={onBack}
             disabled={isSubmitting}
             className="flex-1"
           >
             Back
-          </PressDepth>
-          <PressDepth
+          </button>
+          <button
             type="button"
             onClick={() => void verifyOtp(otp.join(''))}
             disabled={isSubmitting || otp.join('').length !== 6}
             className="flex-1"
           >
             {isSubmitting ? 'Verifying...' : 'Verify Code'}
-          </PressDepth>
+          </button>
         </div>
 
-        <PressDepth
+        <button
           type="button"
           onClick={handleResend}
           disabled={isSubmitting || countdown > 0}
           className="w-full"
         >
           {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
-        </PressDepth>
+        </button>
       </div>
     </>
   );
@@ -428,21 +427,21 @@ function ForgotPasswordResetForm({
         </div>
 
         <div className="flex gap-2">
-          <PressDepth
+          <button
             type="button"
             onClick={onBack}
             disabled={isSubmitting}
             className="flex-1"
           >
             Back
-          </PressDepth>
-          <PressDepth
+          </button>
+          <button
             type="submit"
             disabled={isSubmitting || !validation.valid}
             className="flex-1"
           >
             {isSubmitting ? 'Updating...' : 'Update Password'}
-          </PressDepth>
+          </button>
         </div>
       </div>
     </form>

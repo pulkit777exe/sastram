@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GithubIcon } from '@/public/icons/github';
 import { ChromeIcon } from '@/public/icons/google';
@@ -65,12 +64,12 @@ export function ConnectedAccountsCard({ linked }: { linked: LinkedAccount[] }) {
                 </div>
               </div>
               {isLinked && (
-                <PressDepth
+                <button type="button"
                   disabled={unlinking === provider.id || linkedSet.size <= 1}
                   onClick={() => handleUnlink(provider.id)}
                 >
                   {unlinking === provider.id ? 'Unlinking…' : 'Unlink'}
-                </PressDepth>
+                </button>
               )}
             </div>
           );

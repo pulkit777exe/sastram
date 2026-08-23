@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Trash2, Merge, Check, X, Search, AlertTriangle } from 'lucide-react';
@@ -141,20 +140,20 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
               className="pl-9 h-9 text-sm"
             />
           </div>
-          <PressDepth type="submit" className="h-9">
+          <button type="submit" className="h-9">
             Search
-          </PressDepth>
+          </button>
         </form>
 
-        <PressDepth onClick={() => setShowCreate(true)} className="h-9">
+        <button type="button" onClick={() => setShowCreate(true)} className="h-9">
           <Plus className="w-4 h-4 mr-1.5" />
           New Tag
-        </PressDepth>
+        </button>
 
-        <PressDepth onClick={() => setShowMerge(true)} className="h-9" disabled={tags.length < 2}>
+        <button type="button" onClick={() => setShowMerge(true)} className="h-9" disabled={tags.length < 2}>
           <Merge className="w-4 h-4 mr-1.5" />
           Merge Tags
-        </PressDepth>
+        </button>
       </div>
 
       {/* Create tag form */}
@@ -185,13 +184,13 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <PressDepth onClick={handleCreate} disabled={!newName.trim()} className="h-9">
+                <button type="button" onClick={handleCreate} disabled={!newName.trim()} className="h-9">
                   <Check className="w-3.5 h-3.5 mr-1" />
                   Create
-                </PressDepth>
-                <PressDepth onClick={() => setShowCreate(false)} className="h-9">
+                </button>
+                <button type="button" onClick={() => setShowCreate(false)} className="h-9">
                   <X className="w-3.5 h-3.5" />
-                </PressDepth>
+                </button>
               </div>
             </div>
           </CardContent>
@@ -240,16 +239,16 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
-                <PressDepth
+                <button type="button"
                   onClick={handleMerge}
                   disabled={!mergeSource || !mergeTarget || mergeSource === mergeTarget}
                   className="h-9"
                 >
                   Merge
-                </PressDepth>
-                <PressDepth onClick={() => setShowMerge(false)} className="h-9">
+                </button>
+                <button type="button" onClick={() => setShowMerge(false)} className="h-9">
                   Cancel
-                </PressDepth>
+                </button>
               </div>
             </div>
           </CardContent>
@@ -311,19 +310,19 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                           </td>
                           <td className="px-4 py-2 text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <PressDepth
+                              <button type="button"
                                 onClick={handleUpdate}
                                 disabled={!editName.trim()}
                                 className="min-h-10 min-w-10 h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green/10"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                              </PressDepth>
-                              <PressDepth
+                              </button>
+                              <button type="button"
                                 onClick={() => setEditingId(null)}
                                 className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <X className="w-3.5 h-3.5" />
-                              </PressDepth>
+                              </button>
                             </div>
                           </td>
                         </>
@@ -347,7 +346,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                              <PressDepth
+                              <button type="button"
                                 onClick={() => {
                                   setEditingId(tag.id);
                                   setEditName(tag.name);
@@ -356,13 +355,13 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                                 className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
-                              </PressDepth>
-                              <PressDepth
+                              </button>
+                              <button type="button"
                                 onClick={() => setDeletingId(tag.id)}
                                 className="min-h-10 min-w-10 h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                              </PressDepth>
+                              </button>
                             </div>
                           </td>
                         </>
@@ -380,7 +379,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <PressDepth
+            <button type="button"
               key={p}
               className={`h-8 min-w-8 ${p === currentPage ? 'bg-primary text-primary-foreground' : ''}`}
               onClick={() => {
@@ -391,7 +390,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
               }}
             >
               {p}
-            </PressDepth>
+            </button>
           ))}
         </div>
       )}
@@ -422,15 +421,15 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <PressDepth onClick={() => {
+                <button type="button" onClick={() => {
                   setDeleteClosing(true);
                   setTimeout(() => { setDeletingId(null); setDeleteClosing(false); }, 150);
                 }}>
                   Cancel
-                </PressDepth>
-                <PressDepth onClick={handleDelete}>
+                </button>
+                <button type="button" onClick={handleDelete}>
                   Delete
-                </PressDepth>
+                </button>
               </div>
             </CardContent>
           </Card>

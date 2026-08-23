@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react';
 import { Reply, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Textarea } from '@/components/ui/textarea';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import { MentionSuggest } from '@/components/chat/mention-suggest';
@@ -110,7 +109,7 @@ export function InlineReplyBox({
               @{parentMessage.sender?.name || 'Anonymous'}
             </span>
           </div>
-          <button
+          <button type="button"
             onClick={onCancel}
             className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           >
@@ -144,20 +143,20 @@ export function InlineReplyBox({
             <p className="t-error-msg text-xs text-destructive mt-1">{error || 'Reply cannot be empty'}</p>
 
             <div className="flex items-center justify-end gap-2 mt-1.5">
-              <PressDepth
+              <button type="button"
                 onClick={onCancel}
                 className="h-7 text-xs text-muted-foreground"
               >
                 Cancel
-              </PressDepth>
-              <PressDepth
+              </button>
+              <button type="button"
                 onClick={handleSubmitWithShake}
                 disabled={isSubmitting || !content.trim()}
                 className="h-7 text-xs bg-brand hover:bg-brand/90 text-primary-foreground"
               >
                 {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 {isSubmitting ? 'Posting...' : 'Reply'}
-              </PressDepth>
+              </button>
             </div>
           </div>
         </div>

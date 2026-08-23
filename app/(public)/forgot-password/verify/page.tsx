@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { toasts } from '@/lib/utils/toast';
 import { SerifHeading } from '@/components/layout/serif-heading';
@@ -179,23 +178,23 @@ export default function ForgotPasswordVerifyPage() {
           ))}
         </div>
 
-        <PressDepth
+        <button
           type="button"
           onClick={() => void verifyOtp(otp.join(''))}
           className="w-full h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           disabled={isSubmitting || otp.join('').length !== 6}
         >
           {isSubmitting ? 'Verifying...' : 'Verify Code'}
-        </PressDepth>
+        </button>
 
-        <PressDepth
+        <button
           type="button"
           onClick={handleResend}
           className="w-full"
           disabled={isSubmitting || countdown > 0}
         >
           {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
-        </PressDepth>
+        </button>
       </div>
     </main>
   );

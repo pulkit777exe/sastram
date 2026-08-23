@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { RefreshCw, TrendingUp, Clock, Globe, Database } from 'lucide-react';
 
 interface SpendTelemetry {
@@ -81,10 +80,10 @@ export default function SpendPage() {
             Global AI cost telemetry, operation breakdown, and spend-cap status.
           </p>
         </div>
-        <PressDepth onClick={fetchSpend} disabled={loading}>
+        <button type="button" onClick={fetchSpend} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
-        </PressDepth>
+        </button>
       </header>
 
       {error && (

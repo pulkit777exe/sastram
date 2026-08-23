@@ -10,7 +10,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -165,16 +164,16 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                   </TableCell>
                   <TableCell className="sticky right-0 bg-card z-10 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <PressDepth
+                      <button type="button"
                         className="h-8 px-2 text-xs text-brand hover:text-brand hover:bg-brand/10"
                       >
                         [View Appeal]
-                      </PressDepth>
-                      <PressDepth
+                      </button>
+                      <button type="button"
                         className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         [Unban]
-                      </PressDepth>
+                      </button>
                     </div>
                   </TableCell>
                 </TableRow>

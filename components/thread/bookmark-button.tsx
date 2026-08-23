@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Bookmark, BookmarkCheck } from 'lucide-react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { toggleBookmark, checkBookmarkStatus } from '@/modules/bookmarks/actions';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
@@ -45,7 +44,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
 
   return (
     <div className="hover:scale-105 active:scale-95 transition-transform duration-100">
-      <PressDepth
+      <button type="button"
         onClick={handleToggle}
         disabled={isLoading}
         className={cn('gap-2', className)}
@@ -61,7 +60,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
             <span className="hidden sm:inline">Bookmark</span>
           </>
         )}
-      </PressDepth>
+      </button>
     </div>
   );
 }

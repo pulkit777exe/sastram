@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,9 +77,9 @@ export function PasswordResetCard() {
               autoComplete="new-password"
             />
           </div>
-          <PressDepth type="submit" disabled={saving}>
+          <button type="submit" disabled={saving}>
             {saving ? 'Updating…' : 'Update password'}
-          </PressDepth>
+          </button>
         </form>
       </CardContent>
     </Card>

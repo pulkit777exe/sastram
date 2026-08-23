@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Dialog,
   DialogContent,
@@ -86,7 +85,7 @@ export function CreateTopicButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <PressDepth className="bg-brand hover:bg-brand/90 cursor-pointer">New Thread</PressDepth>
+        <button type="button" className="bg-brand hover:bg-brand/90 cursor-pointer">New Thread</button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -156,13 +155,13 @@ export function CreateTopicButton() {
           </div>
 
           <DialogFooter className="pt-4">
-            <PressDepth
+            <button
               type="submit"
               disabled={loading}
               className="w-full bg-brand hover:bg-brand/90 text-white font-bold"
             >
               {loading ? <Loader2 className="animate-spin" /> : 'Create Topic'}
-            </PressDepth>
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>

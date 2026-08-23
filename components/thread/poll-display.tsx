@@ -177,7 +177,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
                       {option}
                       {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
                     </span>
-                    <span className="text-muted-foreground font-(--font-dm-mono) text-xs tabular-nums">
+                    <span className="text-muted-foreground font-mono text-xs tabular-nums">
                       {result?.votes ?? 0} votes ({percentage.toFixed(1)}%)
                     </span>
                   </div>
@@ -217,7 +217,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
       </div>
 
       {poll.expiresAt && (
-        <p className="text-xs font-(--font-dm-mono) uppercase tracking-wider text-muted-foreground">
+        <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
           Poll expires <TimeAgo date={poll.expiresAt} />
         </p>
       )}

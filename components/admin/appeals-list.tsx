@@ -11,7 +11,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Dialog,
   DialogContent,
@@ -117,7 +116,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 </TableCell>
                 <TableCell className="sticky right-0 bg-card z-10 text-right">
                   <div className="flex justify-end gap-2">
-                    <PressDepth
+                    <button type="button"
                       onClick={() => {
                         setSelectedAppeal(appeal);
                         setActionType('REJECT');
@@ -125,8 +124,8 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <X className="h-4 w-4" />
-                    </PressDepth>
-                    <PressDepth
+                    </button>
+                    <button type="button"
                       onClick={() => {
                         setSelectedAppeal(appeal);
                         setActionType('APPROVE');
@@ -134,7 +133,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                       className="text-green-600 hover:text-green-700 hover:bg-green/10"
                     >
                       <Check className="h-4 w-4" />
-                    </PressDepth>
+                    </button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -175,10 +174,10 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
           )}
 
           <DialogFooter>
-            <PressDepth onClick={() => setSelectedAppeal(null)}>
+            <button type="button" onClick={() => setSelectedAppeal(null)}>
               Cancel
-            </PressDepth>
-            <PressDepth
+            </button>
+            <button type="button"
               onClick={handleResolve}
               disabled={isProcessing}
             >
@@ -187,7 +186,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 : actionType === 'APPROVE'
                   ? 'Approve Appeal'
                   : 'Reject Appeal'}
-            </PressDepth>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
