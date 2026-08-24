@@ -1,10 +1,10 @@
-import { Suspense, cache } from 'react';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { ThreadLiveWrapper } from '@/components/thread/thread-live-wrapper';
 import { Badge } from '@/components/ui/badge';
 import type { Message } from '@/lib/types/index';
 import { isAdminUser as isAdmin, requireSession, type SessionUser } from '@/modules/auth';
-import { getThreadWithFullContext, getThreadMessagesPaginated, toClientMessage } from '@/modules/threads';
+import { getThreadWithFullContext, getThreadMessagesPaginated, toClientMessage, type ThreadWithFullContext } from '@/modules/threads';
 import Link from 'next/link';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
@@ -17,10 +17,6 @@ import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 import { DetailCard } from '@/components/ui/detail-card';
 
 const INITIAL_MESSAGE_LIMIT = 50;
-
-const getThreadCached = cache((slug: string, userId: string) =>
-  getThreadWithFullContext(slug, userId)
-);
 
 function ThreadContentSkeleton() {
   return (
@@ -59,15 +55,12 @@ function ThreadSidebarSkeleton() {
 }
 
 async function ThreadContent({
-  slug,
+  thread,
   session,
 }: {
-  slug: string;
+  thread: ThreadWithFullContext;
   session: { user: SessionUser };
 }) {
-  const thread = await getThreadCached(slug, session.user.id);
-  if (!thread) notFound();
-
   const subscription = await prisma.threadSubscription.findUnique({
     where: {
       threadId_userId: {
@@ -131,15 +124,12 @@ async function ThreadContent({
 }
 
 async function ThreadSidebar({
-  slug,
+  thread,
   session,
 }: {
-  slug: string;
+  thread: ThreadWithFullContext;
   session: { user: SessionUser };
 }) {
-  const thread = await getThreadCached(slug, session.user.id);
-  if (!thread) notFound();
-
   const threadDna = parseThreadDna(thread.threadDna);
 
   return (
@@ -194,17 +184,20 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const session = await requireSession();
 
+  const thread = await getThreadWithFullContext(slug, session.user.id);
+  if (!thread) notFound();
+
   return (
     <div className="flex h-full w-full overflow-hidden">
       <main className="flex flex-1 flex-col min-w-0">
         <Suspense fallback={<ThreadContentSkeleton />}>
-          <ThreadContent slug={slug} session={session} />
+          <ThreadContent thread={thread} session={session} />
         </Suspense>
       </main>
 
       <ThreadDetailsPanel>
         <Suspense fallback={<ThreadSidebarSkeleton />}>
-          <ThreadSidebar slug={slug} session={session} />
+          <ThreadSidebar thread={thread} session={session} />
         </Suspense>
       </ThreadDetailsPanel>
     </div>

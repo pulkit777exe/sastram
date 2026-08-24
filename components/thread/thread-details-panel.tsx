@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { X, PanelRightOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const DetailsContext = createContext<{ open: boolean; setOpen: (v: boolean) => void } | null>(null);
 
@@ -11,38 +12,105 @@ export function useDetails() {
 
 export function ThreadDetailsPanel({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  // Escape key handler
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, close]);
+
+  // Focus trap
+  useEffect(() => {
+    if (!open || !panelRef.current) return;
+    const panel = panelRef.current;
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleTab);
+    return () => document.removeEventListener('keydown', handleTab);
+  }, [open]);
+
+  // Restore focus to trigger when drawer closes
+  useEffect(() => {
+    if (!open && triggerRef.current) {
+      triggerRef.current.focus();
+    }
+  }, [open]);
+
+  const panelId = 'thread-details-panel';
 
   return (
     <DetailsContext.Provider value={{ open, setOpen }}>
-      {/* Floating trigger — top-right, sits above the composer/scroll area */}
-      <button
-        type="button"
+      <Button
+        ref={triggerRef}
+        variant="outline"
+        size="icon"
+        className="fixed top-[4.5rem] right-4 z-40 backdrop-blur rounded-control"
         onClick={() => setOpen(true)}
-        className="fixed top-[4.5rem] right-4 z-40 h-8 w-8 flex items-center justify-center rounded-lg border border-border/60 bg-card/95 backdrop-blur text-muted-foreground shadow-linear-sm hover:bg-muted/40 hover:text-foreground transition-colors"
         aria-label="Show thread details"
+        aria-expanded={open}
+        aria-controls={panelId}
         title="Thread details"
       >
         <PanelRightOpen size={15} />
-      </button>
+      </Button>
 
-      {/* Slide-over drawer */}
       {open && (
         <div className="fixed inset-0 z-50">
           <div
             className="absolute inset-0 bg-ink/20 backdrop-blur-sm animate-in fade-in duration-150"
-            onClick={() => setOpen(false)}
+            aria-hidden="true"
+            onClick={close}
           />
-          <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-canvas border-l border-line shadow-overlay flex flex-col animate-in slide-in-from-right duration-200">
+          <div
+            ref={panelRef}
+            id={panelId}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Thread details"
+            className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-canvas border-l border-line shadow-overlay flex flex-col animate-in slide-in-from-right duration-200"
+          >
             <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
               <span className="text-sm font-semibold text-ink tracking-tight">Thread Details</span>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={close}
                 aria-label="Close details"
-                className="h-7 w-7 flex items-center justify-center rounded-lg text-ink-3 hover:text-ink hover:bg-hover/40 transition-colors"
               >
                 <X size={15} />
-              </button>
+              </Button>
             </div>
             <div className="flex-1 overflow-y-auto">{children}</div>
           </div>

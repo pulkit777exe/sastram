@@ -19,18 +19,18 @@ export function ThreadPageHeader({
   initialFrequency,
 }: ThreadPageHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-4 sm:px-6 h-14 border-b border-border/60 shrink-0 bg-card/95 backdrop-blur z-30">
+    <header className="flex items-center justify-between px-4 sm:px-6 h-14 border-b border-line/60 shrink-0 bg-surface/95 backdrop-blur z-30">
       <div className="flex items-center gap-2 min-w-0">
         <Link
           href={ROUTES.DASHBOARD_THREADS}
           aria-label="Back to threads"
-          className="shrink-0 w-8 h-8 -ml-1 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          className="shrink-0 w-8 h-8 -ml-1 rounded-control flex items-center justify-center text-ink-3 hover:text-ink hover:bg-hover transition-colors"
         >
           <ArrowLeft size={16} strokeWidth={2.25} />
         </Link>
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-1.5 h-1.5 rounded-full bg-sai-green animate-pulse shrink-0" />
-          <span className="text-sm font-semibold text-foreground tracking-tight truncate">{title}</span>
+          <span className="text-sm font-semibold text-ink tracking-tight truncate">{title}</span>
         </div>
       </div>
 

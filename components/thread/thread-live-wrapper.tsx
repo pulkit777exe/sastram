@@ -12,6 +12,7 @@ import type { PollResults } from '@/modules/polls/types';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
 import { ChevronDown, Loader2, Pin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useThreadMessages } from '@/hooks/thread/use-thread-messages';
 import { useThreadPolling } from '@/hooks/thread/use-thread-polling';
 import { useThreadReadReceipts } from '@/hooks/thread/use-thread-read-receipts';
@@ -303,16 +304,20 @@ export function ThreadLiveWrapper({
     }
   }, [threadMessages.liveMessages, aiInlineStatus, clearAiStatus]);
 
-  // Poll refresh (non-fast-mode)
+  // Poll refresh (non-fast-mode) — skip when tab is hidden
   useEffect(() => {
     if (!currentPoll) return;
+    let cancelled = false;
     const interval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (cancelled) return;
       try {
         const pollId = currentPoll.id;
         const [freshPollResult, freshResultsResult] = await Promise.all([
           getPollByThreadAction({ threadId }),
           getPollResultsAction({ pollId }),
         ]);
+        if (cancelled) return;
         if (freshPollResult?.data) {
           const freshPoll = freshPollResult.data;
           setCurrentPoll((prev) =>
@@ -327,7 +332,10 @@ export function ThreadLiveWrapper({
         // Poll refresh is best-effort
       }
     }, 20_000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [currentPoll, threadId]);
 
   return (
@@ -418,11 +426,11 @@ export function ThreadLiveWrapper({
                 <>
                   <div ref={loadMoreSentinelRef} aria-hidden className="h-px" />
                   <div className="mb-4 flex justify-center">
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={threadMessages.loadMoreMessages}
                       disabled={threadMessages.isLoadingMore}
-                      className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {threadMessages.isLoadingMore ? (
                         <>
@@ -434,7 +442,7 @@ export function ThreadLiveWrapper({
                           Load older messages ({threadMessages.totalMessageCount - threadMessages.displayedCount} remaining)
                         </>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </>
               )}
@@ -455,13 +463,13 @@ export function ThreadLiveWrapper({
 
       {isScrolledUp && (
         <div className="absolute bottom-32 right-6 z-30 flex flex-col items-center gap-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
-          <button
-            type="button"
+          <Button
+            size="icon"
+            className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-primary-foreground shadow-linear-lg hover:scale-110 active:scale-95"
             onClick={() => {
               scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
               void readReceipts.markThreadAsRead(true);
             }}
-            className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-primary-foreground shadow-linear-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
             title="Scroll to bottom"
           >
             {readReceipts.unreadCount > 0 && (
@@ -470,7 +478,7 @@ export function ThreadLiveWrapper({
               </span>
             )}
             <ChevronDown size={16} strokeWidth={2.5} />
-          </button>
+          </Button>
         </div>
       )}
 
