@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Check, X, KeyRound } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 interface ApiKeysModalProps {
   isOpen: boolean;
@@ -39,8 +42,6 @@ const KEY_CONFIGS = [
 ];
 
 export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
   const [keys, setKeys] = useState<Record<string, string>>(() => {
     if (typeof window === 'undefined') return {};
     const loaded: Record<string, string> = {};
@@ -51,59 +52,6 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
     return loaded;
   });
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => setVisible(true), 0);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen && visible) {
-      const timer = setTimeout(() => {
-        setVisible(false);
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, visible]);
-
-  const isClosing = !isOpen && visible;
-
-  useEffect(() => {
-    if (!visible) return;
-    const modalElement = modalRef.current;
-    if (!modalElement) return;
-
-    const focusableElements = modalElement.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    const firstElement = focusableElements[0] as HTMLElement;
-    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
-
-    firstElement?.focus();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement?.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement?.focus();
-            e.preventDefault();
-          }
-        }
-      } else if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, visible]);
 
   const handleKeyChange = (id: string, value: string) => {
     const updated = { ...keys, [id]: value };
@@ -128,51 +76,24 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
     handleKeyChange(id, '');
   };
 
-  if (!visible) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      role="dialog"
-      aria-modal="true"
-      aria-label="API Keys configuration"
-    >
-      {/* Backdrop */}
-      <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isClosing ? 'opacity-0' : 'opacity-100'}`}
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div
-        ref={modalRef}
-        className={`t-modal ${isClosing ? 'is-closing' : 'is-open'} relative bg-surface border border-line rounded-card shadow-linear-md w-full max-w-md mx-4 sm:mx-4 overflow-hidden md:my-auto my-0 md:rounded-card rounded-none md:h-auto h-full`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-          <div className="flex items-center gap-2">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <KeyRound size={16} className="text-ink-2" />
-            <h3 className="text-sm font-semibold text-ink">API Keys</h3>
-          </div>
-          <button type="button"
-            onClick={onClose}
-            className="p-1 text-ink-2 hover:text-ink rounded-md hover:bg-hover/40 transition-colors"
-            aria-label="Close API Keys Configuration"
-          >
-            <X size={16} />
-          </button>
-        </div>
+            API Keys
+          </DialogTitle>
+        </DialogHeader>
 
-        {/* Info */}
-        <div className="px-5 py-3 bg-hover/30">
+        <div className="px-6 py-3 bg-hover/30 rounded-lg mx-6">
           <p className="text-xs text-ink-2 leading-relaxed">
             Your API keys are stored <strong>only in your browser</strong> and never sent to our
             servers for storage. They are passed securely via request headers for each search.
           </p>
         </div>
 
-        {/* Key inputs */}
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-6 py-4 space-y-4">
           {KEY_CONFIGS.map((config) => {
             const value = keys[config.id] || '';
             const isValid = value ? config.validate(value) : false;
@@ -197,27 +118,31 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
                   )}
                 </div>
                 <div className="relative">
-                  <input
+                  <Input
                     type={show ? 'text' : 'password'}
                     value={value}
                     onChange={(e) => handleKeyChange(config.id, e.target.value.trim())}
                     placeholder={config.placeholder}
-                    className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-3/40 focus:outline-none focus:ring-1 focus:ring-line-strong pr-16 font-mono"
+                    className="text-xs font-mono pr-16"
                   />
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-                    <button type="button"
+                    <Button type="button"
                       onClick={() => setShowKeys({ ...showKeys, [config.id]: !show })}
-                      className="p-1.5 text-ink-3 hover:text-ink transition-colors"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-ink-3 hover:text-ink"
                     >
                       {show ? <EyeOff size={12} /> : <Eye size={12} />}
-                    </button>
+                    </Button>
                     {value && (
-                      <button type="button"
+                      <Button type="button"
                         onClick={() => clearKey(config.id)}
-                        className="p-1.5 text-ink-3 hover:text-sai-red transition-colors"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-ink-3 hover:text-sai-red"
                       >
                         <X size={12} />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -227,17 +152,13 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
           })}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-line flex justify-end">
-          <button type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 text-xs font-medium bg-ink text-canvas rounded-lg hover:opacity-90 transition-opacity"
-          >
+        <DialogFooter>
+          <Button type="button" onClick={onClose}>
             Done
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

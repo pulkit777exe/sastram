@@ -6,6 +6,7 @@ import { Home, ArrowLeft } from 'lucide-react';
 import { PublicNavbar } from '@/components/layout/public-navbar';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { SerifHeading } from '@/components/layout/serif-heading';
+import { Button } from '@/components/ui/button';
 
 export default function NotFound() {
   const router = useRouter();
@@ -30,15 +31,15 @@ export default function NotFound() {
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
             <Link href="/dashboard">
-              <button type="button" className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
+              <Button type="button">
                 <Home className="w-4 h-4 mr-2" />
                 Go to Dashboard
-              </button>
+              </Button>
             </Link>
-            <button type="button" onClick={() => router.back()}>
+            <Button type="button" variant="outline" onClick={() => router.back()}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Go Back
-            </button>
+            </Button>
           </div>
         </div>
       </div>

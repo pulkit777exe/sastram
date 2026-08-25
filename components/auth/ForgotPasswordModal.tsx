@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -96,9 +97,9 @@ function ForgotPasswordEmailForm({
       </div>
 
       <DialogFooter>
-        <button type="submit" disabled={isSubmitting || !email}>
+        <Button type="submit" disabled={isSubmitting || !email}>
           {isSubmitting ? 'Sending...' : 'Send Reset Code'}
-        </button>
+        </Button>
       </DialogFooter>
     </form>
   );
@@ -288,32 +289,34 @@ function ForgotPasswordOtpForm({
         </div>
 
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={onBack}
             disabled={isSubmitting}
             className="flex-1"
           >
             Back
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => void verifyOtp(otp.join(''))}
             disabled={isSubmitting || otp.join('').length !== 6}
             className="flex-1"
           >
             {isSubmitting ? 'Verifying...' : 'Verify Code'}
-          </button>
+          </Button>
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={handleResend}
           disabled={isSubmitting || countdown > 0}
           className="w-full"
         >
           {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -427,21 +430,22 @@ function ForgotPasswordResetForm({
         </div>
 
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={onBack}
             disabled={isSubmitting}
             className="flex-1"
           >
             Back
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={isSubmitting || !validation.valid}
             className="flex-1"
           >
             {isSubmitting ? 'Updating...' : 'Update Password'}
-          </button>
+          </Button>
         </div>
       </div>
     </form>
