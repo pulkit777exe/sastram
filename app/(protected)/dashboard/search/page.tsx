@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Search, MessageSquare, Users, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { ROUTES } from '@/lib/config/routes';
@@ -74,20 +75,19 @@ export default function SearchPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1"
             />
-            <button type="button" onClick={handleSearch} disabled={isSearching}>
+            <Button type="button" onClick={handleSearch} disabled={isSearching}>
               {isSearching ? 'Searching...' : 'Search'}
-            </button>
+            </Button>
           </div>
 
           <div className="flex flex-wrap gap-2">
             {(['all', 'threads', 'messages', 'users'] as SearchType[]).map((type) => (
-              <button type="button"
+              <Button variant={searchType === type ? 'default' : 'outline'} size="sm"
                 key={type}
                 onClick={() => setSearchType(type)}
-                className={searchType === type ? 'bg-primary text-primary-foreground' : ''}
               >
                 {type.charAt(0).toUpperCase() + type.slice(1)}
-              </button>
+              </Button>
             ))}
           </div>
         </Card>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { RefreshCw, TrendingUp, Clock, Globe, Database } from 'lucide-react';
 
@@ -80,10 +81,10 @@ export default function SpendPage() {
             Global AI cost telemetry, operation breakdown, and spend-cap status.
           </p>
         </div>
-        <button type="button" onClick={fetchSpend} disabled={loading}>
+        <Button variant="outline" onClick={fetchSpend} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
-        </button>
+        </Button>
       </header>
 
       {error && (

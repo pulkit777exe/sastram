@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RefreshCw, Server, HardDrive, AlertTriangle, Clock } from 'lucide-react';
 
@@ -115,10 +116,10 @@ export default function AdminHealthPage() {
             Real-time metrics for the Sastram server instance.
           </p>
         </div>
-        <button type="button" onClick={fetchHealth} disabled={loading}>
+        <Button variant="outline" onClick={fetchHealth} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
-        </button>
+        </Button>
       </header>
 
       {error && (

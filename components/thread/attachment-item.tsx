@@ -2,6 +2,7 @@
 
 import { FileIcon, Download, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
 import type { Attachment } from '@/lib/types/index';
 import React, { useRef, useState } from 'react';
 
@@ -104,25 +105,26 @@ function VideoPlayer({ file }: { file: Attachment }) {
       {/* Overlay controls */}
       <div className="absolute inset-0 bg-foreground/10 opacity-100 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-2">
         <div className="flex justify-end">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleMute}
-            className="p-1.5 rounded-full bg-foreground/20 text-white hover:bg-foreground/30 transition-colors"
+            className="p-1.5 rounded-full bg-foreground/20 text-white hover:bg-foreground/30"
           >
             {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
-          </button>
+          </Button>
         </div>
 
         <div className="flex items-center justify-between">
           <span className="text-xs text-white/90 font-medium truncate max-w-50 drop-shadow-sm">
             {file.name || 'Video'}
           </span>
-          <button
-            type="button"
+          <Button
+            size="icon"
             className="p-2 rounded-full bg-brand text-primary-foreground shadow-linear-sm hover:scale-105 transition-transform"
           >
             {isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

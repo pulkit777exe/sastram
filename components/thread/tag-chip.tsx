@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
 
@@ -33,15 +34,15 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
     >
       <span>#{tag.name}</span>
       {onRemove && (
-        <button type="button"
+        <Button variant="ghost" size="icon"
+          className="h-4 w-4 hover:opacity-70 p-0"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          className="hover:opacity-70 transition-opacity"
         >
           <X className="h-3 w-3" />
-        </button>
+        </Button>
       )}
     </Badge>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 
 type MarkdownToken = { type: 'text'; content: string } | { type: 'code'; content: string };
@@ -76,11 +77,12 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
         >
           {displayLang || 'code'}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleCopy}
           className={cn(
-            'flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium transition-all duration-150',
+            'flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium',
             copied
               ? 'text-emerald-600 bg-emerald-600/10'
               : 'text-muted-foreground bg-transparent'
@@ -119,7 +121,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
             </svg>
           </span>
           {copied ? 'Copied' : 'Copy'}
-        </button>
+        </Button>
       </div>
       <pre
         className="overflow-x-auto p-3 text-xs leading-[1.6] font-mono"

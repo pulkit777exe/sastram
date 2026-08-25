@@ -1,5 +1,6 @@
 import React from 'react';
 import { CornerUpLeft, Smile, Pin, Trash2, Edit2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 
 interface MessageActionsProps {
@@ -97,16 +98,17 @@ function ActionBtn({
   className?: string;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon"
       title={title}
       onClick={onClick}
       className={cn(
-        'w-7 h-7 rounded-control flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-100',
+        'w-7 h-7 text-muted-foreground hover:bg-muted hover:text-foreground',
         className
       )}
     >
       {children}
-    </button>
+    </Button>
   );
 }

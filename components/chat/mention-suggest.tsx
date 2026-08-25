@@ -2,6 +2,7 @@
 
 import { type RefObject } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 
 export interface MentionCandidate {
@@ -38,11 +39,11 @@ export function MentionSuggest({
     >
       <div className="max-h-56 overflow-y-auto py-1.5">
         {candidates.map((candidate, index) => (
-          <button
+          <Button
+            variant="ghost"
             key={candidate.id}
-            type="button"
             className={cn(
-              'w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition-colors',
+              'w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 h-auto justify-start',
               index === activeIndex
                 ? 'bg-brand/10 text-brand'
                 : 'hover:bg-muted/50 text-foreground'
@@ -64,7 +65,7 @@ export function MentionSuggest({
                 @{candidate.handle}
               </span>
             </div>
-          </button>
+          </Button>
         ))}
       </div>
     </div>

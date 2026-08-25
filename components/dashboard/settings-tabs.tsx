@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { User, Mail, Settings, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 
@@ -29,17 +30,18 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button type="button"
+            <Button
+              variant="ghost"
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={cn(
-                'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 cursor-pointer hover:bg-hover',
+                'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 h-auto justify-start',
                 isActive ? 'border-brand bg-brand/5 rounded' : 'border-transparent'
               )}
             >
               <AnimatedIcon icon={Icon} size={16} animateOnHover />
               <span className={isActive ? 'text-brand' : 'text-ink-3'}>{tab.label}</span>
-            </button>
+            </Button>
           );
         })}
       </nav>

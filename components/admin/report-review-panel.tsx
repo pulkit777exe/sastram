@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
   User,
@@ -272,10 +273,10 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
             {actionButtons.map((action) => {
               const Icon = action.icon;
               return (
-                <button type="button"
+                <Button variant="outline"
                   key={action.key}
                   className={cn(
-                    'w-full justify-start text-xs',
+                    'w-full justify-start text-xs h-auto py-2',
                     selectedAction === action.key && 'ring-2 ring-brand'
                   )}
                   onClick={() => {
@@ -289,7 +290,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                   <kbd className="ml-auto text-xs bg-background/50 px-1.5 py-0.5 rounded border border-line">
                     {action.shortcut}
                   </kbd>
-                </button>
+                </Button>
               );
             })}
           </div>

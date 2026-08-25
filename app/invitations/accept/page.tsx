@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 type Status = 'loading' | 'checking-auth' | 'accepting' | 'done' | 'error';
@@ -104,13 +105,11 @@ export default function InvitationAcceptPage() {
         <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 text-center space-y-4">
           <h1 className="text-xl font-bold text-foreground">Invitation</h1>
           <p className="text-sm text-red-600">{error}</p>
-          <button
-            type="button"
+          <Button variant="outline"
             onClick={() => router.push('/dashboard')}
-            className="mt-2 px-4 py-2 text-sm font-medium rounded-control bg-muted hover:bg-muted transition-colors"
           >
             Go to Dashboard
-          </button>
+          </Button>
         </div>
       </div>
     );
