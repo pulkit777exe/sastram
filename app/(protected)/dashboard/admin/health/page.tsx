@@ -109,9 +109,9 @@ export default function AdminHealthPage() {
     <div className="space-y-8">
       <header className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin</p>
-          <h1 className="mt-1 text-3xl font-semibold text-foreground">System Health</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-xs uppercase tracking-widest text-ink-3">Admin</p>
+          <h1 className="mt-1 text-3xl font-semibold text-ink">System Health</h1>
+          <p className="mt-1 text-sm text-ink-3">
             Real-time metrics for the Sastram server instance.
           </p>
         </div>
@@ -146,27 +146,27 @@ export default function AdminHealthPage() {
           <section className="grid gap-6 md:grid-cols-2">
             <Card className="rounded-3xl">
               <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <Server className="w-5 h-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <Server className="w-5 h-5 text-ink-3" />
+                <CardTitle className="text-sm font-medium text-ink-3">
                   Uptime
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-foreground">{data.uptimeHuman}</p>
-                <p className="text-xs text-muted-foreground mt-1">v{data.version}</p>
+                <p className="text-2xl font-bold text-ink">{data.uptimeHuman}</p>
+                <p className="text-xs text-ink-3 mt-1">v{data.version}</p>
               </CardContent>
             </Card>
 
             <Card className="rounded-3xl">
               <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <HardDrive className="w-5 h-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <HardDrive className="w-5 h-5 text-ink-3" />
+                <CardTitle className="text-sm font-medium text-ink-3">
                   Memory (RSS)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-foreground">{data.memory.rss}</p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-2xl font-bold text-ink">{data.memory.rss}</p>
+                <p className="text-xs text-ink-3 mt-1">
                   Heap: {data.memory.heapUsed} / {data.memory.heapTotal}
                 </p>
               </CardContent>
@@ -176,43 +176,43 @@ export default function AdminHealthPage() {
           {/* Moderation SLA */}
           {slaData && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-ink mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5" />
                 Moderation SLA
               </h2>
               <div className="grid gap-6 md:grid-cols-4">
                 <Card className="rounded-3xl">
                   <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground">Total Pending</p>
-                    <p className="text-2xl font-bold text-foreground mt-1">{slaData.totalPending}</p>
+                    <p className="text-sm text-ink-3">Total Pending</p>
+                    <p className="text-2xl font-bold text-ink mt-1">{slaData.totalPending}</p>
                   </CardContent>
                 </Card>
                 <Card className={`rounded-3xl ${slaData.pendingOver24h > 0 ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
                   <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <p className="text-sm text-ink-3 flex items-center gap-1">
                       {slaData.pendingOver24h > 0 && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
                       Pending &gt; 24h
                     </p>
-                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver24h > 0 ? 'text-yellow-700' : 'text-foreground'}`}>
+                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver24h > 0 ? 'text-yellow-700' : 'text-ink'}`}>
                       {slaData.pendingOver24h}
                     </p>
                   </CardContent>
                 </Card>
                 <Card className={`rounded-3xl ${slaData.pendingOver72h > 0 ? 'border-destructive/30 bg-destructive/5' : ''}`}>
                   <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <p className="text-sm text-ink-3 flex items-center gap-1">
                       {slaData.pendingOver72h > 0 && <AlertTriangle className="w-4 h-4 text-red-600" />}
                       Pending &gt; 72h
                     </p>
-                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver72h > 0 ? 'text-red-700' : 'text-foreground'}`}>
+                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver72h > 0 ? 'text-red-700' : 'text-ink'}`}>
                       {slaData.pendingOver72h}
                     </p>
                   </CardContent>
                 </Card>
                 <Card className="rounded-3xl">
                   <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground">Avg Response Time</p>
-                    <p className="text-2xl font-bold text-foreground mt-1">
+                    <p className="text-sm text-ink-3">Avg Response Time</p>
+                    <p className="text-2xl font-bold text-ink mt-1">
                       {slaData.avgResponseTimeHours !== null ? `${slaData.avgResponseTimeHours}h` : 'N/A'}
                     </p>
                   </CardContent>
@@ -221,7 +221,7 @@ export default function AdminHealthPage() {
             </section>
           )}
 
-          <p className="text-xs text-muted-foreground text-right">
+          <p className="text-xs text-ink-3 text-right">
             Last updated: {new Date(data.timestamp).toLocaleTimeString()}
             {' · '}Auto-refreshes every 30s
           </p>
