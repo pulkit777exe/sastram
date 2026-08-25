@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Trash2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
@@ -125,9 +126,12 @@ export function ThreadAccessModal({
                       >
                         {invitation.status}
                       </Badge>
-                      <button type="button"
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
                         disabled={revokingId === invitation.id}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => handleRevoke(invitation.id)}
                       >
                         {revokingId === invitation.id ? (
@@ -135,7 +139,7 @@ export function ThreadAccessModal({
                         ) : (
                           <Trash2 size={14} />
                         )}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}

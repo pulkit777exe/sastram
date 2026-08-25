@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { Badge } from '@/components/ui/badge';
 
 interface TagChipProps {
   tag: {
@@ -17,16 +18,17 @@ interface TagChipProps {
 
 export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
   const content = (
-    <span
+    <Badge
+      variant="outline"
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+        'px-2.5 py-1 rounded-full',
         'transition-all duration-100 hover:scale-105 active:scale-95',
         clickable && !onRemove && 'hover:opacity-80'
       )}
       style={{
         backgroundColor: tag.color ? `${tag.color}20` : 'color-mix(in srgb, var(--brand) 12%, transparent)',
         color: tag.color ?? 'var(--brand)',
-        border: `1px solid ${tag.color ? `${tag.color}40` : 'color-mix(in srgb, var(--brand) 25%, transparent)'}`,
+        borderColor: tag.color ? `${tag.color}40` : 'color-mix(in srgb, var(--brand) 25%, transparent)',
       }}
     >
       <span>#{tag.name}</span>
@@ -41,7 +43,7 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
           <X className="h-3 w-3" />
         </button>
       )}
-    </span>
+    </Badge>
   );
 
   if (clickable && !onRemove) {

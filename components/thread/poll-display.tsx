@@ -150,11 +150,11 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm max-w-lg"
+      className="rounded-xl border border-line bg-surface p-5 space-y-4 shadow-sm max-w-lg"
     >
       <div className="flex items-start justify-between">
-        <h3 className="text-sm font-semibold text-foreground tracking-tight">{poll.question}</h3>
-        {showResults && <BarChart3 className="h-4 w-4 text-muted-foreground shrink-0" />}
+        <h3 className="text-sm font-semibold text-ink tracking-tight">{poll.question}</h3>
+        {showResults && <BarChart3 className="h-4 w-4 text-ink-3 shrink-0" />}
       </div>
 
       <div className="space-y-2.5" role="radiogroup" aria-label={poll.question}>
@@ -173,7 +173,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
               {showResults ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-foreground font-medium">
+                    <span className="flex items-center gap-1.5 text-ink font-medium">
                       {option}
                       {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
                     </span>

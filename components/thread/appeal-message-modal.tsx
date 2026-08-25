@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { toasts } from '@/lib/utils/toast';
 
@@ -63,12 +64,12 @@ export function AppealMessageModal({ messageId, isOpen, onClose }: AppealMessage
             className="min-h-25"
           />
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} disabled={loading}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
-            </button>
-            <button type="button" onClick={handleSubmit} disabled={loading}>
+            </Button>
+            <Button type="button" onClick={handleSubmit} disabled={loading}>
               {loading ? 'Submitting...' : 'Submit appeal'}
-            </button>
+            </Button>
           </div>
         </div>
       </DialogContent>

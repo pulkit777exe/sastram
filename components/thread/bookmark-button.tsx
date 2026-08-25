@@ -6,6 +6,7 @@ import { toggleBookmark, checkBookmarkStatus } from '@/modules/bookmarks/actions
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
+import { Button } from '@/components/ui/button';
 
 interface BookmarkButtonProps {
   threadId: string;
@@ -44,7 +45,8 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
 
   return (
     <div className="hover:scale-105 active:scale-95 transition-transform duration-100">
-      <button type="button"
+      <Button
+        variant="outline"
         onClick={handleToggle}
         disabled={isLoading}
         className={cn('gap-2', className)}
@@ -60,7 +62,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
             <span className="hidden sm:inline">Bookmark</span>
           </>
         )}
-      </button>
+      </Button>
     </div>
   );
 }

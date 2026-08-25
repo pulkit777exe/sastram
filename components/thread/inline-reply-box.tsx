@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { Reply, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import { MentionSuggest } from '@/components/chat/mention-suggest';
 import { cn } from '@/lib/utils/cn';
@@ -109,12 +110,13 @@ export function InlineReplyBox({
               @{parentMessage.sender?.name || 'Anonymous'}
             </span>
           </div>
-          <button type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onCancel}
-            className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
 
         <div className="flex gap-2.5">
@@ -143,20 +145,21 @@ export function InlineReplyBox({
             <p className="t-error-msg text-xs text-destructive mt-1">{error || 'Reply cannot be empty'}</p>
 
             <div className="flex items-center justify-end gap-2 mt-1.5">
-              <button type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onCancel}
-                className="h-7 text-xs text-muted-foreground"
               >
                 Cancel
-              </button>
-              <button type="button"
+              </Button>
+              <Button
+                size="sm"
                 onClick={handleSubmitWithShake}
                 disabled={isSubmitting || !content.trim()}
-                className="h-7 text-xs bg-brand hover:bg-brand/90 text-primary-foreground"
               >
                 {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 {isSubmitting ? 'Posting...' : 'Reply'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

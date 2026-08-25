@@ -9,6 +9,7 @@ import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 import { SkeletonSwap } from '@/components/ui/skeleton-swap';
 import { DetailCard } from '@/components/ui/detail-card';
+import { Button } from '@/components/ui/button';
 
 interface ThreadSummaryCardProps {
   threadId: string;
@@ -129,13 +130,15 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         </div>
 
         {summary && !isPending && (
-          <button type="button"
-            className="h-6 w-6 text-muted-foreground hover:text-brand"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             onClick={() => void requestSummary()}
             aria-label="Refresh summary"
           >
             <RefreshCw size={12} />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -153,13 +156,15 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
               <p className="text-xs text-muted-foreground mb-3">
                 This is taking longer than expected. You can try again.
               </p>
-            <button type="button"
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90"
               onClick={() => void requestSummary()}
-              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
             >
               <Sparkles size={12} className="mr-2" />
               Try Again
-            </button>
+            </Button>
             </div>
           ) : summary ? (
             isAiNotConfigured(summary) ? (
@@ -169,13 +174,15 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
                 <p className="text-xs text-muted-foreground mb-3">
                   Sai couldn&apos;t generate a summary this time. Please try again.
                 </p>
-              <button type="button"
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90"
                 onClick={() => void requestSummary()}
-                className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
               >
                 <Sparkles size={12} className="mr-2" />
                 Try Again
-              </button>
+              </Button>
               </div>
             ) : (
               <div className="prose prose-sm prose-neutral max-w-none">
@@ -187,13 +194,15 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
               <p className="text-xs text-muted-foreground mb-3">
                 Get a quick Sai-powered summary of this thread.
               </p>
-            <button type="button"
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90"
               onClick={() => void requestSummary()}
-              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
             >
               <Sparkles size={12} className="mr-2" />
               Generate Summary
-            </button>
+            </Button>
             </div>
           )}
         </SkeletonSwap>

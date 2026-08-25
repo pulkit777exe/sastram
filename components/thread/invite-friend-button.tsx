@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { UserPlus, Mail } from 'lucide-react';
 import { inviteFriendToThread } from '@/modules/invitations/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -78,16 +79,14 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button type="button"
+        <Button
+          variant="outline"
+          size={iconOnly ? 'icon' : 'default'}
           aria-label="Invite friend"
-          className={iconOnly
-            ? 'h-8 w-8 !p-0 flex items-center justify-center !rounded-lg border-border text-muted-foreground hover:bg-muted hover:text-foreground'
-            : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
-          }
         >
           <UserPlus className="w-4 h-4" />
           {!iconOnly && <span className="ml-2">Invite Friend</span>}
-        </button>
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -129,16 +128,15 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
             </div>
           </div>
           <DialogFooter>
-            <button type="button" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={isSubmitting || !email.trim()}
-              className="bg-brand hover:bg-brand/90 text-primary-foreground"
             >
               {isSubmitting ? 'Sending...' : 'Send Invitation'}
-            </button>
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

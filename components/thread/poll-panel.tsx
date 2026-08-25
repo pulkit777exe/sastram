@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { PollDisplay } from '@/components/thread/poll-display';
 import { createPollAction, closePollAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -165,14 +166,14 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-border/60 bg-card/70 overflow-hidden">
+    <div className="mb-4 rounded-xl border border-line/60 bg-surface/70 overflow-hidden">
       {/* ── Header / Collapse trigger ── */}
       <button
         type="button"
         onClick={() => setIsCollapsed((prev) => !prev)}
         className={cn(
           'w-full flex items-center justify-between px-4 py-3 text-left',
-          'transition-colors hover:bg-muted/40 focus-visible:outline-none',
+          'transition-colors hover:bg-hover focus-visible:outline-none',
           'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
         )}
         aria-expanded={!isCollapsed}
@@ -184,14 +185,14 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
               'h-1.5 w-1.5 rounded-full shrink-0',
               isEffectivelyActive
                 ? 'bg-chart-2 shadow-linear-sm'
-                : 'bg-muted-foreground/40'
+                : 'bg-ink-3/40'
             )}
           />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold uppercase tracking-wider text-ink-3">
             {poll ? 'Poll' : 'Add poll'}
           </span>
           {poll && (
-            <span className="hidden sm:inline text-xs text-muted-foreground/60 font-normal truncate max-w-50">
+            <span className="hidden sm:inline text-xs text-ink-3/60 font-normal truncate max-w-50">
               · {poll.question}
             </span>
           )}
@@ -200,7 +201,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
         <div className="flex items-center gap-2">
           {/* Vote count badge */}
           {poll && (
-            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+            <span className="flex items-center gap-1 text-xs font-medium text-ink-3 bg-field/60 px-2 py-0.5 rounded-full">
               <BarChart3 size={10} />
               {isEffectivelyActive ? 'Active' : 'Closed'}
             </span>
@@ -222,13 +223,14 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                 <div className="space-y-3">
                   <PollDisplay poll={poll} pollResults={pollResults} refreshKey={pollRefreshKey} />
                   {canManagePoll && isEffectivelyActive && (
-                    <button type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       disabled={isSaving}
                       onClick={handleClosePoll}
-                      className="text-xs"
                     >
                       {isSaving ? 'Closing...' : 'Close poll'}
-                    </button>
+                    </Button>
                   )}
                 </div>
               ) : showCreateForm ? (
@@ -276,23 +278,23 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                     </AnimatePresence>
 
                     <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         disabled={options.length >= MAX_OPTIONS}
                         onClick={handleAddOption}
-                        className="h-7 text-xs gap-1"
                       >
                         <Plus size={11} />
                         Add option
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         disabled={options.length <= MIN_OPTIONS}
                         onClick={handleRemoveOption}
-                        className="h-7 text-xs text-muted-foreground"
                       >
                         Remove last
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
@@ -311,20 +313,20 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
-                    <button type="button"
+                    <Button
+                      className="flex-1"
                       onClick={handleCreatePoll}
                       disabled={isSaving || !isFormValid}
-                      className="flex-1"
                     >
                       {isSaving ? 'Creating...' : 'Create poll'}
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="outline"
                       onClick={handleCancelCreate}
                       disabled={isSaving}
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -333,13 +335,14 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                     No poll has been added to this thread yet.
                   </p>
                   {canManagePoll && (
-                    <button type="button"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setShowCreateForm(true)}
-                      className="gap-1.5 text-xs"
                     >
                       <Plus size={12} />
                       Add poll
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}

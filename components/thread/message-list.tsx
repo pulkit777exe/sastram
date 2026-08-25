@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { ThumbsUp, Pin, Loader2 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
@@ -240,17 +241,17 @@ const MessageRow = React.memo(function MessageRow({
       <div
         id={`message-${message.id}`}
         className={cn(
-          "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-muted/20 relative transition-colors duration-75",
+          "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-hover/50 relative transition-colors duration-75",
           isCompact && "pl-13"
         )}
       >
         {!isCompact && (
-          <div className="w-8 h-8 mt-0.5 shrink-0 rounded-full bg-muted/40 flex items-center justify-center">
-            <span className="text-muted-foreground/30 text-xs">?</span>
+          <div className="w-8 h-8 mt-0.5 shrink-0 rounded-full bg-field flex items-center justify-center">
+            <span className="text-ink-3/30 text-xs">?</span>
           </div>
         )}
         <div className="flex-1 min-w-0 py-0.5">
-          <span className="text-xs text-muted-foreground/50 italic">[This message was deleted]</span>
+          <span className="text-xs text-ink-3/50 italic">[This message was deleted]</span>
         </div>
       </div>
     );
@@ -261,7 +262,7 @@ const MessageRow = React.memo(function MessageRow({
       {isFirstUnread && (
         <div className="flex items-center gap-2.5 my-3" role="separator" aria-label="New messages indicator">
           <div className="flex-1 h-px bg-brand/30" />
-          <span className="text-xs text-brand font-bold uppercase tracking-wider whitespace-nowrap bg-card px-2.5">
+          <span className="text-xs text-brand font-bold uppercase tracking-wider whitespace-nowrap bg-surface px-2.5">
             New messages
           </span>
           <div className="flex-1 h-px bg-brand/30" />
@@ -341,20 +342,23 @@ const MessageRow = React.memo(function MessageRow({
                 }}
               />
               <div className="flex justify-end gap-2">
-                <button type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setIsEditing(false);
                     setEditContent(message.content);
                   }}
                 >
                   Cancel
-                </button>
-                <button type="button"
+                </Button>
+                <Button
+                  size="sm"
                   disabled={isSavingEdit || !editContent.trim() || editContent === message.content}
                   onClick={() => void handleSaveEdit()}
                 >
                   {isSavingEdit ? 'Saving...' : 'Save'}
-                </button>
+                </Button>
               </div>
             </div>
           ) : message.isAiResponse ? (
@@ -493,10 +497,11 @@ const MessageRow = React.memo(function MessageRow({
         )}
 
         {showDeleteConfirm && (
-          <div className="absolute right-4 top-2 bg-card border border-border shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
+          <div className="absolute right-4 top-2 bg-surface border border-line shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
             <span className="font-medium text-destructive">Delete message?</span>
-            <button type="button"
-              className="h-6 px-2 text-xs"
+            <Button
+              size="sm"
+              variant="destructive"
               disabled={isDeleting}
               onClick={async () => {
                 setIsDeleting(true);
@@ -511,13 +516,14 @@ const MessageRow = React.memo(function MessageRow({
               }}
             >
               Delete
-            </button>
-            <button type="button"
-              className="h-6 px-2 text-xs"
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setShowDeleteConfirm(false)}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         )}
       </div>

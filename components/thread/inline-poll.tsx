@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { createPollAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
 
@@ -89,15 +90,12 @@ const validOptions = options.filter(option => option.trim().length > 0);
   if (!isOpen) return null;
 
   return (
-    <div className="space-y-4 p-4 bg-card rounded-lg shadow-linear-lg border border-border">
+    <div className="space-y-4 p-4 bg-surface rounded-lg shadow-linear-lg border border-line">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Create a Poll</h3>
-        <button type="button" 
-          onClick={() => onToggle(false)}
-          className="h-6 w-6 p-0"
-        >
+        <h3 className="text-lg font-semibold text-ink">Create a Poll</h3>
+        <Button variant="ghost" size="icon" onClick={() => onToggle(false)}>
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
       
       <div className="space-y-4">
@@ -120,26 +118,28 @@ const validOptions = options.filter(option => option.trim().length > 0);
                 placeholder={`Option ${index + 1}`}
               />
               {index >= 2 && (
-                <button type="button" 
-                  className="h-8 w-8 p-0"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => handleRemoveOption(index)}
                 >
                   <X className="h-4 w-4" />
-                </button>
+                </Button>
               )}
             </div>
           ))}
         </div>
         
         <div className="flex items-center gap-2">
-          <button 
-            type="button" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleAddOption}
             disabled={options.length >= MAX_OPTIONS}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Option
-          </button>
+          </Button>
         </div>
         
         <div className="space-y-2">
@@ -152,13 +152,13 @@ const validOptions = options.filter(option => option.trim().length > 0);
         </div>
         
         <div className="flex items-center justify-between pt-2">
-          <button type="button" 
+          <Button
+            className="w-full"
             onClick={createPoll}
             disabled={isSaving || !question.trim() || options.some((opt, i) => i < 2 && !opt.trim())}
-            className="w-full"
           >
             {isSaving ? 'Creating...' : 'Create Poll'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
