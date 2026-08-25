@@ -19,25 +19,25 @@ export function StatsCard({
   chartType = 'bar',
 }: StatsCardProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm transition-all hover:shadow-linear-md">
+    <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm transition-all hover:shadow-linear-md">
       <div className="flex items-start justify-between mb-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted border border-border">
-          <Icon className="h-5 w-5 text-muted-foreground" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-field border border-line">
+          <Icon className="h-5 w-5 text-ink-3" />
         </div>
-        <div className="text-xs text-muted-foreground cursor-pointer hover:text-muted-foreground/80">ⓘ</div>
+        <div className="text-xs text-ink-3 cursor-pointer hover:text-ink-3/80">ⓘ</div>
       </div>
 
-      <div className="mb-1 text-sm font-medium text-muted-foreground">{title}</div>
+      <div className="mb-1 text-sm font-medium text-ink-3">{title}</div>
 
       <div className="flex items-end justify-between">
         <div>
-          <div className="text-2xl font-bold text-foreground">{value}</div>
+          <div className="text-2xl font-bold text-ink">{value}</div>
           <div className="flex items-center gap-1 text-xs mt-1">
             <span className={cn('font-medium', trendUp ? 'text-emerald-500' : 'text-red-500')}>
               {trendUp ? '+' : ''}
               {trend}
             </span>
-            <span className="text-muted-foreground">last year</span>
+            <span className="text-ink-3">last year</span>
           </div>
         </div>
 

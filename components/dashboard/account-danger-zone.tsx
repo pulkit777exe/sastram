@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { requestAccountDeletion, exportUserData } from '@/modules/users/actions';
@@ -77,10 +78,10 @@ export function AccountDangerZone() {
         <p className="text-sm text-muted-foreground mt-1">
           Download a copy of all your data including messages, threads, and activity.
         </p>
-        <button type="button" className="mt-4" onClick={handleExport} disabled={exporting}>
+        <Button type="button" variant="outline" className="mt-4" onClick={handleExport} disabled={exporting}>
           <Download className="mr-2 h-4 w-4" />
           {exporting ? 'Exporting...' : 'Export Data'}
-        </button>
+        </Button>
       </div>
 
       <div className="border-t pt-6">
@@ -89,10 +90,10 @@ export function AccountDangerZone() {
           Permanently delete your account and all associated data. This action cannot be undone.
           Your data will be purged after 30 days.
         </p>
-        <button type="button" className="mt-4" onClick={() => setShowDeleteDialog(true)}>
+        <Button type="button" variant="destructive" className="mt-4" onClick={() => setShowDeleteDialog(true)}>
           <Trash2 className="mr-2 h-4 w-4" />
           Delete Account
-        </button>
+        </Button>
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

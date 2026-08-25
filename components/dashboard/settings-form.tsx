@@ -3,6 +3,8 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { User, Bell, Upload, Image as ImageIcon, X, Shield } from 'lucide-react';
 import {
   updateUserProfile,
@@ -47,13 +49,13 @@ interface SettingsFormProps {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
       disabled={pending}
-      className="h-11 rounded-xl bg-brand hover:bg-brand/90 text-white font-medium shadow-lg shadow-brand/30 transition-all hover:shadow-brand/40 disabled:opacity-50"
+      className="w-full"
     >
       {pending ? 'Saving...' : 'Save Changes'}
-    </button>
+    </Button>
   );
 }
 
@@ -188,11 +190,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
         <form action={handleSubmit} className="space-y-4">
           {/* Avatar Upload */}
           <div className="grid gap-2">
-            <Label className="text-foreground">Profile Picture</Label>
+            <Label className="text-ink">Profile Picture</Label>
             <div className="flex items-center gap-4">
-              <Avatar className="h-20 w-20 border-2 border-border">
+              <Avatar className="h-20 w-20 border-2 border-line">
                 <AvatarImage src={avatarUrl || undefined} />
-                <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
+                <AvatarFallback className="text-2xl bg-field text-ink-3">
                   {user.name?.[0] || user.email[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -206,11 +208,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   id="avatar-upload"
                   disabled={uploadingAvatar}
                 />
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={uploadingAvatar}
-                  className="border-border text-foreground hover:bg-muted"
                 >
                   {uploadingAvatar ? (
                     'Uploading...'
@@ -220,18 +222,18 @@ export function SettingsForm({ user }: SettingsFormProps) {
                       Upload Avatar
                     </>
                   )}
-                </button>
-                <p className="text-xs text-muted-foreground">JPG, PNG, GIF or WebP. Max 4.5MB</p>
+                </Button>
+                <p className="text-xs text-ink-3">JPG, PNG, GIF or WebP. Max 4.5MB</p>
               </div>
             </div>
           </div>
 
           {/* Banner Upload */}
           <div className="grid gap-2">
-            <Label className="text-foreground">Banner Image</Label>
+            <Label className="text-ink">Banner Image</Label>
             <div className="relative">
               {bannerUrl ? (
-                <div className="relative h-32 w-full rounded-xl overflow-hidden border border-border">
+                <div className="relative h-32 w-full rounded-xl overflow-hidden border border-line">
                   <Image
                     src={bannerUrl}
                     alt="Banner"
@@ -239,19 +241,21 @@ export function SettingsForm({ user }: SettingsFormProps) {
                     width={800}
                     height={200}
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="destructive"
+                    size="icon"
                     onClick={() => setBannerUrl('')}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors"
+                    className="absolute top-2 right-2"
                   >
                     <X size={14} />
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <div className="h-32 w-full rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                <div className="h-32 w-full rounded-xl border-2 border-dashed border-line flex items-center justify-center bg-field/50">
                   <div className="text-center">
-                    <ImageIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No banner image</p>
+                    <ImageIcon className="h-8 w-8 text-ink-3 mx-auto mb-2" />
+                    <p className="text-sm text-ink-3">No banner image</p>
                   </div>
                 </div>
               )}
@@ -264,11 +268,12 @@ export function SettingsForm({ user }: SettingsFormProps) {
                 id="banner-upload"
                 disabled={uploadingBanner}
               />
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => bannerInputRef.current?.click()}
                 disabled={uploadingBanner}
-                className="mt-2 border-border text-foreground hover:bg-muted"
+                className="mt-2"
               >
                 {uploadingBanner ? (
                   'Uploading...'
@@ -278,12 +283,12 @@ export function SettingsForm({ user }: SettingsFormProps) {
                     {bannerUrl ? 'Change Banner' : 'Upload Banner'}
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="name" className="text-foreground">
+            <Label htmlFor="name" className="text-ink">
               Display Name
             </Label>
             <Input
@@ -291,25 +296,25 @@ export function SettingsForm({ user }: SettingsFormProps) {
               name="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="bio" className="text-foreground">
+            <Label htmlFor="bio" className="text-ink">
               Bio
             </Label>
-            <textarea
+            <Textarea
               id="bio"
               name="bio"
               rows={3}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us about yourself..."
-              className="w-full rounded-xl border border-border bg-background text-foreground px-3 py-2 focus:ring-2 focus:ring-brand/50 transition-all resize-none outline-none"
+              className="resize-none"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="location" className="text-foreground">
+            <Label htmlFor="location" className="text-ink">
               Location
             </Label>
             <Input
@@ -318,11 +323,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="City, Country"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="website" className="text-foreground">
+            <Label htmlFor="website" className="text-ink">
               Website
             </Label>
             <Input
@@ -332,11 +337,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://example.com"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="twitter" className="text-foreground">
+            <Label htmlFor="twitter" className="text-ink">
               Twitter
             </Label>
             <Input
@@ -345,11 +350,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={twitter}
               onChange={(e) => setTwitter(e.target.value)}
               placeholder="@username"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="github" className="text-foreground">
+            <Label htmlFor="github" className="text-ink">
               GitHub
             </Label>
             <Input
@@ -358,11 +363,11 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={github}
               onChange={(e) => setGithub(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="linkedin" className="text-foreground">
+            <Label htmlFor="linkedin" className="text-ink">
               LinkedIn
             </Label>
             <Input
@@ -371,18 +376,18 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={linkedin}
               onChange={(e) => setLinkedin(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-xl border-border bg-background text-foreground focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="email" className="text-foreground">
+            <Label htmlFor="email" className="text-ink">
               Email
             </Label>
             <Input
               id="email"
               defaultValue={user.email}
               disabled
-              className="h-11 rounded-xl border-border bg-muted/50 text-muted-foreground opacity-70"
+              className="h-11 rounded-xl border-line bg-field/50 text-ink-3 opacity-70"
             />
           </div>
           <div className="pt-2">
@@ -391,24 +396,24 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </form>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
+      <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
             <Bell className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Notifications</h2>
-            <p className="text-sm text-muted-foreground">Configure how you receive alerts.</p>
+            <h2 className="text-lg font-bold text-ink">Notifications</h2>
+            <p className="text-sm text-ink-3">Configure how you receive alerts.</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="email-notifs" className="text-base font-medium text-foreground">
+              <Label htmlFor="email-notifs" className="text-base font-medium text-ink">
                 Email Notifications
               </Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-ink-3">
                 Receive daily summaries of your subscribed topics.
               </p>
             </div>
@@ -416,10 +421,10 @@ export function SettingsForm({ user }: SettingsFormProps) {
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="settings-push-notifs" className="text-base font-medium text-foreground">
+              <Label htmlFor="settings-push-notifs" className="text-base font-medium text-ink">
                 Push Notifications
               </Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-ink-3">
                 Receive real-time alerts for mentions.
               </p>
             </div>
@@ -428,14 +433,14 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
+      <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
             <Shield className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Profile Privacy</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-lg font-bold text-ink">Profile Privacy</h2>
+            <p className="text-sm text-ink-3">
               Control who can view your profile and activity.
             </p>
           </div>
@@ -443,24 +448,21 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
         <div className="space-y-6">
           <div className="grid gap-3">
-            <Label className="text-base font-medium text-foreground">Privacy Level</Label>
+            <Label className="text-base font-medium text-ink">Privacy Level</Label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {PRIVACY_OPTIONS.map((option) => (
-                <button
+                <Button
                   key={option.value}
                   type="button"
+                  variant={profilePrivacy === option.value ? 'default' : 'outline'}
                   onClick={() => void handleUpdatePrivacy(option.value)}
-                  className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
-                    profilePrivacy === option.value
-                      ? 'border-brand bg-brand/10 text-brand'
-                      : 'border-border bg-background hover:bg-muted'
-                  }`}
+                  className="h-10"
                 >
                   {option.label}
-                </button>
+                </Button>
               ))}
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-3">
               {profilePrivacy === 'PUBLIC' && 'Your profile is visible to everyone.'}
               {profilePrivacy === 'PRIVATE' && 'Only you can view your profile.'}
               {profilePrivacy === 'FOLLOWERS_ONLY' && 'Only your followers can view your profile.'}

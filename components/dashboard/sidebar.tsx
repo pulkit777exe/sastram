@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -174,7 +175,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'bg-card rounded-2xl border border-border flex flex-col h-full transition-all duration-300 overflow-hidden',
+        'bg-surface rounded-2xl border border-line flex flex-col h-full transition-all duration-300 overflow-hidden',
         effectiveCollapsed ? 'w-16' : 'w-64'
       )}
     >
@@ -182,19 +183,16 @@ export function Sidebar({
         {!effectiveCollapsed && (
           <Link href="/dashboard" className="flex items-center gap-2" onClick={onNavigate}>
             <Logo brand className="h-5 w-5 shrink-0" />
-            <span className="font-semibold text-base text-foreground tracking-tight">Sastram</span>
+            <span className="font-semibold text-base text-ink tracking-tight">Sastram</span>
           </Link>
         )}
         {effectiveCollapsed && <div />}
         {!effectiveCollapsed && !mobile && (
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <button type="button"
-              onClick={toggleCollapse}
-              className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-            >
+            <Button variant="ghost" size="icon" onClick={toggleCollapse}>
               <AnimatedIcon icon={PanelLeftClose} size={18} animateOnHover />
-            </button>
+            </Button>
           </div>
         )}
         {!effectiveCollapsed && mobile && (
@@ -202,12 +200,9 @@ export function Sidebar({
         )}
         {effectiveCollapsed && (
           <div className="flex justify-center w-full">
-            <button type="button"
-              onClick={toggleCollapse}
-              className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-            >
+            <Button variant="ghost" size="icon" onClick={toggleCollapse}>
               <AnimatedIcon icon={PanelLeftOpen} size={18} animateOnHover />
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -226,13 +221,13 @@ export function Sidebar({
                 placeholder="Search with Sai..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-muted border border-border rounded-md py-1.5 pl-9 pr-12 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand"
+                className="w-full bg-field border border-line rounded-md py-1.5 pl-9 pr-12 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-brand"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                <kbd className="text-xs bg-background px-1 rounded border border-border text-muted-foreground">
+                <kbd className="text-xs bg-background px-1 rounded border border-line text-ink-3">
                   ⌘
                 </kbd>
-                <kbd className="text-xs bg-background px-1 rounded border border-border text-muted-foreground">
+                <kbd className="text-xs bg-background px-1 rounded border border-line text-ink-3">
                   F
                 </kbd>
               </div>
@@ -257,18 +252,18 @@ export function Sidebar({
             ))}
 
             <div className="mt-6 mb-2 px-3">
-              <p className="text-xs font-bold text-muted-foreground uppercase">Other</p>
+              <p className="text-xs font-bold text-ink-3 uppercase">Other</p>
             </div>
 
             <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false} onNavigate={onNavigate}></NavItem>
           </nav>
 
-          <div className="mx-3 mb-3 px-3 py-2 text-muted-foreground">
-            <div className="flex items-center gap-2 mb-1 text-foreground">
+          <div className="mx-3 mb-3 px-3 py-2 text-ink-3">
+            <div className="flex items-center gap-2 mb-1 text-ink">
               <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
               <p className="text-sm font-semibold">Boost with Sai</p>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ink-3">
               Sai-powered replies and tools that save hours.
             </p>
           </div>
@@ -295,19 +290,19 @@ export function Sidebar({
       )}
 
       <div
-        className="p-3 border-t border-border relative duration-300 transition-shadow"
+        className="p-3 border-t border-line relative duration-300 transition-shadow"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-linear-sm hover:bg-accent cursor-pointer transition-colors">
+        <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-3 shadow-linear-sm hover:bg-hover cursor-pointer transition-colors">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-medium">
+            <div className="w-8 h-8 rounded-full bg-field shrink-0 flex items-center justify-center text-xs font-medium text-ink">
               {name.charAt(0).toUpperCase()}
             </div>
             {!effectiveCollapsed && (
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-foreground">{name}</span>
-                <span className="text-xs text-muted-foreground truncate w-24">{email}</span>
+                <span className="text-xs font-semibold text-ink">{name}</span>
+                <span className="text-xs text-ink-3 truncate w-24">{email}</span>
               </div>
             )}
           </div>
@@ -322,14 +317,14 @@ export function Sidebar({
           <div
             ref={menuRef}
             className={cn(
-              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-border rounded-lg shadow-linear-lg overflow-hidden z-10',
+              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-line rounded-lg shadow-linear-lg overflow-hidden z-10',
               profileMenuClosing ? 'is-closing' : 'is-open'
             )}
             data-origin="bottom-left"
           >
             <Link
               href="/dashboard/settings/profile"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-hover transition-colors"
               onClick={onNavigate}
             >
               <AnimatedIcon icon={User} size={14} />
@@ -337,7 +332,7 @@ export function Sidebar({
             </Link>
             <Link
               href="/dashboard/settings"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-hover transition-colors"
               onClick={onNavigate}
             >
               <AnimatedIcon icon={Settings} size={14} />
@@ -345,19 +340,20 @@ export function Sidebar({
             </Link>
             <Link
               href="/dashboard/settings?tab=newsletters"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-popover-foreground hover:bg-hover transition-colors"
               onClick={onNavigate}
             >
               <AnimatedIcon icon={Mail} size={14} />
               <span>Newsletters</span>
             </Link>
-            <button type="button"
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full justify-start"
               onClick={() => { handleLogout(); onNavigate?.(); }}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full"
             >
               <AnimatedIcon icon={LogOut} size={14} className="text-destructive" />
               <span className="font-medium">Log out</span>
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -381,7 +377,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
       <div
         className={cn(
           'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
-          'text-muted-foreground hover:text-foreground hover:bg-accent',
+          'text-ink-3 hover:text-ink hover:bg-hover',
           collapsed && 'justify-center'
         )}
         title={collapsed ? label : undefined}
@@ -389,7 +385,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
         <AnimatedIcon
           icon={Icon}
           size={18}
-          className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
+          className="text-ink-3 group-hover:text-ink transition-colors shrink-0"
           animateOnHover
         />
         {!collapsed && <span className="text-sm font-medium">{label}</span>}
@@ -405,7 +401,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
         'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
         active
           ? 'bg-brand/5 text-brand shadow-linear-sm border-r-2 border-brand'
-          : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+          : 'text-ink-3 hover:text-ink hover:bg-hover',
         collapsed && 'justify-center'
       )}
       title={collapsed ? label : undefined}
@@ -415,7 +411,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
         size={18}
         className={cn(
           'transition-colors shrink-0',
-          active ? 'text-brand' : 'text-muted-foreground group-hover:text-foreground'
+          active ? 'text-brand' : 'text-ink-3 group-hover:text-ink'
         )}
         animateOnHover
       />

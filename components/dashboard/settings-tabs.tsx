@@ -23,7 +23,7 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
   }
 
   return (
-    <div className="border-b">
+    <div className="border-b border-line">
       <nav className="flex gap-1 overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -33,12 +33,12 @@ export function SettingsTabs({ activeTab }: { activeTab: string }) {
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={cn(
-                'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 cursor-pointer hover:bg-secondary',
-                isActive ? 'border-brand bg-muted-foreground/10 rounded' : 'border-transparent'
+                'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 cursor-pointer hover:bg-hover',
+                isActive ? 'border-brand bg-brand/5 rounded' : 'border-transparent'
               )}
             >
               <AnimatedIcon icon={Icon} size={16} animateOnHover />
-              <span>{tab.label}</span>
+              <span className={isActive ? 'text-brand' : 'text-ink-3'}>{tab.label}</span>
             </button>
           );
         })}
