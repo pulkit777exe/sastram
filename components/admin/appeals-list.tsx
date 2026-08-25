@@ -22,6 +22,7 @@ import {
 import { resolveAppeal } from '@/modules/appeals/actions';
 import { toasts } from '@/lib/utils/toast';
 import { Check, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Appeal {
   id: string;
@@ -116,7 +117,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 </TableCell>
                 <TableCell className="sticky right-0 bg-card z-10 text-right">
                   <div className="flex justify-end gap-2">
-                    <button type="button"
+                    <Button type="button" variant="ghost" size="icon-sm"
                       onClick={() => {
                         setSelectedAppeal(appeal);
                         setActionType('REJECT');
@@ -124,8 +125,8 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <X className="h-4 w-4" />
-                    </button>
-                    <button type="button"
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon-sm"
                       onClick={() => {
                         setSelectedAppeal(appeal);
                         setActionType('APPROVE');
@@ -133,7 +134,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                       className="text-green-600 hover:text-green-700 hover:bg-green/10"
                     >
                       <Check className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -174,10 +175,10 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
           )}
 
           <DialogFooter>
-            <button type="button" onClick={() => setSelectedAppeal(null)}>
+            <Button type="button" variant="outline" onClick={() => setSelectedAppeal(null)}>
               Cancel
-            </button>
-            <button type="button"
+            </Button>
+            <Button type="button"
               onClick={handleResolve}
               disabled={isProcessing}
             >
@@ -186,7 +187,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 : actionType === 'APPROVE'
                   ? 'Approve Appeal'
                   : 'Reject Appeal'}
-            </button>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

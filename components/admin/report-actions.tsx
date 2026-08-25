@@ -23,6 +23,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 
 interface ReportActionsProps {
   reportId: string;
@@ -103,22 +104,25 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
     <>
       <div className="flex gap-2 flex-wrap">
         {ACTION_OPTIONS.map((opt) => (
-          <button type="button"
+          <Button type="button"
             key={opt.value}
+            variant={
+              opt.value === 'DISMISS'
+                ? 'outline'
+                : opt.value === 'BAN_USER'
+                  ? 'destructive'
+                  : 'default'
+            }
             onClick={() => handleOpen(opt.value)}
             className={
-              opt.value === 'DISMISS'
-                ? 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
-                : opt.value === 'BAN_USER'
-                  ? 'bg-destructive hover:bg-destructive/90 text-white dark:bg-destructive/80 dark:hover:bg-destructive/70'
-                  : opt.value === 'REMOVE_MESSAGE'
-                    ? 'bg-amber-600 hover:bg-amber-500 text-white dark:bg-amber-700 dark:hover:bg-amber-600'
-                    : ''
+              opt.value === 'REMOVE_MESSAGE'
+                ? 'bg-amber-600 hover:bg-amber-500 text-white dark:bg-amber-700 dark:hover:bg-amber-600'
+                : ''
             }
           >
             {opt.value === 'DISMISS' && <XCircle className="w-4 h-4 mr-1" />}
             {opt.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -195,24 +199,31 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
           </div>
 
           <DialogFooter>
-            <button type="button" onClick={() => setOpen(false)} disabled={submitting}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
               Cancel
-            </button>
-            <button type="button"
+            </Button>
+            <Button type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className={
+              variant={
                 selectedAction === 'BAN_USER'
-                  ? 'bg-destructive hover:bg-destructive/90 text-white'
-                  : selectedAction === 'REMOVE_MESSAGE'
-                    ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                    : selectedAction === 'DISMISS'
-                      ? 'bg-muted hover:bg-muted/80 text-foreground'
-                      : 'bg-green-600 hover:bg-green-500 text-white'
+                  ? 'destructive'
+                  : selectedAction === 'DISMISS'
+                    ? 'outline'
+                    : 'default'
+              }
+              className={
+                selectedAction === 'REMOVE_MESSAGE'
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                  : selectedAction === 'DISMISS'
+                    ? 'bg-muted hover:bg-muted/80 text-foreground'
+                    : selectedAction !== 'BAN_USER'
+                      ? 'bg-green-600 hover:bg-green-500 text-white'
+                      : ''
               }
             >
               {submitting ? 'Submitting...' : 'Submit'}
-            </button>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

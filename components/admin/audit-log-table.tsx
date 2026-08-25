@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 
 interface AuditLogEntry {
   id: string;
@@ -78,9 +79,9 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
               <TableCell className="text-sm text-foreground">{entry.target}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{entry.performedBy}</TableCell>
               <TableCell className="text-right">
-                <button type="button" className="h-8 w-8">
+                <Button type="button" variant="ghost" size="icon-sm">
                   <MoreHorizontal className="w-4 h-4" />
-                </button>
+                </Button>
               </TableCell>
             </TableRow>
           ))}

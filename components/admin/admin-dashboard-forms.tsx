@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 import { createThreadAction, deleteThreadAction } from '@/modules/threads/actions';
 
@@ -54,22 +55,22 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
           </div>
 <div className="flex gap-3">
             <Link href="/dashboard/admin/reports">
-              <button type="button" className="bg-red-600 hover:bg-red-500 text-white">
+              <Button variant="destructive">
                 <Flag className="w-4 h-4 mr-2" />
                 View Reports
-              </button>
+              </Button>
             </Link>
             <Link href="/dashboard/admin/moderation">
-              <button type="button" className="border-white/20 text-white/70 hover:bg-white/10">
+              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
                 <Flag className="w-4 h-4 mr-2" />
                 Moderation
-              </button>
+              </Button>
             </Link>
             <Link href="/dashboard/admin/spend">
-              <button type="button" className="border-white/20 text-white/70 hover:bg-white/10">
+              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Spend Telemetry
-              </button>
+              </Button>
             </Link>
           </div>
         </div>
@@ -139,9 +140,9 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
                 </div>
               </div>
 
-              <button type="submit" className="w-full rounded-2xl">
+              <Button type="submit" className="w-full">
                 Publish thread
-              </button>
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -175,13 +176,14 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
                     </a>
                   </td>
                   <td className="py-3 text-right">
-                    <button type="button"
+                    <Button type="button"
+                      variant="ghost"
                       className="text-red-500 hover:text-red-600"
                       disabled={isPending}
                       onClick={() => handleDeleteThread(thread.id)}
                     >
                       Delete
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}

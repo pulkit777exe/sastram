@@ -5,6 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Merge, Check, X, Search, AlertTriangle } from 'lucide-react';
 import { toasts } from '@/lib/utils/toast';
 import { createTagAction, updateTagAction, deleteTagAction, mergeTagsAction } from '@/modules/tags/actions';
@@ -36,7 +47,6 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deleteClosing, setDeleteClosing] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
   const [mergeSource, setMergeSource] = useState('');
   const [mergeTarget, setMergeTarget] = useState('');
@@ -140,20 +150,20 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
               className="pl-9 h-9 text-sm"
             />
           </div>
-          <button type="submit" className="h-9">
+          <Button type="submit" variant="secondary">
             Search
-          </button>
+          </Button>
         </form>
 
-        <button type="button" onClick={() => setShowCreate(true)} className="h-9">
+        <Button type="button" onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4 mr-1.5" />
           New Tag
-        </button>
+        </Button>
 
-        <button type="button" onClick={() => setShowMerge(true)} className="h-9" disabled={tags.length < 2}>
+        <Button type="button" onClick={() => setShowMerge(true)} disabled={tags.length < 2}>
           <Merge className="w-4 h-4 mr-1.5" />
           Merge Tags
-        </button>
+        </Button>
       </div>
 
       {/* Create tag form */}
@@ -184,13 +194,13 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <button type="button" onClick={handleCreate} disabled={!newName.trim()} className="h-9">
+                <Button type="button" onClick={handleCreate} disabled={!newName.trim()}>
                   <Check className="w-3.5 h-3.5 mr-1" />
                   Create
-                </button>
-                <button type="button" onClick={() => setShowCreate(false)} className="h-9">
+                </Button>
+                <Button type="button" onClick={() => setShowCreate(false)} variant="outline" size="icon-sm">
                   <X className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -239,16 +249,15 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
-                <button type="button"
+                <Button type="button"
                   onClick={handleMerge}
                   disabled={!mergeSource || !mergeTarget || mergeSource === mergeTarget}
-                  className="h-9"
                 >
                   Merge
-                </button>
-                <button type="button" onClick={() => setShowMerge(false)} className="h-9">
+                </Button>
+                <Button type="button" onClick={() => setShowMerge(false)} variant="outline">
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -310,19 +319,18 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                           </td>
                           <td className="px-4 py-2 text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <button type="button"
+                              <Button type="button" variant="ghost" size="icon-sm"
                                 onClick={handleUpdate}
                                 disabled={!editName.trim()}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green/10"
+                                className="text-green-600 hover:text-green-700 hover:bg-green/10"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                              </button>
-                              <button type="button"
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon-sm"
                                 onClick={() => setEditingId(null)}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <X className="w-3.5 h-3.5" />
-                              </button>
+                              </Button>
                             </div>
                           </td>
                         </>
@@ -346,22 +354,21 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                              <button type="button"
+                              <Button type="button" variant="ghost" size="icon-sm"
                                 onClick={() => {
                                   setEditingId(tag.id);
                                   setEditName(tag.name);
                                   setEditColor(tag.color);
                                 }}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button type="button"
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon-sm"
                                 onClick={() => setDeletingId(tag.id)}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              </Button>
                             </div>
                           </td>
                         </>
@@ -379,9 +386,10 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button type="button"
+            <Button type="button"
               key={p}
-              className={`h-8 min-w-8 ${p === currentPage ? 'bg-primary text-primary-foreground' : ''}`}
+              variant={p === currentPage ? 'default' : 'outline'}
+              size="sm"
               onClick={() => {
                 const params = new URLSearchParams();
                 if (searchQuery) params.set('search', searchQuery);
@@ -390,51 +398,33 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
               }}
             >
               {p}
-            </button>
+            </Button>
           ))}
         </div>
       )}
 
       {/* Delete confirmation */}
-      {deletingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${deleteClosing ? 'opacity-0' : 'opacity-100'}`}
-            onClick={() => {
-              setDeleteClosing(true);
-              setTimeout(() => { setDeletingId(null); setDeleteClosing(false); }, 150);
-            }}
-          />
-          <Card className={`t-modal ${deleteClosing ? '' : 'is-open'} relative w-full max-w-sm mx-4 z-10`}>
-            <CardContent className="pt-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Delete tag?</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    This tag will be removed from{' '}
-                    <span className="font-medium">{tagMap.get(deletingId)?.threadCount ?? 0} threads</span>
-                    .
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => {
-                  setDeleteClosing(true);
-                  setTimeout(() => { setDeletingId(null); setDeleteClosing(false); }, 150);
-                }}>
-                  Cancel
-                </button>
-                <button type="button" onClick={handleDelete}>
-                  Delete
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Delete tag?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This tag will be removed from{' '}
+              <span className="font-medium">{tagMap.get(deletingId ?? '')?.threadCount ?? 0} threads</span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
