@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, Code2, Trash2, CornerDownRight, RefreshCw, Check } from 'lucide-react';
 import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
 
 export interface HistoryItem {
   id: string;
@@ -163,10 +164,11 @@ export function Sidebar({
         {isSelected && (
           <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-foreground" />
         )}
-        <button type="button"
+        <Button type="button"
           onClick={() => onSelectSession(item)}
           aria-current={isSelected ? 'true' : undefined}
-          className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors truncate flex items-center gap-1.5 ${
+          variant="ghost"
+          className={`w-full justify-start px-3 py-1.5 text-xs rounded-lg truncate h-auto ${
             isSelected
               ? 'bg-foreground/10 text-foreground font-medium'
               : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
@@ -175,16 +177,18 @@ export function Sidebar({
         >
           {depth > 0 && <CornerDownRight size={11} className="shrink-0 text-muted-foreground/40" />}
           <span className="truncate block flex-1">{label(item)}</span>
-        </button>
+        </Button>
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {!isPendingDelete && (
             <span className="text-xs text-muted-foreground/50 pointer-events-none">
               {item.sourceCount} src
             </span>
           )}
-          <button type="button"
+          <Button type="button"
             onClick={(e) => handleDeleteClick(item.id, e)}
-            className={`p-0.5 transition-colors rounded ${
+            variant="ghost"
+            size="icon-sm"
+            className={`p-0.5 ${
               isPendingDelete
                 ? 'text-destructive bg-destructive/10 opacity-100'
                 : 'text-muted-foreground/50 hover:text-destructive'
@@ -193,7 +197,7 @@ export function Sidebar({
             title={isPendingDelete ? 'Click again to delete' : 'Remove from history'}
           >
             {isPendingDelete ? <Check size={11} /> : <Trash2 size={11} />}
-          </button>
+          </Button>
         </span>
       </div>
     );
@@ -217,33 +221,35 @@ export function Sidebar({
 
   return (
     <div
-      className={`relative h-full flex flex-col bg-card border border-border rounded-2xl shadow-linear-md transition-all duration-250 ease-in-out overflow-hidden ${
+      className={`relative h-full flex flex-col bg-surface border border-line rounded-2xl shadow-linear-md transition-all duration-250 ease-in-out overflow-hidden ${
         collapsed ? 'w-0 border-0 p-0' : 'w-55'
       }`}
     >
       {!collapsed && (
         <>
           <div className="px-4 pt-4 pb-2">
-            <h2 className="text-sm font-semibold text-foreground tracking-tight">Sai</h2>
+            <h2 className="text-sm font-semibold text-ink tracking-tight">Sai</h2>
         </div>
 
           <div className="px-3 space-y-0.5">
-            <button type="button"
+            <Button type="button"
               onClick={onNewSearch}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-xs h-auto"
             >
               <Plus size={14} />
               New Search
-          </button>
+          </Button>
 
-            <button type="button"
+            <Button type="button"
               onClick={onOpenApiKeys}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-xs h-auto"
             >
               <Code2 size={14} />
               API Keys
               {hasApiKeys && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-chart-2" />}
-          </button>
+          </Button>
         </div>
 
           <div className="mx-3 my-3 h-px bg-border" />
@@ -254,15 +260,17 @@ export function Sidebar({
               <Search size={11} />
               History
           </span>
-            <button type="button"
+            <Button type="button"
               onClick={() => loadHistory(true)}
               disabled={loading}
               aria-label="Refresh search history"
               title="Refresh"
-              className="p-1 text-muted-foreground/60 hover:text-foreground rounded-md hover:bg-foreground/5 transition-colors disabled:opacity-40"
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground/60 hover:text-foreground"
             >
               <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
-          </button>
+          </Button>
         </div>
 
           <div

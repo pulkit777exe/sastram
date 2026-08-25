@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
  * TOOL CHIPS
@@ -117,11 +118,12 @@ export function ToolChips() {
   return (
     <div className="min-h-[220px] w-full max-w-md pb-1">
       {/* collapsed run header */}
-      <button
+      <Button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="-mx-1.5 flex w-fit items-center gap-1.5 rounded-control px-1.5 py-1 text-[12.5px] text-ink-2 transition-colors duration-100 hover:bg-hover-2 cursor-pointer"
+        variant="ghost"
+        className="-mx-1.5 w-fit items-center gap-1.5 rounded-control px-1.5 py-1 text-[12.5px] text-ink-2 h-auto"
       >
         <svg
           width="12"
@@ -138,7 +140,7 @@ export function ToolChips() {
           <path d="M6 9l6 6 6-6" />
         </svg>
         <span className="tabular-nums">4 tool calls, 2 messages</span>
-      </button>
+      </Button>
 
       {/* tool call rows */}
       <div
@@ -153,11 +155,12 @@ export function ToolChips() {
               const rowOpen = openRows.has(row.label);
               return (
                 <div key={row.label} style={{ animation: 'fade-up 300ms cubic-bezier(0.23,1,0.32,1) both' }}>
-                  <button
+                  <Button
                     type="button"
                     aria-expanded={rowOpen}
                     onClick={() => toggleRow(row.label)}
-                    className="group/row -mx-[3px] flex h-7 w-[calc(100%+6px)] min-w-0 items-center gap-2 rounded-control px-[3px] text-left transition-colors duration-100 hover:bg-hover-2 cursor-pointer"
+                    variant="ghost"
+                    className="group/row -mx-[3px] h-7 w-[calc(100%+6px)] min-w-0 items-center gap-2 rounded-control px-[3px] text-left justify-start"
                   >
                     <span className="relative flex size-4 shrink-0 items-center justify-center text-ink-3">
                       <svg
@@ -194,7 +197,7 @@ export function ToolChips() {
                     >
                       {row.chip}
                     </span>
-                  </button>
+                  </Button>
 
                   {/* expanded detail */}
                   <div
@@ -241,15 +244,16 @@ export function ToolChips() {
                   {d.del > 0 && <span className="shrink-0 text-red tabular-nums">−{d.del}</span>}
                 </span>
               ))}
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 className="inline-flex h-7 items-center rounded-chip px-1.5 font-mono text-[11.5px] text-ink-3
                   underline decoration-transparent underline-offset-2 transition-colors duration-100
-                  hover:text-ink-2 hover:decoration-current cursor-pointer"
+                  hover:text-ink-2 hover:decoration-current"
                 style={{ animation: `fade-in 300ms ease-out ${DIFFS.length * 80}ms both` }}
               >
                 +2 more
-              </button>
+              </Button>
             </div>
           )}
         </div>

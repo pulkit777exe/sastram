@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Source } from '@/modules/ai-search/types';
 import { toasts } from '@/lib/utils/toast';
+import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
  * STREAMING TEXT
@@ -239,11 +240,12 @@ export function StreamingText({
         style={{ opacity: done ? 1 : 0, pointerEvents: done ? 'auto' : 'none' }}
       >
         {/* Copy */}
-        <button
+        <Button
           type="button"
           onClick={handleCopy}
           aria-label={copied ? 'Copied' : 'Copy'}
-          className={`flex size-6 items-center justify-center rounded-[6px] transition-colors duration-100 hover:bg-hover-2 ${
+          variant="ghost"
+          className={`size-6 rounded-[6px] transition-colors duration-100 hover:bg-hover-2 ${
             copied ? 'text-sai-green' : 'text-ink-3 hover:text-ink-2'
           }`}
         >
@@ -259,21 +261,22 @@ export function StreamingText({
               </g>
             </svg>
           )}
-        </button>
+        </Button>
 
         {/* Retry/Regenerate */}
         <div ref={retryRef} className="relative">
-          <button
+          <Button
             type="button"
             onClick={() => { setShowRetryPopover((o) => !o); }}
             aria-label="Regenerate"
-            className="flex size-6 items-center justify-center rounded-[6px] text-ink-3
+            variant="ghost"
+            className="size-6 rounded-[6px] text-ink-3
               transition-colors duration-100 hover:bg-hover-2 hover:text-ink-2"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
             </svg>
-          </button>
+          </Button>
           {showRetryPopover && (
             <div
               className="absolute left-0 bottom-full z-20 mb-2 w-56 rounded-[10px] bg-surface p-1 shadow-raised"
@@ -281,27 +284,29 @@ export function StreamingText({
             >
               <p className="px-2 pt-1.5 pb-1 text-[11px] font-medium text-ink-3 uppercase tracking-wider">Regenerate as</p>
               {RETRY_STYLES.map((s) => (
-                <button
+                <Button
                   key={s.key}
                   type="button"
                   onClick={() => handleRetry(s.key)}
-                  className="flex w-full flex-col rounded-[6px] px-2 py-1.5 text-left transition-colors duration-100 hover:bg-hover"
+                  variant="ghost"
+                  className="w-full flex-col items-start rounded-[6px] px-2 py-1.5 text-left h-auto"
                 >
                   <span className="text-[12.5px] font-medium text-ink">{s.label}</span>
                   <span className="text-[11px] text-ink-3">{s.desc}</span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
         </div>
 
         {/* Upvote */}
-        <button
+        <Button
           type="button"
           onClick={handleUpvote}
           aria-label="Helpful"
           disabled={feedbackGiven !== null}
-          className={`flex size-6 items-center justify-center rounded-[6px] transition-colors duration-100 ${
+          variant="ghost"
+          className={`size-6 rounded-[6px] transition-colors duration-100 ${
             feedbackGiven === 'up'
               ? 'text-sai-green'
               : feedbackGiven === 'down'
@@ -312,16 +317,17 @@ export function StreamingText({
           <svg width="15" height="15" viewBox="0 0 24 24" fill={feedbackGiven === 'up' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M7 10v12M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z" />
           </svg>
-        </button>
+        </Button>
 
         {/* Downvote */}
         <div ref={dislikeRef} className="relative">
-          <button
+          <Button
             type="button"
             onClick={handleDownvote}
             aria-label="Not helpful"
             disabled={feedbackGiven === 'up'}
-            className={`flex size-6 items-center justify-center rounded-[6px] transition-colors duration-100 ${
+            variant="ghost"
+            className={`size-6 rounded-[6px] transition-colors duration-100 ${
               feedbackGiven === 'down'
                 ? 'text-sai-red'
                 : feedbackGiven === 'up'
@@ -332,7 +338,7 @@ export function StreamingText({
             <svg width="15" height="15" viewBox="0 0 24 24" fill={feedbackGiven === 'down' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 14V2M9 18.12L10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88z" />
             </svg>
-          </button>
+          </Button>
           {showDislikePopover && (
             <div
               className="absolute right-0 bottom-full z-20 mb-2 w-60 rounded-[10px] bg-surface p-2 shadow-raised"
@@ -341,11 +347,12 @@ export function StreamingText({
               <p className="px-1 pb-1.5 text-[12px] font-medium text-ink">What didn&apos;t you like?</p>
               <div className="space-y-0.5">
                 {DISLIKE_REASONS.map((r) => (
-                  <button
+                  <Button
                     key={r.key}
                     type="button"
                     onClick={() => setDislikeReason(r.key)}
-                    className={`flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] transition-colors duration-100 ${
+                    variant="ghost"
+                    className={`w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left h-auto ${
                       dislikeReason === r.key
                         ? 'bg-hover text-ink font-medium'
                         : 'text-ink-2 hover:bg-hover hover:text-ink'
@@ -353,36 +360,38 @@ export function StreamingText({
                   >
                     <span className={`size-3.5 rounded-full border ${dislikeReason === r.key ? 'border-ink bg-ink/10' : 'border-line-strong'}`} />
                     {r.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <div className="mt-1.5 flex gap-1.5 px-1">
-                <button
+                <Button
                   type="button"
                   onClick={() => { setShowDislikePopover(false); setDislikeReason(null); }}
-                  className="flex-1 rounded-[6px] border border-line py-1 text-[11px] text-ink-2 transition-colors hover:bg-hover"
+                  variant="outline"
+                  className="flex-1 rounded-[6px] py-1 text-[11px]"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={handleDislikeSubmit}
                   disabled={!dislikeReason}
-                  className="flex-1 rounded-[6px] bg-ink py-1 text-[11px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-30"
+                  className="flex-1 rounded-[6px] bg-ink py-1 text-[11px] font-medium text-canvas"
                 >
                   Submit
-                </button>
+                </Button>
               </div>
             </div>
           )}
         </div>
 
         {displayedSources.length > 0 && (
-          <button
+          <Button
             type="button"
             aria-expanded={sourcesOpen}
             onClick={() => setSourcesOpen((o) => !o)}
-            className="ml-1.5 flex items-center gap-1.5 rounded-[6px] px-1 py-0.5 text-left transition-colors duration-150 hover:bg-hover"
+            variant="ghost"
+            className="ml-1.5 items-center gap-1.5 rounded-[6px] px-1 py-0.5 h-auto"
           >
             <span className="flex -space-x-1">
               {displayedSources.slice(0, 3).map((s) => (
@@ -397,7 +406,7 @@ export function StreamingText({
               ))}
             </span>
             <span className="text-[12px] text-ink-2">{displayedSources.length} source{displayedSources.length !== 1 ? 's' : ''}</span>
-          </button>
+          </Button>
         )}
       </div>
 
@@ -444,11 +453,11 @@ export function StreamingText({
           <p className="text-[12px] font-medium text-ink-2">Follow-ups</p>
           <div className="mt-0.5 flex flex-col">
             {followUps.map((fText, i) => (
-              <button type="button"
+              <Button type="button"
                 key={fText}
-                className="-mx-1.5 flex items-center gap-2 rounded-[7px] border-b border-line
-                  px-1.5 py-1.5 text-left text-[12.5px] text-ink transition-colors
-                  duration-100 hover:bg-hover-2"
+                variant="ghost"
+                className="-mx-1.5 items-center gap-2 rounded-[7px] border-b border-line
+                  px-1.5 py-1.5 text-left h-auto"
                 style={
                   done
                     ? { animation: `fade-up 350ms cubic-bezier(0.23,1,0.32,1) ${i * 90}ms both` }
@@ -470,7 +479,7 @@ export function StreamingText({
                   <path d="M20 4v7a4 4 0 0 1-4 4H4" />
                 </svg>
                 {fText}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

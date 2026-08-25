@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
  * TASK ROWS
@@ -162,11 +163,12 @@ export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
               animation: `fade-up 450ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both`,
             }}
           >
-            <button
+            <Button
               type="button"
               aria-expanded={open}
               onClick={() => toggle(task.key)}
-              className="flex h-11 w-full items-center gap-2.5 px-2.5 text-left transition-colors duration-100 hover:bg-inset"
+              variant="ghost"
+              className="h-11 w-full items-center gap-2.5 px-2.5 text-left justify-start rounded-none"
             >
               <span className="flex size-6 shrink-0 items-center justify-center">
                 <StatusBadge status={task.status} index={i} />
@@ -197,7 +199,7 @@ export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </span>
-            </button>
+            </Button>
 
             {/* Expandable detail */}
             <div

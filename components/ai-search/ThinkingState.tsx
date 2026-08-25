@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { SSEPhase } from './PhaseTracker';
+import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
  * THINKING STATE — expandable agent trace
@@ -105,12 +106,12 @@ export function ThinkingState({
   return (
     <div className="flex w-full flex-col">
       {/* Header toggle */}
-      <button
+      <Button
         type="button"
         aria-expanded={expanded}
         onClick={() => setManualExpanded((v) => !(v ?? autoExpanded))}
-        className="-mx-1.5 flex w-fit items-center gap-2 rounded-control px-1.5 py-1
-          transition-colors duration-100 hover:bg-hover-2 cursor-pointer"
+        variant="ghost"
+        className="-mx-1.5 w-fit items-center gap-2 rounded-control px-1.5 py-1 h-auto"
       >
         {isLoading && !isDone ? (
           <LoadingState label={activeLabel} variant="Drive" />
@@ -151,7 +152,7 @@ export function ThinkingState({
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
-      </button>
+      </Button>
 
       {/* Expandable trace body */}
       <div

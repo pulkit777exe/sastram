@@ -81,13 +81,13 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
   }, [currentPhase, isTerminal]);
 
   return (
-    <div className="w-full space-y-2 rounded-card border border-border/50 bg-card/60 p-3 shadow-xs backdrop-blur-xs">
+    <div className="w-full space-y-2 rounded-card border border-line/50 bg-surface/60 p-3 shadow-xs backdrop-blur-xs">
       {/* Header bar with total time elapsed */}
-      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground px-1">
-        <span className="flex items-center gap-1.5 font-semibold text-foreground">
+      <div className="flex items-center justify-between text-xs font-medium text-ink-3 px-1">
+        <span className="flex items-center gap-1.5 font-semibold text-ink">
           Processing Request
         </span>
-        <span className="flex items-center gap-1 text-muted-foreground/80 font-mono">
+        <span className="flex items-center gap-1 text-ink-3/80 font-mono">
           <Clock size={12} className="shrink-0" />
           {formatDuration(totalElapsed)}
         </span>

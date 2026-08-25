@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Filter } from 'lucide-react';
 
 import type { SearchConfig } from '@/modules/ai-search/types';
+import { Button } from '@/components/ui/button';
 
 interface SearchBoxProps {
   onSearch: (query: string, config: SearchConfig) => void;
@@ -119,18 +120,20 @@ export function SearchBox({
       {!compact && (
         <div className="flex items-center gap-2 mb-3">
           <div className="relative">
-            <button
+            <Button
               type="button"
               onClick={() => setSourceOpen((o) => !o)}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-control border border-line text-ink-2 hover:border-line-strong hover:text-ink transition-colors"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
             >
               <Filter size={12} />
               {SOURCE_FILTERS.find((f) => f.value === sourceFilter)?.label ?? 'All Sources'}
-            </button>
+            </Button>
             {sourceOpen && (
               <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-card bg-surface border border-line p-1 shadow-xl">
                 {SOURCE_FILTERS.map((f) => (
-                  <button
+                  <Button
                     key={f.value}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -138,7 +141,9 @@ export function SearchBox({
                       setSourceFilter(f.value);
                       setSourceOpen(false);
                     }}
-                    className="flex h-8 w-full items-center gap-2 rounded-control px-2 text-left text-sm transition-colors hover:bg-hover"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-between rounded-control text-left h-auto"
                   >
                     <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
                       {f.label}
@@ -148,7 +153,7 @@ export function SearchBox({
                         <path d="M20 6L9 17l-5-5" />
                       </svg>
                     )}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -180,11 +185,11 @@ export function SearchBox({
               }}
             />
             {rows.map((row, i) => (
-              <button
+              <Button
                 key={row.key}
                 type="button"
                 ref={(el) => {
-                  rowRefs.current[i] = el;
+                  rowRefs.current[i] = el as unknown as HTMLButtonElement;
                 }}
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => {
@@ -192,7 +197,8 @@ export function SearchBox({
                   setEngaged(true);
                 }}
                 onClick={() => pick(row)}
-                className="relative z-10 flex h-9 w-full items-center gap-2.5 rounded-[6px] px-2 text-left"
+                variant="ghost"
+                className="relative z-10 h-9 w-full items-center gap-2.5 rounded-[6px] px-2 text-left justify-start"
               >
                 <span className="shrink-0 text-[12.5px] font-medium text-ink font-mono">
                   {row.name}
@@ -200,7 +206,7 @@ export function SearchBox({
                 <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">
                   {row.desc}
                 </span>
-              </button>
+              </Button>
             ))}
             <div className="mt-1 border-t border-line px-2 pt-1.5 pb-1 text-[11px] text-ink-2">
               Type to search commands · ↑↓ to navigate · Enter to pick
@@ -269,13 +275,15 @@ export function SearchBox({
 
             {/* Model picker */}
             <div className="relative col-start-1 row-start-2">
-              <button
+              <Button
                 ref={modelRef}
                 type="button"
                 aria-expanded={modelOpen}
                 aria-label="Choose search mode"
                 onClick={() => setModelOpen((o) => !o)}
-                className="flex h-6 shrink-0 items-center gap-1 px-2 text-[11px] font-medium text-ink-2 border border-line rounded-md transition-colors duration-150 hover:border-line-strong hover:text-ink"
+                variant="outline"
+                size="sm"
+                className="h-6 shrink-0 gap-1 text-[11px] font-medium"
               >
                 {model.name}
                 <svg
@@ -290,7 +298,7 @@ export function SearchBox({
                 >
                   <path d="M6 9l6 6 6-6" />
                 </svg>
-              </button>
+              </Button>
 
               {modelOpen && (
                 <div
@@ -301,7 +309,7 @@ export function SearchBox({
                   }}
                 >
                   {MODELS.map((m) => (
-                    <button
+                    <Button
                       key={m.key}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
@@ -310,7 +318,8 @@ export function SearchBox({
                         setModelOpen(false);
                         inputRef.current?.focus();
                       }}
-                      className="flex h-7.5 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors duration-100 hover:bg-hover"
+                      variant="ghost"
+                      className="w-full items-center gap-2 rounded-[6px] px-2 text-left h-auto py-1.5"
                     >
                       <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">
                         {m.name}
@@ -331,7 +340,7 @@ export function SearchBox({
                           <path d="M20 6L9 17l-5-5" />
                         </svg>
                       </span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
@@ -342,25 +351,27 @@ export function SearchBox({
                 {sourceFilter !== 'all' && (
                   <span className="inline-flex h-4.5 items-center rounded px-1 text-[10px] text-ink bg-hover gap-0.5">
                     {SOURCE_FILTERS.find((f) => f.value === sourceFilter)?.label}
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setSourceFilter('all')}
+                      variant="ghost"
+                      size="icon-sm"
                       className="text-ink-2 hover:text-ink"
                     >
                       ×
-                    </button>
+                    </Button>
                   </span>
                 )}
               </span>
             )}
 
             {/* Send */}
-            <button
+            <Button
               type="button"
               aria-label="Send"
               disabled={!canSend}
               onClick={send}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
+              className="size-9 shrink-0 rounded-full transition-all duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
               style={{
                 background: canSend ? 'var(--sai-accent)' : 'var(--field)',
                 color: canSend ? 'white' : 'var(--ink-2)',
@@ -378,7 +389,7 @@ export function SearchBox({
               >
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
         </div>
