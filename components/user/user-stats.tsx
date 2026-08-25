@@ -40,11 +40,11 @@ export function UserStats({
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="rounded-lg border bg-card p-4 text-center"
+          className="rounded-lg border border-line bg-surface p-4 text-center"
         >
           <stat.icon className={cn('h-5 w-5 mx-auto mb-2', stat.color)} />
-          <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-          <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
+          <div className="text-2xl font-bold text-ink">{stat.value}</div>
+          <div className="text-xs text-ink-3 mt-1">{stat.label}</div>
         </div>
       ))}
     </div>

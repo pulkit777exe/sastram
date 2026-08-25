@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageSquare, AtSign, Bell, Reply, Pin, CheckCheck, Inbox } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
+import { Button } from '@/components/ui/button';
 import {
   getNotifications,
   markNotificationRead,
@@ -204,14 +205,15 @@ export function NotificationList({ notifications: initial }: NotificationListPro
       {unreadCount > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">{unreadCount} unread</span>
-          <button type="button"
+          <Button type="button"
+            variant="link"
             onClick={handleMarkAllRead}
             disabled={isPending}
-            className="text-xs text-brand hover:text-brand"
+            className="text-xs h-auto p-0"
           >
             <CheckCheck size={14} className="mr-1" />
             Mark all read
-          </button>
+          </Button>
         </div>
       )}
 
@@ -230,11 +232,13 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                 {items.map((notification) => {
                   const Icon = TYPE_ICONS[notification.type] ?? TYPE_ICONS.DEFAULT;
                   return (
-                    <button type="button"
+                    <Button
+                      type="button"
                       key={notification.id}
+                      variant="ghost"
                       onClick={() => void handleClick(notification)}
                       className={cn(
-                        'w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all hover:bg-muted/50',
+                        'w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all hover:bg-muted/50 justify-start h-auto',
                         !notification.isRead && 'bg-brand/5 border border-brand/10'
                       )}
                     >
@@ -275,7 +279,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                       {!notification.isRead && (
                         <div className="mt-2 w-2 h-2 rounded-full bg-brand shrink-0" />
                       )}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>

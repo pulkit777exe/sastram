@@ -6,6 +6,7 @@ import { toasts } from '@/lib/utils/toast';
 import { submitFeedback } from '@/modules/feedback/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -60,12 +61,12 @@ export function FeedbackWidget() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button type="button"
-          className="fixed bottom-4 right-4 z-40 rounded-full shadow-lg h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5"
+        <Button type="button"
+          className="fixed bottom-4 right-4 z-40 rounded-full shadow-lg h-10 px-4"
         >
           <MessageSquarePlus className="h-4 w-4" />
           <span className="hidden sm:inline">Feedback</span>
-        </button>
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -106,15 +107,15 @@ export function FeedbackWidget() {
         </div>
 
         <DialogFooter>
-          <button type="button" onClick={() => setOpen(false)} disabled={submitting}>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
             Cancel
-          </button>
-          <button type="button"
+          </Button>
+          <Button type="button"
             onClick={handleSubmit}
             disabled={submitting || message.trim().length < 10}
           >
             {submitting ? 'Sending…' : 'Submit'}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
