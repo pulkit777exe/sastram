@@ -82,7 +82,7 @@ export function DashboardShell({
       <aside className="h-full shrink-0">
         <Sidebar name={name} email={email} role={role} />
       </aside>
-      <div className="flex flex-1 flex-col bg-surface rounded-2xl border border-line overflow-hidden">
+      <div className="flex flex-1 flex-col bg-surface rounded-card border border-line overflow-hidden">
         <main id="main-content" className="flex-1 overflow-y-auto p-8 text-ink">
           {children}
         </main>

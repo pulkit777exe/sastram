@@ -67,7 +67,7 @@ export default async function ProfilePage() {
             Manage your profile settings, newsletter subscriptions, and preferences from the
             Settings page.
           </p>
-          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          <div className="rounded-card border border-dashed p-6 text-center text-sm text-muted-foreground">
             <Link
               href="/dashboard/settings"
               className="text-brand hover:text-brand/80 underline"

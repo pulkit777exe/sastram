@@ -35,7 +35,7 @@ export function MessageGrid({ messages }: MessageGridProps) {
       {messages.map((message) => (
         <div key={message.id}>
           <Link href={ROUTES.THREAD(message.section.slug)}>
-            <div className="group flex flex-col gap-2 rounded-xl bg-surface border border-line p-5 shadow-linear-sm transition-all hover:shadow-linear-md hover:border-brand/20 hover:bg-hover/50">
+            <div className="group flex flex-col gap-2 rounded-card bg-surface border border-line p-5 shadow-linear-sm transition-all hover:shadow-linear-md hover:border-brand/20 hover:bg-hover/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium text-ink">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-field text-brand">

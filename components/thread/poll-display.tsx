@@ -150,7 +150,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-line bg-surface p-5 space-y-4 shadow-sm max-w-lg"
+      className="rounded-card border border-line bg-surface p-5 space-y-4 shadow-sm max-w-lg"
     >
       <div className="flex items-start justify-between">
         <h3 className="text-sm font-semibold text-ink tracking-tight">{poll.question}</h3>
@@ -202,10 +202,10 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
                   aria-checked={isSelected}
                   aria-label={`Vote for: ${option}`}
                   className={cn(
-                    'w-full text-left px-3.5 py-2 rounded-lg border text-sm font-medium transition-all duration-200',
+                    'w-full text-left px-3.5 py-2 rounded-control border text-sm font-medium transition-all duration-200',
                     isSelected
                       ? 'bg-brand/10 border-brand text-brand'
-                      : 'bg-transparent border-border/60 text-foreground hover:border-border hover:bg-muted/20 disabled:opacity-50'
+                      : 'bg-transparent border-line/60 text-foreground hover:border-line hover:bg-muted/20 disabled:opacity-50'
                   )}
                 >
                   {option}

@@ -17,7 +17,7 @@ export default async function TagDetailPage({ params }: { params: { slug: string
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <header className="rounded-4xl border border-border admin-header-gradient p-4 md:p-8 text-white shadow-linear-xl">
+      <header className="rounded-4xl border border-line admin-header-gradient p-4 md:p-8 text-white shadow-linear-xl">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors mb-4"
@@ -27,7 +27,7 @@ export default async function TagDetailPage({ params }: { params: { slug: string
         </Link>
         <div className="flex items-center gap-3">
           <div
-            className="h-10 w-10 rounded-xl flex items-center justify-center"
+            className="h-10 w-10 rounded-card flex items-center justify-center"
             style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
           >
             <Hash size={20} />

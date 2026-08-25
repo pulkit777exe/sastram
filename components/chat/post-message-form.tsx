@@ -181,7 +181,7 @@ export function PostMessageForm({
 
       {selectedFile && (
         <div
-          className={`absolute ${replyTo ? '-top-20' : '-top-11'} left-0 bg-muted/90 backdrop-blur border border-border px-3 py-1.5 rounded-t-card text-xs flex items-center gap-2 shadow-linear-sm z-10`}
+          className={`absolute ${replyTo ? '-top-20' : '-top-11'} left-0 bg-muted/90 backdrop-blur border border-line px-3 py-1.5 rounded-t-card text-xs flex items-center gap-2 shadow-linear-sm z-10`}
         >
           <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="truncate max-w-50 text-foreground font-medium">{selectedFile.name}</span>

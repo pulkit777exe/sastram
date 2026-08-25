@@ -34,7 +34,7 @@ export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCar
             <Link
               key={thread.id}
               href={href}
-              className="group block rounded-lg border border-border/50 p-3 transition-colors hover:border-border hover:bg-background"
+              className="group block rounded-control border border-line/50 p-3 transition-colors hover:border-line hover:bg-background"
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-semibold leading-snug text-foreground group-hover:text-foreground">

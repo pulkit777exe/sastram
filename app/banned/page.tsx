@@ -36,7 +36,7 @@ export default async function BannedPage() {
         }}
       />
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-card border border-border rounded-2xl p-8 shadow-linear-xl space-y-6 text-center">
+        <div className="max-w-md w-full bg-surface border border-line rounded-card p-8 shadow-linear-xl space-y-6 text-center">
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500 text-3xl">
             Restricted
           </div>
@@ -52,7 +52,7 @@ export default async function BannedPage() {
           </div>
 
           {ban && (
-            <div className="bg-muted/50 p-4 rounded-xl text-left space-y-3 text-sm">
+            <div className="bg-muted/50 p-4 rounded-card text-left space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Reason:</span>
                 <span className="font-medium">{ban.reason}</span>
@@ -74,7 +74,7 @@ export default async function BannedPage() {
             </div>
           )}
 
-          <div className="text-xs text-muted-foreground pt-4 border-t border-border">
+          <div className="text-xs text-muted-foreground pt-4 border-t border-line">
             If you believe this is a technical error, contact support@sastram.com
           </div>
         </div>

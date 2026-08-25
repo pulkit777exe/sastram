@@ -44,7 +44,7 @@ export function ProfileHeader({
     .slice(0, 2);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-line bg-surface animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
+    <div className="relative overflow-hidden rounded-card border border-line bg-surface animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
       {/* Banner */}
       <div className="relative h-48 w-full bg-linear-to-r from-primary/20 via-primary/10 to-primary/20 dark:from-primary/30 dark:via-primary/20 dark:to-primary/30">
         {user.bannerUrl && (

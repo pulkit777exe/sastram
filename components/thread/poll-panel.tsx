@@ -166,7 +166,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-line/60 bg-surface/70 overflow-hidden">
+    <div className="mb-4 rounded-card border border-line/60 bg-surface/70 overflow-hidden">
       {/* ── Header / Collapse trigger ── */}
       <button
         type="button"
@@ -218,7 +218,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
 
       {/* ── Collapsible body ── */}
       <div className="t-panel-slide" data-open={isCollapsed ? 'false' : 'true'}>
-        <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
+        <div className="px-4 pb-4 space-y-3 border-t border-line/40 pt-3">
               {poll ? (
                 <div className="space-y-3">
                   <PollDisplay poll={poll} pollResults={pollResults} refreshKey={pollRefreshKey} />

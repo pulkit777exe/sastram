@@ -154,7 +154,7 @@ function ReportCard({ report }: { report: Report }) {
           </div>
         </div>
 
-        <div className="bg-field rounded-lg p-4 mb-4 border border-line/50">
+        <div className="bg-field rounded-control p-4 mb-4 border border-line/50">
           <p className="text-xs text-ink-3 mb-1">Reported Message:</p>
           <p className="text-sm text-ink">{report.message.content}</p>
         </div>

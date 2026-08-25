@@ -84,7 +84,7 @@ export function OtpInput({
           onKeyDown={(e) => handleKeyDown(index, e)}
           disabled={disabled}
           autoFocus={autoFocus && index === 0}
-          className="w-10 h-12 text-center text-lg font-semibold border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50"
+          className="w-10 h-12 text-center text-lg font-semibold border border-line rounded-control bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50"
           aria-label={`Digit ${index + 1}`}
         />
       ))}

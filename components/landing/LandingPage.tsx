@@ -143,22 +143,22 @@ function DashboardPreview() {
   ];
 
   return (
-    <div className="w-full bg-background rounded-xl border border-border shadow-linear-xl overflow-hidden text-left">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/80">
+    <div className="w-full bg-background rounded-card border border-line shadow-linear-xl overflow-hidden text-left">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-line bg-muted/80">
         <div className="flex gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
           <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
           <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
         </div>
         <div className="flex-1 mx-4">
-          <div className="h-7 bg-background border border-border rounded-md flex items-center px-3 gap-2">
+          <div className="h-7 bg-background border border-line rounded-md flex items-center px-3 gap-2">
             <Search size={12} className="text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Search threads, messages, users…</span>
           </div>
         </div>
       </div>
       <div className="flex min-h-70">
-        <div className="w-44 border-r border-border bg-muted/50 p-3 hidden sm:block">
+        <div className="w-44 border-r border-line bg-muted/50 p-3 hidden sm:block">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Communities
           </p>
@@ -183,7 +183,7 @@ function DashboardPreview() {
             {threads.map((t) => (
               <div
                 key={t.name}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs ${t.active ? 'border-brand/20 bg-brand/5' : 'border-border bg-background'}`}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-control border text-xs ${t.active ? 'border-brand/20 bg-brand/5' : 'border-line bg-background'}`}
               >
                 <div className="min-w-0">
                   <p className="font-medium text-foreground truncate">{t.name}</p>
@@ -204,7 +204,7 @@ function DashboardPreview() {
 function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
   if (type === 'threads') {
     return (
-      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-brand/20 via-brand/5 to-emerald-500/10 p-6">
+      <div className="relative w-full aspect-[4/3] rounded-card overflow-hidden bg-gradient-to-br from-brand/20 via-brand/5 to-emerald-500/10 p-6">
         <div className="absolute inset-0 opacity-30">
           {Array.from({ length: 12 }).map((_, i) => (
             <div
@@ -218,18 +218,18 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
             />
           ))}
         </div>
-        <div className="relative bg-background/90 backdrop-blur rounded-xl border border-white/60 p-4 shadow-linear-lg">
+        <div className="relative bg-background/90 backdrop-blur rounded-card border border-white/60 p-4 shadow-linear-lg">
           <div className="space-y-2">
             {['How do we handle concurrent edits?', 'WebSocket reconnect logic?'].map((msg, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <div className="w-6 h-6 rounded-full bg-brand/20 flex-none" />
-                <div className="bg-muted rounded-lg px-3 py-2 text-xs text-foreground/80 flex-1">
+                <div className="bg-muted rounded-control px-3 py-2 text-xs text-foreground/80 flex-1">
                   {msg}
                 </div>
               </div>
             ))}
             <div className="flex gap-2 items-start justify-end">
-              <div className="bg-brand text-white rounded-lg px-3 py-2 text-xs">
+              <div className="bg-brand text-white rounded-control px-3 py-2 text-xs">
                 Streaming reply…
               </div>
             </div>
@@ -241,7 +241,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
 
   if (type === 'ai') {
     return (
-      <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-950 p-5 font-mono text-xs leading-relaxed">
+      <div className="w-full aspect-[4/3] rounded-card overflow-hidden bg-zinc-950 p-5 font-mono text-xs leading-relaxed">
         <div className="flex items-center gap-2 mb-4">
           <div className="flex gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-500/80" />
@@ -283,7 +283,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
   }
 
   return (
-    <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden border border-border bg-background p-5">
+    <div className="w-full aspect-[4/3] rounded-card overflow-hidden border border-line bg-background p-5">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
         Sai Search Results
       </p>
@@ -293,7 +293,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
           { title: 'Message by @alex — vector stores', score: 0.87, highlight: 'embedding models' },
           { title: 'Thread: Evaluation frameworks', score: 0.81, highlight: 'recall metrics' },
         ].map((r) => (
-          <div key={r.title} className="border border-border rounded-lg p-3">
+          <div key={r.title} className="border border-line rounded-control p-3">
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-medium text-foreground">{r.title}</p>
               <span className="text-xs text-brand font-mono">{r.score}</span>
@@ -346,7 +346,7 @@ export function LandingPage({ user }: LandingPageProps) {
             <FadeIn delay={0.16}>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-all text-sm"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-medium rounded-control hover:bg-primary/90 transition-all text-sm"
               >
                 Start for free
                 <ArrowRight size={15} />
@@ -355,14 +355,14 @@ export function LandingPage({ user }: LandingPageProps) {
           </div>
 
           <FadeIn className="max-w-5xl mx-auto mt-14 relative z-10" delay={0.24} y={30}>
-            <div className="relative rounded-2xl overflow-hidden">
+            <div className="relative rounded-card overflow-hidden">
               <DashboardPreview />
             </div>
           </FadeIn>
         </section>
 
         {/* Capability strip */}
-        <section className="py-8 border-y border-border overflow-hidden">
+        <section className="py-8 border-y border-line overflow-hidden">
           <div className="flex items-center justify-center gap-8 md:gap-12 px-6 flex-wrap">
             {capabilities.map((label) => (
               <span
@@ -405,7 +405,7 @@ export function LandingPage({ user }: LandingPageProps) {
                       >
                         Learn more <ChevronRight size={14} />
                       </Link>
-                      <div className="mt-8 p-5 rounded-xl bg-muted border border-border">
+                      <div className="mt-8 p-5 rounded-card bg-muted border border-line">
                         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
                           {row.quote.source}
                         </p>
@@ -435,7 +435,7 @@ export function LandingPage({ user }: LandingPageProps) {
                   { icon: Shield, label: 'Safety', desc: 'Moderation and membership by default' },
                 ].map(({ icon: Icon, label, desc }) => (
                   <div key={label} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-none">
+                    <div className="w-8 h-8 rounded-control bg-primary/10 flex items-center justify-center flex-none">
                       <Icon size={15} className="text-secondary-foreground/80" />
                     </div>
                     <div>
@@ -447,7 +447,7 @@ export function LandingPage({ user }: LandingPageProps) {
               </div>
             </FadeIn>
           </div>
-          <div className="bg-background px-8 md:px-14 py-16 flex flex-col justify-center border-t md:border-t-0 md:border-l border-border">
+          <div className="bg-background px-8 md:px-14 py-16 flex flex-col justify-center border-t md:border-t-0 md:border-l border-line">
             <FadeIn>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-8">
                 Platform comparison
@@ -495,7 +495,7 @@ export function LandingPage({ user }: LandingPageProps) {
             </FadeIn>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FadeIn className="md:col-span-1 md:row-span-2">
-                <div className="h-full min-h-70 p-8 rounded-2xl bg-background border border-border flex flex-col justify-between">
+                <div className="h-full min-h-70 p-8 rounded-card bg-background border border-line flex flex-col justify-between">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-brand mb-4">
                       {useCases[0].source}
@@ -508,13 +508,13 @@ export function LandingPage({ user }: LandingPageProps) {
                 </div>
               </FadeIn>
               <FadeIn delay={0.08}>
-                <div className="p-8 rounded-2xl bg-background border border-border">
+                <div className="p-8 rounded-card bg-background border border-line">
                   <p className="text-4xl font-bold text-foreground mb-1">{useCases[1].label}</p>
                   <p className="text-sm text-muted-foreground">{useCases[1].sublabel}</p>
                 </div>
               </FadeIn>
               <FadeIn delay={0.12}>
-                <div className="relative p-8 rounded-2xl bg-gradient-to-br from-brand to-brand/80 text-white overflow-hidden min-h-40 flex flex-col justify-end">
+                <div className="relative p-8 rounded-card bg-gradient-to-br from-brand to-brand/80 text-white overflow-hidden min-h-40 flex flex-col justify-end">
                   <div className="absolute inset-0 opacity-20">
                     <div className="absolute top-4 right-4 w-32 h-32 rounded-full bg-background/20" />
                     <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-background/10 -translate-x-1/4 translate-y-1/4" />
@@ -528,7 +528,7 @@ export function LandingPage({ user }: LandingPageProps) {
         </section>
 
         {/* How it works */}
-        <section id="how-it-works" className="py-24 px-6 border-t border-border">
+        <section id="how-it-works" className="py-24 px-6 border-t border-line">
           <div className="max-w-4xl mx-auto">
             <FadeIn className="mb-14 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
@@ -557,8 +557,8 @@ export function LandingPage({ user }: LandingPageProps) {
                 },
               ].map((s, i) => (
                 <FadeIn key={s.step} delay={i * 0.08}>
-                  <div className="p-6 rounded-2xl border border-border bg-background h-full">
-                    <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold mb-4">
+                  <div className="p-6 rounded-card border border-line bg-background h-full">
+                    <div className="w-9 h-9 rounded-control bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold mb-4">
                       {s.step}
                     </div>
                     <s.icon size={18} className="text-brand mb-3" />
@@ -588,7 +588,7 @@ export function LandingPage({ user }: LandingPageProps) {
               {securityFeatures.map((f, i) => (
                 <FadeIn key={f.title} delay={i * 0.08}>
                   <div className="text-center md:text-left">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
+                    <div className="w-10 h-10 rounded-card bg-primary/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
                       <f.icon size={18} className="text-secondary-foreground/80" />
                     </div>
                     <h3 className="font-semibold text-base mb-2">{f.title}</h3>
@@ -612,7 +612,7 @@ export function LandingPage({ user }: LandingPageProps) {
             </p>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 px-7 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-all text-sm"
+              className="inline-flex items-center gap-2 px-7 py-3 bg-primary text-primary-foreground font-medium rounded-control hover:bg-primary/90 transition-all text-sm"
             >
               Get started free
               <ArrowRight size={15} />

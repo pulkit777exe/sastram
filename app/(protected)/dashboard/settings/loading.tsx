@@ -6,11 +6,11 @@ export default function Loading() {
         <div className="skeleton h-8 w-40" />
         <div className="skeleton h-4 w-2/3" />
       </div>
-      <div className="skeleton h-10 w-64 rounded-xl" />
+      <div className="skeleton h-10 w-64 rounded-card" />
       <div className="space-y-4">
-        <div className="skeleton h-14 w-full rounded-xl" />
-        <div className="skeleton h-14 w-full rounded-xl" />
-        <div className="skeleton h-14 w-full rounded-xl" />
+        <div className="skeleton h-14 w-full rounded-card" />
+        <div className="skeleton h-14 w-full rounded-card" />
+        <div className="skeleton h-14 w-full rounded-card" />
       </div>
     </div>
   );

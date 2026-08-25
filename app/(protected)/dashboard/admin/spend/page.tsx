@@ -165,7 +165,7 @@ export default function SpendPage() {
                 <CardContent className="p-0">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border">
+                      <tr className="border-b border-line">
                         <th className="text-left p-4 text-muted-foreground font-medium">Operation</th>
                         <th className="text-right p-4 text-muted-foreground font-medium">Calls</th>
                         <th className="text-right p-4 text-muted-foreground font-medium">Cost</th>
@@ -174,7 +174,7 @@ export default function SpendPage() {
                     </thead>
                     <tbody>
                       {data.byOperation.map((op) => (
-                        <tr key={op.operation} className="border-b border-border/50">
+                        <tr key={op.operation} className="border-b border-line/50">
                           <td className="p-4 text-foreground font-mono text-xs">{op.operation}</td>
                           <td className="p-4 text-right text-muted-foreground">{op.callCount}</td>
                           <td className="p-4 text-right text-foreground">{formatUsd(op.totalCostUsd)}</td>

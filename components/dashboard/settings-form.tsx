@@ -176,9 +176,9 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
   return (
     <div className="grid gap-6">
-      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
             <User className="h-5 w-5" />
           </div>
           <div>
@@ -233,7 +233,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
             <Label className="text-ink">Banner Image</Label>
             <div className="relative">
               {bannerUrl ? (
-                <div className="relative h-32 w-full rounded-xl overflow-hidden border border-line">
+                <div className="relative h-32 w-full rounded-card overflow-hidden border border-line">
                   <Image
                     src={bannerUrl}
                     alt="Banner"
@@ -252,7 +252,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
                   </Button>
                 </div>
               ) : (
-                <div className="h-32 w-full rounded-xl border-2 border-dashed border-line flex items-center justify-center bg-field/50">
+                <div className="h-32 w-full rounded-card border-2 border-dashed border-line flex items-center justify-center bg-field/50">
                   <div className="text-center">
                     <ImageIcon className="h-8 w-8 text-ink-3 mx-auto mb-2" />
                     <p className="text-sm text-ink-3">No banner image</p>
@@ -296,7 +296,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               name="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -323,7 +323,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="City, Country"
-              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -337,7 +337,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://example.com"
-              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -350,7 +350,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={twitter}
               onChange={(e) => setTwitter(e.target.value)}
               placeholder="@username"
-              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -363,7 +363,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={github}
               onChange={(e) => setGithub(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -376,7 +376,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={linkedin}
               onChange={(e) => setLinkedin(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -387,7 +387,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               id="email"
               defaultValue={user.email}
               disabled
-              className="h-11 rounded-xl border-line bg-field/50 text-ink-3 opacity-70"
+              className="h-11 rounded-card border-line bg-field/50 text-ink-3 opacity-70"
             />
           </div>
           <div className="pt-2">
@@ -396,9 +396,9 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </form>
       </div>
 
-      <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
             <Bell className="h-5 w-5" />
           </div>
           <div>
@@ -433,9 +433,9 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
             <Shield className="h-5 w-5" />
           </div>
           <div>

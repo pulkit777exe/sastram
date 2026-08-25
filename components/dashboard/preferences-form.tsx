@@ -54,9 +54,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
 
   return (
     <div className="grid gap-6">
-      <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
             <Monitor className="h-5 w-5" />
           </div>
           <div>
@@ -74,7 +74,7 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
                 void updatePreference('theme', value as UserPreferences['theme'])
               }
             >
-              <SelectTrigger className="w-full h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all">
+              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>
               <SelectContent>
@@ -102,9 +102,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
             <Mail className="h-5 w-5" />
           </div>
           <div>
@@ -124,7 +124,7 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
                 void updatePreference('emailDigest', value as UserPreferences['emailDigest'])
               }
             >
-              <SelectTrigger className="w-full h-11 rounded-xl border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all">
+              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all">
                 <SelectValue placeholder="Select frequency" />
               </SelectTrigger>
               <SelectContent>
@@ -137,9 +137,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
             <Bell className="h-5 w-5" />
           </div>
           <div>
@@ -201,9 +201,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
@@ -231,9 +231,9 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
             <Shield className="h-5 w-5" />
           </div>
           <div>

@@ -21,7 +21,7 @@ import { SerifHeading } from '@/components/layout/serif-heading';
 type AuthMode = 'signin' | 'signup' | 'email-otp' | 'otp-verify';
 
 const inputStyles =
-  'h-12 rounded-xl bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all';
+  'h-12 rounded-card bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all';
 const labelStyles = 'text-muted-foreground text-sm font-medium';
 
 function UserAuthForm({
@@ -387,7 +387,7 @@ function UserAuthForm({
             </div>
 
             {error && (
-              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-control">
                 {error}
               </p>
             )}
@@ -434,7 +434,7 @@ function UserAuthForm({
         >
           <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div className="text-center mb-4">
-              <div className="mx-auto w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-4 border border-brand/20">
+              <div className="mx-auto w-14 h-14 rounded-card bg-brand/10 flex items-center justify-center mb-4 border border-brand/20">
                 <CheckCircle2 className="w-7 h-7 text-brand" />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -462,14 +462,14 @@ function UserAuthForm({
                     onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
                     disabled={loadingState !== null}
-                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
+                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-card border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
                   />
                 ))}
               </div>
             </div>
 
             {error && (
-              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-control">
                 {error}
               </p>
             )}
@@ -607,7 +607,7 @@ function UserAuthForm({
             )}
           </div>
           {error && (
-            <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+            <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-control">
               {error}
             </p>
           )}
@@ -621,7 +621,7 @@ function UserAuthForm({
 
       <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
+          <span className="w-full border-t border-line" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-4 text-muted-foreground font-medium">

@@ -77,7 +77,7 @@ export default function ThreadResolutionCard({
       </div>
 
       {isStale && (
-        <div className="mt-1 flex items-center justify-between gap-3 rounded-lg bg-chart-4/10 px-3 py-2.5">
+        <div className="mt-1 flex items-center justify-between gap-3 rounded-control bg-chart-4/10 px-3 py-2.5">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-chart-4">Confidence aged</p>
             <p className="text-xs text-muted-foreground">

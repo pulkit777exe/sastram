@@ -238,7 +238,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                       variant="ghost"
                       onClick={() => void handleClick(notification)}
                       className={cn(
-                        'w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all hover:bg-muted/50 justify-start h-auto',
+                        'w-full flex items-start gap-3 p-4 rounded-card text-left transition-all hover:bg-muted/50 justify-start h-auto',
                         !notification.isRead && 'bg-brand/5 border border-brand/10'
                       )}
                     >

@@ -82,7 +82,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search user or reason"
-            className="pl-9 bg-muted border-border"
+            className="pl-9 bg-muted border-line"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -102,11 +102,11 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border overflow-hidden bg-card">
+      <div className="rounded-control border border-line overflow-hidden bg-surface">
         <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50 border-border hover:bg-muted/50">
+            <TableRow className="bg-muted/50 border-line hover:bg-muted/50">
               <TableHead>User</TableHead>
               <TableHead>Ban Date</TableHead>
               <TableHead>Reason</TableHead>
@@ -124,7 +124,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
               </TableRow>
             ) : (
               filteredBans.map((ban) => (
-                <TableRow key={ban.id} className="border-border">
+                <TableRow key={ban.id} className="border-line">
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
@@ -163,7 +163,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                         : `Temporary (${getDaysRemaining(ban.expiresAt!)} days)`}
                     </Badge>
                   </TableCell>
-                  <TableCell className="sticky right-0 bg-card z-10 text-right">
+                  <TableCell className="sticky right-0 bg-surface z-10 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button type="button" variant="ghost"
                         className="h-8 px-2 text-xs text-brand hover:text-brand hover:bg-brand/10"

@@ -86,7 +86,7 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-6 py-3 bg-hover/30 rounded-lg mx-6">
+        <div className="px-6 py-3 bg-hover/30 rounded-control mx-6">
           <p className="text-xs text-ink-2 leading-relaxed">
             Your API keys are stored <strong>only in your browser</strong> and never sent to our
             servers for storage. They are passed securely via request headers for each search.

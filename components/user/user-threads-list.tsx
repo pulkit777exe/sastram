@@ -36,7 +36,7 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
         <div key={thread.id}>
           <Link
             href={ROUTES.THREAD(thread.slug)}
-            className="block rounded-lg border border-line bg-surface p-4 hover:bg-hover transition-colors"
+            className="block rounded-control border border-line bg-surface p-4 hover:bg-hover transition-colors"
           >
             <h3 className="font-semibold text-ink mb-2">{thread.name}</h3>
             {thread.description && (

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 function ThreadListSkeleton() {
   return (
-    <div className="rounded-lg border border-line bg-surface shadow-linear-xs">
+    <div className="rounded-control border border-line bg-surface shadow-linear-xs">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
@@ -86,7 +86,7 @@ async function ThreadList({ userId, userRole }: { userId: string; userRole: Role
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-linear-xs">
+    <div className="overflow-hidden rounded-control border border-line bg-surface shadow-linear-xs">
       {threads.map((thread) => (
         <ThreadRow key={thread.id} thread={thread} />
       ))}

@@ -53,7 +53,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
 
   if (subscriptions.length === 0) {
     return (
-      <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-field mb-4">
             <Mail className="h-8 w-8 text-ink-3" />
@@ -76,9 +76,9 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
   }
 
   return (
-    <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm">
+    <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
       <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+        <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
           <Mail className="h-5 w-5" />
         </div>
         <div>

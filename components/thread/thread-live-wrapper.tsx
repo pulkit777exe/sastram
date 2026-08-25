@@ -482,7 +482,7 @@ export function ThreadLiveWrapper({
         </div>
       )}
 
-      <div className="p-4 border-t border-border/60 shrink-0">
+      <div className="p-4 border-t border-line/60 shrink-0">
         <div className="max-w-4xl mx-auto">
           <PostMessageForm
             threadId={threadId}

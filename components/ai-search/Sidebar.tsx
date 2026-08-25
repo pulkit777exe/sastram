@@ -168,7 +168,7 @@ export function Sidebar({
           onClick={() => onSelectSession(item)}
           aria-current={isSelected ? 'true' : undefined}
           variant="ghost"
-          className={`w-full justify-start px-3 py-1.5 text-xs rounded-lg truncate h-auto ${
+          className={`w-full justify-start px-3 py-1.5 text-xs rounded-control truncate h-auto ${
             isSelected
               ? 'bg-foreground/10 text-foreground font-medium'
               : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
@@ -221,7 +221,7 @@ export function Sidebar({
 
   return (
     <div
-      className={`relative h-full flex flex-col bg-surface border border-line rounded-2xl shadow-linear-md transition-all duration-250 ease-in-out overflow-hidden ${
+      className={`relative h-full flex flex-col bg-surface border border-line rounded-card shadow-linear-md transition-all duration-250 ease-in-out overflow-hidden ${
         collapsed ? 'w-0 border-0 p-0' : 'w-55'
       }`}
     >
@@ -319,7 +319,7 @@ export function Sidebar({
             )}
         </div>
 
-          <div className="px-3 pb-3 pt-2 border-t border-border mt-auto">
+          <div className="px-3 pb-3 pt-2 border-t border-line mt-auto">
             <div className="flex items-center gap-2">
               {user?.image ? (
                 <Image

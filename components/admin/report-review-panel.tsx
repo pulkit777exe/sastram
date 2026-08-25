@@ -91,7 +91,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
             <div
               key={msg.id}
               className={cn(
-                'p-3 rounded-lg text-sm',
+                'p-3 rounded-control text-sm',
                 msg.isReported ? 'bg-red-500/10 border border-red-500/30' : 'bg-field'
               )}
             >
@@ -147,7 +147,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 <Eye className="w-3 h-3" />
                 Sai Analysis
               </h4>
-              <div className="bg-field rounded-lg p-3 space-y-2">
+              <div className="bg-field rounded-control p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-ink-3">Toxicity</span>
                   <Badge
@@ -212,7 +212,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-field rounded-lg p-3">
+            <div className="bg-field rounded-control p-3">
               <div className="flex items-center gap-1.5 text-xs text-ink-3 mb-1">
                 <Calendar className="w-3 h-3" />
                 Account Age
@@ -221,7 +221,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 <TimeAgo date={userProfile.createdAt} />
               </p>
             </div>
-            <div className="bg-field rounded-lg p-3">
+            <div className="bg-field rounded-control p-3">
               <div className="flex items-center gap-1.5 text-xs text-ink-3 mb-1">
                 <Shield className="w-3 h-3" />
                 Trust Score
@@ -251,7 +251,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 {userProfile.violationHistory.slice(0, 3).map((violation) => (
                   <div
                     key={violation.id}
-                    className="bg-red-500/5 border border-red-500/20 rounded-lg p-2"
+                    className="bg-red-500/5 border border-red-500/20 rounded-control p-2"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-red-400">{violation.action}</span>
@@ -286,7 +286,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 >
                   <Icon className="w-3.5 h-3.5 mr-2" />
                   <span className="flex-1 text-left">{action.label}</span>
-                  <kbd className="ml-auto text-xs bg-background/50 px-1.5 py-0.5 rounded border border-border">
+                  <kbd className="ml-auto text-xs bg-background/50 px-1.5 py-0.5 rounded border border-line">
                     {action.shortcut}
                   </kbd>
                 </button>

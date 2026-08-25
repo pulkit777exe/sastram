@@ -108,12 +108,12 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
           return (
             <div key={phase.key} className="flex items-center gap-1.5 flex-1 min-w-25">
               <div
-                className={`group relative flex w-full flex-col items-start gap-0.5 rounded-lg border px-2.5 py-1.5 transition-all duration-300 ${
+                className={`group relative flex w-full flex-col items-start gap-0.5 rounded-control border px-2.5 py-1.5 transition-all duration-300 ${
                   isDone
                     ? 'border-emerald-500/20 bg-emerald-500/5 text-foreground'
                     : isActive
                     ? 'border-primary/40 bg-primary/10 ring-2 ring-primary/20 text-foreground'
-                    : 'border-border/40 bg-muted/20 text-muted-foreground/50'
+                    : 'border-line/40 bg-muted/20 text-muted-foreground/50'
                 }`}
               >
                 <div className="flex w-full items-center justify-between gap-1 text-xs font-medium">

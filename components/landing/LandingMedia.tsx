@@ -52,7 +52,7 @@ export function ThemeVideo({ className }: { className?: string }) {
 
   return (
     <div className={className}>
-      <div className="relative rounded-2xl border border-border bg-background overflow-hidden shadow-linear-xl">
+      <div className="relative rounded-card border border-line bg-background overflow-hidden shadow-linear-xl">
         <video
           ref={videoRef}
           loop

@@ -44,7 +44,7 @@ const priorityConfig = {
   },
   LOW: {
     label: 'Low',
-    color: 'bg-muted text-muted-foreground border-border',
+    color: 'bg-muted text-muted-foreground border-line',
     icon: Clock,
     iconColor: 'text-muted-foreground',
   },
@@ -81,11 +81,11 @@ export function ModerationQueue({
         <h2 className="text-lg font-semibold text-foreground">Report Queue</h2>
         <div className="flex items-center gap-2">
           <Select defaultValue="all">
-            <SelectTrigger className="w-36 h-8 text-sm bg-muted border-border">
+            <SelectTrigger className="w-36 h-8 text-sm bg-muted border-line">
               <Filter className="w-3.5 h-3.5 mr-2" />
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
-            <SelectContent className="bg-popover border-border">
+            <SelectContent className="bg-popover border-line">
               <SelectItem value="all">All Reports</SelectItem>
               <SelectItem value="CRITICAL">Critical Only</SelectItem>
               <SelectItem value="HIGH">High Priority</SelectItem>
@@ -97,7 +97,7 @@ export function ModerationQueue({
 
       <div className="space-y-2">
         {reports.length === 0 ? (
-          <Card className="bg-card border-border">
+          <Card className="bg-surface border-line">
             <CardContent className="p-8 text-center">
               <Flag className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
               <p className="text-muted-foreground">No reports in queue</p>
@@ -110,7 +110,7 @@ export function ModerationQueue({
               <Card
                 key={report.id}
                 className={cn(
-                  'bg-card border-border cursor-pointer transition-all hover:border-brand/50',
+                  'bg-surface border-line cursor-pointer transition-all hover:border-brand/50',
                   selectedReportId === report.id && 'border-brand ring-1 ring-brand/20'
                 )}
                 onClick={() => onSelectReport(report.id)}
@@ -120,7 +120,7 @@ export function ModerationQueue({
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className="text-xs border-border">
+                          <Badge variant="outline" className="text-xs border-line">
                             {
                               REPORT_CATEGORY_LABELS[
                                 report.category as keyof typeof REPORT_CATEGORY_LABELS
@@ -153,7 +153,7 @@ export function ModerationQueue({
                     </Button>
                   </div>
                   {report.aiConfidence !== null && (
-                    <div className="mt-3 pt-3 border-t border-border">
+                    <div className="mt-3 pt-3 border-t border-line">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Sai Confidence</span>
                         <span
@@ -197,7 +197,7 @@ function StatsCard({
   return (
     <Card
       className={cn(
-        'bg-card border-border',
+        'bg-surface border-line',
         variant === 'critical' && 'border-red-500/30',
         variant === 'high' && 'border-orange-500/30'
       )}
@@ -230,7 +230,7 @@ function StatsCard({
               )}
             </div>
           </div>
-          {icon && <div className="p-2 rounded-lg bg-muted">{icon}</div>}
+          {icon && <div className="p-2 rounded-control bg-muted">{icon}</div>}
         </div>
       </CardContent>
     </Card>

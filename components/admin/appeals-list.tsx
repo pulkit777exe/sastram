@@ -68,7 +68,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
 
   if (appeals.length === 0) {
     return (
-      <div className="text-center py-12 border border-border dashed rounded-xl">
+      <div className="text-center py-12 border border-line dashed rounded-card">
         <p className="text-muted-foreground">No pending appeals</p>
       </div>
     );
@@ -76,7 +76,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
 
   return (
     <>
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="rounded-control border border-line overflow-hidden">
         <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -115,7 +115,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 >
                   &quot;{appeal.reason || 'No appeal reason provided'}&quot;
                 </TableCell>
-                <TableCell className="sticky right-0 bg-card z-10 text-right">
+                <TableCell className="sticky right-0 bg-surface z-10 text-right">
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="icon-sm"
                       onClick={() => {

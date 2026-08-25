@@ -32,7 +32,7 @@ export function MessageActions({
   return (
     <div
       className={cn(
-        "absolute right-3 -top-4 flex items-center gap-0 bg-surface border border-line/80 shadow-linear-lg rounded-xl p-0.5 transition-all duration-100 z-20",
+        "absolute right-3 -top-4 flex items-center gap-0 bg-surface border border-line/80 shadow-linear-lg rounded-card p-0.5 transition-all duration-100 z-20",
         className
       )}
     >
@@ -102,7 +102,7 @@ function ActionBtn({
       title={title}
       onClick={onClick}
       className={cn(
-        'w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-100',
+        'w-7 h-7 rounded-control flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-100',
         className
       )}
     >

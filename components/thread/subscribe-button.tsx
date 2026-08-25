@@ -101,7 +101,7 @@ export function ThreadSubscribeButton({
         onValueChange={(v) => void setSubscription(v === 'null' ? null : v as SubscriptionFrequency)}
         disabled={isSaving}
       >
-        <SelectTrigger className="h-8 w-8 !p-0 flex items-center justify-center !rounded-lg border-border/70">
+        <SelectTrigger className="h-8 w-8 !p-0 flex items-center justify-center !rounded-control border-line/70">
           <Bell className="h-4 w-4" />
         </SelectTrigger>
         <SelectContent>
@@ -122,7 +122,7 @@ export function ThreadSubscribeButton({
         onValueChange={(v) => void setSubscription(v === 'null' ? null : v as SubscriptionFrequency)}
         disabled={isSaving}
       >
-        <SelectTrigger className="w-full justify-between rounded-xl border-border/70">
+        <SelectTrigger className="w-full justify-between rounded-card border-line/70">
           <span className="inline-flex items-center gap-2">
             <Bell className="h-4 w-4" />
             <SelectValue placeholder="Not subscribed" />

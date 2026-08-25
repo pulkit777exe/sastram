@@ -420,7 +420,7 @@ function ForgotPasswordResetForm({
           />
         </div>
 
-        <div className="rounded-md border border-border p-3 text-xs space-y-1 text-muted-foreground">
+        <div className="rounded-md border border-line p-3 text-xs space-y-1 text-muted-foreground">
           <p className={validation.minLength ? 'text-emerald-500' : ''}>Minimum 8 characters</p>
           <p className={validation.includesNumber ? 'text-emerald-500' : ''}>At least one number</p>
           <p className={validation.includesSpecial ? 'text-emerald-500' : ''}>

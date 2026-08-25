@@ -101,13 +101,13 @@ export default function InvitationAcceptPage() {
   if (status === 'error') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+        <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 text-center space-y-4">
           <h1 className="text-xl font-bold text-foreground">Invitation</h1>
           <p className="text-sm text-red-600">{error}</p>
           <button
             type="button"
             onClick={() => router.push('/dashboard')}
-            className="mt-2 px-4 py-2 text-sm font-medium rounded-lg bg-muted hover:bg-muted transition-colors"
+            className="mt-2 px-4 py-2 text-sm font-medium rounded-control bg-muted hover:bg-muted transition-colors"
           >
             Go to Dashboard
           </button>
@@ -118,7 +118,7 @@ export default function InvitationAcceptPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+      <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 text-center space-y-4">
         <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
           {status === 'loading' && 'Loading invitation...'}

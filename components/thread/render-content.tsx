@@ -63,11 +63,11 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
 
   return (
     <div
-      className="my-2.5 animate-in fade-in duration-200 rounded-lg overflow-hidden border border-border/60"
+      className="my-2.5 animate-in fade-in duration-200 rounded-control overflow-hidden border border-line/60"
       style={{ background: 'var(--background)' }}
     >
       <div
-        className="flex items-center justify-between px-3 py-1.5 border-b border-border/40"
+        className="flex items-center justify-between px-3 py-1.5 border-b border-line/40"
         style={{ background: 'var(--card)' }}
       >
         <span

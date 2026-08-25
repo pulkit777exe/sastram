@@ -20,7 +20,7 @@ export default function RootError({
       <button
         type="button"
         onClick={reset}
-        className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+        className="rounded-md border border-line px-3 py-2 text-sm hover:bg-muted"
       >
         Try again
       </button>

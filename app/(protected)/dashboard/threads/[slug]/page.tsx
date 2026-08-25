@@ -20,7 +20,7 @@ const INITIAL_MESSAGE_LIMIT = 50;
 
 function ThreadContentSkeleton() {
   return (
-    <div className="flex-1 flex flex-col min-w-0 border-r border-border/60">
+    <div className="flex-1 flex flex-col min-w-0 border-r border-line/60">
       <div className="flex-1 p-6 space-y-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="flex items-start gap-3">
@@ -36,7 +36,7 @@ function ThreadContentSkeleton() {
           </div>
         ))}
       </div>
-      <div className="border-t border-border/60 p-4">
+      <div className="border-t border-line/60 p-4">
         <Skeleton className="h-10 w-full" />
       </div>
     </div>

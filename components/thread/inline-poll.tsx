@@ -90,7 +90,7 @@ const validOptions = options.filter(option => option.trim().length > 0);
   if (!isOpen) return null;
 
   return (
-    <div className="space-y-4 p-4 bg-surface rounded-lg shadow-linear-lg border border-line">
+    <div className="space-y-4 p-4 bg-surface rounded-control shadow-linear-lg border border-line">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-ink">Create a Poll</h3>
         <Button variant="ghost" size="icon" onClick={() => onToggle(false)}>

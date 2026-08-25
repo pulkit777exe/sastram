@@ -19,7 +19,7 @@ export function StatsCard({
   chartType = 'bar',
 }: StatsCardProps) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-6 shadow-linear-sm transition-all hover:shadow-linear-md">
+    <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm transition-all hover:shadow-linear-md">
       <div className="flex items-start justify-between mb-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-field border border-line">
           <Icon className="h-5 w-5 text-ink-3" />

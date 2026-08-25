@@ -46,11 +46,11 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
   }
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
+    <div className="rounded-control border border-line overflow-hidden">
       <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="border-border hover:bg-transparent">
+          <TableRow className="border-line hover:bg-transparent">
             <TableHead className="text-muted-foreground">Time</TableHead>
             <TableHead className="text-muted-foreground">Action</TableHead>
             <TableHead className="text-muted-foreground">Category</TableHead>
@@ -61,7 +61,7 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
         </TableHeader>
         <TableBody>
           {entries.map((entry) => (
-            <TableRow key={entry.id} className="border-border">
+            <TableRow key={entry.id} className="border-line">
               <TableCell className="text-sm text-muted-foreground">
                 <TimeAgo date={entry.timestamp} />
               </TableCell>

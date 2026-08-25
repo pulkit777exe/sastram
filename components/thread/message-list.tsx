@@ -241,7 +241,7 @@ const MessageRow = React.memo(function MessageRow({
       <div
         id={`message-${message.id}`}
         className={cn(
-          "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-hover/50 relative transition-colors duration-75",
+          "group flex gap-3 px-3 py-1.5 rounded-control hover:bg-hover/50 relative transition-colors duration-75",
           isCompact && "pl-13"
         )}
       >
@@ -272,7 +272,7 @@ const MessageRow = React.memo(function MessageRow({
       <div
         id={`message-${message.id}`}
         className={cn(
-          "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-muted/30 relative transition-colors duration-75",
+          "group flex gap-3 px-3 py-1.5 rounded-control hover:bg-muted/30 relative transition-colors duration-75",
           isCompact && "pl-13",
           isShowingReplyBox && "bg-brand/10 dark:bg-brand/10"
         )}
@@ -362,7 +362,7 @@ const MessageRow = React.memo(function MessageRow({
               </div>
             </div>
           ) : message.isAiResponse ? (
-            <div className="mt-0.5 rounded-lg bg-brand/[0.04] dark:bg-brand/[0.07] px-3 py-2 -mx-1">
+            <div className="mt-0.5 rounded-control bg-brand/[0.04] dark:bg-brand/[0.07] px-3 py-2 -mx-1">
               <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-brand/70">
                 <span className="h-1 w-1 rounded-full bg-brand/60" />
                 Synthesis
@@ -497,7 +497,7 @@ const MessageRow = React.memo(function MessageRow({
         )}
 
         {showDeleteConfirm && (
-          <div className="absolute right-4 top-2 bg-surface border border-line shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
+          <div className="absolute right-4 top-2 bg-surface border border-line shadow-linear-lg rounded-control p-2 flex items-center gap-2 text-xs z-30">
             <span className="font-medium text-destructive">Delete message?</span>
             <Button
               size="sm"

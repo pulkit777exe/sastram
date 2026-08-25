@@ -175,7 +175,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'bg-surface rounded-2xl border border-line flex flex-col h-full transition-all duration-300 overflow-hidden',
+        'bg-surface rounded-card border border-line flex flex-col h-full transition-all duration-300 overflow-hidden',
         effectiveCollapsed ? 'w-16' : 'w-64'
       )}
     >
@@ -294,7 +294,7 @@ export function Sidebar({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-3 shadow-linear-sm hover:bg-hover cursor-pointer transition-colors">
+        <div className="flex items-center justify-between rounded-card border border-line bg-surface p-3 shadow-linear-sm hover:bg-hover cursor-pointer transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-field shrink-0 flex items-center justify-center text-xs font-medium text-ink">
               {name.charAt(0).toUpperCase()}
@@ -317,7 +317,7 @@ export function Sidebar({
           <div
             ref={menuRef}
             className={cn(
-              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-line rounded-lg shadow-linear-lg overflow-hidden z-10',
+              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-line rounded-control shadow-linear-lg overflow-hidden z-10',
               profileMenuClosing ? 'is-closing' : 'is-open'
             )}
             data-origin="bottom-left"
@@ -376,7 +376,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
     return (
       <div
         className={cn(
-          'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
+          'group flex items-center gap-3 px-3 py-2 rounded-control cursor-pointer transition-all duration-200',
           'text-ink-3 hover:text-ink hover:bg-hover',
           collapsed && 'justify-center'
         )}
@@ -398,7 +398,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
       href={href}
       onClick={onNavigate}
       className={cn(
-        'group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
+        'group flex items-center gap-3 px-3 py-2 rounded-control cursor-pointer transition-all duration-200',
         active
           ? 'bg-brand/5 text-brand shadow-linear-sm border-r-2 border-brand'
           : 'text-ink-3 hover:text-ink hover:bg-hover',
