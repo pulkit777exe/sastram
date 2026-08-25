@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { isAdminUser as isAdmin } from '@/modules/auth';
 import { getSession } from '@/modules/auth';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Settings } from 'lucide-react';
 
 export default async function ProfilePage() {
@@ -14,14 +16,14 @@ export default async function ProfilePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-4 mb-4">
         <Link href="/dashboard/settings">
-          <button type="button" className="text-muted-foreground">
+          <Button type="button" variant="ghost" size="sm">
             <ArrowLeft size={16} className="mr-2" />
             Back to Settings
-          </button>
+          </Button>
         </Link>
       </div>
 
-      <Card className="rounded-2xl border p-4 md:p-8 shadow-linear-sm">
+      <Card className="rounded-card border p-4 md:p-8 shadow-linear-sm">
         <CardContent className="flex flex-col gap-6 p-0 md:flex-row md:items-center">
           <div className="flex h-20 w-20 items-center justify-center bg-secondary overflow-hidden rounded-full">
             {user.image ? (
@@ -36,29 +38,29 @@ export default async function ProfilePage() {
             <p className="text-sm uppercase tracking-widest">Profile</p>
             <h1 className="mt-2 text-2xl font-semibold">{user.name || 'Unnamed'}</h1>
             <p className="text-muted-foreground">{user.email}</p>
-            <p className="mt-2 inline-flex rounded-full bg-brand/10 text-brand px-3 py-1 text-xs uppercase tracking-wide border border-brand/20">
+            <Badge variant="live" className="mt-2 uppercase tracking-wide">
               {user.role}
-            </p>
+            </Badge>
           </div>
           <div className="flex flex-col gap-2">
             <Link href="/dashboard/settings">
-              <button type="button" className="rounded-lg">
+              <Button type="button" variant="outline" size="sm">
                 <Settings size={14} className="mr-2" />
                 Edit Settings
-              </button>
+              </Button>
             </Link>
             {isAdmin(user) && (
               <Link href="/dashboard/admin">
-                <button type="button" className="rounded-lg">
+                <Button type="button" variant="outline" size="sm">
                   Admin Tools
-                </button>
+                </Button>
               </Link>
             )}
           </div>
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border p-6 shadow-linear-sm">
+      <Card className="rounded-card border p-6 shadow-linear-sm">
         <CardContent className="space-y-4 p-0">
           <h2 className="text-lg font-semibold">Account Information</h2>
           <p className="text-sm text-muted-foreground">

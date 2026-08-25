@@ -21,21 +21,21 @@
   /* Light Mode — warm off-white surfaces on a warm-white canvas */
   --background: oklch(0.9848 0.0013 106.42);
   --foreground: oklch(0.2393 0 0);
-  --card: oklch(1 0 0);
+  --card: oklch(0.996 0.001 106.42);
   --card-foreground: oklch(0.2393 0 0);
-  --popover: oklch(1 0 0);
+  --popover: oklch(0.996 0.001 106.42);
   --popover-foreground: oklch(0.2393 0 0);
   --primary: oklch(0.2393 0 0);
   --primary-foreground: oklch(0.9848 0.0013 106.42);
-  --secondary: oklch(0.965 0.0013 106.42);
+  --secondary: oklch(0.972 0.0013 106.42);
   --secondary-foreground: oklch(0.2393 0 0);
-  --muted: oklch(0.965 0.0013 106.42);
+  --muted: oklch(0.972 0.0013 106.42);
   --muted-foreground: oklch(0.6927 0 0);
   --accent: oklch(0.9694 0.0115 264.51);
   --accent-foreground: oklch(0.2393 0 0);
   --destructive: oklch(0.62 0.21 25);
-  --border: oklch(0.89 0 0);
-  --input: oklch(0.89 0 0);
+  --border: oklch(0.91 0 0);
+  --input: oklch(0.91 0 0);
   --ring: oklch(0.5801 0.1905 262.52);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -48,7 +48,7 @@
   --sidebar-primary-foreground: oklch(0.9848 0.0013 106.42);
   --sidebar-accent: oklch(0.9694 0.0115 264.51);
   --sidebar-accent-foreground: oklch(0.2393 0 0);
-  --sidebar-border: oklch(0.89 0 0);
+  --sidebar-border: oklch(0.91 0 0);
   --sidebar-ring: oklch(0.5801 0.1905 262.52);
 
   /* Soft layered shadows — Linear leans on shadow for elevation instead of
@@ -847,19 +847,19 @@
   /* Canvas — page background */
   --canvas:     oklch(0.9848 0.0013 106.42);
 
-  /* Surface — card / floating elements */
-  --surface:    oklch(1 0 0);
+  /* Surface — card / floating elements (warm white, slightly warmer than pure white) */
+  --surface:    oklch(0.996 0.001 106.42);
 
   /* Field — input backgrounds */
-  --field:      oklch(0.965 0.0013 106.42);
+  --field:      oklch(0.972 0.0013 106.42);
 
   /* Lines & borders */
-  --line:       oklch(0.89 0 0);
-  --line-strong:oklch(0.8172 0 0);
+  --line:       oklch(0.91 0 0);
+  --line-strong:oklch(0.85 0 0);
 
   /* Hover states */
-  --hover:      oklch(0.9642 0 0);
-  --hover-2:    oklch(0.9370 0 0);
+  --hover:      oklch(0.97 0.001 106.42);
+  --hover-2:    oklch(0.94 0.001 106.42);
 
   /* Inset — slightly recessed surface */
   --inset:      oklch(0.965 0.0013 106.42);
