@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import {
   Paperclip,
   SmilePlus,
@@ -168,13 +169,13 @@ export function PostMessageForm({
             <span>Replying to</span>
             <span className="font-semibold">@{replyTo.userName}</span>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onCancelReply}
-            className="text-brand hover:text-brand transition-colors"
           >
             <X className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -184,16 +185,17 @@ export function PostMessageForm({
         >
           <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="truncate max-w-50 text-foreground font-medium">{selectedFile.name}</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-1"
             onClick={() => {
               setSelectedFile(null);
               if (fileInputRef.current) fileInputRef.current.value = '';
             }}
-            className="ml-1 cursor-pointer text-muted-foreground hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -220,20 +222,20 @@ export function PostMessageForm({
         {/* Bottom Tier: Toolbar */}
         <div className="flex items-center justify-between px-2 sm:px-3 py-2 bg-muted/10 border-t border-line/40 select-none">
           <div className="flex items-center gap-0.5 sm:gap-1">
-            <button
-              type="button"
-              className="h-8 w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-4.5 w-4.5" />
-            </button>
+            </Button>
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
 
             <div className="relative">
               <div ref={emojiButtonRef}>
-                <button type="button" className="h-8 w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setEmojiOpen((p) => !p)}>
+                <Button variant="ghost" size="icon" onClick={() => setEmojiOpen((p) => !p)}>
                   <SmilePlus className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
               {emojiOpen && (
                 <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-line bg-surface p-2.5 shadow-overlay">
@@ -253,15 +255,15 @@ export function PostMessageForm({
               )}
             </div>
 
-            <button type="button" className="h-8 w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtSai}>
+            <Button variant="ghost" size="icon" onClick={handleAtSai}>
               <AtSign className="h-4 w-4" />
-            </button>
+            </Button>
 
             <div className="relative">
               <div ref={formatButtonRef}>
-                <button
-                  type="button"
-                  className="h-8 w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setFormatOpen((o) => !o)}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -269,55 +271,55 @@ export function PostMessageForm({
                     <path d="M9 20h6" />
                     <path d="M12 4v16" />
                   </svg>
-                </button>
+                </Button>
               </div>
               {formatOpen && (
                 <div ref={formatPanelRef} className="absolute bottom-10 left-0 z-30 w-36 rounded-card border border-line bg-surface p-1 shadow-overlay">
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
                     onClick={() => { handleBold(); setFormatOpen(false); }}
-                    className="flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-sm text-foreground hover:bg-hover transition-colors"
                   >
                     Bold
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
                     onClick={() => { handleItalic(); setFormatOpen(false); }}
-                    className="flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-sm text-foreground hover:bg-hover transition-colors"
                   >
                     Italic
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
                     onClick={() => { handleCode(); setFormatOpen(false); }}
-                    className="flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-sm text-foreground hover:bg-hover transition-colors"
                   >
                     Code
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
                     onClick={() => { handleLink(); setFormatOpen(false); }}
-                    className="flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-sm text-foreground hover:bg-hover transition-colors"
                   >
                     Link
-                  </button>
+                  </Button>
                   {canManagePoll && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
                       onClick={() => { setShowPoll(true); setFormatOpen(false); }}
-                      className="flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-sm text-foreground hover:bg-hover transition-colors"
                     >
                       Poll
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
             </div>
           </div>
 
-          <button type="submit" disabled={isSubmitting || !canSubmit} className="h-8 !w-8 !p-0 flex items-center justify-center !rounded-lg shadow-linear-sm font-semibold transition-all">
+          <Button type="submit" size="icon" disabled={isSubmitting || !canSubmit}>
             {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-          </button>
+          </Button>
         </div>
       </div>
 
