@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Monitor, Smartphone, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { listSessionsAction, revokeSessionAction } from '@/modules/users/account-actions';
 
@@ -87,7 +88,7 @@ export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
             return (
               <div
                 key={session.id}
-                className="flex items-center justify-between rounded-lg border border-border p-3"
+                className="flex items-center justify-between rounded-control border border-line p-3"
               >
                 <div className="flex items-center gap-3">
                   <Icon className="h-5 w-5 shrink-0" />
@@ -108,13 +109,13 @@ export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
                   </div>
                 </div>
                 {!session.isCurrent && (
-                  <button type="button"
+                  <Button variant="ghost" size="sm"
                     disabled={revoking === session.token}
                     onClick={() => handleRevoke(session.token)}
                   >
                     <LogOut className="mr-1 h-3 w-3" />
                     {revoking === session.token ? 'Revoking…' : 'Revoke'}
-                  </button>
+                  </Button>
                 )}
               </div>
             );

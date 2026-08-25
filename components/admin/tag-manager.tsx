@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -218,35 +225,35 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Source tag</Label>
-                <select
-                  value={mergeSource}
-                  onChange={(e) => setMergeSource(e.target.value)}
-                  className="flex h-9 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                >
-                  <option value="">Select source...</option>
-                  {tags.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      #{t.name} ({t.threadCount})
-                    </option>
-                  ))}
-                </select>
+                <Select value={mergeSource} onValueChange={setMergeSource}>
+                  <SelectTrigger className="w-48 h-9">
+                    <SelectValue placeholder="Select source..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tags.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        #{t.name} ({t.threadCount})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Target tag</Label>
-                <select
-                  value={mergeTarget}
-                  onChange={(e) => setMergeTarget(e.target.value)}
-                  className="flex h-9 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                >
-                  <option value="">Select target...</option>
-                  {tags
-                    .filter((t) => t.id !== mergeSource)
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        #{t.name} ({t.threadCount})
-                      </option>
-                    ))}
-                </select>
+                <Select value={mergeTarget} onValueChange={setMergeTarget}>
+                  <SelectTrigger className="w-48 h-9">
+                    <SelectValue placeholder="Select target..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tags
+                      .filter((t) => t.id !== mergeSource)
+                      .map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          #{t.name} ({t.threadCount})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center gap-1.5">
                 <Button type="button"
@@ -338,7 +345,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                         <>
                           <td className="px-4 py-2.5">
                             <span
-                              className="inline-block w-6 h-6 rounded-md border border-border"
+                              className="inline-block w-6 h-6 rounded-md border border-line"
                               style={{ backgroundColor: tag.color }}
                             />
                           </td>

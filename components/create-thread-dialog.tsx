@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Plus, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { createThreadAction } from '@/modules/threads/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -125,10 +126,10 @@ export function CreateThreadDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <button type="button" className="bg-brand text-white font-bold hover:bg-brand-hover cursor-pointer">
+        <Button>
           <Plus className="h-4 w-4 mr-2" />
           Create Thread
-        </button>
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-120">
         <DialogHeader>
@@ -174,13 +175,13 @@ export function CreateThreadDialog() {
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Similar threads found
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setDismissed(true)}
-                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
               <ul className="space-y-1.5">
                 {similarThreads.map((t) => (
@@ -191,7 +192,7 @@ export function CreateThreadDialog() {
                       rel="noopener noreferrer"
                       className={cn(
                         'flex items-center justify-between text-xs px-2 py-1.5 rounded',
-                        'bg-background/60 hover:bg-background border border-border/50',
+                        'bg-background/60 hover:bg-background border border-line/50',
                         'transition-colors'
                       )}
                     >
@@ -216,9 +217,9 @@ export function CreateThreadDialog() {
             <p className="text-xs text-muted-foreground">One option per line, at least 2.</p>
             <Input name="pollExpiresAt" type="datetime-local" />
           </div>
-          <button type="submit" className="w-full bg-brand hover:bg-brand-hover text-white font-bold" disabled={isPending}>
+          <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? 'Creating...' : 'Publish thread'}
-          </button>
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

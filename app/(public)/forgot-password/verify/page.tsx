@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toasts } from '@/lib/utils/toast';
 import { SerifHeading } from '@/components/layout/serif-heading';
@@ -144,7 +145,7 @@ export default function ForgotPasswordVerifyPage() {
 
   return (
     <main className="flex flex-1 items-center justify-center py-16 px-6">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 space-y-5 shadow-linear-sm">
+      <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 space-y-5 shadow-linear-sm">
         <div className="space-y-1 text-center">
           <SerifHeading as="h1" className="text-2xl tracking-tight block">
             Verify Reset Code
@@ -165,7 +166,7 @@ export default function ForgotPasswordVerifyPage() {
               inputMode="numeric"
               maxLength={6}
               aria-label={`Digit ${index + 1} of verification code`}
-              className="w-10 h-12 text-center rounded-xl"
+              className="w-10 h-12 text-center rounded-card"
               value={digit}
               disabled={isSubmitting}
               onChange={(event) => handleOtpChange(index, event.target.value)}
@@ -178,23 +179,24 @@ export default function ForgotPasswordVerifyPage() {
           ))}
         </div>
 
-        <button
+        <Button
           type="button"
+          className="w-full h-11"
           onClick={() => void verifyOtp(otp.join(''))}
-          className="w-full h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           disabled={isSubmitting || otp.join('').length !== 6}
         >
           {isSubmitting ? 'Verifying...' : 'Verify Code'}
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
-          onClick={handleResend}
+          variant="ghost"
           className="w-full"
+          onClick={handleResend}
           disabled={isSubmitting || countdown > 0}
         >
           {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
-        </button>
+        </Button>
       </div>
     </main>
   );

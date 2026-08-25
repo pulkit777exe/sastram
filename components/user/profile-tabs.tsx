@@ -3,6 +3,7 @@
 import { useState, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Info, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 
 interface ProfileTabsProps {
@@ -34,12 +35,13 @@ export function ProfileTabs({
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button type="button"
+            <Button
+              type="button"
               key={tab.id}
+              variant="ghost"
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 'relative px-4 py-2 text-sm font-medium transition-colors',
-                'hover:text-foreground',
                 isActive ? 'text-foreground' : 'text-muted-foreground'
               )}
             >
@@ -54,7 +56,7 @@ export function ProfileTabs({
                   transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                 />
               )}
-            </button>
+            </Button>
           );
         })}
       </div>

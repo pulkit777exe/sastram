@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 import { SearchBox } from '@/components/ai-search/SearchBox';
 import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
 import { SaiSearchLayout, type HistoryItem } from '@/components/ai-search/sai-search-layout';
@@ -127,14 +128,15 @@ export function SearchPage({ user }: SearchPageProps) {
                   'Latest threads on Hacker News about AI in healthcare.',
                   'Compare Arch Linux vs Debian for a developer machine.',
                 ].map((q) => (
-                  <button
+                  <Button
                     key={q}
-                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs text-ink-2 bg-surface border-line hover:border-line-strong hover:text-ink h-auto px-3.5 py-2"
                     onClick={() => handleSearch(q, DEFAULT_CONFIG)}
-                    className="px-3.5 py-2 text-xs text-ink-2 bg-surface border border-line rounded-card hover:border-line-strong hover:text-ink hover:bg-hover transition-all duration-150"
                   >
                     {q}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </motion.div>

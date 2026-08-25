@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,9 +78,9 @@ export function PasswordResetCard() {
               autoComplete="new-password"
             />
           </div>
-          <button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving}>
             {saving ? 'Updating…' : 'Update password'}
-          </button>
+          </Button>
         </form>
       </CardContent>
     </Card>

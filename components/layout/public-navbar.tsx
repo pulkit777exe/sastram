@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -35,7 +36,7 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
   const userInitial = user?.name?.[0] || user?.email?.[0] || 'U';
 
   return (
-    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border">
+    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-line">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2" aria-label="Sastram home">
           <Logo brand className="h-6 w-6 shrink-0" />
@@ -61,12 +62,12 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
           {/* Mobile hamburger */}
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <button type="button"
-                className="md:hidden flex items-center justify-center h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              <Button variant="ghost" size="icon"
+                className="md:hidden"
                 aria-label="Open navigation menu"
               >
                 <Menu size={18} />
-              </button>
+              </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-64 p-0">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
@@ -76,7 +77,7 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
                     key={link.href}
                     href={link.href}
                     onClick={() => setSheetOpen(false)}
-                    className="px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    className="px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-control transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -86,7 +87,7 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
                   <Link
                     href="/dashboard"
                     onClick={() => setSheetOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-control transition-colors"
                   >
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={user.image || undefined} />
@@ -101,17 +102,18 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
                     <Link
                       href="/login"
                       onClick={() => setSheetOpen(false)}
-                      className="px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-control transition-colors"
                     >
                       Sign in
                     </Link>
-                    <Link
-                      href="/login"
-                      onClick={() => setSheetOpen(false)}
-                      className="mx-3 mt-1 px-4 py-2.5 text-sm font-medium text-center bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
-                    >
-                      Get started
-                    </Link>
+                    <Button asChild className="mx-3 mt-1 w-auto">
+                      <Link
+                        href="/login"
+                        onClick={() => setSheetOpen(false)}
+                      >
+                        Get started
+                      </Link>
+                    </Button>
                   </>
                 )}
               </nav>
@@ -136,12 +138,11 @@ export function PublicNavbar({ user = null }: PublicNavbarProps) {
               >
                 Sign in
               </Link>
-              <Link
-                href="/login"
-                className="hidden md:inline-flex text-sm font-medium px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
-              >
-                Get started
-              </Link>
+              <Button asChild className="hidden md:inline-flex">
+                <Link href="/login">
+                  Get started
+                </Link>
+              </Button>
             </>
           )}
         </div>

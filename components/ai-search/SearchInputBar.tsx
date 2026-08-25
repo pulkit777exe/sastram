@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useEffect } from 'react';
 import { Send, Loader2, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface SearchInputBarProps {
   query: string;
@@ -64,28 +65,30 @@ export function SearchInputBar({
             className="w-full resize-none bg-transparent px-4 py-3 pr-14 text-sm text-ink placeholder:text-ink-3 focus:outline-none"
             style={{ minHeight: '48px', maxHeight: '120px' }}
           />
-          <button
+          <Button
             type="button"
+            size="icon"
             onClick={onSubmit}
             disabled={isStreaming || query.trim().length < 3}
-            className="absolute right-3 bottom-3 flex h-8 w-8 items-center justify-center rounded-control bg-sai-accent text-white transition-all duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="absolute right-3 bottom-3 h-8 w-8 bg-sai-accent text-white hover:opacity-90 disabled:opacity-30"
           >
             {isStreaming ? (
               <Loader2 size={15} className="animate-spin" />
             ) : (
               <Send size={15} />
             )}
-          </button>
+          </Button>
         </div>
         {isChatActive && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2.5 text-xs text-ink-3 hover:text-ink"
             onClick={onNewSearch}
-            className="mt-2.5 flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink transition-colors"
           >
-            <Plus size={12} />
+            <Plus size={12} className="mr-1" />
             New conversation
-          </button>
+          </Button>
         )}
       </div>
     </div>

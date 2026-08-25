@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { followUser, unfollowUser } from '@/modules/follows/actions';
 import { toasts } from '@/lib/utils/toast';
+import { Button } from '@/components/ui/button';
 import { UserPlus, UserMinus } from 'lucide-react';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 
@@ -41,9 +42,10 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing, onFollow
 
   return (
     <div className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-100">
-      <button type="button"
+      <Button
+        variant={isFollowing ? 'outline' : 'default'}
+        className="min-w-30"
         onClick={handleToggle}
-        className={`min-w-30 ${isFollowing ? 'border border-border' : 'bg-primary text-primary-foreground'}`}
       >
         {isFollowing ? (
           <>
@@ -56,7 +58,7 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing, onFollow
             Follow
           </>
         )}
-      </button>
+      </Button>
     </div>
   );
 }

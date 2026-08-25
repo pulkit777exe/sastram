@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import type { Message } from '@/lib/types/index';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -44,7 +45,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
         tabIndex={0}
         onClick={() => onReplyClick?.()}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onReplyClick?.(); }}
-        className="flex items-center gap-2.5 w-full min-h-8 text-left group/bar rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/20 dark:bg-muted/15 dark:hover:bg-muted/15 px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
+        className="flex items-center gap-2.5 w-full min-h-8 text-left group/bar rounded-control border border-line/50 bg-muted/20 hover:bg-muted/20 dark:bg-muted/15 dark:hover:bg-muted/15 px-2.5 py-1.5 transition-colors duration-100 cursor-pointer"
       >
         <div className="flex -space-x-1.5 shrink-0">
           {uniqueSenders.map((sender) => (
@@ -73,21 +74,22 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
           </span>
         )}
 
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto size-6 shrink-0 text-muted-foreground/50 hover:bg-muted/60 hover:text-brand"
           onClick={(e) => {
             e.stopPropagation();
             setExpanded((p) => !p);
           }}
-          className="ml-auto flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-muted/60 hover:text-brand transition-colors"
           title={expanded ? 'Collapse replies' : 'Expand replies'}
         >
           {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        </button>
+        </Button>
       </div>
 
       {expanded && (
-        <div className="mt-1.5 ml-2.5 border-l border-border/70 pl-2.5">
+        <div className="mt-1.5 ml-2.5 border-l border-line/70 pl-2.5">
           {shouldVirtualize ? (
             /* Virtualized list for large reply counts */
             <div
@@ -126,30 +128,32 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
               ))}
 
               {hidden > 0 && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs font-semibold text-brand hover:text-brand px-2 py-1 w-fit h-auto"
                   onClick={(e) => {
                     e.stopPropagation();
                     setExpanded(true);
                   }}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-brand hover:text-brand px-2 py-1 w-fit transition-colors"
                 >
-                  <MessageCircle size={11} />
+                  <MessageCircle size={11} className="mr-1.5" />
                   {hidden} more {hidden === 1 ? 'reply' : 'replies'}
-                </button>
+                </Button>
               )}
             </div>
           )}
 
           {/* Reply CTA */}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs font-semibold text-muted-foreground hover:text-brand px-2 py-1 w-fit h-auto mt-0.5"
             onClick={() => onReplyClick?.()}
-            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-brand px-2 py-1 w-fit transition-colors mt-0.5"
           >
-            <MessageCircle size={11} />
+            <MessageCircle size={11} className="mr-1.5" />
             Reply to thread
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -165,7 +169,7 @@ function ReplyItem({
 }) {
   return (
     <div
-      className="flex items-start gap-2 text-xs py-1 px-2 rounded-lg hover:bg-muted/20 cursor-pointer group/reply transition-colors"
+      className="flex items-start gap-2 text-xs py-1 px-2 rounded-control hover:bg-muted/20 cursor-pointer group/reply transition-colors"
       onClick={() => onReplyClick?.(reply.id)}
     >
       <Avatar className="w-4 h-4 mt-0.5 shrink-0">
