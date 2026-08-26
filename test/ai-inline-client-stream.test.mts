@@ -13,6 +13,10 @@ function makeSideEffectsStub() {
     enqueueAiInline: async (args) => {
       calls.enqueueAiInline.push(args);
     },
+    createBulkNotifications: async () => {},
+    recordActivity: async () => {},
+    revalidateThreadPage: () => {},
+    revalidateDashboard: () => {},
   };
   return { stub, calls };
 }

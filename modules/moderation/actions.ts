@@ -9,7 +9,7 @@ import {
   validateModerationTarget,
 } from './policy';
 import { requireModerationRole } from '@/modules/policy';
-import { executeAuditAndRevalidate } from './executors';
+import { executeAuditAndRevalidate } from '@/modules/audit';
 import {
   banUserSchema,
   deleteMessageSchema,
@@ -121,7 +121,6 @@ export const bulkDeleteMessages = createServerAction(
         )
       );
 
-      // One rolled-up notification per author rather than one per message.
       await tx.notification.createMany({
         data: [...perSender].map(([senderId, count]) => ({
           userId: senderId,
@@ -378,7 +377,6 @@ export const deleteThread = createServerAction(
 
     const thread = await findThreadForDeletion(threadId);
 
-    // Soft-delete: set deletedAt instead of hard-deleting.
     await prisma.thread.update({
       where: { id: threadId },
       data: { deletedAt: new Date() },
@@ -439,7 +437,6 @@ export const getMessageDetails = createServerAction(
       return actionFailure('NOT_FOUND', 'Message not found');
     }
 
-    // Burst rate over the last day is the signal moderators use to spot spam runs.
     const [recentMessages, senderBans] = await Promise.all([
       prisma.message.count({
         where: {

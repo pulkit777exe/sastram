@@ -1,6 +1,8 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { revalidatePath } from 'next/cache';
+import { ROUTES } from '@/lib/config/routes';
 
 export type AuditEventDetails = Prisma.InputJsonValue | null;
 
@@ -49,8 +51,6 @@ export async function logAction({
   });
 }
 
-// Audit reads back admin dashboards, so a failed query degrades to an empty
-// list rather than taking the whole page down.
 export async function getUserActivities(filters?: UserActivityFilters) {
   try {
     return await prisma.userActivity.findMany({
@@ -74,4 +74,24 @@ export async function getUserActivities(filters?: UserActivityFilters) {
   }
 }
 
+export async function executeAuditAndRevalidate(args: {
+  action: string;
+  entityType: string;
+  entityId: string;
+  userId: string;
+  details?: Prisma.InputJsonValue | null;
+  paths?: string[];
+}) {
+  await logAction({
+    action: args.action,
+    entityType: args.entityType,
+    entityId: args.entityId,
+    userId: args.userId,
+    details: args.details,
+  });
+
+  for (const path of args.paths ?? [ROUTES.ADMIN_MODERATION, ROUTES.ADMIN_REPORTS]) {
+    revalidatePath(path);
+  }
+}
 

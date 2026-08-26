@@ -1,7 +1,7 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { createNotification } from '@/modules/notifications';
-import { executeAuditAndRevalidate } from '@/modules/moderation/executors';
+import { executeAuditAndRevalidate } from '@/modules/audit';
 import { AppError } from '@/lib/utils/errors';
 
 const SUSPENSION_DURATIONS_MS: Record<string, number> = {

@@ -7,6 +7,8 @@ import { requireSession, assertAdmin } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/modules/threads/slug';
 import { createThread, deleteThread, updateThreadStaleness } from './threads-write/repository';
+import { infraThreadSideEffects } from './adapters/infra-side-effects';
+import { buildThreadDTO } from './service';
 import { listThreads } from './threads-core/repository';
 import { getThreadMessagesPaginated, type ThreadMessage } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
@@ -60,7 +62,7 @@ export const createThreadAction = createServerAction(
     try {
       const session = await requireSession();
 
-      const thread = await createThread({
+      const result = await createThread({
         name: title,
         description,
         slug: buildThreadSlug(title),
@@ -68,8 +70,22 @@ export const createThreadAction = createServerAction(
         initialMessage,
       });
 
+      if (result.initialMessage) {
+        await infraThreadSideEffects.enqueueInitialAiJobs({
+          threadId: result.thread.id,
+          message: {
+            id: result.initialMessage.id,
+            content: result.initialMessage.content,
+            senderId: session.user.id,
+            sender: { id: session.user.id, name: null, image: null },
+            createdAt: result.initialMessage.createdAt,
+          },
+        });
+      }
+
       if (pollQuestion && pollOptions && pollOptions.length >= 2) {
-        await createPoll(thread.id, pollQuestion, pollOptions, pollExpiresAt || undefined);
+        const summary = buildThreadDTO(result.thread, result.messageCount, 0);
+        await createPoll(summary.id, pollQuestion, pollOptions, pollExpiresAt || undefined);
       }
 
       revalidatePath(ROUTES.DASHBOARD);

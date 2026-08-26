@@ -1,1 +1,1 @@
-export { logAction, getUserActivities, type AuditEventDetails } from './repository';
+export { logAction, getUserActivities, executeAuditAndRevalidate, type AuditEventDetails } from './repository';

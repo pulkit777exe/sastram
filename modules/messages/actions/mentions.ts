@@ -8,7 +8,6 @@ import { searchMentionUsersSchema } from '@/modules/messages/schemas';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { ROUTES } from '@/lib/config/routes';
-import { createBulkNotifications } from '@/modules/notifications/repository';
 import { actionSuccess } from '@/lib/actions/result';
 
 const EMAIL_PREVIEW_LENGTH = 200;
@@ -42,7 +41,7 @@ export async function createMentionsForMessage({
     data: mentions.map((userId) => ({ messageId, userId })),
   });
 
-  await createBulkNotifications(
+  await sideEffects.createBulkNotifications(
     mentions.map((userId) => ({
       userId,
       type: 'MENTION' as const,

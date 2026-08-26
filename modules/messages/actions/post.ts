@@ -2,7 +2,6 @@
 
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
-import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
@@ -10,7 +9,6 @@ import { sanitizeContent } from '@/lib/services/content-safety';
 import { createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
 import { getMessageLimiter } from '@/lib/services/rate-limit';
 import { parseMentions, resolveUserMentions } from '@/modules/messages/mention-parser';
-import { recordActivity } from '@/modules/activity';
 import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
@@ -175,12 +173,10 @@ export const postMessage = createServerAction(
         clientStreams: clientStreams === '1',
       });
 
-      if (message.thread?.slug) {
-        revalidatePath(`/dashboard/threads/${message.thread.slug}`);
-      }
-      revalidatePath('/dashboard');
+      infraMessageSideEffects.revalidateThreadPage(message.thread?.slug ?? null);
+      infraMessageSideEffects.revalidateDashboard();
 
-      await recordActivity({
+      await infraMessageSideEffects.recordActivity({
         userId: session.user.id,
         type: 'MESSAGE_POSTED',
         entityType: 'Message',

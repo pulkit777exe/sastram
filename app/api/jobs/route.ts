@@ -11,7 +11,7 @@ import {
   handleAIInsightNotificationsJob,
   handleAIInlineJob,
   handleStalenessCheckJob,
-} from '@/lib/queue/workers/ai.worker';
+} from '@/lib/queue/workers';
 import { handleEmailJob } from '@/lib/queue/workers/email.worker';
 import { AIJobType } from '@/lib/queue/config';
 import type {

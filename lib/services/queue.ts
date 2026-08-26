@@ -91,7 +91,7 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T) 
 async function runJobInline<T extends object>(jobType: string, payload: T) {
   try {
     // Deferred imports: the workers import back into this module.
-    const ai = await import('@/lib/queue/workers/ai.worker');
+    const ai = await import('@/lib/queue/workers');
     const { handleEmailJob } = await import('@/lib/queue/workers/email.worker');
 
     const handlers: Record<string, (data: never) => Promise<unknown>> = {

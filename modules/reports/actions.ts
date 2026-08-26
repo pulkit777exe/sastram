@@ -8,7 +8,7 @@ import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
 import { createBulkNotifications } from '@/modules/notifications';
 import { requireRole, requireModerationRole } from '@/modules/policy';
-import { executeAuditAndRevalidate } from '@/modules/moderation/executors';
+import { executeAuditAndRevalidate } from '@/modules/audit';
 import type { ReportCategory, ReportStatus } from '@prisma/client';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { actionSuccess } from '@/lib/actions/result';
