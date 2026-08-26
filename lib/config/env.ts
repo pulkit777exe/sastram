@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 const serverEnvSchema = z.object({
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
-  REDIS_URL: z.url('REDIS_URL must be a valid URL').optional(),
   UPSTASH_REDIS_REST_URL: z.url('UPSTASH_REDIS_REST_URL must be a valid URL').optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
@@ -27,7 +26,6 @@ const serverEnvSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_S3_BUCKET: z.string().optional(),
-  WEBSOCKET_URL: z.string().url('WEBSOCKET_URL must be a valid URL').optional(),
   CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters').optional(),
   QSTASH_URL: z.string().url('QSTASH_URL must be a valid URL').optional(),
   QSTASH_TOKEN: z.string().optional(),

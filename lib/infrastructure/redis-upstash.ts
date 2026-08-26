@@ -4,9 +4,9 @@ let _upstashRedis: Redis | null = null;
 let _upstashRedisConfigKey: string | null = null;
 
 /**
- * Upstash client for quota/rate-limit work. Speaks HTTP REST, so it is a separate
- * client from the ioredis (TCP) one used for pub/sub and caching.
- * Returns null when Upstash isn't configured — callers degrade gracefully.
+ * Upstash REST client for quota/rate-limit work. HTTP-based, so it works on
+ * serverless (Vercel free tier). Returns null when Upstash isn't configured —
+ * callers degrade gracefully.
  */
 export function getUpstashRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
