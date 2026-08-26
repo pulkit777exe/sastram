@@ -29,7 +29,7 @@ export function TopicCard({
     <div className="group relative flex h-full flex-col justify-between rounded-control border border-line bg-surface p-5 transition-all duration-300 hover:shadow-linear-sm">
       <div>
         <div className="flex items-center justify-between mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md border border-line bg-field text-ink-3 transition-colors group-hover:border-brand/20 group-hover:bg-brand/10 group-hover:text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control border border-line bg-field text-ink-3 transition-colors group-hover:border-brand/20 group-hover:bg-brand/10 group-hover:text-brand">
             <Hash size={20} />
           </div>
           {trending && (

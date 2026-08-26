@@ -167,7 +167,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 <span>{selectedAppeal.banReason}</span>
 
                 <span className="text-muted-foreground">Appeal:</span>
-                <div className="p-3 bg-muted rounded-md text-xs italic">
+                <div className="p-3 bg-muted rounded-control text-xs italic">
                   &quot;{selectedAppeal.reason || 'No appeal reason provided'}&quot;
                 </div>
               </div>

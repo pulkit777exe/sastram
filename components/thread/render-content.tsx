@@ -82,7 +82,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           size="sm"
           onClick={handleCopy}
           className={cn(
-            'flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium',
+            'flex items-center gap-1.5 rounded-control px-2 py-0.5 text-xs font-medium',
             copied
               ? 'text-emerald-600 bg-emerald-600/10'
               : 'text-muted-foreground bg-transparent'
@@ -208,7 +208,7 @@ function renderTextWithFormatting(text: string, keyPrefix: string): React.ReactN
       nodes.push(
         <span
           key={`${keyPrefix}-m${keyCounter}`}
-          className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0 align-baseline text-[0.9em] font-semibold leading-[1.6] cursor-default bg-brand/10 text-brand"
+          className="inline-flex items-center gap-0.5 rounded-control px-1.5 py-0 align-baseline text-[0.9em] font-semibold leading-[1.6] cursor-default bg-brand/10 text-brand"
           title={matchText}
         >
           {matchText}

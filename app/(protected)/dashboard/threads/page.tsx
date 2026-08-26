@@ -23,7 +23,7 @@ function ThreadListSkeleton() {
           key={i}
           className="flex items-start gap-3 border-b border-line/60 p-4 last:border-b-0"
         >
-          <Skeleton className="h-9 w-9 shrink-0 rounded-md" />
+          <Skeleton className="h-9 w-9 shrink-0 rounded-control" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-2/3" />
             <Skeleton className="h-3 w-full" />
@@ -41,7 +41,7 @@ function ThreadRow({ thread }: { thread: ThreadSummary }) {
       href={`/dashboard/threads/${thread.slug}`}
       className="group flex items-start gap-3 border-b border-line/60 p-4 transition-colors last:border-b-0 hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-brand/15 bg-brand/10 text-brand transition-colors group-hover:bg-brand group-hover:text-primary-foreground">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-brand/15 bg-brand/10 text-brand transition-colors group-hover:bg-brand group-hover:text-primary-foreground">
         <Hash size={14} />
       </div>
       <div className="flex-1 min-w-0">

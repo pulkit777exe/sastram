@@ -123,7 +123,7 @@ export default function AdminHealthPage() {
       </header>
 
       {error && (
-        <Card className="rounded-3xl border-destructive/30 bg-destructive/5">
+        <Card className="rounded-card border-destructive/30 bg-destructive/5">
           <CardContent className="p-6 text-destructive text-sm">{error}</CardContent>
         </Card>
       )}
@@ -131,7 +131,7 @@ export default function AdminHealthPage() {
       {!data && !error && loading && (
         <div className="grid gap-6 md:grid-cols-2">
           {[1, 2].map((i) => (
-            <Card key={i} className="rounded-3xl">
+            <Card key={i} className="rounded-card">
               <CardContent className="p-6">
                 <div className="skeleton h-4 w-24 mb-3" />
                 <div className="skeleton h-8 w-16" />
@@ -145,7 +145,7 @@ export default function AdminHealthPage() {
         <>
           {/* System Info */}
           <section className="grid gap-6 md:grid-cols-2">
-            <Card className="rounded-3xl">
+            <Card className="rounded-card">
               <CardHeader className="flex flex-row items-center gap-3 pb-2">
                 <Server className="w-5 h-5 text-ink-3" />
                 <CardTitle className="text-sm font-medium text-ink-3">
@@ -158,7 +158,7 @@ export default function AdminHealthPage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl">
+            <Card className="rounded-card">
               <CardHeader className="flex flex-row items-center gap-3 pb-2">
                 <HardDrive className="w-5 h-5 text-ink-3" />
                 <CardTitle className="text-sm font-medium text-ink-3">
@@ -182,13 +182,13 @@ export default function AdminHealthPage() {
                 Moderation SLA
               </h2>
               <div className="grid gap-6 md:grid-cols-4">
-                <Card className="rounded-3xl">
+                <Card className="rounded-card">
                   <CardContent className="p-6">
                     <p className="text-sm text-ink-3">Total Pending</p>
                     <p className="text-2xl font-bold text-ink mt-1">{slaData.totalPending}</p>
                   </CardContent>
                 </Card>
-                <Card className={`rounded-3xl ${slaData.pendingOver24h > 0 ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
+                <Card className={`rounded-card ${slaData.pendingOver24h > 0 ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
                   <CardContent className="p-6">
                     <p className="text-sm text-ink-3 flex items-center gap-1">
                       {slaData.pendingOver24h > 0 && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
@@ -199,7 +199,7 @@ export default function AdminHealthPage() {
                     </p>
                   </CardContent>
                 </Card>
-                <Card className={`rounded-3xl ${slaData.pendingOver72h > 0 ? 'border-destructive/30 bg-destructive/5' : ''}`}>
+                <Card className={`rounded-card ${slaData.pendingOver72h > 0 ? 'border-destructive/30 bg-destructive/5' : ''}`}>
                   <CardContent className="p-6">
                     <p className="text-sm text-ink-3 flex items-center gap-1">
                       {slaData.pendingOver72h > 0 && <AlertTriangle className="w-4 h-4 text-red-600" />}
@@ -210,7 +210,7 @@ export default function AdminHealthPage() {
                     </p>
                   </CardContent>
                 </Card>
-                <Card className="rounded-3xl">
+                <Card className="rounded-card">
                   <CardContent className="p-6">
                     <p className="text-sm text-ink-3">Avg Response Time</p>
                     <p className="text-2xl font-bold text-ink mt-1">

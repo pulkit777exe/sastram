@@ -169,7 +169,7 @@ export function CreateThreadDialog() {
           )}
 
           {showSimilar && (
-            <div className="border border-amber-500/30 bg-amber-500/5 rounded-md p-3 space-y-2">
+            <div className="border border-amber-500/30 bg-amber-500/5 rounded-control p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="h-3.5 w-3.5" />
@@ -210,7 +210,7 @@ export function CreateThreadDialog() {
             </div>
           )}
 
-          <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+          <div className="border rounded-control p-3 space-y-3 bg-muted/30">
             <Label className="text-sm font-medium">Poll (optional)</Label>
             <Input name="pollQuestion" placeholder="Poll question" />
             <Textarea name="pollOptions" placeholder="Option 1&#10;Option 2" className="font-mono text-sm" />

@@ -222,7 +222,7 @@ export function Sidebar({
                 placeholder="Search with Sai..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-field border-line rounded-md py-1.5 pl-9 pr-12 text-xs h-auto"
+                className="w-full bg-field border-line rounded-control py-1.5 pl-9 pr-12 text-xs h-auto"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                 <kbd className="text-xs bg-background px-1 rounded border border-line text-ink-3">

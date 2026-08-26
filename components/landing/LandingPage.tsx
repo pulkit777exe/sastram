@@ -151,7 +151,7 @@ function DashboardPreview() {
           <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
         </div>
         <div className="flex-1 mx-4">
-          <div className="h-7 bg-background border border-line rounded-md flex items-center px-3 gap-2">
+          <div className="h-7 bg-background border border-line rounded-control flex items-center px-3 gap-2">
             <Search size={12} className="text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Search threads, messages, users…</span>
           </div>
@@ -165,7 +165,7 @@ function DashboardPreview() {
           {['Engineering', 'Research', 'General'].map((c, i) => (
             <div
               key={c}
-              className={`text-xs px-2 py-1.5 rounded-md mb-0.5 ${i === 0 ? 'bg-brand/10 text-brand font-medium' : 'text-muted-foreground'}`}
+              className={`text-xs px-2 py-1.5 rounded-control mb-0.5 ${i === 0 ? 'bg-brand/10 text-brand font-medium' : 'text-muted-foreground'}`}
             >
               {c}
             </div>
@@ -209,7 +209,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
           {Array.from({ length: 12 }).map((_, i) => (
             <div
               key={i}
-              className="absolute w-8 h-8 rounded-md bg-brand/20"
+              className="absolute w-8 h-8 rounded-control bg-brand/20"
               style={{
                 left: `${(i % 4) * 25 + 5}%`,
                 top: `${Math.floor(i / 4) * 30 + 10}%`,

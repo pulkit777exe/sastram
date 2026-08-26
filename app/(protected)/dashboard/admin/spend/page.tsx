@@ -88,7 +88,7 @@ export default function SpendPage() {
       </header>
 
       {error && (
-        <Card className="rounded-3xl border-destructive/30 bg-destructive/5">
+        <Card className="rounded-card border-destructive/30 bg-destructive/5">
           <CardContent className="p-6 text-destructive text-sm">{error}</CardContent>
         </Card>
       )}
@@ -96,7 +96,7 @@ export default function SpendPage() {
       {!data && !error && loading && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="rounded-3xl">
+            <Card key={i} className="rounded-card">
               <CardContent className="p-6">
                 <div className="skeleton h-4 w-24 mb-3" />
                 <div className="skeleton h-8 w-16" />
@@ -115,14 +115,14 @@ export default function SpendPage() {
               Today&apos;s Spend
             </h2>
             <div className="grid gap-6 md:grid-cols-4">
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Used</p>
                   <p className="text-2xl font-bold text-foreground mt-1">{formatUsd(data.today.used)}</p>
                   <p className="text-xs text-muted-foreground mt-1">of {formatUsd(data.today.limit)} limit</p>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Remaining</p>
                   <p className={`text-2xl font-bold mt-1 ${data.today.remaining < 1 ? 'text-red-600' : 'text-foreground'}`}>
@@ -138,14 +138,14 @@ export default function SpendPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Period Calls</p>
                   <p className="text-2xl font-bold text-foreground mt-1">{data.periodTotal.callCount}</p>
                   <p className="text-xs text-muted-foreground mt-1">{data.periodTotal.successCount} succeeded, {data.periodTotal.failureCount} failed</p>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Period Cost</p>
                   <p className="text-2xl font-bold text-foreground mt-1">{formatUsd(data.periodTotal.costUsd)}</p>
@@ -162,7 +162,7 @@ export default function SpendPage() {
                 <Database className="w-5 h-5" />
                 By Operation
               </h2>
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-0">
                   <table className="w-full text-sm">
                     <thead>
@@ -198,7 +198,7 @@ export default function SpendPage() {
               </h2>
               <div className="grid gap-6 md:grid-cols-2">
                 {Object.entries(data.byProvider).map(([provider, stats]) => (
-                  <Card key={provider} className="rounded-3xl">
+                  <Card key={provider} className="rounded-card">
                     <CardContent className="p-6">
                       <p className="text-sm text-muted-foreground capitalize">{provider}</p>
                       <p className="text-2xl font-bold text-foreground mt-1">{formatUsd(stats.costUsd)}</p>
@@ -219,7 +219,7 @@ export default function SpendPage() {
               </h2>
               <div className="grid gap-6 md:grid-cols-2">
                 {Object.entries(data.byModel).map(([model, stats]) => (
-                  <Card key={model} className="rounded-3xl">
+                  <Card key={model} className="rounded-card">
                     <CardContent className="p-6">
                       <p className="text-sm text-muted-foreground">{model}</p>
                       <p className="text-2xl font-bold text-foreground mt-1">{formatUsd(stats.costUsd)}</p>

@@ -22,13 +22,13 @@ export function ThemeToggle({ className }: { className?: string }) {
   }, []);
 
   if (!mounted) {
-    return <div className={cn('w-14 h-8 rounded-full bg-muted border border-border', className)} />;
+    return <div className={cn('w-14 h-8 rounded-full bg-muted border border-line', className)} />;
   }
 
   return (
     <div
       className={cn(
-        'relative flex w-14 h-8 rounded-full bg-muted border border-border p-1 cursor-pointer transition-colors',
+        'relative flex w-14 h-8 rounded-full bg-muted border border-line p-1 cursor-pointer transition-colors',
         className
       )}
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

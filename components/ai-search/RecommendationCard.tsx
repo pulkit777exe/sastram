@@ -27,9 +27,9 @@ const OPTIONS: Option[] = [
     body: (
       <>
         Reorder waffle cones from{' '}
-        <code className="rounded-md bg-sai-accent-tint px-1.5 py-0.5 font-mono text-[12px] text-sai-accent-ink">cone_king</code>{' '}
+        <code className="rounded-control bg-sai-accent-tint px-1.5 py-0.5 font-mono text-[12px] text-sai-accent-ink">cone_king</code>{' '}
         with lead time{' '}
-        <code className="rounded-md bg-sai-accent-tint px-1.5 py-0.5 font-mono text-[12px] text-sai-accent-ink">7_days</code>.
+        <code className="rounded-control bg-sai-accent-tint px-1.5 py-0.5 font-mono text-[12px] text-sai-accent-ink">7_days</code>.
       </>
     ),
     short: 'Reorder from cone_king · 7-day lead',
@@ -44,7 +44,7 @@ const OPTIONS: Option[] = [
     body: (
       <>
         Switch vanilla to{' '}
-        <code className="rounded-md bg-orange-tint px-1.5 py-0.5 font-mono text-[12px] text-orange">vanilla_madagascar</code>{' '}
+        <code className="rounded-control bg-orange-tint px-1.5 py-0.5 font-mono text-[12px] text-orange">vanilla_madagascar</code>{' '}
         for peak season.
       </>
     ),

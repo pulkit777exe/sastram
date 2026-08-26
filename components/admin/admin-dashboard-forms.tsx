@@ -43,7 +43,7 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
 
   return (
     <div className="space-y-8">
-      <header className="rounded-4xl border border-line admin-header-gradient p-8 text-white shadow-linear-xl">
+      <header className="rounded-card border border-line admin-header-gradient p-8 text-white shadow-linear-xl">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>
@@ -77,7 +77,7 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
       </header>
 
       <section>
-        <Card className="rounded-3xl border-line">
+        <Card className="rounded-card border-line">
           <CardHeader>
             <CardTitle>Create a thread</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -148,7 +148,7 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
         </Card>
       </section>
 
-      <section className="rounded-3xl border border-line bg-surface p-6 shadow-linear-sm">
+      <section className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Threads</h2>

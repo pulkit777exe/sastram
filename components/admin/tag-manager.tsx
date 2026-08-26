@@ -195,7 +195,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                     type="color"
                     value={newColor}
                     onChange={(e) => setNewColor(e.target.value)}
-                    className="w-9 h-9 rounded-md border border-input bg-transparent cursor-pointer"
+                    className="w-9 h-9 rounded-control border border-input bg-transparent cursor-pointer"
                   />
                   <span className="text-xs font-mono text-muted-foreground">{newColor}</span>
                 </div>
@@ -307,7 +307,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                               type="color"
                               value={editColor}
                               onChange={(e) => setEditColor(e.target.value)}
-                              className="w-8 h-8 rounded-md border border-input bg-transparent cursor-pointer"
+                              className="w-8 h-8 rounded-control border border-input bg-transparent cursor-pointer"
                             />
                           </td>
                           <td className="px-4 py-2">
@@ -345,7 +345,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                         <>
                           <td className="px-4 py-2.5">
                             <span
-                              className="inline-block w-6 h-6 rounded-md border border-line"
+                              className="inline-block w-6 h-6 rounded-control border border-line"
                               style={{ backgroundColor: tag.color }}
                             />
                           </td>
