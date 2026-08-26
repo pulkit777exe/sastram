@@ -74,7 +74,7 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
                 void updatePreference('theme', value as UserPreferences['theme'])
               }
             >
-              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all">
+              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>
               <SelectContent>
@@ -124,7 +124,7 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
                 void updatePreference('emailDigest', value as UserPreferences['emailDigest'])
               }
             >
-              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all">
+              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all">
                 <SelectValue placeholder="Select frequency" />
               </SelectTrigger>
               <SelectContent>

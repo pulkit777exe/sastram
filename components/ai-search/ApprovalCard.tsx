@@ -135,7 +135,7 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
                   >
                     <span
                       className={`flex size-4 shrink-0 items-center justify-center transition-colors duration-200
-                        ${question.type === 'radio' ? 'rounded-full' : 'rounded-[5px]'}
+                        ${question.type === 'radio' ? 'rounded-full' : 'rounded-control'}
                         ${on ? 'bg-ink text-canvas' : 'shadow-[inset_0_0_0_1.5px_var(--line-strong)] text-transparent'}`}
                     >
                       {question.type === 'radio' ? (
@@ -235,7 +235,7 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
               aria-label={last ? 'Send answers' : 'Next question'}
               disabled={!hasAnswer}
               onClick={() => (last ? handleSend() : setQi((q) => q + 1))}
-              className="-mr-0.5 size-7 rounded-[8px] transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
+              className="-mr-0.5 size-7 rounded-card transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
               style={{
                 background: hasAnswer ? 'var(--ink)' : 'var(--field)',
                 color: hasAnswer ? 'var(--surface)' : 'var(--ink-3)',

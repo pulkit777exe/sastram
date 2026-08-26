@@ -21,7 +21,7 @@ import { SerifHeading } from '@/components/layout/serif-heading';
 type AuthMode = 'signin' | 'signup' | 'email-otp' | 'otp-verify';
 
 const inputStyles =
-  'h-12 rounded-card bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all';
+  'h-12 rounded-card bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-all';
 const labelStyles = 'text-muted-foreground text-sm font-medium';
 
 function UserAuthForm({
@@ -462,7 +462,7 @@ function UserAuthForm({
                     onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
                     disabled={loadingState !== null}
-                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-card border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
+                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-card border-input bg-secondary text-foreground focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:border-brand transition-all caret-brand"
                   />
                 ))}
               </div>

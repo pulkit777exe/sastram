@@ -175,7 +175,7 @@ export function SearchBox({
           >
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-x-1 rounded-[6px] bg-hover"
+              className="pointer-events-none absolute inset-x-1 rounded-control bg-hover"
               style={{
                 top: rowBox?.top ?? 0,
                 height: rowBox?.height ?? 0,
@@ -198,7 +198,7 @@ export function SearchBox({
                 }}
                 onClick={() => pick(row)}
                 variant="ghost"
-                className="relative z-10 h-9 w-full items-center gap-2.5 rounded-[6px] px-2 text-left justify-start"
+                className="relative z-10 h-9 w-full items-center gap-2.5 rounded-control px-2 text-left justify-start"
               >
                 <span className="shrink-0 text-[12.5px] font-medium text-ink font-mono">
                   {row.name}
@@ -319,7 +319,7 @@ export function SearchBox({
                         inputRef.current?.focus();
                       }}
                       variant="ghost"
-                      className="w-full items-center gap-2 rounded-[6px] px-2 text-left h-auto py-1.5"
+                      className="w-full items-center gap-2 rounded-control px-2 text-left h-auto py-1.5"
                     >
                       <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">
                         {m.name}

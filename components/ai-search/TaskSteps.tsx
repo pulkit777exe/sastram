@@ -143,7 +143,7 @@ export function TaskSteps({
                   {row.status === "done" ? (
                     <motion.span
                       key="done"
-                      className="col-start-1 row-start-1 grid size-4 place-items-center rounded-[5px] bg-sai-green/14 text-sai-green"
+                      className="col-start-1 row-start-1 grid size-4 place-items-center rounded-control bg-sai-green/14 text-sai-green"
                       initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.4 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, transition: STILL }}
@@ -154,7 +154,7 @@ export function TaskSteps({
                   ) : row.status === "error" ? (
                     <motion.span
                       key="error"
-                      className="col-start-1 row-start-1 grid size-4 place-items-center rounded-[5px] bg-sai-red/12 text-sai-red"
+                      className="col-start-1 row-start-1 grid size-4 place-items-center rounded-control bg-sai-red/12 text-sai-red"
                       initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.4 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, transition: STILL }}

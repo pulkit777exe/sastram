@@ -188,7 +188,7 @@ export function ThinkingState({
                 return (
                   <div
                     key={phase}
-                    className="flex min-h-7 w-full items-center gap-2 rounded-[6px] px-1.5 py-0.5"
+                    className="flex min-h-7 w-full items-center gap-2 rounded-control px-1.5 py-0.5"
                     style={{ animation: `fade-up 320ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both` }}
                   >
                     {/* Status indicator */}

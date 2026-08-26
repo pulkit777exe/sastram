@@ -152,7 +152,7 @@ export function SkeletonSwap({
                     style={{ height: lineHeight }}
                   >
                     <div
-                      className="rounded-[5px] bg-muted dark:bg-white/15"
+                      className="rounded-control bg-muted dark:bg-white/15"
                       style={{
                         height: barHeight,
                         width: `${widthFor(i, lines)}%`,

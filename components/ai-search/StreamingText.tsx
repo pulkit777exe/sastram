@@ -44,12 +44,12 @@ function SourceChip({ source }: { source: Source }) {
       href={source.url}
       target="_blank"
       rel="noreferrer"
-      className="ml-0 mr-1 inline-flex h-4.5 translate-y-[-1px] items-center gap-1 rounded-[5px]
+      className="ml-0 mr-1 inline-flex h-4.5 translate-y-[-1px] items-center gap-1 rounded-control
         bg-inset pr-[3px] pl-[3px] align-middle font-mono text-[10.5px] text-ink-2 shadow-hairline
         transition-colors duration-150 hover:bg-hover hover:text-ink"
       style={{ animation: 'pop-in 250ms cubic-bezier(0.23,1,0.32,1) both' }}
     >
-      <span className="size-3 rounded-[3px] bg-ink/10 flex items-center justify-center text-ink-3">
+      <span className="size-3 rounded-sm bg-ink/10 flex items-center justify-center text-ink-3">
         <svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor">
           <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5V1.077zM4.09 4a9.267 9.267 0 0 1 .64-1.539 6.7 6.7 0 0 1 .597-.933A7.025 7.025 0 0 0 2.255 4H4.09zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a6.958 6.958 0 0 0-.656 2.5h2.49zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5H4.847zM8.5 5v2.5h2.99a12.495 12.495 0 0 0-.337-2.5H8.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5H4.51zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5H8.5zM5.145 12c.138.386.295.744.468 1.068.552 1.035 1.218 1.65 1.887 1.855V12H5.145zm.182 2.472a6.696 6.696 0 0 1-.597-.933A9.268 9.268 0 0 1 4.09 12H2.255a7.024 7.024 0 0 0 3.072 2.472zM3.82 11a13.652 13.652 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5H3.82zm6.853 3.472A7.024 7.024 0 0 0 13.745 12H11.91a9.27 9.27 0 0 1-.64 1.539 6.688 6.688 0 0 1-.597.933zM8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855.173-.324.33-.682.468-1.068H8.5zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.65 13.65 0 0 1-.312 2.5zm2.802-3.5a6.959 6.959 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5h2.49zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.024 7.024 0 0 0-3.072-2.472c.218.284.418.598.597.933zM10.855 4a7.966 7.966 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4h2.355z"/>
         </svg>
@@ -245,7 +245,7 @@ export function StreamingText({
           onClick={handleCopy}
           aria-label={copied ? 'Copied' : 'Copy'}
           variant="ghost"
-          className={`size-6 rounded-[6px] transition-colors duration-100 hover:bg-hover-2 ${
+          className={`size-6 rounded-control transition-colors duration-100 hover:bg-hover-2 ${
             copied ? 'text-sai-green' : 'text-ink-3 hover:text-ink-2'
           }`}
         >
@@ -270,7 +270,7 @@ export function StreamingText({
             onClick={() => { setShowRetryPopover((o) => !o); }}
             aria-label="Regenerate"
             variant="ghost"
-            className="size-6 rounded-[6px] text-ink-3
+            className="size-6 rounded-control text-ink-3
               transition-colors duration-100 hover:bg-hover-2 hover:text-ink-2"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -279,7 +279,7 @@ export function StreamingText({
           </Button>
           {showRetryPopover && (
             <div
-              className="absolute left-0 bottom-full z-20 mb-2 w-56 rounded-[10px] bg-surface p-1 shadow-raised"
+              className="absolute left-0 bottom-full z-20 mb-2 w-56 rounded-card bg-surface p-1 shadow-raised"
               style={{ animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both' }}
             >
               <p className="px-2 pt-1.5 pb-1 text-[11px] font-medium text-ink-3 uppercase tracking-wider">Regenerate as</p>
@@ -289,7 +289,7 @@ export function StreamingText({
                   type="button"
                   onClick={() => handleRetry(s.key)}
                   variant="ghost"
-                  className="w-full flex-col items-start rounded-[6px] px-2 py-1.5 text-left h-auto"
+                  className="w-full flex-col items-start rounded-control px-2 py-1.5 text-left h-auto"
                 >
                   <span className="text-[12.5px] font-medium text-ink">{s.label}</span>
                   <span className="text-[11px] text-ink-3">{s.desc}</span>
@@ -306,7 +306,7 @@ export function StreamingText({
           aria-label="Helpful"
           disabled={feedbackGiven !== null}
           variant="ghost"
-          className={`size-6 rounded-[6px] transition-colors duration-100 ${
+          className={`size-6 rounded-control transition-colors duration-100 ${
             feedbackGiven === 'up'
               ? 'text-sai-green'
               : feedbackGiven === 'down'
@@ -327,7 +327,7 @@ export function StreamingText({
             aria-label="Not helpful"
             disabled={feedbackGiven === 'up'}
             variant="ghost"
-            className={`size-6 rounded-[6px] transition-colors duration-100 ${
+            className={`size-6 rounded-control transition-colors duration-100 ${
               feedbackGiven === 'down'
                 ? 'text-sai-red'
                 : feedbackGiven === 'up'
@@ -341,7 +341,7 @@ export function StreamingText({
           </Button>
           {showDislikePopover && (
             <div
-              className="absolute right-0 bottom-full z-20 mb-2 w-60 rounded-[10px] bg-surface p-2 shadow-raised"
+              className="absolute right-0 bottom-full z-20 mb-2 w-60 rounded-card bg-surface p-2 shadow-raised"
               style={{ animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both' }}
             >
               <p className="px-1 pb-1.5 text-[12px] font-medium text-ink">What didn&apos;t you like?</p>
@@ -352,7 +352,7 @@ export function StreamingText({
                     type="button"
                     onClick={() => setDislikeReason(r.key)}
                     variant="ghost"
-                    className={`w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left h-auto ${
+                    className={`w-full items-center gap-2 rounded-control px-2 py-1.5 text-left h-auto ${
                       dislikeReason === r.key
                         ? 'bg-hover text-ink font-medium'
                         : 'text-ink-2 hover:bg-hover hover:text-ink'
@@ -368,7 +368,7 @@ export function StreamingText({
                   type="button"
                   onClick={() => { setShowDislikePopover(false); setDislikeReason(null); }}
                   variant="outline"
-                  className="flex-1 rounded-[6px] py-1 text-[11px]"
+                  className="flex-1 rounded-control py-1 text-[11px]"
                 >
                   Cancel
                 </Button>
@@ -376,7 +376,7 @@ export function StreamingText({
                   type="button"
                   onClick={handleDislikeSubmit}
                   disabled={!dislikeReason}
-                  className="flex-1 rounded-[6px] bg-ink py-1 text-[11px] font-medium text-canvas"
+                  className="flex-1 rounded-control bg-ink py-1 text-[11px] font-medium text-canvas"
                 >
                   Submit
                 </Button>
@@ -391,7 +391,7 @@ export function StreamingText({
             aria-expanded={sourcesOpen}
             onClick={() => setSourcesOpen((o) => !o)}
             variant="ghost"
-            className="ml-1.5 items-center gap-1.5 rounded-[6px] px-1 py-0.5 h-auto"
+            className="ml-1.5 items-center gap-1.5 rounded-control px-1 py-0.5 h-auto"
           >
             <span className="flex -space-x-1">
               {displayedSources.slice(0, 3).map((s) => (
@@ -421,16 +421,16 @@ export function StreamingText({
           }}
         >
           <div className="overflow-hidden">
-            <div className="mt-1.5 flex flex-col rounded-[10px] bg-inset p-1 shadow-hairline">
+            <div className="mt-1.5 flex flex-col rounded-card bg-inset p-1 shadow-hairline">
               {displayedSources.map((source) => (
                 <a
                   key={source.id}
                   href={source.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 rounded-[6px] px-1.5 py-1 text-[12px] text-ink-2 transition-colors duration-150 hover:bg-hover hover:text-ink"
+                  className="flex items-center gap-2 rounded-control px-1.5 py-1 text-[12px] text-ink-2 transition-colors duration-150 hover:bg-hover hover:text-ink"
                 >
-                  <span className="size-4 rounded-[4px] bg-ink/10 flex items-center justify-center shrink-0">
+                  <span className="size-4 rounded-control bg-ink/10 flex items-center justify-center shrink-0">
                     <svg width="9" height="9" viewBox="0 0 16 16" fill="var(--ink-3)">
                       <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"/>
                     </svg>
@@ -456,7 +456,7 @@ export function StreamingText({
               <Button type="button"
                 key={fText}
                 variant="ghost"
-                className="-mx-1.5 items-center gap-2 rounded-[7px] border-b border-line
+                className="-mx-1.5 items-center gap-2 rounded-card border-b border-line
                   px-1.5 py-1.5 text-left h-auto"
                 style={
                   done

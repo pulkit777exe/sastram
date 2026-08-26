@@ -296,7 +296,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               name="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -323,7 +323,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="City, Country"
-              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -337,7 +337,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://example.com"
-              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -350,7 +350,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={twitter}
               onChange={(e) => setTwitter(e.target.value)}
               placeholder="@username"
-              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -363,7 +363,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={github}
               onChange={(e) => setGithub(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
@@ -376,7 +376,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
               value={linkedin}
               onChange={(e) => setLinkedin(e.target.value)}
               placeholder="username"
-              className="h-11 rounded-card border-line bg-background text-ink focus:ring-2 focus:ring-brand/50 transition-all"
+              className="h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all"
             />
           </div>
           <div className="grid gap-2">
