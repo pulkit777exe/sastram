@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -216,12 +217,12 @@ export function Sidebar({
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 size={14}
               />
-              <input
+              <Input
                 type="text"
                 placeholder="Search with Sai..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-field border border-line rounded-md py-1.5 pl-9 pr-12 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-brand"
+                className="w-full bg-field border-line rounded-md py-1.5 pl-9 pr-12 text-xs h-auto"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                 <kbd className="text-xs bg-background px-1 rounded border border-line text-ink-3">
