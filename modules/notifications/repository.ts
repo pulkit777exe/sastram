@@ -1,9 +1,31 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { Prisma, type NotificationType } from '@prisma/client';
+import { Prisma, type NotificationType, type Role } from '@prisma/client';
 import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 
 export type NotificationData = Record<string, unknown> | null;
+
+// Best-effort: queries users by role, creates bulk notifications. Logs errors
+// but never throws — a notification failure must not block the caller.
+export async function notifyUsersByRole(
+  roles: Role[],
+  title: string,
+  message: string,
+  data?: NotificationData,
+): Promise<void> {
+  try {
+    const recipients = await prisma.user.findMany({
+      where: { role: { in: roles }, status: 'ACTIVE', deletedAt: null },
+      select: { id: true },
+    });
+    if (recipients.length === 0) return;
+    await createBulkNotifications(
+      recipients.map((user) => ({ userId: user.id, type: 'SYSTEM' as const, title, message, data })),
+    );
+  } catch (error) {
+    logger.error('[notifyUsersByRole] failed', error);
+  }
+}
 
 interface CreateNotificationParams {
   userId: string;
@@ -23,20 +45,6 @@ interface NotificationFilters {
   offset?: number;
 }
 
-import { publishUserEvent } from '@/lib/infrastructure/redis';
-
-async function getBulkUnreadCounts(userIds: string[]): Promise<Map<string, number>> {
-  if (userIds.length === 0) return new Map();
-  const rows = await prisma.$queryRaw<Array<{ userId: string; count: bigint }>>`
-    SELECT "userId", COUNT(*)::bigint as "count"
-    FROM "notifications"
-    WHERE "userId" IN (${Prisma.join(userIds)})
-      AND "isRead" = false
-    GROUP BY "userId"
-  `;
-  return new Map(rows.map((r) => [r.userId, Number(r.count)]));
-}
-
 export async function createNotification({
   userId,
   type,
@@ -44,7 +52,7 @@ export async function createNotification({
   message,
   data,
 }: CreateNotificationParams) {
-  const notification = await prisma.notification.create({
+  return prisma.notification.create({
     data: {
       userId,
       type,
@@ -53,19 +61,10 @@ export async function createNotification({
       data: data as Prisma.InputJsonValue,
     },
   });
-
-  const unreadCount = await getUnreadCount(userId);
-
-  publishUserEvent(userId, {
-    type: 'NOTIFICATION_COUNT_UPDATE',
-    payload: { unreadCount },
-  });
-
-  return notification;
 }
 
 export async function createBulkNotifications(notifications: CreateNotificationParams[]) {
-  const result = await prisma.notification.createMany({
+  return prisma.notification.createMany({
     data: notifications.map((notif) => ({
       userId: notif.userId,
       type: notif.type,
@@ -74,23 +73,6 @@ export async function createBulkNotifications(notifications: CreateNotificationP
       data: notif.data as Prisma.InputJsonValue,
     })),
   });
-
-  const uniqueUserIds = [...new Set(notifications.map((n) => n.userId))];
-  try {
-    const counts = await getBulkUnreadCounts(uniqueUserIds);
-    for (const userId of uniqueUserIds) {
-      publishUserEvent(userId, {
-        type: 'NOTIFICATION_COUNT_UPDATE',
-        payload: { unreadCount: counts.get(userId) ?? 0 },
-      });
-    }
-  } catch (err) {
-    logger.error('[createBulkNotifications] Failed to publish count updates', {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  return result;
 }
 
 export const getUserNotifications = cache(async (filters: NotificationFilters) => {
@@ -133,8 +115,6 @@ export const getUserNotifications = cache(async (filters: NotificationFilters) =
     })) ?? []
   );
 });
-
-
 
 export async function markAsRead(notificationId: string, userId: string) {
   const notification = await prisma.notification.findUnique({
@@ -185,22 +165,14 @@ export const getUnreadCount = cache(async (userId: string, type?: NotificationTy
   return prisma.notification.count({ where });
 });
 
-
-
-
-
-
-
-
-
 export async function notifyMultipleUsers(
   userIds: string[],
   type: NotificationType,
   title: string,
   message?: string,
-  data?: NotificationData
+  data?: NotificationData,
 ) {
-  const result = await prisma.notification.createMany({
+  return prisma.notification.createMany({
     data: userIds.map((userId) => ({
       userId,
       type,
@@ -209,20 +181,4 @@ export async function notifyMultipleUsers(
       data: data as Prisma.InputJsonValue,
     })),
   });
-
-  try {
-    const counts = await getBulkUnreadCounts(userIds);
-    for (const userId of userIds) {
-      publishUserEvent(userId, {
-        type: 'NOTIFICATION_COUNT_UPDATE',
-        payload: { unreadCount: counts.get(userId) ?? 0 },
-      });
-    }
-  } catch (err) {
-    logger.error('[notifyMultipleUsers] Failed to publish count updates', {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  return result;
 }

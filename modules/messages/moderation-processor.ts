@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import { createBulkNotifications } from '@/modules/notifications';
+import { notifyUsersByRole } from '@/modules/notifications';
 import {
   MessageModerationPipeline,
   type MessageLike,
@@ -104,25 +104,13 @@ export class MessageService {
           },
         });
 
-        try {
-          const mods = await prisma.user.findMany({
-            where: { role: { in: ['MODERATOR', 'ADMIN'] }, status: 'ACTIVE', deletedAt: null },
-            select: { id: true },
-          });
-          await createBulkNotifications(
-            mods.map((mod) => ({
-              userId: mod.id,
-              type: 'SYSTEM' as const,
-              title: `Auto-mod flagged: ${result.action}`,
-              message: `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
-              data: { messageId: created.id, action: result.action, autoMod: true },
-            }))
-          );
-        } catch (err) {
-          // The message is already stored; a failed notification shouldn't
-          // fail the post.
-          logger.error('[moderation] Failed to notify moderators', err);
-        }
+        // Best-effort: a failed notification must not fail the post.
+        await notifyUsersByRole(
+          ['MODERATOR', 'ADMIN'],
+          `Auto-mod flagged: ${result.action}`,
+          `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
+          { messageId: created.id, action: result.action, autoMod: true },
+        );
       }
 
       return {

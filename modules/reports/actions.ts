@@ -6,7 +6,7 @@ import { requireSession } from '@/modules/auth';
 import { z } from 'zod';
 import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
-import { createBulkNotifications } from '@/modules/notifications';
+import { notifyUsersByRole } from '@/modules/notifications';
 import { requireRole, requireModerationRole } from '@/modules/policy';
 import { executeAuditAndRevalidate } from '@/modules/audit';
 import type { ReportCategory, ReportStatus } from '@prisma/client';
@@ -39,27 +39,13 @@ async function notifyModerators(opts: {
   threadName: string;
   isAutoMod?: boolean;
 }) {
-  try {
-    const mods = await prisma.user.findMany({
-      where: { role: { in: ['MODERATOR', 'ADMIN'] }, status: 'ACTIVE', deletedAt: null },
-      select: { id: true },
-    });
-
-    if (mods.length === 0) return;
-
-    const label = opts.isAutoMod ? 'Auto-mod flagged' : 'New report';
-    await createBulkNotifications(
-      mods.map((mod) => ({
-        userId: mod.id,
-        type: 'SYSTEM' as const,
-        title: `${label}: ${opts.category}`,
-        message: `Reported in "${opts.threadName}": ${opts.messagePreview.substring(0, 120)}`,
-        data: { reportId: opts.reportId, autoMod: opts.isAutoMod ?? false },
-      }))
-    );
-  } catch (error) {
-    logger.error('[notifyModerators] failed', error);
-  }
+  const label = opts.isAutoMod ? 'Auto-mod flagged' : 'New report';
+  await notifyUsersByRole(
+    ['MODERATOR', 'ADMIN'],
+    `${label}: ${opts.category}`,
+    `Reported in "${opts.threadName}": ${opts.messagePreview.substring(0, 120)}`,
+    { reportId: opts.reportId, autoMod: opts.isAutoMod ?? false },
+  );
 }
 
 const reportFiltersSchema = z.object({

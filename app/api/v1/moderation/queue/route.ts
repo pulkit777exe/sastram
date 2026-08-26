@@ -1,27 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ModerationDashboard } from '@/modules/moderation/dashboard';
+import { prisma } from '@/lib/infrastructure/prisma';
 import { requireModerator } from '@/lib/middleware/moderation';
-import { ok, fail } from '@/lib/utils/api-response';
-import { logger } from '@/lib/infrastructure/logger';
+import { ok, withErrorHandling } from '@/lib/utils/api-response';
+import type { ReportStatus } from '@prisma/client';
 
-const dashboard = new ModerationDashboard();
+export const GET = withErrorHandling(async (request: NextRequest) => {
+  await requireModerator();
 
-export async function GET(request: NextRequest) {
-  try {
-    await requireModerator();
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Moderator access required'), { status: 403 });
-  }
+  const status = (request.nextUrl.searchParams.get('status') as ReportStatus) || 'PENDING';
 
-  const status = request.nextUrl.searchParams.get('status') ?? undefined;
+  const items = await prisma.report.findMany({
+    where: { status },
+    include: {
+      message: {
+        include: {
+          sender: { select: { id: true, name: true, email: true } },
+          thread: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: [{ createdAt: 'desc' }],
+    take: 50,
+  });
 
-  try {
-    const queue = await dashboard.getQueue({ status });
-    return NextResponse.json(ok({ items: queue }));
-  } catch (error) {
-    logger.error('[moderation/queue] GET failed', error);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load moderation queue'), {
-      status: 500,
-    });
-  }
-}
+  return NextResponse.json(ok({ items }));
+});

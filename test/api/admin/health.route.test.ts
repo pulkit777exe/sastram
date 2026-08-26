@@ -13,14 +13,15 @@ describe('GET /api/admin/health', () => {
     stubs = [];
   });
 
-  it('returns 403 when not authenticated', async () => {
+  it('returns 401 when not authenticated', async function () {
     stubs.push(stubHeaders());
     stubs.push(...stubAuth(null));
 
     const res = await GET()(mockRequest('/api/admin/health'));
     const body = await res.json();
 
-    expect(res.status).to.equal(403);
+    // requireAdmin → requireSessionOrThrow → AppError AUTH_REQUIRED (401)
+    expect(res.status).to.equal(401);
     expect(body.error?.code).to.equal('AUTH_REQUIRED');
   });
 

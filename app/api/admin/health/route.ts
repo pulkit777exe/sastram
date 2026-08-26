@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/moderation';
-import { ok, fail } from '@/lib/utils/api-response';
+import { ok, withErrorHandling } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
-    await requireAdmin();
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
-  }
+export const GET = withErrorHandling(async () => {
+  await requireAdmin();
 
   const memory = process.memoryUsage();
   const now = Date.now();
@@ -28,7 +24,7 @@ export async function GET() {
       },
     })
   );
-}
+});
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);

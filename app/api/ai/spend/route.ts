@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
+import { ok, withErrorHandling } from '@/lib/utils/api-response';
 import { requireAdmin } from '@/lib/middleware/moderation';
 import { getAiSpendUsage } from '@/lib/services/ai-spend-cap';
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -96,12 +96,8 @@ async function getPeriodTotal(fromDate: string, toDate: string) {
   };
 }
 
-const handler = withErrorHandling(async (req: NextRequest) => {
-  try {
-    await requireAdmin();
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
-  }
+export const GET = withErrorHandling(async (req: NextRequest) => {
+  await requireAdmin();
 
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
@@ -141,5 +137,3 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
   return NextResponse.json(ok(response));
 });
-
-export { handler as GET };
