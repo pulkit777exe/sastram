@@ -201,9 +201,14 @@ export function Sidebar({
         )}
         {effectiveCollapsed && (
           <div className="flex justify-center w-full">
-            <Button variant="ghost" size="icon" onClick={toggleCollapse}>
-              <AnimatedIcon icon={PanelLeftOpen} size={18} animateOnHover />
-            </Button>
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              className="flex items-center justify-center p-1 rounded-control hover:bg-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Expand sidebar"
+            >
+              <Logo brand className="h-6 w-6 shrink-0" />
+            </button>
           </div>
         )}
       </div>
@@ -292,33 +297,37 @@ export function Sidebar({
 
       <div
         className="p-3 border-t border-line relative duration-300 transition-shadow"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        onMouseEnter={!effectiveCollapsed ? handleMouseEnter : undefined}
+        onMouseLeave={!effectiveCollapsed ? handleMouseLeave : undefined}
       >
-        <div className="flex items-center justify-between rounded-card border border-line bg-surface p-3 shadow-linear-sm hover:bg-hover cursor-pointer transition-colors">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-field shrink-0 flex items-center justify-center text-xs font-medium text-ink">
-              {name.charAt(0).toUpperCase()}
-            </div>
-            {!effectiveCollapsed && (
+        {!effectiveCollapsed ? (
+          <div className="flex items-center justify-between rounded-card border border-line bg-surface p-3 shadow-linear-sm hover:bg-hover cursor-pointer transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-field shrink-0 flex items-center justify-center text-xs font-medium text-ink">
+                {name.charAt(0).toUpperCase()}
+              </div>
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-ink">{name}</span>
                 <span className="text-xs text-ink-3 truncate w-24">{email}</span>
               </div>
-            )}
-          </div>
-          {!effectiveCollapsed && (
+            </div>
             <div className="flex flex-col gap-0.5 text-muted-foreground">
               <AnimatedIcon icon={ChevronUp} size={12} />
               <AnimatedIcon icon={ChevronDown} size={12} />
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <Button variant="ghost" size="icon" onClick={toggleCollapse}>
+              <AnimatedIcon icon={PanelLeftOpen} size={18} animateOnHover />
+            </Button>
+          </div>
+        )}
         {showProfileMenu && !effectiveCollapsed && (
           <div
             ref={menuRef}
             className={cn(
-              't-dropdown absolute bottom-full left-3 right-3 mb-2 bg-popover border border-line rounded-control shadow-linear-lg overflow-hidden z-10',
+              't-dropdown absolute bottom-full mb-2 bg-popover border border-line rounded-control shadow-linear-lg overflow-hidden z-10',
               profileMenuClosing ? 'is-closing' : 'is-open'
             )}
             data-origin="bottom-left"

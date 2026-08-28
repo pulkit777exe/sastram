@@ -89,6 +89,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
     trimmedOptions.length <= MAX_OPTIONS;
 
   if (!poll && !canManagePoll) return null;
+  if (poll && !isEffectivelyActive) return null;
 
   function handleAddOption() {
     setOptions((prev) => [...prev, '']);
@@ -217,7 +218,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
       </button>
 
       {/* ── Collapsible body ── */}
-      <div className="t-panel-slide" data-open={isCollapsed ? 'false' : 'true'}>
+      {!isCollapsed && (
         <div className="px-4 pb-4 space-y-3 border-t border-line/40 pt-3">
               {poll ? (
                 <div className="space-y-3">
@@ -347,7 +348,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                 </div>
               )}
             </div>
-          </div>
+      )}
     </div>
   );
 }

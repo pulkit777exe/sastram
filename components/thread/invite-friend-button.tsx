@@ -80,8 +80,9 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size={iconOnly ? 'icon' : 'default'}
+          className={iconOnly ? '!h-8 !w-8 !p-0 !rounded-control !border-0 !bg-transparent !ring-0 !ring-offset-0 !shadow-none text-ink-3 hover:text-ink hover:bg-hover transition-colors' : undefined}
           aria-label="Invite friend"
         >
           <UserPlus className="w-4 h-4" />

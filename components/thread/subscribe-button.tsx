@@ -95,14 +95,19 @@ export function ThreadSubscribeButton({
   };
 
   if (iconOnly) {
+    const previewLabel = frequency === null ? 'N' : frequency.charAt(0);
+
     return (
       <Select
         value={frequency ?? 'null'}
         onValueChange={(v) => void setSubscription(v === 'null' ? null : v as SubscriptionFrequency)}
         disabled={isSaving}
       >
-        <SelectTrigger className="h-8 w-8 !p-0 flex items-center justify-center !rounded-control border-line/70">
+        <SelectTrigger className="!h-8 !w-auto !px-2 !py-0 !rounded-control !border-0 !bg-transparent !ring-0 !ring-offset-0 flex items-center gap-1.5 !shadow-none text-ink-3 hover:text-ink hover:bg-hover transition-colors [&>svg]:hidden">
           <Bell className="h-4 w-4" />
+          {frequency !== null && (
+            <span className="text-[10px] font-semibold leading-none">{previewLabel}</span>
+          )}
         </SelectTrigger>
         <SelectContent>
           {OPTIONS.map((option) => (
