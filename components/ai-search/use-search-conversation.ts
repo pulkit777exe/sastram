@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toasts } from '@/lib/utils/toast';
 import type { SSEPhase } from '@/components/ai-search/PhaseTracker';
 import type { HistoryItem } from '@/components/ai-search/sai-search-layout';
@@ -8,12 +8,35 @@ import { getStoredApiKeys } from '@/components/ai-search/ApiKeysModal';
 import { parseSSE } from '@/lib/utils/sse';
 import type { SearchConfig, Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 
-// Re-export deep module's types/constants — single source, no drift.
-// This file remains as a shallow shim for existing tests that import from here.
-import type { ChatMessage, AppState } from './use-search-conversation';
-import { SEARCH_PHASES } from './use-search-conversation';
-export type { ChatMessage, AppState } from './use-search-conversation';
-export { DEFAULT_CONFIG, SEARCH_PHASES } from './use-search-conversation';
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  query: string;
+  text?: string;
+  sources?: Source[];
+  citations?: Citation[];
+  followUps?: string[];
+  conflictData?: SynthesisResult['conflictData'];
+  queryType?: SynthesisResult['queryType'];
+  sourceCount?: number;
+  timestamp: number;
+}
+
+export type AppState = 'idle' | 'loading' | 'results' | 'error' | 'blocked';
+
+export const DEFAULT_CONFIG: SearchConfig = {
+  exaMode: 'agentic',
+  tavilyMode: 'search',
+  sourceFilter: 'all',
+  searchMode: 'standard',
+};
+
+export const SEARCH_PHASES: { id: string; label: string }[] = [
+  { id: 'searching', label: 'Searching' },
+  { id: 'reading', label: 'Reading' },
+  { id: 'crossref', label: 'Cross-referencing' },
+  { id: 'synthesizing', label: 'Synthesizing' },
+];
 
 const PHASE_SLOW_MS: Record<string, number> = {
   searching: 12_000,
@@ -29,73 +52,37 @@ const PHASE_TO_STEP: Record<string, number> = {
   synthesizing: 3,
 };
 
-interface SearchStreamState {
-  appState: AppState;
-  query: string;
-  lastConfig: SearchConfig;
-  errorMessage: string;
-  isStreaming: boolean;
-  slowHint: boolean;
-  isOffline: boolean;
-  currentSessionId: string | undefined;
-  currentStep: number;
-  taskFailed: boolean;
-  messages: ChatMessage[];
-  streamingMessage: ChatMessage | null;
-}
+/**
+ * Deep module — one interface, lots of implementation behind the seam.
+ * Hides: messages, streamingMessage, sessionIdRef, phase timers, abort,
+ *        conversationHistory slicing, ApiKeys guard, SSE parsing.
+ * Callers and tests cross the same seam: run(q, cfg) → state transitions.
+ */
+export function useSearchConversation(initialQuery: string = '') {
+  const [appState, setAppState] = useState<AppState>('idle');
+  const [query, setQuery] = useState(initialQuery);
+  const [lastConfig, setLastConfig] = useState<SearchConfig>(DEFAULT_CONFIG);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [slowHint, setSlowHint] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(undefined);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [taskFailed, setTaskFailed] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [streamingMessage, setStreamingMessage] = useState<ChatMessage | null>(null);
 
-export interface UseSearchStreamActions {
-  runSearch: (q: string, config: SearchConfig, sessionId?: string) => Promise<void>;
-  handleNewSearch: (initialQuery: string) => void;
-  handleSelectSession: (item: HistoryItem) => void;
-  abortSearch: () => void;
-}
-
-export function useSearchStream(
-  state: SearchStreamState,
-  setState: {
-    setAppState: (s: AppState) => void;
-    setErrorMessage: (s: string) => void;
-    setIsStreaming: (s: boolean) => void;
-    setSlowHint: (s: boolean) => void;
-    setIsOffline: (s: boolean) => void;
-    setCurrentSessionId: (s: string | undefined) => void;
-    setCurrentStep: (s: number) => void;
-    setTaskFailed: (s: boolean) => void;
-    setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-    setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>;
-    setQuery: (s: string) => void;
-    setLastConfig: (s: SearchConfig) => void;
-  }
-): UseSearchStreamActions {
   const abortRef = useRef<AbortController | null>(null);
   const phaseTimerRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const sessionIdRef = useRef<string | undefined>(undefined);
   const streamingDataRef = useRef<ChatMessage | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  // mirror messages to avoid stale closure in run — sync after render
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
-  const {
-    appState,
-    messages,
-    lastConfig,
-    query,
-  } = state;
-
-  const {
-    setAppState,
-    setErrorMessage,
-    setIsStreaming,
-    setSlowHint,
-    setIsOffline,
-    setCurrentSessionId,
-    setCurrentStep,
-    setTaskFailed,
-    setMessages,
-    setStreamingMessage,
-    setQuery,
-    setLastConfig,
-  } = setState;
-
-  const runSearch = useCallback(
+  const run = useCallback(
     async (q: string, config: SearchConfig, overrideSessionId?: string) => {
       const trimmed = q.trim();
       if (!trimmed || trimmed.length < 3) {
@@ -109,10 +96,7 @@ export function useSearchStream(
 
       const keys = getStoredApiKeys();
       if (!keys.exa || !keys.tavily || !keys.gemini) {
-        toasts.error(
-          'Please configure your API keys first',
-          'Click the API Keys button to get started.'
-        );
+        toasts.error('Please configure your API keys first', 'Click the API Keys button to get started.');
         return;
       }
 
@@ -155,7 +139,7 @@ export function useSearchStream(
       armSlowTimer('searching');
 
       try {
-        const conversationHistory = messages.slice(-10).map((m) => ({
+        const conversationHistory = messagesRef.current.slice(-10).map((m) => ({
           role: m.role,
           content: m.text || m.query,
         }));
@@ -201,9 +185,7 @@ export function useSearchStream(
           const retryAfter = response.headers.get('Retry-After');
           toasts.error(
             'Rate limit exceeded',
-            retryAfter
-              ? `Please wait ${retryAfter} seconds.`
-              : 'Please wait a moment before searching again.'
+            retryAfter ? `Please wait ${retryAfter} seconds.` : 'Please wait a moment before searching again.'
           );
           setAppState('idle');
           streamingDataRef.current = null;
@@ -211,10 +193,7 @@ export function useSearchStream(
           return;
         }
         if (response.status === 503) {
-          toasts.error(
-            'Service unavailable',
-            'AI features are temporarily over quota. Try again later.'
-          );
+          toasts.error('Service unavailable', 'AI features are temporarily over quota. Try again later.');
           setAppState('error');
           setErrorMessage('AI features are temporarily unavailable due to high demand.');
           streamingDataRef.current = null;
@@ -274,9 +253,7 @@ export function useSearchStream(
                 const sources = event.sources;
                 if (streamingDataRef.current && sources) {
                   streamingDataRef.current = { ...streamingDataRef.current, sources };
-                  setStreamingMessage((prev) =>
-                    prev ? { ...prev, sources } : prev
-                  );
+                  setStreamingMessage((prev) => (prev ? { ...prev, sources } : prev));
                 }
                 break;
               }
@@ -348,12 +325,11 @@ export function useSearchStream(
         toasts.error('Search failed');
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionIdRef used instead of currentSessionId
-    [messages, setQuery, setLastConfig, setErrorMessage, setAppState, setIsStreaming, setSlowHint, setIsOffline, setCurrentStep, setTaskFailed, setMessages, setStreamingMessage, setCurrentSessionId]
+    []
   );
 
-  const handleNewSearch = useCallback(
-    (initialQuery: string) => {
+  const newSearch = useCallback(
+    (initial: string) => {
       abortRef.current?.abort();
       phaseTimerRef.current.forEach(clearTimeout);
       phaseTimerRef.current.clear();
@@ -365,15 +341,15 @@ export function useSearchStream(
       sessionIdRef.current = undefined;
       setCurrentStep(0);
       setTaskFailed(false);
-      setQuery(initialQuery);
+      setQuery(initial);
       setMessages(() => []);
       streamingDataRef.current = null;
       setStreamingMessage(null);
     },
-    [setAppState, setErrorMessage, setSlowHint, setIsOffline, setCurrentSessionId, setCurrentStep, setTaskFailed, setQuery, setMessages, setStreamingMessage]
+    []
   );
 
-  const handleSelectSession = useCallback(
+  const selectSession = useCallback(
     (item: HistoryItem) => {
       abortRef.current?.abort();
       setErrorMessage('');
@@ -414,12 +390,30 @@ export function useSearchStream(
       setMessages(() => [userMsg, assistantMsg]);
       setQuery(item.query);
     },
-    [setErrorMessage, setSlowHint, setIsStreaming, setCurrentStep, setTaskFailed, setCurrentSessionId, setAppState, setStreamingMessage, setMessages, setQuery]
+    []
   );
 
-  const abortSearch = useCallback(() => {
+  const abort = useCallback(() => {
     abortRef.current?.abort();
   }, []);
 
-  return { runSearch, handleNewSearch, handleSelectSession, abortSearch };
+  return {
+    appState,
+    query,
+    lastConfig,
+    errorMessage,
+    isStreaming,
+    slowHint,
+    isOffline,
+    currentSessionId,
+    currentStep,
+    taskFailed,
+    messages,
+    streamingMessage,
+    setQuery,
+    run,
+    newSearch,
+    selectSession,
+    abort,
+  };
 }

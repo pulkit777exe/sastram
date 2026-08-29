@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fail } from '@/lib/utils/api-response';
 import { z } from 'zod';
-import { requireSessionOrThrow } from '@/modules/auth';
 import { sanitizeSearchQuery, validateApiKeys } from '@/modules/ai-search/sanitize';
-import { rateLimit } from '@/lib/services/rate-limit';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch, type AISearchPipelineResult } from '@/modules/ai-search/service';
 import { AISearchError } from '@/modules/ai-search/synthesis';
 import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
 import { persistSearchSession } from '@/modules/ai-search/repository';
-import { consumeAiSearchQuota } from '@/lib/services/daily-quota';
 import { consumeIdempotencyKey } from '@/lib/services/idempotency';
 import { env } from '@/lib/config/env';
+import { sseChunk, blockedStream, sseHeaders } from '@/lib/utils/sse';
 
 export const maxDuration = 30;
 
@@ -62,22 +60,6 @@ export type SSEEvent =
   | { phase: 'blocked'; message: string }
   | { phase: 'error'; message: string; errorCode?: string };
 
-function sseChunk(event: SSEEvent): string {
-  return `data: ${JSON.stringify(event)}\n\n`;
-}
-
-function blockedStream(message: string): Response {
-  const body = sseChunk({ phase: 'blocked', message });
-  return new Response(body, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-store',
-      Connection: 'keep-alive',
-    },
-  });
-}
-
 function deriveTitle(query: string): string {
   const words = query.replace(/\s+/g, ' ').trim().split(' ').slice(0, 6);
   const t = words.join(' ');
@@ -94,47 +76,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let session;
-    try {
-      session = await requireSessionOrThrow();
-    } catch {
-      return NextResponse.json(
-        fail('AUTH_REQUIRED', 'Authentication required'),
-        { status: 401, headers: { 'Cache-Control': 'no-store' } }
-      );
-    }
-
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
-
-    const rateLimitResult = await rateLimit(ip);
-    if (!rateLimitResult.success) {
-      const retryAfter = String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000));
-      return NextResponse.json(
-        fail('RATE_LIMITED', 'Too many requests. Please try again later.'),
-        { status: 429, headers: { 'Cache-Control': 'no-store', 'Retry-After': retryAfter } }
-      );
-    }
-
-    const quota = await consumeAiSearchQuota(session.user.id);
-    if (!quota.allowed) {
-      return blockedStream(
-        `Daily AI search limit reached (${quota.remaining} remaining). Resets at UTC midnight.`
-      );
-    }
-
-    const spendCap = await enforceAiSpendCap(AiCallPath.FORUM_SEARCH_SYNTHESIZE);
-    if (!spendCap.allowed) {
-      return blockedStream('AI features temporarily unavailable due to high demand. Resets at UTC midnight.');
-    }
-
-    // Hard cost-aware gate: forum search synthesis is EXPENSIVE.
-    const gate = evaluateAiCostGate({ path: AiCallPath.FORUM_SEARCH_SYNTHESIZE, spendCapAllowed: spendCap.allowed });
-    if (!gate.allowed) {
-      return blockedStream('AI features temporarily unavailable due to high demand. Resets at UTC midnight.');
-    }
+    // Unified preflight — auth + rate limit + daily quota + spend cap + cost gate.
+    // sseMode ensures quota/cap rejections return a blocked SSE stream so the
+    // client parser stays on one Content-Type. Locality: policy lives in one module.
+    const preflight = await withAiPreflight(request, {
+      aiCallPath: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
+      quotaType: 'search',
+      sseMode: true,
+    });
+    if (preflight instanceof NextResponse) return preflight;
+    const session = preflight.session;
 
     let body: unknown;
     try {
@@ -235,12 +186,7 @@ export async function POST(request: NextRequest) {
           });
           return new Response(stream, {
             status: 200,
-            headers: {
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-store',
-              Connection: 'keep-alive',
-              'X-Cache': 'HIT',
-            },
+            headers: { ...sseHeaders(), 'X-Cache': 'HIT' },
           });
         }
       } catch (err) {
@@ -330,6 +276,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Vercel free: close once on abort — controller is the seam
     request.signal.addEventListener('abort', () => {
       try {
         activeController?.close();
@@ -340,12 +287,7 @@ export async function POST(request: NextRequest) {
 
     return new Response(stream, {
       status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-store',
-        Connection: 'keep-alive',
-        'X-Cache': 'MISS',
-      },
+      headers: { ...sseHeaders(), 'X-Cache': 'MISS' },
     });
   } catch (error) {
     logger.error('AI Search error:', error instanceof Error ? error.message : 'Unknown error');

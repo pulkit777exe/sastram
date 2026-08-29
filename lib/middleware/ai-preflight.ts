@@ -6,6 +6,7 @@ import { rateLimit } from '@/lib/services/rate-limit';
 import { consumeAiAnalysisQuota, consumeAiSearchQuota } from '@/lib/services/daily-quota';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
+import { AppError } from '@/lib/utils/errors';
 
 export type QuotaType = 'analysis' | 'search';
 
@@ -17,6 +18,13 @@ export interface AiPreflightOptions {
   skipCostGate?: boolean;
   /** Thread ID for access check. If provided, thread access is verified. */
   threadId?: string;
+  /**
+   * When true, quota/spend/cost-gate failures return an SSE `blocked`
+   * stream (200 + text/event-stream) instead of JSON 429/503 so the
+   * client SSE parser does not have to branch on Content-Type.
+   * Used by forum-search which streams.
+   */
+  sseMode?: boolean;
 }
 
 export interface AiPreflightResult {
@@ -42,12 +50,30 @@ export async function withAiPreflight(
   const { aiCallPath, quotaType = 'analysis', skipCostGate = false, threadId } = options;
 
   // 1. Auth
-  const session = await requireSessionOrThrow();
+  let session: SessionPayload;
+  try {
+    session = await requireSessionOrThrow();
+  } catch (err) {
+    if (err instanceof AppError && err.code === 'AUTH_REQUIRED') {
+      return NextResponse.json(fail('AUTH_REQUIRED', 'Authentication required'), {
+        status: 401,
+        headers: { 'Cache-Control': 'no-store' },
+      });
+    }
+    throw err;
+  }
 
-  // 2. Rate limit
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  // 2. Rate limit — unified IP extraction (Vercel free: x-forwarded-for + x-real-ip fallback)
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip')?.trim() ||
+    'unknown';
   const rateLimitResult = await rateLimit(ip);
   if (!rateLimitResult.success) {
+    if (options.sseMode) {
+      const { blockedStream } = await import('@/lib/utils/sse');
+      return blockedStream('Too many requests. Please try again later.');
+    }
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: 429 });
   }
 
@@ -59,12 +85,20 @@ export async function withAiPreflight(
       quotaType === 'search'
         ? 'Daily AI search limit reached. Resets at UTC midnight.'
         : 'Daily AI analysis limit reached. Resets at UTC midnight.';
+    if (options.sseMode) {
+      const { blockedStream } = await import('@/lib/utils/sse');
+      return blockedStream(message);
+    }
     return NextResponse.json(fail('RATE_LIMITED', message), { status: 429 });
   }
 
   // 4. Spend cap
   const spendCap = await enforceAiSpendCap(aiCallPath);
   if (!spendCap.allowed) {
+    if (options.sseMode) {
+      const { blockedStream } = await import('@/lib/utils/sse');
+      return blockedStream('AI features temporarily unavailable due to high demand. Resets at UTC midnight.');
+    }
     return NextResponse.json(
       fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'),
       { status: 503 }
@@ -75,6 +109,10 @@ export async function withAiPreflight(
   if (!skipCostGate) {
     const gate = evaluateAiCostGate({ path: aiCallPath, spendCapAllowed: spendCap.allowed });
     if (!gate.allowed) {
+      if (options.sseMode) {
+        const { blockedStream } = await import('@/lib/utils/sse');
+        return blockedStream('AI features temporarily unavailable due to high demand. Resets at UTC midnight.');
+      }
       return NextResponse.json(
         fail('SERVICE_UNAVAILABLE', 'AI features temporarily unavailable due to high demand. Resets at UTC midnight.'),
         { status: 503 }
