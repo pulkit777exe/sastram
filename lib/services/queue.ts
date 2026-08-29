@@ -90,23 +90,10 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T) 
 
 async function runJobInline<T extends object>(jobType: string, payload: T) {
   try {
-    // Deferred imports: the workers import back into this module.
-    const ai = await import('@/lib/queue/workers');
-    const { handleEmailJob } = await import('@/lib/queue/workers/email.worker');
+    // Deferred import to break circular: registry -> workers -> enqueueJob -> registry
+    const { jobHandlers } = await import('@/lib/queue/registry');
 
-    const handlers: Record<string, (data: never) => Promise<unknown>> = {
-      [AIJobType.GENERATE_THREAD_SUMMARY]: ai.handleThreadSummaryJob,
-      [AIJobType.GENERATE_THREAD_DNA]: ai.handleThreadDnaJob,
-      [AIJobType.CALCULATE_RESOLUTION_SCORE]: ai.handleResolutionScoreJob,
-      [AIJobType.DETECT_CONFLICTS]: ai.handleConflictDetectionJob,
-      [AIJobType.GENERATE_DAILY_DIGEST]: ai.handleDailyDigestJob,
-      [AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS]: ai.handleAIInsightNotificationsJob,
-      [AIJobType.STALENESS_CHECK]: ai.handleStalenessCheckJob,
-      [AIJobType.GENERATE_AI_INLINE]: ai.handleAIInlineJob,
-      email: handleEmailJob,
-    };
-
-    const handler = handlers[jobType];
+    const handler = jobHandlers[jobType as keyof typeof jobHandlers];
     if (!handler) {
       const id = (payload as { id?: unknown })?.id;
       logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${id ?? 'unknown'}`);

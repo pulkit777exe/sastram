@@ -2,60 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { logger } from '@/lib/infrastructure/logger';
 import { deduplicateJob } from '@/lib/services/job-dedup';
-import {
-  handleThreadSummaryJob,
-  handleThreadDnaJob,
-  handleResolutionScoreJob,
-  handleConflictDetectionJob,
-  handleDailyDigestJob,
-  handleAIInsightNotificationsJob,
-  handleAIInlineJob,
-  handleStalenessCheckJob,
-} from '@/lib/queue/workers';
-import { handleEmailJob } from '@/lib/queue/workers/email.worker';
-import { AIJobType } from '@/lib/queue/config';
-import type {
-  ThreadSummaryJobData,
-  ThreadDnaJobData,
-  ResolutionScoreJobData,
-  ConflictDetectionJobData,
-  DailyDigestJobData,
-  AIInsightNotificationJobData,
-  AIInlineJobData,
-  StalenessCheckJobData,
-  EmailJobData,
-} from '@/lib/queue/types';
+import { jobHandlers, type JobHandlerMap } from '@/lib/queue/registry';
 import { AppError } from '@/lib/utils/errors';
 
 export const maxDuration = 60;
 
-type JobHandlerMap = {
-  'generate-thread-summary': (data: ThreadSummaryJobData) => Promise<unknown>;
-  'generate-thread-dna': (data: ThreadDnaJobData) => Promise<unknown>;
-  'calculate-resolution-score': (data: ResolutionScoreJobData) => Promise<unknown>;
-  'detect-conflicts': (data: ConflictDetectionJobData) => Promise<unknown>;
-  'generate-daily-digest': (data: DailyDigestJobData) => Promise<unknown>;
-  'send-ai-insight-notifications': (data: AIInsightNotificationJobData) => Promise<unknown>;
-  'generate-ai-inline': (data: AIInlineJobData) => Promise<unknown>;
-  [AIJobType.STALENESS_CHECK]: (data: StalenessCheckJobData) => Promise<unknown>;
-  'email': (data: EmailJobData) => Promise<unknown>;
-};
-
-const jobHandlers: JobHandlerMap = {
-  'generate-thread-summary': handleThreadSummaryJob,
-  'generate-thread-dna': handleThreadDnaJob,
-  'calculate-resolution-score': handleResolutionScoreJob,
-  'detect-conflicts': handleConflictDetectionJob,
-  'generate-daily-digest': handleDailyDigestJob,
-  'send-ai-insight-notifications': handleAIInsightNotificationsJob,
-  'generate-ai-inline': handleAIInlineJob,
-  [AIJobType.STALENESS_CHECK]: handleStalenessCheckJob,
-  'email': handleEmailJob,
-};
-
-async function handleJob(request: NextRequest) {
-  const body = await request.text();
-
+async function handleJob(body: string, request: NextRequest) {
   const messageId = request.headers.get('upstash-message-id');
   if (messageId) {
     const isDuplicate = await deduplicateJob(messageId);
@@ -65,10 +17,14 @@ async function handleJob(request: NextRequest) {
     }
   }
 
-  const { jobType, payload } = JSON.parse(body) as {
-    jobType: keyof JobHandlerMap;
-    payload: Record<string, unknown>;
-  };
+  let parsed: { jobType: keyof JobHandlerMap; payload: Record<string, unknown> };
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { jobType, payload } = parsed;
 
   const handler = jobHandlers[jobType];
   if (!handler) {
@@ -135,12 +91,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
-  // Reconstruct a request with the consumed body so handleJob can read it again.
-  const clonedRequest = new NextRequest(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body,
-  });
-
-  return handleJob(clonedRequest);
+  return handleJob(body, request);
 }
