@@ -158,7 +158,7 @@ export function PostMessageForm({
 
   const placeholder = replyTo
     ? `Reply to @${replyTo.userName}…`
-    : 'Share your thoughts, ask questions, or @mention someone…';
+    : 'Ask a question, share context, or mention @sai for grounded help…';
 
   return (
     <form ref={formRef} onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }} className="relative w-full">
@@ -219,8 +219,8 @@ export function PostMessageForm({
           />
         </div>
 
-        {/* Bottom Tier: Toolbar */}
-        <div className="flex items-center justify-between px-2 sm:px-3 py-2 bg-muted/10 border-t border-line/40 select-none">
+        {/* Bottom Tier: Toolbar — SAI field token, not generic muted */}
+        <div className="flex items-center justify-between px-2 sm:px-3 py-2 bg-inset border-t border-line/60 select-none">
           <div className="flex items-center gap-0.5 sm:gap-1">
             <Button
               variant="ghost"

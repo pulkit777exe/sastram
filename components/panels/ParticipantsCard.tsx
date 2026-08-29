@@ -25,7 +25,7 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
 
   return (
     <DetailCard>
-      <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="font-mono text-xs uppercase tracking-[0.12em] text-ink-3">
         {participants.length} {participants.length === 1 ? 'person' : 'people'} in this thread
       </p>
 
@@ -35,25 +35,23 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
             <div
               key={p.id}
               title={`${p.name ?? 'Anonymous'}${p.id === ownerId ? ' · owner' : ''} — ${p.messageCount} ${p.messageCount === 1 ? 'message' : 'messages'}`}
-              className="relative h-7 w-7 overflow-hidden rounded-full border-card bg-background"
+              className="relative h-7 w-7 overflow-hidden rounded-full border-2 border-surface bg-field"
             >
               {p.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.image} alt={p.name ?? 'User'} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-brand/10 text-xs font-semibold text-brand">
+                <div className="flex h-full w-full items-center justify-center bg-sai-accent-tint text-xs font-semibold text-sai-accent">
                   {(p.name ?? 'U').charAt(0).toUpperCase()}
                 </div>
               )}
               {p.id === ownerId && (
-                <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border-card bg-chart-2" />
+                <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-surface bg-sai-green" />
               )}
             </div>
           ))}
         </div>
-        {overflow > 0 && (
-          <span className="text-xs font-medium text-muted-foreground">+{overflow}</span>
-        )}
+        {overflow > 0 && <span className="text-xs font-medium text-ink-3">+{overflow}</span>}
       </div>
     </DetailCard>
   );

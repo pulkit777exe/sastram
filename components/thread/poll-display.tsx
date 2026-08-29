@@ -27,12 +27,12 @@ interface PollDisplayProps {
 function PollSkeleton({ optionCount }: { optionCount: number }) {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-5 w-3/4 bg-muted rounded" />
+      <div className="h-5 w-3/4 bg-field rounded" />
       <div className="space-y-2">
         {Array.from({ length: optionCount }).map((_, i) => (
           <div key={i} className="space-y-1">
-            <div className="h-4 w-1/2 bg-muted rounded" />
-            <div className="h-2 w-full bg-muted rounded-full" />
+            <div className="h-4 w-1/2 bg-field rounded" />
+            <div className="h-2 w-full bg-field rounded-full" />
           </div>
         ))}
       </div>
@@ -175,20 +175,20 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
                   <div className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1.5 text-ink font-medium">
                       {option}
-                      {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
+                      {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-sai-accent" />}
                     </span>
-                    <span className="text-muted-foreground font-mono text-xs tabular-nums">
+                    <span className="text-ink-2 font-mono text-xs tabular-nums">
                       {result?.votes ?? 0} votes ({percentage.toFixed(1)}%)
                     </span>
                   </div>
-                  <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-field rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${percentage}%` }}
                       transition={{ duration: 0.5, delay: index * 0.08 }}
                       className={cn(
                         'h-full rounded-full',
-                        isSelected ? 'bg-brand' : 'bg-foreground/20'
+                        isSelected ? 'bg-sai-accent' : 'bg-line-strong'
                       )}
                     />
                   </div>
@@ -204,8 +204,8 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
                   className={cn(
                     'w-full text-left px-3.5 py-2 rounded-control border text-sm font-medium transition-all duration-200',
                     isSelected
-                      ? 'bg-brand/10 border-brand text-brand'
-                      : 'bg-transparent border-line/60 text-foreground hover:border-line hover:bg-muted/20 disabled:opacity-50'
+                      ? 'bg-sai-accent-tint border-sai-accent text-sai-accent'
+                      : 'bg-transparent border-line text-ink hover:border-line-strong hover:bg-hover disabled:opacity-50'
                   )}
                 >
                   {option}
@@ -217,7 +217,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
       </div>
 
       {poll.expiresAt && (
-        <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+        <p className="text-xs font-mono uppercase tracking-wider text-ink-3">
           Poll expires <TimeAgo date={poll.expiresAt} />
         </p>
       )}

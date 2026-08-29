@@ -45,42 +45,39 @@ export default function ThreadResolutionCard({
   if (score === null || score === undefined) {
     return (
       <DetailCard className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Resolution</p>
-        <p className="text-sm text-foreground/80">
-          Not yet resolved. As the thread reaches conclusions, Sai scores how settled it is.
+        <p className="text-xs uppercase tracking-[0.12em] text-ink-3">Resolution</p>
+        <p className="text-sm text-ink-2">
+          Not yet scored — Sai updates the resolution as replies and polls settle the thread.
         </p>
       </DetailCard>
     );
   }
 
   const label = score >= 70 ? 'Settled' : score >= 40 ? 'In progress' : 'Open';
-  const barColor = score >= 70 ? 'var(--chart-2)' : score >= 40 ? 'var(--chart-4)' : 'var(--destructive)';
+  const barClass = score >= 70 ? 'bg-sai-green' : score >= 40 ? 'bg-sai-orange' : 'bg-sai-red';
 
   return (
     <DetailCard className="space-y-3">
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Resolution</p>
-          <p className="mt-0.5 text-xs text-muted-foreground/70">{label}</p>
+          <p className="text-xs uppercase tracking-[0.12em] text-ink-3">Resolution</p>
+          <p className="mt-0.5 text-xs text-ink-2">{label}</p>
         </div>
-        <span className="text-2xl leading-none font-bold tabular-nums text-foreground">
+        <span className="text-2xl leading-none font-bold tabular-nums text-ink">
           {Math.round(score)}
-          <span className="text-sm text-muted-foreground font-medium">/100</span>
+          <span className="text-sm text-ink-3 font-medium">/100</span>
         </span>
       </div>
 
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-background">
-        <div
-          className="h-full rounded-full transition-[width] duration-500 ease-out"
-          style={{ width: `${score}%`, background: barColor }}
-        />
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-field">
+        <div className={`h-full rounded-full transition-[width] duration-500 ease-out ${barClass}`} style={{ width: `${score}%` }} />
       </div>
 
       {isStale && (
-        <div className="mt-1 flex items-center justify-between gap-3 rounded-control bg-chart-4/10 px-3 py-2.5">
+        <div className="mt-1 flex items-center justify-between gap-3 rounded-control bg-orange-tint border border-line px-3 py-2.5">
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-chart-4">Confidence aged</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs font-semibold text-sai-orange">Confidence aged</p>
+            <p className="text-xs text-ink-2">
               Last verified {lastVerifiedDays !== null && lastVerifiedDays > 90 ? `${Math.floor(lastVerifiedDays / 30)} months` : `${lastVerifiedDays} days`} ago
             </p>
           </div>

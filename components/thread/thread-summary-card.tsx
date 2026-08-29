@@ -123,8 +123,8 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-brand" />
-          <span className="text-xs font-bold uppercase tracking-widest text-brand">
+          <Sparkles size={14} className="text-sai-accent" />
+          <span className="text-xs font-bold uppercase tracking-widest text-sai-accent">
             Sai Summary
           </span>
         </div>
@@ -153,56 +153,50 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         >
           {timedOut ? (
             <div className="flex flex-col items-center justify-center py-2 text-center">
-              <p className="text-xs text-muted-foreground mb-3">
-                This is taking longer than expected. You can try again.
-              </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90"
-              onClick={() => void requestSummary()}
-            >
-              <Sparkles size={12} className="mr-2" />
-              Try Again
-            </Button>
+              <p className="text-xs text-ink-2 mb-3">This is taking longer than expected. You can try again.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full bg-sai-accent-tint border-sai-accent/20 text-sai-accent hover:bg-sai-accent-tint"
+                onClick={() => void requestSummary()}
+              >
+                <Sparkles size={12} className="mr-2" />
+                Try Again
+              </Button>
             </div>
           ) : summary ? (
             isAiNotConfigured(summary) ? (
               <AiNotConfiguredNotice />
             ) : summary === SUMMARY_UNAVAILABLE ? (
               <div className="flex flex-col items-center justify-center py-2 text-center">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Sai couldn&apos;t generate a summary this time. Please try again.
-                </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90"
-                onClick={() => void requestSummary()}
-              >
-                <Sparkles size={12} className="mr-2" />
-                Try Again
-              </Button>
+                <p className="text-xs text-ink-2 mb-3">Sai couldn&apos;t generate a summary this time. Please try again.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full bg-sai-accent-tint border-sai-accent/20 text-sai-accent hover:bg-sai-accent-tint"
+                  onClick={() => void requestSummary()}
+                >
+                  <Sparkles size={12} className="mr-2" />
+                  Try Again
+                </Button>
               </div>
             ) : (
               <div className="prose prose-sm prose-neutral max-w-none">
-                <p className="text-xs text-brand/80 leading-relaxed">{summary}</p>
+                <p className="text-xs text-sai-accent/80 leading-relaxed">{summary}</p>
               </div>
             )
           ) : (
             <div className="flex flex-col items-center justify-center py-2 text-center">
-              <p className="text-xs text-muted-foreground mb-3">
-                Get a quick Sai-powered summary of this thread.
-              </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90"
-              onClick={() => void requestSummary()}
-            >
-              <Sparkles size={12} className="mr-2" />
-              Generate Summary
-            </Button>
+              <p className="text-xs text-ink-2 mb-3">Get a quick Sai-powered summary of this thread.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full bg-sai-accent-tint border-sai-accent/20 text-sai-accent hover:bg-sai-accent-tint"
+                onClick={() => void requestSummary()}
+              >
+                <Sparkles size={12} className="mr-2" />
+                Generate Summary
+              </Button>
             </div>
           )}
         </SkeletonSwap>

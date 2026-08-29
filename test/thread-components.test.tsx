@@ -273,7 +273,8 @@ describe('ThreadLiveWrapper', () => {
         />
       </MockNextJsProvider>
     );
-    expect(screen.getByText('No messages yet')).to.not.be.null;
+    expect(screen.getByText('Start the thread')).to.not.be.null;
+    expect(screen.getByText(/Ask @sai/)).to.not.be.null;
   });
 
   it('should render pinned message banner', async () => {

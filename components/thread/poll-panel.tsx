@@ -167,7 +167,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   }
 
   return (
-    <div className="mb-4 rounded-card border border-line/60 bg-surface/70 overflow-hidden">
+    <div className="mb-4 rounded-card border border-line bg-surface shadow-card overflow-hidden">
       {/* ── Header / Collapse trigger ── */}
       <button
         type="button"
@@ -180,12 +180,12 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
         aria-expanded={!isCollapsed}
       >
         <div className="flex items-center gap-2">
-          {/* Colored dot — green=active, gray=closed/none */}
+          {/* SAI green for active poll — feeds resolution score */}
           <span
             className={cn(
               'h-1.5 w-1.5 rounded-full shrink-0',
               isEffectivelyActive
-                ? 'bg-chart-2 shadow-linear-sm'
+                ? 'bg-sai-green shadow-linear-sm'
                 : 'bg-ink-3/40'
             )}
           />
@@ -202,8 +202,8 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
         <div className="flex items-center gap-2">
           {/* Vote count badge */}
           {poll && (
-            <span className="flex items-center gap-1 text-xs font-medium text-ink-3 bg-field/60 px-2 py-0.5 rounded-full">
-              <BarChart3 size={10} />
+            <span className="flex items-center gap-1 text-xs font-medium text-ink-2 bg-field px-2 py-0.5 rounded-full border border-line">
+              <BarChart3 size={10} className="text-ink-3" />
               {isEffectivelyActive ? 'Active' : 'Closed'}
             </span>
           )}
@@ -331,9 +331,10 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center py-4 gap-3 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    No poll has been added to this thread yet.
+                <div className="flex flex-col items-center py-5 gap-2.5 text-center">
+                  <p className="text-sm font-medium text-ink">No poll yet</p>
+                  <p className="text-xs leading-relaxed text-ink-2 max-w-72">
+                    Polls collect consensus and feed the thread’s resolution score. Add one when you need a clear decision.
                   </p>
                   {canManagePoll && (
                     <Button
