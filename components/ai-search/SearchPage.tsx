@@ -1,17 +1,12 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { SearchBox } from '@/components/ai-search/SearchBox';
-import { ApiKeysModal, getStoredApiKeys, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
-import { SaiSearchLayout, type HistoryItem } from '@/components/ai-search/sai-search-layout';
-import { ChatMessageList } from '@/components/ai-search/ChatMessageList';
-import { SearchInputBar } from '@/components/ai-search/SearchInputBar';
-import { useSearchStream, DEFAULT_CONFIG, type ChatMessage, type AppState } from '@/components/ai-search/use-search-stream';
-import type { SearchConfig } from '@/modules/ai-search/types';
-import type { RetryStyle, FeedbackType } from '@/components/ai-search/StreamingText';
+import { ApiKeysModal, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
+import { SaiSearchLayout } from '@/components/ai-search/sai-search-layout';
+import { SearchProvider, useSearch } from '@/components/ai-search/search-provider';
+import { SearchComposer } from '@/components/ai-search/search-composer';
 
 const apiKeysListeners = new Set<() => void>();
 function subscribeToApiKeys(cb: () => void) {
@@ -29,153 +24,36 @@ interface SearchPageProps {
   user?: { name?: string | null; email?: string | null; image?: string | null } | null;
 }
 
-export function SearchPage({ user }: SearchPageProps) {
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams.get('q') ?? '';
-
-  const [appState, setAppState] = useState<AppState>('idle');
-  const [query, setQuery] = useState(initialQuery);
-  const [lastConfig, setLastConfig] = useState<SearchConfig>(DEFAULT_CONFIG);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [slowHint, setSlowHint] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
-  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [taskFailed, setTaskFailed] = useState(false);
-
+// Inner — accesses lifted state via context (state-lift-state, state-decouple-implementation)
+function SearchPageInner({ initialQuery }: { initialQuery: string }) {
+  const {
+    state: { appState, isChatActive, currentSessionId },
+    actions: { selectSession, newSearch },
+  } = useSearch();
   const [showApiKeys, setShowApiKeys] = useState(false);
   const hasKeys = useSyncExternalStore(subscribeToApiKeys, getHasApiKeys, () => false);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [streamingMessage, setStreamingMessage] = useState<ChatMessage | null>(null);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const { runSearch, handleNewSearch, handleSelectSession, abortSearch } = useSearchStream(
-    { appState, query, lastConfig, errorMessage, isStreaming, slowHint, isOffline, currentSessionId, currentStep, taskFailed, messages, streamingMessage },
-    { setAppState, setErrorMessage, setIsStreaming, setSlowHint, setIsOffline, setCurrentSessionId, setCurrentStep, setTaskFailed, setMessages, setStreamingMessage, setQuery, setLastConfig }
-  );
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingMessage]);
-
-  const handleSearch = useCallback(
-    (q: string, config: SearchConfig) => {
-      runSearch(q, config, currentSessionId);
-    },
-    [runSearch, currentSessionId]
-  );
-
-  const handleFollowUp = useCallback(
-    (followUp: string) => {
-      runSearch(followUp, lastConfig, currentSessionId);
-    },
-    [lastConfig, runSearch, currentSessionId]
-  );
-
-  const handleRetry = useCallback(
-    (style: RetryStyle) => {
-      if (!query) return;
-      const styledQuery =
-        style === 'same' ? query : `${query} (Please provide a ${style} response)`;
-      runSearch(styledQuery, lastConfig, currentSessionId);
-    },
-    [query, lastConfig, runSearch, currentSessionId]
-  );
-
-  const handleFeedback = useCallback((_type: FeedbackType, _reason?: string) => {
-    // Feedback handled via toast in StreamingText
-  }, []);
-
-  const isChatActive = messages.length > 0 || streamingMessage !== null;
+  // Explicit variants — patterns-explicit-variants (no isChatActive prop to Composer)
+  const content = !isChatActive && appState === 'idle'
+    ? <SearchComposer.IdleVariant initialQuery={initialQuery} />
+    : <SearchComposer.ActiveVariant onNewSearchInitial={initialQuery} />;
 
   return (
     <SaiSearchLayout
-      onSelectSession={handleSelectSession}
-      onNewSearch={() => handleNewSearch(initialQuery)}
+      onSelectSession={selectSession}
+      onNewSearch={() => newSearch(initialQuery)}
       currentSessionId={currentSessionId}
       hasApiKeys={hasKeys}
       onOpenApiKeys={() => setShowApiKeys(true)}
     >
-      <div className="flex flex-col h-full">
-        {!isChatActive && appState === 'idle' && (
-          <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 py-10">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center"
-            >
-              <div className="mb-8 text-center">
-                <h1 className="text-2xl tracking-tight text-ink mb-4 font-serif-heading">
-                  Search across Sastram
-                </h1>
-              </div>
-
-              <div className="relative w-full max-w-2xl mb-8">
-                <SearchBox
-                  onSearch={handleSearch}
-                  isLoading={false}
-                  compact={false}
-                  initialQuery={initialQuery}
-                />
-              </div>
-
-              <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
-                {[
-                  'What are the best patterns for managing state in React?',
-                  'Latest threads on Hacker News about AI in healthcare.',
-                  'Compare Arch Linux vs Debian for a developer machine.',
-                ].map((q) => (
-                  <Button
-                    key={q}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs text-ink-2 bg-surface border-line hover:border-line-strong hover:text-ink h-auto px-3.5 py-2"
-                    onClick={() => handleSearch(q, DEFAULT_CONFIG)}
-                  >
-                    {q}
-                  </Button>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {isChatActive && (
-          <div className="flex-1 flex flex-col min-h-0">
-            <ChatMessageList
-              messages={messages}
-              streamingMessage={streamingMessage}
-              appState={appState}
-              currentStep={currentStep}
-              taskFailed={taskFailed}
-              slowHint={slowHint}
-              errorMessage={errorMessage}
-              isOffline={isOffline}
-              onFollowUp={handleFollowUp}
-              onRetry={handleRetry}
-              onFeedback={handleFeedback}
-              onNewSearch={() => handleNewSearch(initialQuery)}
-              messagesEndRef={messagesEndRef}
-            />
-
-            <SearchInputBar
-              query={query}
-              onQueryChange={setQuery}
-              onSubmit={() => {
-                if (query.trim().length >= 3 && !isStreaming) {
-                  runSearch(query, lastConfig, currentSessionId);
-                }
-              }}
-              isStreaming={isStreaming}
-              isChatActive={isChatActive}
-              onNewSearch={() => handleNewSearch(initialQuery)}
-            />
-          </div>
-        )}
-      </div>
+      <SearchComposer.Frame>
+        {/* IdleVariant already includes motion; wrap once for consistency */}
+        { !isChatActive && appState === 'idle' ? (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            {content}
+          </motion.div>
+        ) : content }
+      </SearchComposer.Frame>
 
       <ApiKeysModal
         isOpen={showApiKeys}
@@ -183,5 +61,17 @@ export function SearchPage({ user }: SearchPageProps) {
         onKeysChange={notifyApiKeysChanged}
       />
     </SaiSearchLayout>
+  );
+}
+
+export function SearchPage({ user }: SearchPageProps) {
+  void user;
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') ?? '';
+  // Provider lifts state — same UI works with any provider impl (dependency injection)
+  return (
+    <SearchProvider initialQuery={initialQuery}>
+      <SearchPageInner initialQuery={initialQuery} />
+    </SearchProvider>
   );
 }
