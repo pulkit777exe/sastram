@@ -6,24 +6,22 @@ import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
-import { aiService, isAiNotConfigured } from '@/lib/ai';
-import { sanitizeUserContent } from '@/lib/services/content-safety';
-import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/ai/prompt-boundary';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
+import { sseEvent, sseHeaders } from '@/lib/utils/sse';
+import {
+  fetchThreadContext,
+  getOrCreateAiUser,
+  createAiReplyMessageTx,
+  streamAiReplyToMessage,
+} from '@/modules/ai-reply/service';
 
 const TIMEOUT_MS = 50_000;
-const DB_THROTTLE_MS = 500;
-const MAX_CONTENT_CHARS = 2000;
 
 const paramsSchema = z.object({
   threadId: z.string().cuid(),
 });
-
-function sseEvent(event: string, data: unknown): string {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-}
 
 export async function GET(
   request: NextRequest,
@@ -37,7 +35,7 @@ export async function GET(
   } catch {
     return new Response(sseEvent('error', { error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'text/event-stream' },
+      headers: sseHeaders(),
     });
   }
 
@@ -46,31 +44,31 @@ export async function GET(
   if (!parsedParams.success) {
     return new Response(sseEvent('error', { error: 'Invalid thread ID' }), {
       status: 400,
-      headers: { 'Content-Type': 'text/event-stream' },
+      headers: sseHeaders(),
     });
   }
 
-  const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip')?.trim() ||
+    'unknown';
   const rateLimitResult = await rateLimit({ key: `ai-reply-stream:${session.user.id}:${ip}`, type: 'api' });
   if (!rateLimitResult.success) {
     return new Response(sseEvent('error', { error: 'Too many requests' }), {
       status: 429,
-      headers: { 'Content-Type': 'text/event-stream' },
+      headers: sseHeaders(),
     });
   }
 
-   try {
+  try {
     await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
   } catch {
     return new Response(sseEvent('error', { error: 'Forbidden' }), {
       status: 403,
-      headers: { 'Content-Type': 'text/event-stream' },
+      headers: sseHeaders(),
     });
   }
 
-  // Prefer the exact message the client just posted (passed as ?messageId=)
-  // over the "latest @sai mention" heuristic, which can race with concurrent
-  // posts and answer the wrong message.
   const requestedMessageId = request.nextUrl.searchParams.get('messageId');
   const parentMessage = requestedMessageId
     ? await prisma.message.findFirst({
@@ -91,7 +89,7 @@ export async function GET(
   if (!parentMessage) {
     return new Response(sseEvent('error', { error: 'No @sai mention found' }), {
       status: 400,
-      headers: { 'Content-Type': 'text/event-stream' },
+      headers: sseHeaders(),
     });
   }
 
@@ -100,12 +98,10 @@ export async function GET(
   if (!extractAiInlineQuery(parentMessage.content) && !/(?:^|\s)@ai\s+\S+/i.test(parentMessage.content)) {
     return new Response(sseEvent('error', { error: 'No question found after @sai' }), {
       status: 400,
-      headers: { 'Content-Type': 'text/event-stream' },
+      headers: sseHeaders(),
     });
   }
 
-  // Streaming is the execution path, so reserve the spend atomically here.
-  // A read-only check would allow concurrent streams to overspend the cap.
   const spendCap = await consumeSpendCap();
   const gate = evaluateAiCostGate({
     path: AiCallPath.AI_REPLY_STREAM,
@@ -114,86 +110,28 @@ export async function GET(
   if (!gate.allowed) {
     return new Response(sseEvent('error', { error: 'AI features temporarily unavailable' }), {
       status: 503,
-      headers: { 'Content-Type': 'text/event-stream' },
+      headers: sseHeaders(),
     });
   }
 
-  const recentMessages = await prisma.message.findMany({
-    where: { threadId, deletedAt: null },
-    orderBy: { createdAt: 'desc' },
-    take: 8,
-    select: {
-      content: true,
-      sender: { select: { name: true } },
-    },
-  });
-  const threadContext = recentMessages
-    .reverse()
-    .map((m) => `${m.sender?.name || 'User'}: ${m.content}`)
-    .join('\n');
-
-  // Service identity for AI-generated replies. This email is a reserved
-  // system address — real users must not be able to register it (enforced
-  // by the email domain allowlist in the auth configuration).
-  const aiUser = await prisma.user.upsert({
-    where: { email: 'ai@sastram.system' },
-    update: { name: 'Sastram AI', emailVerified: true },
-    create: {
-      email: 'ai@sastram.system',
-      name: 'Sastram AI',
-      emailVerified: true,
-      role: 'USER',
-      status: 'ACTIVE',
-    },
-    select: { id: true, name: true, image: true },
-  });
-
+  // Deep module — single implementation for context + user + transaction
+  const threadContext = await fetchThreadContext(threadId);
+  const aiUser = await getOrCreateAiUser();
   const parentMsg = await prisma.message.findUnique({
     where: { id: parentMessage.id },
     select: { depth: true },
   });
 
-  // Atomic: create AI message + bump parent replyCount + bump thread messageCount.
-  // Matches the pattern used by moderation.ts:337-361 for user-posted replies so
-  // both paths keep denormalized counters in sync with a single transaction.
-  const aiMessage = await prisma.$transaction(async (tx) => {
-    const msg = await tx.message.create({
-      data: {
-        content: '',
-        threadId,
-        senderId: aiUser.id,
-        parentId: parentMessage.id,
-        depth: Math.min((parentMsg?.depth ?? 0) + 1, 4),
-        isAiResponse: true,
-        isEdited: false,
-        isPinned: false,
-        likeCount: 0,
-        replyCount: 0,
-      },
-      select: { id: true },
-    });
-
-    if (parentMessage.id) {
-      await tx.message.update({
-        where: { id: parentMessage.id },
-        data: { replyCount: { increment: 1 } },
-      });
-    }
-
-    await tx.thread.update({
-      where: { id: threadId },
-      data: { messageCount: { increment: 1 } },
-    });
-
-    return msg;
+  const aiMessage = await createAiReplyMessageTx({
+    threadId,
+    parentId: parentMessage.id,
+    parentDepth: parentMsg?.depth,
+    aiUserId: aiUser.id,
   });
-  void trackNeonRequest(); // best-effort usage tracking
+  void trackNeonRequest();
 
   const stream = new ReadableStream({
     async start(controller) {
-      let fullContent = '';
-      let lastDbUpdateTime = Date.now();
-      let lastEmitTime = Date.now();
       let closed = false;
 
       const send = (event: string, data: unknown) => {
@@ -218,8 +156,6 @@ export async function GET(
         }
       }, TIMEOUT_MS);
 
-      // Announce the AI message identity up-front so the client can render an
-      // empty bubble and stream tokens into it immediately.
       send('start', {
         messageId: aiMessage.id,
         parentId: parentMessage.id,
@@ -232,63 +168,39 @@ export async function GET(
       });
 
       try {
-        await aiService.generateStreamingResponse(
-          `Answer this forum question in under 200 words and stay grounded in thread context.${DATA_ONLY_INSTRUCTION}\nQuestion: ${wrapUserContent(query)}\n\nRecent thread context:\n${wrapUserContent(threadContext)}`,
-          async (chunk) => {
-            if (closed) return;
-            fullContent += chunk;
-            send('token', { content: chunk });
-
-            const now = Date.now();
-            if (now - lastDbUpdateTime >= DB_THROTTLE_MS && !isAiNotConfigured(fullContent)) {
-              lastDbUpdateTime = now;
-              const sliced = fullContent.slice(0, MAX_CONTENT_CHARS);
-              prisma.message.update({
-                where: { id: aiMessage.id },
-                data: { content: sliced },
-              }).catch((err) => logger.error('[ai-reply-stream] DB write failed', { error: err }));
-            }
-            if (now - lastEmitTime >= 100 && !isAiNotConfigured(fullContent)) {
-              lastEmitTime = now;
-            }
-          }
-        );
+        // Deep module handles prompt, throttled DB writes, sanitize, fallback
+        const result = await streamAiReplyToMessage({
+          query,
+          context: threadContext,
+          aiMessageId: aiMessage.id,
+          onToken: (chunk) => send('token', { content: chunk }),
+          signal: request.signal,
+        });
 
         clearTimeout(timeout);
 
-        if (isAiNotConfigured(fullContent)) {
-          const fallbackContent = 'AI features are not configured. Please set an API key to enable AI responses.';
-          await prisma.message.update({
-            where: { id: aiMessage.id },
-            data: { content: fallbackContent },
-          });
+        if (result.isFallback) {
           send('done', { messageId: aiMessage.id, truncated: false });
           return;
         }
 
-        const truncated = fullContent.length > MAX_CONTENT_CHARS;
-        const finalContent = fullContent.slice(0, MAX_CONTENT_CHARS);
-        const { sanitized } = sanitizeUserContent(finalContent);
-
-        await prisma.message.update({
-          where: { id: aiMessage.id },
-          data: { content: sanitized },
-        });
-
-        send('done', { messageId: aiMessage.id, truncated });
-
-
+        send('done', { messageId: aiMessage.id, truncated: result.truncated });
       } catch (error) {
         clearTimeout(timeout);
         logger.error('[ai-reply-stream] Generation error', { error });
 
-        const errorMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
-        const fallbackContent = fullContent.slice(0, MAX_CONTENT_CHARS);
-
-        await prisma.message.update({
+        // Read partial content from DB fallback — stream helper already wrote sanitized
+        // On error, ensure message has some content
+        const fallback = await prisma.message.findUnique({
           where: { id: aiMessage.id },
-          data: { content: fallbackContent || errorMessage },
+          select: { content: true },
         });
+        if (!fallback?.content) {
+          await prisma.message.update({
+            where: { id: aiMessage.id },
+            data: { content: "Sorry, I couldn't generate a response right now. Please try again later." },
+          });
+        }
 
         send('error', { error: 'Generation failed', messageId: aiMessage.id });
       } finally {
@@ -302,10 +214,6 @@ export async function GET(
 
   return new Response(stream, {
     status: 200,
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
+    headers: sseHeaders(),
   });
 }
