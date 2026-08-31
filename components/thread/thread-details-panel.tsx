@@ -16,6 +16,7 @@ export function ThreadDetailsPanel({ children }: { children: ReactNode }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => setOpen(false), []);
+  const openPanel = useCallback(() => setOpen(true), []);
 
   // Escape key handler
   useEffect(() => {
@@ -77,7 +78,7 @@ export function ThreadDetailsPanel({ children }: { children: ReactNode }) {
         variant="outline"
         size="icon"
         className="fixed top-[4.5rem] right-4 z-40 backdrop-blur rounded-control"
-        onClick={() => setOpen(true)}
+        onClick={openPanel}
         aria-label="Show thread details"
         aria-expanded={open}
         aria-controls={panelId}

@@ -1026,3 +1026,58 @@
   .sai-pixel-cell,
   .sai-shimmer { animation: none !important; }
 }
+
+/* View Transitions — gated by NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED + browser support.
+ * Tuned short so the morph doesn't compete with the underlying page rhythm. */
+:root {
+  --vt-duration: 220ms;
+  --vt-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: var(--vt-duration);
+  animation-timing-function: var(--vt-easing);
+}
+
+/* SaiSearch idle composer → active input bar (shared element morph) */
+::view-transition-old(ai-search-composer-idle),
+::view-transition-new(ai-search-composer-active) {
+  animation: vt-morph var(--vt-duration) var(--vt-easing) forwards;
+}
+
+/* SaiSearch first synthesis card reveal */
+::view-transition-new(ai-search-first-synthesis) {
+  animation: vt-fade-in var(--vt-duration) var(--vt-easing) forwards;
+}
+
+/* Thread empty-state exit-only (no target on the new side; fade out cleanly) */
+::view-transition-old(thread-empty-state) {
+  animation: vt-fade-out var(--vt-duration) var(--vt-easing) forwards;
+}
+
+@keyframes vt-fade-in {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes vt-fade-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.985); }
+}
+
+/* Shared-element morph: same fade + scale on both sides keeps the transition feeling
+ * like a single object moving rather than two independent fades. */
+@keyframes vt-morph {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+  }
+}

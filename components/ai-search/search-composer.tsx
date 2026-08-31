@@ -9,6 +9,11 @@ import { DEFAULT_CONFIG } from './use-search-conversation';
 import { useCallback, useRef, useEffect } from 'react';
 import type { SearchConfig } from '@/modules/ai-search/types';
 import type { RetryStyle, FeedbackType } from './StreamingText';
+import { SaiViewTransition } from '@/components/ui/view-transition';
+
+const COMPOSER_VT_NAME_IDLE = 'ai-search-composer-idle';
+const COMPOSER_VT_NAME_ACTIVE = 'ai-search-composer-active';
+const FIRST_SYNTHESIS_VT_NAME = 'ai-search-first-synthesis';
 
 // ------------------------------------------------------------------
 // Compound components — each accesses shared context, no prop drilling.
@@ -61,9 +66,11 @@ function SearchField({ initialQuery }: { initialQuery: string }) {
     [run]
   );
   return (
-    <div className="relative w-full max-w-2xl mb-8">
-      <SearchBox onSearch={onSearch} isLoading={false} compact={false} initialQuery={initialQuery} />
-    </div>
+    <SaiViewTransition name={COMPOSER_VT_NAME_IDLE}>
+      <div className="relative w-full max-w-2xl mb-8">
+        <SearchBox onSearch={onSearch} isLoading={false} compact={false} initialQuery={initialQuery} />
+      </div>
+    </SaiViewTransition>
   );
 }
 
@@ -73,16 +80,18 @@ function InputBar({ onNewSearchInitial }: { onNewSearchInitial: string }) {
     actions: { setQuery, run, newSearch },
   } = useSearch();
   return (
-    <SearchInputBar
-      query={query}
-      onQueryChange={setQuery}
-      onSubmit={() => {
-        if (query.trim().length >= 3 && !isStreaming) run(query, lastConfig);
-      }}
-      isStreaming={isStreaming}
-      isChatActive={isChatActive}
-      onNewSearch={() => newSearch(onNewSearchInitial)}
-    />
+    <SaiViewTransition name={COMPOSER_VT_NAME_ACTIVE}>
+      <SearchInputBar
+        query={query}
+        onQueryChange={setQuery}
+        onSubmit={() => {
+          if (query.trim().length >= 3 && !isStreaming) run(query, lastConfig);
+        }}
+        isStreaming={isStreaming}
+        isChatActive={isChatActive}
+        onNewSearch={() => newSearch(onNewSearchInitial)}
+      />
+    </SaiViewTransition>
   );
 }
 

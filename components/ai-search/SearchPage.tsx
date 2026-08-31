@@ -2,7 +2,6 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { ApiKeysModal, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
 import { SaiSearchLayout } from '@/components/ai-search/sai-search-layout';
 import { SearchProvider, useSearch } from '@/components/ai-search/search-provider';
@@ -47,12 +46,7 @@ function SearchPageInner({ initialQuery }: { initialQuery: string }) {
       onOpenApiKeys={() => setShowApiKeys(true)}
     >
       <SearchComposer.Frame>
-        {/* IdleVariant already includes motion; wrap once for consistency */}
-        { !isChatActive && appState === 'idle' ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            {content}
-          </motion.div>
-        ) : content }
+        {content}
       </SearchComposer.Frame>
 
       <ApiKeysModal

@@ -8,6 +8,9 @@ import type { ChatMessage, AppState } from '@/components/ai-search/use-search-st
 import { SEARCH_PHASES } from '@/components/ai-search/use-search-stream';
 import type { RetryStyle, FeedbackType } from '@/components/ai-search/StreamingText';
 import type { Citation } from '@/modules/ai-search/types';
+import { SaiViewTransition } from '@/components/ui/view-transition';
+
+const FIRST_SYNTHESIS_VT_NAME = 'ai-search-first-synthesis';
 
 function ChatMessageBubble({
   message,
@@ -131,16 +134,18 @@ export function ChatMessageList({
             )}
 
             {streamingMessage.text && (
-              <SynthesisCard
-                text={streamingMessage.text}
-                citations={streamingMessage.citations}
-                sources={streamingMessage.sources}
-                conflictData={streamingMessage.conflictData}
-                sourceCount={streamingMessage.sourceCount ?? 0}
-                queryType={streamingMessage.queryType ?? 'technical'}
-                isStreaming={true}
-                fromHistory={false}
-              />
+              <SaiViewTransition name={FIRST_SYNTHESIS_VT_NAME} update="none">
+                <SynthesisCard
+                  text={streamingMessage.text}
+                  citations={streamingMessage.citations}
+                  sources={streamingMessage.sources}
+                  conflictData={streamingMessage.conflictData}
+                  sourceCount={streamingMessage.sourceCount ?? 0}
+                  queryType={streamingMessage.queryType ?? 'technical'}
+                  isStreaming={true}
+                  fromHistory={false}
+                />
+              </SaiViewTransition>
             )}
 
             {!streamingMessage.text && (

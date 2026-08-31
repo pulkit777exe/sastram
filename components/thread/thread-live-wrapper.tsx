@@ -11,6 +11,7 @@ import { getPollResultsAction, getPollByThreadAction } from '@/modules/polls/act
 import type { PollResults } from '@/modules/polls/types';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
+import { SaiViewTransition } from '@/components/ui/view-transition';
 import { ChevronDown, Loader2, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useThreadMessages } from '@/hooks/thread/use-thread-messages';
@@ -415,49 +416,51 @@ export function ThreadLiveWrapper({
         <div className="max-w-4xl mx-auto">
           {threadMessages.liveMessages.length === 0 ? (
             <div className="py-10">
-              <div className="rounded-card border border-line bg-surface shadow-card p-6">
-                <div className="flex items-start gap-3 mb-5">
-                  <span className="size-2.5 rounded-full bg-sai-green mt-2 shrink-0" aria-hidden />
-                  <div className="min-w-0">
-                    <h3 className="font-serif-heading text-[17px] leading-tight text-ink">Start the thread</h3>
-                    <p className="text-[13px] leading-relaxed text-ink-2 mt-1">
-                      <span className="font-medium text-ink">{title}</span> has no replies yet. Sastram threads work best when the first message sets the question type — @sai will track Thread DNA and resolution from there.
-                    </p>
+              <SaiViewTransition name="thread-empty-state">
+                <div className="rounded-card border border-line bg-surface shadow-card p-6">
+                  <div className="flex items-start gap-3 mb-5">
+                    <span className="size-2.5 rounded-full bg-sai-green mt-2 shrink-0" aria-hidden />
+                    <div className="min-w-0">
+                      <h3 className="font-serif-heading text-[17px] leading-tight text-ink">Start the thread</h3>
+                      <p className="text-[13px] leading-relaxed text-ink-2 mt-1">
+                        <span className="font-medium text-ink">{title}</span> has no replies yet. Sastram threads work best when the first message sets the question type — @sai will track Thread DNA and resolution from there.
+                      </p>
+                    </div>
                   </div>
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="Reply"]')?.focus()}
+                      className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors"
+                    >
+                      <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink">
+                        <span className="grid size-7 place-items-center rounded-control bg-sai-accent-tint text-sai-accent text-[11px] font-bold">@</span>
+                        Ask @sai
+                      </span>
+                      <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Mention @sai with your question — it replies in-thread with grounded context.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="Reply"]')?.focus()}
+                      className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors"
+                    >
+                      <span className="text-[12.5px] font-semibold text-ink">Add context</span>
+                      <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Paste sources or set the expertise level so Thread DNA classifies it correctly.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPoll(true)}
+                      className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors"
+                    >
+                      <span className="text-[12.5px] font-semibold text-ink">Create a poll</span>
+                      <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Use a poll when you need consensus — results feed the resolution score.</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-ink-3 mt-4">
+                    Tip: first message determines the thread’s question type and read time. Be specific.
+                  </p>
                 </div>
-                <div className="grid gap-2.5 sm:grid-cols-3">
-                  <button
-                    type="button"
-                    onClick={() => document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="Reply"]')?.focus()}
-                    className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors"
-                  >
-                    <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink">
-                      <span className="grid size-7 place-items-center rounded-control bg-sai-accent-tint text-sai-accent text-[11px] font-bold">@</span>
-                      Ask @sai
-                    </span>
-                    <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Mention @sai with your question — it replies in-thread with grounded context.</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="Reply"]')?.focus()}
-                    className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors"
-                  >
-                    <span className="text-[12.5px] font-semibold text-ink">Add context</span>
-                    <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Paste sources or set the expertise level so Thread DNA classifies it correctly.</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowPoll(true)}
-                    className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors"
-                  >
-                    <span className="text-[12.5px] font-semibold text-ink">Create a poll</span>
-                    <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Use a poll when you need consensus — results feed the resolution score.</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-ink-3 mt-4">
-                  Tip: first message determines the thread’s question type and read time. Be specific.
-                </p>
-              </div>
+              </SaiViewTransition>
             </div>
           ) : (
             <ErrorBoundary>

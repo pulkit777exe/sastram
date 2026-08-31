@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { toasts } from '@/lib/utils/toast';
 import type { SSEPhase } from '@/components/ai-search/PhaseTracker';
 import type { HistoryItem } from '@/components/ai-search/sai-search-layout';
@@ -71,6 +71,7 @@ export function useSearchConversation(initialQuery: string = '') {
   const [taskFailed, setTaskFailed] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingMessage, setStreamingMessage] = useState<ChatMessage | null>(null);
+  const [, startTransition] = useTransition();
 
   const abortRef = useRef<AbortController | null>(null);
   const phaseTimerRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -103,12 +104,18 @@ export function useSearchConversation(initialQuery: string = '') {
       setQuery(trimmed);
       setLastConfig(config);
       setErrorMessage('');
-      setAppState('loading');
-      setIsStreaming(true);
-      setSlowHint(false);
-      setCurrentStep(0);
-      setTaskFailed(false);
-      if (typeof navigator !== 'undefined') setIsOffline(!navigator.onLine);
+      // Idle → active flip is wrapped in startTransition so React schedules it
+      // asynchronously. That's what lets the <ViewTransition> wrappers in
+      // SearchField / InputBar / SynthesisCard actually fire — the canary
+      // <ViewTransition> only animates async state changes.
+      startTransition(() => {
+        setAppState('loading');
+        setIsStreaming(true);
+        setSlowHint(false);
+        setCurrentStep(0);
+        setTaskFailed(false);
+        if (typeof navigator !== 'undefined') setIsOffline(!navigator.onLine);
+      });
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -116,7 +123,11 @@ export function useSearchConversation(initialQuery: string = '') {
         query: trimmed,
         timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, userMsg]);
+      // First user bubble mount also goes through the transition so the
+      // shared-element morph with the idle composer fires.
+      startTransition(() => {
+        setMessages((prev) => [...prev, userMsg]);
+      });
 
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -125,7 +136,11 @@ export function useSearchConversation(initialQuery: string = '') {
         timestamp: Date.now(),
       };
       streamingDataRef.current = assistantMsg;
-      setStreamingMessage(assistantMsg);
+      // First synthesis card reveal goes through the transition so the
+      // <ViewTransition name="ai-search-first-synthesis"> fires onEnter.
+      startTransition(() => {
+        setStreamingMessage(assistantMsg);
+      });
 
       const controller = new AbortController();
       abortRef.current = controller;
