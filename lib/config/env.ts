@@ -61,6 +61,10 @@ const fullyClientSafeSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL'),
   NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
+  NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED: z
+    .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+    .transform((v) => v === true || v === 'true' || v === '1')
+    .default(true),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
