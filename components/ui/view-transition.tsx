@@ -1,18 +1,20 @@
 'use client';
 
-import { ViewTransition } from 'react';
-import { useSyncExternalStore, type ComponentProps, type ReactNode } from 'react';
+import * as React from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 import {
   isViewTransitionsEnabled,
   supportsViewTransitions,
 } from '@/lib/utils/view-transitions';
 
-type VTProps = ComponentProps<typeof ViewTransition>;
+// React 19 ViewTransition is canary — may be undefined in current build
+const ViewTransition = (React as unknown as { ViewTransition?: React.ComponentType<{ name?: string; children?: ReactNode } & Record<string, unknown>> }).ViewTransition;
 
-type Props = Omit<VTProps, 'children'> & {
+type Props = {
   children: ReactNode;
   fallback?: ReactNode;
-};
+  name?: string;
+} & Record<string, unknown>;
 
 function subscribe() {
   return () => {};
@@ -26,6 +28,6 @@ function getClientSnapshot() {
 
 export function SaiViewTransition({ children, fallback, ...rest }: Props) {
   const enabled = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
-  if (!enabled) return <>{fallback ?? children}</>;
-  return <ViewTransition {...rest}>{children}</ViewTransition>;
+  if (!enabled || !ViewTransition) return <>{fallback ?? children}</>;
+  return React.createElement(ViewTransition as React.ComponentType<Record<string, unknown>>, rest as Record<string, unknown>, children);
 }
