@@ -29,7 +29,7 @@ export function toClientMessage(
     replyCount: message.replyCount,
     isAiResponse: message.isAI,
     createdAt: message.createdAt,
-    updatedAt: message.createdAt,
+    updatedAt: message.updatedAt,
     deletedAt: message.deletedAt,
     sender: {
       id: message.author?.id ?? message.senderId ?? '',

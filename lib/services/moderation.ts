@@ -15,7 +15,7 @@ export type MessageLike = {
   timestamp?: Date;
   metadata?: Record<string, unknown>;
   attachments?: { name?: string | null; url: string; type: string; size?: number | null }[];
-  poll?: { question: string; options: string[]; expiresAt?: string | null } | null;
+  poll?: { question: string; options: string[]; expiresAt?: string | Date | null } | null;
 };
 
 export type ConversationContext = {

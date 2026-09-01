@@ -38,7 +38,6 @@ interface SettingsFormProps {
     website?: string | null;
     twitter?: string | null;
     github?: string | null;
-    linkedin?: string | null;
     image?: string | null;
     bannerUrl?: string | null;
     profilePrivacy?: string;
@@ -66,7 +65,6 @@ export function SettingsForm({ user }: SettingsFormProps) {
   const [website, setWebsite] = useState(user.website || '');
   const [twitter, setTwitter] = useState(user.twitter || '');
   const [github, setGithub] = useState(user.github || '');
-  const [linkedin, setLinkedin] = useState(user.linkedin || '');
   const [avatarUrl, setAvatarUrl] = useState(user.image || '');
   const [bannerUrl, setBannerUrl] = useState(user.bannerUrl || '');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -138,7 +136,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
     setUploadingAvatar(true);
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append('file', file);
 
     const result = await uploadAvatar(formData);
     if (result?.error) {
@@ -159,7 +157,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
     setUploadingBanner(true);
     const formData = new FormData();
-    formData.append('banner', file);
+    formData.append('file', file);
 
     const result = await uploadBanner(formData);
     if (result?.error) {
@@ -362,19 +360,6 @@ export function SettingsForm({ user }: SettingsFormProps) {
               name="github"
               value={github}
               onChange={(e) => setGithub(e.target.value)}
-              placeholder="username"
-              className="h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="linkedin" className="text-ink">
-              LinkedIn
-            </Label>
-            <Input
-              id="linkedin"
-              name="linkedin"
-              value={linkedin}
-              onChange={(e) => setLinkedin(e.target.value)}
               placeholder="username"
               className="h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all"
             />

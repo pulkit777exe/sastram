@@ -11,7 +11,7 @@ export async function moderateIncomingMessage(args: {
   content: string;
   parentId: string | null;
   attachments?: { name?: string | null; url: string; type: string; size?: number | null }[];
-  poll?: { question: string; options: string[]; expiresAt?: string | null } | null;
+  poll?: { question: string; options: string[]; expiresAt?: string | Date | null } | null;
 }) {
   const [recentHistory, thread] = await Promise.all([
     prisma.message.findMany({

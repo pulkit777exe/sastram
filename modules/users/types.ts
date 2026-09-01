@@ -11,7 +11,6 @@ export interface UserProfile {
   website: string | null;
   twitter: string | null;
   github: string | null;
-  linkedin: string | null;
   role: Role;
   status: UserStatus;
   createdAt: Date;

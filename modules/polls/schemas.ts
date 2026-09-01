@@ -5,7 +5,7 @@ export const createPollSchema = z.object({
   messageId: z.string().cuid('Invalid message ID').optional(),
   question: z.string().min(1).max(500),
   options: z.array(z.string().min(1).max(200)).min(2).max(10),
-  expiresAt: z.date().optional(),
+  expiresAt: z.coerce.date().optional().nullable(),
 });
 
 export const voteOnPollSchema = z.object({

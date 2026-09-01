@@ -77,6 +77,7 @@ enum AttachmentType {
   GIF
   VIDEO
   FILE
+  PDF
 }
 
 enum FeedbackType {
@@ -259,7 +260,7 @@ model Message {
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   sender      User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
-  parent      Message?         @relation("MessageReplies", fields: [parentId], references: [id])
+  parent      Message?         @relation("MessageReplies", fields: [parentId], references: [id], onDelete: SetNull)
   replies     Message[]        @relation("MessageReplies")
   attachments  Attachment[]
   reactions    Reaction[]
@@ -651,6 +652,7 @@ model AiSearchResult {
 
   session AiSearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
+  @@index([sessionId])
   @@index([queryHash])
   @@index([expiresAt])
   @@map("ai_search_results")

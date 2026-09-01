@@ -73,9 +73,12 @@ export interface Reaction {
 
 export interface ReadReceipt {
   id: string;
-  lastReadMessageId: string;
+  threadId: string;
+  lastReadMessageId: string | null;
   userId: string;
   readAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 /** How the @sai inline reply for a just-posted message will be delivered. */

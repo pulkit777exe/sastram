@@ -9,7 +9,7 @@ export const attachmentInputSchema = z.object({
     // Uploads are proxied through blob storage; reject traversal-ish and non-TLS URLs.
     .refine((val) => !val.includes('..') && !val.includes('\\'), 'Invalid path in URL')
     .refine((val) => /^https:\/\//.test(val), 'URL must start with https://'),
-  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO']),
+  type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO', 'PDF']),
   name: z.string().nullable(),
   size: z.number().int().positive('File size must be positive').nullable(),
 });
@@ -32,7 +32,7 @@ export const createMessageWithAttachmentsSchema = createMessageSchema.extend({
     .object({
       question: z.string().min(1).max(500),
       options: z.array(z.string().min(1).max(200)).min(2).max(10),
-      expiresAt: z.string().optional().nullable(),
+      expiresAt: z.coerce.date().optional().nullable(),
     })
     .optional()
     .nullable(),

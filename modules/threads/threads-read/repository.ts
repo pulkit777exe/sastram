@@ -89,7 +89,7 @@ export type ThreadWithFullContext = {
   slug: string;
   description: string | null;
   createdBy: string | null;
-  visibility: string;
+  visibility: ThreadVisibility;
   aiSummary: string | null;
   resolutionScore: number | null;
   isOutdated: boolean;
@@ -101,7 +101,7 @@ export type ThreadWithFullContext = {
     id: string;
     name: string | null;
     image: string | null;
-  };
+  } | null;
   tags: ThreadTag[];
   aiSearchSession: ThreadAiSearchSession;
   poll: ThreadPoll;
@@ -283,11 +283,11 @@ export const getThreadWithFullContext = cache(
         s."createdAt" as "createdAt",
         s."updatedAt" as "updatedAt",
         s."lastVerifiedAt" as "lastVerifiedAt",
-        json_build_object(
+        CASE WHEN u.id IS NULL THEN NULL ELSE json_build_object(
           'id', u.id,
           'name', u.name,
           'image', u.image
-        ) as author,
+        ) END as author,
         COALESCE(tags.tags, '[]'::json) as tags,
         COALESCE(poll.poll, 'null'::json) as poll,
         COALESCE(counts.message_count, 0) as message_count,
@@ -300,7 +300,7 @@ export const getThreadWithFullContext = cache(
           WHERE ts."threadId" = s.id AND ts."userId" = ${uid} AND ts."isActive" = true
         ) as is_subscribed
       FROM "threads" s
-      JOIN "users" u ON u.id = s."createdBy"
+      LEFT JOIN "users" u ON u.id = s."createdBy"
       LEFT JOIN LATERAL (
         SELECT json_agg(
           json_build_object('tag', json_build_object('name', tt.name))
