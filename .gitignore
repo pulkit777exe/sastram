@@ -53,6 +53,9 @@ docs
 # Track contributor-facing architecture doc despite docs/ being ignored
 !docs/
 docs/*
+!docs/CANONICAL-REFERENCE.md
+!docs/ARCHITECTURE-REVIEW.md
+!docs/VIEW-TRANSITIONS-SPEC.md
 !UBIQUITOUS_LANGUAGE.md
 
 e2e/.env.e2e

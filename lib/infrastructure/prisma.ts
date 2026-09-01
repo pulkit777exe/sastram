@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { neonConfig } from '@neondatabase/serverless';
 import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaPg } from '@prisma/adapter-pg';
 import ws from 'ws';
 import { logger } from '@/lib/infrastructure/logger';
 
@@ -28,8 +29,13 @@ function resolveConnectionString(): string {
 }
 
 function createPrismaClient() {
+  const connectionString = resolveConnectionString();
+  const isNeon = connectionString.includes('neon.tech') || connectionString.includes('-pooler.');
+  const adapter = isNeon
+    ? new PrismaNeon({ connectionString })
+    : new PrismaPg({ connectionString });
   return new PrismaClient({
-    adapter: new PrismaNeon({ connectionString: resolveConnectionString() }),
+    adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn', 'query'] : ['error'],
   });
 }

@@ -7,15 +7,14 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
 
   {
     files: ['modules/**/*.{ts,tsx}'],
     rules: {
-      'import/no-cycle': ['error', { maxDepth: 1 }],
       'no-restricted-imports': [
         'error',
         {
@@ -55,6 +54,8 @@ const eslintConfig = defineConfig([
     rules: {
       '@typescript-eslint/no-unused-expressions': 'off',
       '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
   // Override default ignores of eslint-config-next.
