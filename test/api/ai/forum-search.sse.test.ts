@@ -3,14 +3,13 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import { mockRequest, stubAuth, stubHeaders, restoreStubs } from '../helpers';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { GoogleGenAI } from '@google/genai';
 
 const POST = () => require('@/app/api/ai/forum-search/route').POST;
 
 // Prisma proxy methods can't be safely stubbed with sinon — save originals.
-const origPrismaCreate = (prisma.aiSearchSession as any).create;
-const origPrismaResultCreate = (prisma.aiSearchResult as any).create;
-const origPrismaResultFindFirst = (prisma.aiSearchResult as any).findFirst;
+const origPrismaCreate = (prisma.aiSearchSession as unknown as Record<string, unknown>).create as unknown;
+const origPrismaResultCreate = (prisma.aiSearchResult as unknown as Record<string, unknown>).create as unknown;
+const origPrismaResultFindFirst = (prisma.aiSearchResult as unknown as Record<string, unknown>).findFirst as unknown;
 
 // Use valid-format test keys (ESM exports are non-configurable, can't stub).
 const VALID_KEYS = {
@@ -86,20 +85,7 @@ function collectSSE(res: Response): Promise<string[]> {
   });
 }
 
-function makeSource(id: string, tier: 1 | 2 | 3 | 4 = 1) {
-  return {
-    id,
-    title: 'T',
-    url: `https://example.com/${id}`,
-    domain: 'example.com',
-    snippet: 's',
-    text: 'full text',
-    tier,
-    confidence: 90,
-    isOutdated: false,
-    provider: 'exa' as const,
-  };
-}
+
 
 describe('POST /api/ai/forum-search (SSE)', () => {
   let stubs: sinon.SinonStub[] = [];
@@ -113,9 +99,9 @@ describe('POST /api/ai/forum-search (SSE)', () => {
     stubs.push(stubHeaders());
     stubs.push(...stubAuth());
     // Avoid touching the real DB — direct assignment on Prisma proxy methods.
-    (prisma.aiSearchSession as any).create = async () => ({ id: 'sess-1' });
-    (prisma.aiSearchResult as any).create = async () => ({ id: 'r1' });
-    (prisma.aiSearchResult as any).findFirst = async () => null;
+    (prisma.aiSearchSession as unknown as Record<string, unknown>).create = async () => ({ id: 'sess-1' }) as unknown;
+    (prisma.aiSearchResult as unknown as Record<string, unknown>).create = async () => ({ id: 'r1' }) as unknown;
+    (prisma.aiSearchResult as unknown as Record<string, unknown>).findFirst = async () => null as unknown;
   });
 
   afterEach(() => {
@@ -123,9 +109,9 @@ describe('POST /api/ai/forum-search (SSE)', () => {
     restoreGemini();
     stubs = [];
     // Manually restore Prisma proxy methods.
-    (prisma.aiSearchSession as any).create = origPrismaCreate;
-    (prisma.aiSearchResult as any).create = origPrismaResultCreate;
-    (prisma.aiSearchResult as any).findFirst = origPrismaResultFindFirst;
+    (prisma.aiSearchSession as unknown as Record<string, unknown>).create = origPrismaCreate as unknown;
+    (prisma.aiSearchResult as unknown as Record<string, unknown>).create = origPrismaResultCreate as unknown;
+    (prisma.aiSearchResult as unknown as Record<string, unknown>).findFirst = origPrismaResultFindFirst as unknown;
   });
 
   it('emits the full SSE event sequence for a normal search', async () => {

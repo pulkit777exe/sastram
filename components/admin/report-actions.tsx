@@ -50,7 +50,7 @@ const DURATION_OPTIONS = [
 
 type ActionType = (typeof ACTION_OPTIONS)[number]['value'];
 
-export function ReportActions({ reportId, currentStatus, onStatusChange }: ReportActionsProps) {
+export function ReportActions({ reportId, currentStatus: _currentStatus, onStatusChange }: ReportActionsProps) {
   const [open, setOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<ActionType | null>(null);
   const [note, setNote] = useState('');

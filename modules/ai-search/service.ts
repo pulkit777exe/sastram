@@ -1,8 +1,5 @@
-import { logger } from '@/lib/infrastructure/logger';
-import { getEnv } from '@/lib/config/env';
 import type {
   SearchConfig,
-  Source,
   RawSearchResults,
   SynthesisResult,
   AISearchResponse,

@@ -29,7 +29,7 @@ interface ThreadAccessModalProps {
 
 export function ThreadAccessModal({
   threadId,
-  creatorId,
+  creatorId: _creatorId,
   isOpen,
   onClose,
 }: ThreadAccessModalProps) {

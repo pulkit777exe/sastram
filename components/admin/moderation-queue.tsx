@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Flag, AlertTriangle, AlertCircle, Clock, ChevronRight, Filter, Zap } from 'lucide-react';
+import { Flag, ChevronRight, Filter, Zap } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { cn } from '@/lib/utils/cn';
 import { REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
@@ -22,33 +22,6 @@ interface ModerationQueueProps {
   onSelectReport: (reportId: string) => void;
   selectedReportId?: string;
 }
-
-const priorityConfig = {
-  CRITICAL: {
-    label: 'Critical',
-    color: 'bg-red-500/20 text-red-400 border-red-500/30',
-    icon: AlertTriangle,
-    iconColor: 'text-red-500',
-  },
-  HIGH: {
-    label: 'High',
-    color: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    icon: AlertCircle,
-    iconColor: 'text-orange-500',
-  },
-  MEDIUM: {
-    label: 'Medium',
-    color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    icon: Clock,
-    iconColor: 'text-yellow-500',
-  },
-  LOW: {
-    label: 'Low',
-    color: 'bg-muted text-muted-foreground border-line',
-    icon: Clock,
-    iconColor: 'text-muted-foreground',
-  },
-};
 
 export function ModerationQueue({
   stats,

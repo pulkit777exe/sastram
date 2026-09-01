@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { backfillThreadMessages } from '@/modules/threads/actions';
 import type { Message } from '@/lib/types/index';
 
@@ -25,7 +25,7 @@ export function useThreadPolling({
   threadId,
   lastMessageTimestampRef,
   aiInlineStatusRef,
-  liveMessagesRef,
+  liveMessagesRef: _liveMessagesRef,
   mapBackfillMessage,
   mergeBackfill,
   onAiStatusCleared,

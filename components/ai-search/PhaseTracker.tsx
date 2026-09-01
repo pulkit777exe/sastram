@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, Loader2, AlertCircle, RefreshCw, Clock } from 'lucide-react';
+import { Check, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export type SSEPhase =

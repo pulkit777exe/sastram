@@ -109,14 +109,13 @@ function ForgotPasswordOtpForm({
   email,
   onBack,
   onSuccess,
-  onClose,
+  onClose: _onClose,
 }: {
   email: string;
   onBack: () => void;
   onSuccess: () => void;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(60);

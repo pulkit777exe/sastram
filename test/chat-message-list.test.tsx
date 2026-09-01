@@ -221,7 +221,7 @@ describe('ChatMessageList', () => {
 
   it('should have end ref div', () => {
     const ref = { current: null };
-    const { container } = render(
+    render(
       <ChatMessageList {...defaultProps({ messagesEndRef: ref })} />
     );
     expect(ref.current).to.not.be.null;

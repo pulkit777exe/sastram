@@ -28,12 +28,12 @@ const QUERY_TYPE_LABELS: Record<string, { label: string; variant: 'live' | 'warn
 
 export function SynthesisCard({
   text,
-  citations = [],
+  citations: _citations = [],
   sources = [],
   conflictData,
   sourceCount,
   queryType,
-  onCiteClick,
+  onCiteClick: _onCiteClick,
   isStreaming = false,
   fromHistory = false,
   onRetry,

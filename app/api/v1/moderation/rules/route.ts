@@ -77,7 +77,7 @@ export function validateRegexPattern(pattern: string): { valid: boolean; error?:
 }
 
 export const POST = withErrorHandling(async (request: NextRequest) => {
-  const session = await requireAdmin();
+  await requireAdmin();
 
   const body = await request.json();
   const validation = createRuleSchema.safeParse(body);
@@ -104,7 +104,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 });
 
 export const PUT = withErrorHandling(async (request: NextRequest) => {
-  const session = await requireAdmin();
+  await requireAdmin();
 
   const body = await request.json();
   const validation = updateRuleSchema.safeParse(body);
@@ -140,7 +140,7 @@ export const PUT = withErrorHandling(async (request: NextRequest) => {
 });
 
 export const DELETE = withErrorHandling(async (request: NextRequest) => {
-  const session = await requireAdmin();
+  await requireAdmin();
 
   const body = await request.json();
 

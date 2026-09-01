@@ -79,7 +79,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(fail('NOT_FOUND', 'Session not found'), { status: 404 });
     }
     return NextResponse.json(ok({ deleted: true }), { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
+  } catch {
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to delete search history.'), { status: 500 });
   }
 }

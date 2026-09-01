@@ -10,8 +10,10 @@ describe('AI Service — classifyToxicity', function () {
 
   describe('GeminiService — classifyToxicity parsing', function () {
     function makeGeminiService() {
-      const { GeminiService } = require('@/lib/ai');
-      const service = new (GeminiService as any)();
+      const { GeminiService } = require('@/lib/ai') as {
+        GeminiService: new () => { ai: { models: { generateContent: sinon.SinonStub } }; classifyToxicity: (text: string) => Promise<number> };
+      };
+      const service = new GeminiService();
       service.ai = {
         models: {
           generateContent: sinon.stub(),
@@ -86,7 +88,7 @@ describe('AI Service — classifyToxicity', function () {
         json: sinon.stub().resolves({
           choices: [{ message: { content: body } }],
         }),
-      } as any);
+      } as unknown as Response);
     }
 
     it('parses valid JSON toxicity response', async function () {

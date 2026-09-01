@@ -202,7 +202,7 @@ const MessageRow = React.memo(function MessageRow({
   const [likeCount, setLikeCount] = useState(message.likeCount ?? 0);
   const [isLiking, setIsLiking] = useState(false);
 
-  const [isPinning, setIsPinning] = useState(false);
+  const [_isPinning, setIsPinning] = useState(false);
   
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);

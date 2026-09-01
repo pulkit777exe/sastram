@@ -9,7 +9,6 @@ import { buildThreadSlug } from '@/modules/threads/slug';
 import { createThread, deleteThread, updateThreadStaleness } from './threads-write/repository';
 import { infraThreadSideEffects } from './adapters/infra-side-effects';
 import { buildThreadDTO } from './service';
-import { listThreads } from './threads-core/repository';
 import { getThreadMessagesPaginated, type ThreadMessage } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
 import { ROUTES } from '@/lib/config/routes';

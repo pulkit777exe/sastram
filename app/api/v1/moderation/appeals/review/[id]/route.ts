@@ -11,7 +11,7 @@ const reviewAppealSchema = z.object({
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const { id } = await context!.params;
-  const session = await requireModerator();
+  await requireModerator();
   const body = await request.json();
 
   const validation = reviewAppealSchema.safeParse(body);

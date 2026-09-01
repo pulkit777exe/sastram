@@ -88,7 +88,7 @@ export function createSSEStream(
 
       try {
         // Provide an ergonomic sender for callers that already have JSON
-        const sendJson = (event: string | null, data: unknown) => {
+        const _sendJson = (event: string | null, data: unknown) => {
           if (closed) return;
           const chunk = event ? sseEvent(event, data) : sseChunk(data);
           try {

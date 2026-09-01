@@ -61,8 +61,8 @@ export function ThreadLiveWrapper({
   title,
   slug,
   initialFrequency,
-  resolutionScore = null,
-  aiSummary = null,
+  resolutionScore: _resolutionScore = null,
+  aiSummary: _aiSummary = null,
 }: ThreadLiveWrapperProps) {
   // Poll state
   const [showPoll, setShowPoll] = useState(false);
@@ -171,12 +171,12 @@ export function ThreadLiveWrapper({
       };
       threadMessages.addMessage(aiMsg);
     },
-    [threadId, title, slug, threadMessages.addMessage]
+    [threadId, title, slug, threadMessages]
   );
 
   const handleStreamUpdate = useCallback((messageId: string, content: string) => {
     threadMessages.updateMessageContent(messageId, content);
-  }, [threadMessages.updateMessageContent]);
+  }, [threadMessages]);
 
   const handleStreamDone = useCallback(() => {
     const parentId = streamParentRef.current;
@@ -231,21 +231,21 @@ export function ThreadLiveWrapper({
         setAiPending(newMessage.id);
       }
     },
-    [hasAiMention, setAiPending, startStream, threadMessages.addMessage]
+    [hasAiMention, setAiPending, startStream, threadMessages]
   );
 
   const handleOptimisticMessage = useCallback(
     (optimisticMsg: Message) => {
       threadMessages.addOptimistic(optimisticMsg);
     },
-    [threadMessages.addOptimistic]
+    [threadMessages]
   );
 
   const handleMessageError = useCallback(
     (tempId: string) => {
       threadMessages.removeOptimistic(tempId);
     },
-    [threadMessages.removeOptimistic]
+    [threadMessages]
   );
 
   // Load more observer
@@ -264,7 +264,7 @@ export function ThreadLiveWrapper({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
+  }, [threadMessages]);
 
   // Polling
   useThreadPolling({

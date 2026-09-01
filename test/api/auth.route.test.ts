@@ -133,8 +133,8 @@ describe('Auth Service', function () {
 
     it('should log OTP in development mode', async function () {
       const originalEnv = process.env.NODE_ENV;
-       
-      (process.env as any).NODE_ENV = 'development';
+
+      (process.env as unknown as Record<string, string | undefined>).NODE_ENV = 'development';
 
       try {
         const { auth } = await import('@/lib/services/auth');
@@ -145,7 +145,7 @@ describe('Auth Service', function () {
         if (otpPlugin && typeof otpPlugin === 'object' && 'options' in otpPlugin) {
           const opts = otpPlugin.options as Record<string, unknown>;
           if (typeof opts.sendVerificationOTP === 'function') {
-            await opts.sendVerificationOTP({
+            await (opts.sendVerificationOTP as (args: unknown) => Promise<void>)({
               email: 'test@example.com',
               otp: '123456',
               type: 'sign-in',
@@ -155,15 +155,15 @@ describe('Auth Service', function () {
           }
         }
       } finally {
-         
-        (process.env as any).NODE_ENV = originalEnv;
+
+        (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
       }
     });
 
     it('should not log OTP in production mode', async function () {
       const originalEnv = process.env.NODE_ENV;
-       
-      (process.env as any).NODE_ENV = 'production';
+
+      (process.env as unknown as Record<string, string | undefined>).NODE_ENV = 'production';
 
       try {
         const { auth } = await import('@/lib/services/auth');
@@ -174,7 +174,7 @@ describe('Auth Service', function () {
         if (otpPlugin && typeof otpPlugin === 'object' && 'options' in otpPlugin) {
           const opts = otpPlugin.options as Record<string, unknown>;
           if (typeof opts.sendVerificationOTP === 'function') {
-            await opts.sendVerificationOTP({
+            await (opts.sendVerificationOTP as (args: unknown) => Promise<void>)({
               email: 'test@example.com',
               otp: '654321',
               type: 'sign-in',
@@ -184,8 +184,8 @@ describe('Auth Service', function () {
           }
         }
       } finally {
-         
-        (process.env as any).NODE_ENV = originalEnv;
+
+        (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
       }
     });
   });

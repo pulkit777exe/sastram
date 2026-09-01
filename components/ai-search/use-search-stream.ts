@@ -6,7 +6,7 @@ import type { SSEPhase } from '@/components/ai-search/PhaseTracker';
 import type { HistoryItem } from '@/components/ai-search/sai-search-layout';
 import { getStoredApiKeys } from '@/components/ai-search/ApiKeysModal';
 import { parseSSE } from '@/lib/utils/sse';
-import type { SearchConfig, Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
+import type { SearchConfig, Source, SynthesisResult } from '@/modules/ai-search/types';
 
 // Re-export deep module's types/constants — single source, no drift.
 // This file remains as a shallow shim for existing tests that import from here.
@@ -73,12 +73,7 @@ export function useSearchStream(
   const sessionIdRef = useRef<string | undefined>(undefined);
   const streamingDataRef = useRef<ChatMessage | null>(null);
 
-  const {
-    appState,
-    messages,
-    lastConfig,
-    query,
-  } = state;
+  const { messages } = state;
 
   const {
     setAppState,
@@ -348,7 +343,6 @@ export function useSearchStream(
         toasts.error('Search failed');
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionIdRef used instead of currentSessionId
     [messages, setQuery, setLastConfig, setErrorMessage, setAppState, setIsStreaming, setSlowHint, setIsOffline, setCurrentStep, setTaskFailed, setMessages, setStreamingMessage, setCurrentSessionId]
   );
 

@@ -1,6 +1,6 @@
-import { describe, it, beforeEach, afterEach } from 'mocha';
+import { describe, it, afterEach } from 'mocha';
 import { expect } from 'chai';
-import sinon from 'sinon';
+import type sinon from 'sinon';
 import { mockRequest, stubAuth, stubHeaders, restoreStubs } from '../helpers';
 
 const GET = () => require('@/app/api/admin/health/route').GET;

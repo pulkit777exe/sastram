@@ -13,7 +13,6 @@ import { SaiViewTransition } from '@/components/ui/view-transition';
 
 const COMPOSER_VT_NAME_IDLE = 'ai-search-composer-idle';
 const COMPOSER_VT_NAME_ACTIVE = 'ai-search-composer-active';
-const FIRST_SYNTHESIS_VT_NAME = 'ai-search-first-synthesis';
 
 // ------------------------------------------------------------------
 // Compound components — each accesses shared context, no prop drilling.

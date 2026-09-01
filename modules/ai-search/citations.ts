@@ -74,7 +74,6 @@ export function validateCitations(
   let out = '';
   let last = 0;
   MARKER_RE.lastIndex = 0;
-  let posIdx = 0;
   while ((m = MARKER_RE.exec(text))) {
     const origMarker = Number(m[1]);
     const newMarker = citationByMarker.has(origMarker)
@@ -84,7 +83,6 @@ export function validateCitations(
     if (newMarker > 0) out += `[${newMarker}]`;
     // else: orphan marker stripped from prose
     last = m.index + m[0].length;
-    posIdx++;
   }
   out += text.slice(last);
 

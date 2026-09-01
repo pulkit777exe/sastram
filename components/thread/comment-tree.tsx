@@ -113,7 +113,7 @@ export function CommentTree({
   }, [messages]);
 
   const tree = useMemo(() => buildMessageTree(localMessages), [localMessages]);
-  const focusedNode = useMemo(
+  const _focusedNode = useMemo(
     () => (focusedId ? findNodeById(tree, focusedId) : null),
     [tree, focusedId]
   );
@@ -194,7 +194,7 @@ export function CommentTree({
     [router, pathname, searchParams]
   );
 
-  const clearFocus = useCallback(() => {
+  const _clearFocus = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('focus');
     const query = params.toString();

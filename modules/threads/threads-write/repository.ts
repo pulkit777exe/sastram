@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { buildThreadDTO } from '@/modules/threads/service';
-import type { ThreadRecord, ThreadSummary } from '@/modules/threads/types';
+import type { ThreadRecord } from '@/modules/threads/types';
 import { z } from 'zod';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
 

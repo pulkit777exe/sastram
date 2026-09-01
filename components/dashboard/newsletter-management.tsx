@@ -30,7 +30,7 @@ interface NewsletterManagementProps {
 
 export function NewsletterManagement({ subscriptions }: NewsletterManagementProps) {
   const [pendingSubscriptions, setPendingSubscriptions] = useState<Set<string>>(new Set());
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   async function handleUnsubscribe(threadId: string) {
     setPendingSubscriptions((prev) => new Set(prev).add(threadId));

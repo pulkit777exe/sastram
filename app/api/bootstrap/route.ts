@@ -37,7 +37,7 @@ export async function GET() {
       unreadNotificationCount,
       recentActivity: activity.activities.slice(0, 5),
     }));
-  } catch (error) {
+  } catch {
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load bootstrap data'), { status: 500 });
   }
 }

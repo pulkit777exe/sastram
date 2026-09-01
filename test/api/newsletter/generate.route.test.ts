@@ -1,6 +1,5 @@
 import { describe, it, afterEach } from 'mocha';
 import { expect } from 'chai';
-import sinon from 'sinon';
 import { mockRequest } from '../helpers';
 
 const POST = () => require('@/app/api/newsletter/generate/route').POST;
@@ -23,7 +22,7 @@ describe('POST /api/newsletter/generate', () => {
       method: 'POST',
       body: {},
     }));
-    const body = await res.json();
+    await res.json();
 
     expect(res.status).to.equal(401);
   });
@@ -36,7 +35,7 @@ describe('POST /api/newsletter/generate', () => {
       body: {},
       headers: { Authorization: 'Bearer wrong-secret' },
     }));
-    const body = await res.json();
+    await res.json();
 
     expect(res.status).to.equal(401);
   });

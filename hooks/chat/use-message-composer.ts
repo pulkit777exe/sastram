@@ -278,19 +278,17 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       replyTo,
       depth,
       currentUser,
-      mentions.mentionedUserIds,
-      mentions.setMentionedUserIds,
-      mentions.closeMentions,
       onOptimisticMessage,
       onMessagePosted,
       onMessageError,
       onSuccess,
       onCancelReply,
-      draft.clear,
       showPollBuilder,
       pollQuestion,
       pollOptions,
       aiClientStream,
+      draft,
+      mentions,
     ]
   );
 
@@ -335,17 +333,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         mentions.closeMentions();
       }
     },
-    [
-      mentions.mentionOpen,
-      mentions.mentionCandidates,
-      mentions.activeMentionIndex,
-      mentions.setActiveMentionIndex,
-      mentions.applyMentionSelection,
-      mentions.closeMentions,
-      handleSubmit,
-      replyTo,
-      onCancelReply,
-    ]
+    [mentions, handleSubmit, replyTo, onCancelReply]
   );
 
   // --- Change / Blur ---
@@ -356,7 +344,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       setContent(nextValue);
       mentions.detectMentionQuery(nextValue, caret);
     },
-    [mentions.detectMentionQuery]
+    [mentions]
   );
 
   const handleBlur = useCallback(() => {}, []);

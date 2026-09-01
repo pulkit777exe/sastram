@@ -105,7 +105,7 @@ export function SkeletonSwap({
       ref={shell}
       aria-busy={!ready}
       aria-label={label}
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+       
       tabIndex={scrollable ? 0 : undefined}
       style={{ height: box }}
       className={`relative grid overflow-y-auto overscroll-contain text-foreground ${className}`}

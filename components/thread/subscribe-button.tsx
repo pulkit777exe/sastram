@@ -8,7 +8,6 @@ import {
   updateSubscriptionFrequencyAction,
 } from '@/modules/newsletter/actions';
 import { toasts } from '@/lib/utils/toast';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -36,7 +35,7 @@ const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
 ];
 
 export function ThreadSubscribeButton({
-  threadName = 'this thread',
+  threadName: _threadName = 'this thread',
   threadId,
   slug,
   initialFrequency,
@@ -44,8 +43,6 @@ export function ThreadSubscribeButton({
 }: ThreadSubscribeButtonProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [frequency, setFrequency] = useState<SubscriptionFrequency>(initialFrequency);
-
-  const triggerLabel = frequency === null ? 'Not subscribed' : frequency.charAt(0) + frequency.slice(1).toLowerCase();
 
   const setSubscription = async (nextFrequency: SubscriptionFrequency) => {
     if (isSaving || nextFrequency === frequency) {

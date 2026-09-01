@@ -96,7 +96,7 @@ async function getPeriodTotal(fromDate: string, toDate: string) {
   };
 }
 
-export const GET = withErrorHandling(async (req: NextRequest) => {
+export const GET = withErrorHandling(async (_req: NextRequest) => {
   await requireAdmin();
 
   const now = new Date();
@@ -105,12 +105,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
   const todaySpend = await getAiSpendUsage();
 
-  const [weekAgg, byOp, byProv, byModel, periodTotal] = await Promise.all([
-    prisma.aiUsageLog.aggregate({
-      where: { createdAt: { gte: new Date(weekAgo), lt: now } },
-      _sum: { costUsd: true },
-      _count: { id: true },
-    }),
+  const [byOp, byProv, byModel, periodTotal] = await Promise.all([
     getOperationSpend(weekAgo, today),
     getByProvider(weekAgo, today),
     getByModel(weekAgo, today),

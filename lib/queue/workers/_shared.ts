@@ -1,7 +1,6 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { isQuotaError } from '@/lib/utils/errors';
-import type { JobMessageData } from '../types';
 
 export async function assertSpendCapAvailable(): Promise<void> {
   const cap = await consumeSpendCap();

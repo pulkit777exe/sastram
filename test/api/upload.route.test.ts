@@ -2,7 +2,6 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { mockRequest, stubAuth, stubHeaders, restoreStubs } from './helpers';
-import { prisma } from '@/lib/infrastructure/prisma';
 
 const POST = () => require('@/app/api/upload/route').POST;
 

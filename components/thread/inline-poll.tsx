@@ -19,7 +19,7 @@ interface InlinePollProps {
 const MAX_OPTIONS = 6;
 const MIN_OPTIONS = 2;
 
-export function InlinePoll({ threadId, canManagePoll, onPollCreated, isOpen, onToggle }: InlinePollProps) {
+export function InlinePoll({ threadId, canManagePoll: _canManagePoll, onPollCreated, isOpen, onToggle }: InlinePollProps) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [expiresAt, setExpiresAt] = useState('');
@@ -80,7 +80,7 @@ const validOptions = options.filter(option => option.trim().length > 0);
         toasts.success('Poll created successfully!');
         onToggle(false);
       }
-    } catch (error) {
+    } catch {
       toasts.serverError();
     } finally {
       setIsSaving(false);

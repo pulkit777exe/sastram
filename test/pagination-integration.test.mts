@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import sinon from 'sinon';
 import { prisma } from '@/lib/infrastructure/prisma';
 
 async function dbAvailable(): Promise<boolean> {
@@ -17,7 +16,6 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   let hasDb = false;
   let testUserId: string;
   let testThreadId: string;
-  let messageIds: string[] = [];
 
   before(async function () {
     hasDb = await dbAvailable();
@@ -55,13 +53,6 @@ describe('Pagination — getThreadMessagesPaginated', function () {
       });
     }
     await prisma.message.createMany({ data: messages });
-
-    const created = await prisma.message.findMany({
-      where: { threadId: testThreadId },
-      select: { id: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    messageIds = created.map((m) => m.id);
   });
 
   after(async function () {

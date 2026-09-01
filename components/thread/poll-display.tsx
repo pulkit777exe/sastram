@@ -99,13 +99,9 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
   // loadPollData is now stable (useCallback with [poll.id])
   // so this effect only runs once per poll.id change or refreshKey bump
   useEffect(() => {
-    let cancelled = false;
     (async () => {
       await loadPollData();
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [loadPollData, refreshKey]);
 
   const handleVote = async (optionIndex: number) => {

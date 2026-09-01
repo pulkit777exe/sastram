@@ -95,7 +95,6 @@ export function ThinkingState({
   const elapsedMs = (completedAt ?? now) - startedAt;
   const stepFor = (phase: (typeof PHASES)[number]) =>
     steps.find((s) => s.phase === phase);
-  const currentIndex = PHASES.indexOf(currentPhase as (typeof PHASES)[number]);
 
   const doneLabel = isDone
     ? `Thought for ${formatElapsed(elapsedMs)} · ${sourceCount} source${sourceCount !== 1 ? 's' : ''}`
@@ -183,7 +182,6 @@ export function ThinkingState({
                 const reached = entry !== undefined;
                 const isCurrent = phase === currentPhase && !isDone;
                 const relativeMs = entry ? entry.at - startedAt : null;
-                const isLast = i === PHASES.length - 1;
 
                 return (
                   <div

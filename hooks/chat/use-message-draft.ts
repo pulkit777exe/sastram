@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 export function draftKey(threadId: string, parentId?: string): string {
   return `sastram:draft:${threadId}:${parentId ?? 'root'}`;
@@ -54,7 +54,7 @@ export function useMessageDraft(
     const key = draftKey(threadId, parentId);
     draftKeyRef.current = key;
     const saved = readDraft(key);
-    if (saved) setContent(saved); // eslint-disable-line react-hooks/set-state-in-effect
+    if (saved) setContent(saved);  
   }, [threadId, parentId, setContent]);
 
   // Debounced draft write on content change

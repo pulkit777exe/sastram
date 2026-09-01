@@ -62,10 +62,10 @@ export function PostMessageForm({
   canManagePoll,
   showPoll: showPollProp,
   onTogglePoll,
-  onPollCreated,
+  onPollCreated: _onPollCreated,
 }: PostMessageFormProps) {
   const [showPollLocal, setShowPollLocal] = useState(false);
-  const showPoll = showPollProp ?? showPollLocal;
+  const _showPoll = showPollProp ?? showPollLocal;
   const setShowPoll = onTogglePoll ?? setShowPollLocal;
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [formatOpen, setFormatOpen] = useState(false);
@@ -80,7 +80,6 @@ export function PostMessageForm({
     handleItalic,
     handleCode,
     handleLink,
-    mentionedUserIds,
     mentionCandidates,
     mentionOpen,
     activeMentionIndex,

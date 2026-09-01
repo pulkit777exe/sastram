@@ -1,8 +1,6 @@
 import { test, expect } from '@playwright/test';
 
 const BASE_URL = `http://localhost:${process.env.E2E_PORT || '3000'}`;
-const EMAIL = 'test@sastram.dev';
-const PASSWORD = 'TestPassword123!';
 
 test.describe('Authenticated smoke', () => {
   test('dashboard loads without page errors', async ({ page }) => {
@@ -34,7 +32,6 @@ test.describe('Authenticated smoke', () => {
   });
 
   test('forum-search surfaces a real error (not a silent fake success)', async ({
-    page,
     request,
   }) => {
     // When the AI provider is unavailable, the API must NOT return 200 with a

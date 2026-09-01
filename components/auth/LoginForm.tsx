@@ -700,7 +700,6 @@ export function LoginForm({
   onEmailChange?: (email: string) => void;
 }) {
   const [mode, setMode] = useState<AuthMode>('signin');
-  const props = onForgotPassword ? { onForgotPassword } : {};
 
   const getTitle = () => {
     switch (mode) {
@@ -750,7 +749,7 @@ export function LoginForm({
 
           {/* Form Container */}
           <div className="p-1">
-            <UserAuthForm mode={mode} setMode={setMode} onForgotPassword={onForgotPassword} />
+            <UserAuthForm mode={mode} setMode={setMode} onForgotPassword={onForgotPassword} onEmailChange={onEmailChange} />
           </div>
 
           <p className="px-8 text-center text-xs text-muted-foreground">

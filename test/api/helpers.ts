@@ -95,7 +95,7 @@ export function stubAuth(session: { user: Record<string, unknown> } | null = cre
 
   // ── Session module ──
   const sessionModulePath = require.resolve('@/modules/auth/session');
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+
   require(sessionModulePath);
   const sessionModule = require.cache[sessionModulePath];
 
@@ -108,8 +108,8 @@ export function stubAuth(session: { user: Record<string, unknown> } | null = cre
       requireSessionOrThrow: mockRequireSessionOrThrow,
     } as typeof originalSessionExports;
 
-    // ── Barrel module ──
-    const barrelPath = require.resolve('@/modules/auth');
+    // ── Barrel module ── (force re-load so route handlers pick up mocked session)
+    void require.resolve('@/modules/auth');
 
     // Delete ALL non-node_modules modules EXCEPT:
     // - session module (which we just replaced)

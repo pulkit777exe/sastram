@@ -1,6 +1,5 @@
-import { describe, it, beforeEach, afterEach } from 'mocha';
+import { describe, it, afterEach } from 'mocha';
 import { expect } from 'chai';
-import sinon from 'sinon';
 import { mockRequest } from '../helpers';
 
 const GET = () => require('@/app/api/cron/update-threads/route').GET;

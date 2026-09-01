@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from 'mocha';
+import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
@@ -10,7 +10,7 @@ function ThrowError({ message }: { message: string }) {
 
 describe('ErrorBoundary Component', () => {
   it('should render children when no error occurs', () => {
-    const { container } = render(
+    render(
       <ErrorBoundary>
         <div data-testid="child">Hello World</div>
       </ErrorBoundary>
@@ -68,7 +68,7 @@ it('should call onError callback when error occurs', () => {
       return <div data-testid="recovered">Recovered</div>;
     };
 
-    const { rerender } = render(
+    render(
       <ErrorBoundary>
         <TestChild />
       </ErrorBoundary>

@@ -14,26 +14,26 @@ import {
 import { AppError } from '../lib/utils/errors';
 
 // Prisma proxy methods can't be safely stubbed with sinon — save originals.
-const origThreadInvitationFindFirst = (prisma.threadInvitation as any).findFirst;
-const origUserFindUnique = (prisma.user as any).findUnique;
-const origThreadFindUnique = (prisma.thread as any).findUnique;
+const origThreadInvitationFindFirst = (prisma.threadInvitation as unknown as Record<string, unknown>).findFirst as unknown;
+const origUserFindUnique = (prisma.user as unknown as Record<string, unknown>).findUnique as unknown;
+const origThreadFindUnique = (prisma.thread as unknown as Record<string, unknown>).findUnique as unknown;
 
-function mockPrismaThreadInvitationFindFirst(result: any) {
-  (prisma.threadInvitation as any).findFirst = async () => result;
+function mockPrismaThreadInvitationFindFirst(result: unknown) {
+  (prisma.threadInvitation as unknown as Record<string, unknown>).findFirst = async () => result as unknown;
 }
 
-function mockPrismaUserFindUnique(result: any) {
-  (prisma.user as any).findUnique = async () => result;
+function mockPrismaUserFindUnique(result: unknown) {
+  (prisma.user as unknown as Record<string, unknown>).findUnique = async () => result as unknown;
 }
 
-function mockPrismaThreadFindUnique(result: any) {
-  (prisma.thread as any).findUnique = async () => result;
+function mockPrismaThreadFindUnique(result: unknown) {
+  (prisma.thread as unknown as Record<string, unknown>).findUnique = async () => result as unknown;
 }
 
 function restorePrismaMocks() {
-  (prisma.threadInvitation as any).findFirst = origThreadInvitationFindFirst;
-  (prisma.user as any).findUnique = origUserFindUnique;
-  (prisma.thread as any).findUnique = origThreadFindUnique;
+  (prisma.threadInvitation as unknown as Record<string, unknown>).findFirst = origThreadInvitationFindFirst as unknown;
+  (prisma.user as unknown as Record<string, unknown>).findUnique = origUserFindUnique as unknown;
+  (prisma.thread as unknown as Record<string, unknown>).findUnique = origThreadFindUnique as unknown;
 }
 
 describe('Thread Access', () => {
@@ -81,7 +81,7 @@ describe('Thread Access', () => {
 
     it('should return true if user has accepted invitation by email', async () => {
       let callCount = 0;
-      (prisma.threadInvitation as any).findFirst = async () => {
+      (prisma.threadInvitation as unknown as Record<string, unknown>).findFirst = async () => {
         callCount++;
         if (callCount === 1) return null; // senderId lookup
         return { id: 'inv-2' }; // email lookup
@@ -136,19 +136,21 @@ describe('Thread Access', () => {
       mockPrismaUserFindUnique({ email: 'user@example.com' });
 
       const filter = await visibilityFilter('user-1', Role.USER);
-      const invitationFilter = (filter.OR as any[]).find((f: any) => f.invitations);
+      type FilterWithInvitations = { invitations?: { some: { OR: unknown[] } } };
+      const invitationFilter = (filter.OR as unknown as FilterWithInvitations[]).find((f) => f.invitations);
       expect(invitationFilter).to.exist;
-      expect(invitationFilter.invitations.some.OR).to.deep.include({ email: 'user@example.com' });
+      expect((invitationFilter as unknown as { invitations: { some: { OR: unknown[] } } }).invitations.some.OR).to.deep.include({ email: 'user@example.com' });
     });
 
     it('should not include email match if user has no email', async () => {
       mockPrismaUserFindUnique({ email: null });
 
       const filter = await visibilityFilter('user-1', Role.USER);
-      const invitationFilter = (filter.OR as any[]).find((f: any) => f.invitations);
+      type FilterWithInvitations = { invitations?: { some: { OR: unknown[] } } };
+      const invitationFilter = (filter.OR as unknown as FilterWithInvitations[]).find((f) => f.invitations);
       expect(invitationFilter).to.exist;
-      expect(invitationFilter.invitations.some.OR).to.have.lengthOf(1);
-      expect(invitationFilter.invitations.some.OR).to.deep.include({ senderId: 'user-1' });
+      expect((invitationFilter as unknown as { invitations: { some: { OR: unknown[] } } }).invitations.some.OR).to.have.lengthOf(1);
+      expect((invitationFilter as unknown as { invitations: { some: { OR: unknown[] } } }).invitations.some.OR).to.deep.include({ senderId: 'user-1' });
     });
   });
 

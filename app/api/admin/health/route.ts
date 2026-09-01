@@ -8,7 +8,6 @@ export const GET = withErrorHandling(async () => {
   await requireAdmin();
 
   const memory = process.memoryUsage();
-  const now = Date.now();
   const uptime = process.uptime();
 
   return NextResponse.json(

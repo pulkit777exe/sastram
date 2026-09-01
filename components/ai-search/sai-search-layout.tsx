@@ -71,7 +71,6 @@ export function SaiSearchLayout({
   const [searches, setSearches] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
   const cursorRef = useRef<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -114,7 +113,6 @@ export function SaiSearchLayout({
       });
       setSearches((prev) => (reset ? fetched : [...prev, ...fetched]));
       const nextCursor = data.nextCursor ?? null;
-      setCursor(nextCursor);
       cursorRef.current = nextCursor;
       setHasMore(Boolean(data.nextCursor));
     } catch {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Source } from '@/modules/ai-search/types';
 import { toasts } from '@/lib/utils/toast';
 import { Button } from '@/components/ui/button';
@@ -206,8 +206,6 @@ export function StreamingText({
   };
 
   const displayedSources = sources.slice(0, 10);
-
-  const plainText = text;
 
   return (
     <div className="w-full">

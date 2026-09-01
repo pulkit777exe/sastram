@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { loadThreadMessages, backfillThreadMessages } from '@/modules/threads/actions';
+import { loadThreadMessages } from '@/modules/threads/actions';
 import { toClientMessage, type ThreadMessage } from '@/modules/threads/service';
 import { toasts } from '@/lib/utils/toast';
 import type { Message } from '@/lib/types/index';
