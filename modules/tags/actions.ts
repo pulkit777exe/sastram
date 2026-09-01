@@ -52,7 +52,7 @@ const listTagsSchema = z.object({
 export const createTagAction = createServerAction(
   { schema: createTagSchema, actionName: 'createTagAction' },
   async ({ name, color }) => {
-    await requireSession();
+    await requireRole(['ADMIN']);
     const tag = await createTagRepo(name, color);
     return actionSuccess(tag);
   }

@@ -30,7 +30,13 @@ export const getUserActivityAction = withValidation(
   activityQuerySchema,
   'getUserActivityAction',
   async ({ userId, limit, offset }) => {
-    const result = await getUserActivityRepo(userId!, limit || 20, offset || 0);
+    const session = await requireSession();
+    const effectiveUserId = userId ?? session.user.id;
+    if (effectiveUserId !== session.user.id && session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
+      const { actionFailure } = await import('@/lib/actions/result');
+      return actionFailure('FORBIDDEN', 'Not authorized to view this activity');
+    }
+    const result = await getUserActivityRepo(effectiveUserId, limit || 20, offset || 0);
     return actionSuccess(result);
   }
 );

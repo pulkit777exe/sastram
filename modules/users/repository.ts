@@ -59,8 +59,10 @@ export const getUserBootstrapProfile = cache(async (userId: string) => {
   });
 });
 
-export const getUserThreads = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
-  const where = { createdBy: userId, deletedAt: null };
+export const getUserThreads = cache(async (userId: string, limit: number = 20, offset: number = 0, viewerId?: string, viewerRole?: import('@prisma/client').Role) => {
+  const { visibilityFilter } = await import('@/lib/thread-access');
+  const vf = await visibilityFilter(viewerId, viewerRole ?? null);
+  const where = { createdBy: userId, deletedAt: null, ...vf } as import('@prisma/client').Prisma.ThreadWhereInput;
 
   try {
     const [threads, total] = await Promise.all([

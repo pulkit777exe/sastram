@@ -18,6 +18,25 @@ export interface ThreadAccessContext {
   visibility: ThreadVisibility;
 }
 
+export function buildInvitationMatch(
+  memberUserId: string,
+  email?: string | null
+): Prisma.ThreadInvitationWhereInput[] {
+  const match: Prisma.ThreadInvitationWhereInput[] = [{ senderId: memberUserId }];
+  if (email) {
+    match.push({ email });
+  }
+  return match;
+}
+
+export async function getUserEmail(userId: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  return user?.email ?? null;
+}
+
 export async function canAccessThread(
   thread: ThreadAccessContext,
   userId?: string | null,
@@ -35,14 +54,13 @@ export async function canAccessThread(
   if (senderInvitation) return true;
 
   // Invitations are also addressed by email, so fall back to an email match.
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
-  if (!user) return false;
+  // Consolidated behind buildInvitationMatch so the OR logic lives in one place.
+  const email = await getUserEmail(userId);
+  if (!email) return false;
 
+  const invitationMatch = buildInvitationMatch(userId, email);
   const emailInvitation = await prisma.threadInvitation.findFirst({
-    where: { threadId: thread.threadId, email: user.email, status: 'ACCEPTED' },
+    where: { threadId: thread.threadId, status: 'ACCEPTED', OR: invitationMatch },
     select: { id: true },
   });
 
@@ -69,15 +87,8 @@ export async function visibilityFilter(
     return { visibility: 'PUBLIC' };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: memberUserId },
-    select: { email: true },
-  });
-
-  const invitationMatch: Prisma.ThreadInvitationWhereInput[] = [{ senderId: memberUserId }];
-  if (user?.email) {
-    invitationMatch.push({ email: user.email });
-  }
+  const email = await getUserEmail(memberUserId);
+  const invitationMatch = buildInvitationMatch(memberUserId, email);
 
   return {
     OR: [

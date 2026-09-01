@@ -163,6 +163,13 @@ export default async function proxy(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    if (!origin && !referer) {
+      return NextResponse.json(
+        { error: 'CSRF validation failed: Missing Origin/Referer' },
+        { status: 403 }
+      );
+    }
   }
 
   const requestHeaders = new Headers(request.headers);

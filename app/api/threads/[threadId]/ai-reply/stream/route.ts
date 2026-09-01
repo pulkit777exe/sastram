@@ -4,6 +4,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { getRequestIp } from '@/lib/utils/request-ip';
 import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { trackNeonRequest } from '@/lib/services/usage-check';
@@ -48,10 +49,7 @@ export async function GET(
     });
   }
 
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip')?.trim() ||
-    'unknown';
+  const ip = getRequestIp(request);
   const rateLimitResult = await rateLimit({ key: `ai-reply-stream:${session.user.id}:${ip}`, type: 'api' });
   if (!rateLimitResult.success) {
     return new Response(sseEvent('error', { error: 'Too many requests' }), {

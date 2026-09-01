@@ -7,6 +7,7 @@ import { consumeAiAnalysisQuota, consumeAiSearchQuota } from '@/lib/services/dai
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { AppError } from '@/lib/utils/errors';
+import { getRequestIp } from '@/lib/utils/request-ip';
 
 export type QuotaType = 'analysis' | 'search';
 
@@ -63,11 +64,8 @@ export async function withAiPreflight(
     throw err;
   }
 
-  // 2. Rate limit — unified IP extraction (Vercel free: x-forwarded-for + x-real-ip fallback)
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip')?.trim() ||
-    'unknown';
+  // 2. Rate limit — shared IP extraction seam
+  const ip = getRequestIp(req);
   const rateLimitResult = await rateLimit(ip);
   if (!rateLimitResult.success) {
     if (options.sseMode) {

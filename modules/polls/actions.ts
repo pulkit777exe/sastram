@@ -49,7 +49,7 @@ export const createPollAction = withValidation(
         return notAMember();
       }
 
-      const poll = await createPollRepo(threadId, question, options, expiresAt, messageId);
+      const poll = await createPollRepo(threadId, question, options, expiresAt ?? undefined, messageId);
 
       logger.info('[createPoll] Poll created', {
         pollId: poll.id,
@@ -135,10 +135,22 @@ export const getPollResultsAction = createServerAction(
   { schema: pollIdSchema, actionName: 'getPollResults' },
   async ({ pollId }) => {
     try {
+      const session = await requireSession();
       const poll = await getPollResultsRepo(pollId);
       if (!poll) return pollNotFound();
+      // Poll results belong to a thread — enforce visibility via thread access
+      const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
+      const fullPoll = await getPollByIdRepo(pollId);
+      if (fullPoll?.threadId) {
+        await requireThreadAccessOrThrow(fullPoll.threadId, session.user.id, session.user.role as never);
+      }
       return actionSuccess(poll);
     } catch (error) {
+      if (error instanceof Error && (error as never as { code?: string }).code === undefined) {
+        // Check if it's AppError FORBIDDEN
+        const { AppError } = await import('@/lib/utils/errors');
+        if (AppError.isAppError(error)) throw error;
+      }
       logger.error('[getPollResults]', error);
       return internalError();
     }
@@ -163,10 +175,15 @@ export const getPollByIdAction = createServerAction(
   { schema: pollIdSchema, actionName: 'getPollById' },
   async ({ pollId }) => {
     try {
+      const session = await requireSession();
       const poll = await getPollByIdRepo(pollId);
       if (!poll) return pollNotFound();
+      const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
+      await requireThreadAccessOrThrow(poll.threadId, session.user.id, session.user.role as never);
       return actionSuccess(poll);
     } catch (error) {
+      const { AppError } = await import('@/lib/utils/errors');
+      if (AppError.isAppError(error)) return { data: null, error: error.message, ok: false, errorCode: error.code as never };
       logger.error('[getPollById]', error);
       return internalError();
     }
@@ -177,10 +194,15 @@ export const getPollByThreadAction = createServerAction(
   { schema: threadIdSchema, actionName: 'getPollByThread' },
   async ({ threadId }) => {
     try {
+      const session = await requireSession();
+      const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
+      await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
       const poll = await getPollByThreadIdRepo(threadId);
       if (!poll) return pollNotFound();
       return actionSuccess(poll);
     } catch (error) {
+      const { AppError } = await import('@/lib/utils/errors');
+      if (AppError.isAppError(error)) return { data: null, error: error.message, ok: false, errorCode: error.code as never };
       logger.error('[getPollByThread]', error);
       return internalError();
     }

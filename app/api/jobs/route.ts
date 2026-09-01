@@ -56,8 +56,12 @@ async function verifyQstashSignature(
   const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
   const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
 
-  // No keys configured (build-time collection, local dev without QStash): skip verification.
+  // No keys configured: fail-closed in production, skip in dev/build.
   if (!currentKey) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[jobs] QSTASH_CURRENT_SIGNING_KEY missing in production — rejecting');
+      return false;
+    }
     return true;
   }
 

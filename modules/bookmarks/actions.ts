@@ -17,6 +17,8 @@ export const toggleBookmark = createServerAction(
   { schema: threadIdSchema, actionName: 'toggleBookmark' },
   async ({ threadId }) => {
     const session = await requireSession();
+    const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
+    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
     const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
 
     if (isBookmarked) {
@@ -45,6 +47,8 @@ export const checkBookmarkStatus = createServerAction(
   { schema: threadIdSchema, actionName: 'checkBookmarkStatus' },
   async ({ threadId }) => {
     const session = await requireSession();
+    const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
+    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
     const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
     return actionSuccess({ isBookmarked });
   }

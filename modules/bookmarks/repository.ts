@@ -27,7 +27,7 @@ export const getUserBookmarks = cache(async (userId: string, limit: number = 20,
   try {
     const [bookmarks, total] = await Promise.all([
       prisma.userBookmark.findMany({
-        where: { userId },
+        where: { userId, thread: { deletedAt: null } },
         include: {
           thread: {
             select: {
@@ -54,7 +54,7 @@ export const getUserBookmarks = cache(async (userId: string, limit: number = 20,
         take: limit,
         skip: offset,
       }),
-      prisma.userBookmark.count({ where: { userId } }),
+      prisma.userBookmark.count({ where: { userId, thread: { deletedAt: null } } }),
     ]);
 
     return {

@@ -13,6 +13,8 @@ export const markThreadReadAction = withValidation(
   async ({ threadId, lastReadMessageId }) => {
     try {
       const session = await requireSession();
+      const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
+      await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
       await upsertThreadReadReceipt({
         threadId,
         userId: session.user.id,

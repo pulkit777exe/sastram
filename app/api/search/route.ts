@@ -12,14 +12,16 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get('q');
     const type = searchParams.get('type') || 'threads';
     const threadId = searchParams.get('threadId') || undefined;
-    const limit = Math.min(Number(searchParams.get('limit')) || 20, 100);
-    const offset = Number(searchParams.get('offset')) || 0;
+    const rawLimit = Number(searchParams.get('limit'));
+    const rawOffset = Number(searchParams.get('offset'));
+    const limit = Math.min(Number.isFinite(rawLimit) && rawLimit > 0 ? Math.floor(rawLimit) : 20, 100);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
 
     if (!q || q.trim().length === 0) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Missing query parameter: q'), { status: 400 });
     }
 
-    if (q.length > 200) {
+    if (q.trim().length > 200) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Query too long (max 200 characters)'), { status: 400 });
     }
 

@@ -3,6 +3,7 @@ import type { Redis } from '@upstash/redis';
 import { logger } from '@/lib/infrastructure/logger';
 import { env } from '@/lib/config/env';
 import { getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
+import { getRequestIp } from '@/lib/utils/request-ip';
 
 // duration is in seconds.
 export const rateLimitConfig = {
@@ -173,6 +174,31 @@ export async function rateLimit(
   return typeof arg === 'string'
     ? getOrCreateLimiter('api').check(arg)
     : getOrCreateLimiter(arg.type).check(arg.key);
+}
+
+/**
+ * Façade that centralizes key building behind the shared IP seam.
+ * - `api` bucket uses IP
+ * - `message` bucket uses `message:{userId}` (falls back to IP if no userId)
+ * - ai-reply uses `ai-reply:{userId}:{ip}` (api bucket, userId + IP)
+ *
+ * Keeps the overloaded `rateLimit` for backward compat.
+ */
+export async function rateLimitFor(
+  request: Request,
+  userId?: string,
+  bucket: RateLimitBucket = 'api'
+): Promise<RateLimitResult> {
+  const ip = getRequestIp(request as { headers: Headers });
+  if (bucket === 'message') {
+    const key = userId ? `message:${userId}` : ip;
+    return rateLimit({ key, type: 'message' });
+  }
+  if (userId) {
+    const key = `ai-reply:${userId}:${ip}`;
+    return rateLimit({ key, type: 'api' });
+  }
+  return rateLimit({ key: ip, type: bucket });
 }
 
 /**

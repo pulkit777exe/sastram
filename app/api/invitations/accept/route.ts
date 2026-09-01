@@ -10,18 +10,27 @@ export async function POST(request: NextRequest) {
     const session = await requireSessionOrThrow();
 
     const body = await request.json();
-    const invitationId = body.invitationId as string;
+    const rawInvitationId = body.invitationId as string;
 
-    if (!invitationId) {
+    if (!rawInvitationId || typeof rawInvitationId !== 'string') {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Missing invitationId'), { status: 400 });
     }
+    // Validate cuid shape to avoid P2025 leak
+    if (!/^c[a-z0-9]{24}$/.test(rawInvitationId)) {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid invitationId'), { status: 400 });
+    }
+    const invitationId = rawInvitationId;
 
     const invitation = await prisma.threadInvitation.findUnique({
       where: { id: invitationId },
       include: {
-        thread: { select: { id: true, slug: true, name: true } },
+        thread: { select: { id: true, slug: true, name: true, deletedAt: true } },
       },
     });
+
+    if (invitation?.thread?.deletedAt) {
+      return NextResponse.json(fail('NOT_FOUND', 'Invitation not found'), { status: 404 });
+    }
 
     if (!invitation) {
       return NextResponse.json(fail('NOT_FOUND', 'Invitation not found'), { status: 404 });

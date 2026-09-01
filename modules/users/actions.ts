@@ -124,7 +124,8 @@ export const getUserThreadsAction = withValidation(
   userIdSchema.merge(paginationSchema),
   'getUserThreadsAction',
   async ({ userId, limit, offset }) => {
-    const result = await getUserThreads(userId, limit || 20, offset || 0);
+    const session = await requireSession();
+    const result = await getUserThreads(userId, limit || 20, offset || 0, session.user.id, session.user.role as never);
     return actionSuccess(result);
   }
 );
@@ -243,9 +244,8 @@ export const requestAccountDeletion = withValidation(
         where: { bannedBy: userId },
         data: { bannedBy: { set: null } },
       }),
+      prisma.session.deleteMany({ where: { userId } }),
     ]);
-
-    await prisma.session.deleteMany({ where: { userId } });
 
     return actionSuccess(null);
   }
