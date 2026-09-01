@@ -6,7 +6,7 @@ Personal project, open sourced. Built with Next.js, Prisma, and AI.
 
 Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, PostgreSQL (Neon), serverless architecture, Better Auth authentication, and AI integration.
 
-For the verified system reference, see [docs/CANONICAL-REFERENCE.md](docs/CANONICAL-REFERENCE.md).
+For the verified system reference, see [shared/ARCHITECTURE.md](shared/ARCHITECTURE.md) (canonical) and [docs/ARCHITECTURE-REVIEW.md](docs/ARCHITECTURE-REVIEW.md).
 
 ## Tech Stack
 
@@ -22,24 +22,28 @@ For the verified system reference, see [docs/CANONICAL-REFERENCE.md](docs/CANONI
 
 ```bash
 # Development
-pnpm dev              # Next.js dev server
+pnpm dev              # Next.js + QStash dev server (concurrently)
+pnpm dev:next         # Next.js dev server only
+pnpm dev:qstash       # QStash dev server only
 
 # Build & Deploy
 pnpm build           # Prisma generate + Next build
 pnpm start           # Production server
+pnpm check:prod      # Production readiness checks
 
 # Testing & Linting
-pnpm test            # Mocha tests (297 passing)
+pnpm test            # Mocha tests (54 files)
 pnpm test:e2e       # Playwright e2e tests
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
 pnpm lint:fix      # ESLint fix
-pnpm format        # Prettier
+pnpm format        # Prettier (requires prettier in devDeps)
 
 # Database
 pnpm db:generate   # Prisma generate
 pnpm db:push      # Prisma db push
 pnpm db:migrate   # Prisma migrate dev
+pnpm db:deploy    # Prisma migrate deploy (prod)
 pnpm db:studio   # Prisma studio
 ```
 
@@ -52,8 +56,8 @@ pnpm db:studio   # Prisma studio
 - `modules/` - Domain modules (25 feature modules)
 - `components/` - UI components
 - `prisma/` - Database schema
-- `test/` - Mocha unit tests
-- `stores/` - Zustand stores
+- `test/` - Mocha unit tests (54 files)
+- `hooks/` - React hooks and state (replaces former `stores/` Zustand layer)
 
 ### Database Models
 
@@ -77,9 +81,9 @@ pnpm db:studio   # Prisma studio
 
 ### Key Services
 
-- **AI** (`lib/services/ai.ts`): GeminiService, OpenAIService with summaries, thread DNA, resolution scores, image NSFW moderation
+- **AI** (`lib/ai/gemini.ts`, `lib/ai/openai.ts`, `lib/ai/factory.ts`): GeminiService, OpenAIService with summaries, thread DNA, resolution scores, image NSFW moderation
 - **Auth** (`lib/services/auth.ts`): Better Auth with email OTP
-- **Rate Limit** (`lib/services/rate-limit.ts`): Redis-based rate limiting with in-memory fallback
+- **Rate Limit** (`lib/services/rate-limit.ts`): Upstash Redis-based rate limiting with in-memory fallback
 - **Moderation** (`lib/services/moderation.ts`): Regex-based content filtering + AI inline + moderator notifications
 - **AI Spend Cap** (`lib/services/ai-spend-cap.ts`): Dollar-based daily limit ($5.00) via Redis INCRBYFLOAT
 - **AI Usage Logger** (`lib/services/ai-usage-logger.ts`): Per-request token counts and cost estimates
@@ -118,7 +122,7 @@ All UI follows SAI design tokens defined in `app/globals.css`:
 
 The search page (`/dashboard/sai-search`) is a **chat-style interface** with conversation continuity:
 
-**State** (`components/ai-search/SearchPage.tsx`):
+**State** (`components/ai-search/use-search-conversation.ts` + `search-provider.tsx`, wrapper `SearchPage.tsx`):
 - `messages: ChatMessage[]` — conversation history (user + assistant turns)
 - `streamingMessage: ChatMessage | null` — in-progress response during SSE stream
 - `currentSessionId` — UUID persisted across the conversation, sent to API
@@ -167,20 +171,21 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 ### Background Jobs
 
 - QStash webhook callback at `app/api/jobs/route.ts`
-- Job handlers in `lib/queue/workers/ai.worker.ts` and `email.worker.ts`
+- Job handlers in `lib/queue/workers/ai-jobs.ts` (coalesced), `ai-inline.worker.ts` and `email.worker.ts` (re-exported via `workers/index.ts`)
 - Vercel Cron for scheduled tasks (update-threads, cleanup-blobs, daily-digest)
 - Jobs: thread summary, thread DNA, resolution score, conflict detection, daily digest, AI inline, email, staleness check, AI insight notifications
-- Jobs retry 3x via QStash
+- Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); non-retryable `AppError` returns 200 to prevent retry amplification
 
 ### API Routes
 
 - `/api/auth/*` - Authentication endpoints
 - `/api/threads/*` - Thread operations
 - `/api/messages/*` - Message operations
-- `/api/ai/*` - AI-powered features (forum-search, thread-summary, thread-dna, resolution-score, search-history, spend)
+- `/api/ai/*` - AI-powered features (forum-search SSE, thread-summary, thread-dna, resolution-score, search-history, spend)
 - `/api/cron/*` - Scheduled jobs (cron auth via `CRON_SECRET` Bearer token)
 - `/api/jobs` - QStash webhook callback for background jobs
 - `/api/v1/moderation/*` - Moderation tools (admin-only)
+- `/api/bootstrap`, `/api/health`, `/api/search`, `/api/upload`, `/api/invitations/accept`, `/api/csp-report`, `/api/email-otp/*` etc. — see `shared/ARCHITECTURE.md` for full 35-route inventory
 
 ## Authorization Patterns
 
@@ -196,7 +201,7 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
 ## Test Coverage
 
-- **Current**: 48 Mocha test files (297 passing) covering utilities, services, API routes, and some components
+- **Current**: 54 Mocha test files covering utilities, services, API routes, and some components
 - **E2E**: Playwright smoke tests in `test/e2e/`
 - **Missing**: integration tests with real DB, component storybook
 
@@ -210,22 +215,23 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
 Required in `.env`:
 - `DATABASE_URL` - PostgreSQL connection (Neon)
-- `REDIS_URL` - Redis for caching/queues (optional; rate limiting also uses `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` and degrades gracefully without it)
 - `BETTER_AUTH_SECRET` - Auth secret (32+ chars)
 - `BETTER_AUTH_URL` - Auth base URL
 - `NEXT_PUBLIC_APP_URL` - Public URL
-- `CRON_SECRET` - Bearer token for cron endpoints (min 32 chars)
-- `QSTASH_TOKEN` - Upstash QStash token for background jobs
-- `QSTASH_CURRENT_SIGNING_KEY` - QStash signing key for request verification
-- `QSTASH_NEXT_SIGNING_KEY` - QStash next signing key for key rotation
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - Redis for caching/queues (degrades gracefully without it; `REDIS_URL` TCP is legacy)
+- `CRON_SECRET` - Bearer token for cron endpoints (32+ chars, required in production)
+- `QSTASH_TOKEN` + `QSTASH_URL` + `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` - Upstash QStash
+- `RESEND_API_KEY` + `RESEND_FROM_EMAIL` + templates (`RESEND_*_TEMPLATE_ID`) - Email
 - `GEMINI_API_KEY` or `OPENAI_API_KEY` - AI provider
-- `RATE_LIMIT_ENABLED` - Set to `false` to disable rate limiting
+- `BLOB_READ_WRITE_TOKEN` - Vercel Blob
 
-Optional:
+Optional/feature flags:
+- `RATE_LIMIT_ENABLED` - Set to `false` to disable rate limiting
 - `GITHUB_CLIENT_ID/SECRET` - GitHub OAuth
 - `GOOGLE_CLIENT_ID/SECRET` - Google OAuth
-- `SMTP_*` - Email configuration
+- `SASTRAM_EXA_KEY` / `SASTRAM_TAVILY_KEY` - AI search providers
+- `NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED` - View transitions (default true)
 
 ## CI
 
-GitHub Actions workflow in `.github/workflows/ci.yml` — runs typecheck, lint, and tests with a PostgreSQL service container.
+GitHub Actions workflow in `.github/workflows/ci.yml` — runs typecheck, lint, build, and tests with PostgreSQL + Redis service containers, gitleaks and audit checks.
