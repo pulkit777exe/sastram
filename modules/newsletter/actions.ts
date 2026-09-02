@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
-import { subscribeToThreadNewsletter, scheduleThreadDigest } from './repository';
+import { subscribeToThreadNewsletter } from './repository';
 import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
 import { ROUTES } from '@/lib/config/routes';
@@ -116,7 +116,6 @@ export const subscribeToThreadAction = withValidation(
         frequency: 'DAILY',
       });
 
-      await scheduleThreadDigest(threadId);
       revalidatePath(ROUTES.THREAD(slug));
       return actionSuccess(null);
     } catch (error) {

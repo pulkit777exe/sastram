@@ -1,3 +1,4 @@
+import type { DigestFrequency } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 
@@ -95,8 +96,6 @@ export async function isUserSubscribedToThread(threadId: string, userId: string)
   return Boolean(subscription);
 }
 
-import type { DigestFrequency } from '@prisma/client';
-
 export async function updateSubscriptionFrequency({
   threadId,
   userId,
@@ -117,32 +116,4 @@ export async function updateSubscriptionFrequency({
       frequency,
     },
   });
-}
-
-/**
- * Schedules a digest for a thread (placeholder implementation)
- */
-export async function scheduleThreadDigest(threadId: string) {
-  logger.info(`Scheduling digest for thread ${threadId}`);
-  return Promise.resolve();
-}
-
-/**
- * Gets due digests (placeholder implementation)
- */
-export async function getDueDigests() {
-  return Promise.resolve([] as Array<{ id: string; threadId: string }>);
-}
-
-/**
- * Marks a digest as processing (placeholder — ThreadDigest model not yet added)
- */
-export async function markDigestProcessing(digestId: string) {
-  logger.info(`Marking digest ${digestId} as processing (stub)`);
-  return Promise.resolve();
-}
-
-export async function completeDigest(digestId: string, summary: string, emailCount: number) {
-  logger.info(`Completing digest ${digestId} with ${emailCount} emails sent`);
-  return Promise.resolve();
 }
