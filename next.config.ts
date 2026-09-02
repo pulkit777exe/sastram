@@ -1,7 +1,5 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 // NOTE: The active CSP is set in proxy.ts (per-request, with a nonce for
 // script-src). This file no longer sets a CSP to avoid sending two conflicting
@@ -31,10 +29,9 @@ const securityHeaders = [
 // next-server.js.nft.json. Only enable for Docker / self-hosted deploys.
 const isVercel = process.env.VERCEL === '1';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig: NextConfig = {
   ...(isVercel ? {} : { output: 'standalone' as const }),
-  outputFileTracingRoot: path.join(__dirname),
+  outputFileTracingRoot: process.cwd(),
   async headers() {
     return [
       {
@@ -88,21 +85,15 @@ const nextConfig: NextConfig = {
         os: false,
       };
 
+      // Server-only packages must not be bundled for the client
       config.externals = config.externals || [];
       config.externals.push(
-        'fs',
-        'net',
-        'tls',
-        'dgram',
-        'child_process',
-        'worker_threads',
-        'path',
-        'os',
-        'url',
         'resend',
         '@prisma/client',
         '@prisma/adapter-neon',
+        '@prisma/adapter-pg',
         '@neondatabase/serverless',
+        'pg',
         'ws',
         '@google/genai',
         'better-auth',
