@@ -1,38 +1,25 @@
 'use server';
 
 import { z } from 'zod';
-import type { Role } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
-import { createNotification } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import { createServerAction } from '@/lib/utils/server-action';
 import { actionFailure, actionSuccess } from '@/lib/actions/result';
-import { canManageThread } from '@/lib/thread-access';
 import { threadIdSchema, userIdSchema } from '@/lib/utils/validation-common';
+import {
+  createInvitation,
+  findManageableThread,
+  findThreadById,
+  removeMemberInvitations,
+} from '@/modules/invitations/repository';
 
 const inviteMemberSchema = threadIdSchema.extend({
   email: z.string().email(),
 });
 
 const targetMemberSchema = threadIdSchema.merge(userIdSchema);
-
-async function findManageableThread(threadId: string, userId: string, role: Role) {
-  const thread = await prisma.thread.findFirst({
-    where: { id: threadId, deletedAt: null },
-    select: { id: true, slug: true, createdBy: true, visibility: true },
-  });
-
-  if (!thread) return null;
-
-  const manageable = canManageThread(
-    { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
-    userId,
-    role
-  );
-
-  return manageable ? thread : null;
-}
 
 export const inviteMember = createServerAction(
   { schema: inviteMemberSchema, actionName: 'inviteMember' },
@@ -41,14 +28,25 @@ export const inviteMember = createServerAction(
     const thread = await findManageableThread(threadId, session.user.id, session.user.role);
 
     if (!thread) {
+      const exists = await findThreadById(threadId);
+      if (!exists) return actionFailure('NOT_FOUND', 'Thread not found');
       return actionFailure('FORBIDDEN', 'Insufficient permissions');
     }
 
-    const invitation = await prisma.threadInvitation.upsert({
-      where: { threadId_email: { threadId, email } },
-      update: { status: 'PENDING', senderId: session.user.id },
-      create: { threadId, email, senderId: session.user.id },
-    });
+    let invitation = await createInvitation({ threadId, email, senderId: session.user.id });
+    if (!invitation) {
+      // Already invited — treat as success (idempotent) rather than CONFLICT
+      invitation = await prisma.threadInvitation.findUnique({
+        where: { threadId_email: { threadId, email } },
+        include: {
+          thread: { select: { slug: true, name: true } },
+          sender: { select: { name: true, email: true } },
+        },
+      });
+    }
+    if (!invitation) {
+      return actionFailure('CONFLICT', 'Invitation already exists');
+    }
 
     // Invites are keyed by email, so the invitee may not have an account yet
     const user = await prisma.user.findUnique({
@@ -57,9 +55,9 @@ export const inviteMember = createServerAction(
     });
 
     if (user) {
-      await createNotification({
-        userId: user.id,
-        type: 'INVITATION',
+      await dispatch({
+        recipients: { userIds: [user.id] },
+        category: 'INVITATION',
         title: 'Thread invitation',
         message: "You've been invited to a private thread.",
       });
@@ -77,6 +75,8 @@ export const removeMemberAction = createServerAction(
     const thread = await findManageableThread(threadId, session.user.id, session.user.role);
 
     if (!thread) {
+      const exists = await findThreadById(threadId);
+      if (!exists) return actionFailure('NOT_FOUND', 'Thread not found');
       return actionFailure('FORBIDDEN', 'Insufficient permissions');
     }
 
@@ -90,9 +90,7 @@ export const removeMemberAction = createServerAction(
     }
 
     // Access is invitation-derived, so revoking means deleting the invitation row
-    await prisma.threadInvitation.deleteMany({
-      where: { threadId, email: user.email },
-    });
+    await removeMemberInvitations(threadId, user.email);
 
     revalidatePath(`/dashboard/threads/${thread.slug}`);
     return actionSuccess(null);
