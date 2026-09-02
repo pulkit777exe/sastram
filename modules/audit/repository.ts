@@ -3,6 +3,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
+import { recordActivity } from '@/modules/activity/repository';
 
 export type AuditEventDetails = Prisma.InputJsonValue | null;
 
@@ -40,14 +41,12 @@ export async function logAction({
   userId,
   details,
 }: LogActionParams) {
-  return prisma.userActivity.create({
-    data: {
-      userId,
-      type: action,
-      entityType,
-      entityId,
-      metadata: details ?? Prisma.JsonNull,
-    },
+  return recordActivity({
+    userId,
+    type: action,
+    entityType,
+    entityId,
+    metadata: details ?? Prisma.JsonNull,
   });
 }
 

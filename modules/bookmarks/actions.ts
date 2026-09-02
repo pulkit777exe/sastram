@@ -1,5 +1,6 @@
 'use server';
 
+import { z } from 'zod';
 import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
@@ -51,5 +52,34 @@ export const checkBookmarkStatus = createServerAction(
     await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
     const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
     return actionSuccess({ isBookmarked });
+  }
+);
+
+const setBookmarkStatusSchema = z.object({
+  threadId: z.string().cuid(),
+  bookmarked: z.boolean(),
+});
+
+/**
+ * Idempotent deep module — no read-then-write race.
+ * Client decides desired state; server upserts/deletes directly.
+ */
+export const setBookmarkStatus = createServerAction(
+  { schema: setBookmarkStatusSchema, actionName: 'setBookmarkStatus' },
+  async ({ threadId, bookmarked }) => {
+    const session = await requireSession();
+    const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
+    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
+
+    if (bookmarked) {
+      await bookmarkThreadRepo(session.user.id, threadId);
+    } else {
+      await unbookmarkThreadRepo(session.user.id, threadId);
+    }
+
+    revalidatePath(ROUTES.DASHBOARD_BOOKMARKS);
+    revalidatePath(ROUTES.THREAD(threadId));
+
+    return actionSuccess({ isBookmarked: bookmarked });
   }
 );
