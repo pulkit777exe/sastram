@@ -6,7 +6,7 @@ import { requireSession } from '@/modules/auth';
 import { z } from 'zod';
 import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
-import { notifyUsersByRole } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import { requireRole, requireModerationRole } from '@/modules/policy';
 import { executeAuditAndRevalidate } from '@/modules/audit';
 import type { ReportCategory, ReportStatus } from '@prisma/client';
@@ -40,12 +40,13 @@ async function notifyModerators(opts: {
   isAutoMod?: boolean;
 }) {
   const label = opts.isAutoMod ? 'Auto-mod flagged' : 'New report';
-  await notifyUsersByRole(
-    ['MODERATOR', 'ADMIN'],
-    `${label}: ${opts.category}`,
-    `Reported in "${opts.threadName}": ${opts.messagePreview.substring(0, 120)}`,
-    { reportId: opts.reportId, autoMod: opts.isAutoMod ?? false },
-  );
+  await dispatch({
+    recipients: { roles: ['MODERATOR', 'ADMIN'] },
+    category: 'SYSTEM',
+    title: `${label}: ${opts.category}`,
+    message: `Reported in "${opts.threadName}": ${opts.messagePreview.substring(0, 120)}`,
+    data: { reportId: opts.reportId, autoMod: opts.isAutoMod ?? false },
+  });
 }
 
 const reportFiltersSchema = z.object({

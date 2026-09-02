@@ -12,8 +12,7 @@ import { enqueueJob } from '@/lib/services/queue';
 import { AIJobType } from '../config';
 import { sanitizeHtmlContent } from '@/lib/services/content-safety';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
-import { NotificationType } from '@prisma/client';
-import { notifyMultipleUsers } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import { assertSpendCapAvailable, assertThreadJob, runAiGeneration } from './_shared';
 import type {
   ThreadSummaryJobData,
@@ -179,8 +178,12 @@ async function generateDailyDigest(messages: JobMessageData[], subscriberIds: st
   const result = await runAiGeneration('daily-digest', 'global', () => aiService.generateDailyDigest(messages));
   if (!result.ok) return { digestLength: 0, skipped: true };
   const digest = sanitizeHtmlContent(result.value);
-  await notifyMultipleUsers(subscriberIds, NotificationType.AI_INSIGHT, 'Daily Digest', digest, {
-    type: 'daily_digest',
+  await dispatch({
+    recipients: { userIds: subscriberIds },
+    category: 'AI_INSIGHT',
+    title: 'Daily Digest',
+    message: digest,
+    data: { type: 'daily_digest' },
   });
   return { digestLength: digest.length };
 }
@@ -332,7 +335,13 @@ async function sendAIInsightNotifications(
   }
 
   for (const { title, message, data } of notifications) {
-    await notifyMultipleUsers(subscriberIds, NotificationType.AI_INSIGHT, title, message, data);
+    await dispatch({
+      recipients: { userIds: subscriberIds },
+      category: 'AI_INSIGHT',
+      title,
+      message,
+      data,
+    });
   }
 
   return { notificationsSent: notifications.length };

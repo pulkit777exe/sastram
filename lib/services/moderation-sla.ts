@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { notifyUsersByRole } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import { logger } from '@/lib/infrastructure/logger';
 
 const ESCALATION_24H_MS = 24 * 60 * 60 * 1000;
@@ -28,21 +28,23 @@ export async function escalateStaleReports(): Promise<{ escalated24h: number; es
       data: { escalatedAt: now },
     });
 
-    await notifyUsersByRole(
-      ['MODERATOR', 'ADMIN'],
-      `Escalation: ${stale24h.length} report(s) pending > 24h`,
-      `${stale24h.length} reports need attention. Oldest: ${stale24h[0]?.category}`,
-      { reportIds: stale24h.map(r => r.id), escalation: '24h' },
-    );
+    await dispatch({
+      recipients: { roles: ['MODERATOR', 'ADMIN'] },
+      category: 'SYSTEM',
+      title: `Escalation: ${stale24h.length} report(s) pending > 24h`,
+      message: `${stale24h.length} reports need attention. Oldest: ${stale24h[0]?.category}`,
+      data: { reportIds: stale24h.map(r => r.id), escalation: '24h' },
+    });
   }
 
   if (stale72h.length > 0) {
-    await notifyUsersByRole(
-      ['ADMIN'],
-      `URGENT: ${stale72h.length} report(s) pending > 72h`,
-      `${stale72h.length} reports are critically overdue. Immediate action required.`,
-      { reportIds: stale72h.map(r => r.id), escalation: '72h' },
-    );
+    await dispatch({
+      recipients: { roles: ['ADMIN'] },
+      category: 'SYSTEM',
+      title: `URGENT: ${stale72h.length} report(s) pending > 72h`,
+      message: `${stale72h.length} reports are critically overdue. Immediate action required.`,
+      data: { reportIds: stale72h.map(r => r.id), escalation: '72h' },
+    });
   }
 
   logger.info('[moderation-sla]', { escalated24h: stale24h.length, escalated72h: stale72h.length });

@@ -10,7 +10,7 @@ import { withValidation } from '@/lib/utils/server-action';
 import { getBannedUsersSchema } from '@/modules/moderation';
 import { ROUTES } from '@/lib/config/routes';
 import { requireModerationRole } from '@/modules/policy';
-import { createNotification } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import { actionSuccess } from '@/lib/actions/result';
 
 const createAppealSchema = z.object({
@@ -224,9 +224,9 @@ export const resolveAppeal = withValidation(
     });
 
     if (appeal.userId) {
-      await createNotification({
-        userId: appeal.userId,
-        type: 'SYSTEM',
+      await dispatch({
+        recipients: { userIds: [appeal.userId] },
+        category: 'SYSTEM',
         title: approved ? 'Appeal Approved' : 'Appeal Rejected',
         message: approved
           ? `Your appeal has been approved. ${response ?? 'Your account has been restored.'}`

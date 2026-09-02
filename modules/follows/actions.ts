@@ -10,7 +10,7 @@ import {
   getFollowing as getFollowingRepo,
   isFollowing as isFollowingRepo,
 } from './repository';
-import { createNotification } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import { createServerAction } from '@/lib/utils/server-action';
 import { actionFailure, actionSuccess } from '@/lib/actions/result';
 import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
@@ -42,9 +42,9 @@ export const followUser = createServerAction(
 
     await followUserRepo(session.user.id, userId);
 
-    await createNotification({
-      userId,
-      type: 'SYSTEM',
+    await dispatch({
+      recipients: { userIds: [userId] },
+      category: 'SYSTEM',
       title: 'New Follower',
       message: `${session.user.name || session.user.email} started following you`,
       data: {

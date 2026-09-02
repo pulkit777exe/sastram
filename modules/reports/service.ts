@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { createNotification } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import { executeAuditAndRevalidate } from '@/modules/audit';
 import { AppError } from '@/lib/utils/errors';
 
@@ -87,17 +87,17 @@ export async function resolveReport(params: {
 
   if (report.message.senderId) {
     if (action === 'WARN_USER') {
-      await createNotification({
-        userId: report.message.senderId,
-        type: 'SYSTEM',
+      await dispatch({
+        recipients: { userIds: [report.message.senderId] },
+        category: 'SYSTEM',
         title: 'Official Warning',
         message: `Your message has been removed for violating community guidelines. Reason: ${note}`,
         data: { reportId, threadSlug: report.message.thread.slug },
       });
     } else if (restrictsAccount) {
-      await createNotification({
-        userId: report.message.senderId,
-        type: 'SYSTEM',
+      await dispatch({
+        recipients: { userIds: [report.message.senderId] },
+        category: 'SYSTEM',
         title: action === 'BAN_USER' ? 'Account Banned' : 'Account Suspended',
         message:
           action === 'BAN_USER'
@@ -111,9 +111,9 @@ export async function resolveReport(params: {
   }
 
   if (notifyReporter && report.reporterId) {
-    await createNotification({
-      userId: report.reporterId,
-      type: 'SYSTEM',
+    await dispatch({
+      recipients: { userIds: [report.reporterId] },
+      category: 'SYSTEM',
       title: 'Report Updated',
       message:
         action === 'DISMISS'

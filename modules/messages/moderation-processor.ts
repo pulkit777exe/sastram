@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import { notifyUsersByRole } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import {
   MessageModerationPipeline,
   type MessageLike,
@@ -105,12 +105,13 @@ export class MessageService {
         });
 
         // Best-effort: a failed notification must not fail the post.
-        await notifyUsersByRole(
-          ['MODERATOR', 'ADMIN'],
-          `Auto-mod flagged: ${result.action}`,
-          `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
-          { messageId: created.id, action: result.action, autoMod: true },
-        );
+        await dispatch({
+          recipients: { roles: ['MODERATOR', 'ADMIN'] },
+          category: 'SYSTEM',
+          title: `Auto-mod flagged: ${result.action}`,
+          message: `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
+          data: { messageId: created.id, action: result.action, autoMod: true },
+        });
       }
 
       return {
