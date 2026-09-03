@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  createContext,
-  use,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { Message } from '@/lib/types/index';
 import type { PollResults } from '@/modules/polls/types';
@@ -20,11 +11,25 @@ import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hook
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Pin, Loader2, ChevronDown } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
-// Types — deep module interface (Vercel composition: explicit surface)
+// Constants — magic numbers with intent
+// ---------------------------------------------------------------------------
+
+// AI inline: pending -> failed after 2 minutes (spec)
+const AI_PENDING_TIMEOUT_MS = 120_000;
+// Scroll: considered at bottom within 80px
+const SCROLL_BOTTOM_THRESHOLD_PX = 80;
+// Debounce: mark read after 250ms, check scroll position after 100ms
+const READ_DEBOUNCE_MS = 250;
+const SCROLL_DEBOUNCE_MS = 100;
+// Polling: 20s refresh, sentinel 200px margin
+const POLL_REFRESH_MS = 20_000;
+const SENTINEL_ROOT_MARGIN = '200px 0px 0px 0px';
+
+// ---------------------------------------------------------------------------
+// Types
 // ---------------------------------------------------------------------------
 
 export type AiStatusVariant = 'pending' | 'failed';
@@ -68,17 +73,10 @@ export interface ThreadLiveContextValue {
   meta: ThreadLiveMeta;
 }
 
-// NOTE: follows server-action envelope pattern — consumers read { ok, data, error, errorCode }
-// and sse utils conventions — see lib/utils/sse.ts (parseSSE, drainToText, sseEvent, sseChunk).
-// TODO: polling vs SSE adapter — swap useThreadPolling for SSE subscription when adapter lands.
 export const ThreadLiveContext = createContext<ThreadLiveContextValue | null>(null);
 
-/**
- * Deep accessor — uses React 19 `use()` for context unwrapping.
- * Throws if called outside provider (fail-fast, no silent null).
- */
 export function useThreadLive(): ThreadLiveContextValue {
-  const ctx = use(ThreadLiveContext);
+  const ctx = useContext(ThreadLiveContext);
   if (!ctx) {
     throw new Error('useThreadLive must be used within ThreadLiveProvider');
   }
@@ -124,21 +122,11 @@ export function ThreadLiveProvider({
   initialUnread,
   children,
 }: ThreadLiveProviderProps) {
-  // _currentUser is retained in props for future thread-membership checks;
-  // not yet exposed via state to keep deep interface minimal (see Vercel composition).
-  void _currentUser;
+  // Poll state — currently static from initialPoll (refresh stubbed for future SSE)
+  const [currentPoll] = useState<ThreadLiveState['currentPoll']>(initialPoll);
+  const [pollResults] = useState<PollResults | null>(null);
 
-  // ----- Poll state (local ownership, envelope-aware refresh) -----
-  const [currentPoll, setCurrentPoll] = useState<ThreadLiveState['currentPoll']>(initialPoll);
-  const [pollResults, setPollResults] = useState<PollResults | null>(null);
-  void setCurrentPoll;
-  void setPollResults;
-  const currentPollRef = useRef(currentPoll);
-  useEffect(() => {
-    currentPollRef.current = currentPoll;
-  }, [currentPoll]);
-
-  // ----- AI inline status + 120s timer (spec: pending -> failed) -----
+  // AI inline status: pending -> failed after timeout
   const [aiStatus, setAiStatus] = useState<Record<string, AiStatusVariant>>({});
   const aiStatusRef = useRef(aiStatus);
   useEffect(() => {
@@ -146,13 +134,13 @@ export function ThreadLiveProvider({
   }, [aiStatus]);
   const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // ----- Scroll refs + debounce -----
+  // Scroll + sentinel refs
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ----- Sub-hooks (composition root) -----
+  // ---- Sub-hooks ----
   const threadMessages = useThreadMessages({
     initialMessages,
     threadId,
@@ -163,10 +151,11 @@ export function ThreadLiveProvider({
     totalMessageCount: totalCount,
   });
 
+  // Stable check — passed to read-receipts hook, so memoize
   const isAtBottom = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_BOTTOM_THRESHOLD_PX;
   }, []);
 
   const readReceipts = useThreadReadReceipts({
@@ -177,8 +166,9 @@ export function ThreadLiveProvider({
     isAtBottom,
   });
 
-  // ----- AI inline helpers (120s pending -> failed) -----
-  const setAiPending = useCallback((messageId: string) => {
+  // ---- AI inline helpers ----
+  // Plain function: cheap, not used as effect dep (only via actions)
+  function setAiPending(messageId: string) {
     setAiStatus((prev) => ({ ...prev, [messageId]: 'pending' }));
     const existing = aiInlineTimerRef.current.get(messageId);
     if (existing) clearTimeout(existing);
@@ -188,10 +178,11 @@ export function ThreadLiveProvider({
         return { ...prev, [messageId]: 'failed' };
       });
       aiInlineTimerRef.current.delete(messageId);
-    }, 120_000);
+    }, AI_PENDING_TIMEOUT_MS);
     aiInlineTimerRef.current.set(messageId, timer);
-  }, []);
+  }
 
+  // Stable: used in polling + stream handlers + effects
   const clearAiStatus = useCallback((messageId: string) => {
     setAiStatus((prev) => {
       if (!(messageId in prev)) return prev;
@@ -206,76 +197,62 @@ export function ThreadLiveProvider({
     }
   }, []);
 
-  // ----- AI stream (SSE) — adapter seam -----
+  // ---- AI stream (SSE) ----
   const streamParentRef = useRef<string | null>(null);
 
-  const handleStreamStart = useCallback(
-    (info: AIStreamStart) => {
-      const aiMsg: Message = {
-        id: info.messageId,
-        content: '',
-        threadId,
-        senderId: info.senderId,
-        parentId: info.parentId,
-        depth: info.depth,
-        isEdited: false,
-        isPinned: false,
-        likeCount: 0,
-        replyCount: 0,
-        isAiResponse: true,
-        createdAt: new Date(info.createdAt),
-        updatedAt: new Date(info.createdAt),
-        deletedAt: null,
-        sender: {
-          id: info.senderId,
-          name: info.senderName ?? 'Sastram AI',
-          image: info.senderImage,
-        },
-        thread: { id: threadId, name: title, slug },
-        attachments: [],
-      };
-      threadMessages.addMessage(aiMsg);
-    },
-    [threadId, title, slug, threadMessages]
-  );
+  function handleStreamStart(info: AIStreamStart) {
+    const aiMsg: Message = {
+      id: info.messageId,
+      content: '',
+      threadId,
+      senderId: info.senderId,
+      parentId: info.parentId,
+      depth: info.depth,
+      isEdited: false,
+      isPinned: false,
+      likeCount: 0,
+      replyCount: 0,
+      isAiResponse: true,
+      createdAt: new Date(info.createdAt),
+      updatedAt: new Date(info.createdAt),
+      deletedAt: null,
+      sender: {
+        id: info.senderId,
+        name: info.senderName ?? 'Sastram AI',
+        image: info.senderImage,
+      },
+      thread: { id: threadId, name: title, slug },
+      attachments: [],
+    };
+    threadMessages.addMessage(aiMsg);
+  }
 
-  const handleStreamUpdate = useCallback(
-    (messageId: string, content: string) => {
-      threadMessages.updateMessageContent(messageId, content);
-    },
-    [threadMessages]
-  );
+  function handleStreamUpdate(messageId: string, content: string) {
+    threadMessages.updateMessageContent(messageId, content);
+  }
 
-  const handleStreamDone = useCallback(() => {
+  function handleStreamDone() {
     const parentId = streamParentRef.current;
     streamParentRef.current = null;
     if (parentId) clearAiStatus(parentId);
-  }, [clearAiStatus]);
+  }
 
-  const handleStreamError = useCallback(
-    (_err: AIStreamError) => {
-      const parentId = streamParentRef.current;
-      streamParentRef.current = null;
-      // TODO: SSE adapter — on stream error, fall back to polling enqueue.
-      // Server-action envelope expected: { ok, data, error, errorCode }.
-      // Use lib/utils/sse helpers (parseSSEError, drainToText) for error parsing.
-      fetch(`/api/threads/${threadId}/ai-reply`, { method: 'POST' })
-        .then((res) => {
-          if (!res.ok) throw new Error('fallback enqueue failed');
-        })
-        .catch((error) => {
-          console.error('[ThreadLiveProvider] AI-reply fallback enqueue failed:', error);
-          if (parentId) {
-            setAiStatus((prev) =>
-              prev[parentId] === 'pending' ? { ...prev, [parentId]: 'failed' } : prev
-            );
-          }
-        });
-    },
-    [threadId]
-  );
+  function handleStreamError(_err: AIStreamError) {
+    const parentId = streamParentRef.current;
+    streamParentRef.current = null;
+    fetch(`/api/threads/${threadId}/ai-reply`, { method: 'POST' })
+      .then((res) => {
+        if (!res.ok) throw new Error('fallback enqueue failed');
+      })
+      .catch((error) => {
+        console.error('[ThreadLiveProvider] AI-reply fallback enqueue failed:', error);
+        if (parentId) {
+          setAiStatus((prev) => (prev[parentId] === 'pending' ? { ...prev, [parentId]: 'failed' } : prev));
+        }
+      });
+  }
 
-  const { startStream, stopStream } = useAIReplyStream({
+  const { stopStream } = useAIReplyStream({
     threadId,
     onStart: handleStreamStart,
     onMessageUpdate: handleStreamUpdate,
@@ -283,8 +260,7 @@ export function ThreadLiveProvider({
     onError: handleStreamError,
   });
 
-  // TODO: polling vs SSE adapter — when SSE adapter lands, expose adapter flag
-  // and gate useThreadPolling behind `!useSSE`. The deep interface stays stable.
+  // Polling adapter — gated behind future SSE flag
   useThreadPolling({
     threadId,
     lastMessageTimestampRef: threadMessages.lastMessageTimestampRef,
@@ -295,7 +271,7 @@ export function ThreadLiveProvider({
     onAiStatusCleared: clearAiStatus,
   });
 
-  // ----- AI arrived check — clear pending when AI response lands -----
+  // ---- Clear pending when AI response arrives ----
   useEffect(() => {
     for (const [pendingId, status] of Object.entries(aiStatus)) {
       if (status !== 'pending') continue;
@@ -303,33 +279,30 @@ export function ThreadLiveProvider({
         (m) => m.parentId === pendingId && m.isAiResponse && m.content.trim().length > 0
       );
       if (hasResponse) {
-        // defer to avoid setState during render
+        // Defer to avoid setState during effect batch
         setTimeout(() => clearAiStatus(pendingId), 0);
       }
     }
   }, [threadMessages.liveMessages, aiStatus, clearAiStatus]);
 
-  // ----- Scroll debounce (250ms read, 100ms scroll) -----
-  const handleScroll = useCallback(() => {
-    if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
-    readDebounceRef.current = setTimeout(() => {
-      void readReceipts.markThreadAsRead(false);
-    }, 250);
-    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-    scrollDebounceRef.current = setTimeout(() => {
-      // No-op: scroll position derived from isAtBottom; placeholder for
-      // future scroll-linked state (e.g., show scroll-to-bottom FAB).
-    }, 100);
-  }, [readReceipts]);
-
+  // ---- Scroll handler ----
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+    function onScroll() {
+      if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
+      readDebounceRef.current = setTimeout(() => {
+        void readReceipts.markThreadAsRead(false);
+      }, READ_DEBOUNCE_MS);
+      if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
+      scrollDebounceRef.current = setTimeout(() => {}, SCROLL_DEBOUNCE_MS);
+    }
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- markThreadAsRead stable, readReceipts object identity unstable
+  }, [readReceipts.markThreadAsRead]);
 
-  // ----- Load-more sentinel (IntersectionObserver) -----
+  // ---- Load-more sentinel ----
   useEffect(() => {
     const sentinel = sentinelRef.current;
     const root = scrollRef.current;
@@ -340,14 +313,14 @@ export function ThreadLiveProvider({
           void threadMessages.loadMoreMessages();
         }
       },
-      { root, rootMargin: '200px 0px 0px 0px' }
+      { root, rootMargin: SENTINEL_ROOT_MARGIN }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- threadMessages fields stable; object identity unstable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
 
-  // ----- Poll refresh (20s) — envelope-aware stub -----
+  // ---- Poll refresh (stub, future SSE) ----
   useEffect(() => {
     if (!currentPoll) return;
     let cancelled = false;
@@ -355,107 +328,64 @@ export function ThreadLiveProvider({
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       if (cancelled) return;
       try {
-        // TODO: polling vs SSE adapter — replace with SSE poll-update events.
-        // Keep server-action envelope: const res = await getPollByThreadAction({ threadId });
-        // if (!res.ok || !res.data) return;
-        // const resultsRes = await getPollResultsAction({ pollId: currentPoll.id });
-        // if (!resultsRes.ok) return;
-        // setCurrentPoll(prev => prev ? { ...prev, isActive: res.data.isActive, expiresAt: res.data.expiresAt } : prev);
-        // setPollResults(resultsRes.data);
+        // TODO: replace with SSE poll-update events
       } catch {
         // best-effort
       }
-    }, 20_000);
+    }, POLL_REFRESH_MS);
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [currentPoll, threadId]);
+  }, [currentPoll]);
 
-  // ----- Cleanup (timers + stream) -----
+  // ---- Cleanup ----
   useEffect(() => {
     const timers = aiInlineTimerRef.current;
     return () => {
       if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
       if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-      for (const timer of timers.values()) {
-        clearTimeout(timer);
-      }
+      for (const timer of timers.values()) clearTimeout(timer);
       timers.clear();
       stopStream();
     };
   }, [stopStream]);
 
-  // ----- Expose deep interface via useMemo (stable reference) -----
-  const state: ThreadLiveState = useMemo(
-    () => ({
-      messages: threadMessages.liveMessages,
-      aiStatus,
-      hasMore: threadMessages.hasMoreMessages,
-      isLoadingMore: threadMessages.isLoadingMore,
-      unreadCount: readReceipts.unreadCount,
-      firstUnreadId: readReceipts.firstUnreadMessageId,
-      currentPoll,
-      pollResults,
-    }),
-    [
-      threadMessages.liveMessages,
-      aiStatus,
-      threadMessages.hasMoreMessages,
-      threadMessages.isLoadingMore,
-      readReceipts.unreadCount,
-      readReceipts.firstUnreadMessageId,
-      currentPoll,
-      pollResults,
-    ]
-  );
+  // ---- Context value (plain objects, no memo — cheap) ----
+  const state: ThreadLiveState = {
+    messages: threadMessages.liveMessages,
+    aiStatus,
+    hasMore: threadMessages.hasMoreMessages,
+    isLoadingMore: threadMessages.isLoadingMore,
+    unreadCount: readReceipts.unreadCount,
+    firstUnreadId: readReceipts.firstUnreadMessageId,
+    currentPoll,
+    pollResults,
+  };
 
-  const actions: ThreadLiveActions = useMemo(
-    () => ({
-      addMessage: threadMessages.addMessage,
-      updateContent: threadMessages.updateMessageContent,
-      setAiPending,
-      clearAiStatus,
-      loadMore: threadMessages.loadMoreMessages,
-      markRead: readReceipts.markThreadAsRead,
-      postOptimistic: threadMessages.addOptimistic,
-      removeOptimistic: threadMessages.removeOptimistic,
-    }),
-    [
-      threadMessages.addMessage,
-      threadMessages.updateMessageContent,
-      setAiPending,
-      clearAiStatus,
-      threadMessages.loadMoreMessages,
-      readReceipts.markThreadAsRead,
-      threadMessages.addOptimistic,
-      threadMessages.removeOptimistic,
-    ]
-  );
+  const actions: ThreadLiveActions = {
+    addMessage: threadMessages.addMessage,
+    updateContent: threadMessages.updateMessageContent,
+    setAiPending,
+    clearAiStatus,
+    loadMore: threadMessages.loadMoreMessages,
+    markRead: readReceipts.markThreadAsRead,
+    postOptimistic: threadMessages.addOptimistic,
+    removeOptimistic: threadMessages.removeOptimistic,
+  };
 
-  const meta: ThreadLiveMeta = useMemo(
-    () => ({
-      scrollRef,
-      sentinelRef,
-    }),
-    []
-  );
+  const meta: ThreadLiveMeta = {
+    scrollRef,
+    sentinelRef,
+  };
 
-  const value = useMemo(() => ({ state, actions, meta }), [state, actions, meta]);
-
-  // TODO: SSE adapter — expose streaming trigger via actions when adapter lands:
-  // const triggerAiStream = (parentId: string) => { setAiPending(parentId); streamParentRef.current = parentId; startStream(parentId); };
-  // Keep startStream/stopStream internal until deep interface is finalized.
-  void startStream;
-  void streamParentRef;
+  const value: ThreadLiveContextValue = { state, actions, meta };
 
   return <ThreadLiveContext.Provider value={value}>{children}</ThreadLiveContext.Provider>;
 }
 
 // ---------------------------------------------------------------------------
 // Compound helpers — ThreadLive.*
-// Each uses use(ThreadLiveContext) and renders shadcn primitives with SAI tokens.
-// No boolean props — explicit variant unions only.
 // ---------------------------------------------------------------------------
 
 type FrameVariant = 'default' | 'inset';
@@ -466,7 +396,7 @@ interface ThreadLiveFrameProps {
 }
 
 function ThreadLiveFrame({ variant = 'default', className, children }: ThreadLiveFrameProps) {
-  const ctx = use(ThreadLiveContext);
+  const ctx = useContext(ThreadLiveContext);
   if (!ctx) throw new Error('ThreadLive.Frame must be used within ThreadLiveProvider');
   return (
     <div
@@ -489,46 +419,21 @@ interface ThreadLiveScrollAreaProps {
 }
 
 function ThreadLiveScrollArea({ variant = 'thread', className, children }: ThreadLiveScrollAreaProps) {
-  const ctx = use(ThreadLiveContext);
+  const ctx = useContext(ThreadLiveContext);
   if (!ctx) throw new Error('ThreadLive.ScrollArea must be used within ThreadLiveProvider');
   return (
     <div
-      // eslint-disable-next-line react-hooks/refs -- passing stable RefObject via context to scroll container
+      // eslint-disable-next-line react-hooks/refs
       ref={ctx.meta.scrollRef}
       role="log"
       aria-live="polite"
       aria-label="Thread messages"
-      className={cn(
-        'flex-1 overflow-y-auto bg-canvas',
-        variant === 'thread' ? 'px-6 py-4' : 'px-4 py-3',
-        className
-      )}
+      className={cn('flex-1 overflow-y-auto bg-canvas', variant === 'thread' ? 'px-6 py-4' : 'px-4 py-3', className)}
     >
       <div className="max-w-4xl mx-auto">{children}</div>
     </div>
   );
 }
-
-// Alternate primitive-backed variant (shadcn ScrollArea) — kept as reference for
-// future swap. Not used by default to avoid double scroll containers.
-function ThreadLiveScrollAreaPrimitive({
-  variant = 'thread',
-  className,
-  children,
-}: ThreadLiveScrollAreaProps) {
-  const ctx = use(ThreadLiveContext);
-  if (!ctx) throw new Error('ThreadLive.ScrollArea must be used within ThreadLiveProvider');
-  return (
-    <ScrollArea className={cn('flex-1 bg-canvas', variant === 'thread' ? 'px-6 py-4' : 'px-4 py-3', className)}>
-      {/* eslint-disable-next-line react-hooks/refs -- passing stable RefObject via context */}
-      <div ref={ctx.meta.scrollRef} className="max-w-4xl mx-auto">
-        {children}
-      </div>
-      <ScrollBar orientation="vertical" />
-    </ScrollArea>
-  );
-}
-void ThreadLiveScrollAreaPrimitive;
 
 type PinnedBannerVariant = 'pinned' | 'placeholder';
 interface ThreadLivePinnedBannerProps {
@@ -537,7 +442,7 @@ interface ThreadLivePinnedBannerProps {
 }
 
 function ThreadLivePinnedBanner({ variant = 'pinned', className }: ThreadLivePinnedBannerProps) {
-  const ctx = use(ThreadLiveContext);
+  const ctx = useContext(ThreadLiveContext);
   if (!ctx) throw new Error('ThreadLive.PinnedBanner must be used within ThreadLiveProvider');
   const pinned = ctx.state.messages.find((m) => m.isPinned) ?? null;
   if (!pinned && variant === 'pinned') return null;
@@ -559,9 +464,7 @@ function ThreadLivePinnedBanner({ variant = 'pinned', className }: ThreadLivePin
         <button
           type="button"
           className="shrink-0 text-xs font-semibold text-sai-accent-ink hover:underline"
-          onClick={() =>
-            document.getElementById(`message-${pinned.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
+          onClick={() => document.getElementById(`message-${pinned.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
         >
           Jump
         </button>
@@ -577,18 +480,14 @@ interface ThreadLiveLoadMoreProps {
 }
 
 function ThreadLiveLoadMore({ variant = 'default', className }: ThreadLiveLoadMoreProps) {
-  const ctx = use(ThreadLiveContext);
+  const ctx = useContext(ThreadLiveContext);
   if (!ctx) throw new Error('ThreadLive.LoadMore must be used within ThreadLiveProvider');
   const { hasMore, isLoadingMore } = ctx.state;
   const { loadMore } = ctx.actions;
   const { sentinelRef } = ctx.meta;
 
   if (!hasMore && variant === 'default') {
-    return (
-      <>
-        <div ref={sentinelRef} aria-hidden className="h-px" />
-      </>
-    );
+    return <div ref={sentinelRef} aria-hidden className="h-px" />;
   }
 
   return (
@@ -625,7 +524,7 @@ interface ThreadLivePollProps {
 }
 
 function ThreadLivePoll({ variant = 'default', className }: ThreadLivePollProps) {
-  const ctx = use(ThreadLiveContext);
+  const ctx = useContext(ThreadLiveContext);
   if (!ctx) throw new Error('ThreadLive.Poll must be used within ThreadLiveProvider');
   const { currentPoll, pollResults } = ctx.state;
   if (!currentPoll) return null;
@@ -671,13 +570,12 @@ interface ThreadLiveComposerProps {
 }
 
 function ThreadLiveComposer({ variant = 'default', className, placeholder = 'Write a reply…' }: ThreadLiveComposerProps) {
-  const ctx = use(ThreadLiveContext);
+  const ctx = useContext(ThreadLiveContext);
   if (!ctx) throw new Error('ThreadLive.Composer must be used within ThreadLiveProvider');
-  // TODO: wire to PostMessageForm + AI inline delivery (streaming vs queued).
-  // Server-action envelope: postMessageAction → { ok, data, error, errorCode }
-  // SSE path will stream via useAIReplyStream when @sai is mentioned.
   return (
-    <div className={cn('shrink-0 border-t border-line/60 bg-surface p-4', variant === 'compact' ? 'p-3' : 'p-4', className)}>
+    <div
+      className={cn('shrink-0 border-t border-line/60 bg-surface p-4', variant === 'compact' ? 'p-3' : 'p-4', className)}
+    >
       <div className="max-w-4xl mx-auto">
         <div className="rounded-card border border-line bg-surface shadow-card overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 bg-inset border-b border-line/60">
@@ -685,9 +583,7 @@ function ThreadLiveComposer({ variant = 'default', className, placeholder = 'Wri
             <span className="text-xs text-ink-3">({variant})</span>
           </div>
           <div className="p-3">
-            <div className="rounded-control border border-line bg-canvas px-3 py-2 text-sm text-ink-3">
-              {placeholder}
-            </div>
+            <div className="rounded-control border border-line bg-canvas px-3 py-2 text-sm text-ink-3">{placeholder}</div>
             <div className="mt-3 flex justify-end">
               <Button size="sm" variant="default" className="rounded-control" disabled>
                 <ChevronDown size={14} className="rotate-270" aria-hidden />
@@ -706,20 +602,6 @@ function ThreadLiveComposer({ variant = 'default', className, placeholder = 'Wri
   );
 }
 
-/**
- * Compound namespace — Vercel composition pattern (explicit variants, no booleans).
- * Usage:
- *   <ThreadLiveProvider ...>
- *     <ThreadLive.Frame>
- *       <ThreadLive.PinnedBanner variant="pinned" />
- *       <ThreadLive.ScrollArea variant="thread">
- *         <ThreadLive.LoadMore variant="default" />
- *         <ThreadLive.Poll variant="default" />
- *       </ThreadLive.ScrollArea>
- *       <ThreadLive.Composer variant="default" />
- *     </ThreadLive.Frame>
- *   </ThreadLiveProvider>
- */
 export const ThreadLive = {
   Frame: ThreadLiveFrame,
   ScrollArea: ThreadLiveScrollArea,

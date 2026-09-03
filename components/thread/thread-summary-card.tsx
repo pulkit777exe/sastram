@@ -17,8 +17,10 @@ interface ThreadSummaryCardProps {
   className?: string;
 }
 
+// Poll every 3 seconds while waiting for summary generation
 const POLL_INTERVAL_MS = 3_000;
-const MAX_POLL_MS = 90_000;
+// Stop polling after 90 seconds and show timeout UI
+const TIMEOUT_MS = 90_000;
 const SUMMARY_UNAVAILABLE = 'Summary unavailable.';
 
 export function ThreadSummaryCard({ threadId, initialSummary, className }: ThreadSummaryCardProps) {
@@ -43,14 +45,10 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   }, []);
 
   const stopPolling = useCallback(() => {
-    if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-    if (timeoutTimerRef.current) {
-      clearTimeout(timeoutTimerRef.current);
-      timeoutTimerRef.current = null;
-    }
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    pollTimerRef.current = null;
+    if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+    timeoutTimerRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -101,11 +99,15 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
 
         timeoutTimerRef.current = setTimeout(() => {
           if (!mountedRef.current) return;
-          stopPolling();
+          // Inline stop logic — clear both timers explicitly without indirection
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+          if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+          timeoutTimerRef.current = null;
           isPendingRef.current = false;
           setIsPending(false);
           setTimedOut(true);
-        }, MAX_POLL_MS);
+        }, TIMEOUT_MS);
       } catch (error) {
         if (!mountedRef.current) return;
         const message =
@@ -115,7 +117,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         setIsPending(false);
       }
     },
-    [threadId, router, initialSummary, stopPolling]
+    [threadId, router, initialSummary]
   );
 
   return (

@@ -12,13 +12,28 @@ interface InlineReplyThreadProps {
 
 const REPLY_OVERSCAN = 5;
 
+function getUniqueSenders(replies: Message[]): Array<NonNullable<Message['sender']>> {
+  const seen = new Map<string, NonNullable<Message['sender']>>();
+  for (const reply of replies) {
+    if (reply.sender === null || reply.sender === undefined) {
+      continue;
+    }
+    const senderId = reply.senderId;
+    if (!senderId) {
+      continue;
+    }
+    if (!seen.has(senderId)) {
+      seen.set(senderId, reply.sender);
+    }
+  }
+  return Array.from(seen.values()).slice(0, 4);
+}
+
 export const InlineReplyThread = React.memo(function InlineReplyThread({ replies, onReplyClick }: InlineReplyThreadProps) {
   const [expanded, setExpanded] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const uniqueSenders = replies.length > 0
-    ? Array.from(new Map(replies.filter((r): r is Message & { sender: NonNullable<Message['sender']> } => r.sender !== null).map((r) => [r.senderId, r.sender])).values()).slice(0, 4)
-    : [];
+  const uniqueSenders = getUniqueSenders(replies);
 
   const visible = expanded ? replies : replies.slice(0, 3);
   const hidden = replies.length - 3;

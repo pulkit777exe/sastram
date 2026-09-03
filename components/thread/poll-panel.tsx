@@ -53,19 +53,16 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   // Sync internal poll state when parent provides fresh data (from poll tick)
   useEffect(() => {
     if (!initialPoll) return;
+    // Avoid render phase warning — defer state update to next tick
     const timer = setTimeout(() => {
       setPoll((prev) => {
         const next = { ...initialPoll, threadId };
         // Only update if data actually changed to avoid unnecessary re-renders
-        if (
-          prev &&
-          prev.id === next.id &&
-          prev.isActive === next.isActive &&
-          prev.expiresAt === next.expiresAt
-        ) {
-          return prev;
-        }
-        return next;
+        if (!prev) return next;
+        if (prev.id !== next.id) return next;
+        if (prev.isActive !== next.isActive) return next;
+        if (prev.expiresAt !== next.expiresAt) return next;
+        return prev;
       });
     }, 0);
     return () => clearTimeout(timer);

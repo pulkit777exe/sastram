@@ -10,9 +10,23 @@ interface AttachmentItemProps {
   file: Attachment;
 }
 
+const BYTES_PER_MB = 1024 * 1024;
+
+function isImageType(type: string | undefined): boolean {
+  if (!type) return false;
+  if (type === 'IMAGE' || type === 'GIF') return true;
+  return type.startsWith('image/');
+}
+
+function isVideoType(type: string | undefined): boolean {
+  if (!type) return false;
+  if (type === 'VIDEO') return true;
+  return type.startsWith('video/');
+}
+
 export const AttachmentItem = React.memo(function AttachmentItem({ file }: AttachmentItemProps) {
-  const isImage = file.type === 'IMAGE' || file.type === 'GIF' || (file.type && file.type.startsWith('image/'));
-  const isVideo = file.type === 'VIDEO' || (file.type && file.type.startsWith('video/'));
+  const isImage = isImageType(file.type);
+  const isVideo = isVideoType(file.type);
 
   if (isImage) {
     return (
@@ -46,7 +60,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
         <p className="text-xs font-semibold text-ink truncate">{file.name || 'File Attachment'}</p>
         <p className="text-xs text-ink-3 font-mono uppercase tracking-wider mt-0.5">
           {file.type?.split('/').pop()?.toUpperCase() || 'FILE'}
-          {file.size ? ` • ${(Number(file.size) / (1024 * 1024)).toFixed(1)} MB` : ''}
+          {file.size ? ` • ${(Number(file.size) / BYTES_PER_MB).toFixed(1)} MB` : ''}
         </p>
       </div>
       <a
@@ -69,15 +83,14 @@ function VideoPlayer({ file }: { file: Attachment }) {
   const [isMuted, setIsMuted] = useState(false);
 
   const togglePlay = () => {
-    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
     if (isPlaying) {
-      videoRef.current.pause();
+      video.pause();
       setIsPlaying(false);
-    } else {
-      videoRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(() => {});
+      return;
     }
+    video.play().then(() => setIsPlaying(true)).catch(() => {});
   };
 
   const toggleMute = (e: React.MouseEvent) => {

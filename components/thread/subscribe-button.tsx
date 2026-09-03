@@ -34,6 +34,23 @@ const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
   { label: 'Never', value: 'NEVER' },
 ];
 
+const NULL_SENTINEL = 'null';
+
+function frequencyToValue(frequency: SubscriptionFrequency): string {
+  if (frequency === null) return NULL_SENTINEL;
+  return frequency;
+}
+
+function valueToFrequency(value: string): SubscriptionFrequency {
+  if (value === NULL_SENTINEL) return null;
+  return value as SubscriptionFrequency;
+}
+
+function getPreviewLabel(frequency: SubscriptionFrequency): string {
+  if (frequency === null) return 'N';
+  return frequency.charAt(0);
+}
+
 export function ThreadSubscribeButton({
   threadName: _threadName = 'this thread',
   threadId,
@@ -92,12 +109,12 @@ export function ThreadSubscribeButton({
   };
 
   if (iconOnly) {
-    const previewLabel = frequency === null ? 'N' : frequency.charAt(0);
+    const previewLabel = getPreviewLabel(frequency);
 
     return (
       <Select
-        value={frequency ?? 'null'}
-        onValueChange={(v) => void setSubscription(v === 'null' ? null : v as SubscriptionFrequency)}
+        value={frequencyToValue(frequency)}
+        onValueChange={(v) => void setSubscription(valueToFrequency(v))}
         disabled={isSaving}
       >
         <SelectTrigger className="!h-8 !w-auto !px-2 !py-0 !rounded-control !border-0 !bg-transparent !ring-0 !ring-offset-0 flex items-center gap-1.5 !shadow-none text-ink-3 hover:text-ink hover:bg-hover transition-colors [&>svg]:hidden">
@@ -108,7 +125,7 @@ export function ThreadSubscribeButton({
         </SelectTrigger>
         <SelectContent>
           {OPTIONS.map((option) => (
-            <SelectItem key={option.label} value={option.value ?? 'null'}>
+            <SelectItem key={option.label} value={frequencyToValue(option.value)}>
               {option.label}
             </SelectItem>
           ))}
@@ -120,8 +137,8 @@ export function ThreadSubscribeButton({
   return (
     <div className="flex items-center gap-2">
       <Select
-        value={frequency ?? 'null'}
-        onValueChange={(v) => void setSubscription(v === 'null' ? null : v as SubscriptionFrequency)}
+        value={frequencyToValue(frequency)}
+        onValueChange={(v) => void setSubscription(valueToFrequency(v))}
         disabled={isSaving}
       >
         <SelectTrigger className="w-full justify-between rounded-card border-line/70">
@@ -132,7 +149,7 @@ export function ThreadSubscribeButton({
         </SelectTrigger>
         <SelectContent>
           {OPTIONS.map((option) => (
-            <SelectItem key={option.label} value={option.value ?? 'null'}>
+            <SelectItem key={option.label} value={frequencyToValue(option.value)}>
               {option.label}
             </SelectItem>
           ))}

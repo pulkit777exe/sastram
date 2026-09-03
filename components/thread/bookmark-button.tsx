@@ -19,9 +19,8 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
 
   useEffect(() => {
     checkBookmarkStatus({ threadId }).then((result) => {
-      if (result?.data?.isBookmarked !== undefined) {
-        setIsBookmarked(result.data.isBookmarked || false);
-      }
+      const bookmarked = result?.data?.isBookmarked;
+      if (typeof bookmarked === 'boolean') setIsBookmarked(bookmarked);
       setIsLoading(false);
     });
   }, [threadId]);
@@ -32,9 +31,11 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
       const result = await toggleBookmark({ threadId });
       if (result?.error) {
         toasts.error(result.error);
-      } else if (result?.data?.isBookmarked !== undefined) {
-        setIsBookmarked(result.data.isBookmarked || false);
-        toasts.success(result.data.isBookmarked ? 'Bookmarked' : 'Removed from bookmarks');
+      } else if (typeof result?.data?.isBookmarked === 'boolean') {
+        const bookmarked = result.data.isBookmarked;
+        setIsBookmarked(bookmarked);
+        if (bookmarked) toasts.success('Bookmarked');
+        else toasts.success('Removed from bookmarks');
       }
     } catch {
       toasts.error('Something went wrong');
@@ -43,25 +44,27 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
     }
   };
 
+  function renderBookmarkContent() {
+    if (isBookmarked) {
+      return (
+        <>
+          <AnimatedIcon icon={BookmarkCheck} className="h-4 w-4 fill-current" animateOnHover />
+          <span className="hidden sm:inline">Bookmarked</span>
+        </>
+      );
+    }
+    return (
+      <>
+        <AnimatedIcon icon={Bookmark} className="h-4 w-4" animateOnHover />
+        <span className="hidden sm:inline">Bookmark</span>
+      </>
+    );
+  }
+
   return (
     <div className="hover:scale-105 active:scale-95 transition-transform duration-100">
-      <Button
-        variant="outline"
-        onClick={handleToggle}
-        disabled={isLoading}
-        className={cn('gap-2', className)}
-      >
-        {isBookmarked ? (
-          <>
-            <AnimatedIcon icon={BookmarkCheck} className="h-4 w-4 fill-current" animateOnHover />
-            <span className="hidden sm:inline">Bookmarked</span>
-          </>
-        ) : (
-          <>
-            <AnimatedIcon icon={Bookmark} className="h-4 w-4" animateOnHover />
-            <span className="hidden sm:inline">Bookmark</span>
-          </>
-        )}
+      <Button variant="outline" onClick={handleToggle} disabled={isLoading} className={cn('gap-2', className)}>
+        {renderBookmarkContent()}
       </Button>
     </div>
   );

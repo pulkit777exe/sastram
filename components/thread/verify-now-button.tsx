@@ -28,6 +28,28 @@ export function VerifyNowButton({ threadId }: VerifyNowButtonProps) {
     toasts.success('Marked as verified — resolution score refreshed.');
   };
 
+  function getButtonStyles() {
+    if (verified) return 'bg-chart-2/10 text-chart-2 cursor-default hover:bg-chart-2/10';
+    return 'bg-chart-4/10 text-chart-4 hover:bg-chart-4/15';
+  }
+
+  function renderContent() {
+    if (verified) {
+      return (
+        <>
+          <Check size={12} />
+          Verified
+        </>
+      );
+    }
+    return (
+      <>
+        <RefreshCw size={12} className={isVerifying ? 'animate-spin' : ''} />
+        {isVerifying ? 'Verifying…' : 'Verify now'}
+      </>
+    );
+  }
+
   return (
     <Button
       variant="ghost"
@@ -36,22 +58,10 @@ export function VerifyNowButton({ threadId }: VerifyNowButtonProps) {
       disabled={isVerifying || verified}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-semibold transition-all duration-200',
-        verified
-          ? 'bg-chart-2/10 text-chart-2 cursor-default hover:bg-chart-2/10'
-          : 'bg-chart-4/10 text-chart-4 hover:bg-chart-4/15'
+        getButtonStyles()
       )}
     >
-      {verified ? (
-        <>
-          <Check size={12} />
-          Verified
-        </>
-      ) : (
-        <>
-          <RefreshCw size={12} className={isVerifying ? 'animate-spin' : ''} />
-          {isVerifying ? 'Verifying…' : 'Verify now'}
-        </>
-      )}
+      {renderContent()}
     </Button>
   );
 }

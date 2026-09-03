@@ -4,6 +4,8 @@ import { createContext, useContext, useState, useRef, useEffect, useCallback, ty
 import { X, PanelRightOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 const DetailsContext = createContext<{ open: boolean; setOpen: (v: boolean) => void } | null>(null);
 
 export function useDetails() {
@@ -33,30 +35,32 @@ export function ThreadDetailsPanel({ children }: { children: ReactNode }) {
 
   // Focus trap
   useEffect(() => {
-    if (!open || !panelRef.current) return;
-    const panel = panelRef.current;
+    if (!open) return;
+    if (!panelRef.current) return;
 
-    const handleTab = (e: KeyboardEvent) => {
+    function handleTab(e: KeyboardEvent) {
       if (e.key !== 'Tab') return;
-      const focusable = panel.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
+      const panelEl = panelRef.current;
+      if (!panelEl) return;
+      const focusable = panelEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
 
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
+      const isFirstFocused = document.activeElement === first;
+      const isLastFocused = document.activeElement === last;
+
+      if (e.shiftKey && isFirstFocused) {
+        e.preventDefault();
+        last.focus();
+        return;
       }
-    };
+
+      if (!e.shiftKey && isLastFocused) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
 
     document.addEventListener('keydown', handleTab);
     return () => document.removeEventListener('keydown', handleTab);

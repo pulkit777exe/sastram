@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils/cn';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import type { PollResults } from '@/modules/polls/types';
 
+const POLL_EXPIRY_TICK_MS = 30_000;
+
 interface PollDisplayProps {
   poll: {
     id: string;
@@ -131,11 +133,16 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
+    const id = setInterval(() => setNow(Date.now()), POLL_EXPIRY_TICK_MS);
     return () => clearInterval(id);
   }, []);
 
-  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= now;
+  function isPollExpired(expiresAt: Date | null, currentTime: number): boolean {
+    if (!expiresAt) return false;
+    return new Date(expiresAt).getTime() <= currentTime;
+  }
+
+  const isExpired = isPollExpired(poll.expiresAt, now);
   const showResults = hasVoted || !poll.isActive || isExpired;
 
   if (isLoading) {

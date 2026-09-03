@@ -19,6 +19,8 @@ import { inviteFriendToThread } from '@/modules/invitations/actions';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 
+const SHAKE_DURATION_MS = 300;
+
 
 interface InviteFriendButtonProps {
   threadId: string;
@@ -42,7 +44,7 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
     input.classList.remove('is-shaking');
     void (input as HTMLElement).offsetWidth;
     input.classList.add('is-shaking');
-    setTimeout(() => input.classList.remove('is-shaking'), 300);
+    setTimeout(() => input.classList.remove('is-shaking'), SHAKE_DURATION_MS);
   };
 
   async function handleInvite(e: React.FormEvent) {

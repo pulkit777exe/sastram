@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils/cn';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 
 const MAX_VISUAL_DEPTH = 4;
+const SHAKE_DURATION_MS = 300;
+const REPLY_INDENT_PX = 20;
 
 interface InlineReplyBoxProps {
   parentMessage: {
@@ -86,7 +88,7 @@ export function InlineReplyBox({
     input.classList.remove('is-shaking');
     void (input as HTMLElement).offsetWidth;
     input.classList.add('is-shaking');
-    setTimeout(() => input.classList.remove('is-shaking'), 300);
+    setTimeout(() => input.classList.remove('is-shaking'), SHAKE_DURATION_MS);
   };
 
   const handleSubmitWithShake = async () => {
@@ -96,10 +98,12 @@ export function InlineReplyBox({
     await handleSubmit();
   };
 
+  const replyIndent = visualDepth > 0 ? REPLY_INDENT_PX : 0;
+
   return (
     <div
       className="mt-2 animate-in slide-in-from-top-1 fade-in duration-200"
-      style={{ marginLeft: visualDepth > 0 ? `${20}px` : 0 }}
+      style={{ marginLeft: replyIndent }}
     >
         <div className="border border-brand/20 dark:border-brand/25 rounded-card p-3 bg-brand/10 dark:bg-brand/10 shadow-linear-sm">
         <div className="flex items-center justify-between mb-2">

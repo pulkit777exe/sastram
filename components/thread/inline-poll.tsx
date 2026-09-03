@@ -47,8 +47,8 @@ export function InlinePoll({ threadId, canManagePoll: _canManagePoll, onPollCrea
       toasts.error('Please add a question to your poll');
       return;
     }
-    
-const validOptions = options.filter(option => option.trim().length > 0);
+
+    const validOptions = options.filter((option) => option.trim().length > 0);
     if (validOptions.length < MIN_OPTIONS) {
       toasts.error(`Please add at least ${MIN_OPTIONS} options to your poll`);
       return;
@@ -60,12 +60,12 @@ const validOptions = options.filter(option => option.trim().length > 0);
     }
 
     setIsSaving(true);
-    
+
     try {
       const result = await createPollAction({
         threadId,
         question,
-        options: options.filter(opt => opt.trim().length > 0),
+        options: validOptions,
         expiresAt: expiresAt ? new Date(expiresAt) : undefined,
       });
       
@@ -88,6 +88,9 @@ const validOptions = options.filter(option => option.trim().length > 0);
   };
 
   if (!isOpen) return null;
+
+  const hasMissingRequiredOption = options.slice(0, MIN_OPTIONS).some((opt) => !opt.trim());
+  const isCreateDisabled = isSaving || !question.trim() || hasMissingRequiredOption;
 
   return (
     <div className="space-y-4 p-4 bg-surface rounded-control shadow-linear-lg border border-line">
@@ -117,7 +120,7 @@ const validOptions = options.filter(option => option.trim().length > 0);
                 onChange={(e) => handleOptionChange(index, e.target.value)}
                 placeholder={`Option ${index + 1}`}
               />
-              {index >= 2 && (
+              {index >= MIN_OPTIONS && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -152,11 +155,7 @@ const validOptions = options.filter(option => option.trim().length > 0);
         </div>
         
         <div className="flex items-center justify-between pt-2">
-          <Button
-            className="w-full"
-            onClick={createPoll}
-            disabled={isSaving || !question.trim() || options.some((opt, i) => i < 2 && !opt.trim())}
-          >
+          <Button className="w-full" onClick={createPoll} disabled={isCreateDisabled}>
             {isSaving ? 'Creating...' : 'Create Poll'}
           </Button>
         </div>
