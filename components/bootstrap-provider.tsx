@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { UserActivity } from '@prisma/client';
@@ -73,7 +65,7 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const mountedRef = useRef(true);
 
-  const isPublicPage = useCallback(() => {
+  const isPublicPage = useCallback((): boolean => {
     if (typeof window === 'undefined') return false;
     return window.location.pathname.startsWith('/login');
   }, []);
@@ -138,67 +130,47 @@ export function BootstrapProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchBootstrap]);
 
-  // ---------------------------------------------------------------------------
-  // Notification mutators (stable — no deps that change)
-  // ---------------------------------------------------------------------------
-  const setNotificationCount = useCallback((count: number) => {
+  function setNotificationCount(count: number) {
     setUnreadNotificationCountRaw(Math.max(0, count));
-  }, []);
+  }
 
-  const incrementNotificationCount = useCallback((delta: number = 1) => {
+  function incrementNotificationCount(delta: number = 1) {
     setUnreadNotificationCountRaw((prev) => Math.max(0, prev + delta));
-  }, []);
+  }
 
-  const decrementNotificationCount = useCallback((delta: number = 1) => {
+  function decrementNotificationCount(delta: number = 1) {
     setUnreadNotificationCountRaw((prev) => Math.max(0, prev - delta));
-  }, []);
+  }
 
-  // ---------------------------------------------------------------------------
-  // Shell mutators
-  // ---------------------------------------------------------------------------
-  const setData = useCallback((payload: BootstrapData) => {
+  function setData(payload: BootstrapData) {
     const { unreadNotificationCount: _count, ...shell } = payload;
     setShellData(shell);
     setUnreadNotificationCountRaw(payload.unreadNotificationCount);
-  }, []);
+  }
 
-  const updateUser = useCallback((user: Partial<BootstrapUser>) => {
+  function updateUser(user: Partial<BootstrapUser>) {
     setShellData((prev) => (prev ? { ...prev, user: { ...prev.user, ...user } } : prev));
-  }, []);
+  }
 
-  const invalidate = useCallback(async () => {
+  async function invalidate() {
     await fetchBootstrap();
-  }, [fetchBootstrap]);
+  }
 
-  // ---------------------------------------------------------------------------
-  // Memoized context values — new object reference only when deps change
-  // ---------------------------------------------------------------------------
-  const notificationValue = useMemo(
-    () => ({
-      unreadNotificationCount,
-      setNotificationCount,
-      incrementNotificationCount,
-      decrementNotificationCount,
-    }),
-    [
-      unreadNotificationCount,
-      setNotificationCount,
-      incrementNotificationCount,
-      decrementNotificationCount,
-    ]
-  );
+  const notificationValue = {
+    unreadNotificationCount,
+    setNotificationCount,
+    incrementNotificationCount,
+    decrementNotificationCount,
+  };
 
-  const bootstrapValue = useMemo(
-    () => ({
-      data: shellData,
-      isLoading,
-      error,
-      setData,
-      updateUser,
-      invalidate,
-    }),
-    [shellData, isLoading, error, setData, updateUser, invalidate]
-  );
+  const bootstrapValue = {
+    data: shellData,
+    isLoading,
+    error,
+    setData,
+    updateUser,
+    invalidate,
+  };
 
   return (
     <NotificationContext.Provider value={notificationValue}>

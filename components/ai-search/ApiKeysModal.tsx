@@ -12,14 +12,30 @@ interface ApiKeysModalProps {
   onKeysChange: (hasAll: boolean) => void;
 }
 
+// UUID v4 pattern: 8-4-4-4-12 hex chars
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TAVILY_PREFIX = 'tvly-';
+const GEMINI_MIN_LENGTH = 20;
+
+function isValidExaKey(key: string): boolean {
+  return UUID_PATTERN.test(key);
+}
+
+function isValidTavilyKey(key: string): boolean {
+  return key.startsWith(TAVILY_PREFIX) && key.length > 10;
+}
+
+function isValidGeminiKey(key: string): boolean {
+  return (key.startsWith('AIza') || key.startsWith('AQ')) && key.length >= GEMINI_MIN_LENGTH;
+}
+
 const KEY_CONFIGS = [
   {
     id: 'exa',
     label: 'Exa API Key',
     storageKey: 'sastram_exa_key',
     placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-    validate: (key: string) =>
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key),
+    validate: isValidExaKey,
     description: 'Get your key from exa.ai',
   },
   {
@@ -27,7 +43,7 @@ const KEY_CONFIGS = [
     label: 'Tavily API Key',
     storageKey: 'sastram_tavily_key',
     placeholder: 'tvly-xxxxxxxxxxxxx',
-    validate: (key: string) => key.startsWith('tvly-') && key.length > 10,
+    validate: isValidTavilyKey,
     description: 'Get your key from tavily.com',
   },
   {
@@ -35,8 +51,7 @@ const KEY_CONFIGS = [
     label: 'Gemini API Key',
     storageKey: 'sastram_gemini_key',
     placeholder: 'AIza... or AQ...',
-    validate: (key: string) =>
-      (key.startsWith('AIza') || key.startsWith('AQ')) && key.length >= 20,
+    validate: isValidGeminiKey,
     description: 'Get your key from aistudio.google.com',
   },
 ];

@@ -38,19 +38,191 @@ export const SEARCH_PHASES: { id: string; label: string }[] = [
   { id: 'synthesizing', label: 'Synthesizing' },
 ];
 
-const PHASE_SLOW_MS: Record<string, number> = {
+export const PHASE_SLOW_MS: Record<string, number> = {
   searching: 12_000,
   reading: 12_000,
   crossref: 12_000,
   synthesizing: 25_000,
 };
 
-const PHASE_TO_STEP: Record<string, number> = {
+export const PHASE_TO_STEP: Record<string, number> = {
   searching: 0,
   reading: 1,
   crossref: 2,
   synthesizing: 3,
 };
+
+// ------------------------------------------------------------------
+// Helpers — each <30 lines, named for KISS readability.
+// Single owner for constants above: use-search-stream imports from here.
+// ------------------------------------------------------------------
+
+export function toApiMessage(m: ChatMessage): { role: string; content: string } {
+  return { role: m.role, content: m.text || m.query };
+}
+
+export function buildConversationHistory(messages: ChatMessage[]): { role: string; content: string }[] {
+  const result: { role: string; content: string }[] = [];
+  const start = Math.max(0, messages.length - 10);
+  for (let i = start; i < messages.length; i++) {
+    result.push(toApiMessage(messages[i]!));
+  }
+  return result;
+}
+
+export function createUserMessage(query: string): ChatMessage {
+  return { id: crypto.randomUUID(), role: 'user', query, timestamp: Date.now() };
+}
+
+export function createAssistantMessage(query: string): ChatMessage {
+  return { id: crypto.randomUUID(), role: 'assistant', query, timestamp: Date.now() };
+}
+
+export function createStreamingMessage(id: string, query: string): ChatMessage {
+  return { id, role: 'assistant', query, timestamp: Date.now() };
+}
+
+export function validateQuery(q: string): string | null {
+  const trimmed = q.trim();
+  if (!trimmed || trimmed.length < 3) {
+    toasts.error('Query too short', 'Please enter at least 3 characters.');
+    return null;
+  }
+  if (trimmed.length > 500) {
+    toasts.error('Query too long', 'Please keep your query under 500 characters.');
+    return null;
+  }
+  return trimmed;
+}
+
+export function getApiKeysOrNotify(): { exa: string; tavily: string; gemini: string } | null {
+  const keys = getStoredApiKeys();
+  if (!keys.exa || !keys.tavily || !keys.gemini) {
+    toasts.error('Please configure your API keys first', 'Click the API Keys button to get started.');
+    return null;
+  }
+  return keys as { exa: string; tavily: string; gemini: string };
+}
+
+// ViewTransition in React 19 only animates async state changes.
+// Wrapping state updates in startTransition is what lets the
+// <ViewTransition> wrappers in SearchField / InputBar / SynthesisCard fire.
+// This helper keeps that premature optimization explicit and documented
+// instead of sprinkling raw startTransition calls through the hook.
+// We preserve the behavior but make the intent obvious; do not delete.
+export function triggerViewTransition(
+  startTransition: (fn: () => void) => void,
+  updater: () => void
+): void {
+  startTransition(updater);
+}
+
+export function getSlowLimit(phase: string): number {
+  return PHASE_SLOW_MS[phase] ?? 15_000;
+}
+
+export function parseSSELine(data: string): {
+  phase: SSEPhase | 'blocked' | 'done' | 'error';
+  sources?: Source[];
+  synthesis?: SynthesisResult;
+  followUps?: string[];
+  message?: string;
+  sessionId?: string;
+  suggestion?: string;
+} | null {
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+export function buildRequestBody(
+  query: string,
+  config: SearchConfig,
+  keys: { exa: string; tavily: string; gemini: string },
+  conversationHistory: { role: string; content: string }[],
+  sessionId?: string
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    query,
+    config,
+    keys: { exa: keys.exa || undefined, tavily: keys.tavily || undefined, gemini: keys.gemini || undefined },
+    conversationHistory,
+  };
+  if (sessionId) body.sessionId = sessionId;
+  return body;
+}
+
+export function handleStatusError(status: number, response: Response, ctx: { setAppState: (s: AppState) => void; setErrorMessage: (s: string) => void; setStreamingMessage: (s: ChatMessage | null) => void; clearStreaming: () => void }): boolean {
+  if (status === 401) { toasts.error('Authentication required', 'Please sign in again.'); ctx.setAppState('idle'); ctx.clearStreaming(); return true; }
+  if (status === 415) { ctx.setErrorMessage('Unsupported request format.'); ctx.setAppState('error'); ctx.clearStreaming(); return true; }
+  if (status === 429) {
+    const retryAfter = response.headers.get('Retry-After');
+    toasts.error('Rate limit exceeded', retryAfter ? `Please wait ${retryAfter} seconds.` : 'Please wait a moment before searching again.');
+    ctx.setAppState('idle'); ctx.clearStreaming(); return true;
+  }
+  if (status === 503) { toasts.error('Service unavailable', 'AI features are temporarily over quota. Try again later.'); ctx.setAppState('error'); ctx.setErrorMessage('AI features are temporarily unavailable due to high demand.'); ctx.clearStreaming(); return true; }
+  return false;
+}
+
+export function buildFinalizedMessage(
+  base: ChatMessage,
+  event: { synthesis?: SynthesisResult; sources?: Source[]; followUps?: string[] }
+): ChatMessage {
+  return {
+    ...base,
+    text: event.synthesis?.text || event.synthesis?.content || base.text,
+    sources: event.sources ?? base.sources,
+    citations: event.synthesis?.citations,
+    followUps: event.followUps,
+    conflictData: event.synthesis?.conflictData,
+    queryType: event.synthesis?.queryType,
+    sourceCount: event.synthesis?.sourceCount,
+  };
+}
+
+function handleProgressPhase(phase: string, sources: Source[] | undefined, ctx: { streamingDataRef: React.MutableRefObject<ChatMessage | null>; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; setCurrentStep: (n: number) => void; setSlowHint: (b: boolean) => void; armSlowTimer: (p: string) => void }): void {
+  ctx.setSlowHint(false); ctx.armSlowTimer(phase); ctx.setCurrentStep(PHASE_TO_STEP[phase] ?? 0);
+  if (ctx.streamingDataRef.current && sources) { ctx.streamingDataRef.current = { ...ctx.streamingDataRef.current, sources }; ctx.setStreamingMessage((prev) => (prev ? { ...prev, sources } : prev)); }
+}
+
+function handleDonePhase(event: { sessionId?: string; synthesis?: SynthesisResult; sources?: Source[]; followUps?: string[] }, ctx: { streamingDataRef: React.MutableRefObject<ChatMessage | null>; sessionIdRef: React.MutableRefObject<string | undefined>; setCurrentSessionId: (s: string | undefined) => void; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>; setCurrentStep: (n: number) => void; setAppState: (s: AppState) => void; setIsStreaming: (b: boolean) => void; phaseTimerRef: React.MutableRefObject<Set<ReturnType<typeof setTimeout>>> }): void {
+  ctx.phaseTimerRef.current.forEach(clearTimeout); ctx.phaseTimerRef.current.clear(); ctx.setCurrentStep(SEARCH_PHASES.length);
+  if (event.sessionId) { ctx.sessionIdRef.current = event.sessionId; ctx.setCurrentSessionId(event.sessionId); }
+  if (ctx.streamingDataRef.current) { const finalized = buildFinalizedMessage(ctx.streamingDataRef.current, event); ctx.streamingDataRef.current = null; ctx.setStreamingMessage(null); ctx.setMessages((msgs) => [...msgs, finalized]); }
+  ctx.setAppState('results'); ctx.setIsStreaming(false);
+}
+
+function handleBlockedPhase(message: string | undefined, ctx: { streamingDataRef: React.MutableRefObject<ChatMessage | null>; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; setErrorMessage: (s: string) => void; setAppState: (s: AppState) => void; setIsStreaming: (b: boolean) => void; setTaskFailed: (b: boolean) => void }): void {
+  ctx.setTaskFailed(true); ctx.setErrorMessage(message || 'Search blocked by quota or usage cap.'); ctx.streamingDataRef.current = null; ctx.setStreamingMessage(null); ctx.setAppState('blocked'); ctx.setIsStreaming(false);
+}
+function handleStreamErrorPhase(message: string | undefined, ctx: { streamingDataRef: React.MutableRefObject<ChatMessage | null>; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; setErrorMessage: (s: string) => void; setAppState: (s: AppState) => void; setIsStreaming: (b: boolean) => void; setTaskFailed: (b: boolean) => void }): void {
+  ctx.setTaskFailed(true); ctx.setErrorMessage(message || 'Search failed.'); ctx.streamingDataRef.current = null; ctx.setStreamingMessage(null); ctx.setAppState('error'); ctx.setIsStreaming(false); toasts.error('Search failed');
+}
+
+function dispatchStreamEvent(event: ReturnType<typeof parseSSELine> & object, ctx: { streamingDataRef: React.MutableRefObject<ChatMessage | null>; sessionIdRef: React.MutableRefObject<string | undefined>; phaseTimerRef: React.MutableRefObject<Set<ReturnType<typeof setTimeout>>>; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>; setCurrentSessionId: (s: string | undefined) => void; setCurrentStep: (n: number) => void; setAppState: (s: AppState) => void; setIsStreaming: (b: boolean) => void; setSlowHint: (b: boolean) => void; setTaskFailed: (b: boolean) => void; setErrorMessage: (s: string) => void; armSlowTimer: (p: string) => void }): void {
+  if (!event) return;
+  switch (event.phase) {
+    case 'searching': case 'reading': case 'crossref': case 'synthesizing':
+      handleProgressPhase(event.phase, event.sources, { streamingDataRef: ctx.streamingDataRef, setStreamingMessage: ctx.setStreamingMessage, setCurrentStep: ctx.setCurrentStep, setSlowHint: ctx.setSlowHint, armSlowTimer: ctx.armSlowTimer }); break;
+    case 'done': handleDonePhase(event as never, { streamingDataRef: ctx.streamingDataRef, sessionIdRef: ctx.sessionIdRef, setCurrentSessionId: ctx.setCurrentSessionId, setStreamingMessage: ctx.setStreamingMessage, setMessages: ctx.setMessages, setCurrentStep: ctx.setCurrentStep, setAppState: ctx.setAppState, setIsStreaming: ctx.setIsStreaming, phaseTimerRef: ctx.phaseTimerRef }); break;
+    case 'blocked': handleBlockedPhase(event.message, { streamingDataRef: ctx.streamingDataRef, setStreamingMessage: ctx.setStreamingMessage, setErrorMessage: ctx.setErrorMessage, setAppState: ctx.setAppState, setIsStreaming: ctx.setIsStreaming, setTaskFailed: ctx.setTaskFailed }); break;
+    case 'error': handleStreamErrorPhase(event.message, { streamingDataRef: ctx.streamingDataRef, setStreamingMessage: ctx.setStreamingMessage, setErrorMessage: ctx.setErrorMessage, setAppState: ctx.setAppState, setIsStreaming: ctx.setIsStreaming, setTaskFailed: ctx.setTaskFailed }); break;
+  }
+}
+async function handleStream(body: ReadableStream<Uint8Array>, ctx: { streamingDataRef: React.MutableRefObject<ChatMessage | null>; sessionIdRef: React.MutableRefObject<string | undefined>; phaseTimerRef: React.MutableRefObject<Set<ReturnType<typeof setTimeout>>>; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>; setCurrentSessionId: (s: string | undefined) => void; setCurrentStep: (n: number) => void; setAppState: (s: AppState) => void; setIsStreaming: (b: boolean) => void; setSlowHint: (b: boolean) => void; setTaskFailed: (b: boolean) => void; setErrorMessage: (s: string) => void; armSlowTimer: (p: string) => void }): Promise<void> {
+  const reader = body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+  while (true) { const { done, value } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); const { events, remaining } = parseSSE(buffer); buffer = remaining; for (const { data } of events) { const event = parseSSELine(data); if (!event) continue; dispatchStreamEvent(event, ctx); } }
+}
+
+function handleCatchError(error: unknown, ctx: { setErrorMessage: (s: string) => void; setIsOffline: (b: boolean) => void; setAppState: (s: AppState) => void; setIsStreaming: (b: boolean) => void; setTaskFailed: (b: boolean) => void; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; streamingDataRef: React.MutableRefObject<ChatMessage | null>; phaseTimerRef: React.MutableRefObject<Set<ReturnType<typeof setTimeout>>> }): void {
+  ctx.phaseTimerRef.current.forEach(clearTimeout); ctx.phaseTimerRef.current.clear(); ctx.setTaskFailed(true);
+  if (error instanceof DOMException && error.name === 'AbortError') ctx.setErrorMessage('Request timed out. Please try again with a simpler query.');
+  else if (typeof navigator !== 'undefined' && !navigator.onLine) { ctx.setIsOffline(true); ctx.setErrorMessage('You appear to be offline. Check your connection and try again.'); }
+  else ctx.setErrorMessage('Network error. Please check your connection and try again.');
+  ctx.setAppState('error'); ctx.setIsStreaming(false); ctx.streamingDataRef.current = null; ctx.setStreamingMessage(null); toasts.error('Search failed');
+}
 
 /**
  * Deep module — one interface, lots of implementation behind the seam.
@@ -78,37 +250,22 @@ export function useSearchConversation(initialQuery: string = '') {
   const sessionIdRef = useRef<string | undefined>(undefined);
   const streamingDataRef = useRef<ChatMessage | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
-  // mirror messages to avoid stale closure in run — sync after render
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
   const run = useCallback(
     async (q: string, config: SearchConfig, overrideSessionId?: string) => {
-      const trimmed = q.trim();
-      if (!trimmed || trimmed.length < 3) {
-        toasts.error('Query too short', 'Please enter at least 3 characters.');
-        return;
-      }
-      if (trimmed.length > 500) {
-        toasts.error('Query too long', 'Please keep your query under 500 characters.');
-        return;
-      }
-
-      const keys = getStoredApiKeys();
-      if (!keys.exa || !keys.tavily || !keys.gemini) {
-        toasts.error('Please configure your API keys first', 'Click the API Keys button to get started.');
-        return;
-      }
+      const trimmed = validateQuery(q);
+      if (!trimmed) return;
+      const keys = getApiKeysOrNotify();
+      if (!keys) return;
 
       setQuery(trimmed);
       setLastConfig(config);
       setErrorMessage('');
-      // Idle → active flip is wrapped in startTransition so React schedules it
-      // asynchronously. That's what lets the <ViewTransition> wrappers in
-      // SearchField / InputBar / SynthesisCard actually fire — the canary
-      // <ViewTransition> only animates async state changes.
-      startTransition(() => {
+
+      triggerViewTransition(startTransition, () => {
         setAppState('loading');
         setIsStreaming(true);
         setSlowHint(false);
@@ -117,28 +274,14 @@ export function useSearchConversation(initialQuery: string = '') {
         if (typeof navigator !== 'undefined') setIsOffline(!navigator.onLine);
       });
 
-      const userMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        query: trimmed,
-        timestamp: Date.now(),
-      };
-      // First user bubble mount also goes through the transition so the
-      // shared-element morph with the idle composer fires.
-      startTransition(() => {
+      const userMsg = createUserMessage(trimmed);
+      triggerViewTransition(startTransition, () => {
         setMessages((prev) => [...prev, userMsg]);
       });
 
-      const assistantMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        query: trimmed,
-        timestamp: Date.now(),
-      };
+      const assistantMsg = createAssistantMessage(trimmed);
       streamingDataRef.current = assistantMsg;
-      // First synthesis card reveal goes through the transition so the
-      // <ViewTransition name="ai-search-first-synthesis"> fires onEnter.
-      startTransition(() => {
+      triggerViewTransition(startTransition, () => {
         setStreamingMessage(assistantMsg);
       });
 
@@ -148,29 +291,14 @@ export function useSearchConversation(initialQuery: string = '') {
       let slowTimer: ReturnType<typeof setTimeout> | null = null;
       const armSlowTimer = (phase: string) => {
         if (slowTimer) clearTimeout(slowTimer);
-        const limit = PHASE_SLOW_MS[phase] ?? 15_000;
-        slowTimer = setTimeout(() => setSlowHint(true), limit);
+        slowTimer = setTimeout(() => setSlowHint(true), getSlowLimit(phase));
       };
       armSlowTimer('searching');
 
       try {
-        const conversationHistory = messagesRef.current.slice(-10).map((m) => ({
-          role: m.role,
-          content: m.text || m.query,
-        }));
-
-        const body: Record<string, unknown> = {
-          query: trimmed,
-          config,
-          keys: {
-            exa: keys.exa || undefined,
-            tavily: keys.tavily || undefined,
-            gemini: keys.gemini || undefined,
-          },
-          conversationHistory,
-        };
+        const conversationHistory = buildConversationHistory(messagesRef.current);
         const effectiveSessionId = overrideSessionId ?? sessionIdRef.current;
-        if (effectiveSessionId) body.sessionId = effectiveSessionId;
+        const body = buildRequestBody(trimmed, config, keys, conversationHistory, effectiveSessionId);
 
         const response = await fetch('/api/ai/forum-search', {
           method: 'POST',
@@ -182,39 +310,17 @@ export function useSearchConversation(initialQuery: string = '') {
         clearTimeout(clientTimeout);
         if (slowTimer) clearTimeout(slowTimer);
 
-        if (response.status === 401) {
-          toasts.error('Authentication required', 'Please sign in again.');
-          setAppState('idle');
-          streamingDataRef.current = null;
-          setStreamingMessage(null);
-          return;
-        }
-        if (response.status === 415) {
-          setErrorMessage('Unsupported request format.');
-          setAppState('error');
-          streamingDataRef.current = null;
-          setStreamingMessage(null);
-          return;
-        }
-        if (response.status === 429) {
-          const retryAfter = response.headers.get('Retry-After');
-          toasts.error(
-            'Rate limit exceeded',
-            retryAfter ? `Please wait ${retryAfter} seconds.` : 'Please wait a moment before searching again.'
-          );
-          setAppState('idle');
-          streamingDataRef.current = null;
-          setStreamingMessage(null);
-          return;
-        }
-        if (response.status === 503) {
-          toasts.error('Service unavailable', 'AI features are temporarily over quota. Try again later.');
-          setAppState('error');
-          setErrorMessage('AI features are temporarily unavailable due to high demand.');
-          streamingDataRef.current = null;
-          setStreamingMessage(null);
-          return;
-        }
+        const statusHandled = handleStatusError(response.status, response, {
+          setAppState,
+          setErrorMessage,
+          setStreamingMessage,
+          clearStreaming: () => {
+            streamingDataRef.current = null;
+            setStreamingMessage(null);
+          },
+        });
+        if (statusHandled) return;
+
         if (!response.ok || !response.body) {
           const data = await response.json().catch(() => ({}));
           const msg =
@@ -229,115 +335,34 @@ export function useSearchConversation(initialQuery: string = '') {
           return;
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          const { events, remaining } = parseSSE(buffer);
-          buffer = remaining;
-
-          for (const { data } of events) {
-            let event: {
-              phase: SSEPhase | 'blocked';
-              sources?: Source[];
-              synthesis?: SynthesisResult;
-              followUps?: string[];
-              message?: string;
-              sessionId?: string;
-              suggestion?: string;
-            };
-            try {
-              event = JSON.parse(data);
-            } catch {
-              continue;
-            }
-
-            switch (event.phase) {
-              case 'searching':
-              case 'reading':
-              case 'crossref':
-              case 'synthesizing': {
-                setSlowHint(false);
-                armSlowTimer(event.phase);
-                setCurrentStep(PHASE_TO_STEP[event.phase] ?? 0);
-                const sources = event.sources;
-                if (streamingDataRef.current && sources) {
-                  streamingDataRef.current = { ...streamingDataRef.current, sources };
-                  setStreamingMessage((prev) => (prev ? { ...prev, sources } : prev));
-                }
-                break;
-              }
-              case 'done':
-                phaseTimerRef.current.forEach(clearTimeout);
-                phaseTimerRef.current.clear();
-                setCurrentStep(SEARCH_PHASES.length);
-                if (event.sessionId) {
-                  sessionIdRef.current = event.sessionId;
-                  setCurrentSessionId(event.sessionId);
-                }
-
-                if (streamingDataRef.current) {
-                  const finalized: ChatMessage = {
-                    ...streamingDataRef.current,
-                    text: event.synthesis?.text || event.synthesis?.content || streamingDataRef.current.text,
-                    sources: event.sources ?? streamingDataRef.current.sources,
-                    citations: event.synthesis?.citations,
-                    followUps: event.followUps,
-                    conflictData: event.synthesis?.conflictData,
-                    queryType: event.synthesis?.queryType,
-                    sourceCount: event.synthesis?.sourceCount,
-                  };
-                  streamingDataRef.current = null;
-                  setStreamingMessage(null);
-                  setMessages((msgs) => [...msgs, finalized]);
-                }
-                setAppState('results');
-                setIsStreaming(false);
-                break;
-              case 'blocked':
-                setTaskFailed(true);
-                setErrorMessage(event.message || 'Search blocked by quota or usage cap.');
-                streamingDataRef.current = null;
-                setStreamingMessage(null);
-                setAppState('blocked');
-                setIsStreaming(false);
-                break;
-              case 'error':
-                setTaskFailed(true);
-                setErrorMessage(event.message || 'Search failed.');
-                streamingDataRef.current = null;
-                setStreamingMessage(null);
-                setAppState('error');
-                setIsStreaming(false);
-                toasts.error('Search failed');
-                break;
-            }
-          }
-        }
+        await handleStream(response.body, {
+          streamingDataRef,
+          sessionIdRef,
+          phaseTimerRef,
+          setStreamingMessage,
+          setMessages,
+          setCurrentSessionId,
+          setCurrentStep,
+          setAppState,
+          setIsStreaming,
+          setSlowHint,
+          setTaskFailed,
+          setErrorMessage,
+          armSlowTimer,
+        });
       } catch (error) {
         clearTimeout(clientTimeout);
         if (slowTimer) clearTimeout(slowTimer);
-        phaseTimerRef.current.forEach(clearTimeout);
-        phaseTimerRef.current.clear();
-        setTaskFailed(true);
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          setErrorMessage('Request timed out. Please try again with a simpler query.');
-        } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          setIsOffline(true);
-          setErrorMessage('You appear to be offline. Check your connection and try again.');
-        } else {
-          setErrorMessage('Network error. Please check your connection and try again.');
-        }
-        setAppState('error');
-        setIsStreaming(false);
-        streamingDataRef.current = null;
-        setStreamingMessage(null);
-        toasts.error('Search failed');
+        handleCatchError(error, {
+          setErrorMessage,
+          setIsOffline,
+          setAppState,
+          setIsStreaming,
+          setTaskFailed,
+          setStreamingMessage,
+          streamingDataRef,
+          phaseTimerRef,
+        });
       }
     },
     []

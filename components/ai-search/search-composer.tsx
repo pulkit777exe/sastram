@@ -6,7 +6,7 @@ import { SearchInputBar } from './SearchInputBar';
 import { ChatMessageList } from './ChatMessageList';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_CONFIG } from './use-search-conversation';
-import { useCallback, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import type { SearchConfig } from '@/modules/ai-search/types';
 import type { RetryStyle, FeedbackType } from './StreamingText';
 import { SaiViewTransition } from '@/components/ui/view-transition';
@@ -60,10 +60,9 @@ function SearchField({ initialQuery }: { initialQuery: string }) {
   const {
     actions: { run },
   } = useSearch();
-  const onSearch = useCallback(
-    (q: string, cfg: SearchConfig) => run(q, cfg),
-    [run]
-  );
+  function onSearch(q: string, cfg: SearchConfig) {
+    run(q, cfg);
+  }
   return (
     <SaiViewTransition name={COMPOSER_VT_NAME_IDLE}>
       <div className="relative w-full max-w-2xl mb-8">
@@ -108,19 +107,15 @@ function MessageList() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
 
-  const handleFollowUp = useCallback(
-    (followUp: string) => run(followUp, lastConfig),
-    [run, lastConfig]
-  );
-  const handleRetry = useCallback(
-    (style: RetryStyle) => {
-      if (!query) return;
-      const styled = style === 'same' ? query : `${query} (Please provide a ${style} response)`;
-      run(styled, lastConfig);
-    },
-    [query, lastConfig, run]
-  );
-  const handleFeedback = useCallback((_type: FeedbackType, _reason?: string) => {}, []);
+  function handleFollowUp(followUp: string) {
+    run(followUp, lastConfig);
+  }
+  function handleRetry(style: RetryStyle) {
+    if (!query) return;
+    const styled = style === 'same' ? query : `${query} (Please provide a ${style} response)`;
+    run(styled, lastConfig);
+  }
+  function handleFeedback(_type: FeedbackType, _reason?: string) {}
 
   // Use derived isChatActive from context — not raw prop
   return (

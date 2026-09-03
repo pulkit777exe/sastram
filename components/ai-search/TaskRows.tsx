@@ -137,6 +137,12 @@ function StatusPill({ status }: { status: TaskStatus }) {
   return null;
 }
 
+function getTaskBorderRadius(isList: boolean, isOpen: boolean): number {
+  if (isList) return 0;
+  if (isOpen) return 14;
+  return 22;
+}
+
 export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
   const [openRows, setOpenRows] = useState<Record<string, boolean>>({});
   const list = variant === 'List';
@@ -159,7 +165,7 @@ export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
               list ? 'border-b border-line last:border-0' : 'bg-surface shadow-card'
             }`}
             style={{
-              borderRadius: list ? 0 : open ? 14 : 22,
+              borderRadius: getTaskBorderRadius(list, open),
               animation: `fade-up 450ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both`,
             }}
           >

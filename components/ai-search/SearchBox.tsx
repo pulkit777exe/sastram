@@ -34,8 +34,11 @@ const SOURCE_FILTERS = [
   { value: 'docs', label: 'Official Docs' },
 ] as const;
 
+// Matches a trailing slash command at end of input, e.g. " /compare"
+const SLASH_COMMAND_PATTERN = /(^|\s)(\/)([\w-]*)$/;
+
 function parseToken(draft: string): { kind: 'slash'; query: string; start: number } | null {
-  const match = /(^|\s)(\/)([\w-]*)$/.exec(draft);
+  const match = SLASH_COMMAND_PATTERN.exec(draft);
   if (!match) return null;
   return {
     kind: 'slash',
@@ -43,6 +46,12 @@ function parseToken(draft: string): { kind: 'slash'; query: string; start: numbe
     start: match.index + match[1].length,
   };
 }
+
+const DRAFT_MAX_LENGTH = 500;
+const DRAFT_WARNING_THRESHOLD = 400;
+const INPUT_MIN_HEIGHT = 28;
+const INPUT_MAX_HEIGHT = 120;
+const INLINE_WIDTH_OFFSET = 16;
 
 export function SearchBox({
   onSearch,
@@ -84,15 +93,15 @@ export function SearchBox({
     const modelButton = modelRef.current;
     if (!input || !controls || !measure || !modelButton) return;
 
-    const fixedWidth = 28 * 2 + modelButton.offsetWidth;
-    const inlineWidth = controls.clientWidth - fixedWidth - 16;
+    const fixedWidth = INPUT_MIN_HEIGHT * 2 + modelButton.offsetWidth;
+    const inlineWidth = controls.clientWidth - fixedWidth - INLINE_WIDTH_OFFSET;
     const needsFullWidth = draft.includes('\n') || measure.offsetWidth + 8 > inlineWidth;
     if (needsFullWidth !== expanded) setExpanded(needsFullWidth);
 
     input.style.height = '0px';
     const content = input.scrollHeight;
-    input.style.height = `${Math.min(Math.max(content, 28), 120)}px`;
-    input.style.overflowY = content > 120 ? 'auto' : 'hidden';
+    input.style.height = `${Math.min(Math.max(content, INPUT_MIN_HEIGHT), INPUT_MAX_HEIGHT)}px`;
+    input.style.overflowY = content > INPUT_MAX_HEIGHT ? 'auto' : 'hidden';
   }, [draft, expanded]);
 
   const pick = (row: { name: string }) => {
@@ -101,7 +110,8 @@ export function SearchBox({
     inputRef.current?.focus();
   };
 
-  const canSend = draft.trim().length >= 3 && !isLoading;
+  const MIN_QUERY_LENGTH = 3;
+  const canSend = draft.trim().length >= MIN_QUERY_LENGTH && !isLoading;
 
   const send = () => {
     if (!canSend) return;
@@ -237,7 +247,7 @@ export function SearchBox({
               rows={1}
               value={draft}
               onChange={(e) => {
-                setDraft(e.target.value.substring(0, 500));
+                setDraft(e.target.value.substring(0, DRAFT_MAX_LENGTH));
                 setDismissed(false);
                 setModelOpen(false);
               }}
@@ -395,8 +405,10 @@ export function SearchBox({
         </div>
       </div>
 
-      {!compact && draft.length > 400 && (
-        <p className="text-xs text-ink-2 mt-1 text-right">{draft.length}/500</p>
+      {!compact && draft.length > DRAFT_WARNING_THRESHOLD && (
+        <p className="text-xs text-ink-2 mt-1 text-right">
+          {draft.length}/{DRAFT_MAX_LENGTH}
+        </p>
       )}
     </div>
   );

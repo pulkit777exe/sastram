@@ -61,7 +61,13 @@ function SearchPageInner({ initialQuery }: { initialQuery: string }) {
 export function SearchPage({ user }: SearchPageProps) {
   void user;
   const searchParams = useSearchParams();
-  const initialQuery = searchParams.get('q') ?? '';
+  const rawQuery = searchParams.get('q');
+  let initialQuery: string;
+  if (rawQuery !== null) {
+    initialQuery = rawQuery;
+  } else {
+    initialQuery = '';
+  }
   // Provider lifts state — same UI works with any provider impl (dependency injection)
   return (
     <SearchProvider initialQuery={initialQuery}>

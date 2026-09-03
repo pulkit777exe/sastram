@@ -1,8 +1,11 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Send, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const TEXTAREA_MAX_HEIGHT = 120;
+const MIN_QUERY_LENGTH = 3;
 
 interface SearchInputBarProps {
   query: string;
@@ -23,31 +26,28 @@ export function SearchInputBar({
 }: SearchInputBarProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const resizeTextarea = useCallback(() => {
+  function resizeTextarea() {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-  }, []);
+    el.style.height = Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT) + 'px';
+  }
 
   useEffect(() => {
     resizeTextarea();
-  }, [query, resizeTextarea]);
+  }, [query]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (query.trim().length >= 3 && !isStreaming) {
-          onSubmit();
-          if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-          }
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (query.trim().length >= MIN_QUERY_LENGTH && !isStreaming) {
+        onSubmit();
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
         }
       }
-    },
-    [query, isStreaming, onSubmit]
-  );
+    }
+  }
 
   return (
     <div className="border-t border-line bg-canvas px-4 md:px-6 py-4">
@@ -69,7 +69,7 @@ export function SearchInputBar({
             type="button"
             size="icon"
             onClick={onSubmit}
-            disabled={isStreaming || query.trim().length < 3}
+            disabled={isStreaming || query.trim().length < MIN_QUERY_LENGTH}
             className="absolute right-3 bottom-3 h-8 w-8 bg-sai-accent text-white hover:opacity-90 disabled:opacity-30"
           >
             {isStreaming ? (

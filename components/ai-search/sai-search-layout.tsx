@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 import { Button } from '@/components/ui/button';
+import { truncateHistoryLabel, groupByHistoryDate } from '@/lib/utils/format';
 
 export interface HistoryItem {
   id: string;
@@ -40,24 +41,7 @@ interface SaiSearchLayoutProps {
   onOpenApiKeys?: () => void;
 }
 
-function label(item: HistoryItem): string {
-  const t = item.title?.trim();
-  if (t) return t.length > 38 ? t.substring(0, 38) + '…' : t;
-  const q = item.query.trim();
-  return q.length > 38 ? q.substring(0, 38) + '…' : q;
-}
-
-function dateGroup(createdAt: string): string {
-  const d = new Date(createdAt);
-  const now = new Date();
-  const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
-
-  if (diffDays <= 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays <= 7) return 'This week';
-  return 'Earlier';
-}
+// Helpers now imported from lib/utils/format at top
 
 export function SaiSearchLayout({
   children,
@@ -176,17 +160,17 @@ export function SaiSearchLayout({
     [pendingDeleteId, armDelete, confirmDelete]
   );
 
-  const groupedSearches: { group: string; items: HistoryItem[] }[] = [];
-  for (const item of searches) {
-    const group = dateGroup(item.createdAt);
-    const last = groupedSearches[groupedSearches.length - 1];
-    if (last && last.group === group) last.items.push(item);
-    else groupedSearches.push({ group, items: [item] });
-  }
+  const groupedSearches = groupByHistoryDate(searches);
 
   const renderItem = (item: HistoryItem, depth: number) => {
     const isSelected = item.id === currentSessionId;
     const isPendingDelete = pendingDeleteId === item.id;
+
+    // Tailwind: layout / color / interactivity grouped
+    const historyItemBase = 'w-full justify-start pr-3 py-1.5 text-xs rounded-control truncate h-auto';
+    const historyItemActive = 'bg-hover/80 text-ink font-medium';
+    const historyItemIdle = 'text-ink-2 hover:text-ink hover:bg-hover/40';
+    const historyItemClasses = cn(historyItemBase, isSelected ? historyItemActive : historyItemIdle);
 
     return (
       <div key={item.id} className="group relative">
@@ -198,16 +182,11 @@ export function SaiSearchLayout({
           }}
           aria-current={isSelected ? 'true' : undefined}
           variant="ghost"
-          className={cn(
-            'w-full justify-start pr-3 py-1.5 text-xs rounded-control truncate h-auto',
-            isSelected
-              ? 'bg-hover/80 text-ink font-medium'
-              : 'text-ink-2 hover:text-ink hover:bg-hover/40'
-          )}
+          className={historyItemClasses}
           style={{ paddingLeft: depth > 0 ? 22 : 12 }}
         >
           {depth > 0 && <CornerDownRight size={11} className="shrink-0 text-ink-3" />}
-          <span className="truncate block flex-1">{label(item)}</span>
+          <span className="truncate block flex-1">{truncateHistoryLabel(item.title, item.query)}</span>
         </Button>
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {!isPendingDelete && <span className="text-xs text-ink-3 pointer-events-none">{item.sourceCount} src</span>}
