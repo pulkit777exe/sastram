@@ -19,9 +19,15 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
 
   const shown = participants.slice(0, 6);
   const overflow = participants.length - shown.length;
-  const ownerFirst = [...shown].sort((a, b) =>
-    a.id === ownerId ? -1 : b.id === ownerId ? 1 : 0
-  );
+  const ownerFirst = [...shown].sort((a, b) => {
+    if (a.id === ownerId) {
+      return -1;
+    }
+    if (b.id === ownerId) {
+      return 1;
+    }
+    return 0;
+  });
 
   return (
     <DetailCard>
@@ -31,10 +37,13 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
 
       <div className="mt-2.5 flex items-center gap-2">
         <div className="flex -space-x-2">
-          {ownerFirst.map((p) => (
-            <div
-              key={p.id}
-              title={`${p.name ?? 'Anonymous'}${p.id === ownerId ? ' · owner' : ''} — ${p.messageCount} ${p.messageCount === 1 ? 'message' : 'messages'}`}
+          {ownerFirst.map((p) => {
+            const ownerSuffix = p.id === ownerId ? ' · owner' : '';
+            const messageLabel = p.messageCount === 1 ? 'message' : 'messages';
+            return (
+              <div
+                key={p.id}
+                title={`${p.name ?? 'Anonymous'}${ownerSuffix} — ${p.messageCount} ${messageLabel}`}
               className="relative h-7 w-7 overflow-hidden rounded-full border-2 border-surface bg-field"
             >
               {p.image ? (
@@ -49,7 +58,8 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
                 <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-surface bg-sai-green" />
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
         {overflow > 0 && <span className="text-xs font-medium text-ink-3">+{overflow}</span>}
       </div>

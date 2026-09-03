@@ -13,6 +13,12 @@ interface ProfileTabsProps {
   activity?: ReactNode;
 }
 
+const TABS = [
+  { id: 'threads' as const, label: 'Threads', icon: MessageSquare },
+  { id: 'about' as const, label: 'About', icon: Info },
+  { id: 'activity' as const, label: 'Activity', icon: Activity },
+];
+
 export function ProfileTabs({
   defaultTab = 'threads',
   threads,
@@ -21,17 +27,18 @@ export function ProfileTabs({
 }: ProfileTabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab);
 
-  const tabs = [
-    { id: 'threads' as const, label: 'Threads', icon: MessageSquare },
-    { id: 'about' as const, label: 'About', icon: Info },
-    { id: 'activity' as const, label: 'Activity', icon: Activity },
-  ];
+  function renderActiveContent() {
+    if (activeTab === 'threads') return threads;
+    if (activeTab === 'about') return about;
+    if (activeTab === 'activity') return activity;
+    return null;
+  }
 
   return (
     <div className="space-y-4">
       {/* Tab Buttons */}
       <div className="flex gap-2 border-b">
-        {tabs.map((tab) => {
+        {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -70,9 +77,7 @@ export function ProfileTabs({
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'threads' && threads}
-          {activeTab === 'about' && about}
-          {activeTab === 'activity' && activity}
+          {renderActiveContent()}
         </motion.div>
       </AnimatePresence>
     </div>

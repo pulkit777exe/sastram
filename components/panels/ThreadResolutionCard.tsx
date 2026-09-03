@@ -25,6 +25,26 @@ function getClockSnapshot() {
   return cachedSnapshot;
 }
 
+function getLabel(score: number): string {
+  if (score >= 70) {
+    return 'Settled';
+  }
+  if (score >= 40) {
+    return 'In progress';
+  }
+  return 'Open';
+}
+
+function getBarClass(score: number): string {
+  if (score >= 70) {
+    return 'bg-sai-green';
+  }
+  if (score >= 40) {
+    return 'bg-sai-orange';
+  }
+  return 'bg-sai-red';
+}
+
 export default function ThreadResolutionCard({
   threadId,
   score,
@@ -53,8 +73,8 @@ export default function ThreadResolutionCard({
     );
   }
 
-  const label = score >= 70 ? 'Settled' : score >= 40 ? 'In progress' : 'Open';
-  const barClass = score >= 70 ? 'bg-sai-green' : score >= 40 ? 'bg-sai-orange' : 'bg-sai-red';
+  const label = getLabel(score);
+  const barClass = getBarClass(score);
 
   return (
     <DetailCard className="space-y-3">

@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Sun, Moon, Monitor, Bell, Mail, Sparkles, Shield } from 'lucide-react';
 import { updateUserPreferencesAction } from '@/modules/users/actions';
 import { toasts } from '@/lib/utils/toast';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { parseUserPreferences, type UserPreferences } from '@/lib/schemas/user-preferences';
 
@@ -24,7 +24,7 @@ interface PreferencesFormProps {
 
 export function PreferencesForm({ user }: PreferencesFormProps) {
   const { setTheme: setNextTheme } = useTheme();
-  const initialPrefs = useMemo(() => parseUserPreferences(user.preferences), [user.preferences]);
+  const initialPrefs = parseUserPreferences(user.preferences);
   const [prefs, setPrefs] = useState<UserPreferences>(initialPrefs);
 
   async function updatePreference<K extends keyof UserPreferences>(

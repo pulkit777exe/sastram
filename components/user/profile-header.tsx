@@ -27,6 +27,18 @@ interface ProfileHeaderProps {
   limitedView?: boolean;
 }
 
+function getInitials(name: string): string {
+  const parts = name.split(' ');
+  const letters = parts.map((part) => part[0]);
+  const joined = letters.join('');
+  return joined.toUpperCase().slice(0, 2);
+}
+
+function getDisplayName(name: string | null, email: string): string {
+  if (name) return name;
+  return email.split('@')[0];
+}
+
 export function ProfileHeader({
   user,
   isOwnProfile,
@@ -34,14 +46,9 @@ export function ProfileHeader({
   limitedView = false,
 }: ProfileHeaderProps) {
   const [followerCount, setFollowerCount] = useState(user.followerCount);
-  const displayName = user.name || user.email.split('@')[0];
+  const displayName = getDisplayName(user.name, user.email);
   const avatarUrl = user.image;
-  const initials = displayName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = getInitials(displayName);
 
   return (
     <div className="relative overflow-hidden rounded-card border border-line bg-surface animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">

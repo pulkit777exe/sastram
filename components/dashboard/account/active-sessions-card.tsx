@@ -17,13 +17,60 @@ interface SessionItem {
   isCurrent?: boolean;
 }
 
+// Named regex constants for UA parsing — avoids inline regex literals
+const MOBILE_RE = /mobile/i;
+const BROWSER_RE = /(Chrome\/\S+|Firefox\/\S+|Safari\/\S+|Edge\/\S+|OPR\/\S+)/;
+const PARENS_RE = /\([^)]+\)/;
+const PARENS_CHARS_RE = /[()]/g;
+const BROWSER_VERSION_RE = /\/.*/;
+const DIGIT_RE = /\d/;
+
+// Helper: checks if OS segment is human-readable (no digits, length > 2)
+function isHumanReadableOS(segment: string): boolean {
+  if (DIGIT_RE.test(segment)) {
+    return false;
+  }
+  if (segment.length <= 2) {
+    return false;
+  }
+  return true;
+}
+
+// Helper: parse OS string from parenthesized UA block with explicit loop
+function parseOS(osMatch: string | undefined): string | undefined {
+  if (!osMatch) {
+    return undefined;
+  }
+
+  const withoutParens = osMatch.replace(PARENS_CHARS_RE, '');
+  const rawParts = withoutParens.split(';');
+
+  for (const raw of rawParts) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      continue;
+    }
+    if (isHumanReadableOS(trimmed)) {
+      return trimmed;
+    }
+  }
+
+  return undefined;
+}
+
 function parseUA(ua?: string | null) {
-  if (!ua) return { icon: Monitor, label: 'Unknown device', browser: undefined };
-  const isMobile = /mobile/i.test(ua);
-  const match = ua.match(/(Chrome\/\S+|Firefox\/\S+|Safari\/\S+|Edge\/\S+|OPR\/\S+)/);
-  const browser = match?.[0]?.replace(/\/.*/, '');
-  const osMatch = ua.match(/\([^)]+\)/)?.[0];
-  const os = osMatch?.replace(/[()]/g, '').split(';').map(s => s.trim()).filter(Boolean).find(s => !/\d/.test(s) && s.length > 2);
+  if (!ua) {
+    return { icon: Monitor, label: 'Unknown device', browser: undefined };
+  }
+
+  const isMobile = MOBILE_RE.test(ua);
+
+  const match = ua.match(BROWSER_RE);
+  const browser = match?.[0]?.replace(BROWSER_VERSION_RE, '');
+
+  const osMatch = ua.match(PARENS_RE)?.[0];
+  const os = parseOS(osMatch);
+
   return {
     icon: isMobile ? Smartphone : Monitor,
     label: isMobile ? 'Mobile' : 'Desktop',
