@@ -118,6 +118,16 @@ export function useCopyToClipboard({
   return { copy, reset, status, copied: status === "copied" };
 }
 
+function getStatusLabel(status: CopyStatus, copiedLabel: string, errorLabel: string): string {
+  if (status === "copied") {
+    return copiedLabel;
+  }
+  if (status === "error") {
+    return errorLabel;
+  }
+  return "";
+}
+
 export type CopyButtonProps = {
   value: string;
   label?: string;
@@ -248,7 +258,7 @@ export function CopyButton({
       </span>
 
       <span role="status" aria-live="polite" className="sr-only">
-        {status === "copied" ? copiedLabel : status === "error" ? errorLabel : ""}
+        {getStatusLabel(status, copiedLabel, errorLabel)}
       </span>
     </motion.button>
   );

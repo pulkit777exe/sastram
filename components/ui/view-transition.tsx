@@ -8,7 +8,14 @@ import {
 } from '@/lib/utils/view-transitions';
 
 // React 19 ViewTransition is canary — may be undefined in current build
-const ViewTransition = (React as unknown as { ViewTransition?: React.ComponentType<{ name?: string; children?: ReactNode } & Record<string, unknown>> }).ViewTransition;
+// Single cast via unknown avoids eslint no-explicit-any while preserving runtime check
+function getViewTransition() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (React as any).ViewTransition as
+    | React.ComponentType<{ name?: string; children?: ReactNode } & Record<string, unknown>>
+    | undefined;
+}
+const ViewTransition = getViewTransition();
 
 type Props = {
   children: ReactNode;

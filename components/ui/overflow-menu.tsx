@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -24,19 +24,23 @@ export function OverflowMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const close = useCallback(() => {
+  function close() {
     setOpen(false);
     setActiveIndex(-1);
-  }, []);
+  }
 
   useEffect(() => {
     if (!open) return;
-    const handle = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
-    };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [open, close]);
+    function handleOutside(e: MouseEvent) {
+      const container = ref.current;
+      if (!container) return;
+      const target = e.target as Node;
+      if (container.contains(target)) return;
+      close();
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [open]);
 
   // Focus first item when menu opens
   useEffect(() => {
@@ -46,53 +50,51 @@ export function OverflowMenu({
     }
   }, [open]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!open) {
-        if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          setOpen(true);
-        }
-        return;
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!open) {
+      const shouldOpen = e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ';
+      if (shouldOpen) {
+        e.preventDefault();
+        setOpen(true);
       }
+      return;
+    }
 
-      const menuItems = menuRef.current?.querySelectorAll<HTMLElement>('button');
-      if (!menuItems || menuItems.length === 0) return;
+    const menuItems = menuRef.current?.querySelectorAll<HTMLElement>('button');
+    if (!menuItems || menuItems.length === 0) return;
 
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setActiveIndex((prev) => (prev + 1) % menuItems.length);
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setActiveIndex((prev) => (prev - 1 + menuItems.length) % menuItems.length);
-          break;
-        case 'Home':
-          e.preventDefault();
-          setActiveIndex(0);
-          break;
-        case 'End':
-          e.preventDefault();
-          setActiveIndex(menuItems.length - 1);
-          break;
-        case 'Escape':
-          e.preventDefault();
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setActiveIndex((prev) => (prev + 1) % menuItems.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setActiveIndex((prev) => (prev - 1 + menuItems.length) % menuItems.length);
+        break;
+      case 'Home':
+        e.preventDefault();
+        setActiveIndex(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        setActiveIndex(menuItems.length - 1);
+        break;
+      case 'Escape':
+        e.preventDefault();
+        close();
+        buttonRef.current?.focus();
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (activeIndex >= 0 && activeIndex < items.length) {
+          items[activeIndex].onClick();
           close();
-          buttonRef.current?.focus();
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          if (activeIndex >= 0 && activeIndex < items.length) {
-            items[activeIndex].onClick();
-            close();
-          }
-          break;
-      }
-    },
-    [open, activeIndex, items, close]
-  );
+        }
+        break;
+    }
+  }
 
   // Sync activeIndex with focus
   useEffect(() => {

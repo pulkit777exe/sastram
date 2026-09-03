@@ -8,6 +8,11 @@ interface TimeAgoProps {
   className?: string;
 }
 
+// Matches trailing timezone: 'Z' or '+HH:MM' / '-HH:MM'
+const TIMEZONE_SUFFIX_RE = /(?:Z|[+\-]\d{2}:\d{2})$/i;
+// Checks if string contains an ISO date-time separator
+const ISO_DATETIME_RE = /T/;
+
 function parseTimestamp(value: Date | string | number): Date {
   if (value instanceof Date) return value;
   if (typeof value === 'number') return new Date(value);
@@ -15,10 +20,12 @@ function parseTimestamp(value: Date | string | number): Date {
   const normalized = value.trim();
   // Some backend payloads can arrive without timezone (UTC by convention).
   // Add `Z` so the browser does not interpret them as local time.
-  const hasTimezone = /(?:Z|[+\-]\d{2}:\d{2})$/i.test(normalized);
-  const needsUtcSuffix = !hasTimezone && /T/.test(normalized);
+  const hasTimezone = TIMEZONE_SUFFIX_RE.test(normalized);
+  const isIsoDateTime = ISO_DATETIME_RE.test(normalized);
+  const needsUtcSuffix = !hasTimezone && isIsoDateTime;
 
-  return new Date(needsUtcSuffix ? `${normalized}Z` : normalized);
+  if (needsUtcSuffix) return new Date(`${normalized}Z`);
+  return new Date(normalized);
 }
 
 export function TimeAgo({ date, className }: TimeAgoProps) {

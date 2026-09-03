@@ -27,16 +27,18 @@ export function AnimatedIcon({
   const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (!animateOnView || !ref.current) return;
+    if (!animateOnView) return;
     const el = ref.current;
+    if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        const isVisible = entry.isIntersecting;
+        if (isVisible) {
           el.classList.add('animated-icon-visible');
           if (animateOnViewOnce) observer.unobserve(el);
-        } else if (!animateOnViewOnce) {
-          el.classList.remove('animated-icon-visible');
+          return;
         }
+        if (!animateOnViewOnce) el.classList.remove('animated-icon-visible');
       },
       { rootMargin: animateOnViewMargin }
     );

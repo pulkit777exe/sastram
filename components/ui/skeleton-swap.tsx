@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 const CROSSFADE = {
@@ -64,6 +64,24 @@ export type SkeletonSwapProps = {
   className?: string;
 };
 
+function getBodyStyle(reduced: boolean | null, showSkeleton: boolean) {
+  if (reduced) {
+    if (showSkeleton) return { opacity: 0 };
+    return { opacity: 1 };
+  }
+  if (showSkeleton) {
+    return { opacity: 0, scale: 0.99, filter: "blur(4px)" };
+  }
+  return { opacity: 1, scale: 1, filter: "blur(0px)" };
+}
+
+function getBodyPointerStyle(showSkeleton: boolean): CSSProperties {
+  if (showSkeleton) {
+    return { transformOrigin: "top left", pointerEvents: "none" };
+  }
+  return { transformOrigin: "top left", pointerEvents: undefined };
+}
+
 export function SkeletonSwap({
   ready,
   children,
@@ -88,7 +106,6 @@ export function SkeletonSwap({
 
   useEffect(() => {
     const el = shell.current;
-    const inner = body.current;
     if (!el || typeof ResizeObserver === "undefined") return;
 
     const check = () => setScrollable(el.scrollHeight - el.clientHeight > 1);
@@ -96,7 +113,6 @@ export function SkeletonSwap({
 
     const ro = new ResizeObserver(check);
     ro.observe(el);
-    if (inner) ro.observe(inner);
     return () => ro.disconnect();
   }, []);
 
@@ -114,20 +130,9 @@ export function SkeletonSwap({
         ref={body}
         className="col-start-1 row-start-1 min-w-0"
         initial={false}
-        animate={
-          reduced
-            ? { opacity: showSkeleton ? 0 : 1 }
-            : {
-                opacity: showSkeleton ? 0 : 1,
-                scale: showSkeleton ? 0.99 : 1,
-                filter: showSkeleton ? "blur(4px)" : "blur(0px)",
-              }
-        }
+        animate={getBodyStyle(reduced, showSkeleton)}
         transition={reduced ? { duration: 0 } : CROSSFADE}
-        style={{
-          transformOrigin: "top left",
-          pointerEvents: showSkeleton ? "none" : undefined,
-        }}
+        style={getBodyPointerStyle(showSkeleton)}
       >
         {children}
       </motion.div>
