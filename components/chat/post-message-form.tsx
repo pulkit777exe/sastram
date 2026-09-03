@@ -155,14 +155,31 @@ export function PostMessageForm({
     [handleEmojiSelect]
   );
 
-  const placeholder = replyTo
-    ? `Reply to @${replyTo.userName}…`
-    : 'Ask a question, share context, or mention @sai for grounded help…';
+  function getPlaceholder(): string {
+    const isReply = replyTo !== null && replyTo !== undefined;
+    if (isReply) {
+      return `Reply to @${replyTo.userName}…`;
+    }
+    return 'Ask a question, share context, or mention @sai for grounded help…';
+  }
+
+  const placeholder = getPlaceholder();
+  const isReplyMode = Boolean(replyTo);
+  const selectedFilePosition = isReplyMode ? '-top-20' : '-top-11';
+
+  // Tailwind class constants — grouped: layout / color / interactivity
+  // Extracted to avoid 8+ class inline strings.
+  const replyBannerClasses = 'absolute -top-11 left-0 right-0 bg-brand/10 border-x border-t border-brand/15 px-4 py-2 rounded-t-card text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150';
+  const fileChipBase = 'absolute left-0 bg-muted/90 backdrop-blur border border-line px-3 py-1.5 rounded-t-card text-xs flex items-center gap-2 shadow-linear-sm z-10';
+  const composerBase = 'flex flex-col border border-line rounded-card bg-surface shadow-card overflow-hidden';
+  const composerInteractive = 'hover:border-brand/20 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all';
+  const composerReplyVariant = 'rounded-t-none border-t-0';
+  const textareaClasses = 'flex-1 min-h-11 max-h-[30vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1.5 px-0 text-sm leading-relaxed placeholder-muted-foreground/60 text-foreground';
 
   return (
     <form ref={formRef} onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }} className="relative w-full">
       {replyTo && (
-        <div className="absolute -top-11 left-0 right-0 bg-brand/10 border-x border-t border-brand/15 px-4 py-2 rounded-t-card text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150">
+        <div className={replyBannerClasses}>
           <div className="flex items-center gap-2 text-brand">
             <MessageSquare className="h-3.5 w-3.5" />
             <span>Replying to</span>
@@ -180,7 +197,7 @@ export function PostMessageForm({
 
       {selectedFile && (
         <div
-          className={`absolute ${replyTo ? '-top-20' : '-top-11'} left-0 bg-muted/90 backdrop-blur border border-line px-3 py-1.5 rounded-t-card text-xs flex items-center gap-2 shadow-linear-sm z-10`}
+          className={cn(fileChipBase, selectedFilePosition)}
         >
           <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="truncate max-w-50 text-foreground font-medium">{selectedFile.name}</span>
@@ -199,10 +216,7 @@ export function PostMessageForm({
       )}
 
       <div
-        className={cn(
-          "flex flex-col border border-line rounded-card bg-surface hover:border-brand/20 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-card overflow-hidden",
-          replyTo && "rounded-t-none border-t-0"
-        )}
+        className={cn(composerBase, composerInteractive, replyTo && composerReplyVariant)}
       >
         {/* Top Tier: Textarea */}
         <div className="flex items-start px-4 pt-3 pb-1">
@@ -212,7 +226,7 @@ export function PostMessageForm({
             placeholder={placeholder}
             value={content}
             onChange={handleChange}
-            className="flex-1 min-h-11 max-h-[30vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1.5 px-0 text-sm leading-relaxed placeholder-muted-foreground/60 text-foreground"
+            className={textareaClasses}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
           />

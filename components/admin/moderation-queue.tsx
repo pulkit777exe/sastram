@@ -16,6 +16,30 @@ import { cn } from '@/lib/utils/cn';
 import { REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import type { ReportStats, ReportQueueItem } from '@/modules/reports/types';
 
+function getConfidenceColor(confidence: number): string {
+  if (confidence > 0.8) return 'text-red-400';
+  if (confidence > 0.5) return 'text-orange-400';
+  return 'text-muted-foreground';
+}
+
+function getVariantValueColor(variant: 'default' | 'critical' | 'high'): string {
+  if (variant === 'critical') return 'text-red-400';
+  if (variant === 'high') return 'text-orange-400';
+  return 'text-foreground';
+}
+
+function getVariantBorder(variant: 'default' | 'critical' | 'high'): string {
+  if (variant === 'critical') return 'border-red-500/30';
+  if (variant === 'high') return 'border-orange-500/30';
+  return '';
+}
+
+function getVariantBadgeColor(variant: 'default' | 'critical' | 'high'): string {
+  if (variant === 'critical') return 'bg-red-500/20 text-red-400';
+  if (variant === 'high') return 'bg-orange-500/20 text-orange-400';
+  return '';
+}
+
 interface ModerationQueueProps {
   stats: ReportStats | null;
   reports: ReportQueueItem[];
@@ -125,20 +149,11 @@ export function ModerationQueue({
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   </div>
-                  {report.aiConfidence !== null && (
+                    {report.aiConfidence !== null && (
                     <div className="mt-3 pt-3 border-t border-line">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Sai Confidence</span>
-                        <span
-                          className={cn(
-                            'font-medium',
-                            report.aiConfidence > 0.8
-                              ? 'text-red-400'
-                              : report.aiConfidence > 0.5
-                                ? 'text-orange-400'
-                                : 'text-muted-foreground'
-                          )}
-                        >
+                        <span className={cn('font-medium', getConfidenceColor(report.aiConfidence))}>
                           {Math.round(report.aiConfidence * 100)}%
                         </span>
                       </div>
@@ -168,39 +183,14 @@ function StatsCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <Card
-      className={cn(
-        'bg-surface border-line',
-        variant === 'critical' && 'border-red-500/30',
-        variant === 'high' && 'border-orange-500/30'
-      )}
-    >
+    <Card className={cn('bg-surface border-line', getVariantBorder(variant))}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">{label}</p>
             <div className="flex items-center gap-2 mt-1">
-              <p
-                className={cn(
-                  'text-2xl font-bold',
-                  variant === 'critical' && 'text-red-400',
-                  variant === 'high' && 'text-orange-400',
-                  variant === 'default' && 'text-foreground'
-                )}
-              >
-                {value}
-              </p>
-              {badge && (
-                <Badge
-                  className={cn(
-                    'text-xs',
-                    variant === 'critical' && 'bg-red-500/20 text-red-400',
-                    variant === 'high' && 'bg-orange-500/20 text-orange-400'
-                  )}
-                >
-                  {badge}
-                </Badge>
-              )}
+              <p className={cn('text-2xl font-bold', getVariantValueColor(variant))}>{value}</p>
+              {badge && <Badge className={cn('text-xs', getVariantBadgeColor(variant))}>{badge}</Badge>}
             </div>
           </div>
           {icon && <div className="p-2 rounded-control bg-muted">{icon}</div>}

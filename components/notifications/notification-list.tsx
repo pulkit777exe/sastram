@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
+import { getNotificationDateGroup } from '@/lib/utils/format';
 
 interface NotificationItem {
   id: string;
@@ -154,42 +155,24 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const groupedNotifications = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  const groupedNotifications = useMemo(() => {
     const groups: Record<string, NotificationItem[]> = {
       Today: [],
       Yesterday: [],
       'This Week': [],
       Older: [],
     };
-
     for (const notification of notifications) {
-      const created = new Date(notification.createdAt);
-      const createdDay = new Date(created.getFullYear(), created.getMonth(), created.getDate());
-
-      if (createdDay.getTime() === today.getTime()) {
-        groups.Today.push(notification);
-      } else if (createdDay.getTime() === yesterday.getTime()) {
-        groups.Yesterday.push(notification);
-      } else if (createdDay >= weekAgo) {
-        groups['This Week'].push(notification);
-      } else {
-        groups.Older.push(notification);
-      }
+      const bucket = getNotificationDateGroup(notification.createdAt);
+      groups[bucket].push(notification);
     }
-
     return groups;
   }, [notifications]);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  if (notifications.length === 0) {
+  // Extracted render helpers to avoid 150+ line JSX with 5+ branches
+  function renderEmptyState() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -200,22 +183,24 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     );
   }
 
+  function renderUnreadHeader() {
+    if (unreadCount <= 0) return null;
+    return (
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">{unreadCount} unread</span>
+        <Button type="button" variant="link" onClick={handleMarkAllRead} disabled={isPending} className="text-xs h-auto p-0">
+          <CheckCheck size={14} className="mr-1" />
+          Mark all read
+        </Button>
+      </div>
+    );
+  }
+
+  if (notifications.length === 0) return renderEmptyState();
+
   return (
     <div className="space-y-4">
-      {unreadCount > 0 && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">{unreadCount} unread</span>
-          <Button type="button"
-            variant="link"
-            onClick={handleMarkAllRead}
-            disabled={isPending}
-            className="text-xs h-auto p-0"
-          >
-            <CheckCheck size={14} className="mr-1" />
-            Mark all read
-          </Button>
-        </div>
-      )}
+      {renderUnreadHeader()}
 
       <div className="space-y-6">
         {Object.entries(groupedNotifications).map(([label, items]) => {
@@ -231,24 +216,24 @@ export function NotificationList({ notifications: initial }: NotificationListPro
               <div className="space-y-1">
                 {items.map((notification) => {
                   const Icon = TYPE_ICONS[notification.type] ?? TYPE_ICONS.DEFAULT;
+                  const isUnread = !notification.isRead;
+                  // Tailwind extracted — layout / color / interactivity grouped
+                  const notificationBase = 'w-full flex items-start gap-3 p-4 rounded-card text-left transition-all hover:bg-muted/50 justify-start h-auto';
+                  const notificationUnread = 'bg-brand/5 border border-brand/10';
+                  const notificationClasses = cn(notificationBase, isUnread && notificationUnread);
+                  const iconBase = 'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full';
+                  const iconUnread = 'bg-brand/10 text-brand';
+                  const iconRead = 'bg-muted text-muted-foreground';
                   return (
                     <Button
                       type="button"
                       key={notification.id}
                       variant="ghost"
                       onClick={() => void handleClick(notification)}
-                      className={cn(
-                        'w-full flex items-start gap-3 p-4 rounded-card text-left transition-all hover:bg-muted/50 justify-start h-auto',
-                        !notification.isRead && 'bg-brand/5 border border-brand/10'
-                      )}
+                      className={notificationClasses}
                     >
                       <div
-                        className={cn(
-                          'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                          !notification.isRead
-                            ? 'bg-brand/10 text-brand'
-                            : 'bg-muted text-muted-foreground'
-                        )}
+                        className={cn(iconBase, isUnread ? iconUnread : iconRead)}
                       >
                         <Icon size={14} />
                       </div>

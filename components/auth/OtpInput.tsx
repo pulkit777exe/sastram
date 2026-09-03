@@ -1,6 +1,9 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
+
+// Keep only numeric digits
+const NON_DIGIT_PATTERN = /[^0-9]/g;
 
 interface OtpInputProps {
   length?: number;
@@ -21,15 +24,14 @@ export function OtpInput({
 }: OtpInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const setRef = useCallback(
-    (index: number) => (el: HTMLInputElement | null) => {
+  function setRef(index: number) {
+    return (el: HTMLInputElement | null) => {
       inputRefs.current[index] = el;
-    },
-    []
-  );
+    };
+  }
 
   const handleChange = (index: number, rawValue: string) => {
-    const cleaned = rawValue.replace(/[^0-9]/g, '');
+    const cleaned = rawValue.replace(NON_DIGIT_PATTERN, '');
 
     if (cleaned.length > 1) {
       const chars = cleaned.slice(0, length).split('');

@@ -82,7 +82,14 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
 
     const res = await createTagAction({ name: newName.trim(), color: newColor });
     if (res.ok && res.data) {
-      setTags((prev) => prev.map((t) => t.id === tempId ? { id: res.data!.id, name: newName.trim(), slug: res.data!.slug ?? slug, color: newColor, threadCount: 0 } : t));
+      const created = res.data;
+      setTags((prev) => {
+        if (!created) return prev;
+        return prev.map((t) => {
+          if (t.id !== tempId) return t;
+          return { id: created.id, name: newName.trim(), slug: created.slug ?? slug, color: newColor, threadCount: 0 };
+        });
+      });
     } else {
       setTags((prev) => prev.filter((t) => t.id !== tempId));
       toasts.error(res.error || 'Failed to create tag');

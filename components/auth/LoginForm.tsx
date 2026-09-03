@@ -20,9 +20,36 @@ import { SerifHeading } from '@/components/layout/serif-heading';
 
 type AuthMode = 'signin' | 'signup' | 'email-otp' | 'otp-verify';
 
+const OTP_LENGTH = 6;
+const RESEND_COUNTDOWN = 60;
+const COUNTDOWN_MS = 1000;
+const NON_DIGIT_PATTERN = /[^0-9]/g;
+const EXPIRED_PATTERN = /expired/i;
+const NOT_VERIFIED_PATTERN = /email.*not.*verif|verify.*email/i;
+
 const inputStyles =
   'h-12 rounded-card bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-all';
 const labelStyles = 'text-muted-foreground text-sm font-medium';
+
+function getRedirectTarget(searchParams: URLSearchParams): string {
+  const candidate = searchParams.get('redirect');
+  if (candidate && candidate.startsWith('/')) {
+    return candidate;
+  }
+
+  if (typeof window !== 'undefined' && document.referrer) {
+    try {
+      const referrerUrl = new URL(document.referrer);
+      if (referrerUrl.pathname.startsWith('/') && referrerUrl.pathname !== '/login') {
+        return referrerUrl.pathname + (referrerUrl.search || '');
+      }
+    } catch {
+      // Invalid referrer URL — fall through to default
+    }
+  }
+
+  return '/dashboard';
+}
 
 function UserAuthForm({
   className,
@@ -54,26 +81,7 @@ function UserAuthForm({
   const hasShownReasonToast = useRef(false);
   const verifyingOtpRef = useRef(false);
 
-  const redirectTarget = React.useMemo(() => {
-    const candidate = searchParams.get('redirect');
-    if (candidate && candidate.startsWith('/')) {
-      return candidate;
-    }
-
-    if (typeof window !== 'undefined' && document.referrer) {
-      try {
-        const referrerUrl = new URL(document.referrer);
-        if (referrerUrl.pathname.startsWith('/') && referrerUrl.pathname !== '/login') {
-          const search = referrerUrl.search;
-          return referrerUrl.pathname + (search || '');
-        }
-      } catch {
-        // Invalid referrer URL — fall through to default
-      }
-    }
-
-    return '/dashboard';
-  }, [searchParams]);
+  const redirectTarget = getRedirectTarget(searchParams);
 
   useEffect(() => {
     if (hasShownReasonToast.current) {
@@ -95,7 +103,7 @@ function UserAuthForm({
 
   useEffect(() => {
     if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      const timer = setTimeout(() => setCountdown(countdown - 1), COUNTDOWN_MS);
       return () => clearTimeout(timer);
     }
   }, [countdown]);
@@ -133,7 +141,7 @@ function UserAuthForm({
             return;
           }
           setMode('otp-verify');
-          setCountdown(60);
+          setCountdown(RESEND_COUNTDOWN);
           setTimeout(() => inputRefs.current[0]?.focus(), 100);
         } catch {
           setError('Failed to send verification code. Please try again.');
@@ -148,7 +156,7 @@ function UserAuthForm({
         });
 
         if (result.error) {
-          if (/email.*not.*verif|verify.*email/i.test(result.error.message || '')) {
+          if (NOT_VERIFIED_PATTERN.test(result.error.message || '')) {
             setOtpEmail(email);
             try {
               const res = await fetch('/api/email-otp/send-verification-otp', {
@@ -159,7 +167,7 @@ function UserAuthForm({
               const otpData = await res.json();
               if (!otpData?.error) {
                 setMode('otp-verify');
-                setCountdown(60);
+                setCountdown(RESEND_COUNTDOWN);
                 setTimeout(() => inputRefs.current[0]?.focus(), 100);
               }
             } catch {}
@@ -225,7 +233,7 @@ function UserAuthForm({
       }
 
       setMode('otp-verify');
-      setCountdown(60);
+      setCountdown(RESEND_COUNTDOWN);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
       clientLogger.error('LoginForm', 'Send OTP error', err);
@@ -236,7 +244,7 @@ function UserAuthForm({
   };
 
   const verifyOtpCode = async (otpCode: string) => {
-    if (otpCode.length !== 6 || verifyingOtpRef.current) {
+    if (otpCode.length !== OTP_LENGTH || verifyingOtpRef.current) {
       return;
     }
 
@@ -252,7 +260,7 @@ function UserAuthForm({
 
       if (result.error) {
         const message = result.error.message || 'Invalid verification code';
-        if (/expired/i.test(message)) {
+        if (EXPIRED_PATTERN.test(message)) {
           toasts.otpExpired();
         } else {
           toasts.invalidOtp();
@@ -276,18 +284,18 @@ function UserAuthForm({
 
   const handleOTPChange = (index: number, value: string) => {
     if (value.length > 1) {
-      const pastedValues = value.slice(0, 6).split('');
+      const pastedValues = value.slice(0, OTP_LENGTH).split('');
       const newOtp = [...otp];
       pastedValues.forEach((char, i) => {
-        if (index + i < 6) {
+        if (index + i < OTP_LENGTH) {
           newOtp[index + i] = char;
         }
       });
       setOtp(newOtp);
-      const nextIndex = Math.min(index + pastedValues.length, 5);
+      const nextIndex = Math.min(index + pastedValues.length, OTP_LENGTH - 1);
       inputRefs.current[nextIndex]?.focus();
       const pastedOtp = newOtp.join('');
-      if (pastedOtp.length === 6) {
+      if (pastedOtp.length === OTP_LENGTH) {
         void verifyOtpCode(pastedOtp);
       }
       return;
@@ -297,12 +305,12 @@ function UserAuthForm({
     newOtp[index] = value;
     setOtp(newOtp);
 
-    if (value && index < 5) {
+    if (value && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
 
     const currentOtp = newOtp.join('');
-    if (currentOtp.length === 6) {
+    if (currentOtp.length === OTP_LENGTH) {
       void verifyOtpCode(currentOtp);
     }
   };
@@ -316,7 +324,7 @@ function UserAuthForm({
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     const otpCode = otp.join('');
-    if (otpCode.length !== 6) {
+    if (otpCode.length !== OTP_LENGTH) {
       setError('Please enter the complete 6-digit code');
       return;
     }
@@ -342,7 +350,7 @@ function UserAuthForm({
         throw new Error('Failed to resend code');
       }
 
-      setCountdown(60);
+      setCountdown(RESEND_COUNTDOWN);
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch {
@@ -456,10 +464,10 @@ function UserAuthForm({
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    maxLength={6}
+                    maxLength={OTP_LENGTH}
                     aria-label={`Digit ${index + 1} of verification code`}
                     value={digit}
-                    onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
+                    onChange={(e) => handleOTPChange(index, e.target.value.replace(NON_DIGIT_PATTERN, ''))}
                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
                     disabled={loadingState !== null}
                     className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-card border-input bg-secondary text-foreground focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:border-brand transition-all caret-brand"
@@ -476,7 +484,7 @@ function UserAuthForm({
 
             <Button
               type="submit"
-              disabled={loadingState !== null || otp.join('').length !== 6}
+              disabled={loadingState !== null || otp.join('').length !== OTP_LENGTH}
               className="w-full"
             >
               {loadingState === 'otp' ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : null}

@@ -50,6 +50,46 @@ const DURATION_OPTIONS = [
 
 type ActionType = (typeof ACTION_OPTIONS)[number]['value'];
 
+function getActionButtonVariant(
+  action: ActionType
+): 'outline' | 'destructive' | 'default' {
+  if (action === 'DISMISS') return 'outline';
+  if (action === 'BAN_USER') return 'destructive';
+  return 'default';
+}
+
+function getActionButtonClass(action: ActionType): string {
+  if (action === 'REMOVE_MESSAGE') {
+    return 'bg-amber-600 hover:bg-amber-500 text-white dark:bg-amber-700 dark:hover:bg-amber-600';
+  }
+  return '';
+}
+
+function getDialogTitle(action: ActionType | null): string {
+  if (action === 'DISMISS') return 'Dismiss Report';
+  return 'Resolve Report';
+}
+
+function getDialogDescription(action: ActionType | null): string {
+  if (action === 'DISMISS') {
+    return 'Dismiss this report. No action will be taken against the reported user.';
+  }
+  return 'Take action on this report. The reported user will be notified.';
+}
+
+function getSubmitVariant(action: ActionType | null): 'destructive' | 'outline' | 'default' {
+  if (action === 'BAN_USER') return 'destructive';
+  if (action === 'DISMISS') return 'outline';
+  return 'default';
+}
+
+function getSubmitClass(action: ActionType | null): string {
+  if (action === 'REMOVE_MESSAGE') return 'bg-amber-600 hover:bg-amber-500 text-white';
+  if (action === 'DISMISS') return 'bg-muted hover:bg-muted/80 text-foreground';
+  if (action && action !== 'BAN_USER') return 'bg-green-600 hover:bg-green-500 text-white';
+  return '';
+}
+
 export function ReportActions({ reportId, currentStatus: _currentStatus, onStatusChange }: ReportActionsProps) {
   const [open, setOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<ActionType | null>(null);
@@ -104,21 +144,12 @@ export function ReportActions({ reportId, currentStatus: _currentStatus, onStatu
     <>
       <div className="flex gap-2 flex-wrap">
         {ACTION_OPTIONS.map((opt) => (
-          <Button type="button"
+          <Button
+            type="button"
             key={opt.value}
-            variant={
-              opt.value === 'DISMISS'
-                ? 'outline'
-                : opt.value === 'BAN_USER'
-                  ? 'destructive'
-                  : 'default'
-            }
+            variant={getActionButtonVariant(opt.value)}
             onClick={() => handleOpen(opt.value)}
-            className={
-              opt.value === 'REMOVE_MESSAGE'
-                ? 'bg-amber-600 hover:bg-amber-500 text-white dark:bg-amber-700 dark:hover:bg-amber-600'
-                : ''
-            }
+            className={getActionButtonClass(opt.value)}
           >
             {opt.value === 'DISMISS' && <XCircle className="w-4 h-4 mr-1" />}
             {opt.label}
@@ -129,12 +160,8 @@ export function ReportActions({ reportId, currentStatus: _currentStatus, onStatu
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedAction === 'DISMISS' ? 'Dismiss Report' : 'Resolve Report'}</DialogTitle>
-            <DialogDescription>
-              {selectedAction === 'DISMISS'
-                ? 'Dismiss this report. No action will be taken against the reported user.'
-                : 'Take action on this report. The reported user will be notified.'}
-            </DialogDescription>
+            <DialogTitle>{getDialogTitle(selectedAction)}</DialogTitle>
+            <DialogDescription>{getDialogDescription(selectedAction)}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -202,25 +229,12 @@ export function ReportActions({ reportId, currentStatus: _currentStatus, onStatu
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="button"
+            <Button
+              type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              variant={
-                selectedAction === 'BAN_USER'
-                  ? 'destructive'
-                  : selectedAction === 'DISMISS'
-                    ? 'outline'
-                    : 'default'
-              }
-              className={
-                selectedAction === 'REMOVE_MESSAGE'
-                  ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                  : selectedAction === 'DISMISS'
-                    ? 'bg-muted hover:bg-muted/80 text-foreground'
-                    : selectedAction !== 'BAN_USER'
-                      ? 'bg-green-600 hover:bg-green-500 text-white'
-                      : ''
-              }
+              variant={getSubmitVariant(selectedAction)}
+              className={getSubmitClass(selectedAction)}
             >
               {submitting ? 'Submitting...' : 'Submit'}
             </Button>

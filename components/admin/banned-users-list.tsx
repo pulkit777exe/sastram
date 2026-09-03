@@ -51,26 +51,36 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
 
-  // Helper for safe client-side date calculation
-  const getDaysRemaining = (expiresAt: Date) => {
-    return Math.ceil(
-      (new Date(expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-    );
-  };
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+  function getDaysRemaining(expiresAt: Date): number {
+    const diffMs = new Date(expiresAt).getTime() - new Date().getTime();
+    return Math.ceil(diffMs / MS_PER_DAY);
+  }
+
+  function matchesFilterType(ban: BannedUser, currentFilter: string): boolean {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'permanent') return !ban.expiresAt;
+    if (currentFilter === 'temporary') return !!ban.expiresAt;
+    return true;
+  }
+
+  function getBanBadgeClass(expiresAt: Date | null): string {
+    if (!expiresAt) return 'bg-red-500/10 text-red-500 border-red-500/20';
+    return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+  }
+
+  function getBanLabel(expiresAt: Date | null): string {
+    if (!expiresAt) return 'Permanent';
+    return `Temporary (${getDaysRemaining(expiresAt)} days)`;
+  }
 
   const filteredBans = bans.filter((ban) => {
     const matchesSearch =
       (ban.user?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       ban.reason.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter =
-      filter === 'all'
-        ? true
-        : filter === 'permanent'
-          ? !ban.expiresAt
-          : filter === 'temporary'
-            ? !!ban.expiresAt
-            : true;
+    const matchesFilter = matchesFilterType(ban, filter);
 
     return matchesSearch && matchesFilter;
   });
@@ -151,16 +161,9 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className={cn(
-                        'text-xs font-normal',
-                        !ban.expiresAt
-                          ? 'bg-red-500/10 text-red-500 border-red-500/20'
-                          : 'bg-orange-500/10 text-orange-500 border-orange-500/20'
-                      )}
+                      className={cn('text-xs font-normal', getBanBadgeClass(ban.expiresAt))}
                     >
-                      {!ban.expiresAt
-                        ? 'Permanent'
-                        : `Temporary (${getDaysRemaining(ban.expiresAt!)} days)`}
+                      {getBanLabel(ban.expiresAt)}
                     </Badge>
                   </TableCell>
                   <TableCell className="sticky right-0 bg-surface z-10 text-right">

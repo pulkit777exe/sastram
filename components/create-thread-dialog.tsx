@@ -33,6 +33,11 @@ const MAX_CHECKS_PER_SESSION = 3;
 // Wait for a real pause in typing, not a micro-pause mid-sentence.
 const SIMILARITY_DEBOUNCE_MS = 1500;
 
+// Build payload for dedup — use JSON.stringify instead of clever null-separator trick
+function buildPayload(titleText: string, descText: string): string {
+  return JSON.stringify({ title: titleText.trim(), desc: descText.trim() });
+}
+
 export function CreateThreadDialog() {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -60,7 +65,7 @@ export function CreateThreadDialog() {
 
     // Skip identical payloads (retyping the same text, description-only edits
     // that leave the analysed text unchanged).
-    const payload = `${titleText.trim()}\u0000${descText.trim()}`;
+    const payload = buildPayload(titleText, descText);
     if (lastCheckedRef.current === payload) return;
     lastCheckedRef.current = payload;
     checksUsedRef.current += 1;

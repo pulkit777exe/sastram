@@ -71,6 +71,18 @@ const actionButtons = [
   },
 ];
 
+function getToxicityColor(score: number): string {
+  if (score > 0.8) return 'bg-red-500/20 text-red-400';
+  if (score > 0.5) return 'bg-orange-500/20 text-orange-400';
+  return 'bg-green-500/20 text-green-400';
+}
+
+function getTrustScoreColor(score: number): string {
+  if (score > 70) return 'text-green-400';
+  if (score > 40) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
 export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewPanelProps) {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 
@@ -151,16 +163,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
               <div className="bg-field rounded-control p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-ink-3">Toxicity</span>
-                  <Badge
-                    className={cn(
-                      'text-xs',
-                      report.aiAnalysis.toxicityScore > 0.8
-                        ? 'bg-red-500/20 text-red-400'
-                        : report.aiAnalysis.toxicityScore > 0.5
-                          ? 'bg-orange-500/20 text-orange-400'
-                          : 'bg-green-500/20 text-green-400'
-                    )}
-                  >
+                  <Badge className={cn('text-xs', getToxicityColor(report.aiAnalysis.toxicityScore))}>
                     {(report.aiAnalysis.toxicityScore * 100).toFixed(0)}%
                   </Badge>
                 </div>
@@ -227,16 +230,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 <Shield className="w-3 h-3" />
                 Trust Score
               </div>
-              <p
-                className={cn(
-                  'text-sm font-medium',
-                  userProfile.trustScore > 70
-                    ? 'text-green-400'
-                    : userProfile.trustScore > 40
-                      ? 'text-yellow-400'
-                      : 'text-red-400'
-                )}
-              >
+              <p className={cn('text-sm font-medium', getTrustScoreColor(userProfile.trustScore))}>
                 {userProfile.trustScore}/100
               </p>
             </div>

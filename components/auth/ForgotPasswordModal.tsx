@@ -1,6 +1,11 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { FormEvent, useEffect, useRef, useState, useTransition } from 'react';
+
+const NON_DIGIT_PATTERN = /[^0-9]/g;
+const OTP_LENGTH = 6;
+const RESEND_COUNTDOWN_SECONDS = 60;
+const COUNTDOWN_INTERVAL_MS = 1000;
 import { useRouter } from 'next/navigation';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { Input } from '@/components/ui/input';
@@ -116,9 +121,9 @@ function ForgotPasswordOtpForm({
   onSuccess: () => void;
   onClose: () => void;
 }) {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(RESEND_COUNTDOWN_SECONDS);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [, startTransition] = useTransition();
 
@@ -135,13 +140,13 @@ function ForgotPasswordOtpForm({
       startTransition(() => {
         setCountdown((value) => value - 1);
       });
-    }, 1000);
+    }, COUNTDOWN_INTERVAL_MS);
 
     return () => window.clearTimeout(timer);
   }, [countdown, startTransition]);
 
   const verifyOtp = async (code: string) => {
-    if (!email || code.length !== 6) {
+    if (!email || code.length !== OTP_LENGTH) {
       return;
     }
 
@@ -185,22 +190,22 @@ function ForgotPasswordOtpForm({
   };
 
   const handleOtpChange = (index: number, rawValue: string) => {
-    const value = rawValue.replace(/[^0-9]/g, '');
+    const value = rawValue.replace(NON_DIGIT_PATTERN, '');
 
     if (value.length > 1) {
-      const pastedValues = value.slice(0, 6).split('');
+      const pastedValues = value.slice(0, OTP_LENGTH).split('');
       const nextOtp = [...otp];
 
       pastedValues.forEach((char, charIndex) => {
-        if (index + charIndex < 6) {
+        if (index + charIndex < OTP_LENGTH) {
           nextOtp[index + charIndex] = char;
         }
       });
 
       setOtp(nextOtp);
-      inputRefs.current[Math.min(5, index + pastedValues.length)]?.focus();
+      inputRefs.current[Math.min(OTP_LENGTH - 1, index + pastedValues.length)]?.focus();
 
-      if (nextOtp.join('').length === 6) {
+      if (nextOtp.join('').length === OTP_LENGTH) {
         void verifyOtp(nextOtp.join(''));
       }
 
@@ -211,11 +216,11 @@ function ForgotPasswordOtpForm({
     nextOtp[index] = value;
     setOtp(nextOtp);
 
-    if (value && index < 5) {
+    if (value && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    if (nextOtp.join('').length === 6) {
+    if (nextOtp.join('').length === OTP_LENGTH) {
       void verifyOtp(nextOtp.join(''));
     }
   };
@@ -242,9 +247,9 @@ function ForgotPasswordOtpForm({
         return;
       }
 
-      setOtp(['', '', '', '', '']);
+      setOtp(Array(OTP_LENGTH).fill(''));
       inputRefs.current[0]?.focus();
-      setCountdown(60);
+      setCountdown(RESEND_COUNTDOWN_SECONDS);
       toasts.sent();
       setIsSubmitting(false);
     } catch (error) {
@@ -273,7 +278,7 @@ function ForgotPasswordOtpForm({
               }}
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={OTP_LENGTH}
               className="w-10 text-center"
               value={digit}
               disabled={isSubmitting}
@@ -300,7 +305,7 @@ function ForgotPasswordOtpForm({
           <Button
             type="button"
             onClick={() => void verifyOtp(otp.join(''))}
-            disabled={isSubmitting || otp.join('').length !== 6}
+            disabled={isSubmitting || otp.join('').length !== OTP_LENGTH}
             className="flex-1"
           >
             {isSubmitting ? 'Verifying...' : 'Verify Code'}
@@ -335,10 +340,7 @@ function ForgotPasswordResetForm({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validation = useMemo(
-    () => validatePassword(password, confirmPassword),
-    [password, confirmPassword]
-  );
+  const validation = validatePassword(password, confirmPassword);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
