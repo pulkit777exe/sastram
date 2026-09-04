@@ -9,31 +9,41 @@ import { logger } from '@/lib/infrastructure/logger';
 const env = getEnv();
 
 function buildSocialProviders() {
-  const providers: Record<string, { clientId: string; clientSecret: string }> = {};
+  const socialProvidersMap: Record<string, { clientId: string; clientSecret: string }> = {};
 
   // Half-configured OAuth is worse than none — it fails at the callback with a
   // confusing provider error, so refuse to boot instead.
-  const candidates = [
+  const oauthProviderCandidates = [
     ['google', 'Google', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
     ['github', 'GitHub', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'],
   ] as const;
 
-  for (const [name, label, idKey, secretKey] of candidates) {
-    const clientId = env[idKey]?.trim();
-    const clientSecret = env[secretKey]?.trim();
-    if (!clientId && !clientSecret) continue;
-
-    if (!clientId || !clientSecret) {
-      throw new Error(`${label} OAuth requires both ${idKey} and ${secretKey}`);
+  for (const [providerId, providerLabel, clientIdEnvKey, clientSecretEnvKey] of oauthProviderCandidates) {
+    const rawClientId = env[clientIdEnvKey];
+    const rawClientSecret = env[clientSecretEnvKey];
+    let trimmedClientId = '';
+    if (rawClientId !== undefined && rawClientId !== null) {
+      trimmedClientId = rawClientId.trim();
     }
-    providers[name] = { clientId, clientSecret };
+    let trimmedClientSecret = '';
+    if (rawClientSecret !== undefined && rawClientSecret !== null) {
+      trimmedClientSecret = rawClientSecret.trim();
+    }
+    const hasClientId = trimmedClientId.length > 0;
+    const hasClientSecret = trimmedClientSecret.length > 0;
+    if (!hasClientId && !hasClientSecret) continue;
+
+    if (!hasClientId || !hasClientSecret) {
+      throw new Error(`${providerLabel} OAuth requires both ${clientIdEnvKey} and ${clientSecretEnvKey}`);
+    }
+    socialProvidersMap[providerId] = { clientId: trimmedClientId, clientSecret: trimmedClientSecret };
   }
 
-  if (process.env.NODE_ENV === 'production' && Object.keys(providers).length === 0) {
+  if (process.env.NODE_ENV === 'production' && Object.keys(socialProvidersMap).length === 0) {
     logger.warn('No social providers configured - only email OTP authentication available');
   }
 
-  return providers;
+  return socialProvidersMap;
 }
 
 export const auth = betterAuth({
@@ -56,17 +66,21 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
+        after: async (newUser) => {
           try {
             const { sendWelcomeEmail } = await import('@/lib/services/email');
-            await sendWelcomeEmail(user.email, user.name ?? 'there');
+            let displayName = newUser.name;
+            if (displayName === null || displayName === undefined || displayName.length === 0) {
+              displayName = 'there';
+            }
+            await sendWelcomeEmail(newUser.email, displayName);
             await prisma.user.update({
-              where: { id: user.id },
+              where: { id: newUser.id },
               data: { welcomeEmailSent: true },
             });
-            logger.info(`[auth] Welcome email sent to ${user.email}`);
-          } catch (error) {
-            logger.error(`[auth] Failed to send welcome email to ${user.email}:`, error);
+            logger.info(`[auth] Welcome email sent to ${newUser.email}`);
+          } catch (welcomeEmailError) {
+            logger.error(`[auth] Failed to send welcome email to ${newUser.email}:`, welcomeEmailError);
           }
         },
       },
@@ -85,14 +99,14 @@ export const auth = betterAuth({
       currentURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     }),
     emailOTP({
-      async sendVerificationOTP({ email, otp, type }) {
-        if (!email) {
+      async sendVerificationOTP({ email, otp, type: otpType }) {
+        if (email === undefined || email === null || email.length === 0) {
           logger.warn('OTP send requested but no email provided');
           return;
         }
 
         if (process.env.NODE_ENV !== 'production') {
-          logger.info(`[DEV] ${type} OTP for ${email}: ${otp}`);
+          logger.info(`[DEV] ${otpType} OTP for ${email}: ${otp}`);
         }
 
         // In development the logged code above is the delivery mechanism.
@@ -101,14 +115,14 @@ export const auth = betterAuth({
         }
 
         try {
-          logger.info(`Sending ${type} OTP to ${email}`);
+          logger.info(`Sending ${otpType} OTP to ${email}`);
           const { sendOTPEmail } = await import('@/lib/services/email');
-          await sendOTPEmail(email, otp, type);
-          logger.info(`Successfully sent ${type} OTP to ${email}`);
-        } catch (error) {
-          logger.error(`Failed to send ${type} OTP to ${email}:`, error);
+          await sendOTPEmail(email, otp, otpType);
+          logger.info(`Successfully sent ${otpType} OTP to ${email}`);
+        } catch (otpSendError) {
+          logger.error(`Failed to send ${otpType} OTP to ${email}:`, otpSendError);
           if (process.env.NODE_ENV !== 'production') {
-            logger.info(`[DEV FALLBACK] ${type} OTP for ${email}: ${otp}`);
+            logger.info(`[DEV FALLBACK] ${otpType} OTP for ${email}: ${otp}`);
           }
         }
       },

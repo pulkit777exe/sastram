@@ -54,6 +54,27 @@ function ThreadSidebarSkeleton() {
   );
 }
 
+function canUserManagePoll(
+  thread: ThreadWithFullContext,
+  sessionUser: SessionUser
+): boolean {
+  if (thread.createdBy === sessionUser.id) return true;
+  if (sessionUser.role === 'MODERATOR') return true;
+  if (sessionUser.role === 'ADMIN') return true;
+  return false;
+}
+
+function buildPollViewModel(poll: ThreadWithFullContext['poll']) {
+  if (!poll) return null;
+  return {
+    id: poll.id,
+    question: poll.question,
+    options: poll.options as string[],
+    isActive: poll.isActive,
+    expiresAt: poll.expiresAt,
+  };
+}
+
 async function ThreadContent({
   thread,
   session,
@@ -75,7 +96,8 @@ async function ThreadContent({
 
   const { messages: messagePage, hasMore: hasMoreMessages, nextCursor: oldestCursor } =
     await getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT);
-  const visibleMessages = [...messagePage].reverse();
+  const reversedMessages = [...messagePage].reverse();
+  const visibleMessages = reversedMessages;
 
   const allMessages: Message[] = visibleMessages.map((m) => toClientMessage(m, threadRef));
 
@@ -83,7 +105,18 @@ async function ThreadContent({
 
   const initialUnreadCount = unreadMessages.length;
 
-  const firstUnreadMessageId = unreadMessages[0]?.id ?? null;
+  let firstUnreadMessageId: string | null = null;
+  if (unreadMessages.length > 0) {
+    firstUnreadMessageId = unreadMessages[0]!.id;
+  }
+
+  const pollViewModel = buildPollViewModel(thread.poll);
+  const canManagePoll = canUserManagePoll(thread, session.user);
+
+  let nextCursorValue: string | null = null;
+  if (hasMoreMessages) {
+    nextCursorValue = oldestCursor;
+  }
 
   return (
     <ThreadLiveWrapper
@@ -92,24 +125,10 @@ async function ThreadContent({
       initialUnreadCount={initialUnreadCount}
       initialFirstUnreadMessageId={firstUnreadMessageId}
       hasMoreMessages={hasMoreMessages}
-      nextCursor={hasMoreMessages ? oldestCursor : null}
+      nextCursor={nextCursorValue}
       totalMessageCount={thread._count.messages}
-      poll={
-        thread.poll
-          ? {
-              id: thread.poll.id,
-              question: thread.poll.question,
-              options: thread.poll.options as string[],
-              isActive: thread.poll.isActive,
-              expiresAt: thread.poll.expiresAt,
-            }
-          : null
-      }
-      canManagePoll={
-        thread.createdBy === session.user.id ||
-        session.user.role === 'MODERATOR' ||
-        session.user.role === 'ADMIN'
-      }
+      poll={pollViewModel}
+      canManagePoll={canManagePoll}
       currentUser={{
         id: session.user.id,
         name: session.user.name ?? 'User',
@@ -130,7 +149,9 @@ async function ThreadSidebar({
   thread: ThreadWithFullContext;
   session: { user: SessionUser };
 }) {
+  const MAX_VISIBLE_TOPICS = 4;
   const threadDna = parseThreadDna(thread.threadDna);
+  const visibleTopics = threadDna ? threadDna.topics.slice(0, MAX_VISIBLE_TOPICS) : [];
 
   return (
     <aside className="flex flex-col gap-4 p-5">
@@ -151,7 +172,7 @@ async function ThreadSidebar({
             <Badge variant="secondary" className="px-2.5 py-1 text-xs">
               {threadDna.expertiseLevel}
             </Badge>
-            {threadDna.topics.slice(0, 4).map((topic) => (
+            {visibleTopics.map((topic) => (
               <Badge
                 key={topic}
                 variant="outline"

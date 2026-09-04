@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import type { Prisma } from '@prisma/client';
 import crypto from 'crypto';
+import { logger } from '@/lib/infrastructure/logger';
 import type {
   Source,
   SynthesisResult,
@@ -82,7 +83,6 @@ export async function persistSearchSession(
 
     return session.id;
   } catch (err: unknown) {
-    const logger = (await import('@/lib/infrastructure/logger')).logger;
     logger.error('[ai-search] Failed to persist search session', {
       error: err instanceof Error ? err.message : String(err),
       userId,
@@ -99,10 +99,16 @@ export async function listUserSearchSessions(
   const limit = Math.min(opts.limit ?? 20, 50);
   const where = { userId, deletedAt: null } as const;
 
+  // Build where clause explicitly — avoid spread ternary for readability.
+  let whereClause: typeof where | (typeof where & { createdAt: { lt: Date } });
+  if (opts.cursor) {
+    whereClause = { ...where, createdAt: { lt: new Date(opts.cursor) } };
+  } else {
+    whereClause = where;
+  }
+
   const sessions = await prisma.aiSearchSession.findMany({
-    where: opts.cursor
-      ? { ...where, createdAt: { lt: new Date(opts.cursor) } }
-      : where,
+    where: whereClause,
     orderBy: { createdAt: 'desc' },
     take: limit + 1,
     include: {
@@ -115,7 +121,12 @@ export async function listUserSearchSessions(
 
   const hasMore = sessions.length > limit;
   const page = sessions.slice(0, limit);
-  const nextCursor = hasMore && page.length > 0 ? page[page.length - 1].createdAt.toISOString() : null;
+
+  // Explicit if/else instead of ternary with && for clarity.
+  let nextCursor: string | null = null;
+  if (hasMore && page.length > 0) {
+    nextCursor = page[page.length - 1].createdAt.toISOString();
+  }
 
   return {
     sessions: page.map((s) => mapSession(s)),
@@ -150,7 +161,7 @@ export async function listThreadedSessions(
   const { sessions: parents, nextCursor } = await listUserSearchSessions(userId, opts);
   const parentIds = parents.map((p) => p.id);
 
-  let childrenByParent = new Map<string, PersistedSession[]>();
+  const childrenByParent = new Map<string, PersistedSession[]>();
   if (parentIds.length > 0) {
     const children = await prisma.aiSearchSession.findMany({
       where: { userId, parentSessionId: { in: parentIds }, deletedAt: null },
@@ -159,9 +170,22 @@ export async function listThreadedSessions(
         results: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
     });
-    childrenByParent = new Map(
-      parentIds.map((id) => [id, children.filter((c) => c.parentSessionId === id).map(mapSession)])
-    );
+
+    // Explicit loops instead of nested filter->map inside Map constructor.
+    // Initialize empty arrays for each parentId to guarantee every parent has an entry.
+    for (const parentId of parentIds) {
+      childrenByParent.set(parentId, []);
+    }
+    for (const child of children) {
+      const parentId = child.parentSessionId;
+      if (parentId === null) {
+        continue;
+      }
+      const bucket = childrenByParent.get(parentId);
+      if (bucket) {
+        bucket.push(mapSession(child));
+      }
+    }
   }
 
   return {

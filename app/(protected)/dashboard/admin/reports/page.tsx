@@ -102,6 +102,12 @@ export default async function ReportsPage() {
   );
 }
 
+function getDisplayName(entity: { name?: string | null; email?: string | null } | null | undefined): string {
+  if (entity?.name) return entity.name;
+  if (entity?.email) return entity.email;
+  return 'Unknown';
+}
+
 function ReportCard({ report }: { report: Report }) {
   const statusColors = {
     PENDING:
@@ -131,15 +137,11 @@ function ReportCard({ report }: { report: Report }) {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-ink-3">Reported by:</span>
-                <span className="text-ink font-medium">
-                  {report.reporter?.name || report.reporter?.email || 'Unknown'}
-                </span>
+                <span className="text-ink font-medium">{getDisplayName(report.reporter)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-ink-3">Message from:</span>
-                <span className="text-ink font-medium">
-                  {report.message.sender?.name || report.message.sender?.email || 'Unknown'}
-                </span>
+                <span className="text-ink font-medium">{getDisplayName(report.message.sender)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-ink-3">Thread:</span>

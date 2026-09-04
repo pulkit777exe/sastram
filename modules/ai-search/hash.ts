@@ -1,11 +1,11 @@
 import crypto from 'crypto';
 
 export function normalizeQuery(query: string): string {
-  return query
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ');
+  const lower = query.toLowerCase();
+  const trimmed = lower.trim();
+  const withoutPunctuation = trimmed.replace(/[^\w\s]/g, '');
+  const normalizedSpaces = withoutPunctuation.replace(/\s+/g, ' ');
+  return normalizedSpaces;
 }
 
 export function hashQuery(query: string): string {

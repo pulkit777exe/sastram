@@ -18,6 +18,7 @@ import { logger } from '@/lib/infrastructure/logger';
 
 const MAX_AI_REPLY_CHARS = 2000;
 const DB_THROTTLE_MS = 500;
+const MAX_MESSAGE_DEPTH = 4;
 
 export async function fetchThreadContext(threadId: string): Promise<string> {
   const recentMessages = await prisma.message.findMany({
@@ -26,10 +27,12 @@ export async function fetchThreadContext(threadId: string): Promise<string> {
     take: 8,
     select: { content: true, sender: { select: { name: true } } },
   });
-  return recentMessages
-    .reverse()
-    .map((m) => `${m.sender?.name || 'User'}: ${m.content}`)
-    .join('\n');
+  const ordered = [...recentMessages].reverse();
+  const lines = ordered.map((m) => {
+    const senderName = m.sender?.name || 'User';
+    return `${senderName}: ${m.content}`;
+  });
+  return lines.join('\n');
 }
 
 export async function getOrCreateAiUser() {
@@ -79,7 +82,7 @@ export async function createAiReplyMessageTx(params: {
         threadId,
         senderId: aiUserId,
         parentId,
-        depth: Math.min((parentDepth ?? 0) + 1, 4),
+        depth: Math.min((parentDepth ?? 0) + 1, MAX_MESSAGE_DEPTH),
         isAiResponse: true,
         isEdited: false,
         isPinned: false,

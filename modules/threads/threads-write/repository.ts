@@ -16,15 +16,16 @@ export async function createThread(payload: {
   createdBy: string;
   initialMessage?: string;
 }): Promise<CreateThreadResult> {
+  const hasInitialMessage = Boolean(payload.initialMessage);
   const thread = await prisma.thread.create({
     data: {
       name: payload.name,
       description: payload.description,
       slug: payload.slug,
       createdBy: payload.createdBy,
-      messageCount: payload.initialMessage ? 1 : 0,
-      messages: payload.initialMessage
-        ? { create: { content: payload.initialMessage, senderId: payload.createdBy } }
+      messageCount: hasInitialMessage ? 1 : 0,
+      messages: hasInitialMessage
+        ? { create: { content: payload.initialMessage!, senderId: payload.createdBy } }
         : undefined,
     },
     include: {
@@ -34,9 +35,15 @@ export async function createThread(payload: {
   });
 
   const record = thread as ThreadRecord;
-  const initialMessage = payload.initialMessage && thread.messages[0]
-    ? { id: thread.messages[0].id, content: payload.initialMessage, createdAt: thread.messages[0].createdAt }
-    : undefined;
+
+  let initialMessage: CreateThreadResult['initialMessage'] = undefined;
+  if (payload.initialMessage && thread.messages[0]) {
+    initialMessage = {
+      id: thread.messages[0].id,
+      content: payload.initialMessage,
+      createdAt: thread.messages[0].createdAt,
+    };
+  }
 
   return {
     thread: record,

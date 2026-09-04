@@ -75,11 +75,18 @@ export async function getSlaMetrics(): Promise<{
 
   let avgResponseTimeHours: number | null = null;
   if (resolvedReports.length > 0) {
-    const totalMs = resolvedReports.reduce((sum, r) => {
-      const responseTime = r.firstResponseAt?.getTime() ?? r.createdAt.getTime();
-      return sum + (responseTime - r.createdAt.getTime());
-    }, 0);
-    avgResponseTimeHours = Math.round((totalMs / resolvedReports.length) / (1000 * 60 * 60) * 10) / 10;
+    let totalMs = 0;
+    for (const report of resolvedReports) {
+      const responseTimeMs = report.firstResponseAt
+        ? report.firstResponseAt.getTime()
+        : report.createdAt.getTime();
+      const elapsedMs = responseTimeMs - report.createdAt.getTime();
+      totalMs += elapsedMs;
+    }
+    const avgMs = totalMs / resolvedReports.length;
+    const MS_PER_HOUR = 1000 * 60 * 60;
+    const avgHours = avgMs / MS_PER_HOUR;
+    avgResponseTimeHours = Math.round(avgHours * 10) / 10;
   }
 
   return { totalPending, pendingOver24h, pendingOver72h, avgResponseTimeHours };

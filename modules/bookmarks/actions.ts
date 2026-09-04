@@ -13,25 +13,35 @@ import {
 import { createServerAction } from '@/lib/utils/server-action';
 import { paginationSchema, threadIdSchema } from '@/lib/utils/validation-common';
 import { actionSuccess } from '@/lib/actions/result';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import type { Role } from '@prisma/client';
+
+function revalidateBookmarkPaths(threadId: string) {
+  revalidatePath(ROUTES.DASHBOARD_BOOKMARKS);
+  revalidatePath(ROUTES.THREAD(threadId));
+}
+
+async function assertThreadAccess(threadId: string, userId: string, role: Role) {
+  await requireThreadAccessOrThrow(threadId, userId, role);
+}
 
 export const toggleBookmark = createServerAction(
   { schema: threadIdSchema, actionName: 'toggleBookmark' },
   async ({ threadId }) => {
     const session = await requireSession();
-    const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
-    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
-    const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
+    await assertThreadAccess(threadId, session.user.id, session.user.role as Role);
+    const currentlyBookmarked = await isBookmarkedRepo(session.user.id, threadId);
 
-    if (isBookmarked) {
+    if (currentlyBookmarked) {
       await unbookmarkThreadRepo(session.user.id, threadId);
     } else {
       await bookmarkThreadRepo(session.user.id, threadId);
     }
 
-    revalidatePath(ROUTES.DASHBOARD_BOOKMARKS);
-    revalidatePath(ROUTES.THREAD(threadId));
+    revalidateBookmarkPaths(threadId);
 
-    return actionSuccess({ isBookmarked: !isBookmarked });
+    const newBookmarkedState = !currentlyBookmarked;
+    return actionSuccess({ isBookmarked: newBookmarkedState });
   }
 );
 
@@ -48,8 +58,7 @@ export const checkBookmarkStatus = createServerAction(
   { schema: threadIdSchema, actionName: 'checkBookmarkStatus' },
   async ({ threadId }) => {
     const session = await requireSession();
-    const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
-    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
+    await assertThreadAccess(threadId, session.user.id, session.user.role as Role);
     const isBookmarked = await isBookmarkedRepo(session.user.id, threadId);
     return actionSuccess({ isBookmarked });
   }
@@ -68,8 +77,7 @@ export const setBookmarkStatus = createServerAction(
   { schema: setBookmarkStatusSchema, actionName: 'setBookmarkStatus' },
   async ({ threadId, bookmarked }) => {
     const session = await requireSession();
-    const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
-    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
+    await assertThreadAccess(threadId, session.user.id, session.user.role as Role);
 
     if (bookmarked) {
       await bookmarkThreadRepo(session.user.id, threadId);
@@ -77,8 +85,7 @@ export const setBookmarkStatus = createServerAction(
       await unbookmarkThreadRepo(session.user.id, threadId);
     }
 
-    revalidatePath(ROUTES.DASHBOARD_BOOKMARKS);
-    revalidatePath(ROUTES.THREAD(threadId));
+    revalidateBookmarkPaths(threadId);
 
     return actionSuccess({ isBookmarked: bookmarked });
   }

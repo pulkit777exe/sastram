@@ -1,6 +1,7 @@
 const CONFIDENCE_HALF_LIFE_DAYS = 90;
 const RECENCY_THRESHOLD_DAYS = 30;
 const MIN_CONFIDENCE = 0.05;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Computes a confidence factor (0–1) representing how trustworthy a resolution
@@ -15,7 +16,7 @@ export function computeConfidence(
   scoreTime: Date
 ): { confidence: number; ageDays: number } {
   const ageMs = Date.now() - scoreTime.getTime();
-  const ageDays = Math.max(0, ageMs / (1000 * 60 * 60 * 24));
+  const ageDays = Math.max(0, ageMs / MS_PER_DAY);
 
   if (ageDays < RECENCY_THRESHOLD_DAYS) {
     return { confidence: 1, ageDays };

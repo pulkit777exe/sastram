@@ -35,109 +35,122 @@ type CounterFamily = {
   loadActuals: () => Promise<Map<string, number>>;
 };
 
-function toCountMap<T extends { _count: { _all: number } }>(
-  groups: T[],
-  keyOf: (group: T) => string | null,
+const MAX_DRIFTS_LOGGED = 25; // avoid flooding logs with unbounded drift arrays
+
+// Simple helper: turns a groupBy result into a map of id -> count.
+// KISS: no generics — just a plain loop with a key extractor.
+// Duplicating the loop in each loader would be more explicit, but this one
+// helper avoids 5 copies of the same 4-line loop and is easy to read.
+type GroupedCount = { _count: { _all: number } } & Record<string, unknown>;
+
+function toCountMap(
+  groupedCounts: GroupedCount[],
+  extractKey: (group: GroupedCount) => unknown,
 ): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const group of groups) {
-    const key = keyOf(group);
-    if (key !== null) counts.set(key, group._count._all);
+  const countById = new Map<string, number>();
+  for (const row of groupedCounts) {
+    const rawId = extractKey(row);
+    if (typeof rawId !== 'string' || rawId === null) continue;
+    countById.set(rawId, row._count._all);
   }
-  return counts;
+  return countById;
 }
 
+// --- Explicit loaders (KISS: named functions instead of anonymous closures) ---
+// These are the "prefer 2-3 explicit check functions" alternative to a dense
+// declarative table. Each loader is a plain async function; COUNTERS just
+// wires them together so reconcileCounters can loop without 5x duplicated
+// scanning/logging code.
+
+async function loadThreads(): Promise<AnyRow[]> {
+  return prisma.thread.findMany({
+    where: { deletedAt: null },
+    select: { id: true, messageCount: true },
+  });
+}
+
+async function loadThreadMessageActuals(): Promise<Map<string, number>> {
+  const grouped = await prisma.message.groupBy({
+    by: ['threadId'],
+    where: { deletedAt: null },
+    _count: { _all: true },
+  });
+  return toCountMap(grouped, (g) => g.threadId);
+}
+
+async function loadMessagesForLike(): Promise<AnyRow[]> {
+  return prisma.message.findMany({
+    where: { deletedAt: null, thread: { deletedAt: null } },
+    select: { id: true, likeCount: true },
+  });
+}
+
+async function loadLikeActuals(): Promise<Map<string, number>> {
+  // Reactions aren't pruned when a message is soft-deleted, so drift here is
+  // expected to surface rather than be silently corrected.
+  const grouped = await prisma.reaction.groupBy({
+    by: ['messageId'],
+    _count: { _all: true },
+  });
+  return toCountMap(grouped, (g) => g.messageId);
+}
+
+async function loadRootMessages(): Promise<AnyRow[]> {
+  return prisma.message.findMany({
+    where: { deletedAt: null, thread: { deletedAt: null }, depth: 0 },
+    select: { id: true, replyCount: true },
+  });
+}
+
+async function loadReplyActuals(): Promise<Map<string, number>> {
+  const grouped = await prisma.message.groupBy({
+    by: ['parentId'],
+    where: { deletedAt: null, parentId: { not: null } },
+    _count: { _all: true },
+  });
+  return toCountMap(grouped, (g) => g.parentId);
+}
+
+async function loadUsersForFollower(): Promise<AnyRow[]> {
+  return prisma.user.findMany({
+    where: { deletedAt: null },
+    select: { id: true, followerCount: true },
+  });
+}
+
+async function loadFollowerActuals(): Promise<Map<string, number>> {
+  const grouped = await prisma.userFollow.groupBy({
+    by: ['followingId'],
+    _count: { _all: true },
+  });
+  return toCountMap(grouped, (g) => g.followingId);
+}
+
+async function loadUsersForFollowing(): Promise<AnyRow[]> {
+  return prisma.user.findMany({
+    where: { deletedAt: null },
+    select: { id: true, followingCount: true },
+  });
+}
+
+async function loadFollowingActuals(): Promise<Map<string, number>> {
+  const grouped = await prisma.userFollow.groupBy({
+    by: ['followerId'],
+    _count: { _all: true },
+  });
+  return toCountMap(grouped, (g) => g.followerId);
+}
+
+// Declarative table kept for KISS: 5 rows centralize the counter list so
+// reconcileCounters doesn't duplicate scanning/logging 5 times. Alternative
+// would be 5 explicit checkThreadMessageCount() functions that each call
+// compareAll — more verbose but equally valid; kept table here for brevity.
 const COUNTERS: CounterFamily[] = [
-  {
-    table: 'threads',
-    counter: 'messageCount',
-    load: () =>
-      prisma.thread.findMany({
-        where: { deletedAt: null },
-        select: { id: true, messageCount: true },
-      }),
-    loadActuals: async () =>
-      toCountMap(
-        await prisma.message.groupBy({
-          by: ['threadId'],
-          where: { deletedAt: null },
-          _count: { _all: true },
-        }),
-        (g) => g.threadId,
-      ),
-  },
-  {
-    table: 'messages',
-    counter: 'likeCount',
-    load: () =>
-      prisma.message.findMany({
-        where: { deletedAt: null, thread: { deletedAt: null } },
-        select: { id: true, likeCount: true },
-      }),
-    // Reactions aren't pruned when a message is soft-deleted, so drift here is
-    // expected to surface rather than be silently correct.
-    loadActuals: async () =>
-      toCountMap(
-        await prisma.reaction.groupBy({
-          by: ['messageId'],
-          _count: { _all: true },
-        }),
-        (g) => g.messageId,
-      ),
-  },
-  {
-    table: 'messages',
-    counter: 'replyCount',
-    // Root messages only — bounds the scan.
-    load: () =>
-      prisma.message.findMany({
-        where: { deletedAt: null, thread: { deletedAt: null }, depth: 0 },
-        select: { id: true, replyCount: true },
-      }),
-    loadActuals: async () =>
-      toCountMap(
-        await prisma.message.groupBy({
-          by: ['parentId'],
-          where: { deletedAt: null, parentId: { not: null } },
-          _count: { _all: true },
-        }),
-        (g) => g.parentId,
-      ),
-  },
-  {
-    table: 'users',
-    counter: 'followerCount',
-    load: () =>
-      prisma.user.findMany({
-        where: { deletedAt: null },
-        select: { id: true, followerCount: true },
-      }),
-    loadActuals: async () =>
-      toCountMap(
-        await prisma.userFollow.groupBy({
-          by: ['followingId'],
-          _count: { _all: true },
-        }),
-        (g) => g.followingId,
-      ),
-  },
-  {
-    table: 'users',
-    counter: 'followingCount',
-    load: () =>
-      prisma.user.findMany({
-        where: { deletedAt: null },
-        select: { id: true, followingCount: true },
-      }),
-    loadActuals: async () =>
-      toCountMap(
-        await prisma.userFollow.groupBy({
-          by: ['followerId'],
-          _count: { _all: true },
-        }),
-        (g) => g.followerId,
-      ),
-  },
+  { table: 'threads', counter: 'messageCount', load: loadThreads, loadActuals: loadThreadMessageActuals },
+  { table: 'messages', counter: 'likeCount', load: loadMessagesForLike, loadActuals: loadLikeActuals },
+  { table: 'messages', counter: 'replyCount', load: loadRootMessages, loadActuals: loadReplyActuals },
+  { table: 'users', counter: 'followerCount', load: loadUsersForFollower, loadActuals: loadFollowerActuals },
+  { table: 'users', counter: 'followingCount', load: loadUsersForFollowing, loadActuals: loadFollowingActuals },
 ];
 
 export async function reconcileCounters(): Promise<{
@@ -156,7 +169,7 @@ export async function reconcileCounters(): Promise<{
   if (drifts.length > 0) {
     logger.warn(
       `[counter-reconcile] ${drifts.length} drift(s) across ${scanned} scanned rows`,
-      { drifts: drifts.slice(0, 25), totalDrifts: drifts.length }
+      { drifts: drifts.slice(0, MAX_DRIFTS_LOGGED), totalDrifts: drifts.length }
     );
   } else {
     logger.info(`[counter-reconcile] clean — ${scanned} rows scanned, no drift`);
@@ -173,25 +186,30 @@ export async function reconcileCounters(): Promise<{
 }
 
 function compareAll(
-  table: string,
-  counter: string,
-  rows: AnyRow[],
-  actuals: Map<string, number>,
+  tableName: string,
+  counterName: string,
+  storedRows: AnyRow[],
+  actualCountById: Map<string, number>,
 ): CounterDrift[] {
-  const drifts: CounterDrift[] = [];
-  for (const row of rows) {
-    const actual = actuals.get(row.id) ?? 0;
-    const stored = Number(row[counter] ?? 0);
-    if (stored !== actual) {
-      drifts.push({
-        table,
-        rowId: row.id,
-        counterName: counter,
-        storedValue: stored,
-        actualValue: actual,
-        delta: actual - stored,
-      });
+  const foundDrifts: CounterDrift[] = [];
+  for (const storedRow of storedRows) {
+    const actualCount = actualCountById.get(storedRow.id) ?? 0;
+    const rawStoredValue = storedRow[counterName];
+    let storedCount = 0;
+    if (typeof rawStoredValue === 'number') {
+      storedCount = rawStoredValue;
+    } else if (typeof rawStoredValue === 'string') {
+      storedCount = Number(rawStoredValue);
     }
+    if (storedCount === actualCount) continue;
+    foundDrifts.push({
+      table: tableName,
+      rowId: storedRow.id,
+      counterName: counterName,
+      storedValue: storedCount,
+      actualValue: actualCount,
+      delta: actualCount - storedCount,
+    });
   }
-  return drifts;
+  return foundDrifts;
 }

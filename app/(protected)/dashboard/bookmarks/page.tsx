@@ -14,13 +14,15 @@ export const metadata: Metadata = {
   description: 'Your saved and bookmarked threads.',
 };
 
+const BOOKMARKS_PAGE_SIZE = 50;
+
 export default async function BookmarksPage() {
   const session = await getSession();
   if (!session) {
     redirect('/login');
   }
 
-  const result = await getBookmarkedThreads({ limit: 50, offset: 0 });
+  const result = await getBookmarkedThreads({ limit: BOOKMARKS_PAGE_SIZE, offset: 0 });
 
   if (result.error || !result.data) {
     return (

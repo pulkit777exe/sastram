@@ -3,6 +3,18 @@ import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
 
+const BOOKMARK_THREAD_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+  description: true,
+  messageCount: true,
+  memberCount: true,
+  createdAt: true,
+  updatedAt: true,
+  creator: { select: { id: true, name: true, email: true, image: true } },
+} as const;
+
 export async function bookmarkThread(userId: string, threadId: string) {
   return prisma.userBookmark.upsert({
     where: { userId_threadId: { userId, threadId } },
@@ -29,26 +41,7 @@ export const getUserBookmarks = cache(async (userId: string, limit: number = 20,
       prisma.userBookmark.findMany({
         where: { userId, thread: { deletedAt: null } },
         include: {
-          thread: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              description: true,
-              messageCount: true,
-              memberCount: true,
-              createdAt: true,
-              updatedAt: true,
-              creator: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                },
-              },
-            },
-          },
+          thread: { select: BOOKMARK_THREAD_SELECT },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,

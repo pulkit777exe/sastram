@@ -1,6 +1,6 @@
 import { auth } from '@/lib/services/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail } from '@/lib/utils/api-response';
+import {ok, fail, HTTP_STATUS} from '@/lib/utils/api-response';
 import { logger } from '@/lib/infrastructure/logger';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { z } from 'zod';
@@ -16,13 +16,13 @@ export async function POST(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
     const rateLimitResult = await rateLimit({ key: `otp-reset:${ip}`, type: 'auth' });
     if (!rateLimitResult.success) {
-      return NextResponse.json(fail('RATE_LIMITED', 'Too many attempts. Please try again later.'), { status: 429 });
+      return NextResponse.json(fail('RATE_LIMITED', 'Too many attempts. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
     }
 
     const body = await request.json();
     const validation = resetOtpSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Email, OTP, and password are required'), { status: 400 });
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Email, OTP, and password are required'), { status: HTTP_STATUS.BAD_REQUEST });
     }
 
     const data = await auth.api.resetPasswordEmailOTP({
@@ -31,6 +31,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(ok(data));
   } catch (error) {
     logger.error('[reset-otp]', error);
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Password reset failed'), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Password reset failed'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 }

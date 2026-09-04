@@ -9,7 +9,7 @@ import {
 } from './repository';
 import { withValidation } from '@/lib/utils/server-action';
 import { activityQuerySchema } from '@/lib/utils/validation-common';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionFailure, actionSuccess } from '@/lib/actions/result';
 
 export const recordActivityAction = withValidation(
   z.object({
@@ -26,14 +26,20 @@ export const recordActivityAction = withValidation(
   }
 );
 
+function canViewActivity(sessionUser: { id: string; role: string }, effectiveUserId: string): boolean {
+  if (effectiveUserId === sessionUser.id) return true;
+  if (sessionUser.role === 'ADMIN') return true;
+  if (sessionUser.role === 'MODERATOR') return true;
+  return false;
+}
+
 export const getUserActivityAction = withValidation(
   activityQuerySchema,
   'getUserActivityAction',
   async ({ userId, limit, offset }) => {
     const session = await requireSession();
     const effectiveUserId = userId ?? session.user.id;
-    if (effectiveUserId !== session.user.id && session.user.role !== 'ADMIN' && session.user.role !== 'MODERATOR') {
-      const { actionFailure } = await import('@/lib/actions/result');
+    if (!canViewActivity(session.user, effectiveUserId)) {
       return actionFailure('FORBIDDEN', 'Not authorized to view this activity');
     }
     const result = await getUserActivityRepo(effectiveUserId, limit || 20, offset || 0);

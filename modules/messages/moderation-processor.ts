@@ -11,12 +11,58 @@ import type { ReportCategory } from '@prisma/client';
 
 export type { MessageLike, ConversationContext, ModerationResult };
 
+const MAX_REPLY_DEPTH = 4;
+const SYSTEM_USER_EMAIL = 'system@sastram.com';
+
+function computeReplyDepth(parentDepth: number): number {
+  const nextDepth = parentDepth + 1;
+  if (nextDepth > MAX_REPLY_DEPTH) {
+    return MAX_REPLY_DEPTH;
+  }
+  return nextDepth;
+}
+
+function toAttachmentType(raw: string | undefined): 'IMAGE' | 'GIF' | 'VIDEO' | 'FILE' {
+  if (raw === 'GIF' || raw === 'VIDEO' || raw === 'FILE' || raw === 'IMAGE') {
+    return raw;
+  }
+  return 'IMAGE';
+}
+
 async function getSystemUser() {
   return prisma.user.upsert({
-    where: { email: 'system@sastram.com' },
-    create: { email: 'system@sastram.com', name: 'System', role: 'USER' },
+    where: { email: SYSTEM_USER_EMAIL },
+    create: { email: SYSTEM_USER_EMAIL, name: 'System', role: 'USER' },
     update: {},
   });
+}
+
+async function resolveReplyDepth(parentId: string | null): Promise<number> {
+  if (!parentId) return 0;
+  const parent = await prisma.message.findUnique({ where: { id: parentId }, select: { depth: true } });
+  if (!parent) return 0;
+  return computeReplyDepth(parent.depth);
+}
+
+function buildAttachmentCreate(
+  attachments?: Array<{ url: string; type?: string; name?: string | null; size?: number | null }>
+): { create: Array<{ url: string; type: 'IMAGE' | 'GIF' | 'VIDEO' | 'FILE'; name: string | null; size: bigint | null }> } | undefined {
+  if (!attachments?.length) return undefined;
+  const creates = attachments.map((att) => {
+    let size: bigint | null;
+    if (att.size !== undefined && att.size !== null) {
+      size = BigInt(att.size);
+    } else {
+      size = null;
+    }
+    return {
+      url: att.url,
+      type: toAttachmentType(att.type),
+      name: att.name ?? null,
+      size,
+    };
+  });
+  return { create: creates };
 }
 
 export class MessageService {
@@ -29,17 +75,8 @@ export class MessageService {
     const result = await this.pipeline.process(message, context);
 
     try {
-      // Replies are nested at most 4 deep; beyond that they flatten onto the parent.
-      let depth = 0;
-      if (message.parentId) {
-        const parent = await prisma.message.findUnique({
-          where: { id: message.parentId },
-          select: { depth: true },
-        });
-        if (parent) {
-          depth = Math.min(parent.depth + 1, 4);
-        }
-      }
+      const depth = await resolveReplyDepth(message.parentId ?? null);
+      const attachmentCreate = buildAttachmentCreate(message.attachments);
 
       const created = await prisma.$transaction(async (tx) => {
         const msg = await tx.message.create({
@@ -49,14 +86,7 @@ export class MessageService {
             senderId: message.authorId,
             parentId: message.parentId ?? null,
             depth,
-            attachments: message.attachments ? {
-              create: message.attachments.map(att => ({
-                url: att.url,
-                type: (att.type || 'IMAGE') as 'IMAGE' | 'GIF' | 'VIDEO' | 'FILE',
-                name: att.name ?? null,
-                size: att.size !== undefined && att.size !== null ? BigInt(att.size) : null
-              }))
-            } : undefined
+            attachments: attachmentCreate,
           },
           include: {
             attachments: true
@@ -105,11 +135,12 @@ export class MessageService {
         });
 
         // Best-effort: a failed notification must not fail the post.
+        const preview = (result.reason || 'content policy').substring(0, 120);
         await dispatch({
           recipients: { roles: ['MODERATOR', 'ADMIN'] },
           category: 'SYSTEM',
           title: `Auto-mod flagged: ${result.action}`,
-          message: `Message in thread auto-flagged: ${(result.reason || 'content policy').substring(0, 120)}`,
+          message: `Message in thread auto-flagged: ${preview}`,
           data: { messageId: created.id, action: result.action, autoMod: true },
         });
       }

@@ -10,8 +10,20 @@ export default async function AdminTagsPage(props: {
   assertAdmin(session.user);
 
   const sp = await props.searchParams;
-  const page = Number(sp?.page) || 1;
-  const search = sp?.search || '';
+
+  function parsePageParam(value: string | undefined): number {
+    const parsed = Number(value);
+    if (!value || Number.isNaN(parsed) || parsed < 1) return 1;
+    return Math.floor(parsed);
+  }
+
+  function parseSearchParam(value: string | undefined): string {
+    if (!value) return '';
+    return value;
+  }
+
+  const page = parsePageParam(sp?.page);
+  const search = parseSearchParam(sp?.search);
 
   const { tags, total, totalPages } = await listAllTags({ page, pageSize: 50, search });
 

@@ -17,19 +17,118 @@ import { ROUTES } from '@/lib/config/routes';
 import { getMemberRole } from '@/modules/members';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
-import { isPrismaUniqueConstraintError } from '@/lib/utils/errors';
+import { AppError, isPrismaUniqueConstraintError } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
-import { actionSuccess, type ActionErrorCode } from '@/lib/actions/result';
+import { actionFailure, actionSuccess, type ActionErrorCode } from '@/lib/actions/result';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import type { Role } from '@prisma/client';
 
 const pollIdSchema = z.object({ pollId: z.string().cuid() });
 
 const MANAGER_ROLES = ['OWNER', 'MODERATOR'];
 
-const fail = (error: string, errorCode: ActionErrorCode) =>
-  ({ data: null, error, ok: false, errorCode }) as const;
-const internalError = () => fail('Something went wrong', 'INTERNAL_ERROR');
-const pollNotFound = () => fail('Poll not found', 'NOT_FOUND');
-const notAMember = () => fail('You are not a member of this thread', 'FORBIDDEN');
+function fail(error: string, errorCode: ActionErrorCode) {
+  return actionFailure(errorCode, error);
+}
+
+function internalError() {
+  return fail('Something went wrong', 'INTERNAL_ERROR');
+}
+
+function pollNotFound() {
+  return fail('Poll not found', 'NOT_FOUND');
+}
+
+function notAMember() {
+  return fail('You are not a member of this thread', 'FORBIDDEN');
+}
+
+function revalidatePollThread(slugOrId: string) {
+  revalidatePath(ROUTES.THREAD(slugOrId));
+}
+
+function toActionErrorCode(code: string | undefined): ActionErrorCode {
+  switch (code) {
+    case 'AUTH_REQUIRED':
+    case 'FORBIDDEN':
+    case 'VALIDATION_ERROR':
+    case 'NOT_FOUND':
+    case 'RATE_LIMITED':
+    case 'CONFLICT':
+    case 'INTERNAL_ERROR':
+      return code;
+    default:
+      return 'INTERNAL_ERROR';
+  }
+}
+
+function toActionError(error: unknown) {
+  if (AppError.isAppError(error)) {
+    const code = toActionErrorCode(error.code);
+    return fail(error.message, code);
+  }
+  return null;
+}
+
+function isPollExpired(expiresAt: Date | null): boolean {
+  if (expiresAt === null) {
+    return false;
+  }
+  return expiresAt.getTime() < Date.now();
+}
+
+function canClosePoll(memberRole: { role: string } | null, userRole: string): boolean {
+  if (userRole === 'ADMIN') {
+    return true;
+  }
+  if (memberRole === null) {
+    return false;
+  }
+  return MANAGER_ROLES.includes(memberRole.role);
+}
+
+function isStandalonePoll(messageId: string | null | undefined): boolean {
+  return messageId === undefined || messageId === null;
+}
+
+function canCreateStandalonePoll(memberRole: { role: string } | null): boolean {
+  if (memberRole === null) return false;
+  return MANAGER_ROLES.includes(memberRole.role);
+}
+
+function isVotingClosed(poll: { isActive: boolean; expiresAt: Date | null }): boolean {
+  return !poll.isActive || isPollExpired(poll.expiresAt);
+}
+
+async function assertThreadAccess(threadId: string, userId: string, role: Role) {
+  await requireThreadAccessOrThrow(threadId, userId, role);
+}
+
+// ── Fetch helpers ──────────────────────────────────────────────────────────
+async function fetchPollForVote(pollId: string) {
+  return getPollByIdRepo(pollId);
+}
+
+async function fetchPollForClose(pollId: string) {
+  return getPollByIdRepo(pollId);
+}
+
+function validatePollVoteAccess(
+  poll: NonNullable<Awaited<ReturnType<typeof getPollByIdRepo>>>,
+  memberRole: { role: string } | null
+): ReturnType<typeof fail> | null {
+  if (isVotingClosed(poll)) {
+    return fail('Voting is closed for this poll', 'CONFLICT');
+  }
+  if (memberRole === null) {
+    return notAMember();
+  }
+  return null;
+}
+
+async function applyVote(pollId: string, userId: string, optionIndex: number) {
+  await voteOnPollRepo(pollId, userId, optionIndex);
+}
 
 export const createPollAction = withValidation(
   createPollSchema,
@@ -39,14 +138,14 @@ export const createPollAction = withValidation(
       const session = await requireSession();
       const memberRole = await getMemberRole(threadId, session.user.id);
 
-      // Thread-level polls are an owner/mod call; a poll attached to a message can
-      // be created by anyone who belongs to the thread.
-      if (!messageId) {
-        if (!memberRole || !MANAGER_ROLES.includes(memberRole.role)) {
+      if (isStandalonePoll(messageId)) {
+        if (!canCreateStandalonePoll(memberRole)) {
           return fail('Insufficient permissions to create poll', 'FORBIDDEN');
         }
-      } else if (!memberRole) {
-        return notAMember();
+      } else {
+        if (memberRole === null) {
+          return notAMember();
+        }
       }
 
       const poll = await createPollRepo(threadId, question, options, expiresAt ?? undefined, messageId);
@@ -58,7 +157,7 @@ export const createPollAction = withValidation(
         createdBy: session.user.id,
       });
 
-      revalidatePath(ROUTES.THREAD(threadId));
+      revalidatePollThread(threadId);
       return actionSuccess(poll);
     } catch (err) {
       logger.error('[createPoll]', { error: err });
@@ -74,26 +173,23 @@ export const voteOnPollAction = withValidation(
     try {
       const session = await requireSession();
 
-      const poll = await getPollByIdRepo(pollId);
-      if (!poll) return pollNotFound();
-
-      const expired = poll.expiresAt !== null && poll.expiresAt.getTime() < Date.now();
-      if (!poll.isActive || expired) {
-        return fail('Voting is closed for this poll', 'CONFLICT');
+      const poll = await fetchPollForVote(pollId);
+      if (poll === null) {
+        return pollNotFound();
       }
 
       const memberRole = await getMemberRole(poll.threadId, session.user.id);
-      if (!memberRole) return notAMember();
+      const accessError = validatePollVoteAccess(poll, memberRole);
+      if (accessError !== null) return accessError;
 
-      await voteOnPollRepo(pollId, session.user.id, optionIndex);
+      await applyVote(pollId, session.user.id, optionIndex);
 
       if (poll.thread?.slug) {
-        revalidatePath(ROUTES.THREAD(poll.thread.slug));
+        revalidatePollThread(poll.thread.slug);
       }
 
       return actionSuccess(null);
     } catch (err) {
-      // One vote per user is enforced by a unique index, not a pre-check.
       if (isPrismaUniqueConstraintError(err)) {
         return fail('You have already voted on this poll', 'CONFLICT');
       }
@@ -109,18 +205,20 @@ export const closePollAction = createServerAction(
     try {
       const session = await requireSession();
 
-      const poll = await getPollByIdRepo(pollId);
-      if (!poll) return pollNotFound();
+      const poll = await fetchPollForClose(pollId);
+      if (poll === null) {
+        return pollNotFound();
+      }
 
       const memberRole = await getMemberRole(poll.threadId, session.user.id);
-      const canClose =
-        (memberRole && MANAGER_ROLES.includes(memberRole.role)) || session.user.role === 'ADMIN';
-      if (!canClose) return fail('Insufficient permissions', 'FORBIDDEN');
+      if (!canClosePoll(memberRole, session.user.role)) {
+        return fail('Insufficient permissions', 'FORBIDDEN');
+      }
 
       await closePollRepo(pollId);
 
       if (poll.thread?.slug) {
-        revalidatePath(ROUTES.THREAD(poll.thread.slug));
+        revalidatePollThread(poll.thread.slug);
       }
 
       return actionSuccess(null);
@@ -137,19 +235,17 @@ export const getPollResultsAction = createServerAction(
     try {
       const session = await requireSession();
       const poll = await getPollResultsRepo(pollId);
-      if (!poll) return pollNotFound();
-      // Poll results belong to a thread — enforce visibility via thread access
-      const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
+      if (poll === null) {
+        return pollNotFound();
+      }
       const fullPoll = await getPollByIdRepo(pollId);
       if (fullPoll?.threadId) {
-        await requireThreadAccessOrThrow(fullPoll.threadId, session.user.id, session.user.role as never);
+        await assertThreadAccess(fullPoll.threadId, session.user.id, session.user.role as Role);
       }
       return actionSuccess(poll);
     } catch (error) {
-      if (error instanceof Error && (error as never as { code?: string }).code === undefined) {
-        // Check if it's AppError FORBIDDEN
-        const { AppError } = await import('@/lib/utils/errors');
-        if (AppError.isAppError(error)) throw error;
+      if (AppError.isAppError(error)) {
+        throw error;
       }
       logger.error('[getPollResults]', error);
       return internalError();
@@ -177,13 +273,16 @@ export const getPollByIdAction = createServerAction(
     try {
       const session = await requireSession();
       const poll = await getPollByIdRepo(pollId);
-      if (!poll) return pollNotFound();
-      const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
-      await requireThreadAccessOrThrow(poll.threadId, session.user.id, session.user.role as never);
+      if (poll === null) {
+        return pollNotFound();
+      }
+      await assertThreadAccess(poll.threadId, session.user.id, session.user.role as Role);
       return actionSuccess(poll);
     } catch (error) {
-      const { AppError } = await import('@/lib/utils/errors');
-      if (AppError.isAppError(error)) return { data: null, error: error.message, ok: false, errorCode: error.code as never };
+      const mapped = toActionError(error);
+      if (mapped !== null) {
+        return mapped;
+      }
       logger.error('[getPollById]', error);
       return internalError();
     }
@@ -195,14 +294,17 @@ export const getPollByThreadAction = createServerAction(
   async ({ threadId }) => {
     try {
       const session = await requireSession();
-      const { requireThreadAccessOrThrow } = await import('@/lib/thread-access');
-      await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
+      await assertThreadAccess(threadId, session.user.id, session.user.role as Role);
       const poll = await getPollByThreadIdRepo(threadId);
-      if (!poll) return pollNotFound();
+      if (poll === null) {
+        return pollNotFound();
+      }
       return actionSuccess(poll);
     } catch (error) {
-      const { AppError } = await import('@/lib/utils/errors');
-      if (AppError.isAppError(error)) return { data: null, error: error.message, ok: false, errorCode: error.code as never };
+      const mapped = toActionError(error);
+      if (mapped !== null) {
+        return mapped;
+      }
       logger.error('[getPollByThread]', error);
       return internalError();
     }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireModerator } from '@/lib/middleware/moderation';
-import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
+import {ok, fail, withErrorHandling, HTTP_STATUS} from '@/lib/utils/api-response';
 import { resolveAppeal } from '@/modules/appeals/actions';
 import { z } from 'zod';
 
@@ -16,7 +16,7 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
 
   const validation = reviewAppealSchema.safeParse(body);
   if (!validation.success) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   const { id: bodyId, approved } = validation.data;
@@ -28,7 +28,7 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   const result = await resolveAppeal({ appealId: id, approved });
 
   if ('error' in result && result.error) {
-    return NextResponse.json(fail('INTERNAL_ERROR', result.error), { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', result.error), { status: HTTP_STATUS.INTERNAL });
   }
 
   return NextResponse.json(ok({ appeal: { id, approved } }));

@@ -1,6 +1,42 @@
-import type { DigestFrequency } from '@prisma/client';
+import type { DigestFrequency, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+
+const TRANSCRIPT_SENDER_SELECT = { id: true, name: true, email: true, image: true } as const;
+
+function buildAnonymousSubscriptionUpsert(threadId: string, email: string, frequency?: DigestFrequency) {
+  const updateData: Prisma.ThreadSubscriptionUpdateInput = {};
+  if (frequency) {
+    updateData.frequency = frequency;
+  }
+  const createData: Prisma.ThreadSubscriptionCreateInput = {
+    thread: { connect: { id: threadId } },
+    email,
+  };
+  if (frequency) {
+    (createData as Prisma.ThreadSubscriptionCreateInput).frequency = frequency;
+  }
+  return { updateData, createData };
+}
+
+function buildUserSubscriptionUpsert(threadId: string, userId: string, email: string | undefined, frequency?: DigestFrequency) {
+  const updateData: Prisma.ThreadSubscriptionUpdateInput = {};
+  if (email) {
+    updateData.email = email;
+  }
+  if (frequency) {
+    updateData.frequency = frequency;
+  }
+  const createData: Prisma.ThreadSubscriptionCreateInput = {
+    thread: { connect: { id: threadId } },
+    user: { connect: { id: userId } },
+    email: email ?? '',
+  };
+  if (frequency) {
+    (createData as Prisma.ThreadSubscriptionCreateInput).frequency = frequency;
+  }
+  return { updateData, createData };
+}
 
 export async function subscribeToThreadNewsletter({
   threadId,
@@ -18,39 +54,24 @@ export async function subscribeToThreadNewsletter({
   }
 
   if (!userId) {
+    const { updateData, createData } = buildAnonymousSubscriptionUpsert(threadId, email!, frequency);
     return prisma.threadSubscription.upsert({
-      where: {
-        threadId_email: {
-          threadId,
-          email: email!,
-        },
-      },
-      update: frequency ? { frequency } : {},
-      create: {
-        threadId,
-        email: email!,
-        ...(frequency ? { frequency } : {}),
-      },
+      where: { threadId_email: { threadId, email: email! } },
+      update: updateData,
+      create: createData,
     });
   }
 
+  const { updateData: updateDataWithUser, createData: createDataWithUser } = buildUserSubscriptionUpsert(
+    threadId,
+    userId,
+    email,
+    frequency
+  );
   return prisma.threadSubscription.upsert({
-    where: {
-      threadId_userId: {
-        threadId,
-        userId,
-      },
-    },
-    update: {
-      email,
-      ...(frequency ? { frequency } : {}),
-    },
-    create: {
-      threadId,
-      userId,
-      email,
-      ...(frequency ? { frequency } : {}),
-    },
+    where: { threadId_userId: { threadId, userId } },
+    update: updateDataWithUser,
+    create: createDataWithUser,
   });
 }
 
@@ -60,13 +81,9 @@ export async function getThreadTranscript(threadId: string) {
       (await prisma.message.findMany({
         where: { threadId: threadId, deletedAt: null },
         include: {
-          sender: {
-            select: { id: true, name: true, email: true, image: true },
-          },
+          sender: { select: TRANSCRIPT_SENDER_SELECT },
         },
-        orderBy: {
-          createdAt: 'asc',
-        },
+        orderBy: { createdAt: 'asc' },
         take: 500,
       })) ?? []
     );

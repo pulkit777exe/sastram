@@ -8,6 +8,14 @@ import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ROUTES } from '@/lib/config/routes';
 
+const THREADS_PAGE_SIZE = 10;
+const MESSAGES_PAGE_SIZE = 20;
+
+function getReplySenderName(sender: { name?: string | null } | null | undefined): string {
+  if (sender?.name) return sender.name;
+  return 'Unknown';
+}
+
 export default async function ActivityPage() {
   const session = await getSession();
   if (!session) {
@@ -15,8 +23,8 @@ export default async function ActivityPage() {
   }
 
   const [threadsResult, messagesResult] = await Promise.all([
-    getUserThreads(session.user.id, 10, 0),
-    getUserMessages(session.user.id, 20, 0),
+    getUserThreads(session.user.id, THREADS_PAGE_SIZE, 0),
+    getUserMessages(session.user.id, MESSAGES_PAGE_SIZE, 0),
   ]);
 
   const { threads } = threadsResult;
@@ -114,7 +122,7 @@ export default async function ActivityPage() {
                         <span>
                           Replying to{' '}
                           <span className="font-medium">
-                            {message.parent.sender?.name || 'Unknown'}
+                            {getReplySenderName(message.parent.sender)}
                           </span>
                         </span>
                       </div>

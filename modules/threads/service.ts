@@ -5,7 +5,35 @@ import type { ThreadMessage as ReadThreadMessage } from './threads-read/reposito
 
 export type ThreadMessage = ReadThreadMessage;
 
-const ANONYMOUS_SENDER = { name: null, image: null, status: 'ACTIVE' as UserStatus };
+const ANONYMOUS_NAME = 'Anonymous';
+const ANONYMOUS_STATUS: UserStatus = 'ACTIVE';
+
+function mapAttachment(att: { id: string; url: string; type: string; name: string | null; size: number | null }): {
+  id: string;
+  name: string | null;
+  url: string;
+  type: string;
+  size: number | null;
+} {
+  return {
+    id: att.id,
+    name: att.name ?? null,
+    url: att.url,
+    type: att.type,
+    size: att.size ?? null,
+  };
+}
+
+function resolveClientSender(message: ReadThreadMessage): { id: string; name: string; image: string | null } {
+  if (message.author) {
+    return {
+      id: message.author.id,
+      name: message.author.name ?? ANONYMOUS_NAME,
+      image: message.author.image ?? null,
+    };
+  }
+  return { id: message.senderId ?? '', name: ANONYMOUS_NAME, image: null };
+}
 
 /**
  * The read models speak SQL-shaped names (`body`, `isAI`, `author`); the UI
@@ -16,6 +44,8 @@ export function toClientMessage(
   message: ReadThreadMessage,
   thread: { id: string; name: string; slug: string }
 ): Message {
+  const sender = resolveClientSender(message);
+  const attachments = (message.attachments ?? []).map(mapAttachment);
   return {
     id: message.id,
     content: message.content,
@@ -31,19 +61,9 @@ export function toClientMessage(
     createdAt: message.createdAt,
     updatedAt: message.updatedAt,
     deletedAt: message.deletedAt,
-    sender: {
-      id: message.author?.id ?? message.senderId ?? '',
-      name: message.author?.name ?? 'Anonymous',
-      image: message.author?.image ?? null,
-    },
+    sender,
     thread,
-    attachments: (message.attachments ?? []).map((att) => ({
-      id: att.id,
-      name: att.name ?? null,
-      url: att.url,
-      type: att.type,
-      size: att.size ?? null,
-    })),
+    attachments,
   };
 }
 
@@ -67,6 +87,74 @@ export function buildThreadDTO(
   };
 }
 
+function mapDetailAttachment(att: { id: string; url: string; type: string; name?: string | null; size?: unknown }): {
+  id: string;
+  url: string;
+  type: string;
+  name: string | null | undefined;
+  size: bigint | string | null | undefined;
+} {
+  return {
+    id: att.id,
+    url: att.url,
+    type: att.type,
+    name: att.name,
+    size: att.size as bigint | string | null | undefined,
+  };
+}
+
+function toDetailSender(message: {
+  senderId: string | null;
+  sender?: { id: string; name: string | null; image: string | null; status?: UserStatus | null } | null;
+}): { id: string; name: string | null; image: string | null; status: UserStatus } {
+  if (message.sender) {
+    return {
+      id: message.sender.id,
+      name: message.sender.name,
+      image: message.sender.image,
+      status: message.sender.status ?? ANONYMOUS_STATUS,
+    };
+  }
+  return {
+    id: message.senderId ?? '',
+    name: null,
+    image: null,
+    status: ANONYMOUS_STATUS,
+  };
+}
+
+function resolveAiSummary(
+  summary: string | null | undefined,
+  threadSummary: string | null | undefined
+): string | null {
+  if (summary !== undefined && summary !== null) return summary;
+  if (threadSummary !== undefined && threadSummary !== null) return threadSummary;
+  return null;
+}
+
+function mapDetailMessage(
+  message: NonNullable<ThreadRecord['messages']>[number]
+): ThreadDetail['messages'][number] {
+  return {
+    id: message.id,
+    content: message.content,
+    senderId: message.senderId,
+    threadId: message.threadId,
+    parentId: message.parentId,
+    createdAt: message.createdAt,
+    updatedAt: message.updatedAt,
+    deletedAt: message.deletedAt,
+    depth: message.depth,
+    isEdited: message.isEdited,
+    isPinned: message.isPinned,
+    likeCount: message.likeCount,
+    replyCount: message.replyCount,
+    isAiResponse: message.isAiResponse,
+    sender: toDetailSender(message),
+    attachments: (message.attachments ?? []).map(mapDetailAttachment),
+  };
+}
+
 export function buildThreadDetailDTO(
   thread: ThreadRecord,
   messageCount: number,
@@ -74,47 +162,18 @@ export function buildThreadDetailDTO(
   summary?: string | null,
   subscriptionCount?: number
 ): ThreadDetail {
+  const base = buildThreadDTO(thread, messageCount, activeUsers);
+  const aiSummaryValue = resolveAiSummary(summary, thread.aiSummary ?? null);
+  const threadDnaValue = thread.threadDna ? (thread.threadDna as ThreadDNA) : undefined;
+  const messages = (thread.messages ?? []).map(mapDetailMessage);
   return {
-    ...buildThreadDTO(thread, messageCount, activeUsers),
-    aiSummary: summary ?? thread.aiSummary ?? null,
+    ...base,
+    aiSummary: aiSummaryValue,
     resolutionScore: thread.resolutionScore,
-    threadDna: (thread.threadDna as ThreadDNA | null) ?? undefined,
+    threadDna: threadDnaValue,
     lastVerifiedAt: thread.lastVerifiedAt,
     isOutdated: thread.isOutdated,
     subscriptionCount,
-    messages:
-      thread.messages?.map((message) => ({
-        id: message.id,
-        content: message.content,
-        senderId: message.senderId,
-        threadId: message.threadId,
-        parentId: message.parentId,
-        createdAt: message.createdAt,
-        updatedAt: message.updatedAt,
-        deletedAt: message.deletedAt,
-        depth: message.depth,
-        isEdited: message.isEdited,
-        isPinned: message.isPinned,
-        likeCount: message.likeCount,
-        replyCount: message.replyCount,
-        isAiResponse: message.isAiResponse,
-        // senderId goes null when the account is deleted (onDelete: SetNull)
-        sender: message.sender
-          ? {
-              id: message.sender.id,
-              name: message.sender.name,
-              image: message.sender.image,
-              status: message.sender.status ?? 'ACTIVE',
-            }
-          : { id: message.senderId ?? '', ...ANONYMOUS_SENDER },
-        attachments:
-          message.attachments?.map((att) => ({
-            id: att.id,
-            url: att.url,
-            type: att.type,
-            name: att.name,
-            size: att.size,
-          })) ?? [],
-      })) ?? [],
+    messages,
   };
 }

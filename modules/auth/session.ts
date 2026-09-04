@@ -27,21 +27,25 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
 
   const { user } = session;
 
-  let fullUser: Pick<User, 'role' | 'status'> | null = null;
-
-  for (let attempt = 0; attempt < 2 && fullUser === null; attempt++) {
+  async function tryFetchWithLogging(attempt: number): Promise<Pick<User, 'role' | 'status'> | null> {
     try {
-      fullUser = await prisma.user.findUnique({
+      return await prisma.user.findUnique({
         where: { id: user.id, deletedAt: null },
         select: { role: true, status: true },
       });
     } catch (err) {
       logger.warn('[auth] Failed to fetch full user profile', {
         userId: user.id,
-        attempt: attempt + 1,
+        attempt,
         error: err instanceof Error ? err.message : String(err),
       });
+      return null;
     }
+  }
+
+  let fullUser = await tryFetchWithLogging(1);
+  if (!fullUser) {
+    fullUser = await tryFetchWithLogging(2);
   }
 
   if (!fullUser) {

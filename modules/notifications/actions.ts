@@ -23,6 +23,10 @@ const markNotificationReadSchema = z.object({
   notificationId: z.string().cuid(),
 });
 
+function revalidateDashboard() {
+  revalidatePath(ROUTES.DASHBOARD);
+}
+
 export const getNotifications = withValidation(
   getNotificationsSchema,
   'getNotifications',
@@ -44,7 +48,7 @@ export const markNotificationRead = withValidation(
   async ({ notificationId }) => {
     const session = await requireSession();
     await markAsRead(notificationId, session.user.id);
-    revalidatePath(ROUTES.DASHBOARD);
+    revalidateDashboard();
     return actionSuccess(null);
   }
 );
@@ -54,7 +58,7 @@ export const markAllNotificationsRead = createServerAction(
   async () => {
     const session = await requireSession();
     await markAllAsRead(session.user.id);
-    revalidatePath(ROUTES.DASHBOARD);
+    revalidateDashboard();
     return actionSuccess(null);
   }
 );

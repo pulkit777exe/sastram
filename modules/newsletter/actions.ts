@@ -13,6 +13,20 @@ import { prismaErrorMessage } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { actionSuccess } from '@/lib/actions/result';
 
+function handleNewsletterError(error: unknown) {
+  const prismaMsg = prismaErrorMessage(error);
+  if (prismaMsg) return { data: null, error: prismaMsg, ok: false as const, errorCode: 'INTERNAL_ERROR' as const };
+  return { data: null, error: 'Something went wrong', ok: false as const, errorCode: 'INTERNAL_ERROR' as const };
+}
+
+function revalidateNewsletterPath(slug?: string) {
+  if (slug) {
+    revalidatePath(ROUTES.THREAD(slug));
+  } else {
+    revalidatePath(ROUTES.DASHBOARD_SETTINGS);
+  }
+}
+
 const subscribeSchema = z.object({
   threadId: z.string().cuid(),
   slug: z.string().min(1),
@@ -37,13 +51,11 @@ export const unsubscribeFromThread = withValidation(
         },
       });
 
-      revalidatePath(ROUTES.DASHBOARD_SETTINGS);
+      revalidateNewsletterPath();
       return actionSuccess(null);
     } catch (error) {
       logger.error('[unsubscribeFromThread]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return handleNewsletterError(error);
     }
   }
 );
@@ -70,9 +82,7 @@ export const updateSubscriptionFrequencyAction = withValidation(
       return actionSuccess(null);
     } catch (error) {
       logger.error('[updateSubscriptionFrequency]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return handleNewsletterError(error);
     }
   }
 );
@@ -95,9 +105,7 @@ export async function getUserNewsletterSubscriptions() {
     })));
   } catch (error) {
     logger.error('[getUserNewsletterSubscriptions]', error);
-    const prismaMsg = prismaErrorMessage(error);
-    if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-    return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+    return handleNewsletterError(error);
   }
 }
 
@@ -116,13 +124,11 @@ export const subscribeToThreadAction = withValidation(
         frequency: 'DAILY',
       });
 
-      revalidatePath(ROUTES.THREAD(slug));
+      revalidateNewsletterPath(slug);
       return actionSuccess(null);
     } catch (error) {
       logger.error('[subscribeToThread]', error);
-      const prismaMsg = prismaErrorMessage(error);
-      if (prismaMsg) return { data: null, error: prismaMsg, ok: false, errorCode: 'INTERNAL_ERROR' };
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return handleNewsletterError(error);
     }
   }
 );

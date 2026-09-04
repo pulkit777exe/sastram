@@ -10,6 +10,10 @@ interface UseMentionOptions {
   setContent: (value: string) => void;
 }
 
+// Trailing @mention fragment at caret, e.g. "hi @john" — group 2 is query without @.
+const MENTION_QUERY_RE = /(^|\s)@([\w.-]{1,50})$/;
+const MENTION_DEBOUNCE_MS = 300;
+
 /**
  * Detects @mention queries in text, fetches candidates, and manages selection.
  *
@@ -60,24 +64,26 @@ export function useMentions({ threadId, content, setContent }: UseMentionOptions
   const detectMentionQuery = useCallback(
     (value: string, caretIndex: number) => {
       const beforeCaret = value.slice(0, caretIndex);
-      const match = beforeCaret.match(/(^|\s)@([\w.-]{1,50})$/);
+      const match = beforeCaret.match(MENTION_QUERY_RE);
 
-      if (!match || !match[2]) {
+      const hasNoMatch = !match || !match[2];
+      if (hasNoMatch) {
         closeMentions();
         return;
       }
 
-      const query = match[2];
+      const query = match[2] as string;
       const atIndex = caretIndex - query.length - 1;
       setMentionStartIndex(atIndex);
 
-      if (mentionTimeoutRef.current) {
-        clearTimeout(mentionTimeoutRef.current);
+      const hasPendingTimeout = mentionTimeoutRef.current !== null;
+      if (hasPendingTimeout) {
+        clearTimeout(mentionTimeoutRef.current as ReturnType<typeof setTimeout>);
       }
 
       mentionTimeoutRef.current = setTimeout(() => {
         void resolveMentionCandidates(query);
-      }, 300);
+      }, MENTION_DEBOUNCE_MS);
     },
     [closeMentions, resolveMentionCandidates]
   );

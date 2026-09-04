@@ -34,24 +34,33 @@ export default function SearchPage() {
 
     setIsSearching(true);
     try {
-      const promises: Promise<{ data: unknown; error: unknown; ok?: boolean }>[] = [];
+      const nextResults: SearchResults = { threads: null, messages: null, users: null };
+      const tasks: Promise<void>[] = [];
 
       if (searchType === 'all' || searchType === 'threads') {
-        promises.push(searchThreadsAction({ query }));
+        tasks.push(
+          searchThreadsAction({ query }).then((res) => {
+            nextResults.threads = (res.data as SearchResults['threads']) || null;
+          })
+        );
       }
       if (searchType === 'all' || searchType === 'messages') {
-        promises.push(searchMessagesAction({ query }));
+        tasks.push(
+          searchMessagesAction({ query }).then((res) => {
+            nextResults.messages = (res.data as SearchResults['messages']) || null;
+          })
+        );
       }
       if (searchType === 'all' || searchType === 'users') {
-        promises.push(searchUsersAction({ query }));
+        tasks.push(
+          searchUsersAction({ query }).then((res) => {
+            nextResults.users = (res.data as SearchResults['users']) || null;
+          })
+        );
       }
 
-      const searchResults = await Promise.all(promises);
-      setResults({
-        threads: (searchResults[0]?.data as SearchResults['threads']) || null,
-        messages: (searchResults[1]?.data as SearchResults['messages']) || null,
-        users: (searchResults[2]?.data as SearchResults['users']) || null,
-      });
+      await Promise.all(tasks);
+      setResults(nextResults);
     } catch (error) {
       clientLogger.error('Search error', error instanceof Error ? error.message : String(error));
     } finally {

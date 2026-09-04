@@ -20,16 +20,15 @@ export const getUserMemberships = cache(async (userId: string) => {
 // There is no membership table — "role" is derived from thread visibility,
 // authorship, and the viewer's global role.
 export const getMemberRole = cache(async (threadId: string, userId: string) => {
-  const [thread, user] = await Promise.all([
-    prisma.thread.findFirst({
-      where: { id: threadId, deletedAt: null },
-      select: { id: true, createdBy: true, visibility: true },
-    }),
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    }),
-  ]);
+  const threadPromise = prisma.thread.findFirst({
+    where: { id: threadId, deletedAt: null },
+    select: { id: true, createdBy: true, visibility: true },
+  });
+  const userPromise = prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  const [thread, user] = await Promise.all([threadPromise, userPromise]);
 
   if (!thread || !user) return null;
 

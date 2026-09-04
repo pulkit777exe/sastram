@@ -15,6 +15,7 @@ export default async function BannedPage() {
   const session = await getSession();
   if (!session) return null;
   const status = session.user.status;
+  const isBanned = status === 'BANNED';
 
   if (status !== 'BANNED' && status !== 'SUSPENDED') {
     redirect('/dashboard');
@@ -43,10 +44,10 @@ export default async function BannedPage() {
 
           <div className="space-y-2">
             <SerifHeading as="h1" className="text-2xl font-bold text-foreground block">
-              {status === 'BANNED' ? 'Account Banned' : 'Account Suspended'}
+              {isBanned ? 'Account Banned' : 'Account Suspended'}
             </SerifHeading>
             <p className="text-muted-foreground">
-              Your account has been {status === 'BANNED' ? 'permanently banned' : 'suspended'} from
+              Your account has been {isBanned ? 'permanently banned' : 'suspended'} from
               Sastram.
             </p>
           </div>

@@ -50,8 +50,13 @@ export async function logAction({
   });
 }
 
+const DEFAULT_AUDIT_LIMIT = 100;
+
 export async function getUserActivities(filters?: UserActivityFilters) {
   try {
+    const limit = filters?.limit ?? DEFAULT_AUDIT_LIMIT;
+    const offset = filters?.offset ?? 0;
+
     return await prisma.userActivity.findMany({
       where: {
         type: filters?.action,
@@ -64,8 +69,8 @@ export async function getUserActivities(filters?: UserActivityFilters) {
         user: { select: { id: true, name: true, email: true, image: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: filters?.limit ?? 100,
-      skip: filters?.offset ?? 0,
+      take: limit,
+      skip: offset,
     });
   } catch (error) {
     logger.error('[getUserActivities]', error);

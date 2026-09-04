@@ -3,6 +3,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { canManageThread } from '@/lib/thread-access';
 
 export const INVITATION_TTL_DAYS = 7;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export async function findThreadById(threadId: string) {
   return prisma.thread.findFirst({
@@ -55,7 +56,7 @@ export async function createInvitation({
         senderId,
         email,
         status: 'PENDING',
-        expiresAt: new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + INVITATION_TTL_DAYS * MS_PER_DAY),
       },
       include: {
         thread: { select: { slug: true, name: true } },

@@ -11,6 +11,7 @@ import { trackNeonRequest } from '@/lib/services/usage-check';
 import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
 import { sseEvent, sseHeaders } from '@/lib/utils/sse';
+import { HTTP_STATUS } from '@/lib/utils/api-response';
 import {
   fetchThreadContext,
   getOrCreateAiUser,
@@ -24,95 +25,156 @@ const paramsSchema = z.object({
   threadId: z.string().cuid(),
 });
 
-export async function GET(
-  request: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+function errorSseResponse(message: string, status: number): Response {
+  return new Response(sseEvent('error', { error: message }), {
+    status,
+    headers: sseHeaders(),
+  });
+}
+
+function createSseSender(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  closedRef: { closed: boolean }
 ) {
-  const encoder = new TextEncoder();
+  return function sendEvent(event: string, data: unknown) {
+    if (closedRef.closed) return;
+    try {
+      controller.enqueue(encoder.encode(sseEvent(event, data)));
+    } catch {
+      closedRef.closed = true;
+    }
+  };
+}
 
-  let session;
+async function authenticateRequest(): Promise<{ session: Awaited<ReturnType<typeof requireSessionOrThrow>> } | { error: Response }> {
   try {
-    session = await requireSessionOrThrow();
+    const session = await requireSessionOrThrow();
+    return { session };
   } catch {
-    return new Response(sseEvent('error', { error: 'Unauthorized' }), {
-      status: 401,
-      headers: sseHeaders(),
-    });
+    return { error: errorSseResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED) };
   }
+}
 
-  const threadId = context?.params ? (await context.params).threadId : '';
+function validateThreadParams(threadId: string): Response | null {
   const parsedParams = paramsSchema.safeParse({ threadId });
   if (!parsedParams.success) {
-    return new Response(sseEvent('error', { error: 'Invalid thread ID' }), {
-      status: 400,
-      headers: sseHeaders(),
-    });
+    return errorSseResponse('Invalid thread ID', HTTP_STATUS.BAD_REQUEST);
   }
+  return null;
+}
 
+async function checkRateLimitOrThrow(session: { user: { id: string } }, request: NextRequest): Promise<Response | null> {
   const ip = getRequestIp(request);
   const rateLimitResult = await rateLimit({ key: `ai-reply-stream:${session.user.id}:${ip}`, type: 'api' });
   if (!rateLimitResult.success) {
-    return new Response(sseEvent('error', { error: 'Too many requests' }), {
-      status: 429,
-      headers: sseHeaders(),
-    });
+    return errorSseResponse('Too many requests', HTTP_STATUS.RATE_LIMITED);
   }
+  return null;
+}
 
+async function checkThreadAccessOrResponse(threadId: string, session: { user: { id: string; role: unknown } }): Promise<Response | null> {
   try {
-    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
+    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
+    return null;
   } catch {
-    return new Response(sseEvent('error', { error: 'Forbidden' }), {
-      status: 403,
-      headers: sseHeaders(),
+    return errorSseResponse('Forbidden', HTTP_STATUS.FORBIDDEN);
+  }
+}
+
+async function resolveParentMessage(threadId: string, requestedMessageIdRaw: string | null) {
+  const requestedMessageId = requestedMessageIdRaw;
+  if (requestedMessageId !== null && requestedMessageId !== '') {
+    return prisma.message.findFirst({
+      where: { id: requestedMessageId, threadId, deletedAt: null },
     });
   }
+  return prisma.message.findFirst({
+    where: {
+      threadId,
+      OR: [
+        { content: { contains: '@sai', mode: 'insensitive' } },
+        { content: { contains: '@ai', mode: 'insensitive' } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+  });
+}
 
-  const requestedMessageId = request.nextUrl.searchParams.get('messageId');
-  const parentMessage = requestedMessageId
-    ? await prisma.message.findFirst({
-        where: { id: requestedMessageId, threadId, deletedAt: null },
-      })
-    : await prisma.message.findFirst({
-        where: {
-          threadId,
-          OR: [
-            { content: { contains: '@sai', mode: 'insensitive' } },
-            { content: { contains: '@ai', mode: 'insensitive' } },
-          ],
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      });
-
-  if (!parentMessage) {
-    return new Response(sseEvent('error', { error: 'No @sai mention found' }), {
-      status: 400,
-      headers: sseHeaders(),
-    });
+function resolveQuery(parentMessage: { content: string }): { query: string | null; error: Response | null } {
+  const parsed = extractAiInlineQuery(parentMessage.content);
+  let query: string | null = null;
+  if (parsed) {
+    query = parsed;
+  } else {
+    const legacy = parentMessage.content.replace(/(?:^|\s)@ai\s+/i, '').trim();
+    query = legacy;
   }
-
-  const query = extractAiInlineQuery(parentMessage.content)
-    ?? parentMessage.content.replace(/(?:^|\s)@ai\s+/i, '').trim();
-  if (!extractAiInlineQuery(parentMessage.content) && !/(?:^|\s)@ai\s+\S+/i.test(parentMessage.content)) {
-    return new Response(sseEvent('error', { error: 'No question found after @sai' }), {
-      status: 400,
-      headers: sseHeaders(),
-    });
+  const hasAtSaiQuestion = extractAiInlineQuery(parentMessage.content) !== null;
+  const hasAtAiQuestion = /(?:^|\s)@ai\s+\S+/i.test(parentMessage.content);
+  if (!hasAtSaiQuestion && !hasAtAiQuestion) {
+    return { query: null, error: errorSseResponse('No question found after @sai', HTTP_STATUS.BAD_REQUEST) };
   }
+  if (!query) {
+    return { query: null, error: errorSseResponse('No question found after @sai', HTTP_STATUS.BAD_REQUEST) };
+  }
+  return { query, error: null };
+}
 
+async function checkSpendCapOrResponse(): Promise<Response | null> {
   const spendCap = await consumeSpendCap();
   const gate = evaluateAiCostGate({
     path: AiCallPath.AI_REPLY_STREAM,
     spendCapAllowed: spendCap.allowed,
   });
   if (!gate.allowed) {
-    return new Response(sseEvent('error', { error: 'AI features temporarily unavailable' }), {
-      status: 503,
-      headers: sseHeaders(),
-    });
+    return errorSseResponse('AI features temporarily unavailable', HTTP_STATUS.SERVICE_UNAVAILABLE);
+  }
+  return null;
+}
+
+export async function GET(
+  request: NextRequest,
+  context?: { params: Promise<Record<string, string>> }
+) {
+  const encoder = new TextEncoder();
+
+  const auth = await authenticateRequest();
+  if ('error' in auth) return auth.error;
+  const session = auth.session;
+
+  let threadId: string;
+  if (context && context.params) {
+    const params = await context.params;
+    threadId = params.threadId;
+  } else {
+    threadId = '';
   }
 
-  // Deep module — single implementation for context + user + transaction
+  const paramError = validateThreadParams(threadId);
+  if (paramError) return paramError;
+
+  const rateLimitError = await checkRateLimitOrThrow(session, request);
+  if (rateLimitError) return rateLimitError;
+
+  const accessError = await checkThreadAccessOrResponse(threadId, session);
+  if (accessError) return accessError;
+
+  const rawMessageId = request.nextUrl.searchParams.get('messageId');
+  const parentMessage = await resolveParentMessage(threadId, rawMessageId);
+
+  if (!parentMessage) {
+    return errorSseResponse('No @sai mention found', HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const queryResult = resolveQuery(parentMessage);
+  if (queryResult.error) return queryResult.error;
+  const query = queryResult.query as string;
+
+  const spendError = await checkSpendCapOrResponse();
+  if (spendError) return spendError;
+
   const threadContext = await fetchThreadContext(threadId);
   const aiUser = await getOrCreateAiUser();
   const parentMsg = await prisma.message.findUnique({
@@ -130,31 +192,31 @@ export async function GET(
 
   const stream = new ReadableStream({
     async start(controller) {
-      let closed = false;
-
-      const send = (event: string, data: unknown) => {
-        if (closed) return;
-        try {
-          controller.enqueue(encoder.encode(sseEvent(event, data)));
-        } catch {
-          closed = true;
-        }
-      };
+      const closedRef = { closed: false };
+      const sendEvent = createSseSender(controller, encoder, closedRef);
 
       request.signal.addEventListener('abort', () => {
-        closed = true;
-        controller.close();
+        closedRef.closed = true;
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       });
 
       const timeout = setTimeout(() => {
-        if (!closed) {
-          send('error', { error: 'Generation timed out' });
-          closed = true;
-          controller.close();
+        if (!closedRef.closed) {
+          sendEvent('error', { error: 'Generation timed out' });
+          closedRef.closed = true;
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
         }
       }, TIMEOUT_MS);
 
-      send('start', {
+      sendEvent('start', {
         messageId: aiMessage.id,
         parentId: parentMessage.id,
         threadId,
@@ -166,29 +228,26 @@ export async function GET(
       });
 
       try {
-        // Deep module handles prompt, throttled DB writes, sanitize, fallback
         const result = await streamAiReplyToMessage({
           query,
           context: threadContext,
           aiMessageId: aiMessage.id,
-          onToken: (chunk) => send('token', { content: chunk }),
+          onToken: (chunk) => sendEvent('token', { content: chunk }),
           signal: request.signal,
         });
 
         clearTimeout(timeout);
 
         if (result.isFallback) {
-          send('done', { messageId: aiMessage.id, truncated: false });
+          sendEvent('done', { messageId: aiMessage.id, truncated: false });
           return;
         }
 
-        send('done', { messageId: aiMessage.id, truncated: result.truncated });
+        sendEvent('done', { messageId: aiMessage.id, truncated: result.truncated });
       } catch (error) {
         clearTimeout(timeout);
         logger.error('[ai-reply-stream] Generation error', { error });
 
-        // Read partial content from DB fallback — stream helper already wrote sanitized
-        // On error, ensure message has some content
         const fallback = await prisma.message.findUnique({
           where: { id: aiMessage.id },
           select: { content: true },
@@ -200,18 +259,22 @@ export async function GET(
           });
         }
 
-        send('error', { error: 'Generation failed', messageId: aiMessage.id });
+        sendEvent('error', { error: 'Generation failed', messageId: aiMessage.id });
       } finally {
-        if (!closed) {
-          closed = true;
-          controller.close();
+        if (!closedRef.closed) {
+          closedRef.closed = true;
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
         }
       }
     },
   });
 
   return new Response(stream, {
-    status: 200,
+    status: HTTP_STATUS.OK,
     headers: sseHeaders(),
   });
 }

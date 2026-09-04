@@ -15,6 +15,19 @@ const createTopicSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+function normalizeTopicTags(tags?: string[]): string[] {
+  if (!tags?.length) return [];
+  const lowered = tags.map((tag) => tag.toLowerCase());
+  return Array.from(new Set(lowered)).slice(0, 5);
+}
+
+async function attachTagsToThread(threadId: string, tagNames: string[]) {
+  if (tagNames.length === 0) return;
+  const createdTags = await Promise.all(tagNames.map((tagName) => createTag(tagName)));
+  const relations = createdTags.map((tag) => ({ threadId, tagId: tag.id }));
+  await prisma.threadTagRelation.createMany({ data: relations, skipDuplicates: true });
+}
+
 export const createTopic = createServerAction(
   { schema: createTopicSchema, actionName: 'createTopic' },
   async ({ title, description, tags }) => {
@@ -29,15 +42,8 @@ export const createTopic = createServerAction(
       },
     });
 
-    const uniqueTags = Array.from(new Set((tags ?? []).map((tag) => tag.toLowerCase()))).slice(0, 5);
-
-    if (uniqueTags.length > 0) {
-      const createdTags = await Promise.all(uniqueTags.map((tagName) => createTag(tagName)));
-      await prisma.threadTagRelation.createMany({
-        data: createdTags.map((tag) => ({ threadId: thread.id, tagId: tag.id })),
-        skipDuplicates: true,
-      });
-    }
+    const uniqueTags = normalizeTopicTags(tags);
+    await attachTagsToThread(thread.id, uniqueTags);
 
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/threads');

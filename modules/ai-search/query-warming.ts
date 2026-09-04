@@ -61,71 +61,61 @@ function generateFollowUpQueries(originalQuery: string, queryType: string = 'tec
     .map((pattern) => `${pattern} ${originalQuery}`);
 }
 
+async function fetchRecentSessionsForWarming() {
+  const recentSearches = await prisma.aiSearchSession.findMany({
+    where: {
+      createdAt: { gte: new Date(Date.now() - PREWARM_CONFIG.recentSearchesWindow) },
+      OR: [
+        { lastPrewarmedAt: null },
+        { lastPrewarmedAt: { lt: new Date(Date.now() - PREWARM_CONFIG.cooldownPeriod) } },
+      ],
+    },
+    select: { id: true, query: true, queryType: true },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+  });
+  return recentSearches.filter((s) => s.query.length >= PREWARM_CONFIG.minQueryLength);
+}
+
+async function prewarmSingleSession(
+  search: { id: string; query: string; queryType: string | null },
+  stats: { prewarmed: number }
+) {
+  const followUpQueries = generateFollowUpQueries(search.query, search.queryType || 'technical');
+  const envConfig = getEnv();
+  const keys = {
+    exa: envConfig.SASTRAM_EXA_KEY || '',
+    tavily: envConfig.SASTRAM_TAVILY_KEY || '',
+    gemini: envConfig.GEMINI_API_KEY || '',
+  };
+  if (!keys.exa || !keys.tavily || !keys.gemini) return;
+
+  const config: SearchConfig = {
+    searchMode: 'standard',
+    exaMode: 'instant',
+    tavilyMode: 'search',
+    sourceFilter: 'all',
+  };
+
+  for (const followUpQuery of followUpQueries) {
+    await executeAISearch(followUpQuery, config, keys);
+    stats.prewarmed++;
+  }
+  await prisma.aiSearchSession.update({ where: { id: search.id }, data: { lastPrewarmedAt: new Date() } });
+}
+
 export async function prewarmFollowUpQueries(): Promise<{
   processed: number;
   prewarmed: number;
   errors: number;
 }> {
   const stats = { processed: 0, prewarmed: 0, errors: 0 };
-
   try {
-    const recentSearches = await prisma.aiSearchSession.findMany({
-      where: {
-        createdAt: {
-          gte: new Date(Date.now() - PREWARM_CONFIG.recentSearchesWindow),
-        },
-        OR: [
-          { lastPrewarmedAt: null },
-          { lastPrewarmedAt: { lt: new Date(Date.now() - PREWARM_CONFIG.cooldownPeriod) } },
-        ],
-      },
-      select: {
-        id: true,
-        query: true,
-        queryType: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    });
-
-    const filteredSearches = recentSearches.filter(
-      (search) => search.query.length >= PREWARM_CONFIG.minQueryLength
-    );
-
+    const filteredSearches = await fetchRecentSessionsForWarming();
     stats.processed = filteredSearches.length;
-
     for (const search of filteredSearches) {
       try {
-        const followUpQueries = generateFollowUpQueries(
-          search.query,
-          search.queryType || 'technical'
-        );
-
-        for (const followUpQuery of followUpQueries) {
-          const config: SearchConfig = {
-            searchMode: 'standard',
-            exaMode: 'instant',
-            tavilyMode: 'search',
-            sourceFilter: 'all',
-          };
-
-          const envConfig = getEnv();
-          const keys = {
-            exa: envConfig.SASTRAM_EXA_KEY || '',
-            tavily: envConfig.SASTRAM_TAVILY_KEY || '',
-            gemini: envConfig.GEMINI_API_KEY || '',
-          };
-
-          if (keys.exa && keys.tavily && keys.gemini) {
-            await executeAISearch(followUpQuery, config, keys);
-            stats.prewarmed++;
-          }
-        }
-
-        await prisma.aiSearchSession.update({
-          where: { id: search.id },
-          data: { lastPrewarmedAt: new Date() },
-        });
+        await prewarmSingleSession(search, stats);
       } catch (error) {
         logger.error(`Failed to pre-warm queries for search ${search.id}:`, error);
         stats.errors++;
@@ -135,7 +125,6 @@ export async function prewarmFollowUpQueries(): Promise<{
     logger.error('Failed to pre-warm follow-up queries:', error);
     stats.errors++;
   }
-
   return stats;
 }
 

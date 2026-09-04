@@ -12,6 +12,8 @@ const FOLLOW_USER_SELECT = {
   followingCount: true,
 } as const;
 
+const DEFAULT_FOLLOW_LIMIT = 50;
+
 export async function followUser(followerId: string, followingId: string) {
   if (followerId === followingId) {
     throw new Error('Cannot follow yourself');
@@ -67,21 +69,23 @@ export async function unfollowUser(followerId: string, followingId: string) {
   });
 }
 
-export async function getFollowers(userId: string, limit: number = 50, offset: number = 0) {
+export async function getFollowers(userId: string, limit: number = DEFAULT_FOLLOW_LIMIT, offset: number = 0) {
   try {
+    const where = { followingId: userId };
     const [follows, total] = await Promise.all([
       prisma.userFollow.findMany({
-        where: { followingId: userId },
+        where,
         include: { follower: { select: FOLLOW_USER_SELECT } },
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
-      prisma.userFollow.count({ where: { followingId: userId } }),
+      prisma.userFollow.count({ where }),
     ]);
 
+    const followers = follows.map((follow) => follow.follower);
     return {
-      followers: follows.map((follow) => follow.follower),
+      followers,
       total,
       hasMore: computeHasMore(offset, limit, total),
     };
@@ -91,21 +95,23 @@ export async function getFollowers(userId: string, limit: number = 50, offset: n
   }
 }
 
-export async function getFollowing(userId: string, limit: number = 50, offset: number = 0) {
+export async function getFollowing(userId: string, limit: number = DEFAULT_FOLLOW_LIMIT, offset: number = 0) {
   try {
+    const where = { followerId: userId };
     const [follows, total] = await Promise.all([
       prisma.userFollow.findMany({
-        where: { followerId: userId },
+        where,
         include: { following: { select: FOLLOW_USER_SELECT } },
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
-      prisma.userFollow.count({ where: { followerId: userId } }),
+      prisma.userFollow.count({ where }),
     ]);
 
+    const following = follows.map((follow) => follow.following);
     return {
-      following: follows.map((follow) => follow.following),
+      following,
       total,
       hasMore: computeHasMore(offset, limit, total),
     };

@@ -11,7 +11,13 @@ import { clientLogger } from '@/lib/utils/client-logger';
 export default function ForgotPasswordVerifyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get('email') || '';
+  const rawEmail = searchParams.get('email');
+  let email: string;
+  if (rawEmail !== null && rawEmail !== '') {
+    email = rawEmail;
+  } else {
+    email = '';
+  }
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isSubmitting, setIsSubmitting] = useState(false);

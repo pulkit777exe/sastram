@@ -10,18 +10,17 @@ import { clientLogger } from '@/lib/utils/client-logger';
 import { validatePassword } from '@/lib/utils/password-validation';
 import { SerifHeading } from '@/components/layout/serif-heading';
 
+function getSessionItem(key: string): string {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  return window.sessionStorage.getItem(key) ?? '';
+}
+
 export default function ForgotPasswordResetPage() {
   const router = useRouter();
-  const [email] = useState(() =>
-    typeof window !== 'undefined'
-      ? (window.sessionStorage.getItem('forgot_password_email') ?? '')
-      : ''
-  );
-  const [otp] = useState(() =>
-    typeof window !== 'undefined'
-      ? (window.sessionStorage.getItem('forgot_password_otp') ?? '')
-      : ''
-  );
+  const [email] = useState(() => getSessionItem('forgot_password_email'));
+  const [otp] = useState(() => getSessionItem('forgot_password_otp'));
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

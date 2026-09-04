@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
+import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/ai';
 import { logger } from '@/lib/infrastructure/logger';
@@ -11,31 +11,29 @@ const scoreRequestSchema = z.object({
   threadId: z.string(),
 });
 
-const handler = withErrorHandling(async (req: NextRequest) => {
+async function parseAndValidateBody(req: NextRequest): Promise<{ threadId: string } | NextResponse> {
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
   }
-
   const parsed = scoreRequestSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      fail('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input'),
-      { status: 400 }
-    );
+    let message: string;
+    const firstIssue = parsed.error.issues[0];
+    if (firstIssue && firstIssue.message) {
+      message = firstIssue.message;
+    } else {
+      message = 'Invalid input';
+    }
+    return NextResponse.json(fail('VALIDATION_ERROR', message), { status: HTTP_STATUS.BAD_REQUEST });
   }
-  const { threadId } = parsed.data;
+  return { threadId: parsed.data.threadId };
+}
 
-  const preflight = await withAiPreflight(req, {
-    aiCallPath: AiCallPath.RESOLUTION_SCORE,
-    skipCostGate: true,
-    threadId,
-  });
-  if (preflight instanceof NextResponse) return preflight;
-
-  const thread = await prisma.thread.findFirst({
+async function fetchThreadForScore(threadId: string) {
+  return prisma.thread.findFirst({
     where: { id: threadId, deletedAt: null },
     select: {
       id: true,
@@ -48,9 +46,23 @@ const handler = withErrorHandling(async (req: NextRequest) => {
       },
     },
   });
+}
 
+const handler = withErrorHandling(async (req: NextRequest) => {
+  const validated = await parseAndValidateBody(req);
+  if (validated instanceof NextResponse) return validated;
+  const threadId = validated.threadId;
+
+  const preflight = await withAiPreflight(req, {
+    aiCallPath: AiCallPath.RESOLUTION_SCORE,
+    skipCostGate: true,
+    threadId,
+  });
+  if (preflight instanceof NextResponse) return preflight;
+
+  const thread = await fetchThreadForScore(threadId);
   if (!thread) {
-    return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: 404 });
+    return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
   }
 
   const previousLastVerifiedAt = thread.lastVerifiedAt;

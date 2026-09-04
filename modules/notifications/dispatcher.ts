@@ -45,17 +45,24 @@ async function resolveRecipients(recipients: NotificationRecipients): Promise<st
   if ('userIds' in recipients) {
     return recipients.userIds;
   }
+
   if ('roles' in recipients) {
-    if (recipients.roles.length === 0) return [];
+    if (recipients.roles.length === 0) {
+      return [];
+    }
     const users = await prisma.user.findMany({
       where: { role: { in: recipients.roles }, status: 'ACTIVE', deletedAt: null },
       select: { id: true },
     });
     return users.map((u) => u.id);
   }
-  if (recipients.emails.length === 0) return [];
+
+  const emails = (recipients as { emails: string[] }).emails;
+  if (emails.length === 0) {
+    return [];
+  }
   const users = await prisma.user.findMany({
-    where: { email: { in: recipients.emails } },
+    where: { email: { in: emails } },
     select: { id: true },
   });
   return users.map((u) => u.id);

@@ -7,7 +7,13 @@ import type { ReportStatus } from '@prisma/client';
 export const GET = withErrorHandling(async (request: NextRequest) => {
   await requireModerator();
 
-  const status = (request.nextUrl.searchParams.get('status') as ReportStatus) || 'PENDING';
+  const rawStatus = request.nextUrl.searchParams.get('status');
+  let status: ReportStatus;
+  if (rawStatus !== null && rawStatus !== '') {
+    status = rawStatus as ReportStatus;
+  } else {
+    status = 'PENDING';
+  }
 
   const items = await prisma.report.findMany({
     where: { status },

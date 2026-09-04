@@ -11,7 +11,14 @@ import { getBannedUsersSchema } from '@/modules/moderation';
 import { ROUTES } from '@/lib/config/routes';
 import { requireModerationRole } from '@/modules/policy';
 import { dispatch } from '@/modules/notifications/dispatcher';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionFailure, actionSuccess } from '@/lib/actions/result';
+import { buildBannedUsersWhereClause } from '@/modules/moderation/policy';
+
+// ── Shared select constants ────────────────────────────────────────────────
+const APPEAL_USER_SELECT = { id: true, name: true, email: true, image: true } as const;
+const BANNED_USER_APPEAL_SELECT = { id: true, name: true, email: true, image: true, status: true } as const;
+const BAN_ISSUER_APPEAL_SELECT = { id: true, name: true, email: true } as const;
+const BAN_THREAD_APPEAL_SELECT = { id: true, name: true, slug: true } as const;
 
 const createAppealSchema = z.object({
   reason: z.string().min(10, 'Reason must be at least 10 characters long'),
@@ -29,16 +36,56 @@ const listSchema = z.object({
   offset: z.number().int().min(0).optional(),
 });
 
+// ── Revalidation helper ────────────────────────────────────────────────────
+function revalidateAppealPath(route: string) {
+  revalidatePath(route);
+}
+
+function getAppealTitle(approved: boolean): string {
+  if (approved) {
+    return 'Appeal Approved';
+  }
+  return 'Appeal Rejected';
+}
+
+function getAppealMessage(approved: boolean, response?: string): string {
+  if (approved) {
+    const fallback = 'Your account has been restored.';
+    return `Your appeal has been approved. ${response ?? fallback}`;
+  }
+  const fallback = 'No further action was taken.';
+  return `Your appeal has been reviewed and rejected. ${response ?? fallback}`;
+}
+
+function getAppealStatus(approved: boolean): 'APPROVED' | 'REJECTED' {
+  if (approved) {
+    return 'APPROVED';
+  }
+  return 'REJECTED';
+}
+
+function buildBanLookupMap<T extends { userId: string | null }>(bans: T[]): Map<string, T> {
+  const latestBanByUser = new Map<string, T>();
+  for (const ban of bans) {
+    if (ban.userId !== null && !latestBanByUser.has(ban.userId)) {
+      latestBanByUser.set(ban.userId, ban);
+    }
+  }
+  return latestBanByUser;
+}
+
 // Appeal rows hang off a message, but a ban isn't always traceable to one.
 // Walk from the most specific evidence to the least: the cited report, then any
 // report against this user, then their last message.
-async function resolveAppealMessageId(userId: string, reportId?: string) {
+async function resolveAppealMessageId(userId: string, reportId?: string): Promise<string | null> {
   if (reportId) {
     const report = await prisma.report.findUnique({
       where: { id: reportId },
       select: { messageId: true },
     });
-    if (report) return report.messageId;
+    if (report !== null) {
+      return report.messageId;
+    }
   }
 
   const banReport = await prisma.report.findFirst({
@@ -46,68 +93,152 @@ async function resolveAppealMessageId(userId: string, reportId?: string) {
     orderBy: { createdAt: 'desc' },
     select: { messageId: true },
   });
-  if (banReport) return banReport.messageId;
+  if (banReport !== null) {
+    return banReport.messageId;
+  }
 
   const lastMessage = await prisma.message.findFirst({
     where: { senderId: userId },
     orderBy: { createdAt: 'desc' },
     select: { id: true },
   });
-  return lastMessage?.id ?? null;
+  if (lastMessage === null) {
+    return null;
+  }
+  return lastMessage.id;
+}
+
+function isBannedStatus(status: string): boolean {
+  return status === 'BANNED' || status === 'SUSPENDED';
+}
+
+// ── submitAppeal helpers ───────────────────────────────────────────────────
+async function fetchActiveBanForAppeal(userId: string) {
+  return prisma.userBan.findFirst({
+    where: { userId, isActive: true },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+async function ensureNoPendingAppeal(userId: string) {
+  return prisma.appeal.findFirst({ where: { userId, status: 'PENDING' } });
+}
+
+async function createAppealRecord(params: { messageId: string; userId: string; reason: string }) {
+  return prisma.appeal.create({
+    data: { messageId: params.messageId, userId: params.userId, status: 'PENDING', reason: params.reason },
+  });
+}
+
+function validateBannedUserStatus(status: string) {
+  if (!isBannedStatus(status)) {
+    return actionFailure('VALIDATION_ERROR', 'You are not banned');
+  }
+  return null;
+}
+
+// ── getAppeals helpers ─────────────────────────────────────────────────────
+async function fetchPendingAppeals(limit: number, offset: number) {
+  const whereClause = { status: 'PENDING' as const };
+  return Promise.all([
+    prisma.appeal.findMany({
+      where: whereClause,
+      include: { user: { select: APPEAL_USER_SELECT } },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.appeal.count({ where: whereClause }),
+  ]);
+}
+
+async function fetchBansForAppeals(userIds: string[]) {
+  if (userIds.length === 0) return [];
+  return prisma.userBan.findMany({
+    where: { userId: { in: userIds }, isActive: true },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+function enrichAppealsWithBanInfo(
+  appeals: Awaited<ReturnType<typeof fetchPendingAppeals>>[0],
+  allBans: Awaited<ReturnType<typeof fetchBansForAppeals>>
+) {
+  const latestBanByUser = buildBanLookupMap(allBans);
+  return appeals.map((appeal) => {
+    const activeBan = appeal.userId ? latestBanByUser.get(appeal.userId) : undefined;
+    return {
+      ...appeal,
+      reporter: appeal.user,
+      banReason: activeBan?.reason ?? 'Unknown',
+      banDate: activeBan?.createdAt ?? new Date(),
+    };
+  });
+}
+
+// ── resolveAppeal helpers ──────────────────────────────────────────────────
+async function applyAppealResolution(
+  appealId: string,
+  appealUserId: string | null,
+  approved: boolean,
+  response: string | undefined,
+  moderatorId: string
+) {
+  const newStatus = getAppealStatus(approved);
+  const responseValue = response ?? null;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.appeal.update({
+      where: { id: appealId },
+      data: { status: newStatus, moderatorId, response: responseValue, resolvedAt: new Date() },
+    });
+
+    if (approved && appealUserId) {
+      await tx.userBan.updateMany({ where: { userId: appealUserId, isActive: true }, data: { isActive: false } });
+      const remainingBans = await tx.userBan.count({ where: { userId: appealUserId, isActive: true } });
+      if (remainingBans === 0) {
+        await tx.user.update({ where: { id: appealUserId }, data: { status: 'ACTIVE' } });
+      }
+    }
+  });
+}
+
+async function notifyAppealResult(userId: string | null, approved: boolean, response: string | undefined, appealId: string) {
+  if (!userId) return;
+  await dispatch({
+    recipients: { userIds: [userId] },
+    category: 'SYSTEM',
+    title: getAppealTitle(approved),
+    message: getAppealMessage(approved, response),
+    data: { appealId },
+  });
 }
 
 export const submitAppeal = withValidation(
   createAppealSchema,
   'submitAppeal',
   async ({ reason, reportId }) => {
-    // checkBanStatus: false — by definition only banned users get here.
     const session = await requireSession(false);
 
-    if (session.user.status !== 'BANNED' && session.user.status !== 'SUSPENDED') {
-      return { data: null, error: 'You are not banned', ok: false, errorCode: 'VALIDATION_ERROR' };
-    }
+    const statusError = validateBannedUserStatus(session.user.status);
+    if (statusError) return statusError;
 
-    const activeBan = await prisma.userBan.findFirst({
-      where: { userId: session.user.id, isActive: true },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!activeBan) {
-      return {
-        data: null,
-        error: 'No active ban found to appeal',
-        ok: false,
-        errorCode: 'NOT_FOUND',
-      };
+    const activeBan = await fetchActiveBanForAppeal(session.user.id);
+    if (activeBan === null) {
+      return actionFailure('NOT_FOUND', 'No active ban found to appeal');
     }
 
     const messageId = await resolveAppealMessageId(session.user.id, reportId);
-
-    if (!messageId) {
-      return { data: null, error: 'No message found to appeal', ok: false, errorCode: 'NOT_FOUND' };
+    if (messageId === null) {
+      return actionFailure('NOT_FOUND', 'No message found to appeal');
     }
 
-    const existingAppeal = await prisma.appeal.findFirst({
-      where: { userId: session.user.id, status: 'PENDING' },
-    });
-
-    if (existingAppeal) {
-      return {
-        data: null,
-        error: 'You already have a pending appeal',
-        ok: false,
-        errorCode: 'CONFLICT',
-      };
+    const existingAppeal = await ensureNoPendingAppeal(session.user.id);
+    if (existingAppeal !== null) {
+      return actionFailure('CONFLICT', 'You already have a pending appeal');
     }
 
-    const appeal = await prisma.appeal.create({
-      data: {
-        messageId,
-        userId: session.user.id,
-        status: 'PENDING',
-        reason,
-      },
-    });
+    const appeal = await createAppealRecord({ messageId, userId: session.user.id, reason });
 
     await logAction({
       action: 'APPEAL_SUBMITTED',
@@ -117,7 +248,7 @@ export const submitAppeal = withValidation(
       details: { reason, banId: activeBan.id },
     });
 
-    revalidatePath(ROUTES.BANNED);
+    revalidateAppealPath(ROUTES.BANNED);
     return actionSuccess(null);
   }
 );
@@ -127,45 +258,12 @@ export const getAppeals = withValidation(listSchema, 'getAppeals', async (filter
 
   const limit = Math.min(filters.limit || 50, 100);
   const offset = filters.offset || 0;
-  const whereClause = { status: 'PENDING' as const };
 
-  const [appeals, totalCount] = await Promise.all([
-    prisma.appeal.findMany({
-      where: whereClause,
-      include: {
-        user: { select: { id: true, name: true, email: true, image: true } },
-      },
-      // Oldest first — the queue is worked FIFO.
-      orderBy: { createdAt: 'asc' },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.appeal.count({ where: whereClause }),
-  ]);
+  const [appeals, totalCount] = await fetchPendingAppeals(limit, offset);
 
   const userIds = appeals.map((a) => a.userId).filter((id): id is string => id !== null);
-  const allBans = await prisma.userBan.findMany({
-    where: { userId: { in: userIds }, isActive: true },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  // Newest ban per user wins, which the desc ordering above gives us first.
-  const latestBanByUser = new Map<string, (typeof allBans)[number]>();
-  for (const ban of allBans) {
-    if (ban.userId && !latestBanByUser.has(ban.userId)) {
-      latestBanByUser.set(ban.userId, ban);
-    }
-  }
-
-  const appealsWithBanInfo = appeals.map((appeal) => {
-    const activeBan = appeal.userId ? latestBanByUser.get(appeal.userId) : undefined;
-    return {
-      ...appeal,
-      reporter: appeal.user,
-      banReason: activeBan?.reason || 'Unknown',
-      banDate: activeBan?.createdAt || new Date(),
-    };
-  });
+  const allBans = await fetchBansForAppeals(userIds);
+  const appealsWithBanInfo = enrichAppealsWithBanInfo(appeals, allBans);
 
   return actionSuccess({
     appeals: appealsWithBanInfo,
@@ -189,51 +287,12 @@ export const resolveAppeal = withValidation(
       include: { user: true },
     });
 
-    if (!appeal) {
-      return { data: null, error: 'Appeal not found', ok: false, errorCode: 'NOT_FOUND' };
+    if (appeal === null) {
+      return actionFailure('NOT_FOUND', 'Appeal not found');
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.appeal.update({
-        where: { id: appealId },
-        data: {
-          status: approved ? 'APPROVED' : 'REJECTED',
-          moderatorId: session.user.id,
-          response: response ?? null,
-          resolvedAt: new Date(),
-        },
-      });
-
-      if (approved) {
-        await tx.userBan.updateMany({
-          where: { userId: appeal.userId!, isActive: true },
-          data: { isActive: false },
-        });
-
-        const remainingBans = await tx.userBan.count({
-          where: { userId: appeal.userId!, isActive: true },
-        });
-
-        if (remainingBans === 0) {
-          await tx.user.update({
-            where: { id: appeal.userId! },
-            data: { status: 'ACTIVE' },
-          });
-        }
-      }
-    });
-
-    if (appeal.userId) {
-      await dispatch({
-        recipients: { userIds: [appeal.userId] },
-        category: 'SYSTEM',
-        title: approved ? 'Appeal Approved' : 'Appeal Rejected',
-        message: approved
-          ? `Your appeal has been approved. ${response ?? 'Your account has been restored.'}`
-          : `Your appeal has been reviewed and rejected. ${response ?? 'No further action was taken.'}`,
-        data: { appealId },
-      });
-    }
+    await applyAppealResolution(appealId, appeal.userId, approved, response, session.user.id);
+    await notifyAppealResult(appeal.userId, approved, response, appealId);
 
     await logAction({
       action: 'APPEAL_RESOLVED',
@@ -243,7 +302,7 @@ export const resolveAppeal = withValidation(
       details: { approved, userId: appeal.userId, response },
     });
 
-    revalidatePath(ROUTES.ADMIN_APPEALS);
+    revalidateAppealPath(ROUTES.ADMIN_APPEALS);
     return actionSuccess(null);
   }
 );
@@ -257,17 +316,15 @@ export const getBannedUsers = withValidation(
     const limit = Math.min(filters.limit || 50, 100);
     const offset = filters.offset || 0;
 
-    const whereClause: { isActive?: boolean; threadId?: string } = {};
-    if (filters.isActive !== undefined) whereClause.isActive = filters.isActive;
-    if (filters.threadId) whereClause.threadId = filters.threadId;
+    const whereClause = buildBannedUsersWhereClause(filters);
 
     const [bans, totalCount] = await Promise.all([
       prisma.userBan.findMany({
         where: whereClause,
         include: {
-          user: { select: { id: true, name: true, email: true, image: true, status: true } },
-          issuer: { select: { id: true, name: true, email: true } },
-          thread: { select: { id: true, name: true, slug: true } },
+          user: { select: BANNED_USER_APPEAL_SELECT },
+          issuer: { select: BAN_ISSUER_APPEAL_SELECT },
+          thread: { select: BAN_THREAD_APPEAL_SELECT },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,

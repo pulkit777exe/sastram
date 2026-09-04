@@ -12,11 +12,14 @@ import { crossReference, synthesize, generateFollowUps } from './synthesis';
 export type AISearchPipelineResult = AISearchResponse & { followUps: string[]; timings?: PhaseTimings };
 
 function phaseProviderLabel(config: SearchConfig): string {
-  const parts: string[] = [];
-  if (config.exaMode) parts.push('exa');
-  if (config.searchMode !== 'instant') parts.push('tavily');
-  parts.push('gemini');
-  return parts.join('+');
+  if (config.searchMode === 'instant') {
+    return 'exa+gemini';
+  }
+  return 'exa+tavily+gemini';
+}
+
+function elapsedMs(start: number): number {
+  return Date.now() - start;
 }
 
 export async function executeAISearch(
@@ -26,38 +29,45 @@ export async function executeAISearch(
   conversationHistory?: { role: string; content: string }[]
 ): Promise<AISearchPipelineResult> {
   const startTime = Date.now();
-  const t0 = Date.now();
 
   // Phase 1: Classify
+  const classifyStart = Date.now();
   const classification = await classifyQuery(query, keys.gemini, keys.openai);
-  const classifyMs = Date.now() - t0;
+  const classifyMs = elapsedMs(classifyStart);
 
-  // Phase 2: Search (skip Tavily if instant mode)
-  const t1 = Date.now();
+  // Phase 2: Search
+  const searchStart = Date.now();
   let rawResults: RawSearchResults;
-  if (config.searchMode === 'instant') {
+  const isInstantMode = config.searchMode === 'instant';
+  if (isInstantMode) {
     const exaSources = await searchWithExa(query, classification, keys.exa, config);
-    rawResults = { exaSources, tavilySources: [], tavilyAnswer: undefined };
+    rawResults = {
+      exaSources,
+      tavilySources: [],
+      tavilyAnswer: undefined,
+    };
   } else {
     rawResults = await searchSources(query, classification, keys.exa, keys.tavily, config);
   }
-  const searchMs = Date.now() - t1;
+  const searchMs = elapsedMs(searchStart);
 
-  const t2 = Date.now();
+  // Phase 3: Cross-reference
+  const crossRefStart = Date.now();
   const crossRefResult = await crossReference(rawResults, query, keys.gemini, keys.openai);
-  const crossrefMs = Date.now() - t2;
+  const crossrefMs = elapsedMs(crossRefStart);
 
   const rankedSources = crossRefResult.rankedSources;
 
-  const t3 = Date.now();
+  // Phase 4: Synthesize
+  const synthesizeStart = Date.now();
   let synthesis: SynthesisResult;
-  if (config.searchMode === 'instant') {
+  if (isInstantMode) {
     synthesis = {
       content: rawResults.tavilyAnswer || 'Instant mode — showing raw results only.',
       queryType: classification.type,
       sourceCount: rankedSources.length,
       conflictData: crossRefResult.conflictData,
-      processingTimeMs: Date.now() - startTime,
+      processingTimeMs: 0,
     };
   } else {
     synthesis = await synthesize(
@@ -70,13 +80,16 @@ export async function executeAISearch(
       keys.openai,
       conversationHistory
     );
-    synthesis.processingTimeMs = Date.now() - startTime;
   }
-  const synthesizeMs = Date.now() - t3;
+  synthesis.processingTimeMs = elapsedMs(startTime);
+  const synthesizeMs = elapsedMs(synthesizeStart);
 
+  // Phase 5: Follow-ups
   let followUps: string[] = [];
-  if (config.searchMode !== 'instant' && synthesis.text) {
-    followUps = await generateFollowUps(query, synthesis.text, keys.gemini, keys.openai);
+  const shouldGenerateFollowUps = !isInstantMode && Boolean(synthesis.text);
+  if (shouldGenerateFollowUps) {
+    const followUpText = synthesis.text as string;
+    followUps = await generateFollowUps(query, followUpText, keys.gemini, keys.openai);
   }
 
   return {

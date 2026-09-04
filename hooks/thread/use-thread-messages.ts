@@ -6,21 +6,48 @@ import { toClientMessage, type ThreadMessage } from '@/modules/threads/service';
 import { toasts } from '@/lib/utils/toast';
 import type { Message } from '@/lib/types/index';
 
-function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[]; hasNew: boolean } {
-  const idToIdx = new Map(prev.map((m, i) => [m.id, i]));
-  let next = prev;
-  for (const msg of incoming) {
-    const idx = idToIdx.get(msg.id);
-    if (idx !== undefined && next[idx].content !== msg.content) {
-      if (next === prev) next = [...prev];
-      next[idx] = { ...next[idx], content: msg.content };
-    }
-  }
-  const toAdd = incoming.filter((m) => !idToIdx.has(m.id));
-  if (toAdd.length === 0 && next === prev) return { merged: prev, hasNew: false };
-  const merged = [...next, ...toAdd].sort(
+function buildIdIndex(messages: Message[]): Map<string, number> {
+  return new Map(messages.map((m, i) => [m.id, i]));
+}
+
+function sortByCreatedAt(messages: Message[]): Message[] {
+  return [...messages].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
+}
+
+function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[]; hasNew: boolean } {
+  const idToIndex = buildIdIndex(prev);
+  let next = prev;
+  let hasContentUpdate = false;
+
+  for (const msg of incoming) {
+    const existingIndex = idToIndex.get(msg.id);
+    const isExistingMessage = existingIndex !== undefined;
+    if (!isExistingMessage) {
+      continue;
+    }
+
+    const hasContentChanged = next[existingIndex as number].content !== msg.content;
+    if (hasContentChanged) {
+      const isFirstMutation = next === prev;
+      if (isFirstMutation) {
+        next = [...prev];
+      }
+      next[existingIndex as number] = { ...next[existingIndex as number], content: msg.content };
+      hasContentUpdate = true;
+    }
+  }
+
+  const newMessages = incoming.filter((m) => !idToIndex.has(m.id));
+  const hasNewMessages = newMessages.length > 0;
+  const hasAnyChange = hasContentUpdate || hasNewMessages;
+
+  if (!hasAnyChange) {
+    return { merged: prev, hasNew: false };
+  }
+
+  const merged = sortByCreatedAt([...next, ...newMessages]);
   return { merged, hasNew: true };
 }
 

@@ -39,10 +39,27 @@ function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
+function getBarColor(remaining: number, limit: number): string {
+  if (remaining < 1) return 'bg-red-500';
+  if (remaining < limit * 0.3) return 'bg-yellow-500';
+  return 'bg-green-500';
+}
+
 export default function SpendPage() {
   const [data, setData] = useState<SpendTelemetry | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  let remainingTextColor = 'text-foreground';
+  let barColor = 'bg-green-500';
+  let barWidthPercent = 0;
+  if (data) {
+    if (data.today.remaining < 1) {
+      remainingTextColor = 'text-red-600';
+    }
+    barColor = getBarColor(data.today.remaining, data.today.limit);
+    barWidthPercent = Math.min(100, (data.today.used / data.today.limit) * 100);
+  }
 
   const fetchSpend = useCallback(async () => {
     setLoading(true);
@@ -125,15 +142,13 @@ export default function SpendPage() {
               <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Remaining</p>
-                  <p className={`text-2xl font-bold mt-1 ${data.today.remaining < 1 ? 'text-red-600' : 'text-foreground'}`}>
+                  <p className={`text-2xl font-bold mt-1 ${remainingTextColor}`}>
                     {formatUsd(data.today.remaining)}
                   </p>
                   <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${
-                        data.today.remaining < 1 ? 'bg-red-500' : data.today.remaining < data.today.limit * 0.3 ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                      style={{ width: `${Math.min(100, (data.today.used / data.today.limit) * 100)}%` }}
+                      className={`h-full rounded-full ${barColor}`}
+                      style={{ width: `${barWidthPercent}%` }}
                     />
                   </div>
                 </CardContent>

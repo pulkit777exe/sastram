@@ -24,22 +24,30 @@ interface SlaData {
   avgResponseTimeHours: number | null;
 }
 
+async function fetchAll() {
+  const [healthRes, slaRes] = await Promise.all([
+    fetch('/api/admin/health'),
+    fetch('/api/admin/sla'),
+  ]);
+  const healthJson = await healthRes.json();
+  const slaJson = await slaRes.json();
+  return { healthJson, slaJson };
+}
+
 export default function AdminHealthPage() {
   const [data, setData] = useState<HealthData | null>(null);
   const [slaData, setSlaData] = useState<SlaData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const hasOver24h = slaData !== null && slaData.pendingOver24h > 0;
+  const hasOver72h = slaData !== null && slaData.pendingOver72h > 0;
+
   const fetchHealth = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [healthRes, slaRes] = await Promise.all([
-        fetch('/api/admin/health'),
-        fetch('/api/admin/sla'),
-      ]);
-      const healthJson = await healthRes.json();
-      const slaJson = await slaRes.json();
+      const { healthJson, slaJson } = await fetchAll();
       if (healthJson.error) {
         setError(healthJson.error.message || 'Failed to load health data');
       } else {
@@ -62,13 +70,10 @@ export default function AdminHealthPage() {
       setLoading(true);
       setError(null);
       try {
-        const [healthRes, slaRes] = await Promise.all([
-          fetch('/api/admin/health'),
-          fetch('/api/admin/sla'),
-        ]);
-        const healthJson = await healthRes.json();
-        const slaJson = await slaRes.json();
-        if (cancelled) return;
+        const { healthJson, slaJson } = await fetchAll();
+        if (cancelled) {
+          return;
+        }
         if (healthJson.error) {
           setError(healthJson.error.message || 'Failed to load health data');
         } else {
@@ -78,30 +83,33 @@ export default function AdminHealthPage() {
           setSlaData(slaJson.data);
         }
       } catch {
-        if (!cancelled) setError('Failed to connect to health endpoint');
+        if (!cancelled) {
+          setError('Failed to connect to health endpoint');
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     doFetch();
 
-    let interval = setInterval(doFetch, 30000);
+    let intervalId = setInterval(doFetch, 30000);
 
-    // Pause polling when tab is hidden to save resources
     function onVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        doFetch(); // immediate refresh on foreground
-        interval = setInterval(doFetch, 30000);
+      if (document.visibilityState === 'hidden') {
+        clearInterval(intervalId);
       } else {
-        clearInterval(interval);
+        doFetch();
+        intervalId = setInterval(doFetch, 30000);
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
@@ -188,24 +196,24 @@ export default function AdminHealthPage() {
                     <p className="text-2xl font-bold text-ink mt-1">{slaData.totalPending}</p>
                   </CardContent>
                 </Card>
-                <Card className={`rounded-card ${slaData.pendingOver24h > 0 ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
+                <Card className={`rounded-card ${hasOver24h ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
                   <CardContent className="p-6">
                     <p className="text-sm text-ink-3 flex items-center gap-1">
-                      {slaData.pendingOver24h > 0 && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
+                      {hasOver24h && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
                       Pending &gt; 24h
                     </p>
-                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver24h > 0 ? 'text-yellow-700' : 'text-ink'}`}>
+                    <p className={`text-2xl font-bold mt-1 ${hasOver24h ? 'text-yellow-700' : 'text-ink'}`}>
                       {slaData.pendingOver24h}
                     </p>
                   </CardContent>
                 </Card>
-                <Card className={`rounded-card ${slaData.pendingOver72h > 0 ? 'border-destructive/30 bg-destructive/5' : ''}`}>
+                <Card className={`rounded-card ${hasOver72h ? 'border-destructive/30 bg-destructive/5' : ''}`}>
                   <CardContent className="p-6">
                     <p className="text-sm text-ink-3 flex items-center gap-1">
-                      {slaData.pendingOver72h > 0 && <AlertTriangle className="w-4 h-4 text-red-600" />}
+                      {hasOver72h && <AlertTriangle className="w-4 h-4 text-red-600" />}
                       Pending &gt; 72h
                     </p>
-                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver72h > 0 ? 'text-red-700' : 'text-ink'}`}>
+                    <p className={`text-2xl font-bold mt-1 ${hasOver72h ? 'text-red-700' : 'text-ink'}`}>
                       {slaData.pendingOver72h}
                     </p>
                   </CardContent>

@@ -44,24 +44,40 @@ export default async function PublicProfilePage({ params }: { params: { userId: 
   });
 
   const isOwnProfile = session.user.id === user.id;
-  const canViewFull =
-    isOwnProfile ||
-    user.profilePrivacy === 'PUBLIC' ||
-    (user.profilePrivacy === 'FOLLOWERS_ONLY' && !!isFollowing);
 
-  const profileUser = canViewFull
-    ? user
-    : {
-        ...user,
-        bio: null,
-        location: null,
-        website: null,
-        twitter: null,
-        github: null,
-        bannerUrl: null,
-        followerCount: 0,
-        followingCount: 0,
-      };
+  function canViewFullProfile(
+    own: boolean,
+    privacy: string,
+    following: unknown
+  ): boolean {
+    if (own) return true;
+    if (privacy === 'PUBLIC') return true;
+    if (privacy === 'FOLLOWERS_ONLY' && following) return true;
+    return false;
+  }
+
+  const canViewFull = canViewFullProfile(isOwnProfile, user.profilePrivacy, isFollowing);
+
+  function buildLimitedProfile(base: NonNullable<typeof user>) {
+    return {
+      ...base,
+      bio: null,
+      location: null,
+      website: null,
+      twitter: null,
+      github: null,
+      bannerUrl: null,
+      followerCount: 0,
+      followingCount: 0,
+    };
+  }
+
+  let profileUser: NonNullable<typeof user>;
+  if (canViewFull) {
+    profileUser = user as NonNullable<typeof user>;
+  } else {
+    profileUser = buildLimitedProfile(user as NonNullable<typeof user>);
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">

@@ -12,6 +12,38 @@ import { actionSuccess } from '@/lib/actions/result';
 
 const EMAIL_PREVIEW_LENGTH = 200;
 
+function resolveHandleBase(user: { name: string | null; email: string }): string {
+  if (user.name) return user.name;
+  return user.email.split('@')[0] ?? '';
+}
+
+function buildHandle(user: { name: string | null; email: string }): string {
+  const base = resolveHandleBase(user);
+  if (!base) return 'user';
+  const cleaned = base.toLowerCase().replace(/[^a-z0-9.-]/g, '');
+  return cleaned || 'user';
+}
+
+function buildMentionRows(messageId: string, mentions: string[]) {
+  return mentions.map((userId) => ({ messageId, userId }));
+}
+
+function buildMentionNotifications(
+  mentions: string[],
+  mentionerName: string,
+  messageId: string,
+  threadId: string,
+  linkUrl: string | null
+) {
+  return mentions.map((userId) => ({
+    userId,
+    type: 'MENTION' as const,
+    title: 'You were mentioned',
+    message: `${mentionerName} mentioned you in a message`,
+    data: { messageId, threadId, linkUrl },
+  }));
+}
+
 export async function createMentionsForMessage({
   messageId,
   threadId,
@@ -35,25 +67,13 @@ export async function createMentionsForMessage({
 }) {
   if (mentions.length === 0) return;
 
-  const mentionerName = mentionedBy.name || mentionedBy.email;
+  const mentionerName = mentionedBy.name ?? mentionedBy.email;
+  const mentionRows = buildMentionRows(messageId, mentions);
+  await prisma.messageMention.createMany({ data: mentionRows });
 
-  await prisma.messageMention.createMany({
-    data: mentions.map((userId) => ({ messageId, userId })),
-  });
-
-  await sideEffects.createBulkNotifications(
-    mentions.map((userId) => ({
-      userId,
-      type: 'MENTION' as const,
-      title: 'You were mentioned',
-      message: `${mentionerName} mentioned you in a message`,
-      data: {
-        messageId,
-        threadId,
-        linkUrl: threadSlug ? `${ROUTES.THREAD(threadSlug)}?focus=${messageId}` : null,
-      },
-    }))
-  );
+  const linkUrl = threadSlug ? `${ROUTES.THREAD(threadSlug)}?focus=${messageId}` : null;
+  const notifications = buildMentionNotifications(mentions, mentionerName, messageId, threadId, linkUrl);
+  await sideEffects.createBulkNotifications(notifications);
 
   const thread = await prisma.thread.findFirst({
     where: { id: threadId, deletedAt: null },
@@ -110,13 +130,15 @@ export const searchMentionUsers = createServerAction(
         take: 5,
       });
 
-      return actionSuccess(users.map((user) => ({
-        ...user,
-        handle:
-          (user.name || user.email.split('@')[0] || '')
-            .toLowerCase()
-            .replace(/[^a-z0-9.-]/g, '') || 'user',
-      })));
+      const mapped = users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        handle: buildHandle(user),
+      }));
+
+      return actionSuccess(mapped);
     } catch (error) {
       logger.error('[searchMentionUsers]', error);
       return {

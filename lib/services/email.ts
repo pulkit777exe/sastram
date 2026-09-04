@@ -33,9 +33,13 @@ export async function sendEmail({
   const payload: EmailJobData = { to, subject, text, from, type, metadata, templateId, data };
   await enqueueJob('email', payload);
 
-  logger.info(
-    `Queued email job (${type}) for ${Array.isArray(to) ? to.join(', ') : to}`
-  );
+  let recipients: string;
+  if (Array.isArray(to)) {
+    recipients = to.join(', ');
+  } else {
+    recipients = to;
+  }
+  logger.info(`Queued email job (${type}) for ${recipients}`);
 
   // The real provider id only exists once the job runs; this is a queue receipt.
   return { id: `email-${Date.now()}` };
@@ -51,7 +55,12 @@ export async function sendEmailNow({
 }: EmailJobData) {
   try {
     const resend = getResendClient();
-    const toAddresses = Array.isArray(to) ? to : [to];
+    let toAddresses: string[];
+    if (Array.isArray(to)) {
+      toAddresses = to;
+    } else {
+      toAddresses = [to];
+    }
 
     // In non-production, Resend's test key only permits its own verification
     // address, so real recipients (e.g. example.com) hard-fail with a 422.
@@ -66,9 +75,12 @@ export async function sendEmailNow({
 
     const baseOpts = { from, to: toAddresses, subject };
 
-    const payload: CreateEmailOptions = templateId && data
-      ? { ...baseOpts, template: { id: templateId, variables: data } }
-      : { ...baseOpts, text: text ?? '' };
+    let payload: CreateEmailOptions;
+    if (templateId && data) {
+      payload = { ...baseOpts, template: { id: templateId, variables: data } };
+    } else {
+      payload = { ...baseOpts, text: text ?? '' };
+    }
 
     const { data: result, error } = await resend.emails.send(payload);
 

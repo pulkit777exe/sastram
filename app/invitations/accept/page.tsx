@@ -12,10 +12,15 @@ export default function InvitationAcceptPage() {
   const searchParams = useSearchParams();
   const inviteId = searchParams.get('id');
 
-  const [status, setStatus] = useState<Status>(inviteId ? 'loading' : 'error');
-  const [error, setError] = useState<string | null>(
-    inviteId ? null : 'Invalid invitation link — no invitation ID found.'
-  );
+  let initialStatus: Status = 'loading';
+  let initialError: string | null = null;
+  if (!inviteId) {
+    initialStatus = 'error';
+    initialError = 'Invalid invitation link — no invitation ID found.';
+  }
+
+  const [status, setStatus] = useState<Status>(initialStatus);
+  const [error, setError] = useState<string | null>(initialError);
   const [threadSlug, setThreadSlug] = useState<string | null>(null);
 
   useEffect(() => {

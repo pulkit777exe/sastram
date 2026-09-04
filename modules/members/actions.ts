@@ -21,17 +21,21 @@ const inviteMemberSchema = threadIdSchema.extend({
 
 const targetMemberSchema = threadIdSchema.merge(userIdSchema);
 
+async function ensureManageableThread(threadId: string, userId: string, role: string) {
+  const thread = await findManageableThread(threadId, userId, role as never);
+  if (thread) return { thread, error: null };
+
+  const exists = await findThreadById(threadId);
+  if (!exists) return { thread: null, error: actionFailure('NOT_FOUND', 'Thread not found') };
+  return { thread: null, error: actionFailure('FORBIDDEN', 'Insufficient permissions') };
+}
+
 export const inviteMember = createServerAction(
   { schema: inviteMemberSchema, actionName: 'inviteMember' },
   async ({ threadId, email }) => {
     const session = await requireSession();
-    const thread = await findManageableThread(threadId, session.user.id, session.user.role);
-
-    if (!thread) {
-      const exists = await findThreadById(threadId);
-      if (!exists) return actionFailure('NOT_FOUND', 'Thread not found');
-      return actionFailure('FORBIDDEN', 'Insufficient permissions');
-    }
+    const { thread, error } = await ensureManageableThread(threadId, session.user.id, session.user.role);
+    if (error) return error;
 
     let invitation = await createInvitation({ threadId, email, senderId: session.user.id });
     if (!invitation) {
@@ -72,13 +76,8 @@ export const removeMemberAction = createServerAction(
   { schema: targetMemberSchema, actionName: 'removeMemberAction' },
   async ({ threadId, userId }) => {
     const session = await requireSession();
-    const thread = await findManageableThread(threadId, session.user.id, session.user.role);
-
-    if (!thread) {
-      const exists = await findThreadById(threadId);
-      if (!exists) return actionFailure('NOT_FOUND', 'Thread not found');
-      return actionFailure('FORBIDDEN', 'Insufficient permissions');
-    }
+    const { thread, error } = await ensureManageableThread(threadId, session.user.id, session.user.role);
+    if (error) return error;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

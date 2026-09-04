@@ -2,13 +2,18 @@ import { z } from 'zod';
 
 const MAX_CONTENT_LENGTH = 10000;
 
+// Only HTTPS URLs are considered safe — uploads are proxied through Vercel Blob
+// which is always TLS, and path traversal sequences would escape the bucket.
+const SAFE_URL_RE = /^https:\/\//;
+
+function isSafeUrl(value: string): boolean {
+  // Reject path traversal attempts and require HTTPS.
+  if (value.includes('..') || value.includes('\\')) return false;
+  return SAFE_URL_RE.test(value);
+}
+
 export const attachmentInputSchema = z.object({
-  url: z
-    .string()
-    .url('Invalid attachment URL')
-    // Uploads are proxied through blob storage; reject traversal-ish and non-TLS URLs.
-    .refine((val) => !val.includes('..') && !val.includes('\\'), 'Invalid path in URL')
-    .refine((val) => /^https:\/\//.test(val), 'URL must start with https://'),
+  url: z.string().url('Invalid attachment URL').refine(isSafeUrl, 'URL must start with https:// and not contain path traversal'),
   type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO', 'PDF']),
   name: z.string().nullable(),
   size: z.number().int().positive('File size must be positive').nullable(),

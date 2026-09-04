@@ -5,7 +5,7 @@ import { sendNewsletterDigest } from '@/lib/services/email';
 import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay, subDays, getDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/middleware/cron-auth';
-import { ok, fail } from '@/lib/utils/api-response';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import type { DigestFrequency } from '@prisma/client';
@@ -182,6 +182,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(ok({ results }));
   } catch (error) {
     logger.error('Daily digest cron error:', error);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Daily digest failed'), { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Daily digest failed'), { status: HTTP_STATUS.INTERNAL });
   }
 }

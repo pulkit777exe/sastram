@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { HTTP_STATUS } from '@/lib/utils/api-response';
 import { Receiver } from '@upstash/qstash';
 import { logger } from '@/lib/infrastructure/logger';
 import { deduplicateJob } from '@/lib/services/job-dedup';
@@ -21,7 +22,7 @@ async function handleJob(body: string, request: NextRequest) {
   try {
     parsed = JSON.parse(body);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   const { jobType, payload } = parsed;
@@ -29,7 +30,7 @@ async function handleJob(body: string, request: NextRequest) {
   const handler = jobHandlers[jobType];
   if (!handler) {
     logger.warn(`[jobs] Unknown job type: ${jobType}`);
-    return NextResponse.json({ error: `Unknown job type: ${jobType}` }, { status: 400 });
+    return NextResponse.json({ error: `Unknown job type: ${jobType}` }, { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   try {
@@ -42,7 +43,7 @@ async function handleJob(body: string, request: NextRequest) {
       return NextResponse.json({ ok: true, error: error.message });
     }
     logger.error(`[jobs] Job ${jobType} failed:`, error);
-    return NextResponse.json({ error: 'Job failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Job failed' }, { status: HTTP_STATUS.INTERNAL });
   }
 }
 
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
   const isValid = await verifyQstashSignature(request, body);
   if (!isValid) {
     logger.warn('[jobs] Invalid or missing QStash signature');
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    return NextResponse.json({ error: 'Invalid signature' }, { status: HTTP_STATUS.UNAUTHORIZED });
   }
 
   return handleJob(body, request);

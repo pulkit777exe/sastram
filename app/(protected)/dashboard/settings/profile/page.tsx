@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Settings } from 'lucide-react';
 
+function getUserInitial(name: string | null | undefined, email: string): string {
+  const source = name || email;
+  const firstChar = source[0];
+  if (!firstChar) return '?';
+  return firstChar.toUpperCase();
+}
+
 export default async function ProfilePage() {
   const session = await getSession();
   if (!session) return null;
@@ -30,7 +37,7 @@ export default async function ProfilePage() {
               <Image src={user.image} alt={user.name ?? 'Avatar'} width={80} height={80} />
             ) : (
               <span className="text-2xl font-semibold">
-                {(user.name || user.email)[0]?.toUpperCase()}
+                {getUserInitial(user.name, user.email)}
               </span>
             )}
           </div>

@@ -39,6 +39,16 @@ interface UseAIReplyStreamOptions {
 
 
 
+function buildStreamUrl(threadId: string, parentMessageId?: string): string {
+  const baseUrl = `/api/threads/${threadId}/ai-reply/stream`;
+  const hasParent = Boolean(parentMessageId);
+  if (hasParent) {
+    const encodedId = encodeURIComponent(parentMessageId as string);
+    return `${baseUrl}?messageId=${encodedId}`;
+  }
+  return baseUrl;
+}
+
 export function useAIReplyStream({
   threadId,
   onStart,
@@ -55,9 +65,7 @@ export function useAIReplyStream({
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const url = parentMessageId
-      ? `/api/threads/${threadId}/ai-reply/stream?messageId=${encodeURIComponent(parentMessageId)}`
-      : `/api/threads/${threadId}/ai-reply/stream`;
+    const url = buildStreamUrl(threadId, parentMessageId);
 
     fetch(url, { method: 'GET', signal: controller.signal })
       .then(async (response) => {

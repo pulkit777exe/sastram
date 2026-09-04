@@ -34,6 +34,40 @@ function NotificationListSkeleton() {
   );
 }
 
+function extractNotificationData(rawData: unknown): Record<string, unknown> {
+  if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+    return rawData as Record<string, unknown>;
+  }
+  return {};
+}
+
+function getNotificationLinkUrl(data: Record<string, unknown>): string | null {
+  const linkUrl = data.linkUrl;
+  if (typeof linkUrl === 'string') return linkUrl;
+  return null;
+}
+
+function toNotificationViewModel(notification: {
+  id: string;
+  data: unknown;
+  type: string;
+  title: string;
+  message?: string | null;
+  isRead: boolean;
+  createdAt: Date;
+}) {
+  const data = extractNotificationData(notification.data);
+  return {
+    id: notification.id,
+    type: notification.type,
+    title: notification.title,
+    message: notification.message ?? '',
+    isRead: notification.isRead,
+    createdAt: notification.createdAt,
+    linkUrl: getNotificationLinkUrl(data),
+  };
+}
+
 async function NotificationListData() {
   const session = await getSession();
   if (!session?.user) return null;
@@ -41,24 +75,7 @@ async function NotificationListData() {
   const result = await getNotifications({ unreadOnly: false, limit: 20, offset: 0 });
   const raw = result.data ?? [];
 
-  const notifications = raw.map((notification) => {
-    const data =
-      notification.data &&
-      typeof notification.data === 'object' &&
-      !Array.isArray(notification.data)
-        ? (notification.data as Record<string, unknown>)
-        : {};
-
-    return {
-      id: notification.id,
-      type: notification.type,
-      title: notification.title,
-      message: notification.message ?? '',
-      isRead: notification.isRead,
-      createdAt: notification.createdAt,
-      linkUrl: (data.linkUrl as string) ?? null,
-    };
-  });
+  const notifications = raw.map(toNotificationViewModel);
 
   return <NotificationList notifications={notifications} />;
 }

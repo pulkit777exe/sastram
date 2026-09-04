@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail } from '@/lib/utils/api-response';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
+import { AppError } from '@/lib/utils/errors';
 import {
   listThreadedSessions,
   listUserSearchSessions,
@@ -14,72 +15,119 @@ export const maxDuration = 30;
 
 const idSchema = z.object({ id: z.string().min(1) });
 
+async function authenticateRequest() {
+  return requireSessionOrThrow();
+}
+
+function parseListParams(url: URL) {
+  const rawLimit = url.searchParams.get('limit');
+  const limitRaw = rawLimit ?? '20';
+  const limit = Number(limitRaw);
+
+  const rawCursor = url.searchParams.get('cursor');
+  let cursor: string | null;
+  if (rawCursor !== null && rawCursor !== '') {
+    cursor = rawCursor;
+  } else {
+    cursor = null;
+  }
+
+  const rawThreaded = url.searchParams.get('threaded');
+  const threaded = rawThreaded === '1';
+
+  let safeLimit: number;
+  if (Number.isFinite(limit) && limit > 0) {
+    if (limit > 50) {
+      safeLimit = 50;
+    } else {
+      safeLimit = limit;
+    }
+  } else {
+    safeLimit = 20;
+  }
+
+  return { safeLimit, cursor, threaded };
+}
+
+function handleAuthError(error: unknown): NextResponse | null {
+  if (AppError.isAppError(error) && error.code === 'AUTH_REQUIRED') {
+    return NextResponse.json(fail('AUTH_REQUIRED', 'Authentication required'), {
+      status: HTTP_STATUS.UNAUTHORIZED,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  }
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   try {
-    let session;
-    try {
-      session = await requireSessionOrThrow();
-    } catch {
-      return NextResponse.json(fail('AUTH_REQUIRED', 'Authentication required'), { status: 401, headers: { 'Cache-Control': 'no-store' } });
-    }
+    const session = await authenticateRequest();
 
     const url = new URL(request.url);
-    const single = url.searchParams.get('id');
+    const rawSingle = url.searchParams.get('id');
+    let single: string | null;
+    if (rawSingle !== null && rawSingle !== '') {
+      single = rawSingle;
+    } else {
+      single = null;
+    }
 
-    if (single) {
+    if (single !== null) {
       const parsed = idSchema.safeParse({ id: single });
       if (!parsed.success) {
-        return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid session id'), { status: 400 });
+        return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid session id'), { status: HTTP_STATUS.BAD_REQUEST });
       }
-      // Ownership is enforced inside getSearchSession (userId + id) — returns
-      // 404 (not 500) for missing or foreign session ids (harness §8 IDOR).
       const record = await getSearchSession(session.user.id, parsed.data.id);
       if (!record) {
-        return NextResponse.json(fail('NOT_FOUND', 'Session not found'), { status: 404 });
+        return NextResponse.json(fail('NOT_FOUND', 'Session not found'), { status: HTTP_STATUS.NOT_FOUND });
       }
       return NextResponse.json(ok(record), { headers: { 'Cache-Control': 'no-store' } });
     }
 
-    const limit = Number(url.searchParams.get('limit') ?? '20');
-    const cursor = url.searchParams.get('cursor') || null;
-    const threaded = url.searchParams.get('threaded') === '1';
+    const { safeLimit, cursor, threaded } = parseListParams(url);
 
-    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 50) : 20;
-
-    const result = threaded
-      ? await listThreadedSessions(session.user.id, { limit: safeLimit, cursor })
-      : await listUserSearchSessions(session.user.id, { limit: safeLimit, cursor });
+    let result;
+    if (threaded) {
+      result = await listThreadedSessions(session.user.id, { limit: safeLimit, cursor });
+    } else {
+      result = await listUserSearchSessions(session.user.id, { limit: safeLimit, cursor });
+    }
 
     return NextResponse.json(ok(result), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
     logger.error('[search-history GET]', error);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load search history.'), { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load search history.'), { status: HTTP_STATUS.INTERNAL });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    let session;
-    try {
-      session = await requireSessionOrThrow();
-    } catch {
-      return NextResponse.json(fail('AUTH_REQUIRED', 'Authentication required'), { status: 401, headers: { 'Cache-Control': 'no-store' } });
-    }
+    const session = await authenticateRequest();
 
     const url = new URL(request.url);
-    const id = url.searchParams.get('id');
-    const parsed = idSchema.safeParse({ id: id ?? '' });
-    if (!parsed.success) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid session id'), { status: 400 });
+    const rawId = url.searchParams.get('id');
+    let idForValidation: string;
+    if (rawId !== null) {
+      idForValidation = rawId;
+    } else {
+      idForValidation = '';
     }
 
-    // Ownership enforced (userId + id) — only soft-deletes the user's own rows.
+    const parsed = idSchema.safeParse({ id: idForValidation });
+    if (!parsed.success) {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid session id'), { status: HTTP_STATUS.BAD_REQUEST });
+    }
+
     const deleted = await softDeleteSearchSession(session.user.id, parsed.data.id);
     if (!deleted) {
-      return NextResponse.json(fail('NOT_FOUND', 'Session not found'), { status: 404 });
+      return NextResponse.json(fail('NOT_FOUND', 'Session not found'), { status: HTTP_STATUS.NOT_FOUND });
     }
     return NextResponse.json(ok({ deleted: true }), { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to delete search history.'), { status: 500 });
+  } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to delete search history.'), { status: HTTP_STATUS.INTERNAL });
   }
 }

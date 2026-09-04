@@ -81,11 +81,13 @@ async function getByModel(fromDate: string, toDate: string) {
 }
 
 async function getPeriodTotal(fromDate: string, toDate: string) {
+  const range = { gte: new Date(fromDate), lt: new Date(toDate) };
+  const baseWhere = { createdAt: range };
   const [costSum, totalCount, successCount, failureCount] = await Promise.all([
-    prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: new Date(fromDate), lt: new Date(toDate) } }, _sum: { costUsd: true } }),
-    prisma.aiUsageLog.count({ where: { createdAt: { gte: new Date(fromDate), lt: new Date(toDate) } } }),
-    prisma.aiUsageLog.count({ where: { createdAt: { gte: new Date(fromDate), lt: new Date(toDate) }, success: true } }),
-    prisma.aiUsageLog.count({ where: { createdAt: { gte: new Date(fromDate), lt: new Date(toDate) }, success: false } }),
+    prisma.aiUsageLog.aggregate({ where: baseWhere, _sum: { costUsd: true } }),
+    prisma.aiUsageLog.count({ where: baseWhere }),
+    prisma.aiUsageLog.count({ where: { ...baseWhere, success: true } }),
+    prisma.aiUsageLog.count({ where: { ...baseWhere, success: false } }),
   ]);
 
   return {

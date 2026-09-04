@@ -22,6 +22,8 @@ import { actionSuccess } from '@/lib/actions/result';
 
 const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 
+const DEFAULT_POPULAR_TAGS_LIMIT = 20;
+
 const createTagSchema = z.object({
   name: z.string().min(1).max(50),
   color: hexColor.optional(),
@@ -94,7 +96,8 @@ export const getPopularTagsAction = withValidation(
   z.object({ limit: z.number().int().positive().max(100).optional() }),
   'getPopularTagsAction',
   async ({ limit }) => {
-    const tags = await getPopularTagsRepo(limit || 20);
+    const effectiveLimit = limit ?? DEFAULT_POPULAR_TAGS_LIMIT;
+    const tags = await getPopularTagsRepo(effectiveLimit);
     return actionSuccess(tags);
   }
 );

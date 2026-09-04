@@ -14,6 +14,13 @@ function parsePollOptions(raw: Prisma.JsonValue): string[] {
   return result.data;
 }
 
+function pct(votes: number, totalVotes: number): number {
+  if (totalVotes > 0) {
+    return (votes / totalVotes) * 100;
+  }
+  return 0;
+}
+
 export async function createPoll(
   threadId: string,
   question: string,
@@ -87,9 +94,10 @@ export async function getPollResults(pollId: string) {
   const options = parsePollOptions(poll.options);
   const totalVotes = poll._count.votes;
 
-  const countByIndex = new Map<number, number>(
-    voteCounts.map((row) => [row.optionIndex, row._count.optionIndex])
-  );
+  const countByIndex = new Map<number, number>();
+  for (const row of voteCounts) {
+    countByIndex.set(row.optionIndex, row._count.optionIndex);
+  }
 
   return {
     poll: {
@@ -106,7 +114,7 @@ export async function getPollResults(pollId: string) {
         option,
         index,
         votes,
-        percentage: totalVotes > 0 ? (votes / totalVotes) * 100 : 0,
+        percentage: pct(votes, totalVotes),
       };
     }),
   };

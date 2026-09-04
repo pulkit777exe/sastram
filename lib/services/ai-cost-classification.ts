@@ -70,15 +70,37 @@ const ESTIMATED_COST_USD: Record<AiCallPath, number> = {
   [AiCallPath.QUERY_WARMING]: 0.01,
 };
 
+const DEFAULT_ESTIMATED_COST_USD = 0.01;
+
 const CACHEABLE_PATHS = new Set<AiCallPath>(CHEAP_PATHS);
 
 /** Unknown paths fall through to EXPENSIVE — never fail open on cost. */
 export function classifyAiCallCost(path: AiCallPath): AiCostClassification {
+  // Determine tier explicitly.
   const isCheap = CHEAP_PATHS.includes(path);
+  let tier: AiCostTier;
+  if (isCheap) {
+    tier = AiCostTier.CHEAP;
+  } else {
+    tier = AiCostTier.EXPENSIVE;
+  }
+
+  // Look up estimated cost with explicit fallback.
+  let estimatedCostUsd: number;
+  const knownCost = ESTIMATED_COST_USD[path];
+  if (knownCost !== undefined) {
+    estimatedCostUsd = knownCost;
+  } else {
+    // Unknown path — default to expensive default cost.
+    estimatedCostUsd = DEFAULT_ESTIMATED_COST_USD;
+  }
+
+  const cacheable = CACHEABLE_PATHS.has(path);
+
   return {
-    tier: isCheap ? AiCostTier.CHEAP : AiCostTier.EXPENSIVE,
-    estimatedCostUsd: ESTIMATED_COST_USD[path] ?? 0.01,
-    cacheable: CACHEABLE_PATHS.has(path),
+    tier,
+    estimatedCostUsd,
+    cacheable,
   };
 }
 
@@ -99,13 +121,19 @@ export interface AiCostGateResult {
  * paths need a passing pre-flight so we don't enqueue work we can't afford.
  */
 export function evaluateAiCostGate(input: AiCostGateInput): AiCostGateResult {
-  if (classifyAiCallCost(input.path).tier === AiCostTier.CHEAP) {
+  const classification = classifyAiCallCost(input.path);
+  const isCheap = classification.tier === AiCostTier.CHEAP;
+
+  // Cheap paths are always allowed.
+  if (isCheap) {
     return { allowed: true, reason: 'none' };
   }
 
+  // Expensive paths require spend cap to be allowed.
   if (!input.spendCapAllowed) {
     return { allowed: false, reason: 'spend_cap_reached' };
   }
 
+  // Expensive but cap not reached — allowed.
   return { allowed: true, reason: 'none' };
 }

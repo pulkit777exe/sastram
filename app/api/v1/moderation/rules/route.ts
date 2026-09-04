@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireModerator, requireAdmin } from '@/lib/middleware/moderation';
-import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
+import {ok, fail, withErrorHandling, HTTP_STATUS} from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { z } from 'zod';
 
@@ -85,7 +85,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   if (!validation.success) {
     return NextResponse.json(
       fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues),
-      { status: 400 }
+      { status: HTTP_STATUS.BAD_REQUEST }
     );
   }
 
@@ -93,7 +93,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
   const regexValidation = validateRegexPattern(pattern);
   if (!regexValidation.valid) {
-    return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   const newRule = await prisma.moderationRule.create({
@@ -112,7 +112,7 @@ export const PUT = withErrorHandling(async (request: NextRequest) => {
   if (!validation.success) {
     return NextResponse.json(
       fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues),
-      { status: 400 }
+      { status: HTTP_STATUS.BAD_REQUEST }
     );
   }
 
@@ -121,7 +121,7 @@ export const PUT = withErrorHandling(async (request: NextRequest) => {
   if (pattern) {
     const regexValidation = validateRegexPattern(pattern);
     if (!regexValidation.valid) {
-      return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: 400 });
+      return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: HTTP_STATUS.BAD_REQUEST });
     }
   }
 
@@ -146,7 +146,7 @@ export const DELETE = withErrorHandling(async (request: NextRequest) => {
 
   const idValidation = z.object({ id: z.string().min(1) }).safeParse(body);
   if (!idValidation.success) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'id is required'), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'id is required'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   await prisma.moderationRule.delete({
