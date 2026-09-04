@@ -271,11 +271,15 @@ model Message {
   appeals      Appeal[]         @relation("MessageAppeal")
   poll         Poll?
 
-  @@index([threadId])
+  // 9 indexes — keep explicit; composites cover single-column prefixes
+  // in Postgres but retaining [threadId] and [parentId] makes hot paths
+  // (feed scan, tree build) obvious without EXPLAIN. Revisit if write
+  // amplification is measured; do not drop without index-usage stats.
+  @@index([threadId]) // prefix of [threadId,createdAt] — kept for clarity on feed queries
   @@index([threadId, createdAt])
   @@index([threadId, senderId, createdAt])
   @@index([senderId])
-  @@index([parentId]) // critical for tree building
+  @@index([parentId]) // prefix of [parentId,threadId] — kept for tree building
   @@index([parentId, threadId]) // critical for tree building
   @@index([depth])
   @@index([deletedAt])
