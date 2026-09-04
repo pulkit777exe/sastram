@@ -21,7 +21,8 @@ export type FileCategory = 'IMAGE' | 'GIF' | 'VIDEO' | 'PDF' | 'FILE';
 
 export function getFileCategory(mimeType: string): FileCategory {
   if (ALLOWED_MIME_TYPES.IMAGE.includes(mimeType)) {
-    return mimeType === 'image/gif' ? 'GIF' : 'IMAGE';
+    if (mimeType === 'image/gif') return 'GIF';
+    return 'IMAGE';
   }
   if (ALLOWED_MIME_TYPES.VIDEO.includes(mimeType)) {
     return 'VIDEO';
@@ -42,13 +43,23 @@ const MAGIC_BYTES: { mime: string; bytes: number[]; offset: number }[] = [
   { mime: 'video/webm', bytes: [0x1a, 0x45, 0xdf, 0xa3], offset: 0 }, // EBML header
 ];
 
+const BYTES_PER_MB = 1024 * 1024;
+
+function bytesMatchSignature(bytes: number[], sig: { bytes: number[]; offset: number }): boolean {
+  for (let i = 0; i < sig.bytes.length; i++) {
+    if (bytes[sig.offset + i] !== sig.bytes[i]) return false;
+  }
+  return true;
+}
+
 /** Sniffs the real type — a client-supplied `file.type` can lie. */
 export async function detectMimeTypeFromFile(file: File): Promise<string | null> {
   const buffer = await file.slice(0, 16).arrayBuffer();
   const bytes = Array.from(new Uint8Array(buffer));
 
-  const sig = MAGIC_BYTES.find((s) => s.bytes.every((b, i) => bytes[s.offset + i] === b));
-  return sig?.mime ?? null;
+  const matched = MAGIC_BYTES.find((sig) => bytesMatchSignature(bytes, sig));
+  if (matched) return matched.mime;
+  return null;
 }
 
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -83,7 +94,7 @@ export function validateFileUpload(file: File): {
   }
 
   if (file.size > maxSize) {
-    const maxSizeMB = Math.floor(maxSize / (1024 * 1024));
+    const maxSizeMB = Math.floor(maxSize / BYTES_PER_MB);
     return {
       valid: false,
       error: `File size exceeds ${maxSizeMB}MB limit for ${category} files.`,

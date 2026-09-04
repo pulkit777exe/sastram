@@ -14,5 +14,6 @@ export type ThreadDNA = z.infer<typeof threadDnaSchema>;
 export function parseThreadDna(raw: unknown): ThreadDNA | null {
   if (raw === null || raw === undefined) return null;
   const result = threadDnaSchema.safeParse(raw);
-  return result.success ? result.data : null;
+  if (result.success) return result.data;
+  return null;
 }

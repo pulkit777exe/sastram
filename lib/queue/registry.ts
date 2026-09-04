@@ -23,25 +23,25 @@ import type {
 } from './types';
 
 export type JobHandlerMap = {
-  'generate-thread-summary': (data: ThreadSummaryJobData) => Promise<unknown>;
-  'generate-thread-dna': (data: ThreadDnaJobData) => Promise<unknown>;
-  'calculate-resolution-score': (data: ResolutionScoreJobData) => Promise<unknown>;
-  'detect-conflicts': (data: ConflictDetectionJobData) => Promise<unknown>;
-  'generate-daily-digest': (data: DailyDigestJobData) => Promise<unknown>;
-  'send-ai-insight-notifications': (data: AIInsightNotificationJobData) => Promise<unknown>;
-  'generate-ai-inline': (data: AIInlineJobData) => Promise<unknown>;
+  [AIJobType.GENERATE_THREAD_SUMMARY]: (data: ThreadSummaryJobData) => Promise<unknown>;
+  [AIJobType.GENERATE_THREAD_DNA]: (data: ThreadDnaJobData) => Promise<unknown>;
+  [AIJobType.CALCULATE_RESOLUTION_SCORE]: (data: ResolutionScoreJobData) => Promise<unknown>;
+  [AIJobType.DETECT_CONFLICTS]: (data: ConflictDetectionJobData) => Promise<unknown>;
+  [AIJobType.GENERATE_DAILY_DIGEST]: (data: DailyDigestJobData) => Promise<unknown>;
+  [AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS]: (data: AIInsightNotificationJobData) => Promise<unknown>;
+  [AIJobType.GENERATE_AI_INLINE]: (data: AIInlineJobData) => Promise<unknown>;
   [AIJobType.STALENESS_CHECK]: (data: StalenessCheckJobData) => Promise<unknown>;
   email: (data: EmailJobData) => Promise<unknown>;
 };
 
 export const jobHandlers: JobHandlerMap = {
-  'generate-thread-summary': handleThreadSummaryJob,
-  'generate-thread-dna': handleThreadDnaJob,
-  'calculate-resolution-score': handleResolutionScoreJob,
-  'detect-conflicts': handleConflictDetectionJob,
-  'generate-daily-digest': handleDailyDigestJob,
-  'send-ai-insight-notifications': handleAIInsightNotificationsJob,
-  'generate-ai-inline': handleAIInlineJob,
+  [AIJobType.GENERATE_THREAD_SUMMARY]: handleThreadSummaryJob,
+  [AIJobType.GENERATE_THREAD_DNA]: handleThreadDnaJob,
+  [AIJobType.CALCULATE_RESOLUTION_SCORE]: handleResolutionScoreJob,
+  [AIJobType.DETECT_CONFLICTS]: handleConflictDetectionJob,
+  [AIJobType.GENERATE_DAILY_DIGEST]: handleDailyDigestJob,
+  [AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS]: handleAIInsightNotificationsJob,
+  [AIJobType.GENERATE_AI_INLINE]: handleAIInlineJob,
   [AIJobType.STALENESS_CHECK]: handleStalenessCheckJob,
   email: handleEmailJob,
 };

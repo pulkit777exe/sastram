@@ -217,14 +217,18 @@ async function handleStalenessBatchCheck() {
   let cursor: string | undefined;
 
   while (true) {
+    const whereClause: Record<string, unknown> = {
+      isOutdated: false,
+      updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000) },
+      OR: [{ resolutionScore: null }, { resolutionScore: { lt: RESOLUTION_SCORE_THRESHOLD } }],
+      deletedAt: null,
+    };
+    if (cursor) {
+      (whereClause as { id: { gt: string } }).id = { gt: cursor };
+    }
+
     const threads = await prisma.thread.findMany({
-      where: {
-        isOutdated: false,
-        updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000) },
-        OR: [{ resolutionScore: null }, { resolutionScore: { lt: RESOLUTION_SCORE_THRESHOLD } }],
-        deletedAt: null,
-        ...(cursor ? { id: { gt: cursor } } : {}),
-      },
+      where: whereClause as never,
       select: { id: true },
       orderBy: { id: 'asc' },
       take: STALE_BATCH_SIZE,

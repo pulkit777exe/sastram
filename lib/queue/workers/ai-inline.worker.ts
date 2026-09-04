@@ -60,17 +60,24 @@ async function generateAIInlineResponse(
   } catch (error) {
     logger.error('[worker:ai] AI inline generation failed:', error);
 
-    const isCapOrQuota =
-      isQuotaError(error) || /spend cap/i.test(error instanceof Error ? error.message : '');
+    const isQuota = isQuotaError(error);
+    let isSpendCap = false;
+    if (error instanceof Error) {
+      isSpendCap = error.message.toLowerCase().includes('spend cap');
+    }
+    const isCapOrQuota = isQuota || isSpendCap;
+
+    let failureMessage: string;
+    if (isCapOrQuota) {
+      failureMessage = "I'm temporarily over my AI quota, so I couldn't reply just now. Please try again later.";
+    } else {
+      failureMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
+    }
 
     if (aiMessage) {
       await prisma.message.update({
         where: { id: aiMessage.id },
-        data: {
-          content: isCapOrQuota
-            ? "I'm temporarily over my AI quota, so I couldn't reply just now. Please try again later."
-            : "Sorry, I couldn't generate a response right now. Please try again later.",
-        },
+        data: { content: failureMessage },
       });
     }
   }

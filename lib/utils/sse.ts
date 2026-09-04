@@ -11,6 +11,12 @@
 
 import { NextResponse } from 'next/server';
 
+// Named regex constants for SSE error parsing — KISS: keep complex patterns at top with comments
+// Matches `event: error` followed by `data: {...}` (ai-reply/stream error format)
+const SSE_EVENT_ERROR_RE = /event:\s*error\s*\ndata:\s*(.+)/;
+// Matches `data: {"phase":"blocked"|"error", ...}` (forum-search blocked/error format)
+const SSE_DATA_PHASE_RE = /data:\s*(\{[^}]*"phase"\s*:\s*"(?:blocked|error)"[^}]*\})/;
+
 export type SSEDataEvent = { data: string; event?: string };
 
 // ------------------------------------------------------------------
@@ -51,6 +57,44 @@ export function blockedStream(message: string): NextResponse {
 }
 
 /**
+ * Shared SSE sender — extracted so forum-search and ai-reply/stream do not
+ * inline 5+ `controller.enqueue(encoder.encode(...))` branches.
+ * Usage: `const sendEvent = createSseSender(controller, encoder, closedRef); sendEvent('token', data)`
+ */
+export function createSseSender(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  closedRef: { closed: boolean }
+): (event: string, data: unknown) => void {
+  return (event: string, data: unknown) => {
+    if (closedRef.closed) return;
+    try {
+      controller.enqueue(encoder.encode(sseEvent(event, data)));
+    } catch {
+      closedRef.closed = true;
+    }
+  };
+}
+
+export function createDataSender(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder
+): (payload: unknown) => void {
+  return (payload: unknown) => {
+    controller.enqueue(encoder.encode(sseChunk(payload)));
+  };
+}
+
+function safelyCloseController(controller: ReadableStreamDefaultController<Uint8Array> | null): void {
+  if (controller === null) return;
+  try {
+    controller.close();
+  } catch {
+    /* already closed */
+  }
+}
+
+/**
  * Thin wrapper around ReadableStream that binds `request.signal` to
  * controller.close() exactly once and strips the listener on close.
  */
@@ -60,76 +104,47 @@ export function createSSEStream(
 ): Response {
   const encoder = new TextEncoder();
   let activeController: ReadableStreamDefaultController<Uint8Array> | null = null;
-  let closed = false;
+  let isClosed = false;
+
+  function closeOnce(): void {
+    if (isClosed) return;
+    isClosed = true;
+    safelyCloseController(activeController);
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       activeController = controller;
-      const send = (evt: SSEDataEvent) => {
-        if (closed) return;
-        const chunk = evt.event ? sseEvent(evt.event, JSON.parse(evt.data)) : `data: ${evt.data}\n\n`;
+
+      const send = (sseEventData: SSEDataEvent) => {
+        if (isClosed) return;
+        let chunkText: string;
+        if (sseEventData.event !== undefined && sseEventData.event.length > 0) {
+          chunkText = sseEvent(sseEventData.event, JSON.parse(sseEventData.data));
+        } else {
+          chunkText = `data: ${sseEventData.data}\n\n`;
+        }
         try {
-          controller.enqueue(encoder.encode(chunk));
+          controller.enqueue(encoder.encode(chunkText));
         } catch {
-          closed = true;
+          isClosed = true;
         }
       };
 
       const onAbort = () => {
-        if (closed) return;
-        closed = true;
-        try {
-          activeController?.close();
-        } catch {
-          /* already closed */
-        }
+        closeOnce();
       };
       request.signal.addEventListener('abort', onAbort, { once: true });
 
       try {
-        // Provide an ergonomic sender for callers that already have JSON
-        const _sendJson = (event: string | null, data: unknown) => {
-          if (closed) return;
-          const chunk = event ? sseEvent(event, data) : sseChunk(data);
-          try {
-            controller.enqueue(encoder.encode(chunk));
-          } catch {
-            closed = true;
-          }
-        };
-        // Caller's start may use either raw `controller` or `sendJson`
-        // We pass the raw controller via closure and expose sendJson as `send`
-        // For backwards compat, also call with (controller, send) signature
         await start(controller, send);
       } catch {
-        if (!closed) {
-          closed = true;
-          try {
-            controller.close();
-          } catch {
-            /* already closed */
-          }
-        }
+        closeOnce();
       } finally {
         request.signal.removeEventListener('abort', onAbort);
       }
     },
   });
-
-  // Fallback abort if stream never started
-  request.signal.addEventListener(
-    'abort',
-    () => {
-      if (closed) return;
-      closed = true;
-      try {
-        activeController?.close();
-      } catch {
-        /* already closed */
-      }
-    },
-    { once: true }
-  );
 
   return new Response(stream, { status: 200, headers: sseHeaders() });
 }
@@ -157,35 +172,32 @@ export function parseSSE(
   buffer: string
 ): { events: ParsedSSE[]; remaining: string } {
   // Split on double-newline — the SSE block delimiter
-  const parts = buffer.split('\n\n');
-  const remaining = parts.pop() ?? '';
-  const events: ParsedSSE[] = [];
+  const sseBlocks = buffer.split('\n\n');
+  const remainingBuffer = sseBlocks.pop() ?? '';
+  const parsedEvents: ParsedSSE[] = [];
 
-  for (const block of parts) {
-    const lines = block.split('\n');
-    let currentEvent = '';
-    const dataLines: string[] = [];
+  for (const sseBlock of sseBlocks) {
+    const blockLines = sseBlock.split('\n');
+    let currentEventName = '';
+    const collectedDataLines: string[] = [];
 
-    for (const line of lines) {
-      if (line.startsWith('event:')) {
-        currentEvent = line.slice(6).trim();
-      } else if (line.startsWith('data:')) {
-        dataLines.push(line.slice(5).trim());
-      } else if (line.startsWith('data: ')) {
-        dataLines.push(line.slice(6));
-      } else if (line === 'data:') {
-        dataLines.push('');
+    for (const blockLine of blockLines) {
+      if (blockLine.startsWith('event:')) {
+        currentEventName = blockLine.slice(6).trim();
+      } else if (blockLine.startsWith('data:')) {
+        const rawData = blockLine.slice(5);
+        collectedDataLines.push(rawData.trimStart());
       }
     }
 
-    if (dataLines.length === 0) continue;
+    if (collectedDataLines.length === 0) continue;
     // SSE spec: multiple data: lines join with \n — we emit one per block
-    const data = dataLines.join('\n');
-    if (!data) continue;
-    events.push({ event: currentEvent, data });
+    const joinedData = collectedDataLines.join('\n');
+    if (joinedData.length === 0) continue;
+    parsedEvents.push({ event: currentEventName, data: joinedData });
   }
 
-  return { events, remaining };
+  return { events: parsedEvents, remaining: remainingBuffer };
 }
 
 /**
@@ -202,24 +214,34 @@ export async function drainToText(reader: ReadableStreamDefaultReader<Uint8Array
   return text;
 }
 
-export function parseSSEError(text: string): { error: string; messageId?: string } | null {
-  // Try event: error\ndata: {...}
-  const m = text.match(/event:\s*error\s*\ndata:\s*(.+)/);
-  if (m) {
-    try {
-      return JSON.parse(m[1].trim());
-    } catch {
-      return null;
+export function parseSSEError(responseText: string): { error: string; messageId?: string } | null {
+  // Quick includes() check before regex — avoids running complex pattern on unrelated text
+  if (responseText.includes('event:') && responseText.includes('error')) {
+    const eventErrorMatch = responseText.match(SSE_EVENT_ERROR_RE);
+    if (eventErrorMatch !== null && eventErrorMatch[1] !== undefined) {
+      try {
+        return JSON.parse(eventErrorMatch[1].trim());
+      } catch {
+        return null;
+      }
     }
   }
-  // Fallback: data: {"phase":"blocked"|"error", ...}
-  const dm = text.match(/data:\s*(\{[^}]*"phase"\s*:\s*"(?:blocked|error)"[^}]*\})/);
-  if (dm) {
-    try {
-      const j = JSON.parse(dm[1]);
-      return { error: j.message ?? j.error ?? 'error', messageId: j.messageId };
-    } catch {
-      return null;
+  // Fallback: check for blocked/error phase with includes() before regex
+  if (responseText.includes('"phase"') && (responseText.includes('"blocked"') || responseText.includes('"error"'))) {
+    const dataPhaseMatch = responseText.match(SSE_DATA_PHASE_RE);
+    if (dataPhaseMatch !== null && dataPhaseMatch[1] !== undefined) {
+      try {
+        const parsedPayload = JSON.parse(dataPhaseMatch[1]);
+        let errorMessage: string = 'error';
+        if (typeof parsedPayload.message === 'string' && parsedPayload.message.length > 0) {
+          errorMessage = parsedPayload.message;
+        } else if (typeof parsedPayload.error === 'string' && parsedPayload.error.length > 0) {
+          errorMessage = parsedPayload.error;
+        }
+        return { error: errorMessage, messageId: parsedPayload.messageId };
+      } catch {
+        return null;
+      }
     }
   }
   return null;

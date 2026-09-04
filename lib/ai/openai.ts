@@ -89,13 +89,13 @@ export class OpenAIService implements AIService {
   }
 
   async generateStreamingResponse(
-    content: string,
+    promptContent: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
     const { signal, resetStall, clear } = makeStreamAbortController();
 
     try {
-      const response = await fetch(this.baseUrl, {
+      const streamingResponse = await fetch(this.baseUrl, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({
@@ -107,7 +107,7 @@ export class OpenAIService implements AIService {
                 'You are a helpful assistant that answers forum questions ' +
                 'in under 200 words, grounded in thread context.',
             },
-            { role: 'user', content },
+            { role: 'user', content: promptContent },
           ],
           stream: true,
           max_tokens: 400,
@@ -116,60 +116,75 @@ export class OpenAIService implements AIService {
         signal,
       });
 
-      if (!response.ok) {
-        throw new Error(`OpenAI ${response.status}: ${response.statusText}`);
+      if (!streamingResponse.ok) {
+        throw new Error(`OpenAI ${streamingResponse.status}: ${streamingResponse.statusText}`);
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body from OpenAI');
+      const streamReader = streamingResponse.body?.getReader();
+      if (streamReader === undefined || streamReader === null) throw new Error('No response body from OpenAI');
 
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const textDecoder = new TextDecoder();
+      let sseBuffer = '';
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await streamReader.read();
         if (done) break;
 
         resetStall();
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
+        sseBuffer += textDecoder.decode(value, { stream: true });
+        const sseLines = sseBuffer.split('\n');
+        const remainingBuffer = sseLines.pop() ?? '';
+        sseBuffer = remainingBuffer;
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data: ')) continue;
-          const data = trimmed.slice(6).trim();
-          if (data === '[DONE]') continue;
+        for (const sseLine of sseLines) {
+          const trimmedLine = sseLine.trim();
+          if (!trimmedLine.startsWith('data: ')) continue;
+          const jsonPayload = trimmedLine.slice(6).trim();
+          if (jsonPayload === '[DONE]') continue;
           try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices[0]?.delta?.content;
-            if (delta) onChunk(delta);
+            const parsedPayload = JSON.parse(jsonPayload);
+            const deltaText = parsedPayload.choices[0]?.delta?.content;
+            if (deltaText !== undefined && deltaText !== null && deltaText.length > 0) onChunk(deltaText);
           } catch {
             // Malformed SSE chunk — skip silently
           }
         }
       }
-    } catch (error) {
-      const detail = error instanceof Error
-        ? { message: error.message, name: error.name, stack: error.stack?.split('\n').slice(0, 3).join(' | ') }
-        : { raw: JSON.stringify(error) ?? String(error) };
-      logger.error('[OpenAIService.generateStreamingResponse]', detail);
-      throw error;
+    } catch (streamError) {
+      let errorDetail: Record<string, unknown>;
+      if (streamError instanceof Error) {
+        let stackPreview = '';
+        if (streamError.stack !== undefined) {
+          stackPreview = streamError.stack.split('\n').slice(0, 3).join(' | ');
+        }
+        errorDetail = { message: streamError.message, name: streamError.name, stack: stackPreview };
+      } else {
+        let rawText: string;
+        try {
+          rawText = JSON.stringify(streamError) ?? String(streamError);
+        } catch {
+          rawText = String(streamError);
+        }
+        errorDetail = { raw: rawText };
+      }
+      logger.error('[OpenAIService.generateStreamingResponse]', errorDetail);
+      throw streamError;
     } finally {
       clear();
     }
   }
 
-  async generateSummary(content: string): Promise<string> {
+  async generateSummary(discussionContent: string): Promise<string> {
     try {
+      const truncatedContent = discussionContent.substring(0, MAX_CONTENT_CHARS);
       return await this.callOpenAI(
         'Summarize discussion threads. Focus on key points and decisions (200-300 words).',
-        `Summarize:\n\n${content.substring(0, MAX_CONTENT_CHARS)}`,
+        `Summarize:\n\n${truncatedContent}`,
         500,
         'generate-summary'
       );
-    } catch (error) {
-      logger.warn('[OpenAIService.generateSummary] AI failed, returning fallback', { error });
+    } catch (summaryError) {
+      logger.warn('[OpenAIService.generateSummary] AI failed, returning fallback', { error: summaryError });
       return 'Summary unavailable.';
     }
   }

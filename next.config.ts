@@ -29,8 +29,7 @@ const securityHeaders = [
 // next-server.js.nft.json. Only enable for Docker / self-hosted deploys.
 const isVercel = process.env.VERCEL === '1';
 
-const nextConfig: NextConfig = {
-  ...(isVercel ? {} : { output: 'standalone' as const }),
+const baseNextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
   async headers() {
     return [
@@ -105,6 +104,10 @@ const nextConfig: NextConfig = {
     return config;
   },
 };
+
+const nextConfig: NextConfig = isVercel
+  ? baseNextConfig
+  : { ...baseNextConfig, output: 'standalone' as const };
 
 const sentryConfig = {
   org: process.env.SENTRY_ORG,
