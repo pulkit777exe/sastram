@@ -63,10 +63,38 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
  * that are not tied to a specific user. Read-then-write avoids
  * transaction pool exhaustion under load, and the retry handles
  * race conditions where two callers create concurrently.
+ * Also ensures the anonymous system user exists (FK target) — seed
+ * creates it, but dev DBs without a seed would otherwise FK-fail.
  */
 async function getOrCreateAnonymousSession() {
+  // Ensure the FK target user exists. Seed creates id='anonymous' with
+  // email system@sastram.internal; this is idempotent and handles
+  // DBs that were never seeded or have a cuid id for that email.
+  let anonymousUserId = 'anonymous';
+  try {
+    const existingAnon = await prisma.user.findUnique({ where: { id: 'anonymous' } });
+    if (!existingAnon) {
+      const byEmail = await prisma.user.findUnique({ where: { email: 'system@sastram.internal' } });
+      if (byEmail) {
+        anonymousUserId = byEmail.id;
+      } else {
+        const created = await prisma.user.create({
+          data: {
+            id: 'anonymous',
+            email: 'system@sastram.internal',
+            name: 'System',
+          },
+        });
+        anonymousUserId = created.id;
+      }
+    }
+  } catch {
+    // If user ensure fails, fall back to 'anonymous' — session create
+    // will FK-fail and be handled below, but we avoid hard crash.
+  }
+
   let anonymousSession = await prisma.aiSearchSession.findFirst({
-    where: { userId: 'anonymous' },
+    where: { userId: anonymousUserId },
   });
 
   if (anonymousSession) {
@@ -76,14 +104,14 @@ async function getOrCreateAnonymousSession() {
   try {
     anonymousSession = await prisma.aiSearchSession.create({
       data: {
-        userId: 'anonymous',
+        userId: anonymousUserId,
         query: '',
         queryHash: hashQuery(''),
       },
     });
     return anonymousSession;
   } catch (createErr) {
-    const retry = await prisma.aiSearchSession.findFirst({ where: { userId: 'anonymous' } });
+    const retry = await prisma.aiSearchSession.findFirst({ where: { userId: anonymousUserId } });
     if (retry) {
       return retry;
     }

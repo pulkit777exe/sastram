@@ -291,7 +291,7 @@ export function StreamingText({
     setDislikeReason(null);
   };
 
-  const displayedSources = sources.slice(0, 10);
+  const displayedSources = sources;
 
   return (
     <div className="w-full">
@@ -481,7 +481,7 @@ export function StreamingText({
           }}
         >
           <div className="overflow-hidden">
-            <div className="mt-1.5 flex flex-col rounded-card bg-inset p-1 shadow-hairline">
+            <div className="mt-1.5 flex flex-col rounded-card bg-inset p-1 shadow-hairline max-h-[min(50vh,360px)] overflow-y-auto overscroll-contain">
               {displayedSources.map((source) => (
                 <a
                   key={source.id}
@@ -511,13 +511,13 @@ export function StreamingText({
           style={{ opacity: done ? 1 : 0, pointerEvents: done ? 'auto' : 'none' }}
         >
           <p className="text-[12px] font-medium text-ink-2">Follow-ups</p>
-          <div className="mt-0.5 flex flex-col">
+          <div className="mt-0.5 flex flex-col max-w-full overflow-hidden">
             {followUps.map((fText, i) => (
               <Button type="button"
                 key={fText}
                 variant="ghost"
-                className="-mx-1.5 items-center gap-2 rounded-card border-b border-line
-                  px-1.5 py-1.5 text-left h-auto"
+                className="-mx-1.5 justify-start items-start gap-2 rounded-card border-b border-line
+                  px-1.5 py-2 text-left h-auto min-h-9 !whitespace-normal break-words text-wrap leading-snug max-w-full"
                 style={
                   done
                     ? { animation: `fade-up 350ms cubic-bezier(0.23,1,0.32,1) ${i * 90}ms both` }
@@ -538,7 +538,7 @@ export function StreamingText({
                   <path d="M9 10l-5 5 5 5" />
                   <path d="M20 4v7a4 4 0 0 1-4 4H4" />
                 </svg>
-                {fText}
+                <span className="flex-1 min-w-0 break-words whitespace-normal text-left text-sm leading-snug">{fText}</span>
               </Button>
             ))}
           </div>
