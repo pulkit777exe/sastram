@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/logo';
 import { truncateHistoryLabel, groupByHistoryDate } from '@/lib/utils/format';
 
 export interface HistoryItem {
@@ -214,37 +215,44 @@ export function SaiSearchLayout({
       {/* Content column */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-        {/* Header bar */}
-        <div className="h-12 flex items-center justify-between px-4 border-b border-line/60 shrink-0">
-          <div className="flex items-center gap-1">
-            <Button type="button"
-              onClick={onNewSearch}
-              variant="ghost"
-              size="icon"
-              title="New search"
-            >
-              <Plus size={16} />
-            </Button>
+        {/* Header bar — modern secondary toolbar, simple */}
+        <div className="h-14 flex items-center justify-between gap-3 px-4 bg-surface/80 backdrop-blur-md border-b border-line shrink-0 supports-[backdrop-filter]:bg-surface/60">
+          <div className="flex items-center gap-2 min-w-0">
+            <Logo className="size-6 shrink-0 hidden sm:block" />
+            <span className="font-serif-heading text-[15px] font-medium tracking-tight text-ink truncate">Sai Search</span>
+            <span className="hidden sm:inline-flex items-center rounded-full bg-sai-accent/10 px-2 py-0.5 text-[10px] font-medium tracking-wider text-sai-accent uppercase">Beta</span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
             <Button type="button"
               onClick={() => setHistoryOpen(true)}
               variant="ghost"
               size="icon"
               title="Search history"
+              className="size-8 rounded-full"
             >
               <Clock size={16} />
             </Button>
-            <span className="ml-2 text-sm font-semibold text-ink tracking-tight">Sai Search</span>
+            <Button type="button"
+              onClick={onNewSearch}
+              variant="ghost"
+              size="sm"
+              title="New search"
+              className="h-8 rounded-full gap-1.5 px-3 border border-line bg-surface hover:bg-hover"
+            >
+              <Plus size={14} />
+              <span className="hidden xs:inline text-xs font-medium">New</span>
+            </Button>
+            <Button type="button"
+              onClick={onOpenApiKeys}
+              variant="ghost"
+              size="icon"
+              title="API Keys"
+              className="size-8 rounded-full relative"
+            >
+              <KeyRound size={15} />
+              {hasApiKeys && <span className="absolute top-1 right-1 size-2 rounded-full bg-sai-green ring-2 ring-surface" />}
+            </Button>
           </div>
-          <Button type="button"
-            onClick={onOpenApiKeys}
-            variant="ghost"
-            size="icon"
-            title="API Keys"
-            className="relative"
-          >
-            <KeyRound size={15} />
-            {hasApiKeys && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-sai-green" />}
-          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto">{children}</div>

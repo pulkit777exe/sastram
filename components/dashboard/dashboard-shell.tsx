@@ -10,6 +10,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/logo';
 
 function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
@@ -46,27 +47,32 @@ export function DashboardShell({
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen bg-background overflow-hidden">
-        {/* Mobile top bar */}
-        <div className="flex items-center justify-between px-3 py-2 bg-surface border-b border-line shrink-0">
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open navigation menu">
-                <Menu size={20} />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
-              <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <Sidebar
-                name={name}
-                email={email}
-                role={role}
-                mobile
-                onNavigate={() => setSheetOpen(false)}
-              />
-            </SheetContent>
-          </Sheet>
-          <span className="text-sm font-semibold text-ink">Sastram</span>
-          <div className="w-11" />
+        {/* Mobile top bar — modern, branded, simple */}
+        <div className="flex items-center justify-between h-14 px-4 bg-surface/90 backdrop-blur-md border-b border-line shrink-0 supports-[backdrop-filter]:bg-surface/70">
+          <div className="flex items-center gap-3">
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Open navigation menu" className="size-9 -ml-1.5">
+                  <Menu size={18} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0">
+                <SheetTitle className="sr-only">Navigation</SheetTitle>
+                <Sidebar
+                  name={name}
+                  email={email}
+                  role={role}
+                  mobile
+                  onNavigate={() => setSheetOpen(false)}
+                />
+              </SheetContent>
+            </Sheet>
+            <a href="/dashboard" className="flex items-center gap-2.5">
+              <Logo className="size-7" brand />
+              <span className="font-serif-heading text-[18px] leading-none tracking-tight text-ink">Sastram</span>
+            </a>
+          </div>
+          <div className="size-9 shrink-0" aria-hidden />
         </div>
 
         {/* Mobile content */}
