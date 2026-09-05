@@ -113,8 +113,39 @@ export function validateEnv() {
   return serverEnvSchema.safeParse(process.env);
 }
 
-export const serverEnv: ServerEnv = getServerEnv();
-export const env = getServerEnv();
+// Lazy proxies: importing `clientEnv` on the client must NOT trigger server validation.
+// `env.ts:116` previously called `getServerEnv()` at module evaluation, so any
+// client import (e.g. `view-transitions.ts -> clientEnv`) crashed with the
+// DATABASE_URL errors seen in the dashboard.
+export const serverEnv: ServerEnv = new Proxy({} as ServerEnv, {
+  get(_target, prop) {
+    return (getServerEnv() as unknown as Record<string | symbol, unknown>)[prop] as never;
+  },
+  has(_target, prop) {
+    return prop in getServerEnv();
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getServerEnv());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getServerEnv(), prop);
+  },
+});
+
+export const env: MergedEnv = new Proxy({} as MergedEnv, {
+  get(_target, prop) {
+    return (getEnv() as unknown as Record<string | symbol, unknown>)[prop] as never;
+  },
+  has(_target, prop) {
+    return prop in getEnv();
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getEnv());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getEnv(), prop);
+  },
+});
 
 let mergedEnvCache: MergedEnv | null = null;
 export function getEnv(): MergedEnv {
