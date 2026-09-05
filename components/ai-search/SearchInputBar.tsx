@@ -50,9 +50,21 @@ export function SearchInputBar({
   }
 
   return (
-    <div className="border-t border-line bg-canvas px-4 md:px-6 py-4">
+    <div className="sticky bottom-0 z-10 bg-surface border-t border-line px-4 md:px-6 py-3">
       <div className="max-w-3xl mx-auto">
-        <div className="relative bg-surface border border-line rounded-card shadow-card overflow-hidden transition-shadow duration-150 focus-within:shadow-raised focus-within:border-line-strong">
+        {/* swapped: footer surface, pill canvas for contrast */}
+        <div className="flex items-center gap-2 bg-canvas border border-line-strong rounded-full shadow-sm px-2 py-2 focus-within:border-sai-accent/30 focus-within:ring-2 focus-within:ring-sai-accent/10 focus-within:shadow-md transition-all">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="New"
+            onClick={onNewSearch}
+            className="shrink-0 size-8 rounded-full hover:bg-hover"
+          >
+            <Plus size={16} />
+          </Button>
+
           <textarea
             ref={textareaRef}
             value={query}
@@ -60,36 +72,32 @@ export function SearchInputBar({
               onQueryChange(e.target.value);
             }}
             onKeyDown={handleKeyDown}
-            placeholder={isChatActive ? 'Ask a follow-up question...' : 'Search across Sastram...'}
+            placeholder={isChatActive ? 'Ask a follow-up...' : 'Write a message...'}
             rows={1}
-            className="w-full resize-none bg-transparent px-4 py-3 pr-14 text-sm text-ink placeholder:text-ink-3 focus:outline-none"
-            style={{ minHeight: '48px', maxHeight: '120px' }}
+            className="flex-1 min-w-0 resize-none bg-transparent px-1 py-1.5 text-[15px] leading-5 text-ink placeholder:text-ink-3 focus:outline-none"
+            style={{ minHeight: '24px', maxHeight: '120px' }}
           />
+
           <Button
             type="button"
             size="icon"
             onClick={onSubmit}
             disabled={isStreaming || query.trim().length < MIN_QUERY_LENGTH}
-            className="absolute right-3 bottom-3 h-8 w-8 bg-sai-accent text-white hover:opacity-90 disabled:opacity-30"
+            aria-label="Send"
+            className="shrink-0 size-8 rounded-full bg-sai-accent text-white shadow-btn hover:bg-sai-accent/90 disabled:bg-field disabled:text-ink-3 disabled:shadow-none disabled:border disabled:border-line"
           >
             {isStreaming ? (
-              <Loader2 size={15} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <Send size={15} />
+              <Send size={14} />
             )}
           </Button>
         </div>
-        {isChatActive && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-2.5 text-xs text-ink-3 hover:text-ink"
-            onClick={onNewSearch}
-          >
-            <Plus size={12} className="mr-1" />
-            New conversation
-          </Button>
-        )}
+
+        <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[11px] leading-none text-ink-3">
+          <span className="truncate">Sai is AI and can make mistakes. Check sources.</span>
+          <span className="hidden sm:inline shrink-0">Sai • Medium</span>
+        </div>
       </div>
     </div>
   );
