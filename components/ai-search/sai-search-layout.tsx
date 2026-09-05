@@ -215,8 +215,8 @@ export function SaiSearchLayout({
       {/* Content column */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-        {/* Header bar — modern secondary toolbar, simple */}
-        <div className="h-14 flex items-center justify-between gap-3 px-4 bg-surface/80 backdrop-blur-md border-b border-line shrink-0 supports-[backdrop-filter]:bg-surface/60">
+        {/* Header bar — KISS: same h-14 + bg as DashboardShell mobile */}
+        <div className="h-14 flex items-center justify-between gap-3 px-4 bg-surface/90 backdrop-blur-md border-b border-line shrink-0 supports-[backdrop-filter]:bg-surface/70">
           <div className="flex items-center gap-2 min-w-0">
             <Logo className="size-6 shrink-0 hidden sm:block" />
             <span className="font-serif-heading text-[15px] font-medium tracking-tight text-ink truncate">Sai Search</span>

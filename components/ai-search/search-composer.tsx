@@ -36,7 +36,7 @@ function Suggestions() {
     actions: { run },
   } = useSearch();
   return (
-    <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 max-w-2xl w-full px-2">
+    <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 max-w-3xl w-full px-2">
       {[
         'What are the best patterns for managing state in React?',
         'Latest threads on Hacker News about AI in healthcare.',

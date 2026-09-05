@@ -59,38 +59,20 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
 }
 
 /**
- * Get or create the singleton anonymous session used for cache entries
- * that are not tied to a specific user. Read-then-write avoids
- * transaction pool exhaustion under load, and the retry handles
- * race conditions where two callers create concurrently.
- * Also ensures the anonymous system user exists (FK target) — seed
- * creates it, but dev DBs without a seed would otherwise FK-fail.
+ * KISS: single upsert for the system user, then single session lookup.
+ * Seed creates id='anonymous', but upsert by email handles both cases.
  */
 async function getOrCreateAnonymousSession() {
-  // Ensure the FK target user exists. Seed creates id='anonymous' with
-  // email system@sastram.internal; this is idempotent and handles
-  // DBs that were never seeded or have a cuid id for that email.
   let anonymousUserId = 'anonymous';
   try {
-    const existingAnon = await prisma.user.findUnique({ where: { id: 'anonymous' } });
-    if (!existingAnon) {
-      const byEmail = await prisma.user.findUnique({ where: { email: 'system@sastram.internal' } });
-      if (byEmail) {
-        anonymousUserId = byEmail.id;
-      } else {
-        const created = await prisma.user.create({
-          data: {
-            id: 'anonymous',
-            email: 'system@sastram.internal',
-            name: 'System',
-          },
-        });
-        anonymousUserId = created.id;
-      }
-    }
+    const anonUser = await prisma.user.upsert({
+      where: { email: 'system@sastram.internal' },
+      update: {},
+      create: { id: 'anonymous', email: 'system@sastram.internal', name: 'System' },
+    });
+    anonymousUserId = anonUser.id;
   } catch {
-    // If user ensure fails, fall back to 'anonymous' — session create
-    // will FK-fail and be handled below, but we avoid hard crash.
+    // fallback — session create will handle FK error
   }
 
   let anonymousSession = await prisma.aiSearchSession.findFirst({

@@ -20,21 +20,12 @@ export type FeedbackType = 'up' | 'down';
 export type RetryStyle = 'same' | 'professional' | 'general' | 'tactical';
 
 interface StreamingTextProps {
-  /** Raw streaming text from the API (grows as chunks arrive). */
   text: string;
-  /** Source objects keyed by citation marker [n] in the text. */
   sources?: Source[];
-  /** Called when streaming ends and the full text has been shown. */
   onDone?: () => void;
-  /** Optional follow-up suggestions. */
-  followUps?: string[];
-  /** Whether the stream is still active. */
   isStreaming: boolean;
-  /** Whether this content was loaded from history (skip animation). */
   fromHistory?: boolean;
-  /** Called when user wants to retry/regenerate. */
   onRetry?: (style: RetryStyle) => void;
-  /** Called when user gives feedback. */
   onFeedback?: (type: FeedbackType, reason?: string) => void;
 }
 
@@ -209,7 +200,6 @@ export function StreamingText({
   text,
   sources = [],
   onDone,
-  followUps = [],
   isStreaming,
   fromHistory = false,
   onRetry,
@@ -500,47 +490,6 @@ export function StreamingText({
                 </a>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Follow-ups */}
-      {followUps.length > 0 && (
-        <div
-          className="mt-2.5 transition-opacity duration-400"
-          style={{ opacity: done ? 1 : 0, pointerEvents: done ? 'auto' : 'none' }}
-        >
-          <p className="text-[12px] font-medium text-ink-2">Follow-ups</p>
-          <div className="mt-0.5 flex flex-col max-w-full overflow-hidden">
-            {followUps.map((fText, i) => (
-              <Button type="button"
-                key={fText}
-                variant="ghost"
-                className="-mx-1.5 justify-start items-start gap-2 rounded-card border-b border-line
-                  px-1.5 py-2 text-left h-auto min-h-9 !whitespace-normal break-words text-wrap leading-snug max-w-full"
-                style={
-                  done
-                    ? { animation: `fade-up 350ms cubic-bezier(0.23,1,0.32,1) ${i * 90}ms both` }
-                    : { opacity: 0 }
-                }
-              >
-                <svg
-                  width="11"
-                  height="11"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--ink-3)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0"
-                >
-                  <path d="M9 10l-5 5 5 5" />
-                  <path d="M20 4v7a4 4 0 0 1-4 4H4" />
-                </svg>
-                <span className="flex-1 min-w-0 break-words whitespace-normal text-left text-sm leading-snug">{fText}</span>
-              </Button>
-            ))}
           </div>
         </div>
       )}

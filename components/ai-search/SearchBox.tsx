@@ -126,7 +126,7 @@ export function SearchBox({
   };
 
   return (
-    <div className="w-full transition-all duration-300">
+    <div className="w-full max-w-3xl transition-all duration-300">
       {!compact && (
         <div className="flex items-center gap-2 mb-3">
           <div className="relative">
@@ -171,7 +171,7 @@ export function SearchBox({
         </div>
       )}
 
-      {/* Composer card */}
+      {/* Composer card — KISS: same tokens as SearchInputBar inner */}
       <div className="relative">
         {/* /command menu */}
         {menu && rows.length > 0 && (
@@ -224,10 +224,10 @@ export function SearchBox({
           </div>
         )}
 
-        {/* Composer */}
+        {/* Composer — unified with active input */}
         <div className="relative">
           <div
-            className={`relative flex flex-col gap-1 bg-surface border border-line p-4 transition-[border-radius,border-color,box-shadow] duration-150 rounded-card shadow-card focus-within:shadow-raised focus-within:border-line-strong`}
+            className={`relative flex flex-col gap-1 bg-surface border border-line-strong rounded-card shadow-sm p-4 transition-all duration-150 focus-within:border-sai-accent/30 focus-within:shadow-md focus-within:ring-2 focus-within:ring-sai-accent/10`}
           >
           <span
             ref={measureRef}
