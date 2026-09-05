@@ -52,19 +52,8 @@ export function SearchInputBar({
   return (
     <div className="sticky bottom-0 z-10 bg-surface border-t border-line px-4 md:px-6 py-3">
       <div className="max-w-3xl mx-auto">
-        {/* swapped: footer surface, pill canvas for contrast */}
+        {/* swapped colors for contrast + Claude-like pill */}
         <div className="flex items-center gap-2 bg-canvas border border-line-strong rounded-full shadow-sm px-2 py-2 focus-within:border-sai-accent/30 focus-within:ring-2 focus-within:ring-sai-accent/10 focus-within:shadow-md transition-all">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="New"
-            onClick={onNewSearch}
-            className="shrink-0 size-8 rounded-full hover:bg-hover"
-          >
-            <Plus size={16} />
-          </Button>
-
           <textarea
             ref={textareaRef}
             value={query}
@@ -72,9 +61,9 @@ export function SearchInputBar({
               onQueryChange(e.target.value);
             }}
             onKeyDown={handleKeyDown}
-            placeholder={isChatActive ? 'Ask a follow-up...' : 'Write a message...'}
+            placeholder={isChatActive ? 'Ask a follow-up question...' : 'Search across Sastram...'}
             rows={1}
-            className="flex-1 min-w-0 resize-none bg-transparent px-1 py-1.5 text-[15px] leading-5 text-ink placeholder:text-ink-3 focus:outline-none"
+            className="flex-1 min-w-0 resize-none bg-transparent px-3 py-1.5 text-[15px] leading-5 text-ink placeholder:text-ink-3 focus:outline-none"
             style={{ minHeight: '24px', maxHeight: '120px' }}
           />
 
@@ -98,6 +87,20 @@ export function SearchInputBar({
           <span className="truncate">Sai is AI and can make mistakes. Check sources.</span>
           <span className="hidden sm:inline shrink-0">Sai • Medium</span>
         </div>
+
+        {isChatActive && (
+          <div className="mt-2 flex justify-start">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-full px-3 text-xs font-medium text-ink-2 hover:text-ink hover:bg-hover border border-transparent hover:border-line"
+              onClick={onNewSearch}
+            >
+              <Plus size={12} />
+              New conversation
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
