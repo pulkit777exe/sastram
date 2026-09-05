@@ -55,16 +55,16 @@ function ChatMessageBubble({
       />
 
           {isLatest && message.followUps && message.followUps.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 max-w-full">
           {message.followUps.map((f) => (
             <Button
               key={f}
               variant="outline"
               size="sm"
-              className="text-left text-sm text-ink bg-hover/50 border-line/50 hover:border-line-strong h-auto px-4 py-2.5"
+              className="w-full max-w-full justify-start items-start text-left h-auto min-h-10 !whitespace-normal break-words text-wrap px-4 py-2.5 text-sm leading-snug text-ink bg-surface border-line hover:bg-hover hover:border-line-strong"
               onClick={() => onFollowUp(f)}
             >
-              <span className="flex-1">{f}</span>
+              <span className="flex-1 min-w-0 break-words whitespace-normal text-left">{f}</span>
             </Button>
           ))}
         </div>
@@ -149,9 +149,22 @@ export function ChatMessageList({
             )}
 
             {!streamingMessage.text && (
-              <div className="space-y-3">
-                <div className="bg-hover/50 rounded-card h-32 animate-pulse" />
-                <div className="bg-hover/50 rounded-card h-20 animate-pulse" />
+              <div className="bg-surface border border-line rounded-card p-5 shadow-card space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="size-4 rounded-full bg-hover animate-pulse" />
+                  <div className="h-3 w-24 bg-hover rounded-full animate-pulse" />
+                  <div className="ml-auto h-3 w-12 bg-hover rounded-full animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-full bg-hover rounded-full animate-pulse" />
+                  <div className="h-3 w-5/6 bg-hover rounded-full animate-pulse" />
+                  <div className="h-3 w-4/6 bg-hover rounded-full animate-pulse" />
+                </div>
+                <div className="flex gap-1.5 pt-1">
+                  <div className="h-4 w-14 bg-hover rounded-full animate-pulse" />
+                  <div className="h-4 w-14 bg-hover rounded-full animate-pulse" />
+                  <div className="h-4 w-14 bg-hover rounded-full animate-pulse" />
+                </div>
               </div>
             )}
           </div>
