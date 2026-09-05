@@ -1,3 +1,15 @@
+-- Create missing enums for feedback (not in initial migration)
+DO $$ BEGIN
+  CREATE TYPE "FeedbackType" AS ENUM ('BUG', 'SUGGESTION', 'OTHER');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "FeedbackStatus" AS ENUM ('OPEN', 'REVIEWED', 'CLOSED');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
 -- Add welcomeEmailSent column to users if not exists (was added to schema but no migration generated)
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "welcomeEmailSent" BOOLEAN NOT NULL DEFAULT false;
 
