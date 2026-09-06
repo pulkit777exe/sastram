@@ -6,7 +6,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession, assertAdmin } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/modules/threads/slug';
-import { createThread, deleteThread, updateThreadStaleness } from './threads-write/repository';
+import { createThread, deleteThread, updateThreadStaleness, updateThreadVerified } from './threads-write/repository';
 import { infraThreadSideEffects } from './adapters/infra-side-effects';
 import { buildThreadDTO } from './service';
 import { getThreadMessagesPaginated, type ThreadMessage } from './threads-read/repository';
@@ -16,7 +16,7 @@ import { createServerAction, type ActionResult } from '@/lib/utils/server-action
 import { actionSuccess } from '@/lib/actions/result';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { AppError, prismaErrorMessage } from '@/lib/utils/errors';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireThreadWriteOrThrow, canManageThread } from '@/lib/thread-access';
 
 const PAGE_SIZE = 50;
 const BACKFILL_LIMIT = 100;
@@ -149,9 +149,12 @@ export const markThreadVerified = createServerAction(
   async ({ threadId }) => {
     try {
       const session = await requireSession();
-      await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+      const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { createdBy: true, visibility: true } });
+      if (!thread) throw new AppError('THREAD_NOT_FOUND', 'Thread not found', 404);
+      const canManage = await canManageThread({ threadId, createdBy: thread.createdBy, visibility: thread.visibility as never }, session.user.id, session.user.role as never);
+      if (!canManage) throw new AppError('FORBIDDEN', 'Only OP or admin can verify', 403);
 
-      await updateThreadStaleness(threadId, false);
+      await updateThreadVerified(threadId, session.user.id);
       revalidatePath(`${ROUTES.DASHBOARD_THREADS}/${threadId}`);
 
       return actionSuccess({ ok: true });

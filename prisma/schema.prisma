@@ -125,6 +125,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   threads       Thread[]             @relation("ThreadCreator")
+  verifiedThreads Thread[]           @relation("ThreadVerifier")
   messages      Message[]
   reactions     Reaction[]
   notifications Notification[]
@@ -216,12 +217,15 @@ model Thread {
 
   resolutionScore Int?
   lastVerifiedAt  DateTime?
+  verifiedAt      DateTime?
+  verifiedBy      String?
   isOutdated      Boolean   @default(false)
   aiSummary       String?   @db.Text
   threadDna       Json?
   deletedAt       DateTime?
 
   creator       User?                @relation("ThreadCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  verifier      User?                @relation("ThreadVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
   messages      Message[]
   invitations   ThreadInvitation[]
   bans          UserBan[]
@@ -239,6 +243,7 @@ model Thread {
   @@index([resolutionScore])
   @@index([visibility, updatedAt])
   @@index([deletedAt])
+  @@index([verifiedAt])
   @@map("threads")
 }
 

@@ -360,6 +360,8 @@ async function fetchThreadRow(slug: string, uid: string): Promise<ThreadRow | nu
         s."createdAt" as "createdAt",
         s."updatedAt" as "updatedAt",
         s."lastVerifiedAt" as "lastVerifiedAt",
+        s."verifiedAt" as "verifiedAt",
+        s."verifiedBy" as "verifiedBy",
         CASE WHEN u.id IS NULL THEN NULL ELSE json_build_object(
           'id', u.id,
           'name', u.name,
