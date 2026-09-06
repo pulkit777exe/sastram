@@ -274,10 +274,18 @@ async function buildMessageWhereClause(
   if (!cursor) return where;
   const cursorMessage = await prisma.message.findUnique({
     where: { id: cursor },
-    select: { createdAt: true },
+    select: { createdAt: true, id: true },
   });
-  if (cursorMessage) where.createdAt = { lt: cursorMessage.createdAt };
-  return where;
+  if (!cursorMessage) return where;
+  // KISS: handle same-timestamp messages by tie-breaking on id (cuid is time-ordered)
+  // where (createdAt < cursorCreatedAt) OR (createdAt == cursorCreatedAt AND id < cursorId)
+  return {
+    ...where,
+    OR: [
+      { createdAt: { lt: cursorMessage.createdAt } },
+      { createdAt: cursorMessage.createdAt, id: { lt: cursor } },
+    ],
+  };
 }
 
 async function fetchReactionsByMessage(
@@ -303,6 +311,7 @@ export async function getThreadMessagesPaginated(
   cursor?: string | null,
   limit: number = 50
 ): Promise<PaginatedMessagesResult> {
+  const effectiveLimit = Math.min(Math.max(limit, 1), 100);
   const where = await buildMessageWhereClause(threadId, cursor);
 
   const messagesPromise = prisma.message.findMany({
@@ -312,8 +321,8 @@ export async function getThreadMessagesPaginated(
       attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
       poll: { include: { votes: true } },
     },
-    orderBy: { createdAt: 'desc' },
-    take: limit + 1,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: effectiveLimit + 1,
   });
   // KISS: count messages directly instead of relying on denormalized thread.messageCount
   // which requires an extra thread lookup and fails when prisma.thread is mocked
@@ -322,8 +331,8 @@ export async function getThreadMessagesPaginated(
   });
   const [messages, totalCount] = await Promise.all([messagesPromise, totalCountPromise]);
 
-  const hasMore = messages.length > limit;
-  const page = hasMore ? messages.slice(0, limit) : messages;
+  const hasMore = messages.length > effectiveLimit;
+  const page = hasMore ? messages.slice(0, effectiveLimit) : messages;
   const messageIds = page.map((m) => m.id);
   const reactionsByMessage = await fetchReactionsByMessage(messageIds);
 
