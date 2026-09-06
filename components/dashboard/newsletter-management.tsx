@@ -1,7 +1,8 @@
 'use client';
 
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Mail, X } from 'lucide-react';
 import { unsubscribeFromThread } from '@/modules/newsletter/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -29,7 +30,7 @@ interface NewsletterManagementProps {
 
 export function NewsletterManagement({ subscriptions }: NewsletterManagementProps) {
   const [pendingSubscriptions, setPendingSubscriptions] = useState<Set<string>>(new Set());
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   async function handleUnsubscribe(threadId: string) {
     setPendingSubscriptions((prev) => new Set(prev).add(threadId));
@@ -52,22 +53,22 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
 
   if (subscriptions.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
+      <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-            <Mail className="h-8 w-8 text-muted-foreground" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-field mb-4">
+            <Mail className="h-8 w-8 text-ink-3" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
+          <h3 className="text-lg font-semibold text-ink mb-2">
             No Newsletter Subscriptions
           </h3>
-          <p className="text-sm text-muted-foreground max-w-sm">
+          <p className="text-sm text-ink-3 max-w-sm">
             You haven&apos;t subscribed to any thread newsletters yet. Subscribe to threads to
             receive digests.
           </p>
           <Link href="/dashboard/threads">
-            <PressDepth className="mt-4 bg-brand hover:bg-brand/90 text-white">
+            <Button type="button" className="mt-4">
               Browse Threads
-            </PressDepth>
+            </Button>
           </Link>
         </div>
       </div>
@@ -75,14 +76,14 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-linear-sm">
+    <div className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
       <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+        <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
           <Mail className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-foreground">Newsletter Subscriptions</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg font-bold text-ink">Newsletter Subscriptions</h2>
+          <p className="text-sm text-ink-3">
             Manage your thread newsletter subscriptions.
           </p>
         </div>
@@ -92,22 +93,22 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
         {subscriptions.map((subscription) => {
           const isPending = pendingSubscriptions.has(subscription.threadId);
           return (
-            <Card key={subscription.id} className="border-border bg-muted/50">
+            <Card key={subscription.id} className="border-line bg-field/50">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-foreground">{subscription.thread.name}</h3>
+                      <h3 className="font-semibold text-ink">{subscription.thread.name}</h3>
                     </div>
                     {subscription.thread.description && (
-                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                      <p className="text-sm text-ink-3 mb-2 line-clamp-2">
                         {subscription.thread.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
+                    <div className="flex items-center gap-4 text-xs text-ink-3">
+                      <Badge variant="live">
                         {subscription.frequency.charAt(0) + subscription.frequency.slice(1).toLowerCase()}
-                      </span>
+                      </Badge>
                       <span>
                         Subscribed <TimeAgo date={subscription.createdAt} />
                       </span>
@@ -119,10 +120,11 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                       </Link>
                     </div>
                   </div>
-                  <PressDepth
+                  <Button
+                    type="button"
+                    variant="destructive"
                     onClick={() => handleUnsubscribe(subscription.threadId)}
                     disabled={isPending}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/10 border-red-200 dark:border-red-900/50"
                   >
                     {isPending ? (
                       'Unsubscribing...'
@@ -132,7 +134,7 @@ export function NewsletterManagement({ subscriptions }: NewsletterManagementProp
                         Unsubscribe
                       </>
                     )}
-                  </PressDepth>
+                  </Button>
                 </div>
               </CardContent>
             </Card>

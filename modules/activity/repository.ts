@@ -19,16 +19,19 @@ export async function recordActivity(data: {
   });
 }
 
-export const getUserActivity = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
+const DEFAULT_ACTIVITY_LIMIT = 20;
+
+export const getUserActivity = cache(async (userId: string, limit: number = DEFAULT_ACTIVITY_LIMIT, offset: number = 0) => {
   try {
+    const where = { userId };
     const [activities, total] = await Promise.all([
       prisma.userActivity.findMany({
-        where: { userId },
+        where,
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
-      prisma.userActivity.count({ where: { userId } }),
+      prisma.userActivity.count({ where }),
     ]);
 
     return { activities, total, hasMore: computeHasMore(offset, limit, total) };

@@ -1,6 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
+import { revalidatePath } from 'next/cache';
+import { ROUTES } from '@/lib/config/routes';
+import { recordActivity } from '@/modules/activity/repository';
 
 export type AuditEventDetails = Prisma.InputJsonValue | null;
 
@@ -38,21 +41,22 @@ export async function logAction({
   userId,
   details,
 }: LogActionParams) {
-  return prisma.userActivity.create({
-    data: {
-      userId,
-      type: action,
-      entityType,
-      entityId,
-      metadata: details ?? Prisma.JsonNull,
-    },
+  return recordActivity({
+    userId,
+    type: action,
+    entityType,
+    entityId,
+    metadata: details ?? Prisma.JsonNull,
   });
 }
 
-// Audit reads back admin dashboards, so a failed query degrades to an empty
-// list rather than taking the whole page down.
+const DEFAULT_AUDIT_LIMIT = 100;
+
 export async function getUserActivities(filters?: UserActivityFilters) {
   try {
+    const limit = filters?.limit ?? DEFAULT_AUDIT_LIMIT;
+    const offset = filters?.offset ?? 0;
+
     return await prisma.userActivity.findMany({
       where: {
         type: filters?.action,
@@ -65,8 +69,8 @@ export async function getUserActivities(filters?: UserActivityFilters) {
         user: { select: { id: true, name: true, email: true, image: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: filters?.limit ?? 100,
-      skip: filters?.offset ?? 0,
+      take: limit,
+      skip: offset,
     });
   } catch (error) {
     logger.error('[getUserActivities]', error);
@@ -74,4 +78,24 @@ export async function getUserActivities(filters?: UserActivityFilters) {
   }
 }
 
+export async function executeAuditAndRevalidate(args: {
+  action: string;
+  entityType: string;
+  entityId: string;
+  userId: string;
+  details?: Prisma.InputJsonValue | null;
+  paths?: string[];
+}) {
+  await logAction({
+    action: args.action,
+    entityType: args.entityType,
+    entityId: args.entityId,
+    userId: args.userId,
+    details: args.details,
+  });
+
+  for (const path of args.paths ?? [ROUTES.ADMIN_MODERATION, ROUTES.ADMIN_REPORTS]) {
+    revalidatePath(path);
+  }
+}
 

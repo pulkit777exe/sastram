@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 type Status = 'loading' | 'checking-auth' | 'accepting' | 'done' | 'error';
@@ -11,10 +12,15 @@ export default function InvitationAcceptPage() {
   const searchParams = useSearchParams();
   const inviteId = searchParams.get('id');
 
-  const [status, setStatus] = useState<Status>(inviteId ? 'loading' : 'error');
-  const [error, setError] = useState<string | null>(
-    inviteId ? null : 'Invalid invitation link — no invitation ID found.'
-  );
+  let initialStatus: Status = 'loading';
+  let initialError: string | null = null;
+  if (!inviteId) {
+    initialStatus = 'error';
+    initialError = 'Invalid invitation link — no invitation ID found.';
+  }
+
+  const [status, setStatus] = useState<Status>(initialStatus);
+  const [error, setError] = useState<string | null>(initialError);
   const [threadSlug, setThreadSlug] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,16 +107,14 @@ export default function InvitationAcceptPage() {
   if (status === 'error') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+        <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 text-center space-y-4">
           <h1 className="text-xl font-bold text-foreground">Invitation</h1>
           <p className="text-sm text-red-600">{error}</p>
-          <button
-            type="button"
+          <Button variant="outline"
             onClick={() => router.push('/dashboard')}
-            className="mt-2 px-4 py-2 text-sm font-medium rounded-lg bg-muted hover:bg-muted transition-colors"
           >
             Go to Dashboard
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -118,7 +122,7 @@ export default function InvitationAcceptPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+      <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 text-center space-y-4">
         <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
           {status === 'loading' && 'Loading invitation...'}

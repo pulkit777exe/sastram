@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 const LandingPage = dynamic(() => import('@/components/landing/LandingPage').then(m => ({ default: m.LandingPage })), {
   loading: () => (
     <div className="flex h-screen items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-transparent" />
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-transparent" />
     </div>
   ),
 });

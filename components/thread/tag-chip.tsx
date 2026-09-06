@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
+import { Badge } from '@/components/ui/badge';
 
 interface TagChipProps {
   tag: {
@@ -15,36 +17,53 @@ interface TagChipProps {
   clickable?: boolean;
 }
 
+function getTagStyle(tag: TagChipProps['tag']): React.CSSProperties {
+  if (tag.color) {
+    return {
+      backgroundColor: `${tag.color}20`,
+      color: tag.color,
+      borderColor: `${tag.color}40`,
+    };
+  }
+  return {
+    backgroundColor: 'color-mix(in srgb, var(--brand) 12%, transparent)',
+    color: 'var(--brand)',
+    borderColor: 'color-mix(in srgb, var(--brand) 25%, transparent)',
+  };
+}
+
 export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
+  const isLink = clickable && !onRemove;
+  const tagStyle = getTagStyle(tag);
+
   const content = (
-    <span
+    <Badge
+      variant="outline"
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+        'px-2.5 py-1 rounded-full',
         'transition-all duration-100 hover:scale-105 active:scale-95',
-        clickable && !onRemove && 'hover:opacity-80'
+        isLink && 'hover:opacity-80'
       )}
-      style={{
-        backgroundColor: tag.color ? `${tag.color}20` : 'color-mix(in srgb, var(--brand) 12%, transparent)',
-        color: tag.color ?? 'var(--brand)',
-        border: `1px solid ${tag.color ? `${tag.color}40` : 'color-mix(in srgb, var(--brand) 25%, transparent)'}`,
-      }}
+      style={tagStyle}
     >
       <span>#{tag.name}</span>
       {onRemove && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-4 w-4 hover:opacity-70 p-0"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          className="hover:opacity-70 transition-opacity"
         >
           <X className="h-3 w-3" />
-        </button>
+        </Button>
       )}
-    </span>
+    </Badge>
   );
 
-  if (clickable && !onRemove) {
+  if (isLink) {
     return <Link href={`/dashboard/tags/${tag.slug ?? tag.name}`}>{content}</Link>;
   }
 

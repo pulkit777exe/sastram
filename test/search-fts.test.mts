@@ -29,23 +29,34 @@ describe('FTS Search with GIN indexes', () => {
     testUserId = `user-${testId}`;
     testThreadId = `thread-${testId}`;
 
-    await prisma.$executeRaw`
-      INSERT INTO "users" ("id", "email", "name")
-      VALUES (${testUserId}, ${`${testId}@test.com`}, 'Test User')
-      ON CONFLICT ("id") DO NOTHING
-    `;
+    await prisma.user.upsert({
+      where: { id: testUserId },
+      create: { id: testUserId, email: `${testId}@test.com`, name: 'Test User' },
+      update: {},
+    });
 
-    await prisma.$executeRaw`
-      INSERT INTO "threads" ("id", "name", "slug", "description", "createdBy")
-      VALUES (${testThreadId}, 'Docker Networking Guide', ${`${testId}-docker`}, 'How to configure Docker networks and bridge mode', ${testUserId})
-      ON CONFLICT ("id") DO NOTHING
-    `;
+    await prisma.thread.upsert({
+      where: { id: testThreadId },
+      create: {
+        id: testThreadId,
+        name: 'Docker Networking Guide',
+        slug: `${testId}-docker`,
+        description: 'How to configure Docker networks and bridge mode',
+        createdBy: testUserId,
+      },
+      update: {},
+    });
 
-    await prisma.$executeRaw`
-      INSERT INTO "messages" ("id", "content", "threadId", "senderId")
-      VALUES (${`msg-${testId}`}, 'Docker containers communicate through bridge networks', ${testThreadId}, ${testUserId})
-      ON CONFLICT ("id") DO NOTHING
-    `;
+    await prisma.message.upsert({
+      where: { id: `msg-${testId}` },
+      create: {
+        id: `msg-${testId}`,
+        content: 'Docker containers communicate through bridge networks',
+        threadId: testThreadId,
+        senderId: testUserId,
+      },
+      update: {},
+    });
   });
 
   it('should search threads using fts_vector column', async function () {

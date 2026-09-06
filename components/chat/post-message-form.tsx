@@ -1,14 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import {
   Paperclip,
-  Bold,
-  Italic,
-  Code2,
-  Link2,
   SmilePlus,
   AtSign,
   Send,
@@ -19,7 +15,6 @@ import {
 } from 'lucide-react';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
-import { InlinePollButton } from '@/components/thread/inline-poll-button';
 import { MentionSuggest } from '@/components/chat/mention-suggest';
 import { cn } from '@/lib/utils/cn';
 
@@ -67,12 +62,13 @@ export function PostMessageForm({
   canManagePoll,
   showPoll: showPollProp,
   onTogglePoll,
-  onPollCreated,
+  onPollCreated: _onPollCreated,
 }: PostMessageFormProps) {
   const [showPollLocal, setShowPollLocal] = useState(false);
-  const showPoll = showPollProp ?? showPollLocal;
+  const _showPoll = showPollProp ?? showPollLocal;
   const setShowPoll = onTogglePoll ?? setShowPollLocal;
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [formatOpen, setFormatOpen] = useState(false);
 
   const {
     content,
@@ -84,7 +80,6 @@ export function PostMessageForm({
     handleItalic,
     handleCode,
     handleLink,
-    mentionedUserIds,
     mentionCandidates,
     mentionOpen,
     activeMentionIndex,
@@ -115,6 +110,8 @@ export function PostMessageForm({
   const formRef = useRef<HTMLFormElement>(null);
   const emojiButtonRef = useRef<HTMLDivElement>(null);
   const emojiPanelRef = useRef<HTMLDivElement>(null);
+  const formatButtonRef = useRef<HTMLDivElement>(null);
+  const formatPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -134,13 +131,21 @@ export function PostMessageForm({
       ) {
         setEmojiOpen(false);
       }
+
+      if (
+        formatOpen &&
+        !formatButtonRef.current?.contains(target) &&
+        !formatPanelRef.current?.contains(target)
+      ) {
+        setFormatOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
-  }, [closeMentions, emojiOpen, mentionListRef, textareaRef]);
+  }, [closeMentions, emojiOpen, formatOpen, mentionListRef, textareaRef]);
 
   const handleEmojiSelectAndClose = useCallback(
     (emoji: string) => {
@@ -150,53 +155,68 @@ export function PostMessageForm({
     [handleEmojiSelect]
   );
 
-  const placeholder = replyTo
-    ? `Reply to @${replyTo.userName}…`
-    : 'Share your thoughts, ask questions, or @mention someone…';
+  function getPlaceholder(): string {
+    const isReply = replyTo !== null && replyTo !== undefined;
+    if (isReply) {
+      return `Reply to @${replyTo.userName}…`;
+    }
+    return 'Ask a question, share context, or mention @sai for grounded help…';
+  }
+
+  const placeholder = getPlaceholder();
+  const isReplyMode = Boolean(replyTo);
+  const selectedFilePosition = isReplyMode ? '-top-20' : '-top-11';
+
+  // Tailwind class constants — grouped: layout / color / interactivity
+  // Extracted to avoid 8+ class inline strings.
+  const replyBannerClasses = 'absolute -top-11 left-0 right-0 bg-brand/10 border-x border-t border-brand/15 px-4 py-2 rounded-t-card text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150';
+  const fileChipBase = 'absolute left-0 bg-muted/90 backdrop-blur border border-line px-3 py-1.5 rounded-t-card text-xs flex items-center gap-2 shadow-linear-sm z-10';
+  const composerBase = 'flex flex-col border border-line rounded-card bg-surface shadow-card overflow-hidden';
+  const composerInteractive = 'hover:border-brand/20 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all';
+  const composerReplyVariant = 'rounded-t-none border-t-0';
+  const textareaClasses = 'flex-1 min-h-11 max-h-[30vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1.5 px-0 text-sm leading-relaxed placeholder-muted-foreground/60 text-foreground';
 
   return (
     <form ref={formRef} onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }} className="relative w-full">
       {replyTo && (
-        <div className="absolute -top-11 left-0 right-0 bg-brand/10 border-x border-t border-brand/15 px-4 py-2 rounded-t-xl text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150">
+        <div className={replyBannerClasses}>
           <div className="flex items-center gap-2 text-brand">
             <MessageSquare className="h-3.5 w-3.5" />
             <span>Replying to</span>
             <span className="font-semibold">@{replyTo.userName}</span>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onCancelReply}
-            className="text-brand hover:text-brand transition-colors"
           >
             <X className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
       )}
 
       {selectedFile && (
         <div
-          className={`absolute ${replyTo ? '-top-20' : '-top-11'} left-0 bg-muted/90 backdrop-blur border border-border px-3 py-1.5 rounded-t-xl text-xs flex items-center gap-2 shadow-linear-sm z-10`}
+          className={cn(fileChipBase, selectedFilePosition)}
         >
           <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="truncate max-w-50 text-foreground font-medium">{selectedFile.name}</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-1"
             onClick={() => {
               setSelectedFile(null);
               if (fileInputRef.current) fileInputRef.current.value = '';
             }}
-            className="ml-1 cursor-pointer text-muted-foreground hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
       )}
 
       <div
-        className={cn(
-          "flex flex-col border border-border/80 rounded-2xl bg-card hover:border-brand/20 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-linear-sm overflow-hidden",
-          replyTo && "rounded-t-none border-t-0"
-        )}
+        className={cn(composerBase, composerInteractive, replyTo && composerReplyVariant)}
       >
         {/* Top Tier: Textarea */}
         <div className="flex items-start px-4 pt-3 pb-1">
@@ -206,49 +226,32 @@ export function PostMessageForm({
             placeholder={placeholder}
             value={content}
             onChange={handleChange}
-            className="flex-1 min-h-11 max-h-[30vh] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1.5 px-0 text-sm leading-relaxed placeholder-muted-foreground/60 text-foreground"
+            className={textareaClasses}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
           />
         </div>
 
-        {/* Bottom Tier: Toolbar */}
-        <div className="flex items-center justify-between px-2 sm:px-3 py-2 bg-muted/10 border-t border-border/40 select-none">
-          <div className="flex items-center gap-0.5 sm:gap-1.5 flex-wrap">
-            <PressDepth
-              type="button"
-              className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
+        {/* Bottom Tier: Toolbar — SAI field token, not generic muted */}
+        <div className="flex items-center justify-between px-2 sm:px-3 py-2 bg-inset border-t border-line/60 select-none">
+          <div className="flex items-center gap-0.5 sm:gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-4.5 w-4.5" />
-            </PressDepth>
+            </Button>
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
-
-            <div className="h-4 w-px bg-border/60 mx-1" />
-
-            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleBold}>
-              <Bold className="h-4 w-4" />
-            </PressDepth>
-            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleItalic}>
-              <Italic className="h-4 w-4" />
-            </PressDepth>
-            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleCode}>
-              <Code2 className="h-4 w-4" />
-            </PressDepth>
-            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleLink}>
-              <Link2 className="h-4 w-4" />
-            </PressDepth>
-
-            <div className="h-4 w-px bg-border/60 mx-1" />
 
             <div className="relative">
               <div ref={emojiButtonRef}>
-                <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setEmojiOpen((p) => !p)}>
+                <Button variant="ghost" size="icon" onClick={() => setEmojiOpen((p) => !p)}>
                   <SmilePlus className="h-4 w-4" />
-                </PressDepth>
+                </Button>
               </div>
               {emojiOpen && (
-                <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border/80 bg-popover p-2.5 shadow-linear-xl">
+                <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-line bg-surface p-2.5 shadow-overlay">
                   <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
                     {COMMON_EMOJIS.map((emoji) => (
                       <button
@@ -265,19 +268,71 @@ export function PostMessageForm({
               )}
             </div>
 
-            <PressDepth type="button" className="h-8 w-8 md:h-8 md:w-8 min-h-11 min-w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={handleAtSai}>
+            <Button variant="ghost" size="icon" onClick={handleAtSai}>
               <AtSign className="h-4 w-4" />
-            </PressDepth>
+            </Button>
 
-            <div className="flex items-center gap-0.5">
-              <InlinePollButton onClick={() => setShowPoll(true)} disabled={!canManagePoll} />
+            <div className="relative">
+              <div ref={formatButtonRef}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setFormatOpen((o) => !o)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 7V4h16v3" />
+                    <path d="M9 20h6" />
+                    <path d="M12 4v16" />
+                  </svg>
+                </Button>
+              </div>
+              {formatOpen && (
+                <div ref={formatPanelRef} className="absolute bottom-10 left-0 z-30 w-36 rounded-card border border-line bg-surface p-1 shadow-overlay">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => { handleBold(); setFormatOpen(false); }}
+                  >
+                    Bold
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => { handleItalic(); setFormatOpen(false); }}
+                  >
+                    Italic
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => { handleCode(); setFormatOpen(false); }}
+                  >
+                    Code
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => { handleLink(); setFormatOpen(false); }}
+                  >
+                    Link
+                  </Button>
+                  {canManagePoll && (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => { setShowPoll(true); setFormatOpen(false); }}
+                    >
+                      Poll
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          <PressDepth type="submit" disabled={isSubmitting || !canSubmit} className="h-8 rounded-xl px-3 flex items-center gap-1.5 shadow-linear-sm font-semibold transition-all">
+          <Button type="submit" size="icon" disabled={isSubmitting || !canSubmit}>
             {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-            <span>Send</span>
-          </PressDepth>
+          </Button>
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Dialog,
   DialogContent,
@@ -14,18 +13,22 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { UserPlus, Mail } from 'lucide-react';
 import { inviteFriendToThread } from '@/modules/invitations/actions';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 
+const SHAKE_DURATION_MS = 300;
+
 
 interface InviteFriendButtonProps {
   threadId: string;
   threadName: string;
+  iconOnly?: boolean;
 }
 
-export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonProps) {
+export function InviteFriendButton({ threadId, threadName, iconOnly = false }: InviteFriendButtonProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -41,7 +44,7 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
     input.classList.remove('is-shaking');
     void (input as HTMLElement).offsetWidth;
     input.classList.add('is-shaking');
-    setTimeout(() => input.classList.remove('is-shaking'), 300);
+    setTimeout(() => input.classList.remove('is-shaking'), SHAKE_DURATION_MS);
   };
 
   async function handleInvite(e: React.FormEvent) {
@@ -78,12 +81,15 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <PressDepth
-          className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+        <Button
+          variant="ghost"
+          size={iconOnly ? 'icon' : 'default'}
+          className={iconOnly ? '!h-8 !w-8 !p-0 !rounded-control !border-0 !bg-transparent !ring-0 !ring-offset-0 !shadow-none text-ink-3 hover:text-ink hover:bg-hover transition-colors' : undefined}
+          aria-label="Invite friend"
         >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Invite Friend
-        </PressDepth>
+          <UserPlus className="w-4 h-4" />
+          {!iconOnly && <span className="ml-2">Invite Friend</span>}
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -125,16 +131,15 @@ export function InviteFriendButton({ threadId, threadName }: InviteFriendButtonP
             </div>
           </div>
           <DialogFooter>
-            <PressDepth type="button" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
-            </PressDepth>
-            <PressDepth
+            </Button>
+            <Button
               type="submit"
               disabled={isSubmitting || !email.trim()}
-              className="bg-brand hover:bg-brand/90 text-primary-foreground"
             >
               {isSubmitting ? 'Sending...' : 'Send Invitation'}
-            </PressDepth>
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

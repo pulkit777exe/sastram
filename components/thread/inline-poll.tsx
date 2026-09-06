@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { X, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { createPollAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
 
@@ -19,7 +19,7 @@ interface InlinePollProps {
 const MAX_OPTIONS = 6;
 const MIN_OPTIONS = 2;
 
-export function InlinePoll({ threadId, canManagePoll, onPollCreated, isOpen, onToggle }: InlinePollProps) {
+export function InlinePoll({ threadId, canManagePoll: _canManagePoll, onPollCreated, isOpen, onToggle }: InlinePollProps) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [expiresAt, setExpiresAt] = useState('');
@@ -47,8 +47,8 @@ export function InlinePoll({ threadId, canManagePoll, onPollCreated, isOpen, onT
       toasts.error('Please add a question to your poll');
       return;
     }
-    
-const validOptions = options.filter(option => option.trim().length > 0);
+
+    const validOptions = options.filter((option) => option.trim().length > 0);
     if (validOptions.length < MIN_OPTIONS) {
       toasts.error(`Please add at least ${MIN_OPTIONS} options to your poll`);
       return;
@@ -60,12 +60,12 @@ const validOptions = options.filter(option => option.trim().length > 0);
     }
 
     setIsSaving(true);
-    
+
     try {
       const result = await createPollAction({
         threadId,
         question,
-        options: options.filter(opt => opt.trim().length > 0),
+        options: validOptions,
         expiresAt: expiresAt ? new Date(expiresAt) : undefined,
       });
       
@@ -80,7 +80,7 @@ const validOptions = options.filter(option => option.trim().length > 0);
         toasts.success('Poll created successfully!');
         onToggle(false);
       }
-    } catch (error) {
+    } catch {
       toasts.serverError();
     } finally {
       setIsSaving(false);
@@ -89,16 +89,16 @@ const validOptions = options.filter(option => option.trim().length > 0);
 
   if (!isOpen) return null;
 
+  const hasMissingRequiredOption = options.slice(0, MIN_OPTIONS).some((opt) => !opt.trim());
+  const isCreateDisabled = isSaving || !question.trim() || hasMissingRequiredOption;
+
   return (
-    <div className="space-y-4 p-4 bg-card rounded-lg shadow-linear-lg border border-border">
+    <div className="space-y-4 p-4 bg-surface rounded-control shadow-linear-lg border border-line">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Create a Poll</h3>
-        <PressDepth 
-          onClick={() => onToggle(false)}
-          className="h-6 w-6 p-0"
-        >
+        <h3 className="text-lg font-semibold text-ink">Create a Poll</h3>
+        <Button variant="ghost" size="icon" onClick={() => onToggle(false)}>
           <X className="h-4 w-4" />
-        </PressDepth>
+        </Button>
       </div>
       
       <div className="space-y-4">
@@ -120,27 +120,29 @@ const validOptions = options.filter(option => option.trim().length > 0);
                 onChange={(e) => handleOptionChange(index, e.target.value)}
                 placeholder={`Option ${index + 1}`}
               />
-              {index >= 2 && (
-                <PressDepth 
-                  className="h-8 w-8 p-0"
+              {index >= MIN_OPTIONS && (
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => handleRemoveOption(index)}
                 >
                   <X className="h-4 w-4" />
-                </PressDepth>
+                </Button>
               )}
             </div>
           ))}
         </div>
         
         <div className="flex items-center gap-2">
-          <PressDepth 
-            type="button" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleAddOption}
             disabled={options.length >= MAX_OPTIONS}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Option
-          </PressDepth>
+          </Button>
         </div>
         
         <div className="space-y-2">
@@ -153,13 +155,9 @@ const validOptions = options.filter(option => option.trim().length > 0);
         </div>
         
         <div className="flex items-center justify-between pt-2">
-          <PressDepth 
-            onClick={createPoll}
-            disabled={isSaving || !question.trim() || options.some((opt, i) => i < 2 && !opt.trim())}
-            className="w-full"
-          >
+          <Button className="w-full" onClick={createPoll} disabled={isCreateDisabled}>
             {isSaving ? 'Creating...' : 'Create Poll'}
-          </PressDepth>
+          </Button>
         </div>
       </div>
     </div>

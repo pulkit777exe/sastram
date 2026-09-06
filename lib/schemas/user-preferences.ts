@@ -34,10 +34,15 @@ export function parseUserPreferences(value: unknown): UserPreferences {
   if (!value || typeof value !== 'object') return { ...DEFAULTS };
   const v = value as Record<string, unknown>;
 
-  const oneOf = <T extends readonly string[]>(allowed: T, raw: unknown, fallback: T[number]) =>
-    allowed.includes(raw as T[number]) ? (raw as T[number]) : fallback;
+  function oneOf<T extends readonly string[]>(allowed: T, raw: unknown, fallback: T[number]): T[number] {
+    if (allowed.includes(raw as T[number])) return raw as T[number];
+    return fallback;
+  }
 
-  const bool = (raw: unknown, fallback: boolean) => (typeof raw === 'boolean' ? raw : fallback);
+  function bool(raw: unknown, fallback: boolean): boolean {
+    if (typeof raw === 'boolean') return raw;
+    return fallback;
+  }
 
   return {
     theme: oneOf(THEMES, v.theme, DEFAULTS.theme),

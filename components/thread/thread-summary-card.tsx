@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, RefreshCw } from 'lucide-react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 import { SkeletonSwap } from '@/components/ui/skeleton-swap';
+import { DetailCard } from '@/components/ui/detail-card';
+import { Button } from '@/components/ui/button';
 
 interface ThreadSummaryCardProps {
   threadId: string;
@@ -16,8 +17,10 @@ interface ThreadSummaryCardProps {
   className?: string;
 }
 
+// Poll every 3 seconds while waiting for summary generation
 const POLL_INTERVAL_MS = 3_000;
-const MAX_POLL_MS = 90_000;
+// Stop polling after 90 seconds and show timeout UI
+const TIMEOUT_MS = 90_000;
 const SUMMARY_UNAVAILABLE = 'Summary unavailable.';
 
 export function ThreadSummaryCard({ threadId, initialSummary, className }: ThreadSummaryCardProps) {
@@ -42,14 +45,10 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
   }, []);
 
   const stopPolling = useCallback(() => {
-    if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-    if (timeoutTimerRef.current) {
-      clearTimeout(timeoutTimerRef.current);
-      timeoutTimerRef.current = null;
-    }
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    pollTimerRef.current = null;
+    if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+    timeoutTimerRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -100,11 +99,15 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
 
         timeoutTimerRef.current = setTimeout(() => {
           if (!mountedRef.current) return;
-          stopPolling();
+          // Inline stop logic — clear both timers explicitly without indirection
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+          if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+          timeoutTimerRef.current = null;
           isPendingRef.current = false;
           setIsPending(false);
           setTimedOut(true);
-        }, MAX_POLL_MS);
+        }, TIMEOUT_MS);
       } catch (error) {
         if (!mountedRef.current) return;
         const message =
@@ -114,33 +117,30 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         setIsPending(false);
       }
     },
-    [threadId, router, initialSummary, stopPolling]
+    [threadId, router, initialSummary]
   );
 
   return (
-    <div
-      className={cn(
-        'rounded-xl border p-5 relative overflow-hidden bg-card/50 shadow-linear-sm',
-        className
-      )}
-    >
+    <DetailCard className={cn('relative', className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-brand" />
-          <span className="text-xs font-bold uppercase tracking-widest text-brand">
+          <Sparkles size={14} className="text-sai-accent" />
+          <span className="text-xs font-bold uppercase tracking-widest text-sai-accent">
             Sai Summary
           </span>
         </div>
 
         {summary && !isPending && (
-          <PressDepth
-            className="h-6 w-6 text-muted-foreground hover:text-brand"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             onClick={() => void requestSummary()}
             aria-label="Refresh summary"
           >
             <RefreshCw size={12} />
-          </PressDepth>
+          </Button>
         )}
       </div>
 
@@ -155,57 +155,54 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
         >
           {timedOut ? (
             <div className="flex flex-col items-center justify-center py-2 text-center">
-              <p className="text-xs text-muted-foreground mb-3">
-                This is taking longer than expected. You can try again.
-              </p>
-            <PressDepth
-              onClick={() => void requestSummary()}
-              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
-            >
-              <Sparkles size={12} className="mr-2" />
-              Try Again
-            </PressDepth>
+              <p className="text-xs text-ink-2 mb-3">This is taking longer than expected. You can try again.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full bg-sai-accent-tint border-sai-accent/20 text-sai-accent hover:bg-sai-accent-tint"
+                onClick={() => void requestSummary()}
+              >
+                <Sparkles size={12} className="mr-2" />
+                Try Again
+              </Button>
             </div>
           ) : summary ? (
             isAiNotConfigured(summary) ? (
               <AiNotConfiguredNotice />
             ) : summary === SUMMARY_UNAVAILABLE ? (
               <div className="flex flex-col items-center justify-center py-2 text-center">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Sai couldn&apos;t generate a summary this time. Please try again.
-                </p>
-              <PressDepth
-                onClick={() => void requestSummary()}
-                className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
-              >
-                <Sparkles size={12} className="mr-2" />
-                Try Again
-              </PressDepth>
+                <p className="text-xs text-ink-2 mb-3">Sai couldn&apos;t generate a summary this time. Please try again.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full bg-sai-accent-tint border-sai-accent/20 text-sai-accent hover:bg-sai-accent-tint"
+                  onClick={() => void requestSummary()}
+                >
+                  <Sparkles size={12} className="mr-2" />
+                  Try Again
+                </Button>
               </div>
             ) : (
               <div className="prose prose-sm prose-neutral max-w-none">
-                <p className="text-xs text-brand/80 leading-relaxed">{summary}</p>
+                <p className="text-xs text-sai-accent/80 leading-relaxed">{summary}</p>
               </div>
             )
           ) : (
             <div className="flex flex-col items-center justify-center py-2 text-center">
-              <p className="text-xs text-muted-foreground mb-3">
-                Get a quick Sai-powered summary of this thread.
-              </p>
-            <PressDepth
-              onClick={() => void requestSummary()}
-              className="w-full bg-brand/10 border-brand/20 text-brand hover:bg-brand/15 hover:text-brand/90 font-medium text-xs h-8"
-            >
-              <Sparkles size={12} className="mr-2" />
-              Generate Summary
-            </PressDepth>
+              <p className="text-xs text-ink-2 mb-3">Get a quick Sai-powered summary of this thread.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full bg-sai-accent-tint border-sai-accent/20 text-sai-accent hover:bg-sai-accent-tint"
+                onClick={() => void requestSummary()}
+              >
+                <Sparkles size={12} className="mr-2" />
+                Generate Summary
+              </Button>
             </div>
           )}
         </SkeletonSwap>
       </div>
-
-      {/* Decorative blur */}
-      <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-brand/10 blur-2xl rounded-full pointer-events-none" />
-    </div>
+    </DetailCard>
   );
 }

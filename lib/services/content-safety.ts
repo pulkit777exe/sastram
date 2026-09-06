@@ -23,12 +23,16 @@ export function sanitizeUserContent(content: string): XssSanitizeResult {
     transformTags: {
       // allowedSchemes already drops these hrefs, but that leaves a bare <a>;
       // downgrading to <span> makes the neutering visible instead of silent.
-      a: (tagName, attribs) => {
-        const href = attribs.href?.toLowerCase() ?? '';
-        if (href.startsWith('javascript:') || href.startsWith('data:')) {
+      a: (originalTagName, tagAttributes) => {
+        const rawHref = tagAttributes.href;
+        let normalizedHref = '';
+        if (rawHref !== undefined && rawHref !== null) {
+          normalizedHref = rawHref.toLowerCase();
+        }
+        if (normalizedHref.startsWith('javascript:') || normalizedHref.startsWith('data:')) {
           return { tagName: 'span', attribs: {} };
         }
-        return { tagName, attribs };
+        return { tagName: originalTagName, attribs: tagAttributes };
       },
     },
   });
@@ -53,17 +57,18 @@ export function sanitizeContent(content: string): string {
   return sanitizeUserContent(content).sanitized;
 }
 
-const VALIDATE_FILE_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+const ALLOWED_FILE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+const BYTES_PER_MEGABYTE = 1024 * 1024;
 
-export function validateFile(file: File): FileValidationResult {
-  const MAX_SIZE = FILE_LIMITS.MAX_SIZE_BYTES;
+export function validateFile(uploadedFile: File): FileValidationResult {
+  const fileMaxBytes = FILE_LIMITS.MAX_SIZE_BYTES;
 
-  if (file.size > MAX_SIZE) {
-    const maxSizeMB = (MAX_SIZE / (1024 * 1024)).toFixed(1);
-    return { isValid: false, error: `File size exceeds ${maxSizeMB}MB limit.` };
+  if (uploadedFile.size > fileMaxBytes) {
+    const maxSizeMb = (fileMaxBytes / BYTES_PER_MEGABYTE).toFixed(1);
+    return { isValid: false, error: `File size exceeds ${maxSizeMb}MB limit.` };
   }
 
-  if (!VALIDATE_FILE_ALLOWED_TYPES.includes(file.type)) {
+  if (!ALLOWED_FILE_MIME_TYPES.includes(uploadedFile.type)) {
     return {
       isValid: false,
       error: 'Invalid file type. Only Images and PDFs are allowed.',

@@ -2,6 +2,7 @@
 
 import { FileIcon, Download, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
 import type { Attachment } from '@/lib/types/index';
 import React, { useRef, useState } from 'react';
 
@@ -9,13 +10,27 @@ interface AttachmentItemProps {
   file: Attachment;
 }
 
+const BYTES_PER_MB = 1024 * 1024;
+
+function isImageType(type: string | undefined): boolean {
+  if (!type) return false;
+  if (type === 'IMAGE' || type === 'GIF') return true;
+  return type.startsWith('image/');
+}
+
+function isVideoType(type: string | undefined): boolean {
+  if (!type) return false;
+  if (type === 'VIDEO') return true;
+  return type.startsWith('video/');
+}
+
 export const AttachmentItem = React.memo(function AttachmentItem({ file }: AttachmentItemProps) {
-  const isImage = file.type === 'IMAGE' || file.type === 'GIF' || (file.type && file.type.startsWith('image/'));
-  const isVideo = file.type === 'VIDEO' || (file.type && file.type.startsWith('video/'));
+  const isImage = isImageType(file.type);
+  const isVideo = isVideoType(file.type);
 
   if (isImage) {
     return (
-       <div className="relative group animate-in fade-in duration-200 overflow-hidden rounded-lg border border-border/50 bg-card max-w-65 transition-all duration-300 hover:shadow-linear-md hover:border-border">
+       <div className="relative group animate-in fade-in duration-200 overflow-hidden rounded-control border border-line/50 bg-surface max-w-65 transition-all duration-300 hover:shadow-linear-md hover:border-line">
         <Image
           src={file.url}
           alt={file.name || 'attachment'}
@@ -24,7 +39,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
           className="w-full h-auto max-h-45 object-cover transition-transform duration-500 ease-out group-hover:scale-102"
         />
         {file.name && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-foreground/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-ink/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <p className="text-xs text-background truncate font-medium">{file.name}</p>
           </div>
         )}
@@ -37,15 +52,15 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
   }
 
   return (
-    <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-lg border border-border/60 bg-card p-2.5 transition-all duration-200 hover:border-border hover:shadow-linear-sm group max-w-70">
-      <div className="p-2 rounded-lg border border-border/50 bg-muted/40 text-muted-foreground shadow-linear-sm transition-transform duration-200 group-hover:scale-105">
-        <FileIcon size={16} className="text-foreground opacity-80" />
+    <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-control border border-line/60 bg-surface p-2.5 transition-all duration-200 hover:border-line hover:shadow-linear-sm group max-w-70">
+      <div className="p-2 rounded-control border border-line/50 bg-field text-ink-3 shadow-linear-sm transition-transform duration-200 group-hover:scale-105">
+        <FileIcon size={16} className="text-ink opacity-80" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-foreground truncate">{file.name || 'File Attachment'}</p>
-        <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mt-0.5">
+        <p className="text-xs font-semibold text-ink truncate">{file.name || 'File Attachment'}</p>
+        <p className="text-xs text-ink-3 font-mono uppercase tracking-wider mt-0.5">
           {file.type?.split('/').pop()?.toUpperCase() || 'FILE'}
-          {file.size ? ` • ${(Number(file.size) / (1024 * 1024)).toFixed(1)} MB` : ''}
+          {file.size ? ` • ${(Number(file.size) / BYTES_PER_MB).toFixed(1)} MB` : ''}
         </p>
       </div>
       <a
@@ -53,7 +68,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
         download={file.name || 'attachment'}
         target="_blank"
         rel="noopener noreferrer"
-        className="p-1.5 rounded-full transition-all duration-200 opacity-60 hover:opacity-100 hover:bg-muted/40 text-foreground border border-transparent hover:border-border"
+        className="p-1.5 rounded-full transition-all duration-200 opacity-60 hover:opacity-100 hover:bg-field text-ink border border-transparent hover:border-line"
         title="Download file"
       >
         <Download size={14} />
@@ -68,15 +83,14 @@ function VideoPlayer({ file }: { file: Attachment }) {
   const [isMuted, setIsMuted] = useState(false);
 
   const togglePlay = () => {
-    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
     if (isPlaying) {
-      videoRef.current.pause();
+      video.pause();
       setIsPlaying(false);
-    } else {
-      videoRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(() => {});
+      return;
     }
+    video.play().then(() => setIsPlaying(true)).catch(() => {});
   };
 
   const toggleMute = (e: React.MouseEvent) => {
@@ -88,7 +102,7 @@ function VideoPlayer({ file }: { file: Attachment }) {
 
   return (
     <div 
-      className="relative group animate-in fade-in duration-200 overflow-hidden rounded-lg border border-border/50 bg-card max-w-80 aspect-video cursor-pointer"
+      className="relative group animate-in fade-in duration-200 overflow-hidden rounded-control border border-line/50 bg-surface max-w-80 aspect-video cursor-pointer"
       onClick={togglePlay}
     >
       <video
@@ -104,25 +118,26 @@ function VideoPlayer({ file }: { file: Attachment }) {
       {/* Overlay controls */}
       <div className="absolute inset-0 bg-foreground/10 opacity-100 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-2">
         <div className="flex justify-end">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleMute}
-            className="p-1.5 rounded-full bg-foreground/20 text-white hover:bg-foreground/30 transition-colors"
+            className="p-1.5 rounded-full bg-foreground/20 text-white hover:bg-foreground/30"
           >
             {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
-          </button>
+          </Button>
         </div>
 
         <div className="flex items-center justify-between">
           <span className="text-xs text-white/90 font-medium truncate max-w-50 drop-shadow-sm">
             {file.name || 'Video'}
           </span>
-          <button
-            type="button"
+          <Button
+            size="icon"
             className="p-2 rounded-full bg-brand text-primary-foreground shadow-linear-sm hover:scale-105 transition-transform"
           >
             {isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -8,22 +8,26 @@ import { AppError } from '@/lib/utils/errors';
 
 // Role args are nullable throughout so callers can pass an unauthenticated
 // session straight through without a guard.
-export function canModerate(role: UserRole | string | null | undefined): boolean {
-  return role === USER_ROLES.ADMIN || role === USER_ROLES.MODERATOR;
+export function canModerate(userRole: UserRole | string | null | undefined): boolean {
+  return userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.MODERATOR;
 }
 
-export function isAdmin(role: UserRole | string | null | undefined): boolean {
-  return role === USER_ROLES.ADMIN;
+export function isAdmin(userRole: UserRole | string | null | undefined): boolean {
+  return userRole === USER_ROLES.ADMIN;
 }
 
-export function requireAdmin(role: UserRole | string | null | undefined): void {
-  if (!isAdmin(role)) {
-    throw new AppError('Admin access required', 'FORBIDDEN', 403);
+const HTTP_FORBIDDEN = 403;
+
+export function requireAdmin(userRole: UserRole | string | null | undefined): void {
+  const hasAdminAccess = isAdmin(userRole);
+  if (!hasAdminAccess) {
+    throw new AppError('Admin access required', 'FORBIDDEN', HTTP_FORBIDDEN);
   }
 }
 
-export function requireModerator(role: UserRole | string | null | undefined): void {
-  if (!canModerate(role)) {
-    throw new AppError('Moderator access required', 'FORBIDDEN', 403);
+export function requireModerator(userRole: UserRole | string | null | undefined): void {
+  const hasModeratorAccess = canModerate(userRole);
+  if (!hasModeratorAccess) {
+    throw new AppError('Moderator access required', 'FORBIDDEN', HTTP_FORBIDDEN);
   }
 }

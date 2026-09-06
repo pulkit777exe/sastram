@@ -1,12 +1,15 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { randomUUID } from 'crypto';
 
+const NON_ALPHANUM = /[^a-z0-9]+/g;
+const TRIM_HYPHEN = /^-+|-+$/g;
+
 function slugify(title: string) {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  let slug = title.toLowerCase();
+  slug = slug.trim();
+  slug = slug.replace(NON_ALPHANUM, '-');
+  slug = slug.replace(TRIM_HYPHEN, '');
+  return slug;
 }
 
 async function createThread({

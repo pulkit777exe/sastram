@@ -8,8 +8,8 @@ const DEL = () => require('@/app/api/ai/search-history/route').DELETE;
 
 // Prisma proxy methods can't be safely stubbed with sinon (restore deletes them).
 // Save originals at module load and manually replace/restore around each test.
-const origFindFirst = (prisma.aiSearchSession as any).findFirst;
-const origUpdateMany = (prisma.aiSearchSession as any).updateMany;
+const origFindFirst = (prisma.aiSearchSession as unknown as Record<string, unknown>).findFirst as unknown;
+const origUpdateMany = (prisma.aiSearchSession as unknown as Record<string, unknown>).updateMany as unknown;
 
 describe('GET /api/ai/search-history (harness §8 IDOR)', () => {
   let sinonStubs: import('sinon').SinonStub[] = [];
@@ -23,12 +23,12 @@ describe('GET /api/ai/search-history (harness §8 IDOR)', () => {
     restoreStubs(...sinonStubs);
     sinonStubs = [];
     // Manually restore Prisma proxy methods (sinon.restore() corrupts them).
-    (prisma.aiSearchSession as any).findFirst = origFindFirst;
-    (prisma.aiSearchSession as any).updateMany = origUpdateMany;
+    (prisma.aiSearchSession as unknown as Record<string, unknown>).findFirst = origFindFirst as unknown;
+    (prisma.aiSearchSession as unknown as Record<string, unknown>).updateMany = origUpdateMany as unknown;
   });
 
   it('returns a user-owned session with full structured synthesis', async () => {
-    (prisma.aiSearchSession as any).findFirst = async () => ({
+    (prisma.aiSearchSession as unknown as Record<string, unknown>).findFirst = async () => ({
       id: 'sess-1',
       userId: 'user-A',
       query: 'how to center a div',
@@ -60,7 +60,7 @@ describe('GET /api/ai/search-history (harness §8 IDOR)', () => {
   });
 
   it('returns 404 (not 500) for a session owned by another user — IDOR guard', async () => {
-    (prisma.aiSearchSession as any).findFirst = async () => null;
+    (prisma.aiSearchSession as unknown as Record<string, unknown>).findFirst = async () => null as unknown;
 
     const res = await GET()(
       mockRequest('/api/ai/search-history?id=sess-foreign', { method: 'GET' })
@@ -73,7 +73,7 @@ describe('GET /api/ai/search-history (harness §8 IDOR)', () => {
 
   it('soft-deletes only the requesting user\'s own sessions', async () => {
     const calls: unknown[] = [];
-    (prisma.aiSearchSession as any).updateMany = async (args: unknown) => {
+    (prisma.aiSearchSession as unknown as Record<string, unknown>).updateMany = async (args: unknown) => {
       calls.push(args);
       return { count: 1 };
     };
@@ -84,11 +84,11 @@ describe('GET /api/ai/search-history (harness §8 IDOR)', () => {
 
     expect(res.status).to.equal(200);
     expect(calls).to.have.length(1);
-    expect((calls[0] as any).where).to.deep.include({ id: 'sess-1', userId: 'user-A' });
+    expect((calls[0] as unknown as Record<string, unknown>).where).to.deep.include({ id: 'sess-1', userId: 'user-A' });
   });
 
   it('returns 404 when deleting a session that is not the user\'s', async () => {
-    (prisma.aiSearchSession as any).updateMany = async () => ({ count: 0 });
+    (prisma.aiSearchSession as unknown as Record<string, unknown>).updateMany = async () => ({ count: 0 });
 
     const res = await DEL()(
       mockRequest('/api/ai/search-history?id=sess-foreign', { method: 'DELETE' })

@@ -1,6 +1,7 @@
 import { MessageSquare, TrendingUp, Users, ArrowRight, Hash } from 'lucide-react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/config/routes';
+import { Badge } from '@/components/ui/badge';
 
 interface TopicCardProps {
   id: string;
@@ -25,31 +26,31 @@ export function TopicCard({
   tags,
 }: TopicCardProps) {
   return (
-    <div className="group relative flex h-full flex-col justify-between rounded-lg border border-border bg-card p-5 transition-all duration-300 hover:shadow-linear-sm">
+    <div className="group relative flex h-full flex-col justify-between rounded-control border border-line bg-surface p-5 transition-all duration-300 hover:shadow-linear-sm">
       <div>
         <div className="flex items-center justify-between mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground transition-colors group-hover:border-brand/20 group-hover:bg-brand/10 group-hover:text-brand">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control border border-line bg-field text-ink-3 transition-colors group-hover:border-brand/20 group-hover:bg-brand/10 group-hover:text-brand">
             <Hash size={20} />
           </div>
           {trending && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-bold">
+            <Badge variant="warning" className="gap-1">
               <TrendingUp size={12} /> TRENDING
-            </div>
+            </Badge>
           )}
         </div>
 
         <Link href={ROUTES.THREAD(slug)}>
-          <h3 className="mb-2 text-lg font-bold text-foreground hover:text-brand transition-colors">
+          <h3 className="mb-2 text-lg font-bold text-ink hover:text-brand transition-colors">
             {name}
           </h3>
         </Link>
         {unreadCount > 0 && (
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
+          <Badge variant="live" className="mb-2 gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             {unreadCount} unread
-          </div>
+          </Badge>
         )}
-        <p className="mb-4 text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+        <p className="mb-4 text-sm text-ink-3 line-clamp-2 leading-relaxed">
           {description}
         </p>
 
@@ -58,22 +59,23 @@ export function TopicCard({
             <Link
               key={tag}
               href={`/dashboard?tag=${encodeURIComponent(tag.toLowerCase())}`}
-              className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-xs font-medium border border-border hover:bg-brand/10 hover:text-brand"
             >
-              #{tag}
+              <Badge variant="outline" className="hover:bg-brand/10 hover:text-brand">
+                #{tag}
+              </Badge>
             </Link>
           ))}
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-border pt-4 text-xs font-medium text-muted-foreground">
+      <div className="flex items-center justify-between border-t border-line pt-4 text-xs font-medium text-ink-3">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <Users size={14} className="text-muted-foreground" />
+            <Users size={14} className="text-ink-3" />
             <span>{activeUsers} active</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <MessageSquare size={14} className="text-muted-foreground" />
+            <MessageSquare size={14} className="text-ink-3" />
             <span>{messagesCount} msgs</span>
           </div>
         </div>

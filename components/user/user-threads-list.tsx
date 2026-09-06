@@ -36,15 +36,15 @@ export function UserThreadsList({ threads }: UserThreadsListProps) {
         <div key={thread.id}>
           <Link
             href={ROUTES.THREAD(thread.slug)}
-            className="block rounded-lg border bg-card p-4 hover:bg-accent transition-colors"
+            className="block rounded-control border border-line bg-surface p-4 hover:bg-hover transition-colors"
           >
-            <h3 className="font-semibold text-foreground mb-2">{thread.name}</h3>
+            <h3 className="font-semibold text-ink mb-2">{thread.name}</h3>
             {thread.description && (
-              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+              <p className="text-sm text-ink-3 mb-3 line-clamp-2">
                 {thread.description}
               </p>
             )}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-4 text-xs text-ink-3">
               <span className="flex items-center gap-1">
                 <MessageSquare className="h-3 w-3" />
                 {thread.messageCount}

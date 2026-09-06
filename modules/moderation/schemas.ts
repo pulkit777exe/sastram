@@ -5,23 +5,22 @@ import { BAN_REASONS } from '@/lib/config/constants';
  * Moderation validation schemas
  */
 
+const banReasonValues = [
+  BAN_REASONS.SPAM,
+  BAN_REASONS.HARASSMENT,
+  BAN_REASONS.HATE_SPEECH,
+  BAN_REASONS.ILLEGAL_CONTENT,
+  BAN_REASONS.IMPERSONATION,
+  BAN_REASONS.THREATS,
+  BAN_REASONS.DOXXING,
+  BAN_REASONS.OTHER,
+] as const;
+
 export const banUserSchema = z.object({
   userId: z.string().cuid('Invalid user ID'),
-  reason: z.enum(
-    [
-      BAN_REASONS.SPAM,
-      BAN_REASONS.HARASSMENT,
-      BAN_REASONS.HATE_SPEECH,
-      BAN_REASONS.ILLEGAL_CONTENT,
-      BAN_REASONS.IMPERSONATION,
-      BAN_REASONS.THREATS,
-      BAN_REASONS.DOXXING,
-      BAN_REASONS.OTHER,
-    ] as [string, ...string[]],
-    {
-      message: 'Invalid ban reason',
-    }
-  ),
+  reason: z.enum(banReasonValues, {
+    message: 'Invalid ban reason',
+  }),
   customReason: z.string().max(1000, 'Custom reason too long (max 1000 characters)').optional(),
   threadId: z.string().cuid('Invalid thread ID').optional(),
   expiresAt: z.date().min(new Date(), 'Expiration date must be in the future').optional(),

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowUpDown, Download, ExternalLink } from 'lucide-react';
 import type { Source } from '@/modules/ai-search/types';
 import { TimeAgo } from '@/components/ui/TimeAgo';
+import { Button } from '@/components/ui/button';
 
 interface TableViewProps {
   sources: Source[];
@@ -31,16 +32,18 @@ function SortHeader({
   onToggle: (key: SortKey) => void;
 }) {
   return (
-    <button
+    <Button type="button"
       onClick={() => onToggle(sortKeyVal)}
-      className="flex items-center gap-1 text-xs font-medium text-ink-2 hover:text-ink transition-colors"
+      variant="ghost"
+      size="sm"
+      className="justify-start gap-1 text-xs font-medium text-ink-2 hover:text-ink"
     >
       {label}
       <ArrowUpDown
         size={10}
         className={sortKey === sortKeyVal ? 'text-ink' : 'opacity-30'}
       />
-    </button>
+    </Button>
   );
 }
 
@@ -92,17 +95,19 @@ export function TableView({ sources }: TableViewProps) {
   };
 
   return (
-    <div className="bg-surface border border-line rounded-2xl overflow-hidden max-w-full">
+    <div className="bg-surface border border-line rounded-card overflow-hidden max-w-full">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-line">
         <span className="text-sm font-medium text-ink">{sources.length} Results</span>
-        <button
+        <Button type="button"
           onClick={exportCSV}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-ink-2 hover:text-ink bg-hover/40 hover:bg-hover rounded-lg transition-colors"
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-xs text-ink-2 hover:text-ink"
         >
           <Download size={12} />
           Export CSV
-        </button>
+        </Button>
       </div>
 
       {/* Table */}

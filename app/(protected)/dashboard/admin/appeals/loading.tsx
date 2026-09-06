@@ -6,9 +6,9 @@ export default function Loading() {
         <div className="skeleton h-4 w-64" />
       </div>
       <div className="space-y-3">
-        <div className="skeleton h-12 w-full rounded-xl" />
-        <div className="skeleton h-12 w-full rounded-xl" />
-        <div className="skeleton h-12 w-full rounded-xl" />
+        <div className="skeleton h-12 w-full rounded-card" />
+        <div className="skeleton h-12 w-full rounded-card" />
+        <div className="skeleton h-12 w-full rounded-card" />
       </div>
     </div>
   );

@@ -5,6 +5,31 @@ import { Prisma, Role } from '@prisma/client';
 
 const insensitive = 'insensitive' as const;
 
+const IS_NOT_DELETED_THREAD: Prisma.ThreadWhereInput = { deletedAt: null };
+
+async function buildThreadSearchWhere(
+  query: string,
+  threadIds: string[] | undefined,
+  viewerUserId: string | undefined,
+  viewerRole: Role | null | undefined
+): Promise<Prisma.ThreadWhereInput> {
+  const where: Prisma.ThreadWhereInput = {
+    ...IS_NOT_DELETED_THREAD,
+    AND: [
+      {
+        OR: [
+          { name: { contains: query, mode: insensitive } },
+          { description: { contains: query, mode: insensitive } },
+          { aiSummary: { contains: query, mode: insensitive } },
+        ],
+      },
+      await visibilityFilter(viewerUserId, viewerRole),
+    ],
+  };
+  if (threadIds && threadIds.length > 0) where.id = { in: threadIds };
+  return where;
+}
+
 export async function searchThreads(
   query: string,
   limit: number = 20,
@@ -14,40 +39,43 @@ export async function searchThreads(
   viewerRole?: Role | null
 ) {
   try {
-    const where: Prisma.ThreadWhereInput = {
-      AND: [
-        {
-          OR: [
-            { name: { contains: query, mode: insensitive } },
-            { description: { contains: query, mode: insensitive } },
-            { aiSummary: { contains: query, mode: insensitive } },
-          ],
-        },
-        await visibilityFilter(viewerUserId, viewerRole),
-      ],
-      deletedAt: null,
-      ...(threadIds?.length ? { id: { in: threadIds } } : {}),
-    };
+    const where = await buildThreadSearchWhere(query, threadIds, viewerUserId, viewerRole);
 
-    const [threads, total] = await Promise.all([
-      prisma.thread.findMany({
-        where,
-        include: {
-          creator: { select: { id: true, name: true, image: true } },
-          _count: { select: { messages: true } },
-        },
-        orderBy: [{ messageCount: 'desc' }, { createdAt: 'desc' }],
-        take: limit,
-        skip: offset,
-      }),
-      prisma.thread.count({ where }),
-    ]);
+    const threadsPromise = prisma.thread.findMany({
+      where,
+      include: {
+        creator: { select: { id: true, name: true, image: true } },
+        _count: { select: { messages: true } },
+      },
+      orderBy: [{ messageCount: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+      skip: offset,
+    });
+    const totalPromise = prisma.thread.count({ where });
+    const [threads, total] = await Promise.all([threadsPromise, totalPromise]);
 
     return { threads, total, hasMore: offset + limit < total };
   } catch (error) {
     logger.error('[searchThreads]', error);
     return { threads: [], total: 0, hasMore: false };
   }
+}
+
+const IS_NOT_DELETED_MESSAGE: Prisma.MessageWhereInput = { deletedAt: null };
+
+async function buildMessageSearchWhere(
+  query: string,
+  threadId: string | undefined,
+  viewerUserId: string | undefined,
+  viewerRole: Role | null | undefined
+): Promise<Prisma.MessageWhereInput> {
+  const where: Prisma.MessageWhereInput = {
+    ...IS_NOT_DELETED_MESSAGE,
+    content: { contains: query, mode: insensitive },
+    thread: { deletedAt: null, AND: [await visibilityFilter(viewerUserId, viewerRole)] },
+  };
+  if (threadId) where.threadId = threadId;
+  return where;
 }
 
 export async function searchMessages(
@@ -59,28 +87,20 @@ export async function searchMessages(
   viewerRole?: Role | null
 ) {
   try {
-    const where: Prisma.MessageWhereInput = {
-      deletedAt: null,
-      content: { contains: query, mode: insensitive },
-      // Exclude messages from soft-deleted threads — the thread is invisible everywhere else.
-      // The visibility filter keeps private/restricted thread content out of results.
-      thread: { deletedAt: null, AND: [await visibilityFilter(viewerUserId, viewerRole)] },
-      ...(threadId ? { threadId } : {}),
-    };
+    const where = await buildMessageSearchWhere(query, threadId, viewerUserId, viewerRole);
 
-    const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where,
-        include: {
-          sender: { select: { id: true, name: true, image: true } },
-          thread: { select: { id: true, name: true, slug: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.message.count({ where }),
-    ]);
+    const messagesPromise = prisma.message.findMany({
+      where,
+      include: {
+        sender: { select: { id: true, name: true, image: true } },
+        thread: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+    });
+    const totalPromise = prisma.message.count({ where });
+    const [messages, total] = await Promise.all([messagesPromise, totalPromise]);
 
     return { messages, total, hasMore: offset + limit < total };
   } catch (error) {
@@ -89,31 +109,31 @@ export async function searchMessages(
   }
 }
 
+const IS_ACTIVE_NOT_DELETED_USER: Prisma.UserWhereInput = { status: 'ACTIVE', deletedAt: null };
+
 export async function searchUsers(query: string, limit: number = 20, offset: number = 0) {
   try {
     const where: Prisma.UserWhereInput = {
-      status: 'ACTIVE',
-      deletedAt: null,
+      ...IS_ACTIVE_NOT_DELETED_USER,
       name: { contains: query, mode: insensitive },
     };
 
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          image: true,
-          bio: true,
-          followerCount: true,
-          followingCount: true,
-        },
-        orderBy: [{ followerCount: 'desc' }],
-        take: limit,
-        skip: offset,
-      }),
-      prisma.user.count({ where }),
-    ]);
+    const usersPromise = prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        image: true,
+        bio: true,
+        followerCount: true,
+        followingCount: true,
+      },
+      orderBy: [{ followerCount: 'desc' }],
+      take: limit,
+      skip: offset,
+    });
+    const totalPromise = prisma.user.count({ where });
+    const [users, total] = await Promise.all([usersPromise, totalPromise]);
 
     return { users, total, hasMore: offset + limit < total };
   } catch (error) {

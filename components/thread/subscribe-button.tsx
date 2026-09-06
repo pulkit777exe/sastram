@@ -1,15 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Bell } from 'lucide-react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   subscribeToThreadAction,
   unsubscribeFromThread,
   updateSubscriptionFrequencyAction,
 } from '@/modules/newsletter/actions';
-import { cn } from '@/lib/utils/cn';
 import { toasts } from '@/lib/utils/toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type SubscriptionFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'NEVER' | null;
 
@@ -18,6 +23,7 @@ interface ThreadSubscribeButtonProps {
   threadId: string;
   slug: string;
   initialFrequency: SubscriptionFrequency;
+  iconOnly?: boolean;
 }
 
 const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
@@ -28,52 +34,41 @@ const OPTIONS: Array<{ label: string; value: SubscriptionFrequency }> = [
   { label: 'Never', value: 'NEVER' },
 ];
 
+const NULL_SENTINEL = 'null';
+
+function frequencyToValue(frequency: SubscriptionFrequency): string {
+  if (frequency === null) return NULL_SENTINEL;
+  return frequency;
+}
+
+function valueToFrequency(value: string): SubscriptionFrequency {
+  if (value === NULL_SENTINEL) return null;
+  return value as SubscriptionFrequency;
+}
+
+function getPreviewLabel(frequency: SubscriptionFrequency): string {
+  if (frequency === null) return 'N';
+  return frequency.charAt(0);
+}
+
 export function ThreadSubscribeButton({
-  threadName = 'this thread',
+  threadName: _threadName = 'this thread',
   threadId,
   slug,
   initialFrequency,
+  iconOnly = false,
 }: ThreadSubscribeButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [frequency, setFrequency] = useState<SubscriptionFrequency>(initialFrequency);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const closeMs = 150;
-
-  const triggerLabel = useMemo(() => {
-    if (!frequency) return 'Not subscribed';
-    if (frequency === 'DAILY') return 'Daily';
-    if (frequency === 'WEEKLY') return 'Weekly';
-    if (frequency === 'MONTHLY') return 'Monthly';
-    return 'Never';
-  }, [frequency]);
-
-  useEffect(() => {
-    const onOutsideClick = (event: MouseEvent) => {
-      const target = event.target as Node | null;
-      if (!target || containerRef.current?.contains(target)) {
-        return;
-      }
-      setIsClosing(true);
-      setTimeout(() => { setIsOpen(false); setIsClosing(false); }, closeMs);
-    };
-
-    document.addEventListener('mousedown', onOutsideClick);
-    return () => document.removeEventListener('mousedown', onOutsideClick);
-  }, []);
 
   const setSubscription = async (nextFrequency: SubscriptionFrequency) => {
     if (isSaving || nextFrequency === frequency) {
-      setIsOpen(false);
       return;
     }
 
     const previous = frequency;
     setFrequency(nextFrequency);
     setIsSaving(true);
-    setIsClosing(true);
-    setTimeout(() => { setIsOpen(false); setIsClosing(false); }, closeMs);
 
     try {
       if (nextFrequency === null || nextFrequency === 'NEVER') {
@@ -113,59 +108,54 @@ export function ThreadSubscribeButton({
     }
   };
 
-  return (
-    <div ref={containerRef} className="relative">
-      <PressDepth
-        type="button"
-        disabled={isSaving}
-        onClick={() => {
-          if (isOpen) {
-            setIsClosing(true);
-            setTimeout(() => { setIsOpen(false); setIsClosing(false); }, closeMs);
-          } else {
-            setIsClosing(false);
-            setIsOpen(true);
-          }
-        }}
-        className="w-full justify-between rounded-xl border-border/70"
-      >
-        <span className="inline-flex items-center gap-2">
-          <Bell className="h-4 w-4" />
-          {triggerLabel}
-        </span>
-        <span className="text-xs text-muted-foreground">{isSaving ? 'Saving...' : 'Change'}</span>
-      </PressDepth>
+  if (iconOnly) {
+    const previewLabel = getPreviewLabel(frequency);
 
-      {isOpen && (
-        <div
-          className={cn(
-            't-dropdown absolute left-0 right-0 mt-2 rounded-lg border border-border bg-popover shadow-linear-lg z-20',
-            isClosing ? 'is-closing' : 'is-open'
+    return (
+      <Select
+        value={frequencyToValue(frequency)}
+        onValueChange={(v) => void setSubscription(valueToFrequency(v))}
+        disabled={isSaving}
+      >
+        <SelectTrigger className="!h-8 !w-auto !px-2 !py-0 !rounded-control !border-0 !bg-transparent !ring-0 !ring-offset-0 flex items-center gap-1.5 !shadow-none text-ink-3 hover:text-ink hover:bg-hover transition-colors [&>svg]:hidden">
+          <Bell className="h-4 w-4" />
+          {frequency !== null && (
+            <span className="text-[10px] font-semibold leading-none">{previewLabel}</span>
           )}
-          data-origin="top-left"
-        >
-          <div className="p-2">
-            {OPTIONS.map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                disabled={isSaving}
-                onClick={() => void setSubscription(option.value)}
-                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                  frequency === option.value
-                    ? 'bg-brand/10 text-brand'
-                    : 'hover:bg-muted text-foreground'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-            Updates for {threadName}
-          </div>
-        </div>
-      )}
+        </SelectTrigger>
+        <SelectContent>
+          {OPTIONS.map((option) => (
+            <SelectItem key={option.label} value={frequencyToValue(option.value)}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Select
+        value={frequencyToValue(frequency)}
+        onValueChange={(v) => void setSubscription(valueToFrequency(v))}
+        disabled={isSaving}
+      >
+        <SelectTrigger className="w-full justify-between rounded-card border-line/70">
+          <span className="inline-flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            <SelectValue placeholder="Not subscribed" />
+          </span>
+        </SelectTrigger>
+        <SelectContent>
+          {OPTIONS.map((option) => (
+            <SelectItem key={option.label} value={frequencyToValue(option.value)}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span className="text-xs text-muted-foreground">{isSaving ? 'Saving...' : 'Change'}</span>
     </div>
   );
 }

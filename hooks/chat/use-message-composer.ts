@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
 import { postMessage } from '@/modules/messages/actions';
@@ -87,6 +87,9 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     aiClientStream = false,
   } = options;
 
+  // Destructure with defaults at top — avoids repeated props?.x?.y ?? default chains
+  const { id: currentUserId = '', name: currentUserName = '', image: currentUserImage = null } = currentUser ?? {};
+
   const [content, setContent] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -118,11 +121,15 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
     setSelectedFile(file);
   }, []);
 
+  const hasValidPoll =
+    showPollBuilder && pollQuestion.trim().length > 0 && pollOptions.filter((o) => o.trim()).length >= 2;
+
   // --- Submit ---
   const handleSubmit = useCallback(
     async (formData?: FormData) => {
-      const hasPoll = showPollBuilder && pollQuestion.trim().length > 0 && pollOptions.filter(o => o.trim()).length >= 2;
-      if (!content.trim() && !selectedFile && !hasPoll) {
+      const hasPoll = hasValidPoll;
+      const isEmptyMessage = !content.trim() && !selectedFile && !hasPoll;
+      if (isEmptyMessage) {
         toasts.error('Message cannot be empty');
         return;
       }
@@ -134,7 +141,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         id: tempId,
         content: messageContent,
         threadId,
-        senderId: currentUser?.id ?? '',
+        senderId: currentUserId,
         parentId: parentId ?? replyTo?.messageId ?? null,
         depth,
         isEdited: false,
@@ -145,7 +152,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
-        sender: { id: currentUser?.id ?? '', name: currentUser?.name || 'You', image: currentUser?.image ?? null },
+        sender: { id: currentUserId, name: currentUserName || 'You', image: currentUserImage },
         thread: { id: threadId, name: '', slug: '' },
         attachments: [],
       };
@@ -232,11 +239,21 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         toasts.error(result.error);
       } else if (result?.data?.message) {
         const msg = result.data.message;
+        let senderId = msg.senderId;
+        if (!senderId) senderId = currentUserId;
+        let sender = msg.sender;
+        if (!sender) {
+          let fallbackSenderId = msg.senderId;
+          if (!fallbackSenderId) fallbackSenderId = currentUserId;
+          sender = { id: fallbackSenderId, name: null, image: null };
+        }
+        let thread = msg.thread;
+        if (!thread) thread = { id: msg.threadId, name: '', slug: '' };
         const transformedMessage: Message = {
           id: msg.id,
           content: msg.content,
           threadId: msg.threadId,
-          senderId: msg.senderId ?? currentUser?.id ?? '',
+          senderId,
           parentId: msg.parentId,
           depth: msg.depth,
           isEdited: false,
@@ -247,21 +264,27 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
           createdAt: msg.createdAt,
           updatedAt: msg.updatedAt,
           deletedAt: null,
-          sender: msg.sender ?? { id: msg.senderId ?? currentUser?.id ?? '', name: null, image: null },
-          thread: msg.thread ?? { id: msg.threadId, name: '', slug: '' },
+          sender,
+          thread,
           attachments:
             msg.attachments?.map((att: { id: string; url: string; type: string; name: string | null; size: bigint | null }) => ({
               ...att,
               size: att.size !== null ? Number(att.size) : null,
             })) ?? [],
         };
-        const aiInline: AiInlineMeta['aiInline'] = result.data.aiInlineStreaming
-          ? 'streaming'
-          : result.data.aiInlineQueued
-            ? 'queued'
-            : result.data.aiInlineLimited
-              ? 'limited'
-              : null;
+        let aiInline: AiInlineMeta['aiInline'] = null;
+        const isStreaming = result.data.aiInlineStreaming === true;
+        const isQueued = result.data.aiInlineQueued === true;
+        const isLimited = result.data.aiInlineLimited === true;
+
+        if (isStreaming) {
+          aiInline = 'streaming';
+        } else if (isQueued) {
+          aiInline = 'queued';
+        } else if (isLimited) {
+          aiInline = 'limited';
+        }
+
         onMessagePosted?.(transformedMessage, { aiInline });
         onSuccess?.();
 
@@ -277,20 +300,20 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       parentId,
       replyTo,
       depth,
-      currentUser,
-      mentions.mentionedUserIds,
-      mentions.setMentionedUserIds,
-      mentions.closeMentions,
+      currentUserId,
+      currentUserName,
+      currentUserImage,
       onOptimisticMessage,
       onMessagePosted,
       onMessageError,
       onSuccess,
       onCancelReply,
-      draft.clear,
-      showPollBuilder,
+      hasValidPoll,
       pollQuestion,
       pollOptions,
       aiClientStream,
+      draft,
+      mentions,
     ]
   );
 
@@ -335,17 +358,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
         mentions.closeMentions();
       }
     },
-    [
-      mentions.mentionOpen,
-      mentions.mentionCandidates,
-      mentions.activeMentionIndex,
-      mentions.setActiveMentionIndex,
-      mentions.applyMentionSelection,
-      mentions.closeMentions,
-      handleSubmit,
-      replyTo,
-      onCancelReply,
-    ]
+    [mentions, handleSubmit, replyTo, onCancelReply]
   );
 
   // --- Change / Blur ---
@@ -356,7 +369,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
       setContent(nextValue);
       mentions.detectMentionQuery(nextValue, caret);
     },
-    [mentions.detectMentionQuery]
+    [mentions]
   );
 
   const handleBlur = useCallback(() => {}, []);
@@ -367,12 +380,9 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
   }, []);
 
   // --- canSubmit ---
-  const canSubmit = useMemo(() => {
-    const hasContent = content.trim().length > 0;
-    const hasFile = !!selectedFile;
-    const hasPoll = showPollBuilder && pollQuestion.trim().length > 0 && pollOptions.filter(o => o.trim()).length >= 2;
-    return hasContent || hasFile || hasPoll;
-  }, [content, selectedFile, showPollBuilder, pollQuestion, pollOptions]);
+  const hasContent = content.trim().length > 0;
+  const hasFile = selectedFile !== null;
+  const canSubmit = hasContent || hasFile || hasValidPoll;
 
   return {
     content,

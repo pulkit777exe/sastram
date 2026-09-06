@@ -24,8 +24,8 @@ export function MessageGrid({ messages }: MessageGridProps) {
   if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-lg font-semibold text-foreground">No messages yet</p>
-        <p className="text-muted-foreground">You haven&apos;t posted any messages yet.</p>
+        <p className="text-lg font-semibold text-ink">No messages yet</p>
+        <p className="text-ink-3">You haven&apos;t posted any messages yet.</p>
       </div>
     );
   }
@@ -35,22 +35,22 @@ export function MessageGrid({ messages }: MessageGridProps) {
       {messages.map((message) => (
         <div key={message.id}>
           <Link href={ROUTES.THREAD(message.section.slug)}>
-            <div className="group flex flex-col gap-2 rounded-xl bg-card border border-border p-5 shadow-linear-sm transition-all hover:shadow-linear-md hover:border-brand/20 hover:bg-muted/50">
+            <div className="group flex flex-col gap-2 rounded-card bg-surface border border-line p-5 shadow-linear-sm transition-all hover:shadow-linear-md hover:border-brand/20 hover:bg-hover/50">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-brand">
+                <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-field text-brand">
                     <MessageSquare className="h-4 w-4" />
                   </div>
                   <span>
                     Posted in <span className="text-brand">{message.section.name}</span>
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-ink-3">
                   <TimeAgo date={message.createdAt} />
                 </span>
               </div>
 
-              <p className="pl-10 text-sm text-foreground/80 line-clamp-2 group-hover:text-foreground transition-colors">
+              <p className="pl-10 text-sm text-ink/80 line-clamp-2 group-hover:text-ink transition-colors">
                 {message.content}
               </p>
 

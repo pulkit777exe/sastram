@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { PressDepth } from '@/components/ui/button-press-depth';
+import { Button } from '@/components/ui/button';
 import { ThumbsUp, Pin, Loader2 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
@@ -43,33 +43,13 @@ function computeCompactFlags(messages: Message[]): boolean[] {
   return flags;
 }
 
-// Flat, chronological replies list — pre-computed per parentId
-function buildAllDescendantsMap(repliesMap: Map<string, Message[]>): Map<string, Message[]> {
-  const cache = new Map<string, Message[]>();
-
-  function getDescendants(parentId: string): Message[] {
-    const cached = cache.get(parentId);
-    if (cached) return cached;
-
-    const direct = repliesMap.get(parentId) || [];
-    const all: Message[] = [];
-
-    for (const r of direct) {
-      all.push(r);
-      all.push(...getDescendants(r.id));
-    }
-
-    all.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    cache.set(parentId, all);
-    return all;
-  }
-
-  // Pre-compute for all parents that have replies
-  for (const parentId of repliesMap.keys()) {
-    getDescendants(parentId);
-  }
-
-  return cache;
+// Simple helper: get direct replies for a parent, sorted chronologically.
+// KISS: removed premature cache optimization — sorting <100 items is trivial.
+// No recursion or descendant flattening needed for most threads; direct lookup keeps code simple and readable.
+function getRepliesForParent(parentId: string, repliesMap: Map<string, Message[]>): Message[] {
+  const replies = repliesMap.get(parentId) || [];
+  // Return a sorted copy — explicit loop sort, no caching.
+  return [...replies].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
 function buildRepliesMap(messages: Message[]): Map<string, Message[]> {
@@ -94,8 +74,6 @@ export function MessageList({ firstUnreadMessageId }: MessageListProps) {
   );
 
   const repliesMap = useMemo(() => buildRepliesMap(allMessages), [allMessages]);
-
-  const allDescendantsMap = useMemo(() => buildAllDescendantsMap(repliesMap), [repliesMap]);
 
   const compactFlags = useMemo(
     () => computeCompactFlags(topLevelMessages),
@@ -130,7 +108,7 @@ export function MessageList({ firstUnreadMessageId }: MessageListProps) {
     <div style={{ position: 'relative', height: `${virtualizer.getTotalSize()}px`, minHeight: 0 }}>
       {virtualizer.getVirtualItems().map((virtualItem) => {
         const msg = topLevelMessages[virtualItem.index];
-        const replies = allDescendantsMap.get(msg.id) || [];
+        const replies = getRepliesForParent(msg.id, repliesMap);
         const isCompact = compactFlags[virtualItem.index];
         return (
           <div
@@ -202,7 +180,7 @@ const MessageRow = React.memo(function MessageRow({
   const [likeCount, setLikeCount] = useState(message.likeCount ?? 0);
   const [isLiking, setIsLiking] = useState(false);
 
-  const [isPinning, setIsPinning] = useState(false);
+  const [_isPinning, setIsPinning] = useState(false);
   
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -241,17 +219,17 @@ const MessageRow = React.memo(function MessageRow({
       <div
         id={`message-${message.id}`}
         className={cn(
-          "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-muted/20 relative transition-colors duration-75",
+          "group flex gap-3 px-3 py-1.5 rounded-control hover:bg-hover/50 relative transition-colors duration-75",
           isCompact && "pl-13"
         )}
       >
         {!isCompact && (
-          <div className="w-8 h-8 mt-0.5 shrink-0 rounded-full bg-muted/40 flex items-center justify-center">
-            <span className="text-muted-foreground/30 text-xs">?</span>
+          <div className="w-8 h-8 mt-0.5 shrink-0 rounded-full bg-field flex items-center justify-center">
+            <span className="text-ink-3/30 text-xs">?</span>
           </div>
         )}
         <div className="flex-1 min-w-0 py-0.5">
-          <span className="text-xs text-muted-foreground/50 italic">[This message was deleted]</span>
+          <span className="text-xs text-ink-3/50 italic">[This message was deleted]</span>
         </div>
       </div>
     );
@@ -262,7 +240,7 @@ const MessageRow = React.memo(function MessageRow({
       {isFirstUnread && (
         <div className="flex items-center gap-2.5 my-3" role="separator" aria-label="New messages indicator">
           <div className="flex-1 h-px bg-brand/30" />
-          <span className="text-xs text-brand font-bold uppercase tracking-wider whitespace-nowrap bg-card px-2.5">
+          <span className="text-xs text-brand font-bold uppercase tracking-wider whitespace-nowrap bg-surface px-2.5">
             New messages
           </span>
           <div className="flex-1 h-px bg-brand/30" />
@@ -272,7 +250,7 @@ const MessageRow = React.memo(function MessageRow({
       <div
         id={`message-${message.id}`}
         className={cn(
-          "group flex gap-3 px-3 py-1.5 rounded-lg hover:bg-muted/30 relative transition-colors duration-75",
+          "group flex gap-3 px-3 py-1.5 rounded-control hover:bg-muted/30 relative transition-colors duration-75",
           isCompact && "pl-13",
           isShowingReplyBox && "bg-brand/10 dark:bg-brand/10"
         )}
@@ -342,24 +320,27 @@ const MessageRow = React.memo(function MessageRow({
                 }}
               />
               <div className="flex justify-end gap-2">
-                <PressDepth
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setIsEditing(false);
                     setEditContent(message.content);
                   }}
                 >
                   Cancel
-                </PressDepth>
-                <PressDepth
+                </Button>
+                <Button
+                  size="sm"
                   disabled={isSavingEdit || !editContent.trim() || editContent === message.content}
                   onClick={() => void handleSaveEdit()}
                 >
                   {isSavingEdit ? 'Saving...' : 'Save'}
-                </PressDepth>
+                </Button>
               </div>
             </div>
           ) : message.isAiResponse ? (
-            <div className="mt-0.5 rounded-lg bg-brand/[0.04] dark:bg-brand/[0.07] px-3 py-2 -mx-1">
+            <div className="mt-0.5 rounded-control bg-brand/[0.04] dark:bg-brand/[0.07] px-3 py-2 -mx-1">
               <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-brand/70">
                 <span className="h-1 w-1 rounded-full bg-brand/60" />
                 Synthesis
@@ -494,10 +475,11 @@ const MessageRow = React.memo(function MessageRow({
         )}
 
         {showDeleteConfirm && (
-          <div className="absolute right-4 top-2 bg-card border border-border shadow-linear-lg rounded-lg p-2 flex items-center gap-2 text-xs z-30">
+          <div className="absolute right-4 top-2 bg-surface border border-line shadow-linear-lg rounded-control p-2 flex items-center gap-2 text-xs z-30">
             <span className="font-medium text-destructive">Delete message?</span>
-            <PressDepth
-              className="h-6 px-2 text-xs"
+            <Button
+              size="sm"
+              variant="destructive"
               disabled={isDeleting}
               onClick={async () => {
                 setIsDeleting(true);
@@ -512,13 +494,14 @@ const MessageRow = React.memo(function MessageRow({
               }}
             >
               Delete
-            </PressDepth>
-            <PressDepth
-              className="h-6 px-2 text-xs"
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setShowDeleteConfirm(false)}
             >
               Cancel
-            </PressDepth>
+            </Button>
           </div>
         )}
       </div>

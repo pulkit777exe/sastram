@@ -1,10 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
-import { Hash, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@/lib/config/routes';
 import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
 import { InviteFriendButton } from '@/components/thread/invite-friend-button';
-import { Badge } from '@/components/ui/badge';
 
 interface ThreadPageHeaderProps {
   title: string;
@@ -20,54 +19,31 @@ export function ThreadPageHeader({
   initialFrequency,
 }: ThreadPageHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-4 sm:px-6 h-16 border-b border-border/60 shrink-0 bg-card/95 backdrop-blur z-30">
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+    <header className="flex items-center justify-between px-4 sm:px-6 h-14 border-b border-line/60 shrink-0 bg-surface/95 backdrop-blur z-30">
+      <div className="flex items-center gap-2 min-w-0">
         <Link
           href={ROUTES.DASHBOARD_THREADS}
           aria-label="Back to threads"
-          className="shrink-0 w-9 h-9 -ml-1 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          className="shrink-0 w-8 h-8 -ml-1 rounded-control flex items-center justify-center text-ink-3 hover:text-ink hover:bg-hover transition-colors"
         >
-          <ArrowLeft size={18} strokeWidth={2.25} />
+          <ArrowLeft size={16} strokeWidth={2.25} />
         </Link>
-        <div className="w-8 h-8 rounded-lg bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand dark:text-brand border border-brand/15 dark:border-brand/25 shrink-0">
-          <Hash size={16} strokeWidth={2.5} />
-        </div>
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <span className="text-sm font-semibold text-foreground tracking-tight truncate">{title}</span>
-          <LiveBadge />
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-sai-green animate-pulse shrink-0" />
+          <span className="text-sm font-semibold text-ink tracking-tight truncate">{title}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="h-8 min-w-36">
-          <ThreadSubscribeButton
-            threadId={threadId}
-            slug={slug}
-            initialFrequency={initialFrequency}
-            threadName={title}
-          />
-        </div>
-
-        <InviteFriendButton threadId={threadId} threadName={title} />
+      <div className="flex items-center gap-1">
+        <ThreadSubscribeButton
+          threadId={threadId}
+          slug={slug}
+          initialFrequency={initialFrequency}
+          threadName={title}
+          iconOnly
+        />
+        <InviteFriendButton threadId={threadId} threadName={title} iconOnly />
       </div>
     </header>
-  );
-}
-
-function LiveBadge() {
-  return (
-    <Badge variant="live" className="gap-1.5 px-2 py-0.5 text-xs uppercase tracking-widest">
-      <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-      Live
-    </Badge>
-  );
-}
-
-function HeaderBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/60 hover:bg-muted/40 text-xs font-semibold text-muted-foreground transition-all cursor-default select-none h-9">
-      {icon}
-      <span>{label}</span>
-    </div>
   );
 }

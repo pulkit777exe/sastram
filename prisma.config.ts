@@ -12,7 +12,8 @@ function resolveDatabaseUrl(): string {
     process.env.NODE_ENV === 'production' &&
     !url.includes('pgbouncer=true')
   ) {
-    const separator = url.includes('?') ? '&' : '?';
+    let separator = '?';
+    if (url.includes('?')) separator = '&';
     return `${url}${separator}pgbouncer=true`;
   }
 

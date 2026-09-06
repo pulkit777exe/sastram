@@ -69,7 +69,7 @@ export interface SynthesisResult {
 export interface AISearchResponse {
   synthesis: SynthesisResult;
   sources: Source[];
-  phase: 'classify' | 'search' | 'crossref' | 'synthesize' | 'done' | 'refine';
+  phase: 'classify' | 'search' | 'crossref' | 'synthesize' | 'done';
   error?: string;
   timings?: PhaseTimings;
 }

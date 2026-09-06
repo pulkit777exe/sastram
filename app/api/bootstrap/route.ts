@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { ok, fail } from '@/lib/utils/api-response';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { getUserBootstrapProfile } from '@/modules/users/repository';
 import { getUnreadCount } from '@/modules/notifications/repository';
 import { getUserActivity } from '@/modules/activity/repository';
@@ -10,7 +10,7 @@ export async function GET() {
   try {
     session = await requireSessionOrThrow();
   } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'No active session'), { status: 401 });
+    return NextResponse.json(fail('AUTH_REQUIRED', 'No active session'), { status: HTTP_STATUS.UNAUTHORIZED });
   }
 
   const userId = session.user.id;
@@ -24,7 +24,7 @@ export async function GET() {
       ]);
 
     if (!user) {
-      return NextResponse.json(fail('NOT_FOUND', 'User not found'), { status: 404 });
+      return NextResponse.json(fail('NOT_FOUND', 'User not found'), { status: HTTP_STATUS.NOT_FOUND });
     }
 
     return NextResponse.json(ok({
@@ -37,7 +37,7 @@ export async function GET() {
       unreadNotificationCount,
       recentActivity: activity.activities.slice(0, 5),
     }));
-  } catch (error) {
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load bootstrap data'), { status: 500 });
+  } catch {
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load bootstrap data'), { status: HTTP_STATUS.INTERNAL });
   }
 }

@@ -8,7 +8,7 @@ import { checkAndLogUsage } from '@/lib/services/usage-check';
 import { updateAllThreadRelations } from '@/modules/threads';
 import { prewarmFollowUpQueries } from '@/modules/ai-search';
 import { verifyCronAuth } from '@/lib/middleware/cron-auth';
-import { ok, fail } from '@/lib/utils/api-response';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
@@ -167,6 +167,6 @@ export async function GET(req: NextRequest) {
     );
   } catch (error) {
     logger.error('Update threads cron error:', error);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Update threads failed'), { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Update threads failed'), { status: HTTP_STATUS.INTERNAL });
   }
 }

@@ -28,12 +28,12 @@ const QUERY_TYPE_LABELS: Record<string, { label: string; variant: 'live' | 'warn
 
 export function SynthesisCard({
   text,
-  citations = [],
+  citations: _citations = [],
   sources = [],
   conflictData,
   sourceCount,
   queryType,
-  onCiteClick,
+  onCiteClick: _onCiteClick,
   isStreaming = false,
   fromHistory = false,
   onRetry,
@@ -96,7 +96,7 @@ export function SynthesisCard({
 
       {/* Conflict Warning */}
       {conflictData?.detected && (
-        <div className="mx-5 mb-5 px-4 py-3 bg-red-tint border border-line rounded-[10px] animate-fade-up">
+        <div className="mx-5 mb-5 px-4 py-3 bg-red-tint border border-line rounded-card animate-fade-up">
           <div className="flex items-start gap-2.5">
             <AlertTriangle size={15} className="text-red mt-0.5 shrink-0" />
             <div className="text-[12.5px] leading-relaxed">

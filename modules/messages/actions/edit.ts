@@ -23,8 +23,8 @@ export const editMessage = createServerAction(
 
     try {
       const message = await prisma.message.findUnique({
-        where: { id: messageId },
-        select: { senderId: true, content: true },
+        where: { id: messageId, deletedAt: null },
+        select: { senderId: true, content: true, threadId: true },
       });
 
       if (!message) {
@@ -35,21 +35,24 @@ export const editMessage = createServerAction(
         return actionFailure('FORBIDDEN', 'You can only edit your own messages');
       }
 
-      await prisma.messageEdit.create({
-        data: {
-          messageId,
-          content: message.content,
-        },
-      });
+      await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
 
       const safeContent = sanitizeContent(content);
-      await prisma.message.update({
-        where: { id: messageId },
-        data: {
-          content: safeContent,
-          isEdited: true,
-        },
-      });
+      await prisma.$transaction([
+        prisma.messageEdit.create({
+          data: {
+            messageId,
+            content: message.content,
+          },
+        }),
+        prisma.message.update({
+          where: { id: messageId },
+          data: {
+            content: safeContent,
+            isEdited: true,
+          },
+        }),
+      ]);
 
       revalidatePath('/dashboard/threads');
       return actionSuccess(null);

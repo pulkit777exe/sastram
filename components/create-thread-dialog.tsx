@@ -10,10 +10,10 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Plus, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { createThreadAction } from '@/modules/threads/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -32,6 +32,11 @@ const MAX_CHECKS_PER_SESSION = 3;
 
 // Wait for a real pause in typing, not a micro-pause mid-sentence.
 const SIMILARITY_DEBOUNCE_MS = 1500;
+
+// Build payload for dedup — use JSON.stringify instead of clever null-separator trick
+function buildPayload(titleText: string, descText: string): string {
+  return JSON.stringify({ title: titleText.trim(), desc: descText.trim() });
+}
 
 export function CreateThreadDialog() {
   const [open, setOpen] = useState(false);
@@ -60,7 +65,7 @@ export function CreateThreadDialog() {
 
     // Skip identical payloads (retyping the same text, description-only edits
     // that leave the analysed text unchanged).
-    const payload = `${titleText.trim()}\u0000${descText.trim()}`;
+    const payload = buildPayload(titleText, descText);
     if (lastCheckedRef.current === payload) return;
     lastCheckedRef.current = payload;
     checksUsedRef.current += 1;
@@ -126,10 +131,10 @@ export function CreateThreadDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <PressDepth className="bg-brand text-white font-bold hover:bg-brand-hover cursor-pointer">
+        <Button>
           <Plus className="h-4 w-4 mr-2" />
           Create Thread
-        </PressDepth>
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-120">
         <DialogHeader>
@@ -169,19 +174,19 @@ export function CreateThreadDialog() {
           )}
 
           {showSimilar && (
-            <div className="border border-amber-500/30 bg-amber-500/5 rounded-md p-3 space-y-2">
+            <div className="border border-amber-500/30 bg-amber-500/5 rounded-control p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Similar threads found
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setDismissed(true)}
-                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
               <ul className="space-y-1.5">
                 {similarThreads.map((t) => (
@@ -192,7 +197,7 @@ export function CreateThreadDialog() {
                       rel="noopener noreferrer"
                       className={cn(
                         'flex items-center justify-between text-xs px-2 py-1.5 rounded',
-                        'bg-background/60 hover:bg-background border border-border/50',
+                        'bg-background/60 hover:bg-background border border-line/50',
                         'transition-colors'
                       )}
                     >
@@ -210,16 +215,16 @@ export function CreateThreadDialog() {
             </div>
           )}
 
-          <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+          <div className="border rounded-control p-3 space-y-3 bg-muted/30">
             <Label className="text-sm font-medium">Poll (optional)</Label>
             <Input name="pollQuestion" placeholder="Poll question" />
             <Textarea name="pollOptions" placeholder="Option 1&#10;Option 2" className="font-mono text-sm" />
             <p className="text-xs text-muted-foreground">One option per line, at least 2.</p>
             <Input name="pollExpiresAt" type="datetime-local" />
           </div>
-          <PressDepth type="submit" className="w-full bg-brand hover:bg-brand-hover text-white font-bold" disabled={isPending}>
+          <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? 'Creating...' : 'Publish thread'}
-          </PressDepth>
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

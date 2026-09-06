@@ -84,16 +84,15 @@ export async function listAllTags(params?: { page?: number; pageSize?: number; s
     ? { name: { contains: params.search, mode: 'insensitive' as const } }
     : {};
 
-  const [tags, total] = await Promise.all([
-    prisma.threadTag.findMany({
-      where,
-      include: withThreadCount,
-      orderBy: { threads: { _count: 'desc' } },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.threadTag.count({ where }),
-  ]);
+  const tagsPromise = prisma.threadTag.findMany({
+    where,
+    include: withThreadCount,
+    orderBy: { threads: { _count: 'desc' } },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  });
+  const totalPromise = prisma.threadTag.count({ where });
+  const [tags, total] = await Promise.all([tagsPromise, totalPromise]);
 
   return {
     tags: tags.map((t) => ({ ...t, threadCount: t._count.threads })),

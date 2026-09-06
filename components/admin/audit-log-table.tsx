@@ -1,7 +1,6 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { MoreHorizontal } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { cn } from '@/lib/utils/cn';
@@ -13,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 
 interface AuditLogEntry {
   id: string;
@@ -46,11 +46,11 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
   }
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
+    <div className="rounded-control border border-line overflow-hidden">
       <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="border-border hover:bg-transparent">
+          <TableRow className="border-line hover:bg-transparent">
             <TableHead className="text-muted-foreground">Time</TableHead>
             <TableHead className="text-muted-foreground">Action</TableHead>
             <TableHead className="text-muted-foreground">Category</TableHead>
@@ -61,7 +61,7 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
         </TableHeader>
         <TableBody>
           {entries.map((entry) => (
-            <TableRow key={entry.id} className="border-border">
+            <TableRow key={entry.id} className="border-line">
               <TableCell className="text-sm text-muted-foreground">
                 <TimeAgo date={entry.timestamp} />
               </TableCell>
@@ -79,9 +79,9 @@ export function AuditLogTable({ entries }: AuditLogTableProps) {
               <TableCell className="text-sm text-foreground">{entry.target}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{entry.performedBy}</TableCell>
               <TableCell className="text-right">
-                <PressDepth className="h-8 w-8">
+                <Button type="button" variant="ghost" size="icon-sm">
                   <MoreHorizontal className="w-4 h-4" />
-                </PressDepth>
+                </Button>
               </TableCell>
             </TableRow>
           ))}

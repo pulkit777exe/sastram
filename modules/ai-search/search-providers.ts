@@ -122,6 +122,46 @@ export function isOutdated(publishedDate?: string): boolean {
   return new Date(publishedDate) < twoYearsAgo;
 }
 
+function getConfidenceForTier(tier: 1 | 2 | 3 | 4): number {
+  if (tier === 1) return 90;
+  if (tier === 2) return 75;
+  if (tier === 3) return 60;
+  return 45;
+}
+
+function buildExaBody(query: string, classification: QueryClassification, config: SearchConfig): Record<string, unknown> {
+  const searchQuery = classification.searchTerms[0] ?? query;
+  const body: Record<string, unknown> = {
+    query: searchQuery,
+    type: config.exaMode === 'instant' ? 'keyword' : 'neural',
+    numResults: 8,
+    text: { maxCharacters: 8000 },
+    useAutoprompt: true,
+  };
+  const includeDomains = getIncludeDomains(config.sourceFilter);
+  if (includeDomains) body.includeDomains = includeDomains;
+  return body;
+}
+
+function mapExaResult(r: { id?: string; title?: string; url?: string; text?: string; publishedDate?: string }): Source {
+  const domain = extractDomain(r.url || '');
+  const tier = assignTier(domain);
+  return {
+    id: r.id || uuidv4(),
+    title: r.title || 'Untitled',
+    url: r.url || '',
+    domain,
+    snippet: (r.text || '').substring(0, 300),
+    text: r.text || '',
+    publishedDate: r.publishedDate,
+    tier,
+    confidence: getConfidenceForTier(tier),
+    isOutdated: isOutdated(r.publishedDate),
+    provider: 'exa' as const,
+    contentFetched: Boolean(r.text && r.text.trim().length > 0),
+  };
+}
+
 export async function searchWithExa(
   query: string,
   classification: QueryClassification,
@@ -129,65 +169,61 @@ export async function searchWithExa(
   config: SearchConfig
 ): Promise<Source[]> {
   try {
-    const includeDomains = getIncludeDomains(config.sourceFilter);
-    const searchTerms = classification.searchTerms;
-    const searchQuery = searchTerms.length > 0 ? searchTerms[0] : query;
-
-    const body: Record<string, unknown> = {
-      query: searchQuery,
-      type: config.exaMode === 'instant' ? 'keyword' : 'neural',
-      numResults: 8,
-      text: { maxCharacters: 8000 },
-      useAutoprompt: true,
-    };
-
-    if (includeDomains) {
-      body.includeDomains = includeDomains;
-    }
-
+    const body = buildExaBody(query, classification, config);
     const data = await withRetry(async (signal) => {
       const response = await fetch('https://api.exa.ai/search', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': exaKey,
-        },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
         body: JSON.stringify(body),
         signal,
       });
-
-      if (!response.ok) {
-        throw new Error(`Exa API error: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Exa API error: ${response.status}`);
       return response.json();
     });
     const results = data.results || [];
-
-    return results.map(
-      (r: { id?: string; title?: string; url?: string; text?: string; publishedDate?: string }) => {
-        const domain = extractDomain(r.url || '');
-        const tier = assignTier(domain);
-        return {
-          id: r.id || uuidv4(),
-          title: r.title || 'Untitled',
-          url: r.url || '',
-          domain,
-          snippet: (r.text || '').substring(0, 300),
-          text: r.text || '',
-          publishedDate: r.publishedDate,
-          tier,
-          confidence: tier === 1 ? 90 : tier === 2 ? 75 : tier === 3 ? 60 : 45,
-          isOutdated: isOutdated(r.publishedDate),
-          provider: 'exa' as const,
-          contentFetched: Boolean(r.text && r.text.trim().length > 0),
-        };
-      }
-    );
+    return results.map(mapExaResult);
   } catch (error) {
     logger.error('Exa search failed:', error);
     return [];
   }
+}
+
+function buildTavilyBody(query: string, classification: QueryClassification, config: SearchConfig): Record<string, unknown> {
+  const searchQuery = classification.searchTerms[0] ?? query;
+  const body: Record<string, unknown> = {
+    query: searchQuery,
+    search_depth: config.tavilyMode === 'research' ? 'advanced' : 'basic',
+    max_results: 6,
+    include_answer: true,
+  };
+  const includeDomains = getIncludeDomains(config.sourceFilter);
+  if (includeDomains) body.include_domains = includeDomains;
+  return body;
+}
+
+function mapTavilyResult(r: {
+  title?: string;
+  url?: string;
+  content?: string;
+  published_date?: string;
+  score?: number;
+}): Source {
+  const domain = extractDomain(r.url || '');
+  const tier = assignTier(domain);
+  return {
+    id: uuidv4(),
+    title: r.title || 'Untitled',
+    url: r.url || '',
+    domain,
+    snippet: (r.content || '').substring(0, 300),
+    text: r.content || '',
+    publishedDate: r.published_date,
+    tier,
+    confidence: Math.round((r.score || 0.5) * 100),
+    isOutdated: isOutdated(r.published_date),
+    provider: 'tavily' as const,
+    contentFetched: Boolean(r.content && r.content.trim().length > 0),
+  };
 }
 
 export async function searchWithTavily(
@@ -197,67 +233,19 @@ export async function searchWithTavily(
   config: SearchConfig
 ): Promise<{ sources: Source[]; answer?: string }> {
   try {
-    const includeDomains = getIncludeDomains(config.sourceFilter);
-    const searchQuery =
-      classification.searchTerms.length > 0 ? classification.searchTerms[0] : query;
-
-    const body: Record<string, unknown> = {
-      query: searchQuery,
-      search_depth: config.tavilyMode === 'research' ? 'advanced' : 'basic',
-      max_results: 6,
-      include_answer: true,
-    };
-
-    if (includeDomains) {
-      body.include_domains = includeDomains;
-    }
-
+    const body = buildTavilyBody(query, classification, config);
     const data = await withRetry(async (signal) => {
       const response = await fetch('https://api.tavily.com/search', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${tavilyKey}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tavilyKey}` },
         body: JSON.stringify(body),
         signal,
       });
-
-      if (!response.ok) {
-        throw new Error(`Tavily API error: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Tavily API error: ${response.status}`);
       return response.json();
     });
     const results = data.results || [];
-
-    const sources: Source[] = results.map(
-      (r: {
-        title?: string;
-        url?: string;
-        content?: string;
-        published_date?: string;
-        score?: number;
-      }) => {
-        const domain = extractDomain(r.url || '');
-        const tier = assignTier(domain);
-        return {
-          id: uuidv4(),
-          title: r.title || 'Untitled',
-          url: r.url || '',
-          domain,
-          snippet: (r.content || '').substring(0, 300),
-          text: r.content || '',
-          publishedDate: r.published_date,
-          tier,
-          confidence: Math.round((r.score || 0.5) * 100),
-          isOutdated: isOutdated(r.published_date),
-          provider: 'tavily' as const,
-          contentFetched: Boolean(r.content && r.content.trim().length > 0),
-        };
-      }
-    );
-
+    const sources: Source[] = results.map(mapTavilyResult);
     return { sources, answer: data.answer };
   } catch (error) {
     logger.error('Tavily search failed:', error);
@@ -272,18 +260,13 @@ export async function searchSources(
   tavilyKey: string,
   config: SearchConfig
 ): Promise<RawSearchResults> {
-  const [exaResult, tavilyResult] = await Promise.allSettled([
-    searchWithExa(query, classification, exaKey, config),
-    searchWithTavily(query, classification, tavilyKey, config),
-  ]);
+  const exaPromise = searchWithExa(query, classification, exaKey, config);
+  const tavilyPromise = searchWithTavily(query, classification, tavilyKey, config);
+  const [exaResult, tavilyResult] = await Promise.allSettled([exaPromise, tavilyPromise]);
 
   const exaSources = exaResult.status === 'fulfilled' ? exaResult.value : [];
-  const tavilyData =
-    tavilyResult.status === 'fulfilled' ? tavilyResult.value : { sources: [], answer: undefined };
+  const tavilySources = tavilyResult.status === 'fulfilled' ? tavilyResult.value.sources : [];
+  const tavilyAnswer = tavilyResult.status === 'fulfilled' ? tavilyResult.value.answer : undefined;
 
-  return {
-    exaSources,
-    tavilySources: tavilyData.sources,
-    tavilyAnswer: tavilyData.answer,
-  };
+  return { exaSources, tavilySources, tavilyAnswer };
 }

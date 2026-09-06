@@ -5,6 +5,14 @@ import type { AISearchResponse } from './types';
 import type { AISearchPipelineResult } from './service';
 import { hashQuery } from './hash';
 
+// Cache TTLs in seconds — tuned per query type.
+const CACHE_TTL_SECONDS = {
+  // Technical and factual queries change slowly; cache longer.
+  LONG_TTL: 6 * 60 * 60, // 6 hours
+  // Opinion/comparison queries are more volatile; cache shorter.
+  SHORT_TTL: 60 * 60, // 1 hour
+};
+
 export async function getCachedResult(query: string): Promise<AISearchResponse | null> {
   const hash = hashQuery(query);
 
@@ -50,36 +58,61 @@ export async function getCachedResult(query: string): Promise<AISearchResponse |
   }
 }
 
+/**
+ * KISS: single upsert for the system user, then single session lookup.
+ * Seed creates id='anonymous', but upsert by email handles both cases.
+ */
+async function getOrCreateAnonymousSession() {
+  let anonymousUserId = 'anonymous';
+  try {
+    const anonUser = await prisma.user.upsert({
+      where: { email: 'system@sastram.internal' },
+      update: {},
+      create: { id: 'anonymous', email: 'system@sastram.internal', name: 'System' },
+    });
+    anonymousUserId = anonUser.id;
+  } catch {
+    // fallback — session create will handle FK error
+  }
+
+  let anonymousSession = await prisma.aiSearchSession.findFirst({
+    where: { userId: anonymousUserId },
+  });
+
+  if (anonymousSession) {
+    return anonymousSession;
+  }
+
+  try {
+    anonymousSession = await prisma.aiSearchSession.create({
+      data: {
+        userId: anonymousUserId,
+        query: '',
+        queryHash: hashQuery(''),
+      },
+    });
+    return anonymousSession;
+  } catch (createErr) {
+    const retry = await prisma.aiSearchSession.findFirst({ where: { userId: anonymousUserId } });
+    if (retry) {
+      return retry;
+    }
+    throw createErr;
+  }
+}
+
 export async function cacheResult(
   query: string,
   result: AISearchPipelineResult,
   queryType: string
 ): Promise<void> {
   const hash = hashQuery(query);
-  const ttlSeconds = queryType === 'technical' || queryType === 'factual' ? 6 * 60 * 60 : 60 * 60;
+  const isLongLived = queryType === 'technical' || queryType === 'factual';
+  const ttlSeconds = isLongLived ? CACHE_TTL_SECONDS.LONG_TTL : CACHE_TTL_SECONDS.SHORT_TTL;
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   try {
-    // Singleton anonymous session — read-then-write avoids transaction pool exhaustion under load
-    let anonymousSession = await prisma.aiSearchSession.findFirst({
-      where: { userId: 'anonymous' },
-    });
-
-    if (!anonymousSession) {
-      try {
-        anonymousSession = await prisma.aiSearchSession.create({
-          data: {
-            userId: 'anonymous',
-            query: '',
-            queryHash: hashQuery(''),
-          },
-        });
-      } catch (createErr) {
-        anonymousSession =
-          (await prisma.aiSearchSession.findFirst({ where: { userId: 'anonymous' } })) ?? null;
-        if (!anonymousSession) throw createErr;
-      }
-    }
+    const anonymousSession = await getOrCreateAnonymousSession();
 
     await prisma.aiSearchResult.create({
       data: {

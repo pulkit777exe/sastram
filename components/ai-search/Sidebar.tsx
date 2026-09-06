@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, Code2, Trash2, CornerDownRight, RefreshCw, Check } from 'lucide-react';
 import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { truncateHistoryLabel, groupByHistoryDate } from '@/lib/utils/format';
+import { cn } from '@/lib/utils/cn';
 
 export interface HistoryItem {
   id: string;
@@ -32,24 +35,7 @@ interface SidebarProps {
   user?: { name?: string | null; email?: string | null; image?: string | null } | null;
 }
 
-function label(item: HistoryItem): string {
-  const t = item.title?.trim();
-  if (t) return t.length > 38 ? t.substring(0, 38) + '…' : t;
-  const q = item.query.trim();
-  return q.length > 38 ? q.substring(0, 38) + '…' : q;
-}
-
-function dateGroup(createdAt: string): string {
-  const d = new Date(createdAt);
-  const now = new Date();
-  const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
-
-  if (diffDays <= 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays <= 7) return 'This week';
-  return 'Earlier';
-}
+// label / dateGroup now live in lib/utils/format — single source of truth.
 
 export function Sidebar({
   onSelectSession,
@@ -158,33 +144,37 @@ export function Sidebar({
     const isSelected = item.id === currentSessionId;
     const isPendingDelete = pendingDeleteId === item.id;
 
+    // Tailwind groups — layout / color / interactivity kept separate for readability
+    const itemBaseClasses = 'w-full justify-start px-3 py-1.5 text-xs rounded-control truncate h-auto';
+    const itemSelectedClasses = 'bg-foreground/10 text-foreground font-medium';
+    const itemIdleClasses = 'text-muted-foreground hover:text-foreground hover:bg-foreground/5';
+
     return (
       <div key={item.id} className="group relative">
         {isSelected && (
           <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-foreground" />
         )}
-        <button
+        <Button type="button"
           onClick={() => onSelectSession(item)}
           aria-current={isSelected ? 'true' : undefined}
-          className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors truncate flex items-center gap-1.5 ${
-            isSelected
-              ? 'bg-foreground/10 text-foreground font-medium'
-              : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
-          }`}
+          variant="ghost"
+          className={cn(itemBaseClasses, isSelected ? itemSelectedClasses : itemIdleClasses)}
           style={{ paddingLeft: depth > 0 ? 22 : 12 }}
         >
           {depth > 0 && <CornerDownRight size={11} className="shrink-0 text-muted-foreground/40" />}
-          <span className="truncate block flex-1">{label(item)}</span>
-        </button>
+          <span className="truncate block flex-1">{truncateHistoryLabel(item.title, item.query)}</span>
+        </Button>
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {!isPendingDelete && (
             <span className="text-xs text-muted-foreground/50 pointer-events-none">
               {item.sourceCount} src
             </span>
           )}
-          <button
+          <Button type="button"
             onClick={(e) => handleDeleteClick(item.id, e)}
-            className={`p-0.5 transition-colors rounded ${
+            variant="ghost"
+            size="icon-sm"
+            className={`p-0.5 ${
               isPendingDelete
                 ? 'text-destructive bg-destructive/10 opacity-100'
                 : 'text-muted-foreground/50 hover:text-destructive'
@@ -193,57 +183,55 @@ export function Sidebar({
             title={isPendingDelete ? 'Click again to delete' : 'Remove from history'}
           >
             {isPendingDelete ? <Check size={11} /> : <Trash2 size={11} />}
-          </button>
+          </Button>
         </span>
       </div>
     );
   };
 
+  // Destructure with defaults to avoid props?.x?.y ?? default chains
+  const { name: sidebarUserName, email: sidebarUserEmail, image: sidebarUserImage } = user ?? {};
   const userInitial =
-    user?.name?.trim()?.[0]?.toUpperCase() ||
-    user?.email?.trim()?.[0]?.toUpperCase() ||
+    sidebarUserName?.trim()?.[0]?.toUpperCase() ||
+    sidebarUserEmail?.trim()?.[0]?.toUpperCase() ||
     '?';
 
-  const groupedSearches: { group: string; items: HistoryItem[] }[] = [];
-  for (const item of searches) {
-    const group = dateGroup(item.createdAt);
-    const last = groupedSearches[groupedSearches.length - 1];
-    if (last && last.group === group) {
-      last.items.push(item);
-    } else {
-      groupedSearches.push({ group, items: [item] });
-    }
-  }
+  const groupedSearches = groupByHistoryDate(searches);
+
+  // Tailwind groups — layout / color / motion — extracted to avoid 8+ class inline
+  const sidebarBaseClasses = 'relative h-full flex flex-col overflow-hidden bg-surface border border-line rounded-card shadow-linear-md';
+  const sidebarMotionClasses = 'transition-all duration-250 ease-in-out';
+  const sidebarWidthClasses = collapsed ? 'w-0 border-0 p-0' : 'w-55';
 
   return (
     <div
-      className={`relative h-full flex flex-col bg-card border border-border rounded-2xl shadow-linear-md transition-all duration-250 ease-in-out overflow-hidden ${
-        collapsed ? 'w-0 border-0 p-0' : 'w-55'
-      }`}
+      className={cn(sidebarBaseClasses, sidebarMotionClasses, sidebarWidthClasses)}
     >
       {!collapsed && (
         <>
           <div className="px-4 pt-4 pb-2">
-            <h2 className="text-sm font-semibold text-foreground tracking-tight">Sai</h2>
+            <h2 className="text-sm font-semibold text-ink tracking-tight">Sai</h2>
         </div>
 
           <div className="px-3 space-y-0.5">
-            <button
+            <Button type="button"
               onClick={onNewSearch}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-xs h-auto"
             >
               <Plus size={14} />
               New Search
-          </button>
+          </Button>
 
-            <button
+            <Button type="button"
               onClick={onOpenApiKeys}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-xs h-auto"
             >
               <Code2 size={14} />
               API Keys
               {hasApiKeys && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-chart-2" />}
-          </button>
+          </Button>
         </div>
 
           <div className="mx-3 my-3 h-px bg-border" />
@@ -254,15 +242,17 @@ export function Sidebar({
               <Search size={11} />
               History
           </span>
-            <button
+            <Button type="button"
               onClick={() => loadHistory(true)}
               disabled={loading}
               aria-label="Refresh search history"
               title="Refresh"
-              className="p-1 text-muted-foreground/60 hover:text-foreground rounded-md hover:bg-foreground/5 transition-colors disabled:opacity-40"
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground/60 hover:text-foreground"
             >
               <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
-          </button>
+          </Button>
         </div>
 
           <div
@@ -311,11 +301,11 @@ export function Sidebar({
             )}
         </div>
 
-          <div className="px-3 pb-3 pt-2 border-t border-border mt-auto">
+          <div className="px-3 pb-3 pt-2 border-t border-line mt-auto">
             <div className="flex items-center gap-2">
-              {user?.image ? (
+              {sidebarUserImage ? (
                 <Image
-                  src={user.image}
+                  src={sidebarUserImage}
                   alt=""
                   width={28}
                   height={28}
@@ -328,7 +318,7 @@ export function Sidebar({
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">
-                  {user?.name || user?.email || 'Guest'}
+                  {sidebarUserName || sidebarUserEmail || 'Guest'}
             </p>
                 <p className="text-xs text-muted-foreground truncate">Personal workspace</p>
             </div>

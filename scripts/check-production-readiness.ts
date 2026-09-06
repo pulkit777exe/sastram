@@ -12,13 +12,14 @@ const checks: Check[] = [];
 
 function required(name: string, minLength = 1) {
   const value = env[name];
+  let message = `${name} must be set`;
+  if (minLength > 1) {
+    message = `${name} must be at least ${minLength} characters`;
+  }
   checks.push({
     name,
     ok: typeof value === 'string' && value.trim().length >= minLength,
-    message:
-      minLength > 1
-        ? `${name} must be at least ${minLength} characters`
-        : `${name} must be set`,
+    message,
     severity: 'error',
   });
 }
@@ -82,9 +83,15 @@ warning(
   'BETTER_AUTH_URL and NEXT_PUBLIC_APP_URL should normally match',
 );
 
+let aiProviderKeyOk: boolean;
+if (env.AI_PROVIDER === 'openai') {
+  aiProviderKeyOk = Boolean(env.OPENAI_API_KEY);
+} else {
+  aiProviderKeyOk = Boolean(env.GEMINI_API_KEY);
+}
 warning(
   'ai-provider-key',
-  env.AI_PROVIDER === 'openai' ? Boolean(env.OPENAI_API_KEY) : Boolean(env.GEMINI_API_KEY),
+  aiProviderKeyOk,
   `AI_PROVIDER=${env.AI_PROVIDER ?? 'gemini'} has no matching provider key; AI features will be disabled`,
 );
 
@@ -98,16 +105,31 @@ const failures = checks.filter((check) => !check.ok && check.severity === 'error
 const warnings = checks.filter((check) => !check.ok && check.severity === 'warning');
 
 for (const check of checks) {
-  const icon = check.ok ? 'PASS' : check.severity === 'error' ? 'FAIL' : 'WARN';
-  console.log(`${icon} ${check.name}: ${check.ok ? 'ok' : check.message}`);
+  let icon: string;
+  if (check.ok) {
+    icon = 'PASS';
+  } else if (check.severity === 'error') {
+    icon = 'FAIL';
+  } else {
+    icon = 'WARN';
+  }
+  let statusText: string;
+  if (check.ok) {
+    statusText = 'ok';
+  } else {
+    statusText = check.message;
+  }
+  console.log(`${icon} ${check.name}: ${statusText}`);
 }
 
 if (warnings.length > 0) {
-  console.log(`\n${warnings.length} warning${warnings.length === 1 ? '' : 's'} need review.`);
+  const plural = warnings.length === 1 ? '' : 's';
+  console.log(`\n${warnings.length} warning${plural} need review.`);
 }
 
 if (failures.length > 0) {
-  console.error(`\nProduction readiness failed with ${failures.length} error${failures.length === 1 ? '' : 's'}.`);
+  const plural = failures.length === 1 ? '' : 's';
+  console.error(`\nProduction readiness failed with ${failures.length} error${plural}.`);
   process.exit(1);
 }
 

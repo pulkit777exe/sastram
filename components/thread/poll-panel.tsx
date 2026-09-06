@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { PollDisplay } from '@/components/thread/poll-display';
 import { createPollAction, closePollAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -53,19 +53,16 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   // Sync internal poll state when parent provides fresh data (from poll tick)
   useEffect(() => {
     if (!initialPoll) return;
+    // Avoid render phase warning — defer state update to next tick
     const timer = setTimeout(() => {
       setPoll((prev) => {
         const next = { ...initialPoll, threadId };
         // Only update if data actually changed to avoid unnecessary re-renders
-        if (
-          prev &&
-          prev.id === next.id &&
-          prev.isActive === next.isActive &&
-          prev.expiresAt === next.expiresAt
-        ) {
-          return prev;
-        }
-        return next;
+        if (!prev) return next;
+        if (prev.id !== next.id) return next;
+        if (prev.isActive !== next.isActive) return next;
+        if (prev.expiresAt !== next.expiresAt) return next;
+        return prev;
       });
     }, 0);
     return () => clearTimeout(timer);
@@ -89,6 +86,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
     trimmedOptions.length <= MAX_OPTIONS;
 
   if (!poll && !canManagePoll) return null;
+  if (poll && !isEffectivelyActive) return null;
 
   function handleAddOption() {
     setOptions((prev) => [...prev, '']);
@@ -166,33 +164,33 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-border/60 bg-card/70 overflow-hidden">
+    <div className="mb-4 rounded-card border border-line bg-surface shadow-card overflow-hidden">
       {/* ── Header / Collapse trigger ── */}
       <button
         type="button"
         onClick={() => setIsCollapsed((prev) => !prev)}
         className={cn(
           'w-full flex items-center justify-between px-4 py-3 text-left',
-          'transition-colors hover:bg-muted/40 focus-visible:outline-none',
+          'transition-colors hover:bg-hover focus-visible:outline-none',
           'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
         )}
         aria-expanded={!isCollapsed}
       >
         <div className="flex items-center gap-2">
-          {/* Colored dot — green=active, gray=closed/none */}
+          {/* SAI green for active poll — feeds resolution score */}
           <span
             className={cn(
               'h-1.5 w-1.5 rounded-full shrink-0',
               isEffectivelyActive
-                ? 'bg-chart-2 shadow-linear-sm'
-                : 'bg-muted-foreground/40'
+                ? 'bg-sai-green shadow-linear-sm'
+                : 'bg-ink-3/40'
             )}
           />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold uppercase tracking-wider text-ink-3">
             {poll ? 'Poll' : 'Add poll'}
           </span>
           {poll && (
-            <span className="hidden sm:inline text-xs text-muted-foreground/60 font-normal truncate max-w-50">
+            <span className="hidden sm:inline text-xs text-ink-3/60 font-normal truncate max-w-50">
               · {poll.question}
             </span>
           )}
@@ -201,8 +199,8 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
         <div className="flex items-center gap-2">
           {/* Vote count badge */}
           {poll && (
-            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
-              <BarChart3 size={10} />
+            <span className="flex items-center gap-1 text-xs font-medium text-ink-2 bg-field px-2 py-0.5 rounded-full border border-line">
+              <BarChart3 size={10} className="text-ink-3" />
               {isEffectivelyActive ? 'Active' : 'Closed'}
             </span>
           )}
@@ -217,19 +215,20 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
       </button>
 
       {/* ── Collapsible body ── */}
-      <div className="t-panel-slide" data-open={isCollapsed ? 'false' : 'true'}>
-        <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
+      {!isCollapsed && (
+        <div className="px-4 pb-4 space-y-3 border-t border-line/40 pt-3">
               {poll ? (
                 <div className="space-y-3">
                   <PollDisplay poll={poll} pollResults={pollResults} refreshKey={pollRefreshKey} />
                   {canManagePoll && isEffectivelyActive && (
-                    <PressDepth
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       disabled={isSaving}
                       onClick={handleClosePoll}
-                      className="text-xs"
                     >
                       {isSaving ? 'Closing...' : 'Close poll'}
-                    </PressDepth>
+                    </Button>
                   )}
                 </div>
               ) : showCreateForm ? (
@@ -277,23 +276,23 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                     </AnimatePresence>
 
                     <div className="flex items-center gap-2 pt-1">
-                      <PressDepth
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         disabled={options.length >= MAX_OPTIONS}
                         onClick={handleAddOption}
-                        className="h-7 text-xs gap-1"
                       >
                         <Plus size={11} />
                         Add option
-                      </PressDepth>
-                      <PressDepth
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         disabled={options.length <= MIN_OPTIONS}
                         onClick={handleRemoveOption}
-                        className="h-7 text-xs text-muted-foreground"
                       >
                         Remove last
-                      </PressDepth>
+                      </Button>
                     </div>
                   </div>
 
@@ -312,40 +311,42 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
-                    <PressDepth
+                    <Button
+                      className="flex-1"
                       onClick={handleCreatePoll}
                       disabled={isSaving || !isFormValid}
-                      className="flex-1"
                     >
                       {isSaving ? 'Creating...' : 'Create poll'}
-                    </PressDepth>
-                    <PressDepth
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="outline"
                       onClick={handleCancelCreate}
                       disabled={isSaving}
                     >
                       Cancel
-                    </PressDepth>
+                    </Button>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center py-4 gap-3 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    No poll has been added to this thread yet.
+                <div className="flex flex-col items-center py-5 gap-2.5 text-center">
+                  <p className="text-sm font-medium text-ink">No poll yet</p>
+                  <p className="text-xs leading-relaxed text-ink-2 max-w-72">
+                    Polls collect consensus and feed the thread’s resolution score. Add one when you need a clear decision.
                   </p>
                   {canManagePoll && (
-                    <PressDepth
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setShowCreateForm(true)}
-                      className="gap-1.5 text-xs"
                     >
                       <Plus size={12} />
                       Add poll
-                    </PressDepth>
+                    </Button>
                   )}
                 </div>
               )}
             </div>
-          </div>
+      )}
     </div>
   );
 }

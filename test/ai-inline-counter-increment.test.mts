@@ -87,7 +87,7 @@ describe('AI inline reply — counter increments', function () {
     // inside a $transaction that bumps both counters. With no API key configured,
     // the AI service returns the NoOp sentinel, but the message + counter logic
     // still executes.
-    const { handleAIInlineJob } = await import('@/lib/queue/workers/ai.worker');
+    const { handleAIInlineJob } = await import('@/lib/queue/workers');
     const result = await handleAIInlineJob({
       messageId: rootMessageId,
       threadId: testThreadId,

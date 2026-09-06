@@ -54,6 +54,17 @@ export async function findMessageForDeletion(messageId: string) {
   return message;
 }
 
+export function buildBannedUsersWhereClause(filters: { isActive?: boolean; threadId?: string }): import('@prisma/client').Prisma.UserBanWhereInput {
+  const whereClause: import('@prisma/client').Prisma.UserBanWhereInput = {};
+  if (filters.isActive !== undefined) {
+    whereClause.isActive = filters.isActive;
+  }
+  if (filters.threadId) {
+    whereClause.threadId = filters.threadId;
+  }
+  return whereClause;
+}
+
 export async function findThreadForDeletion(threadId: string) {
   // Exclude soft-deleted threads: deleting an already-deleted thread is a no-op error.
   const thread = await prisma.thread.findFirst({

@@ -25,42 +25,42 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-8">
-      <header className="rounded-3xl border border-border bg-muted-foreground/10 p-4 md:p-8 text-foreground shadow-linear-xl">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>
+      <header className="rounded-card border border-line bg-surface p-4 md:p-8 text-ink shadow-linear-xl">
+        <p className="text-xs uppercase tracking-widest text-ink-3">Admin Workspace</p>
         <h1 className="mt-3 text-3xl font-semibold">Reports Management</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+        <p className="mt-2 max-w-2xl text-sm text-ink-3">
           Review and manage user reports to keep the community safe and respectful.
         </p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-card border-border">
+        <Card className="bg-surface border-line">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Reports</p>
-                <p className="text-2xl font-bold text-foreground mt-1">{reports.length}</p>
+                <p className="text-sm text-ink-3">Total Reports</p>
+                <p className="text-2xl font-bold text-ink mt-1">{reports.length}</p>
               </div>
-              <Flag className="h-8 w-8 text-muted-foreground" />
+              <Flag className="h-8 w-8 text-ink-3" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border">
+        <Card className="bg-surface border-line">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-sm text-ink-3">Pending</p>
                 <p className="text-2xl font-bold text-yellow-500 mt-1">{pendingReports.length}</p>
               </div>
               <Eye className="h-8 w-8 text-yellow-500/50" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border">
+        <Card className="bg-surface border-line">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Resolved</p>
+                <p className="text-sm text-ink-3">Resolved</p>
                 <p className="text-2xl font-bold text-green-500 mt-1">{resolvedReports.length}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-500/50" />
@@ -71,11 +71,11 @@ export default async function ReportsPage() {
 
       <section className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold text-foreground mb-4">Pending Reports</h2>
+          <h2 className="text-xl font-semibold text-ink mb-4">Pending Reports</h2>
           {pendingReports.length === 0 ? (
-            <Card className="bg-card border-border">
+            <Card className="bg-surface border-line">
               <CardContent className="p-4 md:p-8 text-center">
-                <p className="text-muted-foreground">No pending reports</p>
+                <p className="text-ink-3">No pending reports</p>
               </CardContent>
             </Card>
           ) : (
@@ -89,7 +89,7 @@ export default async function ReportsPage() {
 
         {resolvedReports.length > 0 && (
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-4">Resolved Reports</h2>
+            <h2 className="text-xl font-semibold text-ink mb-4">Resolved Reports</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {resolvedReports.map((report) => (
                 <ReportCard key={report.id} report={report} />
@@ -102,6 +102,12 @@ export default async function ReportsPage() {
   );
 }
 
+function getDisplayName(entity: { name?: string | null; email?: string | null } | null | undefined): string {
+  if (entity?.name) return entity.name;
+  if (entity?.email) return entity.email;
+  return 'Unknown';
+}
+
 function ReportCard({ report }: { report: Report }) {
   const statusColors = {
     PENDING:
@@ -109,11 +115,11 @@ function ReportCard({ report }: { report: Report }) {
     RESOLVED:
       'bg-green-500/10 text-green-600 border-green-200 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/20',
     DISMISSED:
-      'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border',
+      'bg-field text-ink-3 border-line dark:bg-field dark:text-ink-3 dark:border-line',
   };
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="bg-surface border-line">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -123,26 +129,22 @@ function ReportCard({ report }: { report: Report }) {
               >
                 {report.status}
               </Badge>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-ink-3">
                 <TimeAgo date={report.createdAt} />
               </span>
             </div>
-            <p className="text-sm text-foreground/80 mb-4">{report.status}</p>
+            <p className="text-sm text-ink/80 mb-4">{report.status}</p>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Reported by:</span>
-                <span className="text-foreground font-medium">
-                  {report.reporter?.name || report.reporter?.email || 'Unknown'}
-                </span>
+                <span className="text-ink-3">Reported by:</span>
+                <span className="text-ink font-medium">{getDisplayName(report.reporter)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Message from:</span>
-                <span className="text-foreground font-medium">
-                  {report.message.sender?.name || report.message.sender?.email || 'Unknown'}
-                </span>
+                <span className="text-ink-3">Message from:</span>
+                <span className="text-ink font-medium">{getDisplayName(report.message.sender)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Thread:</span>
+                <span className="text-ink-3">Thread:</span>
                 <Link
                   href={`/dashboard/threads/${report.message.thread.slug}`}
                   className="text-brand hover:text-brand/80 underline"
@@ -154,16 +156,16 @@ function ReportCard({ report }: { report: Report }) {
           </div>
         </div>
 
-        <div className="bg-muted/50 rounded-lg p-4 mb-4 border border-border/50">
-          <p className="text-xs text-muted-foreground mb-1">Reported Message:</p>
-          <p className="text-sm text-foreground">{report.message.content}</p>
+        <div className="bg-field rounded-control p-4 mb-4 border border-line/50">
+          <p className="text-xs text-ink-3 mb-1">Reported Message:</p>
+          <p className="text-sm text-ink">{report.message.content}</p>
         </div>
 
         {report.status === 'PENDING' && <ReportActions reportId={report.id} currentStatus={report.status} />}
 
         {report.resolvedBy && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <p className="text-xs text-muted-foreground">
+          <div className="mt-4 pt-4 border-t border-line">
+            <p className="text-xs text-ink-3">
               Resolved by {report.resolvedBy} on <TimeAgo date={report.updatedAt} />
             </p>
           </div>

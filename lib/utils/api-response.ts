@@ -7,32 +7,83 @@ type ApiHandler = (
   context?: { params: Promise<Record<string, string>> }
 ) => Promise<NextResponse>;
 
+function extractErrorMessage(rawError: unknown): string {
+  if (rawError instanceof Error) return rawError.message;
+  return String(rawError);
+}
+
+function extractErrorStack(rawError: unknown): string | undefined {
+  if (rawError instanceof Error) return rawError.stack;
+  return undefined;
+}
+
 export function withErrorHandling(handler: ApiHandler): ApiHandler {
   return async (request, context) => {
     const requestId = generateRequestId();
 
     try {
-      const response = await handler(request, context);
-      response.headers.set('x-request-id', requestId);
-      return response;
-    } catch (error) {
-      const { message, code, statusCode } = handleError(error);
+      const handlerResponse = await handler(request, context);
+      handlerResponse.headers.set('x-request-id', requestId);
+      return handlerResponse;
+    } catch (rawError) {
+      const normalizedError = handleError(rawError);
+      const userMessage = normalizedError.message;
+      const httpStatus = normalizedError.statusCode;
 
-      // handleError deliberately strips non-AppError messages before they reach
-      // the client, so the real one only exists in the log line below.
-      logger.error(`API Error: ${code}`, {
+      let errorCode: string;
+      if (normalizedError.code !== undefined && normalizedError.code.length > 0) {
+        errorCode = normalizedError.code;
+      } else {
+        errorCode = 'INTERNAL_ERROR';
+      }
+
+      const logMessage = extractErrorMessage(rawError);
+      const logStack = extractErrorStack(rawError);
+
+      logger.error(`API Error: ${errorCode}`, {
         requestId,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+        error: logMessage,
+        stack: logStack,
         path: request.nextUrl.pathname,
       });
 
-      return NextResponse.json(
-        fail(code ?? 'INTERNAL_ERROR', message, undefined, requestId),
-        { status: statusCode, headers: { 'x-request-id': requestId } }
-      );
+      const errorBody = fail(errorCode, userMessage, undefined, requestId);
+      return NextResponse.json(errorBody, {
+        status: httpStatus,
+        headers: { 'x-request-id': requestId },
+      });
     }
   };
+}
+
+export const HTTP_STATUS = {
+  OK: 200,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  RATE_LIMITED: 429,
+  INTERNAL: 500,
+  SERVICE_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+} as const;
+
+const ERROR_CODE_STATUS_MAP: Record<string, number> = {
+  VALIDATION_ERROR: HTTP_STATUS.BAD_REQUEST,
+  AUTH_REQUIRED: HTTP_STATUS.UNAUTHORIZED,
+  FORBIDDEN: HTTP_STATUS.FORBIDDEN,
+  NOT_FOUND: HTTP_STATUS.NOT_FOUND,
+  UNSUPPORTED_MEDIA_TYPE: HTTP_STATUS.UNSUPPORTED_MEDIA_TYPE,
+  RATE_LIMITED: HTTP_STATUS.RATE_LIMITED,
+  SERVICE_UNAVAILABLE: HTTP_STATUS.SERVICE_UNAVAILABLE,
+  GATEWAY_TIMEOUT: HTTP_STATUS.GATEWAY_TIMEOUT,
+  INTERNAL_ERROR: HTTP_STATUS.INTERNAL,
+};
+
+export function errorCodeToStatus(errorCode: string | null): number {
+  if (errorCode === null) return HTTP_STATUS.INTERNAL;
+  return ERROR_CODE_STATUS_MAP[errorCode] ?? HTTP_STATUS.INTERNAL;
 }
 
 export interface ApiResponse<T> {
@@ -49,12 +100,21 @@ export interface ApiResponse<T> {
   };
 }
 
-function metadata(requestId?: string) {
-  return { timestamp: new Date().toISOString(), requestId: requestId ?? '' };
+function buildMetadata(requestId?: string) {
+  let resolvedRequestId: string;
+  if (requestId !== undefined && requestId !== null && requestId.length > 0) {
+    resolvedRequestId = requestId;
+  } else {
+    resolvedRequestId = '';
+  }
+
+  const timestamp = new Date().toISOString();
+  return { timestamp, requestId: resolvedRequestId };
 }
 
 export function ok<T>(data: T, requestId?: string): ApiResponse<T> {
-  return { success: true, data, metadata: metadata(requestId) };
+  const metadata = buildMetadata(requestId);
+  return { success: true, data, metadata };
 }
 
 export function fail(
@@ -63,9 +123,10 @@ export function fail(
   details?: unknown,
   requestId?: string
 ): ApiResponse<null> {
+  const metadata = buildMetadata(requestId);
   return {
     success: false,
     error: { code, message, details },
-    metadata: metadata(requestId),
+    metadata,
   };
 }

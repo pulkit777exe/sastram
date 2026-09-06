@@ -19,56 +19,30 @@ const inMemoryQuota = new Map<string, InMemoryQuotaEntry>();
 function consumeInMemoryQuota(key: string, limit: number): QuotaResult {
   const now = Date.now();
   const existing = inMemoryQuota.get(key);
-  const entry =
-    existing && existing.expiresAt > now
-      ? existing
-      : { count: 0, expiresAt: now + getSecondsUntilUtcMidnight() * 1000 };
 
-  if (entry.count >= limit) {
+  let entry: InMemoryQuotaEntry;
+  const hasValidExisting = existing !== undefined && existing.expiresAt > now;
+  if (hasValidExisting) {
+    entry = existing;
+  } else {
+    const ttlMs = getSecondsUntilUtcMidnight() * 1000;
+    entry = { count: 0, expiresAt: now + ttlMs };
+  }
+
+  const isAtLimit = entry.count >= limit;
+  if (isAtLimit) {
     inMemoryQuota.set(key, entry);
     return { allowed: false, remaining: 0 };
   }
 
   entry.count += 1;
   inMemoryQuota.set(key, entry);
-  return { allowed: true, remaining: Math.max(0, limit - entry.count) };
+  const remaining = Math.max(0, limit - entry.count);
+  return { allowed: true, remaining };
 }
 
-export interface DailyQuotaConfig {
-  keyPrefix: string;
-  /** Key suffix from the call params (userId, threadId…). Date is appended automatically. */
-  buildKey: (params: Record<string, string>) => string;
-  limit: number;
-  onRedisUnavailable: QuotaErrorPolicy;
-  onRedisError: QuotaErrorPolicy;
-}
-
-export function createDailyQuota(config: DailyQuotaConfig) {
-  return async function consumeQuota(params: Record<string, string> | string): Promise<QuotaResult> {
-    const r = getUpstashRedis();
-    const date = new Date().toISOString().slice(0, 10);
-    const paramsObj = typeof params === 'string' ? { userId: params } : params;
-    const key = `${config.keyPrefix}:${config.buildKey(paramsObj)}:${date}`;
-
-    if (!r) {
-      logger.warn(`[${config.keyPrefix}] Redis unavailable, applying "${config.onRedisUnavailable}" policy`);
-      return handlePolicy(config.onRedisUnavailable, key, config.limit);
-    }
-
-    try {
-      const result = (await r.eval(CHECK_AND_INCR_EXPIRE_LUA, [key], [config.limit, getSecondsUntilUtcMidnight()])) as number;
-
-      // The Lua script signals "over limit, not incremented" with -1.
-      if (result === -1) {
-        return { allowed: false, remaining: 0 };
-      }
-
-      return { allowed: true, remaining: Math.max(0, config.limit - result) };
-    } catch (error) {
-      logger.error(`[${config.keyPrefix}] Redis error`, error);
-      return handlePolicy(config.onRedisError, key, config.limit);
-    }
-  };
+function getTodayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function handlePolicy(policy: QuotaErrorPolicy, key: string, limit: number): QuotaResult {
@@ -82,34 +56,74 @@ function handlePolicy(policy: QuotaErrorPolicy, key: string, limit: number): Quo
   }
 }
 
-export const consumeAiInlineQuota = createDailyQuota({
-  keyPrefix: 'ai_inline',
-  buildKey: ({ userId, threadId }) => `${userId}:${threadId}`,
-  limit: 3,
-  onRedisUnavailable: 'failOpen',
-  onRedisError: 'failClosed',
-});
+async function checkQuota(
+  key: string,
+  limit: number,
+  onRedisUnavailable: QuotaErrorPolicy,
+  onRedisError: QuotaErrorPolicy,
+  logPrefix: string
+): Promise<QuotaResult> {
+  const r = getUpstashRedis();
+  if (!r) {
+    logger.warn(`[${logPrefix}] Redis unavailable, applying "${onRedisUnavailable}" policy`);
+    return handlePolicy(onRedisUnavailable, key, limit);
+  }
+  try {
+    const ttlSeconds = getSecondsUntilUtcMidnight();
+    const result = (await r.eval(CHECK_AND_INCR_EXPIRE_LUA, [key], [limit, ttlSeconds])) as number;
+    if (result === -1) {
+      return { allowed: false, remaining: 0 };
+    }
+    const remaining = Math.max(0, limit - result);
+    return { allowed: true, remaining };
+  } catch (error) {
+    logger.error(`[${logPrefix}] Redis error`, error);
+    return handlePolicy(onRedisError, key, limit);
+  }
+}
 
-export const consumeAiAnalysisQuota = createDailyQuota({
-  keyPrefix: 'ai_analysis',
-  buildKey: ({ userId }) => userId,
-  limit: 30,
-  onRedisUnavailable: 'failOpen',
-  onRedisError: 'failClosed',
-});
+export async function consumeAiInlineQuota(params: Record<string, string> | string): Promise<QuotaResult> {
+  let paramsObj: Record<string, string>;
+  if (typeof params === 'string') {
+    paramsObj = { userId: params };
+  } else {
+    paramsObj = params;
+  }
+  const userId = paramsObj.userId ?? '';
+  const threadId = paramsObj.threadId ?? '';
+  const date = getTodayDateString();
+  const key = `ai_inline:${userId}:${threadId}:${date}`;
+  return checkQuota(key, 3, 'failOpen', 'failClosed', 'ai_inline');
+}
 
-export const consumeImageModerationQuota = createDailyQuota({
-  keyPrefix: 'img_moderation',
-  buildKey: () => 'global',
-  limit: 50,
-  onRedisUnavailable: 'failOpen',
-  onRedisError: 'failOpen',
-});
+export async function consumeAiAnalysisQuota(params: Record<string, string> | string): Promise<QuotaResult> {
+  let paramsObj: Record<string, string>;
+  if (typeof params === 'string') {
+    paramsObj = { userId: params };
+  } else {
+    paramsObj = params;
+  }
+  const userId = paramsObj.userId ?? '';
+  const date = getTodayDateString();
+  const key = `ai_analysis:${userId}:${date}`;
+  return checkQuota(key, 30, 'failOpen', 'failClosed', 'ai_analysis');
+}
 
-export const consumeAiSearchQuota = createDailyQuota({
-  keyPrefix: 'ai_search',
-  buildKey: ({ userId }) => userId,
-  limit: 20,
-  onRedisUnavailable: 'failOpen',
-  onRedisError: 'inMemory',
-});
+export async function consumeImageModerationQuota(_params: Record<string, string> | string): Promise<QuotaResult> {
+  const date = getTodayDateString();
+  const key = `img_moderation:global:${date}`;
+  return checkQuota(key, 50, 'failOpen', 'failOpen', 'img_moderation');
+}
+
+export async function consumeAiSearchQuota(params: Record<string, string> | string): Promise<QuotaResult> {
+  let paramsObj: Record<string, string>;
+  if (typeof params === 'string') {
+    paramsObj = { userId: params };
+  } else {
+    paramsObj = params;
+  }
+  const userId = paramsObj.userId ?? '';
+  const date = getTodayDateString();
+  const key = `ai_search:${userId}:${date}`;
+  return checkQuota(key, 20, 'failOpen', 'inMemory', 'ai_search');
+}

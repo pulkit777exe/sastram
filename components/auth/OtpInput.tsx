@@ -1,6 +1,9 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
+
+// Keep only numeric digits
+const NON_DIGIT_PATTERN = /[^0-9]/g;
 
 interface OtpInputProps {
   length?: number;
@@ -21,15 +24,14 @@ export function OtpInput({
 }: OtpInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const setRef = useCallback(
-    (index: number) => (el: HTMLInputElement | null) => {
+  function setRef(index: number) {
+    return (el: HTMLInputElement | null) => {
       inputRefs.current[index] = el;
-    },
-    []
-  );
+    };
+  }
 
   const handleChange = (index: number, rawValue: string) => {
-    const cleaned = rawValue.replace(/[^0-9]/g, '');
+    const cleaned = rawValue.replace(NON_DIGIT_PATTERN, '');
 
     if (cleaned.length > 1) {
       const chars = cleaned.slice(0, length).split('');
@@ -84,7 +86,7 @@ export function OtpInput({
           onKeyDown={(e) => handleKeyDown(index, e)}
           disabled={disabled}
           autoFocus={autoFocus && index === 0}
-          className="w-10 h-12 text-center text-lg font-semibold border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50"
+          className="w-10 h-12 text-center text-lg font-semibold border border-line rounded-control bg-background text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent disabled:opacity-50"
           aria-label={`Digit ${index + 1}`}
         />
       ))}

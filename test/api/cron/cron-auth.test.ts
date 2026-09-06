@@ -1,6 +1,5 @@
-import { describe, it, beforeEach, afterEach } from 'mocha';
+import { describe, it, afterEach } from 'mocha';
 import { expect } from 'chai';
-import sinon from 'sinon';
 import { mockRequest } from '../helpers';
 
 describe('CRON Auth Verification', () => {
@@ -52,19 +51,19 @@ describe('CRON Auth Verification', () => {
 
   it('returns null when CRON_SECRET is not set (dev mode)', async () => {
     const originalEnv = process.env.NODE_ENV;
-     
-    (process.env as any).NODE_ENV = 'development';
+
+    (process.env as unknown as Record<string, string | undefined>).NODE_ENV = 'development';
     delete process.env.CRON_SECRET;
 
     try {
-      const { verifyCronAuth } = require('@/lib/middleware/cron-auth');
+      const { verifyCronAuth } = require('@/lib/middleware/cron-auth') as { verifyCronAuth: (req: unknown) => { status: number } | null };
       const req = mockRequest('/api/cron/update-threads');
       const result = verifyCronAuth(req);
 
       expect(result).to.be.null;
     } finally {
-       
-      (process.env as any).NODE_ENV = originalEnv;
+
+      (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
     }
   });
 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail } from '@/lib/utils/api-response';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
@@ -10,21 +10,30 @@ export async function POST(request: NextRequest) {
     const session = await requireSessionOrThrow();
 
     const body = await request.json();
-    const invitationId = body.invitationId as string;
+    const rawInvitationId = body.invitationId as string;
 
-    if (!invitationId) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Missing invitationId'), { status: 400 });
+    if (!rawInvitationId || typeof rawInvitationId !== 'string') {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Missing invitationId'), { status: HTTP_STATUS.BAD_REQUEST });
     }
+    // Validate cuid shape to avoid P2025 leak
+    if (!/^c[a-z0-9]{24}$/.test(rawInvitationId)) {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid invitationId'), { status: HTTP_STATUS.BAD_REQUEST });
+    }
+    const invitationId = rawInvitationId;
 
     const invitation = await prisma.threadInvitation.findUnique({
       where: { id: invitationId },
       include: {
-        thread: { select: { id: true, slug: true, name: true } },
+        thread: { select: { id: true, slug: true, name: true, deletedAt: true } },
       },
     });
 
+    if (invitation?.thread?.deletedAt) {
+      return NextResponse.json(fail('NOT_FOUND', 'Invitation not found'), { status: HTTP_STATUS.NOT_FOUND });
+    }
+
     if (!invitation) {
-      return NextResponse.json(fail('NOT_FOUND', 'Invitation not found'), { status: 404 });
+      return NextResponse.json(fail('NOT_FOUND', 'Invitation not found'), { status: HTTP_STATUS.NOT_FOUND });
     }
 
     const isExpired = invitation.expiresAt && invitation.expiresAt.getTime() <= Date.now();
@@ -47,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (invitation.email.toLowerCase() !== session.user.email.toLowerCase()) {
       return NextResponse.json(
         fail('EMAIL_MISMATCH', `This invitation was sent to ${invitation.email}, but you are signed in as ${session.user.email}`),
-        { status: 403 }
+        { status: HTTP_STATUS.FORBIDDEN }
       );
     }
 
@@ -62,6 +71,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(ok({ threadSlug: invitation.thread.slug }));
   } catch (error) {
     logger.error('[invitations/accept]', error);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Something went wrong'), { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Something went wrong'), { status: HTTP_STATUS.INTERNAL });
   }
 }

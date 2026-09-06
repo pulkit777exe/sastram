@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, Loader2, AlertCircle, RefreshCw, Clock } from 'lucide-react';
+import { Check, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export type SSEPhase =
@@ -10,7 +10,6 @@ export type SSEPhase =
   | 'crossref'
   | 'synthesizing'
   | 'done'
-  | 'refine'
   | 'error';
 
 interface PhaseTrackerProps {
@@ -26,7 +25,7 @@ const PHASES: { key: SSEPhase; label: string; description: string }[] = [
   { key: 'synthesizing', label: 'Synthesize', description: 'Formulating answer' },
 ];
 
-const TERMINAL_PHASES: SSEPhase[] = ['done', 'refine', 'error'];
+const TERMINAL_PHASES: SSEPhase[] = ['done', 'error'];
 
 function formatDuration(seconds: number): string {
   if (seconds < 1) return '<1s';
@@ -82,13 +81,13 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
   }, [currentPhase, isTerminal]);
 
   return (
-    <div className="w-full space-y-2 rounded-xl border border-border/50 bg-card/60 p-3 shadow-xs backdrop-blur-xs">
+    <div className="w-full space-y-2 rounded-card border border-line/50 bg-surface/60 p-3 shadow-xs backdrop-blur-xs">
       {/* Header bar with total time elapsed */}
-      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground px-1">
-        <span className="flex items-center gap-1.5 font-semibold text-foreground">
+      <div className="flex items-center justify-between text-xs font-medium text-ink-3 px-1">
+        <span className="flex items-center gap-1.5 font-semibold text-ink">
           Processing Request
         </span>
-        <span className="flex items-center gap-1 text-muted-foreground/80 font-mono">
+        <span className="flex items-center gap-1 text-ink-3/80 font-mono">
           <Clock size={12} className="shrink-0" />
           {formatDuration(totalElapsed)}
         </span>
@@ -109,12 +108,12 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
           return (
             <div key={phase.key} className="flex items-center gap-1.5 flex-1 min-w-25">
               <div
-                className={`group relative flex w-full flex-col items-start gap-0.5 rounded-lg border px-2.5 py-1.5 transition-all duration-300 ${
+                className={`group relative flex w-full flex-col items-start gap-0.5 rounded-control border px-2.5 py-1.5 transition-all duration-300 ${
                   isDone
                     ? 'border-emerald-500/20 bg-emerald-500/5 text-foreground'
                     : isActive
                     ? 'border-primary/40 bg-primary/10 ring-2 ring-primary/20 text-foreground'
-                    : 'border-border/40 bg-muted/20 text-muted-foreground/50'
+                    : 'border-line/40 bg-muted/20 text-muted-foreground/50'
                 }`}
               >
                 <div className="flex w-full items-center justify-between gap-1 text-xs font-medium">
@@ -153,16 +152,6 @@ export function PhaseTracker({ currentPhase, startTime }: PhaseTrackerProps) {
           >
             <Check size={12} className="shrink-0" />
             Complete
-          </Badge>
-        )}
-
-        {currentPhase === 'refine' && (
-          <Badge
-            variant="outline"
-            className="flex shrink-0 items-center gap-1 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1.5 text-xs font-medium"
-          >
-            <RefreshCw size={12} className="shrink-0 animate-spin" />
-            Refining
           </Badge>
         )}
 

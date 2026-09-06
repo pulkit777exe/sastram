@@ -4,6 +4,16 @@ import type { MessageNode } from './types';
 const MAX_DEPTH = 4;
 const COLLAPSE_KEY_PREFIX = 'thread-collapse:';
 
+function resolveSender(msg: Message): NonNullable<Message['sender']> {
+  if (msg.sender) return msg.sender;
+  return { id: msg.senderId ?? '', name: null, image: null };
+}
+
+function resolveThread(msg: Message): NonNullable<Message['thread']> {
+  if (msg.thread) return msg.thread;
+  return { id: msg.threadId, name: '', slug: '' };
+}
+
 function toNode(msg: Message): MessageNode {
   return {
     id: msg.id,
@@ -20,77 +30,97 @@ function toNode(msg: Message): MessageNode {
     replyCount: msg.replyCount ?? 0,
     isAiResponse: msg.isAiResponse ?? false,
     deletedAt: msg.deletedAt ?? null,
-    sender: msg.sender ?? { id: msg.senderId ?? '', name: null, image: null },
-    thread: msg.thread ?? { id: msg.threadId, name: '', slug: '' },
+    sender: resolveSender(msg),
+    thread: resolveThread(msg),
     attachments: msg.attachments ?? [],
     children: [],
     isCollapsed: false,
   };
 }
 
-const byCreatedAt = (a: MessageNode, b: MessageNode) =>
-  new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+function compareByCreatedAt(a: MessageNode, b: MessageNode): number {
+  const timeA = new Date(a.createdAt).getTime();
+  const timeB = new Date(b.createdAt).getTime();
+  return timeA - timeB;
+}
+
+function rehydrateExistingNode(existing: MessageNode, msg: Message): MessageNode {
+  existing.content = msg.content;
+  existing.createdAt = msg.createdAt;
+  existing.updatedAt = msg.updatedAt;
+  existing.senderId = msg.senderId;
+  existing.threadId = msg.threadId;
+  existing.parentId = msg.parentId ?? null;
+  existing.depth = msg.depth ?? existing.depth ?? 0;
+  if (msg.likeCount !== undefined && msg.likeCount !== null) existing.likeCount = msg.likeCount;
+  if (msg.replyCount !== undefined && msg.replyCount !== null) existing.replyCount = msg.replyCount;
+  if (msg.isAiResponse !== undefined && msg.isAiResponse !== null) existing.isAiResponse = msg.isAiResponse;
+  existing.children ??= [];
+  existing.isCollapsed ??= false;
+  existing.sender = msg.sender ?? existing.sender;
+  existing.thread = msg.thread ?? existing.thread;
+  existing.attachments = msg.attachments ?? existing.attachments;
+  existing.isEdited = msg.isEdited ?? existing.isEdited;
+  existing.isPinned = msg.isPinned ?? existing.isPinned;
+  existing.deletedAt = msg.deletedAt ?? existing.deletedAt;
+  return existing;
+}
+
+function attachQueuedChildren(node: MessageNode, pendingChildren: Map<string, MessageNode[]>) {
+  const queued = pendingChildren.get(node.id);
+  if (!queued?.length) return;
+  node.children.push(...queued);
+  pendingChildren.delete(node.id);
+}
+
+function attachToParentOrQueue(
+  node: MessageNode,
+  parentId: string | null | undefined,
+  nodeMap: Map<string, MessageNode>,
+  pendingChildren: Map<string, MessageNode[]>,
+  roots: MessageNode[]
+) {
+  if (!parentId) {
+    roots.push(node);
+    return;
+  }
+  const parent = nodeMap.get(parentId);
+  if (parent) parent.children.push(node);
+  else {
+    const waiting = pendingChildren.get(parentId);
+    if (waiting) waiting.push(node);
+    else pendingChildren.set(parentId, [node]);
+  }
+}
 
 export function buildMessageTree(flatMessages: Message[]): MessageNode[] {
   const nodeMap = new Map<string, MessageNode>();
   const roots: MessageNode[] = [];
-  // Replies can appear before their parent (pagination, realtime inserts), so
-  // park them here until the parent shows up.
   const pendingChildren = new Map<string, MessageNode[]>();
 
   for (const msg of flatMessages) {
     const existing = nodeMap.get(msg.id);
-    let node: MessageNode;
+    const node = existing ? rehydrateExistingNode(existing, msg) : toNode(msg);
+    if (!existing) nodeMap.set(msg.id, node);
 
-    if (existing) {
-      node = Object.assign(existing, msg, {
-        isCollapsed: existing.isCollapsed ?? false,
-        likeCount: msg.likeCount ?? existing.likeCount ?? 0,
-        replyCount: msg.replyCount ?? existing.replyCount ?? 0,
-        isAiResponse: msg.isAiResponse ?? existing.isAiResponse ?? false,
-        children: existing.children ?? [],
-      });
-    } else {
-      node = toNode(msg);
-      nodeMap.set(msg.id, node);
-    }
-
-    const queued = pendingChildren.get(msg.id);
-    if (queued?.length) {
-      node.children.push(...queued);
-      pendingChildren.delete(msg.id);
-    }
-
-    if (!msg.parentId) {
-      roots.push(node);
-      continue;
-    }
-
-    const parent = nodeMap.get(msg.parentId);
-    if (parent) {
-      parent.children.push(node);
-    } else {
-      const waiting = pendingChildren.get(msg.parentId);
-      if (waiting) waiting.push(node);
-      else pendingChildren.set(msg.parentId, [node]);
-    }
+    attachQueuedChildren(node, pendingChildren);
+    attachToParentOrQueue(node, msg.parentId, nodeMap, pendingChildren, roots);
   }
 
-  // Parents that never arrived — surface their replies rather than dropping them.
-  for (const orphaned of pendingChildren.values()) {
-    roots.push(...orphaned);
-  }
+  for (const orphaned of pendingChildren.values()) roots.push(...orphaned);
 
-  for (const node of nodeMap.values()) {
-    node.children.sort(byCreatedAt);
-  }
-  roots.sort(byCreatedAt);
-
+  for (const node of nodeMap.values()) node.children.sort(compareByCreatedAt);
+  roots.sort(compareByCreatedAt);
   return roots;
 }
 
 export function countDescendants(node: MessageNode): number {
-  return node.children.reduce((count, child) => count + 1 + countDescendants(child), 0);
+  let count = 0;
+  for (const child of node.children) {
+    count += 1;
+    count += countDescendants(child);
+  }
+  return count;
 }
 
 export function isBeyondDepthLimit(depth: number): boolean {

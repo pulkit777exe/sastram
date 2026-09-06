@@ -22,6 +22,5 @@ export const ROUTES = {
     AUTH: '/api/auth',
     THREADS: '/api/threads',
     UPLOAD: '/api/upload',
-    NEWSLETTER_GENERATE: '/api/newsletter/generate',
   },
 } as const;

@@ -126,7 +126,7 @@ export function ModerationDashboard({
 
   return (
     <div className="space-y-6">
-      <header className="rounded-2xl border border-border bg-card p-6">
+      <header className="rounded-card border border-line bg-surface p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="w-12 h-12">
@@ -170,7 +170,7 @@ export function ModerationDashboard({
               />
             </>
           ) : (
-            <Card className="bg-card border-border h-full min-h-100 flex items-center justify-center">
+            <Card className="bg-surface border-line h-full min-h-100 flex items-center justify-center">
               <CardContent className="text-center">
                 <p className="text-muted-foreground">Select a report from the queue to review</p>
               </CardContent>

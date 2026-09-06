@@ -54,7 +54,7 @@ function SearchPageSkeleton() {
           <Skeleton className="h-4 w-64 mb-2" />
           <Skeleton className="h-4 w-72 mb-2" />
           <Skeleton className="h-4 w-60 mb-8" />
-          <Skeleton className="h-12 w-full max-w-2xl rounded-2xl" />
+          <Skeleton className="h-12 w-full max-w-2xl rounded-card" />
         </div>
       </div>
     </div>

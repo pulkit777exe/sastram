@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { PressDepth } from '@/components/ui/button-press-depth';
+import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 import { createThreadAction, deleteThreadAction } from '@/modules/threads/actions';
 
@@ -43,7 +43,7 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
 
   return (
     <div className="space-y-8">
-      <header className="rounded-4xl border border-border admin-header-gradient p-8 text-white shadow-linear-xl">
+      <header className="rounded-card border border-line admin-header-gradient p-8 text-white shadow-linear-xl">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>
@@ -55,29 +55,29 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
           </div>
 <div className="flex gap-3">
             <Link href="/dashboard/admin/reports">
-              <PressDepth className="bg-red-600 hover:bg-red-500 text-white">
+              <Button variant="destructive">
                 <Flag className="w-4 h-4 mr-2" />
                 View Reports
-              </PressDepth>
+              </Button>
             </Link>
             <Link href="/dashboard/admin/moderation">
-              <PressDepth className="border-white/20 text-white/70 hover:bg-white/10">
+              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
                 <Flag className="w-4 h-4 mr-2" />
                 Moderation
-              </PressDepth>
+              </Button>
             </Link>
             <Link href="/dashboard/admin/spend">
-              <PressDepth className="border-white/20 text-white/70 hover:bg-white/10">
+              <Button variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Spend Telemetry
-              </PressDepth>
+              </Button>
             </Link>
           </div>
         </div>
       </header>
 
       <section>
-        <Card className="rounded-3xl border-border">
+        <Card className="rounded-card border-line">
           <CardHeader>
             <CardTitle>Create a thread</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -103,7 +103,7 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
                   placeholder="Gather specs, blockers, open questions."
                 />
               </div>
-              <div className="border rounded-2xl p-4 space-y-3 bg-muted/50">
+              <div className="border rounded-card p-4 space-y-3 bg-muted/50">
                 <div className="flex items-center gap-2">
                   <PlusCircle className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium text-foreground">
@@ -140,15 +140,15 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
                 </div>
               </div>
 
-              <PressDepth type="submit" className="w-full rounded-2xl">
+              <Button type="submit" className="w-full">
                 Publish thread
-              </PressDepth>
+              </Button>
             </form>
           </CardContent>
         </Card>
       </section>
 
-      <section className="rounded-3xl border border-border bg-card p-6 shadow-linear-sm">
+      <section className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Threads</h2>
@@ -176,13 +176,14 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
                     </a>
                   </td>
                   <td className="py-3 text-right">
-                    <PressDepth
+                    <Button type="button"
+                      variant="ghost"
                       className="text-red-500 hover:text-red-600"
                       disabled={isPending}
                       onClick={() => handleDeleteThread(thread.id)}
                     >
                       Delete
-                    </PressDepth>
+                    </Button>
                   </td>
                 </tr>
               ))}

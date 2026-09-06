@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import sinon from 'sinon';
-import { auth } from '@/lib/services/auth';
 import { logger } from '@/lib/infrastructure/logger';
 
 const nextHeaders = require('next/headers');
@@ -52,33 +51,20 @@ export function createMockSession(user: Partial<typeof defaultUser> = {}): { use
 /**
  * Stubs authentication for tests.
  *
- * Prisma 7 model delegates use JavaScript Proxy objects — sinon.stub() silently
- * fails because the Proxy's set trap ignores the assignment. Instead of stubbing
- * prisma.user.findUnique, we replace the session module's functions in the
- * require cache so they return mock sessions directly, bypassing Prisma entirely.
+ * Strategy: replace session + barrel module exports, then delete ALL
+ * non-node_modules modules EXCEPT infrastructure singletons that tests
+ * stub with sinon (prisma, redis, logger, rate-limit) and modules with
+ * side effects that re-validate on load (env, auth config).
  *
- * Route handlers are lazy-loaded via require() in tests, so they pick up the
- * replaced session module from the cache.
+ * This forces source modules (route handlers, middleware, etc.) to re-load
+ * and pick up the replaced session/barrel exports from the cached modules.
  */
 export function stubAuth(session: { user: Record<string, unknown> } | null = createMockSession()): sinon.SinonStub[] {
   const stubs: sinon.SinonStub[] = [];
 
-  if (session === null) {
-    stubs.push(sinon.stub(auth.api, 'getSession').resolves(null));
-  } else {
-    const value = {
-      session: { id: 's1', createdAt: new Date(), updatedAt: new Date(), userId: session.user.id as string, expiresAt: new Date(Date.now() + 86400000), token: 't1' },
-      user: { ...session.user, createdAt: new Date(), updatedAt: new Date(), emailVerified: true },
-    };
-    stubs.push(sinon.stub(auth.api, 'getSession').resolves(value as Awaited<ReturnType<typeof auth.api.getSession>>));
-
-    // Replace session module in require cache to bypass Prisma entirely.
-    const sessionModulePath = require.resolve('@/modules/auth/session');
-    const originalModule = require.cache[sessionModulePath];
-
-    if (originalModule) {
-      const originalExports = originalModule.exports;
-      const mockPayload = {
+  const mockPayload = session === null
+    ? null
+    : {
         user: {
           id: session.user.id as string,
           email: session.user.email as string,
@@ -89,40 +75,87 @@ export function stubAuth(session: { user: Record<string, unknown> } | null = cre
         },
       };
 
-      originalModule.exports = {
-        ...originalExports,
-        getSession: async () => mockPayload,
-        requireSession: async (_checkBanStatus?: boolean) => mockPayload,
-        requireSessionOrThrow: async (_checkBanStatus?: boolean) => mockPayload,
-      };
-
-      // Also delete dependent modules from cache so they reload with the new session module.
-      const dependentModulePaths = Object.keys(require.cache).filter((key) => {
-        try {
-          const mod = require.cache[key];
-          if (!mod?.exports) return false;
-          const exports = mod.exports;
-          // Check if this module imports from the session module
-          return (
-            typeof exports.requireSession === 'function' ||
-            typeof exports.requireSessionOrThrow === 'function'
-          );
-        } catch {
-          return false;
-        }
-      });
-
-      // Register cleanup to restore original module
-      stubs.push({
-        restore: () => {
-          originalModule.exports = originalExports;
-          // Restore any dependent modules that were loaded with the mock
-          for (const depPath of dependentModulePaths) {
-            delete require.cache[depPath];
-          }
-        },
-      } as unknown as sinon.SinonStub);
+  const mockRequireSessionOrThrow = async (_checkBanStatus?: boolean) => {
+    if (!mockPayload) {
+      const { AppError } = await import('@/lib/utils/errors');
+      throw new AppError('Unauthorized: no session', 'AUTH_REQUIRED', 401);
     }
+    return mockPayload;
+  };
+
+  const mockRequireSession = async (_checkBanStatus?: boolean) => {
+    if (!mockPayload) {
+      const { redirect } = await import('next/navigation');
+      redirect('/login');
+    }
+    return mockPayload;
+  };
+
+  const mockGetSession = async () => mockPayload;
+
+  // ── Session module ──
+  const sessionModulePath = require.resolve('@/modules/auth/session');
+
+  require(sessionModulePath);
+  const sessionModule = require.cache[sessionModulePath];
+
+  if (sessionModule) {
+    const originalSessionExports = sessionModule.exports;
+    sessionModule.exports = {
+      ...originalSessionExports,
+      getSession: mockGetSession,
+      requireSession: mockRequireSession,
+      requireSessionOrThrow: mockRequireSessionOrThrow,
+    } as typeof originalSessionExports;
+
+    // ── Barrel module ── (force re-load so route handlers pick up mocked session)
+    void require.resolve('@/modules/auth');
+
+    // Delete ALL non-node_modules modules EXCEPT:
+    // - session module (which we just replaced)
+    // - infrastructure singletons that tests stub with sinon
+    // - env/auth config modules that fail on re-validation
+    // - error utils (needed for instanceof AppError)
+    const preserve = new Set<string>();
+    for (const key of Object.keys(require.cache)) {
+      if (key.includes('node_modules')) {
+        preserve.add(key);
+        continue;
+      }
+      if (key === sessionModulePath) {
+        preserve.add(key);
+        continue;
+      }
+      // Preserve infrastructure singletons, config, and error modules
+      if (
+        key.includes('prisma') ||
+        key.includes('redis') ||
+        key.includes('logger') ||
+        key.includes('rate-limit') ||
+        key.includes('env.ts') ||
+        key.includes('services/auth') ||
+        key.includes('errors.ts') ||
+        key.includes('permissions')
+      ) {
+        preserve.add(key);
+      }
+    }
+    for (const key of Object.keys(require.cache)) {
+      if (preserve.has(key)) continue;
+      delete require.cache[key];
+    }
+
+    // Register cleanup to restore original module exports.
+    stubs.push({
+      restore: () => {
+        sessionModule.exports = originalSessionExports;
+        // Re-clear non-preserved modules so next test starts clean
+        for (const key of Object.keys(require.cache)) {
+          if (preserve.has(key)) continue;
+          delete require.cache[key];
+        }
+      },
+    } as unknown as sinon.SinonStub);
   }
 
   return stubs;

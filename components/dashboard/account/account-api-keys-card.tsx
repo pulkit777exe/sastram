@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
-import { PressDepth } from '@/components/ui/button-press-depth';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiKeysModal } from '@/components/ai-search/ApiKeysModal';
 
@@ -19,10 +19,10 @@ export function AccountApiKeysCard() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <PressDepth onClick={() => setOpen(true)}>
+        <Button variant="outline" onClick={() => setOpen(true)}>
           <KeyRound className="mr-2 h-4 w-4" />
           Manage API keys
-        </PressDepth>
+        </Button>
         <ApiKeysModal isOpen={open} onClose={() => setOpen(false)} onKeysChange={() => {}} />
       </CardContent>
     </Card>

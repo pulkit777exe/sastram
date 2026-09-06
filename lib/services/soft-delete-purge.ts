@@ -8,35 +8,37 @@ import { logger } from '@/lib/infrastructure/logger';
  */
 export const SOFT_DELETE_RETENTION_DAYS = 30;
 
-const BATCH = 100;
+const PURGE_BATCH_SIZE = 100; // keeps each query bounded for Neon free-tier
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** Deletes in bounded batches so the full soft-deleted set never hits memory. */
 async function purgeExpired(
-  model: {
+  prismaModel: {
     findMany: (args: object) => Promise<{ id: string }[]>;
     deleteMany: (args: object) => Promise<{ count: number }>;
   },
   cutoff: Date
 ): Promise<number> {
-  let total = 0;
+  let totalDeleted = 0;
 
   while (true) {
-    const rows = await model.findMany({
+    const foundRows = await prismaModel.findMany({
       where: { deletedAt: { not: null, lt: cutoff } },
       select: { id: true },
-      take: BATCH,
+      take: PURGE_BATCH_SIZE,
       orderBy: { deletedAt: 'asc' },
     });
-    if (rows.length === 0) break;
+    if (foundRows.length === 0) break;
 
-    const { count } = await model.deleteMany({
-      where: { id: { in: rows.map((r) => r.id) } },
+    const foundIds = foundRows.map((row) => row.id);
+    const { count: deletedCount } = await prismaModel.deleteMany({
+      where: { id: { in: foundIds } },
     });
-    total += count;
-    if (count < BATCH) break;
+    totalDeleted += deletedCount;
+    if (deletedCount < PURGE_BATCH_SIZE) break;
   }
 
-  return total;
+  return totalDeleted;
 }
 
 /**
@@ -47,7 +49,7 @@ export async function purgeSoftDeleted(): Promise<{
   threads: number;
   users: number;
 }> {
-  const cutoff = new Date(Date.now() - SOFT_DELETE_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - SOFT_DELETE_RETENTION_DAYS * MS_PER_DAY);
 
   const totalThreads = await purgeExpired(prisma.thread, cutoff);
   const totalUsers = await purgeExpired(prisma.user, cutoff);

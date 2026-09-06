@@ -69,27 +69,42 @@ export class GeminiService implements AIService {
   }
 
   async generateStreamingResponse(
-    content: string,
+    promptContent: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
     const { signal, resetStall, clear } = makeStreamAbortController();
     try {
-      const result = await this.ai.models.generateContentStream({
+      const streamResult = await this.ai.models.generateContentStream({
         model: this.flashModel,
-        contents: content,
+        contents: promptContent,
         config: { abortSignal: signal },
       });
-      for await (const chunk of result) {
-        const text = chunk.text;
-        if (text) onChunk(text);
+      for await (const streamChunk of streamResult) {
+        const chunkText = streamChunk.text;
+        if (chunkText !== undefined && chunkText !== null && chunkText.length > 0) {
+          onChunk(chunkText);
+        }
         resetStall();
       }
-    } catch (error) {
-      const detail = error instanceof Error
-        ? { message: error.message, name: error.name, stack: error.stack?.split('\n').slice(0, 3).join(' | ') }
-        : { raw: JSON.stringify(error) ?? String(error) };
-      logger.error('[GeminiService.generateStreamingResponse]', detail);
-      throw error;
+    } catch (streamError) {
+      let errorDetail: Record<string, unknown>;
+      if (streamError instanceof Error) {
+        let stackPreview = '';
+        if (streamError.stack !== undefined && streamError.stack !== null) {
+          stackPreview = streamError.stack.split('\n').slice(0, 3).join(' | ');
+        }
+        errorDetail = { message: streamError.message, name: streamError.name, stack: stackPreview };
+      } else {
+        let rawText: string;
+        try {
+          rawText = JSON.stringify(streamError) ?? String(streamError);
+        } catch {
+          rawText = String(streamError);
+        }
+        errorDetail = { raw: rawText };
+      }
+      logger.error('[GeminiService.generateStreamingResponse]', errorDetail);
+      throw streamError;
     } finally {
       clear();
     }
@@ -202,32 +217,46 @@ export class GeminiService implements AIService {
   }
 
   async moderateImageContent(imageUrl: string): Promise<ImageModerationResult> {
-    const prompt =
+    const moderationPrompt =
       'Analyze this image for safety. Classify as SAFE, NSFW, or UNKNOWN. ' +
       'NSFW includes explicit, violent, or disturbing content. ' +
       'Respond with JSON: { "classification": string, "confidence": number (0-1), "reason": string }';
 
     try {
-      const text = await this.generate(
+      const responseText = await this.generate(
         [
           {
             role: 'user',
-            parts: [{ text: prompt }, { fileData: { mimeType: 'image/jpeg', fileUri: imageUrl } }],
+            parts: [{ text: moderationPrompt }, { fileData: { mimeType: 'image/jpeg', fileUri: imageUrl } }],
           },
         ],
         'moderate-image'
       );
 
-      const parsed = JSON.parse(cleanJsonText(text));
-      return {
-        classification: ['SAFE', 'NSFW', 'UNKNOWN'].includes(parsed.classification)
-          ? parsed.classification
-          : 'UNKNOWN',
-        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
-        reason: typeof parsed.reason === 'string' ? parsed.reason : 'No reason provided',
-      };
-    } catch (error) {
-      logger.warn('[GeminiService.moderateImageContent] AI failed, returning UNKNOWN', { error });
+      const parsedResponse = JSON.parse(cleanJsonText(responseText));
+
+      let classification: 'SAFE' | 'NSFW' | 'UNKNOWN' = 'UNKNOWN';
+      if (
+        parsedResponse.classification === 'SAFE' ||
+        parsedResponse.classification === 'NSFW' ||
+        parsedResponse.classification === 'UNKNOWN'
+      ) {
+        classification = parsedResponse.classification;
+      }
+
+      let confidence = 0;
+      if (typeof parsedResponse.confidence === 'number') {
+        confidence = parsedResponse.confidence;
+      }
+
+      let reason = 'No reason provided';
+      if (typeof parsedResponse.reason === 'string') {
+        reason = parsedResponse.reason;
+      }
+
+      return { classification, confidence, reason };
+    } catch (moderationError) {
+      logger.warn('[GeminiService.moderateImageContent] AI failed, returning UNKNOWN', { error: moderationError });
       return { classification: 'UNKNOWN', confidence: 0, reason: 'Image moderation unavailable' };
     }
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
  * APPROVAL CARD (human-in-the-loop)
@@ -92,9 +93,9 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
             >
               Answers sent
             </span>
-            <button type="button" onClick={reset} className="text-[12px] font-medium text-sai-accent-ink hover:underline">
+            <Button type="button" onClick={reset} variant="link" className="text-[12px] font-medium text-sai-accent-ink p-0 h-auto">
               Start over
-            </button>
+            </Button>
           </div>
         ) : (
           <div
@@ -105,16 +106,18 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
             <div className="flex items-start justify-between gap-3">
               <span className="text-[13px] font-medium text-ink">{question.q}</span>
               {onDismiss && (
-                <button
+                <Button
                   type="button"
                   aria-label="Dismiss"
                   onClick={onDismiss}
+                  variant="ghost"
+                  size="icon-sm"
                   className="primitive-icon-button shrink-0 text-ink-3 transition-colors duration-100 hover:bg-hover hover:text-ink"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
-                </button>
+                </Button>
               )}
             </div>
 
@@ -122,16 +125,17 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
               {question.options.map((option, i) => {
                 const on = selected.includes(i);
                 return (
-                  <button
+                  <Button
                     key={option}
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggle(i)}
-                    className="-mx-1.5 flex items-center gap-2 rounded-control px-1.5 py-1 text-left transition-colors duration-100 hover:bg-hover"
+                    variant="ghost"
+                    className="-mx-1.5 items-center gap-2 rounded-control px-1.5 py-1 text-left h-auto"
                   >
                     <span
                       className={`flex size-4 shrink-0 items-center justify-center transition-colors duration-200
-                        ${question.type === 'radio' ? 'rounded-full' : 'rounded-[5px]'}
+                        ${question.type === 'radio' ? 'rounded-full' : 'rounded-control'}
                         ${on ? 'bg-ink text-canvas' : 'shadow-[inset_0_0_0_1.5px_var(--line-strong)] text-transparent'}`}
                     >
                       {question.type === 'radio' ? (
@@ -148,7 +152,7 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
                     <span className={`text-[13px] transition-colors duration-200 ${on ? 'text-ink' : 'text-ink-2'}`}>
                       {option}
                     </span>
-                  </button>
+                  </Button>
                 );
               })}
 
@@ -174,28 +178,31 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
         {/* Footer — pager + send */}
         <div className="primitive-card-footer flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
               aria-label="Previous"
               disabled={qi === 0 || sent}
               onClick={() => setQi((q) => Math.max(0, q - 1))}
-              className="flex size-6 items-center justify-center rounded-[5px] text-ink-3 transition-colors duration-100 enabled:hover:bg-hover enabled:hover:text-ink-2 disabled:opacity-35"
+              variant="ghost"
+              size="icon-sm"
+              className="text-ink-3 transition-colors duration-100 enabled:hover:bg-hover enabled:hover:text-ink-2 disabled:opacity-35"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
-            </button>
+            </Button>
 
             <span className="flex items-center gap-1">
               {questions.map((_, i) => (
-                <button
+                <Button
                   key={i}
                   type="button"
                   aria-label={`Go to question ${i + 1}`}
                   aria-current={i === qi && !sent ? 'step' : undefined}
                   disabled={sent}
                   onClick={() => setQi(i)}
-                  className="rounded-full transition-all duration-300 disabled:cursor-default"
+                  variant="ghost"
+                  className="rounded-full transition-all duration-300 disabled:cursor-default h-auto"
                   style={
                     i === qi && !sent
                       ? { width: 9, height: 9, border: '2.5px solid var(--ink)' }
@@ -207,26 +214,28 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
               ))}
             </span>
 
-            <button
+            <Button
               type="button"
               aria-label="Next"
               disabled={last || sent}
               onClick={() => setQi((q) => Math.min(questions.length - 1, q + 1))}
-              className="flex size-6 items-center justify-center rounded-[5px] text-ink-3 transition-colors duration-100 enabled:hover:bg-hover enabled:hover:text-ink-2 disabled:opacity-35"
+              variant="ghost"
+              size="icon-sm"
+              className="text-ink-3 transition-colors duration-100 enabled:hover:bg-hover enabled:hover:text-ink-2 disabled:opacity-35"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 6l6 6-6 6" />
               </svg>
-            </button>
+            </Button>
           </span>
 
           {!sent && (
-            <button
+            <Button
               type="button"
               aria-label={last ? 'Send answers' : 'Next question'}
               disabled={!hasAnswer}
               onClick={() => (last ? handleSend() : setQi((q) => q + 1))}
-              className="-mr-0.5 flex size-7 items-center justify-center rounded-[8px] transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
+              className="-mr-0.5 size-7 rounded-card transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
               style={{
                 background: hasAnswer ? 'var(--ink)' : 'var(--field)',
                 color: hasAnswer ? 'var(--surface)' : 'var(--ink-3)',
@@ -238,7 +247,7 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 19V5M5 12l7-7 7 7" />
               </svg>
-            </button>
+            </Button>
           )}
         </div>
       </div>

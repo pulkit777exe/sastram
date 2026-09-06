@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils/cn';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import type { PollResults } from '@/modules/polls/types';
 
+const POLL_EXPIRY_TICK_MS = 30_000;
+
 interface PollDisplayProps {
   poll: {
     id: string;
@@ -27,12 +29,12 @@ interface PollDisplayProps {
 function PollSkeleton({ optionCount }: { optionCount: number }) {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-5 w-3/4 bg-muted rounded" />
+      <div className="h-5 w-3/4 bg-field rounded" />
       <div className="space-y-2">
         {Array.from({ length: optionCount }).map((_, i) => (
           <div key={i} className="space-y-1">
-            <div className="h-4 w-1/2 bg-muted rounded" />
-            <div className="h-2 w-full bg-muted rounded-full" />
+            <div className="h-4 w-1/2 bg-field rounded" />
+            <div className="h-2 w-full bg-field rounded-full" />
           </div>
         ))}
       </div>
@@ -99,13 +101,9 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
   // loadPollData is now stable (useCallback with [poll.id])
   // so this effect only runs once per poll.id change or refreshKey bump
   useEffect(() => {
-    let cancelled = false;
     (async () => {
       await loadPollData();
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [loadPollData, refreshKey]);
 
   const handleVote = async (optionIndex: number) => {
@@ -135,11 +133,16 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
+    const id = setInterval(() => setNow(Date.now()), POLL_EXPIRY_TICK_MS);
     return () => clearInterval(id);
   }, []);
 
-  const isExpired = !!poll.expiresAt && new Date(poll.expiresAt).getTime() <= now;
+  function isPollExpired(expiresAt: Date | null, currentTime: number): boolean {
+    if (!expiresAt) return false;
+    return new Date(expiresAt).getTime() <= currentTime;
+  }
+
+  const isExpired = isPollExpired(poll.expiresAt, now);
   const showResults = hasVoted || !poll.isActive || isExpired;
 
   if (isLoading) {
@@ -150,11 +153,11 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm max-w-lg"
+      className="rounded-card border border-line bg-surface p-5 space-y-4 shadow-sm max-w-lg"
     >
       <div className="flex items-start justify-between">
-        <h3 className="text-sm font-semibold text-foreground tracking-tight">{poll.question}</h3>
-        {showResults && <BarChart3 className="h-4 w-4 text-muted-foreground shrink-0" />}
+        <h3 className="text-sm font-semibold text-ink tracking-tight">{poll.question}</h3>
+        {showResults && <BarChart3 className="h-4 w-4 text-ink-3 shrink-0" />}
       </div>
 
       <div className="space-y-2.5" role="radiogroup" aria-label={poll.question}>
@@ -173,22 +176,22 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
               {showResults ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-foreground font-medium">
+                    <span className="flex items-center gap-1.5 text-ink font-medium">
                       {option}
-                      {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
+                      {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-sai-accent" />}
                     </span>
-                    <span className="text-muted-foreground font-(--font-dm-mono) text-xs tabular-nums">
+                    <span className="text-ink-2 font-mono text-xs tabular-nums">
                       {result?.votes ?? 0} votes ({percentage.toFixed(1)}%)
                     </span>
                   </div>
-                  <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-field rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${percentage}%` }}
                       transition={{ duration: 0.5, delay: index * 0.08 }}
                       className={cn(
                         'h-full rounded-full',
-                        isSelected ? 'bg-brand' : 'bg-foreground/20'
+                        isSelected ? 'bg-sai-accent' : 'bg-line-strong'
                       )}
                     />
                   </div>
@@ -202,10 +205,10 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
                   aria-checked={isSelected}
                   aria-label={`Vote for: ${option}`}
                   className={cn(
-                    'w-full text-left px-3.5 py-2 rounded-lg border text-sm font-medium transition-all duration-200',
+                    'w-full text-left px-3.5 py-2 rounded-control border text-sm font-medium transition-all duration-200',
                     isSelected
-                      ? 'bg-brand/10 border-brand text-brand'
-                      : 'bg-transparent border-border/60 text-foreground hover:border-border hover:bg-muted/20 disabled:opacity-50'
+                      ? 'bg-sai-accent-tint border-sai-accent text-sai-accent'
+                      : 'bg-transparent border-line text-ink hover:border-line-strong hover:bg-hover disabled:opacity-50'
                   )}
                 >
                   {option}
@@ -217,7 +220,7 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
       </div>
 
       {poll.expiresAt && (
-        <p className="text-xs font-(--font-dm-mono) uppercase tracking-wider text-muted-foreground">
+        <p className="text-xs font-mono uppercase tracking-wider text-ink-3">
           Poll expires <TimeAgo date={poll.expiresAt} />
         </p>
       )}

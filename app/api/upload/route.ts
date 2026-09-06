@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, del } from '@vercel/blob';
-import { validateFileUpload, getFileCategory, detectMimeTypeFromFile, getExtensionFromMime, type FileCategory } from '@/lib/utils/file-upload';
 import { uploadResponseSchema } from '@/lib/schemas/api';
 import { logger } from '@/lib/infrastructure/logger';
-import { randomUUID } from 'crypto';
-import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
-import { AppError } from '@/lib/utils/errors';
+import { ok, fail, withErrorHandling, HTTP_STATUS} from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { moderateImageUpload } from '@/lib/services/image-moderation';
+import { store } from '@/lib/attachments';
 
 const handler = withErrorHandling(async (req: NextRequest) => {
   const session = await requireSessionOrThrow();
 
   const rateLimitResult = await rateLimit({ key: `upload:${session.user.id}`, type: 'upload' });
   if (!rateLimitResult.success) {
-    return NextResponse.json(fail('RATE_LIMITED', 'Upload limit reached. Please try again later.'), { status: 429 });
+    return NextResponse.json(fail('RATE_LIMITED', 'Upload limit reached. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
   }
 
   const formData = await req.formData();
@@ -24,87 +20,25 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   const files = formData.getAll('files') as File[];
 
   if (!threadId) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Missing threadId'), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Missing threadId'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
   if (!files || files.length === 0) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'No files provided'), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'No files provided'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
-  if (files.length > 10) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Maximum 10 files allowed'), { status: 400 });
-  }
-
-  for (const file of files) {
-    const validation = validateFileUpload(file);
-    if (!validation.valid) {
-      return NextResponse.json(fail('VALIDATION_ERROR', validation.error!), { status: 400 });
-    }
-  }
-
-  // Sequential so a rejected/crashed moderation never strands concurrently
-  // uploading blobs: every uploaded file is fully moderated before the next one.
-  const uploadedFiles: Array<{
-    url: string;
-    type: FileCategory;
-    name: string;
-    size: number;
-    flagged?: true;
-  }> = [];
-  try {
-    for (const file of files) {
-      // Verify file content matches declared MIME type via magic bytes
-      const detectedMime = await detectMimeTypeFromFile(file);
-      if (detectedMime && detectedMime !== file.type) {
-        logger.warn('[upload] MIME mismatch', {
-          declared: file.type,
-          detected: detectedMime,
-          filename: file.name,
-        });
-        // Reject: declared type doesn't match actual content
-        throw new AppError('File content does not match declared type', 'VALIDATION_ERROR', 400);
-      }
-
-      // Derive extension from detected or declared MIME type, not from filename
-      const mimeForExt = detectedMime ?? file.type;
-      const ext = getExtensionFromMime(mimeForExt);
-      const key = `${randomUUID()}.${ext}`;
-
-      const blob = await put(key, file, {
-        access: 'public',
-        addRandomSuffix: false,
-      });
-
-      const type = getFileCategory(mimeForExt);
-
-      const modResult = await moderateImageUpload(blob.url, type);
-      if (!modResult.allowed) {
-        throw new AppError(modResult.reason ?? 'Image rejected', 'FORBIDDEN', 403);
-      }
-      const flagged = modResult.flagged ?? false;
-
-      uploadedFiles.push({
-        url: blob.url,
-        type,
-        name: file.name,
-        size: file.size,
-        ...(flagged && { flagged: true }),
-      });
-    }
-  } catch (error) {
-    // The batch failed — don't strand already-uploaded blobs as storage garbage.
-    await Promise.all(uploadedFiles.map((f) => del(f.url).catch(() => {})));
-    throw error;
-  }
+  // Deep Module: single seam hides validate→sniff→ext→put→moderate→rollback.
+  // Previously 60 lines duplicated in /api/messages; now one call, atomic batch.
+  const uploadedFiles = await store(files, { kind: 'message' });
 
   const response = { files: uploadedFiles };
   const validatedResponse = uploadResponseSchema.safeParse(response);
 
   if (!validatedResponse.success) {
     logger.error('Invalid upload response:', validatedResponse.error.issues);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to process upload response'), { status: 500 });
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to process upload response'), { status: HTTP_STATUS.INTERNAL });
   }
 
   return NextResponse.json(ok(validatedResponse.data));

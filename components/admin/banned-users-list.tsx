@@ -10,7 +10,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -23,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Search } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { cn } from '@/lib/utils/cn';
+import { Button } from '@/components/ui/button';
 
 export interface BannedUser {
   id: string;
@@ -51,26 +51,36 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
 
-  // Helper for safe client-side date calculation
-  const getDaysRemaining = (expiresAt: Date) => {
-    return Math.ceil(
-      (new Date(expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-    );
-  };
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+  function getDaysRemaining(expiresAt: Date): number {
+    const diffMs = new Date(expiresAt).getTime() - new Date().getTime();
+    return Math.ceil(diffMs / MS_PER_DAY);
+  }
+
+  function matchesFilterType(ban: BannedUser, currentFilter: string): boolean {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'permanent') return !ban.expiresAt;
+    if (currentFilter === 'temporary') return !!ban.expiresAt;
+    return true;
+  }
+
+  function getBanBadgeClass(expiresAt: Date | null): string {
+    if (!expiresAt) return 'bg-red-500/10 text-red-500 border-red-500/20';
+    return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+  }
+
+  function getBanLabel(expiresAt: Date | null): string {
+    if (!expiresAt) return 'Permanent';
+    return `Temporary (${getDaysRemaining(expiresAt)} days)`;
+  }
 
   const filteredBans = bans.filter((ban) => {
     const matchesSearch =
       (ban.user?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       ban.reason.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter =
-      filter === 'all'
-        ? true
-        : filter === 'permanent'
-          ? !ban.expiresAt
-          : filter === 'temporary'
-            ? !!ban.expiresAt
-            : true;
+    const matchesFilter = matchesFilterType(ban, filter);
 
     return matchesSearch && matchesFilter;
   });
@@ -82,7 +92,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search user or reason"
-            className="pl-9 bg-muted border-border"
+            className="pl-9 bg-muted border-line"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -102,11 +112,11 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border overflow-hidden bg-card">
+      <div className="rounded-control border border-line overflow-hidden bg-surface">
         <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50 border-border hover:bg-muted/50">
+            <TableRow className="bg-muted/50 border-line hover:bg-muted/50">
               <TableHead>User</TableHead>
               <TableHead>Ban Date</TableHead>
               <TableHead>Reason</TableHead>
@@ -124,7 +134,7 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
               </TableRow>
             ) : (
               filteredBans.map((ban) => (
-                <TableRow key={ban.id} className="border-border">
+                <TableRow key={ban.id} className="border-line">
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
@@ -151,30 +161,23 @@ export function BannedUsersList({ bans }: BannedUsersListProps) {
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className={cn(
-                        'text-xs font-normal',
-                        !ban.expiresAt
-                          ? 'bg-red-500/10 text-red-500 border-red-500/20'
-                          : 'bg-orange-500/10 text-orange-500 border-orange-500/20'
-                      )}
+                      className={cn('text-xs font-normal', getBanBadgeClass(ban.expiresAt))}
                     >
-                      {!ban.expiresAt
-                        ? 'Permanent'
-                        : `Temporary (${getDaysRemaining(ban.expiresAt!)} days)`}
+                      {getBanLabel(ban.expiresAt)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="sticky right-0 bg-card z-10 text-right">
+                  <TableCell className="sticky right-0 bg-surface z-10 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <PressDepth
+                      <Button type="button" variant="ghost"
                         className="h-8 px-2 text-xs text-brand hover:text-brand hover:bg-brand/10"
                       >
                         [View Appeal]
-                      </PressDepth>
-                      <PressDepth
+                      </Button>
+                      <Button type="button" variant="ghost"
                         className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         [Unban]
-                      </PressDepth>
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

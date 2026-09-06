@@ -1,3 +1,4 @@
+import { HTTP_STATUS } from '@/lib/utils/api-response';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getEnv } from '@/lib/config/env';
@@ -40,14 +41,18 @@ const isProd = process.env.NODE_ENV === 'production';
 const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY !== 'false';
 
 function buildCsp(nonce: string): string {
+  const scriptParts = ["'self'", `'nonce-${nonce}'`];
+  if (!isProd) scriptParts.push("'unsafe-eval'");
+  scriptParts.push("'unsafe-inline'", "https://va.vercel-scripts.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com");
+  const scriptSrcElem = `script-src-elem ${scriptParts.join(' ')}`;
+  const scriptSrc = `script-src ${scriptParts.join(' ')}`;
   return [
     "default-src 'self'",
     // Nonce-based script-src with 'unsafe-inline' fallback: nonces take precedence
     // for scripts we control, 'unsafe-inline' covers Next.js bootstrap/HMR scripts
-    // that don't carry the nonce attribute. Remove 'unsafe-inline' only after all
-    // framework inline scripts are nonce-tagged (see docs/BACKLOG.md O1a).
-    `script-src-elem 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} 'unsafe-inline' https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
-    `script-src 'self' 'nonce-${nonce}'${isProd ? '' : " 'unsafe-eval'"} 'unsafe-inline' https://va.vercel-scripts.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com`,
+    // that don't carry the nonce attribute.
+    scriptSrcElem,
+    scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https: http:",
     "connect-src 'self' https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io wss: ws:",
@@ -74,7 +79,15 @@ const PRODUCTION_HEADERS = {
 
 function getClientIp(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'unknown';
+  if (forwarded) {
+    const parts = forwarded.split(',');
+    const first = parts[0];
+    if (first) {
+      const trimmed = first.trim();
+      if (trimmed) return trimmed;
+    }
+    return 'unknown';
+  }
   const cfIp = request.headers.get('cf-connecting-ip');
   if (cfIp) return cfIp;
   const realIp = request.headers.get('x-real-ip');
@@ -129,7 +142,7 @@ export default async function proxy(request: NextRequest) {
     const key = `proxy:${ip}:${pathname}`;
     const { success } = await rateLimit({ key, type: 'api' });
     if (!success) {
-      const response = NextResponse.json({ error: 'Too Many Requests' }, { status: 429 });
+      const response = NextResponse.json({ error: 'Too Many Requests' }, { status: HTTP_STATUS.RATE_LIMITED });
       response.headers.set('x-request-id', requestId);
       return applySecurityHeaders(response, nonce);
     }
@@ -154,14 +167,21 @@ export default async function proxy(request: NextRequest) {
     if (origin && !checkOrigin(origin)) {
       return NextResponse.json(
         { error: 'CSRF validation failed: Origin mismatch' },
-        { status: 403 }
+        { status: HTTP_STATUS.FORBIDDEN }
       );
     }
 
     if (!origin && referer && !checkOrigin(referer)) {
       return NextResponse.json(
         { error: 'CSRF validation failed: Referer mismatch' },
-        { status: 403 }
+        { status: HTTP_STATUS.FORBIDDEN }
+      );
+    }
+
+    if (!origin && !referer) {
+      return NextResponse.json(
+        { error: 'CSRF validation failed: Missing Origin/Referer' },
+        { status: HTTP_STATUS.FORBIDDEN }
       );
     }
   }

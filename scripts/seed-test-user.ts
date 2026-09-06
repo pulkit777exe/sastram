@@ -5,6 +5,8 @@ import { hashPassword } from 'better-auth/crypto';
 const TEST_EMAIL = 'test@sastram.dev';
 const TEST_PASSWORD = 'TestPassword123!';
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
 async function main() {
   const hashed = await hashPassword(TEST_PASSWORD);
 
@@ -40,11 +42,11 @@ async function main() {
   const token = randomUUID() + randomUUID().replace(/-/g, '');
   const session = await prisma.session.upsert({
     where: { token },
-    update: { expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) },
+    update: { expiresAt: new Date(Date.now() + THIRTY_DAYS_MS) },
     create: {
       token,
       userId: user.id,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      expiresAt: new Date(Date.now() + THIRTY_DAYS_MS),
       ipAddress: '127.0.0.1',
       userAgent: 'playwright-seed',
     },

@@ -8,9 +8,9 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { cn } from '@/lib/utils/cn';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { LoaderIcon, Eye, EyeOff, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { signIn, signUp, authClient } from '@/lib/services/auth-client';
 import { GithubIcon } from '@/public/icons/github';
@@ -20,13 +20,36 @@ import { SerifHeading } from '@/components/layout/serif-heading';
 
 type AuthMode = 'signin' | 'signup' | 'email-otp' | 'otp-verify';
 
+const OTP_LENGTH = 6;
+const RESEND_COUNTDOWN = 60;
+const COUNTDOWN_MS = 1000;
+const NON_DIGIT_PATTERN = /[^0-9]/g;
+const EXPIRED_PATTERN = /expired/i;
+const NOT_VERIFIED_PATTERN = /email.*not.*verif|verify.*email/i;
+
 const inputStyles =
-  'h-12 rounded-xl bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus:bg-background focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all';
+  'h-12 rounded-card bg-secondary/50 border-input text-foreground placeholder:text-muted-foreground focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-all';
 const labelStyles = 'text-muted-foreground text-sm font-medium';
-const primaryButtonStyles =
-  'h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-all hover:scale-[1.02] active:scale-[0.98]';
-const outlineButtonStyles =
-  'h-12 rounded-xl border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground transition-all';
+
+function getRedirectTarget(searchParams: URLSearchParams): string {
+  const candidate = searchParams.get('redirect');
+  if (candidate && candidate.startsWith('/')) {
+    return candidate;
+  }
+
+  if (typeof window !== 'undefined' && document.referrer) {
+    try {
+      const referrerUrl = new URL(document.referrer);
+      if (referrerUrl.pathname.startsWith('/') && referrerUrl.pathname !== '/login') {
+        return referrerUrl.pathname + (referrerUrl.search || '');
+      }
+    } catch {
+      // Invalid referrer URL — fall through to default
+    }
+  }
+
+  return '/dashboard';
+}
 
 function UserAuthForm({
   className,
@@ -58,26 +81,7 @@ function UserAuthForm({
   const hasShownReasonToast = useRef(false);
   const verifyingOtpRef = useRef(false);
 
-  const redirectTarget = React.useMemo(() => {
-    const candidate = searchParams.get('redirect');
-    if (candidate && candidate.startsWith('/')) {
-      return candidate;
-    }
-
-    if (typeof window !== 'undefined' && document.referrer) {
-      try {
-        const referrerUrl = new URL(document.referrer);
-        if (referrerUrl.pathname.startsWith('/') && referrerUrl.pathname !== '/login') {
-          const search = referrerUrl.search;
-          return referrerUrl.pathname + (search || '');
-        }
-      } catch {
-        // Invalid referrer URL — fall through to default
-      }
-    }
-
-    return '/dashboard';
-  }, [searchParams]);
+  const redirectTarget = getRedirectTarget(searchParams);
 
   useEffect(() => {
     if (hasShownReasonToast.current) {
@@ -99,7 +103,7 @@ function UserAuthForm({
 
   useEffect(() => {
     if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      const timer = setTimeout(() => setCountdown(countdown - 1), COUNTDOWN_MS);
       return () => clearTimeout(timer);
     }
   }, [countdown]);
@@ -137,7 +141,7 @@ function UserAuthForm({
             return;
           }
           setMode('otp-verify');
-          setCountdown(60);
+          setCountdown(RESEND_COUNTDOWN);
           setTimeout(() => inputRefs.current[0]?.focus(), 100);
         } catch {
           setError('Failed to send verification code. Please try again.');
@@ -152,7 +156,7 @@ function UserAuthForm({
         });
 
         if (result.error) {
-          if (/email.*not.*verif|verify.*email/i.test(result.error.message || '')) {
+          if (NOT_VERIFIED_PATTERN.test(result.error.message || '')) {
             setOtpEmail(email);
             try {
               const res = await fetch('/api/email-otp/send-verification-otp', {
@@ -163,7 +167,7 @@ function UserAuthForm({
               const otpData = await res.json();
               if (!otpData?.error) {
                 setMode('otp-verify');
-                setCountdown(60);
+                setCountdown(RESEND_COUNTDOWN);
                 setTimeout(() => inputRefs.current[0]?.focus(), 100);
               }
             } catch {}
@@ -229,7 +233,7 @@ function UserAuthForm({
       }
 
       setMode('otp-verify');
-      setCountdown(60);
+      setCountdown(RESEND_COUNTDOWN);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
       clientLogger.error('LoginForm', 'Send OTP error', err);
@@ -240,7 +244,7 @@ function UserAuthForm({
   };
 
   const verifyOtpCode = async (otpCode: string) => {
-    if (otpCode.length !== 6 || verifyingOtpRef.current) {
+    if (otpCode.length !== OTP_LENGTH || verifyingOtpRef.current) {
       return;
     }
 
@@ -256,7 +260,7 @@ function UserAuthForm({
 
       if (result.error) {
         const message = result.error.message || 'Invalid verification code';
-        if (/expired/i.test(message)) {
+        if (EXPIRED_PATTERN.test(message)) {
           toasts.otpExpired();
         } else {
           toasts.invalidOtp();
@@ -280,18 +284,18 @@ function UserAuthForm({
 
   const handleOTPChange = (index: number, value: string) => {
     if (value.length > 1) {
-      const pastedValues = value.slice(0, 6).split('');
+      const pastedValues = value.slice(0, OTP_LENGTH).split('');
       const newOtp = [...otp];
       pastedValues.forEach((char, i) => {
-        if (index + i < 6) {
+        if (index + i < OTP_LENGTH) {
           newOtp[index + i] = char;
         }
       });
       setOtp(newOtp);
-      const nextIndex = Math.min(index + pastedValues.length, 5);
+      const nextIndex = Math.min(index + pastedValues.length, OTP_LENGTH - 1);
       inputRefs.current[nextIndex]?.focus();
       const pastedOtp = newOtp.join('');
-      if (pastedOtp.length === 6) {
+      if (pastedOtp.length === OTP_LENGTH) {
         void verifyOtpCode(pastedOtp);
       }
       return;
@@ -301,12 +305,12 @@ function UserAuthForm({
     newOtp[index] = value;
     setOtp(newOtp);
 
-    if (value && index < 5) {
+    if (value && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
 
     const currentOtp = newOtp.join('');
-    if (currentOtp.length === 6) {
+    if (currentOtp.length === OTP_LENGTH) {
       void verifyOtpCode(currentOtp);
     }
   };
@@ -320,7 +324,7 @@ function UserAuthForm({
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     const otpCode = otp.join('');
-    if (otpCode.length !== 6) {
+    if (otpCode.length !== OTP_LENGTH) {
       setError('Please enter the complete 6-digit code');
       return;
     }
@@ -346,7 +350,7 @@ function UserAuthForm({
         throw new Error('Failed to resend code');
       }
 
-      setCountdown(60);
+      setCountdown(RESEND_COUNTDOWN);
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch {
@@ -391,15 +395,15 @@ function UserAuthForm({
             </div>
 
             {error && (
-              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-control">
                 {error}
               </p>
             )}
 
-            <PressDepth
+            <Button
               type="submit"
               disabled={loadingState !== null || !otpEmail}
-              className={primaryButtonStyles + ' w-full'}
+              className="w-full"
             >
               {loadingState === 'otp' ? (
                 <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -407,19 +411,20 @@ function UserAuthForm({
                 <Mail className="mr-2 h-4 w-4" />
               )}
               Send Verification Code
-            </PressDepth>
+            </Button>
 
-            <PressDepth
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => {
                 setMode('signin');
                 setError(null);
               }}
-              className="w-full text-muted-foreground hover:text-foreground hover:bg-accent"
+              className="w-full"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to sign in
-            </PressDepth>
+            </Button>
           </form>
         </motion.div>
       </div>
@@ -437,7 +442,7 @@ function UserAuthForm({
         >
           <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div className="text-center mb-4">
-              <div className="mx-auto w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-4 border border-brand/20">
+              <div className="mx-auto w-14 h-14 rounded-card bg-brand/10 flex items-center justify-center mb-4 border border-brand/20">
                 <CheckCircle2 className="w-7 h-7 text-brand" />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -459,36 +464,37 @@ function UserAuthForm({
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    maxLength={6}
+                    maxLength={OTP_LENGTH}
                     aria-label={`Digit ${index + 1} of verification code`}
                     value={digit}
-                    onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
+                    onChange={(e) => handleOTPChange(index, e.target.value.replace(NON_DIGIT_PATTERN, ''))}
                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
                     disabled={loadingState !== null}
-                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-xl border-input bg-secondary text-foreground focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all caret-brand"
+                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-card border-input bg-secondary text-foreground focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:border-brand transition-all caret-brand"
                   />
                 ))}
               </div>
             </div>
 
             {error && (
-              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+              <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-control">
                 {error}
               </p>
             )}
 
-            <PressDepth
+            <Button
               type="submit"
-              disabled={loadingState !== null || otp.join('').length !== 6}
-              className={primaryButtonStyles + ' w-full'}
+              disabled={loadingState !== null || otp.join('').length !== OTP_LENGTH}
+              className="w-full"
             >
               {loadingState === 'otp' ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : null}
               Verify & Sign In
-            </PressDepth>
+            </Button>
 
             <div className="text-center text-sm space-y-3">
-              <button
+              <Button
                 type="button"
+                variant="link"
                 onClick={handleResendOTP}
                 disabled={countdown > 0 || loadingState !== null}
                 className={cn(
@@ -498,20 +504,21 @@ function UserAuthForm({
                 )}
               >
                 {countdown > 0 ? `Resend code in ${countdown}s` : 'Resend code'}
-              </button>
+              </Button>
               <div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => {
                     setMode('email-otp');
                     setOtp(['', '', '', '', '', '']);
                     setError(null);
                   }}
-                  className="text-muted-foreground hover:text-foreground transition-colors text-xs"
+                  className="text-xs"
                 >
                   <ArrowLeft className="inline mr-1 h-3 w-3" />
                   Use different email
-                </button>
+                </Button>
               </div>
             </div>
           </form>
@@ -582,44 +589,47 @@ function UserAuthForm({
                 required
                 className={cn(inputStyles, 'pr-10')}
               />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loadingState !== null}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none disabled:opacity-50 transition-colors"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
+              </Button>
             </div>
             {mode === 'signin' && (
               <div className="flex justify-end">
-                <button
+                <Button
                   type="button"
+                  variant="link"
                   onClick={onForgotPassword}
-                  className="text-xs text-brand hover:text-brand/80"
+                  className="text-xs text-brand hover:text-brand/80 p-0"
                 >
                   Forgot password?
-                </button>
+                </Button>
               </div>
             )}
           </div>
           {error && (
-            <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg">
+            <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-control">
               {error}
             </p>
           )}
 
-          <PressDepth disabled={loadingState !== null} type="submit" className={primaryButtonStyles}>
+          <Button disabled={loadingState !== null} type="submit" className="w-full">
             {loadingState === 'email' && <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />}
             {mode === 'signup' ? 'Create Account' : 'Sign In'}
-          </PressDepth>
+          </Button>
         </div>
       </form>
 
       <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
+          <span className="w-full border-t border-line" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-4 text-muted-foreground font-medium">
@@ -629,11 +639,12 @@ function UserAuthForm({
       </div>
 
       <div className="flex gap-4">
-        <PressDepth
+        <Button
           type="button"
+          variant="outline"
           disabled={loadingState !== null}
           onClick={() => handleSocialLogin('github')}
-          className={cn(outlineButtonStyles, 'flex-1')}
+          className="flex-1"
         >
           {loadingState === 'github' ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -643,12 +654,13 @@ function UserAuthForm({
             </div>
           )}
           GitHub
-        </PressDepth>
-        <PressDepth
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           disabled={loadingState !== null}
           onClick={() => handleSocialLogin('google')}
-          className={cn(outlineButtonStyles, 'flex-1')}
+          className="flex-1"
         >
           {loadingState === 'google' ? (
             <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
@@ -658,12 +670,13 @@ function UserAuthForm({
             </div>
           )}
           Google
-        </PressDepth>
+        </Button>
       </div>
 
       <div className="text-center text-sm mt-4">
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={() => {
             setMode(mode === 'signin' ? 'signup' : 'signin');
             setError(null);
@@ -681,7 +694,7 @@ function UserAuthForm({
               <span className="text-brand hover:underline underline-offset-4">Sign in</span>
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -695,7 +708,6 @@ export function LoginForm({
   onEmailChange?: (email: string) => void;
 }) {
   const [mode, setMode] = useState<AuthMode>('signin');
-  const props = onForgotPassword ? { onForgotPassword } : {};
 
   const getTitle = () => {
     switch (mode) {
@@ -745,7 +757,7 @@ export function LoginForm({
 
           {/* Form Container */}
           <div className="p-1">
-            <UserAuthForm mode={mode} setMode={setMode} onForgotPassword={onForgotPassword} />
+            <UserAuthForm mode={mode} setMode={setMode} onForgotPassword={onForgotPassword} onEmailChange={onEmailChange} />
           </div>
 
           <p className="px-8 text-center text-xs text-muted-foreground">

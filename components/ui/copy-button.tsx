@@ -118,6 +118,16 @@ export function useCopyToClipboard({
   return { copy, reset, status, copied: status === "copied" };
 }
 
+function getStatusLabel(status: CopyStatus, copiedLabel: string, errorLabel: string): string {
+  if (status === "copied") {
+    return copiedLabel;
+  }
+  if (status === "error") {
+    return errorLabel;
+  }
+  return "";
+}
+
 export type CopyButtonProps = {
   value: string;
   label?: string;
@@ -163,8 +173,8 @@ export function CopyButton({
       }}
       whileTap={disabled || reduced ? undefined : { y: 1 }}
       transition={CELL}
-      style={{ borderRadius: 9, touchAction: "manipulation" }}
-      className={`inline-flex h-9 select-none items-center gap-2 rounded-[9px] border border-border bg-card px-3 text-[13px] font-medium text-foreground shadow-btn outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:bg-muted focus-visible:border-brand focus-visible:shadow-[0_1px_2px_rgba(28,25,23,0.08),0_10px_20px_-14px_rgba(56,114,233,0.6)] disabled:opacity-50 dark:border-line dark:bg-surface dark:text-foreground dark:shadow-btn dark:hover:bg-hover dark:focus-visible:border-brand dark:focus-visible:shadow-[0_10px_20px_-14px_rgba(56,114,233,0.5)] ${className}`}
+      style={{ touchAction: "manipulation" }}
+      className={`inline-flex h-9 select-none items-center gap-2 rounded-control border border-line bg-surface px-3 text-[13px] font-medium text-foreground shadow-btn outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:bg-muted focus-visible:border-brand focus-visible:shadow-[0_1px_2px_rgba(28,25,23,0.08),0_10px_20px_-14px_rgba(56,114,233,0.6)] disabled:opacity-50 dark:border-line dark:bg-surface dark:text-foreground dark:shadow-btn dark:hover:bg-hover dark:focus-visible:border-brand dark:focus-visible:shadow-[0_10px_20px_-14px_rgba(56,114,233,0.5)] ${className}`}
     >
       <span className="grid size-[14px] shrink-0" aria-hidden="true">
         <motion.svg
@@ -248,7 +258,7 @@ export function CopyButton({
       </span>
 
       <span role="status" aria-live="polite" className="sr-only">
-        {status === "copied" ? copiedLabel : status === "error" ? errorLabel : ""}
+        {getStatusLabel(status, copiedLabel, errorLabel)}
       </span>
     </motion.button>
   );

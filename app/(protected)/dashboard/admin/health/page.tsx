@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { RefreshCw, Server, HardDrive, AlertTriangle, Clock } from 'lucide-react';
 
 interface HealthData {
@@ -24,22 +24,30 @@ interface SlaData {
   avgResponseTimeHours: number | null;
 }
 
+async function fetchAll() {
+  const [healthRes, slaRes] = await Promise.all([
+    fetch('/api/admin/health'),
+    fetch('/api/admin/sla'),
+  ]);
+  const healthJson = await healthRes.json();
+  const slaJson = await slaRes.json();
+  return { healthJson, slaJson };
+}
+
 export default function AdminHealthPage() {
   const [data, setData] = useState<HealthData | null>(null);
   const [slaData, setSlaData] = useState<SlaData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const hasOver24h = slaData !== null && slaData.pendingOver24h > 0;
+  const hasOver72h = slaData !== null && slaData.pendingOver72h > 0;
+
   const fetchHealth = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [healthRes, slaRes] = await Promise.all([
-        fetch('/api/admin/health'),
-        fetch('/api/admin/sla'),
-      ]);
-      const healthJson = await healthRes.json();
-      const slaJson = await slaRes.json();
+      const { healthJson, slaJson } = await fetchAll();
       if (healthJson.error) {
         setError(healthJson.error.message || 'Failed to load health data');
       } else {
@@ -62,13 +70,10 @@ export default function AdminHealthPage() {
       setLoading(true);
       setError(null);
       try {
-        const [healthRes, slaRes] = await Promise.all([
-          fetch('/api/admin/health'),
-          fetch('/api/admin/sla'),
-        ]);
-        const healthJson = await healthRes.json();
-        const slaJson = await slaRes.json();
-        if (cancelled) return;
+        const { healthJson, slaJson } = await fetchAll();
+        if (cancelled) {
+          return;
+        }
         if (healthJson.error) {
           setError(healthJson.error.message || 'Failed to load health data');
         } else {
@@ -78,30 +83,33 @@ export default function AdminHealthPage() {
           setSlaData(slaJson.data);
         }
       } catch {
-        if (!cancelled) setError('Failed to connect to health endpoint');
+        if (!cancelled) {
+          setError('Failed to connect to health endpoint');
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     doFetch();
 
-    let interval = setInterval(doFetch, 30000);
+    let intervalId = setInterval(doFetch, 30000);
 
-    // Pause polling when tab is hidden to save resources
     function onVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        doFetch(); // immediate refresh on foreground
-        interval = setInterval(doFetch, 30000);
+      if (document.visibilityState === 'hidden') {
+        clearInterval(intervalId);
       } else {
-        clearInterval(interval);
+        doFetch();
+        intervalId = setInterval(doFetch, 30000);
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
@@ -110,20 +118,20 @@ export default function AdminHealthPage() {
     <div className="space-y-8">
       <header className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin</p>
-          <h1 className="mt-1 text-3xl font-semibold text-foreground">System Health</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-xs uppercase tracking-widest text-ink-3">Admin</p>
+          <h1 className="mt-1 text-3xl font-semibold text-ink">System Health</h1>
+          <p className="mt-1 text-sm text-ink-3">
             Real-time metrics for the Sastram server instance.
           </p>
         </div>
-        <PressDepth onClick={fetchHealth} disabled={loading}>
+        <Button variant="outline" onClick={fetchHealth} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
-        </PressDepth>
+        </Button>
       </header>
 
       {error && (
-        <Card className="rounded-3xl border-destructive/30 bg-destructive/5">
+        <Card className="rounded-card border-destructive/30 bg-destructive/5">
           <CardContent className="p-6 text-destructive text-sm">{error}</CardContent>
         </Card>
       )}
@@ -131,7 +139,7 @@ export default function AdminHealthPage() {
       {!data && !error && loading && (
         <div className="grid gap-6 md:grid-cols-2">
           {[1, 2].map((i) => (
-            <Card key={i} className="rounded-3xl">
+            <Card key={i} className="rounded-card">
               <CardContent className="p-6">
                 <div className="skeleton h-4 w-24 mb-3" />
                 <div className="skeleton h-8 w-16" />
@@ -145,29 +153,29 @@ export default function AdminHealthPage() {
         <>
           {/* System Info */}
           <section className="grid gap-6 md:grid-cols-2">
-            <Card className="rounded-3xl">
+            <Card className="rounded-card">
               <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <Server className="w-5 h-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <Server className="w-5 h-5 text-ink-3" />
+                <CardTitle className="text-sm font-medium text-ink-3">
                   Uptime
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-foreground">{data.uptimeHuman}</p>
-                <p className="text-xs text-muted-foreground mt-1">v{data.version}</p>
+                <p className="text-2xl font-bold text-ink">{data.uptimeHuman}</p>
+                <p className="text-xs text-ink-3 mt-1">v{data.version}</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl">
+            <Card className="rounded-card">
               <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <HardDrive className="w-5 h-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <HardDrive className="w-5 h-5 text-ink-3" />
+                <CardTitle className="text-sm font-medium text-ink-3">
                   Memory (RSS)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-foreground">{data.memory.rss}</p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-2xl font-bold text-ink">{data.memory.rss}</p>
+                <p className="text-xs text-ink-3 mt-1">
                   Heap: {data.memory.heapUsed} / {data.memory.heapTotal}
                 </p>
               </CardContent>
@@ -177,43 +185,43 @@ export default function AdminHealthPage() {
           {/* Moderation SLA */}
           {slaData && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-ink mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5" />
                 Moderation SLA
               </h2>
               <div className="grid gap-6 md:grid-cols-4">
-                <Card className="rounded-3xl">
+                <Card className="rounded-card">
                   <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground">Total Pending</p>
-                    <p className="text-2xl font-bold text-foreground mt-1">{slaData.totalPending}</p>
+                    <p className="text-sm text-ink-3">Total Pending</p>
+                    <p className="text-2xl font-bold text-ink mt-1">{slaData.totalPending}</p>
                   </CardContent>
                 </Card>
-                <Card className={`rounded-3xl ${slaData.pendingOver24h > 0 ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
+                <Card className={`rounded-card ${hasOver24h ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
                   <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      {slaData.pendingOver24h > 0 && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
+                    <p className="text-sm text-ink-3 flex items-center gap-1">
+                      {hasOver24h && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
                       Pending &gt; 24h
                     </p>
-                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver24h > 0 ? 'text-yellow-700' : 'text-foreground'}`}>
+                    <p className={`text-2xl font-bold mt-1 ${hasOver24h ? 'text-yellow-700' : 'text-ink'}`}>
                       {slaData.pendingOver24h}
                     </p>
                   </CardContent>
                 </Card>
-                <Card className={`rounded-3xl ${slaData.pendingOver72h > 0 ? 'border-destructive/30 bg-destructive/5' : ''}`}>
+                <Card className={`rounded-card ${hasOver72h ? 'border-destructive/30 bg-destructive/5' : ''}`}>
                   <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      {slaData.pendingOver72h > 0 && <AlertTriangle className="w-4 h-4 text-red-600" />}
+                    <p className="text-sm text-ink-3 flex items-center gap-1">
+                      {hasOver72h && <AlertTriangle className="w-4 h-4 text-red-600" />}
                       Pending &gt; 72h
                     </p>
-                    <p className={`text-2xl font-bold mt-1 ${slaData.pendingOver72h > 0 ? 'text-red-700' : 'text-foreground'}`}>
+                    <p className={`text-2xl font-bold mt-1 ${hasOver72h ? 'text-red-700' : 'text-ink'}`}>
                       {slaData.pendingOver72h}
                     </p>
                   </CardContent>
                 </Card>
-                <Card className="rounded-3xl">
+                <Card className="rounded-card">
                   <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground">Avg Response Time</p>
-                    <p className="text-2xl font-bold text-foreground mt-1">
+                    <p className="text-sm text-ink-3">Avg Response Time</p>
+                    <p className="text-2xl font-bold text-ink mt-1">
                       {slaData.avgResponseTimeHours !== null ? `${slaData.avgResponseTimeHours}h` : 'N/A'}
                     </p>
                   </CardContent>
@@ -222,7 +230,7 @@ export default function AdminHealthPage() {
             </section>
           )}
 
-          <p className="text-xs text-muted-foreground text-right">
+          <p className="text-xs text-ink-3 text-right">
             Last updated: {new Date(data.timestamp).toLocaleTimeString()}
             {' · '}Auto-refreshes every 30s
           </p>

@@ -21,15 +21,29 @@ type RelationUpsert = {
   toUpdate: Array<{ id: string; similarity: number }>;
 };
 
+function jaccard(a: Set<string>, b: Set<string>): number {
+  let intersection = 0;
+  for (const item of a) {
+    if (b.has(item)) intersection++;
+  }
+  const union = new Set([...a, ...b]).size;
+  if (union === 0) return 0;
+  return intersection / union;
+}
+
+function expertiseSimilarity(level1: number, level2: number): number {
+  if (level1 !== -1 && level2 !== -1) {
+    return 1 - Math.abs(level1 - level2) / (EXPERTISE_LEVELS.length - 1);
+  }
+  return 0.5;
+}
+
 function calculateThreadSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
   if (!dna1 || !dna2) return 0;
 
-  // Jaccard index over topics.
   const topics1 = new Set(dna1.topics || []);
   const topics2 = new Set(dna2.topics || []);
-  const intersection = [...topics1].filter((x) => topics2.has(x)).length;
-  const union = new Set([...topics1, ...topics2]).size;
-  const topicSimilarity = union === 0 ? 0 : intersection / union;
+  const topicSimilarity = jaccard(topics1, topics2);
 
   // Early termination: even with perfect questionType and expertise alignment,
   // the weighted result can't reach the 0.7 threshold when topic Jaccard is
@@ -42,12 +56,9 @@ function calculateThreadSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
 
   const level1 = EXPERTISE_LEVELS.indexOf(dna1.expertiseLevel);
   const level2 = EXPERTISE_LEVELS.indexOf(dna2.expertiseLevel);
-  const expertiseSimilarity =
-    level1 !== -1 && level2 !== -1
-      ? 1 - Math.abs(level1 - level2) / (EXPERTISE_LEVELS.length - 1)
-      : 0.5;
+  const expertise = expertiseSimilarity(level1, level2);
 
-  return topicSimilarity * 0.5 + questionTypeSimilarity * 0.3 + expertiseSimilarity * 0.2;
+  return topicSimilarity * 0.5 + questionTypeSimilarity * 0.3 + expertise * 0.2;
 }
 
 async function persistRelations({ toCreate, toUpdate }: RelationUpsert): Promise<void> {
@@ -69,62 +80,93 @@ async function persistRelations({ toCreate, toUpdate }: RelationUpsert): Promise
   }
 }
 
+const IS_THREAD_NOT_DELETED = { deletedAt: null } as const;
+
+function scoreRelatedThread(
+  other: { id: string; name: string; slug: string; threadDna: unknown },
+  baseDna: ThreadDNA
+): RelatedThread | null {
+  const otherDna = parseThreadDna(other.threadDna);
+  if (!otherDna) return null;
+  const similarity = calculateThreadSimilarity(baseDna, otherDna);
+  if (similarity < SIMILARITY_THRESHOLD) return null;
+  return { id: other.id, name: other.name, slug: other.slug, similarity, threadDna: otherDna };
+}
+
+function rankRelatedThreads(candidates: Array<{ id: string; name: string; slug: string; threadDna: unknown }>, baseDna: ThreadDNA): RelatedThread[] {
+  const scored: RelatedThread[] = [];
+  for (const c of candidates) {
+    const s = scoreRelatedThread(c, baseDna);
+    if (s) scored.push(s);
+  }
+  scored.sort((a, b) => b.similarity - a.similarity);
+  return scored.slice(0, MAX_RELATED_THREADS);
+}
+
+function buildRelationUpsert(
+  relatedThreads: RelatedThread[],
+  existingByTarget: Map<string, { id: string; similarity: number }>,
+  threadId: string
+): RelationUpsert {
+  const pending: RelationUpsert = { toCreate: [], toUpdate: [] };
+  for (const related of relatedThreads) {
+    const existing = existingByTarget.get(related.id);
+    if (!existing) {
+      pending.toCreate.push({ sourceThreadId: threadId, targetThreadId: related.id, similarity: related.similarity });
+    } else if (existing.similarity !== related.similarity) {
+      pending.toUpdate.push({ id: existing.id, similarity: related.similarity });
+    }
+  }
+  return pending;
+}
+
+function collectRelationUpserts(
+  parsed: Array<{ id: string; dna: ThreadDNA }>,
+  relationsBySource: Map<string, Map<string, { id: string; similarity: number }>>
+): RelationUpsert {
+  const pending: RelationUpsert = { toCreate: [], toUpdate: [] };
+  for (const thread of parsed) {
+    for (const other of parsed) {
+      if (thread.id === other.id) continue;
+      const similarity = calculateThreadSimilarity(thread.dna, other.dna);
+      if (similarity < SIMILARITY_THRESHOLD) continue;
+      const existingRel = relationsBySource.get(thread.id)?.get(other.id);
+      if (!existingRel) {
+        pending.toCreate.push({ sourceThreadId: thread.id, targetThreadId: other.id, similarity });
+      } else if (existingRel.similarity !== similarity) {
+        pending.toUpdate.push({ id: existingRel.id, similarity });
+      }
+    }
+  }
+  return pending;
+}
+
 export async function findRelatedThreads(threadId: string): Promise<RelatedThread[]> {
   try {
     const thread = await prisma.thread.findFirst({
-      where: { id: threadId, deletedAt: null },
+      where: { id: threadId, ...IS_THREAD_NOT_DELETED },
       select: { threadDna: true },
     });
-
     const parsedDna = parseThreadDna(thread?.threadDna);
     if (!parsedDna) return [];
 
     const otherThreads = await prisma.thread.findMany({
-      where: {
-        id: { not: threadId },
-        threadDna: { not: Prisma.DbNull },
-        deletedAt: null,
-      },
+      where: { id: { not: threadId }, threadDna: { not: Prisma.DbNull }, ...IS_THREAD_NOT_DELETED },
       select: { id: true, name: true, slug: true, threadDna: true },
-      take: 1000, // bounded to keep the in-memory comparison from turning into a full scan
+      take: 1000,
     });
 
-    const relatedThreads = otherThreads
-      .flatMap<RelatedThread>((other) => {
-        const otherDna = parseThreadDna(other.threadDna);
-        if (!otherDna) return [];
-        const similarity = calculateThreadSimilarity(parsedDna, otherDna);
-        if (similarity < SIMILARITY_THRESHOLD) return [];
-        return [{ id: other.id, name: other.name, slug: other.slug, similarity, threadDna: otherDna }];
-      })
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, MAX_RELATED_THREADS);
+    const relatedThreads = rankRelatedThreads(otherThreads, parsedDna);
 
+    const relatedIds = relatedThreads.map((r) => r.id);
     const existingRelations = await prisma.threadRelation.findMany({
-      where: {
-        sourceThreadId: threadId,
-        targetThreadId: { in: relatedThreads.map((r) => r.id) },
-      },
+      where: { sourceThreadId: threadId, targetThreadId: { in: relatedIds } },
       select: { id: true, targetThreadId: true, similarity: true },
     });
     const existingByTarget = new Map(existingRelations.map((r) => [r.targetThreadId, r]));
-
-    const pending: RelationUpsert = { toCreate: [], toUpdate: [] };
-    for (const related of relatedThreads) {
-      const existing = existingByTarget.get(related.id);
-      if (!existing) {
-        pending.toCreate.push({
-          sourceThreadId: threadId,
-          targetThreadId: related.id,
-          similarity: related.similarity,
-        });
-      } else if (existing.similarity !== related.similarity) {
-        pending.toUpdate.push({ id: existing.id, similarity: related.similarity });
-      }
-    }
+    const pending = buildRelationUpsert(relatedThreads, existingByTarget, threadId);
 
     await persistRelations(pending);
-
     return relatedThreads;
   } catch (error) {
     logger.error(`Failed to find related threads for ${threadId}:`, error);
@@ -189,27 +231,7 @@ export async function updateAllThreadRelations(): Promise<{
       .map((t) => ({ id: t.id, dna: parseThreadDna(t.threadDna) }))
       .filter((t): t is { id: string; dna: ThreadDNA } => t.dna !== null);
 
-    const pending: RelationUpsert = { toCreate: [], toUpdate: [] };
-
-    for (const thread of parsed) {
-      for (const other of parsed) {
-        if (thread.id === other.id) continue;
-
-        const similarity = calculateThreadSimilarity(thread.dna, other.dna);
-        if (similarity < SIMILARITY_THRESHOLD) continue;
-
-        const existingRel = relationsBySource.get(thread.id)?.get(other.id);
-        if (!existingRel) {
-          pending.toCreate.push({
-            sourceThreadId: thread.id,
-            targetThreadId: other.id,
-            similarity,
-          });
-        } else if (existingRel.similarity !== similarity) {
-          pending.toUpdate.push({ id: existingRel.id, similarity });
-        }
-      }
-    }
+    const pending = collectRelationUpserts(parsed, relationsBySource);
 
     await persistRelations(pending);
     stats.updated = pending.toCreate.length + pending.toUpdate.length;

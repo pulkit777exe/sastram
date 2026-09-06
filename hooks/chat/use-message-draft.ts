@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 export function draftKey(threadId: string, parentId?: string): string {
   return `sastram:draft:${threadId}:${parentId ?? 'root'}`;
@@ -40,6 +40,8 @@ function clearDraft(key: string): void {
  * Persists content to localStorage with a debounced write. Restores on mount.
  * Provides `saveDraft` and `clearDraft` for imperative control.
  */
+const DRAFT_DEBOUNCE_MS = 700;
+
 export function useMessageDraft(
   threadId: string,
   parentId: string | undefined,
@@ -53,28 +55,51 @@ export function useMessageDraft(
   useEffect(() => {
     const key = draftKey(threadId, parentId);
     draftKeyRef.current = key;
+
     const saved = readDraft(key);
-    if (saved) setContent(saved); // eslint-disable-line react-hooks/set-state-in-effect
+    const hasSavedDraft = saved !== null && saved.length > 0;
+    if (hasSavedDraft) {
+      setContent(saved as string);
+    }
   }, [threadId, parentId, setContent]);
 
   // Debounced draft write on content change
   useEffect(() => {
-    if (!draftKeyRef.current) return;
-    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    const hasKey = draftKeyRef.current !== null;
+    if (!hasKey) {
+      return;
+    }
+
+    if (draftTimerRef.current !== null) {
+      clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = null;
+    }
+
     draftTimerRef.current = setTimeout(() => {
-      writeDraft(draftKeyRef.current!, content);
-    }, 700);
+      const key = draftKeyRef.current as string;
+      writeDraft(key, content);
+    }, DRAFT_DEBOUNCE_MS);
+
     return () => {
-      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+      if (draftTimerRef.current !== null) {
+        clearTimeout(draftTimerRef.current);
+        draftTimerRef.current = null;
+      }
     };
   }, [content]);
 
   const saveDraft = useCallback((value: string) => {
-    if (draftKeyRef.current) writeDraft(draftKeyRef.current, value);
+    const hasKey = draftKeyRef.current !== null;
+    if (hasKey) {
+      writeDraft(draftKeyRef.current as string, value);
+    }
   }, []);
 
   const clear = useCallback(() => {
-    if (draftKeyRef.current) clearDraft(draftKeyRef.current);
+    const hasKey = draftKeyRef.current !== null;
+    if (hasKey) {
+      clearDraft(draftKeyRef.current as string);
+    }
   }, []);
 
   return { saveDraft, clear };

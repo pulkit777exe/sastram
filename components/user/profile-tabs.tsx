@@ -3,6 +3,7 @@
 import { useState, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Info, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 
 interface ProfileTabsProps {
@@ -12,6 +13,12 @@ interface ProfileTabsProps {
   activity?: ReactNode;
 }
 
+const TABS = [
+  { id: 'threads' as const, label: 'Threads', icon: MessageSquare },
+  { id: 'about' as const, label: 'About', icon: Info },
+  { id: 'activity' as const, label: 'Activity', icon: Activity },
+];
+
 export function ProfileTabs({
   defaultTab = 'threads',
   threads,
@@ -20,26 +27,28 @@ export function ProfileTabs({
 }: ProfileTabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab);
 
-  const tabs = [
-    { id: 'threads' as const, label: 'Threads', icon: MessageSquare },
-    { id: 'about' as const, label: 'About', icon: Info },
-    { id: 'activity' as const, label: 'Activity', icon: Activity },
-  ];
+  function renderActiveContent() {
+    if (activeTab === 'threads') return threads;
+    if (activeTab === 'about') return about;
+    if (activeTab === 'activity') return activity;
+    return null;
+  }
 
   return (
     <div className="space-y-4">
       {/* Tab Buttons */}
       <div className="flex gap-2 border-b">
-        {tabs.map((tab) => {
+        {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button
+            <Button
+              type="button"
               key={tab.id}
+              variant="ghost"
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 'relative px-4 py-2 text-sm font-medium transition-colors',
-                'hover:text-foreground',
                 isActive ? 'text-foreground' : 'text-muted-foreground'
               )}
             >
@@ -54,7 +63,7 @@ export function ProfileTabs({
                   transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                 />
               )}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -68,9 +77,7 @@ export function ProfileTabs({
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'threads' && threads}
-          {activeTab === 'about' && about}
-          {activeTab === 'activity' && activity}
+          {renderActiveContent()}
         </motion.div>
       </AnimatePresence>
     </div>

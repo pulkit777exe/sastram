@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { SSEPhase } from './PhaseTracker';
+import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
  * THINKING STATE — expandable agent trace
@@ -26,7 +27,7 @@ interface ThinkingStateProps {
   isLoading: boolean;
 }
 
-const PHASES: Exclude<SSEPhase, 'done' | 'refine' | 'error'>[] = [
+const PHASES: Exclude<SSEPhase, 'done' | 'error'>[] = [
   'searching',
   'reading',
   'crossref',
@@ -49,7 +50,6 @@ const PHASE_ACTIVE_LABEL: Record<SSEPhase, string> = {
   crossref:     'Cross-referencing',
   synthesizing: 'Writing answer',
   done:         'Done',
-  refine:       'Refining',
   error:        'Error',
 };
 
@@ -95,7 +95,6 @@ export function ThinkingState({
   const elapsedMs = (completedAt ?? now) - startedAt;
   const stepFor = (phase: (typeof PHASES)[number]) =>
     steps.find((s) => s.phase === phase);
-  const currentIndex = PHASES.indexOf(currentPhase as (typeof PHASES)[number]);
 
   const doneLabel = isDone
     ? `Thought for ${formatElapsed(elapsedMs)} · ${sourceCount} source${sourceCount !== 1 ? 's' : ''}`
@@ -106,12 +105,12 @@ export function ThinkingState({
   return (
     <div className="flex w-full flex-col">
       {/* Header toggle */}
-      <button
+      <Button
         type="button"
         aria-expanded={expanded}
         onClick={() => setManualExpanded((v) => !(v ?? autoExpanded))}
-        className="-mx-1.5 flex w-fit items-center gap-2 rounded-control px-1.5 py-1
-          transition-colors duration-100 hover:bg-hover-2 cursor-pointer"
+        variant="ghost"
+        className="-mx-1.5 w-fit items-center gap-2 rounded-control px-1.5 py-1 h-auto"
       >
         {isLoading && !isDone ? (
           <LoadingState label={activeLabel} variant="Drive" />
@@ -152,7 +151,7 @@ export function ThinkingState({
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
-      </button>
+      </Button>
 
       {/* Expandable trace body */}
       <div
@@ -183,12 +182,11 @@ export function ThinkingState({
                 const reached = entry !== undefined;
                 const isCurrent = phase === currentPhase && !isDone;
                 const relativeMs = entry ? entry.at - startedAt : null;
-                const isLast = i === PHASES.length - 1;
 
                 return (
                   <div
                     key={phase}
-                    className="flex min-h-7 w-full items-center gap-2 rounded-[6px] px-1.5 py-0.5"
+                    className="flex min-h-7 w-full items-center gap-2 rounded-control px-1.5 py-0.5"
                     style={{ animation: `fade-up 320ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both` }}
                   >
                     {/* Status indicator */}

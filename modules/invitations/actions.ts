@@ -1,27 +1,76 @@
 'use server';
 
 import { logger } from '@/lib/infrastructure/logger';
-
-import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { inviteFriendSchema } from './schemas';
-import { canManageThread } from '@/lib/thread-access';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 import type { ActionEnvelope, ActionErrorCode } from '@/lib/actions/result';
 import { AppError, isPrismaUniqueConstraintError } from '@/lib/utils/errors';
+import {
+  createInvitation,
+  findInvitationById,
+  findManageableThread,
+  findThreadById,
+  listThreadInvitations,
+  revokeInvitation,
+} from './repository';
+import { sendThreadInvitation } from '@/lib/services/email';
+import type { Role } from '@prisma/client';
 
-// Invitations lapse after a week; the schema's EXPIRED status exists for this.
-const INVITATION_TTL_DAYS = 7;
+function toActionErrorCode(code: string | undefined): ActionErrorCode {
+  switch (code) {
+    case 'AUTH_REQUIRED':
+    case 'FORBIDDEN':
+    case 'VALIDATION_ERROR':
+    case 'NOT_FOUND':
+    case 'RATE_LIMITED':
+    case 'CONFLICT':
+    case 'INTERNAL_ERROR':
+      return code;
+    default:
+      return 'INTERNAL_ERROR';
+  }
+}
 
 function toEnvelope<T>(error: unknown): ActionEnvelope<T> {
   if (isPrismaUniqueConstraintError(error)) {
     return actionFailure<T>('CONFLICT', 'You have already invited this friend to this thread');
   }
   if (error instanceof AppError) {
-    return actionFailure<T>((error.code as ActionErrorCode) ?? 'INTERNAL_ERROR', error.message);
+    const errorCode = toActionErrorCode(error.code);
+    return actionFailure<T>(errorCode, error.message);
   }
   return actionFailure<T>('INTERNAL_ERROR', 'Something went wrong');
+}
+
+function revalidateThreadPath(slug: string) {
+  revalidatePath(`/dashboard/threads/${slug}`);
+}
+
+type ManageableThread = NonNullable<Awaited<ReturnType<typeof findManageableThread>>>;
+
+async function requireManageableThread(
+  threadId: string,
+  userId: string,
+  role: Role
+): Promise<ManageableThread | null> {
+  const thread = await findManageableThread(threadId, userId, role);
+  if (thread !== null) {
+    return thread;
+  }
+  return null;
+}
+
+async function sendInvitationEmail(email: string, inviterName: string, threadName: string, invitationId: string) {
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invitations/accept?id=${invitationId}`;
+  await sendThreadInvitation(
+    email,
+    inviterName,
+    threadName,
+    `You've been invited to join the discussion on "${threadName}".`,
+    inviteUrl
+  ).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
 }
 
 export async function inviteFriendToThread(formData: FormData) {
@@ -38,95 +87,27 @@ export async function inviteFriendToThread(formData: FormData) {
   try {
     const session = await requireSession();
 
-    const thread = await prisma.thread.findFirst({
-      where: { id: parsed.data.threadId, deletedAt: null },
-      select: { id: true, slug: true, name: true, createdBy: true, visibility: true },
-    });
-
+    const thread = await requireManageableThread(parsed.data.threadId, session.user.id, session.user.role);
     if (!thread) {
-      return actionFailure('NOT_FOUND', 'Thread not found');
+      const exists = await findThreadById(parsed.data.threadId);
+      if (!exists) return actionFailure('NOT_FOUND', 'Thread not found');
+      return actionFailure('FORBIDDEN', 'Only the thread creator or moderators can invite people');
     }
 
-    if (
-      !canManageThread(
-        { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
-        session.user.id,
-        session.user.role
-      )
-    ) {
-      return actionFailure(
-        'FORBIDDEN',
-        'Only the thread creator or moderators can invite people'
-      );
-    }
-
-    // Clear declined/expired invitations, then re-check for a live one — all in
-    // one transaction so concurrent invites can't interleave between the
-    // delete and the create. A racing create still hits the unique constraint,
-    // which toEnvelope maps to CONFLICT.
-    const invitation = await prisma.$transaction(async (tx) => {
-      await tx.threadInvitation.deleteMany({
-        where: {
-          threadId: parsed.data.threadId,
-          email: parsed.data.email,
-          status: { in: ['DECLINED', 'EXPIRED'] },
-        },
-      });
-
-      const existingInvitation = await tx.threadInvitation.findUnique({
-        where: {
-          threadId_email: {
-            threadId: parsed.data.threadId,
-            email: parsed.data.email,
-          },
-        },
-      });
-
-      if (existingInvitation) {
-        return null;
-      }
-
-      return tx.threadInvitation.create({
-        data: {
-          threadId: parsed.data.threadId,
-          senderId: session.user.id,
-          email: parsed.data.email,
-          status: 'PENDING',
-          expiresAt: new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000),
-        },
-        include: {
-          thread: {
-            select: {
-              slug: true,
-              name: true,
-            },
-          },
-          sender: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-        },
-      });
+    const invitation = await createInvitation({
+      threadId: parsed.data.threadId,
+      email: parsed.data.email,
+      senderId: session.user.id,
     });
 
-    if (!invitation) {
+    if (invitation === null) {
       return actionFailure('CONFLICT', 'You have already invited this friend to this thread');
     }
 
-    const { sendThreadInvitation } = await import('@/lib/services/email');
+    const inviterName = session.user.name || 'Someone';
+    await sendInvitationEmail(invitation.email, inviterName, thread.name, invitation.id);
 
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invitations/accept?id=${invitation.id}`;
-    await sendThreadInvitation(
-      invitation.email,
-      session.user.name || 'Someone',
-      thread.name,
-      `You've been invited to join the discussion on "${thread.name}".`,
-      inviteUrl
-    ).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
-
-    revalidatePath(`/dashboard/threads/${thread.slug}`);
+    revalidateThreadPath(thread.slug);
     return actionSuccess(invitation);
   } catch (error) {
     logger.error('[inviteFriendToThread]', error);
@@ -147,30 +128,14 @@ export async function listThreadInvitationsAction(
   try {
     const session = await requireSession();
 
-    const thread = await prisma.thread.findFirst({
-      where: { id: threadId, deletedAt: null },
-      select: { id: true, slug: true, name: true, createdBy: true, visibility: true },
-    });
-
+    const thread = await requireManageableThread(threadId, session.user.id, session.user.role);
     if (!thread) {
-      return actionFailure<ThreadInvitationView[]>('NOT_FOUND', 'Thread not found');
+      const exists = await findThreadById(threadId);
+      if (!exists) return actionFailure('NOT_FOUND', 'Thread not found');
+      return actionFailure('FORBIDDEN', 'Insufficient permissions');
     }
 
-    if (
-      !canManageThread(
-        { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
-        session.user.id,
-        session.user.role
-      )
-    ) {
-      return actionFailure<ThreadInvitationView[]>('FORBIDDEN', 'Insufficient permissions');
-    }
-
-    const invitations = await prisma.threadInvitation.findMany({
-      where: { threadId },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, email: true, status: true, createdAt: true },
-    });
+    const invitations = await listThreadInvitations(threadId);
 
     return actionSuccess(
       invitations.map((i) => ({
@@ -190,37 +155,26 @@ export async function revokeThreadInvitationAction(invitationId: string) {
   try {
     const session = await requireSession();
 
-    const invitation = await prisma.threadInvitation.findUnique({
-      where: { id: invitationId },
-      select: { id: true, threadId: true },
-    });
+    const invitation = await findInvitationById(invitationId);
 
-    if (!invitation) {
+    if (invitation === null) {
       return actionFailure('NOT_FOUND', 'Invitation not found');
     }
 
-    const thread = await prisma.thread.findFirst({
-      where: { id: invitation.threadId, deletedAt: null },
-      select: { id: true, slug: true, createdBy: true, visibility: true },
-    });
-
+    const thread = await requireManageableThread(
+      invitation.threadId,
+      session.user.id,
+      session.user.role
+    );
     if (!thread) {
-      return actionFailure('NOT_FOUND', 'Thread not found');
-    }
-
-    if (
-      !canManageThread(
-        { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
-        session.user.id,
-        session.user.role
-      )
-    ) {
+      const exists = await findThreadById(invitation.threadId);
+      if (!exists) return actionFailure('NOT_FOUND', 'Thread not found');
       return actionFailure('FORBIDDEN', 'Insufficient permissions');
     }
 
-    await prisma.threadInvitation.delete({ where: { id: invitationId } });
+    await revokeInvitation(invitationId);
 
-    revalidatePath(`/dashboard/threads/${thread.slug}`);
+    revalidateThreadPath(thread.slug);
     return actionSuccess({ id: invitationId });
   } catch (error) {
     logger.error('[revokeThreadInvitationAction]', error);

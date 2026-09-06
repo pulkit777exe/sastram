@@ -10,7 +10,7 @@ import {
   getFollowing as getFollowingRepo,
   isFollowing as isFollowingRepo,
 } from './repository';
-import { createNotification } from '@/modules/notifications';
+import { dispatch } from '@/modules/notifications/dispatcher';
 import { createServerAction } from '@/lib/utils/server-action';
 import { actionFailure, actionSuccess } from '@/lib/actions/result';
 import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
@@ -22,6 +22,15 @@ function revalidateFollowPaths(userId: string) {
   revalidatePath('/dashboard');
 }
 
+function getFollowerDisplayName(user: { name: string | null; email: string }): string {
+  return user.name ?? user.email;
+}
+
+async function assertFollowTargetExists(userId: string) {
+  const targetUser = await prisma.user.findUnique({ where: { id: userId, deletedAt: null }, select: { id: true } });
+  return targetUser !== null;
+}
+
 export const followUser = createServerAction(
   { schema: userIdSchema, actionName: 'followUser' },
   async ({ userId }) => {
@@ -31,22 +40,20 @@ export const followUser = createServerAction(
       return actionFailure('VALIDATION_ERROR', 'Cannot follow yourself');
     }
 
-    const targetUser = await prisma.user.findUnique({
-      where: { id: userId, deletedAt: null },
-      select: { id: true },
-    });
-
-    if (!targetUser) {
+    const targetExists = await assertFollowTargetExists(userId);
+    if (!targetExists) {
       return actionFailure('NOT_FOUND', 'User not found');
     }
 
     await followUserRepo(session.user.id, userId);
 
-    await createNotification({
-      userId,
-      type: 'SYSTEM',
+    const followerDisplayName = getFollowerDisplayName(session.user);
+
+    await dispatch({
+      recipients: { userIds: [userId] },
+      category: 'SYSTEM',
       title: 'New Follower',
-      message: `${session.user.name || session.user.email} started following you`,
+      message: `${followerDisplayName} started following you`,
       data: {
         followerId: session.user.id,
         followerName: session.user.name,

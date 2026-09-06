@@ -1,22 +1,118 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CommentTree } from '@/components/thread/comment-tree';
 import { PostMessageForm } from '@/components/chat/post-message-form';
 import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hooks/useAIReplyStream';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
+import { InlinePoll } from '@/components/thread/inline-poll';
 import { getPollResultsAction, getPollByThreadAction } from '@/modules/polls/actions';
 import type { PollResults } from '@/modules/polls/types';
-import { toasts } from '@/lib/utils/toast';
-import { InlinePoll } from '@/components/thread/inline-poll';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
-import { ChevronDown, Loader2, Pin, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+import { SaiViewTransition } from '@/components/ui/view-transition';
+import { ChevronDown, Loader2, Pin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useThreadMessages } from '@/hooks/thread/use-thread-messages';
 import { useThreadPolling } from '@/hooks/thread/use-thread-polling';
 import { useThreadReadReceipts } from '@/hooks/thread/use-thread-read-receipts';
+
+const SAI_MENTION_RE = /\B@sai\b/i;
+
+// Magic numbers with intent
+const AI_PENDING_TIMEOUT_MS = 120_000;
+const SCROLL_BOTTOM_THRESHOLD_PX = 80;
+const SCROLLED_UP_THRESHOLD_PX = 120;
+const READ_DEBOUNCE_MS = 250;
+const SCROLL_DEBOUNCE_MS = 100;
+const POLL_REFRESH_MS = 20_000;
+const SENTINEL_ROOT_MARGIN = '200px 0px 0px 0px';
+
+function EmptyThreadState({ title, onCreatePoll }: { title: string; onCreatePoll: () => void }) {
+  function focusComposer() {
+    document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="Reply"]')?.focus();
+  }
+
+  return (
+    <div className="py-10">
+      <SaiViewTransition name="thread-empty-state">
+        <div className="rounded-card border border-line bg-surface shadow-card p-6">
+          <div className="flex items-start gap-3 mb-5">
+            <span className="size-2.5 rounded-full bg-sai-green mt-2 shrink-0" aria-hidden />
+            <div className="min-w-0">
+              <h3 className="font-serif-heading text-[17px] leading-tight text-ink">Start the thread</h3>
+              <p className="text-[13px] leading-relaxed text-ink-2 mt-1">
+                <span className="font-medium text-ink">{title}</span> has no replies yet. Sastram threads work best when the first message sets the question type — @sai will track Thread DNA and resolution from there.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            <button type="button" onClick={focusComposer} className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors">
+              <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink">
+                <span className="grid size-7 place-items-center rounded-control bg-sai-accent-tint text-sai-accent text-[11px] font-bold">@</span>
+                Ask @sai
+              </span>
+              <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Mention @sai with your question — it replies in-thread with grounded context.</span>
+            </button>
+            <button type="button" onClick={focusComposer} className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors">
+              <span className="text-[12.5px] font-semibold text-ink">Add context</span>
+              <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Paste sources or set the expertise level so Thread DNA classifies it correctly.</span>
+            </button>
+            <button type="button" onClick={onCreatePoll} className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors">
+              <span className="text-[12.5px] font-semibold text-ink">Create a poll</span>
+              <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Use a poll when you need consensus — results feed the resolution score.</span>
+            </button>
+          </div>
+          <p className="text-[11px] text-ink-3 mt-4">Tip: first message determines the thread’s question type and read time. Be specific.</p>
+        </div>
+      </SaiViewTransition>
+    </div>
+  );
+}
+
+function LoadMoreButton({
+  isLoading,
+  remaining,
+  onLoadMore,
+}: {
+  isLoading: boolean;
+  remaining: number;
+  onLoadMore: () => void;
+}) {
+  if (isLoading) {
+    return (
+      <Button variant="outline" size="sm" onClick={onLoadMore} disabled>
+        <Loader2 size={14} className="animate-spin" />
+        Loading...
+      </Button>
+    );
+  }
+
+  return (
+    <Button variant="outline" size="sm" onClick={onLoadMore}>
+      Load older messages ({remaining} remaining)
+    </Button>
+  );
+}
+
+function PinnedBanner({ message }: { message: Message }) {
+  function handleJump() {
+    document.getElementById(`message-${message.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  return (
+    <div className="shrink-0 px-6 pt-3">
+      <div className="max-w-4xl mx-auto flex items-center gap-2 px-4 py-2 rounded-card border border-line bg-surface animate-in fade-in slide-in-from-top-1 duration-150">
+        <Pin size={13} className="text-ink-3 shrink-0" />
+        <span className="min-w-0 truncate text-xs text-ink-2 font-medium">{message.content}</span>
+        <button type="button" className="shrink-0 text-xs font-semibold text-sai-accent hover:underline" onClick={handleJump}>
+          Jump
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface ThreadLiveWrapperProps {
   messages: Message[];
@@ -61,21 +157,21 @@ export function ThreadLiveWrapper({
   title,
   slug,
   initialFrequency,
-  resolutionScore = null,
-  aiSummary = null,
+  resolutionScore: _resolutionScore = null,
+  aiSummary: _aiSummary = null,
 }: ThreadLiveWrapperProps) {
   // Poll state
   const [showPoll, setShowPoll] = useState(false);
   const [currentPoll, setCurrentPoll] = useState(poll);
   const [pollResults, setPollResults] = useState<PollResults | null>(null);
   const [pollRefreshKey, setPollRefreshKey] = useState(0);
-  const currentPollRef = useRef(currentPoll);
-  useEffect(() => { currentPollRef.current = currentPoll; });
 
   // AI inline status
   const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed'>>({});
   const aiInlineStatusRef = useRef(aiInlineStatus);
-  useEffect(() => { aiInlineStatusRef.current = aiInlineStatus; });
+  useEffect(() => {
+    aiInlineStatusRef.current = aiInlineStatus;
+  }, [aiInlineStatus]);
 
   // Scroll state
   const [isScrolledUp, setIsScrolledUp] = useState(false);
@@ -96,10 +192,11 @@ export function ThreadLiveWrapper({
     totalMessageCount,
   });
 
+  // Stable — used by read-receipts hook
   const isAtBottom = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_BOTTOM_THRESHOLD_PX;
   }, []);
 
   const readReceipts = useThreadReadReceipts({
@@ -111,20 +208,7 @@ export function ThreadLiveWrapper({
   });
 
   // AI inline helpers
-  const setAiPending = useCallback((messageId: string) => {
-    setAiInlineStatus((prev) => ({ ...prev, [messageId]: 'pending' }));
-    const existing = aiInlineTimerRef.current.get(messageId);
-    if (existing) clearTimeout(existing);
-    const timer = setTimeout(() => {
-      setAiInlineStatus((prev) => {
-        if (prev[messageId] !== 'pending') return prev;
-        return { ...prev, [messageId]: 'failed' };
-      });
-      aiInlineTimerRef.current.delete(messageId);
-    }, 120_000);
-    aiInlineTimerRef.current.set(messageId, timer);
-  }, []);
-
+  // Stable: used in polling + effects
   const clearAiStatus = useCallback((messageId: string) => {
     setAiInlineStatus((prev) => {
       if (!(messageId in prev)) return prev;
@@ -139,70 +223,82 @@ export function ThreadLiveWrapper({
     }
   }, []);
 
+  // Plain function: cheap, only used in handlers
+  function setAiPending(messageId: string) {
+    setAiInlineStatus((prev) => ({ ...prev, [messageId]: 'pending' }));
+    const existing = aiInlineTimerRef.current.get(messageId);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      setAiInlineStatus((prev) => {
+        if (prev[messageId] !== 'pending') return prev;
+        return { ...prev, [messageId]: 'failed' };
+      });
+      aiInlineTimerRef.current.delete(messageId);
+    }, AI_PENDING_TIMEOUT_MS);
+    aiInlineTimerRef.current.set(messageId, timer);
+  }
+
   const streamParentRef = useRef<string | null>(null);
-  const pinnedMessage = useMemo(() => threadMessages.liveMessages.find((m) => m.isPinned) ?? null, [threadMessages.liveMessages]);
-  const hasAiMention = useCallback((content: string) => /\B@sai\b/i.test(content), []);
 
-  // AI stream handlers
-  const handleStreamStart = useCallback(
-    (info: AIStreamStart) => {
-      const aiMsg: Message = {
-        id: info.messageId,
-        content: '',
-        threadId,
-        senderId: info.senderId,
-        parentId: info.parentId,
-        depth: info.depth,
-        isEdited: false,
-        isPinned: false,
-        likeCount: 0,
-        replyCount: 0,
-        isAiResponse: true,
-        createdAt: new Date(info.createdAt),
-        updatedAt: new Date(info.createdAt),
-        deletedAt: null,
-        sender: {
-          id: info.senderId,
-          name: info.senderName ?? 'Sastram AI',
-          image: info.senderImage,
-        },
-        thread: { id: threadId, name: title, slug },
-        attachments: [],
-      };
-      threadMessages.addMessage(aiMsg);
-    },
-    [threadId, title, slug, threadMessages.addMessage]
-  );
+  // Derived — cheap, no memo needed
+  const pinnedMessage = threadMessages.liveMessages.find((m) => m.isPinned) ?? null;
 
-  const handleStreamUpdate = useCallback((messageId: string, content: string) => {
+  function hasAiMention(content: string) {
+    return SAI_MENTION_RE.test(content);
+  }
+
+  // ---- AI stream handlers (plain functions) ----
+  function handleStreamStart(info: AIStreamStart) {
+    const aiMsg: Message = {
+      id: info.messageId,
+      content: '',
+      threadId,
+      senderId: info.senderId,
+      parentId: info.parentId,
+      depth: info.depth,
+      isEdited: false,
+      isPinned: false,
+      likeCount: 0,
+      replyCount: 0,
+      isAiResponse: true,
+      createdAt: new Date(info.createdAt),
+      updatedAt: new Date(info.createdAt),
+      deletedAt: null,
+      sender: {
+        id: info.senderId,
+        name: info.senderName ?? 'Sastram AI',
+        image: info.senderImage,
+      },
+      thread: { id: threadId, name: title, slug },
+      attachments: [],
+    };
+    threadMessages.addMessage(aiMsg);
+  }
+
+  function handleStreamUpdate(messageId: string, content: string) {
     threadMessages.updateMessageContent(messageId, content);
-  }, [threadMessages.updateMessageContent]);
+  }
 
-  const handleStreamDone = useCallback(() => {
+  function handleStreamDone() {
     const parentId = streamParentRef.current;
     streamParentRef.current = null;
     if (parentId) clearAiStatus(parentId);
-  }, [clearAiStatus]);
+  }
 
-  const handleStreamError = useCallback(
-    (_err: AIStreamError) => {
-      const parentId = streamParentRef.current;
-      streamParentRef.current = null;
-      fetch(`/api/threads/${threadId}/ai-reply`, { method: 'POST' })
-        .then((res) => {
-          if (!res.ok) throw new Error('fallback enqueue failed');
-        })
-        .catch((error) => {
-          console.error('[thread-live] AI-reply fallback enqueue failed:', error);
-          if (parentId) {
-            setAiInlineStatus((prev) =>
-              prev[parentId] === 'pending' ? { ...prev, [parentId]: 'failed' } : prev
-            );
-          }
-        });
-    },
-    [threadId]
-  );
+  function handleStreamError(_err: AIStreamError) {
+    const parentId = streamParentRef.current;
+    streamParentRef.current = null;
+    fetch(`/api/threads/${threadId}/ai-reply`, { method: 'POST' })
+      .then((res) => {
+        if (!res.ok) throw new Error('fallback enqueue failed');
+      })
+      .catch((error) => {
+        console.error('[thread-live] AI-reply fallback enqueue failed:', error);
+        if (parentId) {
+          setAiInlineStatus((prev) => (prev[parentId] === 'pending' ? { ...prev, [parentId]: 'failed' } : prev));
+        }
+      });
+  }
 
   const { startStream, stopStream } = useAIReplyStream({
     threadId,
@@ -212,41 +308,32 @@ export function ThreadLiveWrapper({
     onError: handleStreamError,
   });
 
-  const handleMessagePosted = useCallback(
-    (newMessage: Message, meta?: AiInlineMeta) => {
-      threadMessages.addMessage(newMessage);
+  function resolveAiInlineStatus(meta: AiInlineMeta | undefined, messageContent: string): AiInlineMeta['aiInline'] {
+    if (meta?.aiInline !== undefined) return meta.aiInline as AiInlineMeta['aiInline'];
+    if (hasAiMention(messageContent)) return 'queued';
+    return null;
+  }
 
-      const aiInline =
-        meta?.aiInline !== undefined
-          ? meta.aiInline
-          : hasAiMention(newMessage.content)
-            ? 'queued'
-            : null;
+  function handleMessagePosted(newMessage: Message, meta?: AiInlineMeta) {
+    threadMessages.addMessage(newMessage);
 
-      if (aiInline === 'streaming') {
-        setAiPending(newMessage.id);
-        streamParentRef.current = newMessage.id;
-        startStream(newMessage.id);
-      } else if (aiInline === 'queued') {
-        setAiPending(newMessage.id);
-      }
-    },
-    [hasAiMention, setAiPending, startStream, threadMessages.addMessage]
-  );
+    const aiInline = resolveAiInlineStatus(meta, newMessage.content);
+    if (aiInline === 'streaming') {
+      setAiPending(newMessage.id);
+      streamParentRef.current = newMessage.id;
+      startStream(newMessage.id);
+    } else if (aiInline === 'queued') {
+      setAiPending(newMessage.id);
+    }
+  }
 
-  const handleOptimisticMessage = useCallback(
-    (optimisticMsg: Message) => {
-      threadMessages.addOptimistic(optimisticMsg);
-    },
-    [threadMessages.addOptimistic]
-  );
+  function handleOptimisticMessage(optimisticMsg: Message) {
+    threadMessages.addOptimistic(optimisticMsg);
+  }
 
-  const handleMessageError = useCallback(
-    (tempId: string) => {
-      threadMessages.removeOptimistic(tempId);
-    },
-    [threadMessages.removeOptimistic]
-  );
+  function handleMessageError(tempId: string) {
+    threadMessages.removeOptimistic(tempId);
+  }
 
   // Load more observer
   useEffect(() => {
@@ -260,10 +347,11 @@ export function ThreadLiveWrapper({
           void threadMessages.loadMoreMessages();
         }
       },
-      { root, rootMargin: '200px 0px 0px 0px' }
+      { root, rootMargin: SENTINEL_ROOT_MARGIN }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- threadMessages fields stable; object identity unstable
   }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
 
   // Polling
@@ -283,15 +371,13 @@ export function ThreadLiveWrapper({
     return () => {
       if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
       if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-      for (const timer of timers.values()) {
-        clearTimeout(timer);
-      }
+      for (const timer of timers.values()) clearTimeout(timer);
       timers.clear();
       stopStream();
     };
   }, [stopStream]);
 
-  // Poll AI inline status — check if response arrived
+  // AI pending -> clear when response arrives
   useEffect(() => {
     for (const [pendingMsgId, status] of Object.entries(aiInlineStatus)) {
       if (status !== 'pending') continue;
@@ -300,104 +386,75 @@ export function ThreadLiveWrapper({
           (m) => m.parentId === pendingMsgId && m.isAiResponse && m.content.trim().length > 0
         )
       ) {
+        // Defer to next tick to avoid setState during effect
         setTimeout(() => clearAiStatus(pendingMsgId), 0);
       }
     }
   }, [threadMessages.liveMessages, aiInlineStatus, clearAiStatus]);
 
-  // Poll refresh (non-fast-mode)
+  // Poll refresh — skip when tab hidden
   useEffect(() => {
     if (!currentPoll) return;
+    let cancelled = false;
     const interval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (cancelled) return;
       try {
         const pollId = currentPoll.id;
         const [freshPollResult, freshResultsResult] = await Promise.all([
           getPollByThreadAction({ threadId }),
           getPollResultsAction({ pollId }),
         ]);
+        if (cancelled) return;
         if (freshPollResult?.data) {
           const freshPoll = freshPollResult.data;
-          setCurrentPoll((prev) =>
-            prev ? { ...prev, isActive: freshPoll.isActive, expiresAt: freshPoll.expiresAt } : prev
-          );
+          setCurrentPoll((prev) => (prev ? { ...prev, isActive: freshPoll.isActive, expiresAt: freshPoll.expiresAt } : prev));
         }
         if (freshResultsResult?.data) {
           setPollResults(freshResultsResult.data);
           setPollRefreshKey((k) => k + 1);
         }
       } catch {
-        // Poll refresh is best-effort
+        // best-effort
       }
-    }, 20_000);
-    return () => clearInterval(interval);
+    }, POLL_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [currentPoll, threadId]);
+
+  // Derived flags — cheap, no memo
+  const hasPinnedMessage = pinnedMessage !== null;
+  const isEmptyThread = threadMessages.liveMessages.length === 0;
+  const hasMoreToLoad = threadMessages.hasMoreMessages;
+  const isLoadingMore = threadMessages.isLoadingMore;
+  const remainingToLoad = threadMessages.totalMessageCount - threadMessages.displayedCount;
+  const showScrollButton = isScrolledUp;
+
+  // Scroll handlers — plain functions
+  function handleViewportScroll() {
+    if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
+    readDebounceRef.current = setTimeout(() => {
+      void readReceipts.markThreadAsRead(false);
+    }, READ_DEBOUNCE_MS);
+    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
+    scrollDebounceRef.current = setTimeout(() => {
+      const el = scrollContainerRef.current;
+      if (el) setIsScrolledUp(el.scrollHeight - el.scrollTop - el.clientHeight > SCROLLED_UP_THRESHOLD_PX);
+    }, SCROLL_DEBOUNCE_MS);
+  }
+
+  function handleScrollToBottom() {
+    scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
+    void readReceipts.markThreadAsRead(true);
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <ThreadPageHeader
-        title={title}
-        threadId={threadId}
-        slug={slug}
-        initialFrequency={initialFrequency}
-      />
+      <ThreadPageHeader title={title} threadId={threadId} slug={slug} initialFrequency={initialFrequency} />
 
-      {(pinnedMessage || resolutionScore !== null || aiSummary) && (
-        <div className="shrink-0 px-6 pt-3 flex flex-col gap-2">
-          {pinnedMessage && (
-            <div className="rounded-lg border border-chart-4/20 bg-chart-4/5 px-4 py-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
-              <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-                <div className="min-w-0 flex items-start gap-2">
-                  <Pin size={13} className="text-chart-4 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-chart-4 uppercase tracking-wider">
-                      Pinned Message
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-chart-4/90 font-medium">
-                      {pinnedMessage.content}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-xs font-semibold text-brand hover:text-brand underline"
-                  onClick={() =>
-                    document
-                      .getElementById(`message-${pinnedMessage.id}`)
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  }
-                >
-                  Jump to message
-                </button>
-              </div>
-            </div>
-          )}
-
-          {(resolutionScore !== null || aiSummary) && (
-            <div className="xl:hidden max-w-4xl mx-auto w-full rounded-lg border border-border/60 bg-card/50 px-4 py-2.5 flex items-start gap-3">
-              {resolutionScore !== null && (
-                <span
-                  className={cn(
-                    'shrink-0 text-xs font-bold tabular-nums rounded-full px-2 py-0.5',
-                    resolutionScore >= 70
-                      ? 'bg-chart-2/10 text-chart-2'
-                      : resolutionScore >= 40
-                        ? 'bg-chart-4/10 text-chart-4'
-                        : 'bg-destructive/10 text-destructive'
-                  )}
-                >
-                  {Math.round(resolutionScore)}/100
-                </span>
-              )}
-              {aiSummary && (
-                <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                  <Sparkles size={11} className="inline mr-1 -mt-0.5 text-brand" />
-                  {aiSummary}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {hasPinnedMessage && <PinnedBanner message={pinnedMessage as Message} />}
 
       <div
         ref={scrollContainerRef}
@@ -405,32 +462,19 @@ export function ThreadLiveWrapper({
         role="log"
         aria-live="polite"
         aria-label="Thread messages"
-        onScroll={() => {
-          if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
-          readDebounceRef.current = setTimeout(() => {
-            void readReceipts.markThreadAsRead(false);
-          }, 250);
-          if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-          scrollDebounceRef.current = setTimeout(() => {
-            const el = scrollContainerRef.current;
-            if (el) {
-              setIsScrolledUp(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
-            }
-          }, 100);
-        }}
+        onScroll={handleViewportScroll}
       >
+        {/* Poll section */}
         <div className="max-w-4xl mx-auto">
-          <div className="mb-4">
-            <InlinePoll
-              threadId={threadId}
-              canManagePoll={canManagePoll}
-              isOpen={showPoll}
-              onToggle={setShowPoll}
-              onPollCreated={(newPoll) => {
-                setCurrentPoll(newPoll);
-              }}
-            />
-          </div>
+          <InlinePoll
+            threadId={threadId}
+            canManagePoll={canManagePoll}
+            isOpen={showPoll}
+            onToggle={setShowPoll}
+            onPollCreated={(newPoll) => {
+              setCurrentPoll(newPoll);
+            }}
+          />
           {currentPoll && (
             <div className="mb-4">
               <PollPanel
@@ -444,42 +488,17 @@ export function ThreadLiveWrapper({
           )}
         </div>
 
+        {/* Thread content */}
         <div className="max-w-4xl mx-auto">
-          {threadMessages.liveMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-brand/10 border border-brand/15 dark:bg-brand/20 dark:border-brand/30 shadow-linear-sm">
-                <svg className="w-8 h-8 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-3.037-.476 4.5 4.5 0 01-5.014-4.986L3 20.25l3.5-1.75A8.956 8.956 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                </svg>
-              </div>
-              <h3 className="text-foreground font-semibold text-base mb-1.5">No messages yet</h3>
-              <p className="text-muted-foreground/70 text-sm max-w-65 leading-relaxed">
-                Be the first to share something — ask a question, share a thought, or just say hi!
-              </p>
-            </div>
+          {isEmptyThread ? (
+            <EmptyThreadState title={title} onCreatePoll={() => setShowPoll(true)} />
           ) : (
             <ErrorBoundary>
-              {threadMessages.hasMoreMessages && (
+              {hasMoreToLoad && (
                 <>
                   <div ref={loadMoreSentinelRef} aria-hidden className="h-px" />
                   <div className="mb-4 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={threadMessages.loadMoreMessages}
-                      disabled={threadMessages.isLoadingMore}
-                      className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {threadMessages.isLoadingMore ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        <>
-                          Load older messages ({threadMessages.totalMessageCount - threadMessages.displayedCount} remaining)
-                        </>
-                      )}
-                    </button>
+                    <LoadMoreButton isLoading={isLoadingMore} remaining={remainingToLoad} onLoadMore={threadMessages.loadMoreMessages} />
                   </div>
                 </>
               )}
@@ -498,15 +517,12 @@ export function ThreadLiveWrapper({
         </div>
       </div>
 
-      {isScrolledUp && (
+      {showScrollButton && (
         <div className="absolute bottom-32 right-6 z-30 flex flex-col items-center gap-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
-          <button
-            type="button"
-            onClick={() => {
-              scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
-              void readReceipts.markThreadAsRead(true);
-            }}
-            className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-primary-foreground shadow-linear-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+          <Button
+            size="icon"
+            className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-primary-foreground shadow-linear-lg hover:scale-110 active:scale-95"
+            onClick={handleScrollToBottom}
             title="Scroll to bottom"
           >
             {readReceipts.unreadCount > 0 && (
@@ -515,11 +531,11 @@ export function ThreadLiveWrapper({
               </span>
             )}
             <ChevronDown size={16} strokeWidth={2.5} />
-          </button>
+          </Button>
         </div>
       )}
 
-      <div className="p-4 border-t border-border/60 shrink-0">
+      <div className="p-4 border-t border-line/60 shrink-0">
         <div className="max-w-4xl mx-auto">
           <PostMessageForm
             threadId={threadId}

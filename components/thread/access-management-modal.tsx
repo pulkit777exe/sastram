@@ -8,8 +8,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Trash2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
@@ -29,7 +29,7 @@ interface ThreadAccessModalProps {
 
 export function ThreadAccessModal({
   threadId,
-  creatorId,
+  creatorId: _creatorId,
   isOpen,
   onClose,
 }: ThreadAccessModalProps) {
@@ -82,6 +82,62 @@ export function ThreadAccessModal({
     }
   };
 
+  function renderContent() {
+    if (loading) {
+      return (
+        <div className="flex justify-center p-8">
+          <Loader2 className="animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
+
+    if (invitations.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground text-sm">No invitations found.</div>
+      );
+    }
+
+    return (
+      <ScrollArea className="h-88 pr-4 -mr-4">
+        <div className="space-y-4 pr-4">
+          {invitations.map((invitation) => {
+            const isRevoking = revokingId === invitation.id;
+            return (
+              <div key={invitation.id} className="flex items-center justify-between group">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full border bg-brand/10 flex items-center justify-center">
+                    <Mail size={14} className="text-brand" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium leading-none">{invitation.email}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Invited <TimeAgo date={invitation.createdAt} />
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs h-4 px-1 flex gap-1">
+                    {invitation.status}
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={isRevoking}
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleRevoke(invitation.id)}
+                  >
+                    {isRevoking ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -92,57 +148,7 @@ export function ThreadAccessModal({
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4">
-          {loading ? (
-            <div className="flex justify-center p-8">
-              <Loader2 className="animate-spin text-muted-foreground" />
-            </div>
-          ) : invitations.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No invitations found.
-            </div>
-          ) : (
-            <ScrollArea className="h-88 pr-4 -mr-4">
-              <div className="space-y-4 pr-4">
-                {invitations.map((invitation) => (
-                  <div
-                    key={invitation.id}
-                    className="flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full border bg-brand/10 flex items-center justify-center">
-                        <Mail size={14} className="text-brand" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium leading-none">{invitation.email}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Invited <TimeAgo date={invitation.createdAt} />
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant="secondary"
-                        className="text-xs h-4 px-1 flex gap-1"
-                      >
-                        {invitation.status}
-                      </Badge>
-                      <PressDepth
-                        disabled={revokingId === invitation.id}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleRevoke(invitation.id)}
-                      >
-                        {revokingId === invitation.id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
-                      </PressDepth>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
+          {renderContent()}
         </div>
       </DialogContent>
     </Dialog>

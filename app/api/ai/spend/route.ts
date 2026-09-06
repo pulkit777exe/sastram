@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
+import { ok, withErrorHandling } from '@/lib/utils/api-response';
 import { requireAdmin } from '@/lib/middleware/moderation';
 import { getAiSpendUsage } from '@/lib/services/ai-spend-cap';
 import { prisma } from '@/lib/infrastructure/prisma';
@@ -81,11 +81,13 @@ async function getByModel(fromDate: string, toDate: string) {
 }
 
 async function getPeriodTotal(fromDate: string, toDate: string) {
+  const range = { gte: new Date(fromDate), lt: new Date(toDate) };
+  const baseWhere = { createdAt: range };
   const [costSum, totalCount, successCount, failureCount] = await Promise.all([
-    prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: new Date(fromDate), lt: new Date(toDate) } }, _sum: { costUsd: true } }),
-    prisma.aiUsageLog.count({ where: { createdAt: { gte: new Date(fromDate), lt: new Date(toDate) } } }),
-    prisma.aiUsageLog.count({ where: { createdAt: { gte: new Date(fromDate), lt: new Date(toDate) }, success: true } }),
-    prisma.aiUsageLog.count({ where: { createdAt: { gte: new Date(fromDate), lt: new Date(toDate) }, success: false } }),
+    prisma.aiUsageLog.aggregate({ where: baseWhere, _sum: { costUsd: true } }),
+    prisma.aiUsageLog.count({ where: baseWhere }),
+    prisma.aiUsageLog.count({ where: { ...baseWhere, success: true } }),
+    prisma.aiUsageLog.count({ where: { ...baseWhere, success: false } }),
   ]);
 
   return {
@@ -96,12 +98,8 @@ async function getPeriodTotal(fromDate: string, toDate: string) {
   };
 }
 
-const handler = withErrorHandling(async (req: NextRequest) => {
-  try {
-    await requireAdmin();
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
-  }
+export const GET = withErrorHandling(async (_req: NextRequest) => {
+  await requireAdmin();
 
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
@@ -109,12 +107,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
   const todaySpend = await getAiSpendUsage();
 
-  const [weekAgg, byOp, byProv, byModel, periodTotal] = await Promise.all([
-    prisma.aiUsageLog.aggregate({
-      where: { createdAt: { gte: new Date(weekAgo), lt: now } },
-      _sum: { costUsd: true },
-      _count: { id: true },
-    }),
+  const [byOp, byProv, byModel, periodTotal] = await Promise.all([
     getOperationSpend(weekAgo, today),
     getByProvider(weekAgo, today),
     getByModel(weekAgo, today),
@@ -141,5 +134,3 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
   return NextResponse.json(ok(response));
 });
-
-export { handler as GET };

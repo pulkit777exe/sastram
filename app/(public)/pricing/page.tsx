@@ -22,7 +22,7 @@ export default function PricingPage() {
         </div>
 
         <div className="space-y-4">
-          <div className="p-6 rounded-2xl border border-border bg-card">
+          <div className="p-6 rounded-card border border-line bg-surface">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Free</h2>
@@ -43,13 +43,13 @@ export default function PricingPage() {
             </ul>
             <Link
               href="/dashboard"
-              className="block w-full py-2.5 px-4 rounded-lg bg-secondary text-center text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors"
+              className="block w-full py-2.5 px-4 rounded-control bg-secondary text-center text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors"
             >
               Start Free
             </Link>
           </div>
 
-          <div className="p-6 rounded-2xl border-2 border-brand bg-card">
+          <div className="p-6 rounded-card border-2 border-brand bg-surface">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Pro</h2>
@@ -76,7 +76,7 @@ export default function PricingPage() {
             </ul>
             <Link
               href="/dashboard"
-              className="block w-full py-2.5 px-4 rounded-lg bg-brand text-center text-sm font-medium text-white hover:bg-brand/90 transition-colors"
+              className="block w-full py-2.5 px-4 rounded-control bg-brand text-center text-sm font-medium text-white hover:bg-brand/90 transition-colors"
             >
               Upgrade to Pro
             </Link>

@@ -35,11 +35,13 @@ export const BAN_REASONS = {
 
 export type BanReason = (typeof BAN_REASONS)[keyof typeof BAN_REASONS];
 
+const MAX_FILE_SIZE_BYTES = 4.5 * 1024 * 1024; // single source of truth — Vercel Blob free limit
+
 export const FILE_LIMITS = {
-  MAX_SIZE_BYTES: 4.5 * 1024 * 1024,
-  MAX_IMAGE_SIZE: 4.5 * 1024 * 1024,
-  MAX_VIDEO_SIZE: 4.5 * 1024 * 1024,
-  MAX_PDF_SIZE: 4.5 * 1024 * 1024,
+  MAX_SIZE_BYTES: MAX_FILE_SIZE_BYTES,
+  MAX_IMAGE_SIZE: MAX_FILE_SIZE_BYTES,
+  MAX_VIDEO_SIZE: MAX_FILE_SIZE_BYTES,
+  MAX_PDF_SIZE: MAX_FILE_SIZE_BYTES,
 } as const;
 
 export const DEFAULT_PAGE_SIZE = 50;

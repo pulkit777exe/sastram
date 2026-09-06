@@ -1,6 +1,5 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
-import path from 'path';
 
 // NOTE: The active CSP is set in proxy.ts (per-request, with a nonce for
 // script-src). This file no longer sets a CSP to avoid sending two conflicting
@@ -30,9 +29,8 @@ const securityHeaders = [
 // next-server.js.nft.json. Only enable for Docker / self-hosted deploys.
 const isVercel = process.env.VERCEL === '1';
 
-const nextConfig: NextConfig = {
-  ...(isVercel ? {} : { output: 'standalone' as const }),
-  outputFileTracingRoot: path.join(__dirname),
+const baseNextConfig: NextConfig = {
+  outputFileTracingRoot: process.cwd(),
   async headers() {
     return [
       {
@@ -86,23 +84,15 @@ const nextConfig: NextConfig = {
         os: false,
       };
 
+      // Server-only packages must not be bundled for the client
       config.externals = config.externals || [];
       config.externals.push(
-        'fs',
-        'net',
-        'tls',
-        'dgram',
-        'child_process',
-        'worker_threads',
-        'path',
-        'os',
-        'url',
         'resend',
-        'ioredis',
-        'native-dns',
         '@prisma/client',
         '@prisma/adapter-neon',
+        '@prisma/adapter-pg',
         '@neondatabase/serverless',
+        'pg',
         'ws',
         '@google/genai',
         'better-auth',
@@ -115,11 +105,14 @@ const nextConfig: NextConfig = {
   },
 };
 
+const nextConfig: NextConfig = isVercel
+  ? baseNextConfig
+  : { ...baseNextConfig, output: 'standalone' as const };
+
 const sentryConfig = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
-  wideOrientation: true,
   widenClientFileUpload: true,
   tunnelRoute: '/monitoring',
   webpack: {

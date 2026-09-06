@@ -1,31 +1,48 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { ProfilePrivacy } from '@prisma/client';
+import { Prisma, ProfilePrivacy } from '@prisma/client';
+import type { Role } from '@prisma/client';
 import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
+import { visibilityFilter } from '@/lib/thread-access';
+
+const USER_PUBLIC_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  bio: true,
+  location: true,
+  website: true,
+  twitter: true,
+  github: true,
+  image: true,
+  bannerUrl: true,
+  profilePrivacy: true,
+  followerCount: true,
+  followingCount: true,
+  role: true,
+  status: true,
+  createdAt: true,
+  lastSeenAt: true,
+} as const;
+
+const USER_THREAD_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+  description: true,
+  messageCount: true,
+  memberCount: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const USER_BOOTSTRAP_SELECT = { id: true, name: true, image: true, role: true } as const;
 
 export const getPublicProfile = cache(async (userId: string, viewerId?: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId, deletedAt: null },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      bio: true,
-      location: true,
-      website: true,
-      twitter: true,
-      github: true,
-      image: true,
-      bannerUrl: true,
-      profilePrivacy: true,
-      followerCount: true,
-      followingCount: true,
-      role: true,
-      status: true,
-      createdAt: true,
-      lastSeenAt: true,
-    },
+    select: USER_PUBLIC_SELECT,
   });
 
   if (!user) return null;
@@ -50,32 +67,19 @@ export const getPublicProfile = cache(async (userId: string, viewerId?: string) 
 export const getUserBootstrapProfile = cache(async (userId: string) => {
   return prisma.user.findUnique({
     where: { id: userId, deletedAt: null },
-    select: {
-      id: true,
-      name: true,
-      image: true,
-      role: true,
-    },
+    select: USER_BOOTSTRAP_SELECT,
   });
 });
 
-export const getUserThreads = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
-  const where = { createdBy: userId, deletedAt: null };
+export const getUserThreads = cache(async (userId: string, limit: number = 20, offset: number = 0, viewerId?: string, viewerRole?: Role) => {
+  const vf = await visibilityFilter(viewerId, viewerRole ?? null);
+  const where: Prisma.ThreadWhereInput = { createdBy: userId, deletedAt: null, ...vf };
 
   try {
     const [threads, total] = await Promise.all([
       prisma.thread.findMany({
         where,
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          description: true,
-          messageCount: true,
-          memberCount: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: USER_THREAD_SELECT,
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,

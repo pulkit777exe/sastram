@@ -13,11 +13,27 @@ type GenOptions = {
 };
 
 function isQuotaError(err: unknown): boolean {
-  if (err instanceof Error && /quota|429|RESOURCE_EXHAUSTED/i.test(err.message)) return true;
+  if (err instanceof Error) {
+    const messageLower = err.message.toLowerCase();
+    if (messageLower.includes('quota')) return true;
+    if (messageLower.includes('429')) return true;
+    if (messageLower.includes('resource_exhausted')) return true;
+  }
   if (err && typeof err === 'object' && 'status' in err) {
     return (err as { status?: number }).status === 429;
   }
   return false;
+}
+
+function buildOpenAiBody(model: string, prompt: string, jsonMode?: boolean): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model,
+    messages: [{ role: 'user', content: prompt }],
+  };
+  if (jsonMode) {
+    body.response_format = { type: 'json_object' };
+  }
+  return body;
 }
 
 async function callGeminiText(
@@ -27,13 +43,21 @@ async function callGeminiText(
   opts: { jsonMode?: boolean; signal?: AbortSignal }
 ): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: geminiKey });
-  const result = await withRetry((signal) =>
-    ai.models.generateContent({
+
+  const result = await withRetry((signal) => {
+    const generationConfig: Record<string, unknown> = {
+      abortSignal: signal ?? opts.signal,
+    };
+    if (opts.jsonMode) {
+      generationConfig.responseMimeType = 'application/json';
+    }
+
+    return ai.models.generateContent({
       model,
       contents: prompt,
-      config: { abortSignal: signal ?? opts.signal, ...(opts.jsonMode ? { responseMimeType: 'application/json' } : {}) },
-    })
-  );
+      config: generationConfig as never,
+    });
+  });
   return (result.text ?? '').trim();
 }
 
@@ -50,11 +74,7 @@ async function callOpenAIText(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${openaiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        ...(opts.jsonMode ? { response_format: { type: 'json_object' } } : {}),
-      }),
+      body: JSON.stringify(buildOpenAiBody(model, prompt, opts.jsonMode)),
       signal: signal ?? opts.signal,
     });
     if (!res.ok) {

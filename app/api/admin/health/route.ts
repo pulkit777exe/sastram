@@ -1,18 +1,22 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/moderation';
-import { ok, fail } from '@/lib/utils/api-response';
+import { ok, withErrorHandling } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
-    await requireAdmin();
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
-  }
+const BYTES_PER_MB = 1024 * 1024;
+const SECONDS_PER_DAY = 86400;
+const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_MINUTE = 60;
+
+function formatMegabytes(bytes: number): string {
+  return Math.round(bytes / BYTES_PER_MB) + ' MB';
+}
+
+export const GET = withErrorHandling(async () => {
+  await requireAdmin();
 
   const memory = process.memoryUsage();
-  const now = Date.now();
   const uptime = process.uptime();
 
   return NextResponse.json(
@@ -22,18 +26,18 @@ export async function GET() {
       uptime,
       uptimeHuman: formatUptime(uptime),
       memory: {
-        rss: Math.round(memory.rss / 1024 / 1024) + ' MB',
-        heapTotal: Math.round(memory.heapTotal / 1024 / 1024) + ' MB',
-        heapUsed: Math.round(memory.heapUsed / 1024 / 1024) + ' MB',
+        rss: formatMegabytes(memory.rss),
+        heapTotal: formatMegabytes(memory.heapTotal),
+        heapUsed: formatMegabytes(memory.heapUsed),
       },
     })
   );
-}
+});
 
 function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
+  const d = Math.floor(seconds / SECONDS_PER_DAY);
+  const h = Math.floor((seconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR);
+  const m = Math.floor((seconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE);
   const parts: string[] = [];
   if (d > 0) parts.push(`${d}d`);
   if (h > 0) parts.push(`${h}h`);

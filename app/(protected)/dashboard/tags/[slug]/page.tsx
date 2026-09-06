@@ -14,10 +14,11 @@ export default async function TagDetailPage({ params }: { params: { slug: string
   if (!tag) notFound();
 
   const threads = await getThreadsByTag(tag.id);
+  const threadLabel = tag.threadCount === 1 ? 'thread' : 'threads';
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <header className="rounded-4xl border border-border admin-header-gradient p-4 md:p-8 text-white shadow-linear-xl">
+      <header className="rounded-card border border-line admin-header-gradient p-4 md:p-8 text-white shadow-linear-xl">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors mb-4"
@@ -27,14 +28,14 @@ export default async function TagDetailPage({ params }: { params: { slug: string
         </Link>
         <div className="flex items-center gap-3">
           <div
-            className="h-10 w-10 rounded-xl flex items-center justify-center"
+            className="h-10 w-10 rounded-card flex items-center justify-center"
             style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
           >
             <Hash size={20} />
           </div>
           <div>
             <h1 className="text-3xl font-semibold">#{tag.name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{tag.threadCount} thread{tag.threadCount !== 1 ? 's' : ''}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{tag.threadCount} {threadLabel}</p>
           </div>
         </div>
       </header>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +10,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { createTopic } from '@/modules/topics/actions';
 import { getPopularTagsAction } from '@/modules/tags/actions';
@@ -86,7 +87,7 @@ export function CreateTopicButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <PressDepth className="bg-brand hover:bg-brand/90 cursor-pointer">New Thread</PressDepth>
+        <Button type="button">New Thread</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -129,40 +130,40 @@ export function CreateTopicButton() {
             {tagSuggestions.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {tagSuggestions.map((tag) => (
-                  <button
+                  <Badge
                     key={tag}
-                    type="button"
+                    variant="outline"
+                    className="cursor-pointer hover:bg-muted"
                     onClick={() => addTag(tag)}
-                    className="rounded-full border px-2 py-0.5 text-xs hover:bg-muted"
                   >
                     {tag}
-                  </button>
+                  </Badge>
                 ))}
               </div>
             )}
 
             <div className="flex flex-wrap gap-2">
               {selectedTags.map((tag) => (
-                <button
+                <Badge
                   key={tag}
-                  type="button"
+                  variant="default"
+                  className="cursor-pointer"
                   onClick={() => removeTag(tag)}
-                  className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-xs text-brand"
                 >
                   #{tag} ×
-                </button>
+                </Badge>
               ))}
             </div>
           </div>
 
           <DialogFooter className="pt-4">
-            <PressDepth
+            <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand hover:bg-brand/90 text-white font-bold"
+              className="w-full"
             >
               {loading ? <Loader2 className="animate-spin" /> : 'Create Topic'}
-            </PressDepth>
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

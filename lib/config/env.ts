@@ -1,8 +1,12 @@
 import { z } from 'zod';
 
+// KISS: named helper for boolean coercion — avoids inline one-liner transforms
+function toBool(v: unknown): boolean {
+  return v === true || v === 'true' || v === '1';
+}
+
 const serverEnvSchema = z.object({
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
-  REDIS_URL: z.url('REDIS_URL must be a valid URL').optional(),
   UPSTASH_REDIS_REST_URL: z.url('UPSTASH_REDIS_REST_URL must be a valid URL').optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
@@ -27,13 +31,12 @@ const serverEnvSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_S3_BUCKET: z.string().optional(),
-  WEBSOCKET_URL: z.string().url('WEBSOCKET_URL must be a valid URL').optional(),
   CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters').optional(),
   QSTASH_URL: z.string().url('QSTASH_URL must be a valid URL').optional(),
   QSTASH_TOKEN: z.string().optional(),
   QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
   QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
-  RATE_LIMIT_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(v => v === true || v === 'true' || v === '1').default(true),
+  RATE_LIMIT_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(toBool).default(true),
   CONTENT_MODERATION_ENABLED: z.coerce.boolean().default(false),
   SENTRY_DSN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
@@ -63,6 +66,10 @@ const fullyClientSafeSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL'),
   NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
+  NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED: z
+    .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+    .transform(toBool)
+    .default(true),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -70,35 +77,35 @@ export type ClientEnv = z.infer<typeof fullyClientSafeSchema>;
 export type FullyClientSafeEnv = ClientEnv;
 export type MergedEnv = ServerEnv & Pick<ClientEnv, 'NODE_ENV' | 'NEXT_PUBLIC_APP_URL'>;
 
-function formatIssues(error: z.ZodError): string {
-  return error.issues.map((err) => `  - ${err.path.join('.')}: ${err.message}`).join('\n');
+function formatIssues(validationError: z.ZodError): string {
+  return validationError.issues.map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`).join('\n');
 }
 
 // Client bundles can't throw on a bad env — degrade to whatever parsed.
 export const clientEnv: FullyClientSafeEnv = (() => {
-  const result = fullyClientSafeSchema.safeParse(process.env);
-  if (!result.success) {
+  const parseResult = fullyClientSafeSchema.safeParse(process.env);
+  if (!parseResult.success) {
     if (process.env.NODE_ENV === 'development') {
-      console.warn('Client env validation error:', result.error.issues.map((err) => err.message));
+      console.warn('Client env validation error:', parseResult.error.issues.map((issue) => issue.message));
     }
-    return result.data || ({} as FullyClientSafeEnv);
+    return {} as FullyClientSafeEnv;
   }
-  return result.data;
+  return parseResult.data;
 })();
 
 let serverEnvCache: ServerEnv | null = null;
 export function getServerEnv(): ServerEnv {
-  if (serverEnvCache) return serverEnvCache;
+  if (serverEnvCache !== null) return serverEnvCache;
 
-  const result = serverEnvSchema.safeParse(process.env);
-  if (!result.success) {
+  const parseResult = serverEnvSchema.safeParse(process.env);
+  if (!parseResult.success) {
     throw new Error(
-      `Environment validation failed:\n${formatIssues(result.error)}\n\n` +
+      `Environment validation failed:\n${formatIssues(parseResult.error)}\n\n` +
         'Please check your .env file and ensure all required variables are set.'
     );
   }
 
-  serverEnvCache = result.data;
+  serverEnvCache = parseResult.data;
   return serverEnvCache;
 }
 
@@ -106,25 +113,56 @@ export function validateEnv() {
   return serverEnvSchema.safeParse(process.env);
 }
 
-export const serverEnv: ServerEnv = getServerEnv();
-export const env = getServerEnv();
+// Lazy proxies: importing `clientEnv` on the client must NOT trigger server validation.
+// `env.ts:116` previously called `getServerEnv()` at module evaluation, so any
+// client import (e.g. `view-transitions.ts -> clientEnv`) crashed with the
+// DATABASE_URL errors seen in the dashboard.
+export const serverEnv: ServerEnv = new Proxy({} as ServerEnv, {
+  get(_target, prop) {
+    return (getServerEnv() as unknown as Record<string | symbol, unknown>)[prop] as never;
+  },
+  has(_target, prop) {
+    return prop in getServerEnv();
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getServerEnv());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getServerEnv(), prop);
+  },
+});
+
+export const env: MergedEnv = new Proxy({} as MergedEnv, {
+  get(_target, prop) {
+    return (getEnv() as unknown as Record<string | symbol, unknown>)[prop] as never;
+  },
+  has(_target, prop) {
+    return prop in getEnv();
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getEnv());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getEnv(), prop);
+  },
+});
 
 let mergedEnvCache: MergedEnv | null = null;
 export function getEnv(): MergedEnv {
-  if (mergedEnvCache) return mergedEnvCache;
+  if (mergedEnvCache !== null) return mergedEnvCache;
 
-  const clientResult = fullyClientSafeSchema.safeParse(process.env);
-  if (!clientResult.success) {
+  const clientParseResult = fullyClientSafeSchema.safeParse(process.env);
+  if (!clientParseResult.success) {
     throw new Error(
-      `Environment validation failed (client subset):\n${formatIssues(clientResult.error)}\n\n` +
+      `Environment validation failed (client subset):\n${formatIssues(clientParseResult.error)}\n\n` +
         'Please check your .env file.'
     );
   }
 
   mergedEnvCache = {
     ...getServerEnv(),
-    NODE_ENV: clientResult.data.NODE_ENV,
-    NEXT_PUBLIC_APP_URL: clientResult.data.NEXT_PUBLIC_APP_URL,
+    NODE_ENV: clientParseResult.data.NODE_ENV,
+    NEXT_PUBLIC_APP_URL: clientParseResult.data.NEXT_PUBLIC_APP_URL,
   };
   return mergedEnvCache;
 }

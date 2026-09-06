@@ -25,23 +25,39 @@ function findNodeById(nodes: MessageNode[], id: string): MessageNode | null {
   return null;
 }
 
-function collectAncestorIds(nodes: MessageNode[], id: string): string[] {
-  const path: string[] = [];
-  const walk = (current: MessageNode[], trail: string[]): boolean => {
-    for (const node of current) {
-      const nextTrail = [...trail, node.id];
-      if (node.id === id) {
-        path.push(...trail);
-        return true;
-      }
-      if (node.children.length > 0 && walk(node.children, nextTrail)) {
-        return true;
-      }
+function collectAncestorIds(nodes: MessageNode[], targetId: string): string[] {
+  // Build a parent lookup table with an explicit loop — no recursion, no spread
+  const parentById = new Map<string, string | null>();
+  const stack: Array<{ node: MessageNode; parentId: string | null }> = [];
+
+  for (const node of nodes) {
+    stack.push({ node, parentId: null });
+  }
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) {
+      continue;
     }
-    return false;
-  };
-  walk(nodes, []);
-  return path;
+    const { node, parentId } = current;
+    parentById.set(node.id, parentId);
+    for (const child of node.children) {
+      stack.push({ node: child, parentId: node.id });
+    }
+  }
+
+  // Walk up from target to collect ancestors
+  const ancestors: string[] = [];
+  let currentId: string | null | undefined = parentById.get(targetId);
+
+  while (currentId) {
+    ancestors.push(currentId);
+    currentId = parentById.get(currentId) ?? null;
+  }
+
+  // Reverse to get root-first order (original trail order)
+  ancestors.reverse();
+  return ancestors;
 }
 
 interface CommentTreeProps {
@@ -113,7 +129,7 @@ export function CommentTree({
   }, [messages]);
 
   const tree = useMemo(() => buildMessageTree(localMessages), [localMessages]);
-  const focusedNode = useMemo(
+  const _focusedNode = useMemo(
     () => (focusedId ? findNodeById(tree, focusedId) : null),
     [tree, focusedId]
   );
@@ -194,7 +210,7 @@ export function CommentTree({
     [router, pathname, searchParams]
   );
 
-  const clearFocus = useCallback(() => {
+  const _clearFocus = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('focus');
     const query = params.toString();

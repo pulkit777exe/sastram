@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { followUser, unfollowUser } from '@/modules/follows/actions';
 import { toasts } from '@/lib/utils/toast';
+import { Button } from '@/components/ui/button';
 import { UserPlus, UserMinus } from 'lucide-react';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 
@@ -18,46 +18,55 @@ export function FollowButton({ userId, isFollowing: initialIsFollowing, onFollow
 
   const handleToggle = async () => {
     const prev = isFollowing;
-    setIsFollowing(!isFollowing);
-    onFollowChange?.(isFollowing ? -1 : 1);
+    const nextFollowing = !isFollowing;
+    setIsFollowing(nextFollowing);
+    if (isFollowing) onFollowChange?.(-1);
+    else onFollowChange?.(1);
 
     try {
-      const result = isFollowing
-        ? await unfollowUser({ userId })
-        : await followUser({ userId });
+      let result;
+      if (isFollowing) result = await unfollowUser({ userId });
+      else result = await followUser({ userId });
 
       if (result?.error) {
         setIsFollowing(prev);
-        onFollowChange?.(isFollowing ? 1 : -1);
+        if (isFollowing) onFollowChange?.(1);
+        else onFollowChange?.(-1);
         toasts.error(result.error);
-      } else {
-        toasts.success(isFollowing ? 'Unfollowed successfully' : 'Following successfully');
+        return;
       }
+      if (isFollowing) toasts.success('Unfollowed successfully');
+      else toasts.success('Following successfully');
     } catch {
       setIsFollowing(prev);
-      onFollowChange?.(isFollowing ? 1 : -1);
+      if (isFollowing) onFollowChange?.(1);
+      else onFollowChange?.(-1);
       toasts.error('Something went wrong');
     }
   };
 
+  function renderFollowContent() {
+    if (isFollowing) {
+      return (
+        <>
+          <AnimatedIcon icon={UserMinus} className="h-4 w-4 mr-2" animateOnHover />
+          Unfollow
+        </>
+      );
+    }
+    return (
+      <>
+        <AnimatedIcon icon={UserPlus} className="h-4 w-4 mr-2" animateOnHover />
+        Follow
+      </>
+    );
+  }
+
   return (
     <div className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-100">
-      <PressDepth
-        onClick={handleToggle}
-        className={`min-w-30 ${isFollowing ? 'border border-border' : 'bg-primary text-primary-foreground'}`}
-      >
-        {isFollowing ? (
-          <>
-            <AnimatedIcon icon={UserMinus} className="h-4 w-4 mr-2" animateOnHover />
-            Unfollow
-          </>
-        ) : (
-          <>
-            <AnimatedIcon icon={UserPlus} className="h-4 w-4 mr-2" animateOnHover />
-            Follow
-          </>
-        )}
-      </PressDepth>
+      <Button variant={isFollowing ? 'outline' : 'default'} className="min-w-30" onClick={handleToggle}>
+        {renderFollowContent()}
+      </Button>
     </div>
   );
 }

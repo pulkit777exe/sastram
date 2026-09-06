@@ -21,14 +21,45 @@ export default async function ModerationPage() {
   const reports = reportsResult.data ?? [];
   const stats = statsResult.data ?? null;
 
-  const userActivityEntries = userActivities.map((log) => ({
-    id: log.id,
-    timestamp: log.createdAt,
-    action: log.type,
-    target: log.entityId.slice(-8),
-    category: log.entityType,
-    performedBy: log.user?.name || log.user?.email || 'System',
-  }));
+  const ENTITY_ID_SUFFIX_LENGTH = 8;
+
+  function getActivityDisplayName(user: { name?: string | null; email?: string | null } | null | undefined): string {
+    if (user?.name) return user.name;
+    if (user?.email) return user.email;
+    return 'System';
+  }
+
+  function toAuditEntry(log: (typeof userActivities)[number]) {
+    return {
+      id: log.id,
+      timestamp: log.createdAt,
+      action: log.type,
+      target: log.entityId.slice(-ENTITY_ID_SUFFIX_LENGTH),
+      category: log.entityType,
+      performedBy: getActivityDisplayName(log.user),
+    };
+  }
+
+  function getBanStatus(ban: { user?: { status?: string | null } | null }): 'BANNED' | 'SUSPENDED' {
+    if (ban.user?.status === 'BANNED') return 'BANNED';
+    return 'SUSPENDED';
+  }
+
+  function getBannedBy(ban: { issuer?: { name: string | null } | null }) {
+    if (ban.issuer) return { name: ban.issuer.name };
+    return { name: null };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function normalizeBan(ban: any): any {
+    return {
+      ...ban,
+      status: getBanStatus(ban),
+      bannedBy: getBannedBy(ban),
+    };
+  }
+
+  const userActivityEntries = userActivities.map(toAuditEntry);
 
   return (
     <div className="space-y-8">
@@ -51,13 +82,7 @@ export default async function ModerationPage() {
           </p>
         </div>
         {bannedUsersResult?.data && (
-          <BannedUsersList
-            bans={bannedUsersResult.data.bans.map((ban) => ({
-              ...ban,
-              status: (ban.user?.status === 'BANNED' ? 'BANNED' : 'SUSPENDED') as 'BANNED' | 'SUSPENDED',
-              bannedBy: ban.issuer ? { name: ban.issuer.name } : { name: null },
-            }))}
-          />
+          <BannedUsersList bans={bannedUsersResult.data.bans.map(normalizeBan)} />
         )}
       </section>
     </div>

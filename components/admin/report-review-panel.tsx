@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PressDepth } from '@/components/ui/button-press-depth';
-
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
   User,
@@ -72,6 +71,18 @@ const actionButtons = [
   },
 ];
 
+function getToxicityColor(score: number): string {
+  if (score > 0.8) return 'bg-red-500/20 text-red-400';
+  if (score > 0.5) return 'bg-orange-500/20 text-orange-400';
+  return 'bg-green-500/20 text-green-400';
+}
+
+function getTrustScoreColor(score: number): string {
+  if (score > 70) return 'text-green-400';
+  if (score > 40) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
 export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewPanelProps) {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 
@@ -80,28 +91,28 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="bg-card border-border lg:col-span-1">
+      <Card className="bg-surface border-line lg:col-span-1">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
             Thread Context
           </CardTitle>
-          <div className="text-xs text-muted-foreground">{threadContext.threadTitle}</div>
+          <div className="text-xs text-ink-3">{threadContext.threadTitle}</div>
         </CardHeader>
         <CardContent className="space-y-3">
           {threadContext.surroundingMessages.map((msg) => (
             <div
               key={msg.id}
               className={cn(
-                'p-3 rounded-lg text-sm',
-                msg.isReported ? 'bg-red-500/10 border border-red-500/30' : 'bg-muted'
+                'p-3 rounded-control text-sm',
+                msg.isReported ? 'bg-red-500/10 border border-red-500/30' : 'bg-field'
               )}
             >
               <div className="flex items-center gap-2 mb-1">
                 <span
                   className={cn(
                     'font-medium text-xs',
-                    msg.isReported ? 'text-red-400' : 'text-foreground'
+                    msg.isReported ? 'text-red-400' : 'text-ink'
                   )}
                 >
                   {msg.senderName || 'Unknown'}
@@ -111,11 +122,11 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 )}
               </div>
               <p
-                className={cn('text-xs', msg.isReported ? 'text-red-300' : 'text-muted-foreground')}
+                className={cn('text-xs', msg.isReported ? 'text-red-300' : 'text-ink-3')}
               >
                 {msg.content}
               </p>
-              <div className="text-xs text-muted-foreground mt-1">
+              <div className="text-xs text-ink-3 mt-1">
                 <TimeAgo date={msg.createdAt} />
               </div>
             </div>
@@ -123,7 +134,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border lg:col-span-1">
+      <Card className="bg-surface border-line lg:col-span-1">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
@@ -132,9 +143,9 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-2">Report Reasons</h4>
+            <h4 className="text-xs font-medium text-ink-3 mb-2">Report Reasons</h4>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="border-border">
+              <Badge variant="outline" className="border-line">
                 {report.categoryLabel}
               </Badge>
               {report.reportCount > 1 && (
@@ -145,29 +156,20 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
 
           {report.aiAnalysis && (
             <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+              <h4 className="text-xs font-medium text-ink-3 mb-2 flex items-center gap-1">
                 <Eye className="w-3 h-3" />
                 Sai Analysis
               </h4>
-              <div className="bg-muted rounded-lg p-3 space-y-2">
+              <div className="bg-field rounded-control p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Toxicity</span>
-                  <Badge
-                    className={cn(
-                      'text-xs',
-                      report.aiAnalysis.toxicityScore > 0.8
-                        ? 'bg-red-500/20 text-red-400'
-                        : report.aiAnalysis.toxicityScore > 0.5
-                          ? 'bg-orange-500/20 text-orange-400'
-                          : 'bg-green-500/20 text-green-400'
-                    )}
-                  >
+                  <span className="text-xs text-ink-3">Toxicity</span>
+                  <Badge className={cn('text-xs', getToxicityColor(report.aiAnalysis.toxicityScore))}>
                     {(report.aiAnalysis.toxicityScore * 100).toFixed(0)}%
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {report.aiAnalysis.categories.map((cat) => (
-                    <Badge key={cat} variant="outline" className="text-xs border-border">
+                    <Badge key={cat} variant="outline" className="text-xs border-line">
                       {cat}
                     </Badge>
                   ))}
@@ -178,12 +180,12 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
 
           {report.similarReports.length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-2">Similar Cases</h4>
+              <h4 className="text-xs font-medium text-ink-3 mb-2">Similar Cases</h4>
               <div className="space-y-2">
                 {report.similarReports.slice(0, 3).map((similar) => (
                   <div
                     key={similar.id}
-                    className="text-xs text-muted-foreground flex items-center gap-2"
+                    className="text-xs text-ink-3 flex items-center gap-2"
                   >
                     <span>•</span>
                     <span>{similar.category}</span>
@@ -192,7 +194,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                       className={cn(
                         'text-xs',
                         similar.status === 'RESOLVED' && 'border-green-500/30 text-green-400',
-                        similar.status === 'DISMISSED' && 'border-border'
+                        similar.status === 'DISMISSED' && 'border-line'
                       )}
                     >
                       {similar.status}
@@ -205,7 +207,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border lg:col-span-1">
+      <Card className="bg-surface border-line lg:col-span-1">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <User className="w-4 h-4" />
@@ -214,30 +216,21 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-muted rounded-lg p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+            <div className="bg-field rounded-control p-3">
+              <div className="flex items-center gap-1.5 text-xs text-ink-3 mb-1">
                 <Calendar className="w-3 h-3" />
                 Account Age
               </div>
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-ink">
                 <TimeAgo date={userProfile.createdAt} />
               </p>
             </div>
-            <div className="bg-muted rounded-lg p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+            <div className="bg-field rounded-control p-3">
+              <div className="flex items-center gap-1.5 text-xs text-ink-3 mb-1">
                 <Shield className="w-3 h-3" />
                 Trust Score
               </div>
-              <p
-                className={cn(
-                  'text-sm font-medium',
-                  userProfile.trustScore > 70
-                    ? 'text-green-400'
-                    : userProfile.trustScore > 40
-                      ? 'text-yellow-400'
-                      : 'text-red-400'
-                )}
-              >
+              <p className={cn('text-sm font-medium', getTrustScoreColor(userProfile.trustScore))}>
                 {userProfile.trustScore}/100
               </p>
             </div>
@@ -245,7 +238,7 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
 
           {userProfile.violationHistory.length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+              <h4 className="text-xs font-medium text-ink-3 mb-2 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 Violation History ({userProfile.violationHistory.length} previous)
               </h4>
@@ -253,31 +246,31 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 {userProfile.violationHistory.slice(0, 3).map((violation) => (
                   <div
                     key={violation.id}
-                    className="bg-red-500/5 border border-red-500/20 rounded-lg p-2"
+                    className="bg-red-500/5 border border-red-500/20 rounded-control p-2"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-red-400">{violation.action}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-ink-3">
                         <TimeAgo date={violation.createdAt} />
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{violation.reason}</p>
+                    <p className="text-xs text-ink-3 mt-0.5">{violation.reason}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <Separator className="bg-border" />
+          <Separator className="bg-line" />
 
           <div className="space-y-2">
             {actionButtons.map((action) => {
               const Icon = action.icon;
               return (
-                <PressDepth
+                <Button variant="outline"
                   key={action.key}
                   className={cn(
-                    'w-full justify-start text-xs',
+                    'w-full justify-start text-xs h-auto py-2',
                     selectedAction === action.key && 'ring-2 ring-brand'
                   )}
                   onClick={() => {
@@ -288,10 +281,10 @@ export function ReportReviewPanel({ report, onAction, isLoading }: ReportReviewP
                 >
                   <Icon className="w-3.5 h-3.5 mr-2" />
                   <span className="flex-1 text-left">{action.label}</span>
-                  <kbd className="ml-auto text-xs bg-background/50 px-1.5 py-0.5 rounded border border-border">
+                  <kbd className="ml-auto text-xs bg-background/50 px-1.5 py-0.5 rounded border border-line">
                     {action.shortcut}
                   </kbd>
-                </PressDepth>
+                </Button>
               );
             })}
           </div>

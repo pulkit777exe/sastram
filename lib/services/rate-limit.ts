@@ -3,6 +3,7 @@ import type { Redis } from '@upstash/redis';
 import { logger } from '@/lib/infrastructure/logger';
 import { env } from '@/lib/config/env';
 import { getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
+import { getRequestIp } from '@/lib/utils/request-ip';
 
 // duration is in seconds.
 export const rateLimitConfig = {
@@ -103,8 +104,64 @@ export function decideLimiterMode(
   redisConfigured: boolean
 ): LimiterMode {
   if (!rateLimitEnabled) return 'open';
-  if (!r) return redisConfigured ? 'in-memory' : 'open';
+  if (!r) {
+    if (redisConfigured) return 'in-memory';
+    return 'open';
+  }
   return 'redis';
+}
+
+function createOpenLimiter(config: { points: number; duration: number }): RateLimiter {
+  return {
+    check: async () => {
+      const remaining = config.points;
+      const reset = Date.now() + config.duration * 1000;
+      return { success: true, remaining, reset };
+    },
+  };
+}
+
+function createInMemoryLimiterWithWarning(
+  bucket: RateLimitBucket,
+  config: { points: number; duration: number }
+): RateLimiter {
+  logger.error(
+    `Rate limit: Redis is configured but the client could not be created for bucket "${bucket}". Degrading to per-instance in-memory limiting (weaker on serverless).`
+  );
+  return new InMemoryRateLimiter(config.points, config.duration);
+}
+
+function createRedisLimiter(
+  bucket: RateLimitBucket,
+  config: { points: number; duration: number },
+  redisClient: Redis
+): RateLimiter {
+  const ratelimit = new Ratelimit({
+    redis: redisClient,
+    limiter: Ratelimit.slidingWindow(config.points, `${config.duration} s`),
+    analytics: false,
+  });
+
+  const fallback = new InMemoryRateLimiter(config.points, config.duration);
+
+  return {
+    check: async (identifier: string) => {
+      try {
+        const result = await ratelimit.limit(identifier);
+        return {
+          success: result.success,
+          remaining: result.remaining,
+          reset: result.reset,
+        };
+      } catch (error) {
+        logger.error(
+          `Rate limit: Redis check failed for bucket "${bucket}", degrading to per-instance in-memory limiting (weaker on serverless):`,
+          error
+        );
+        return fallback.check(identifier);
+      }
+    },
+  };
 }
 
 export function getOrCreateLimiter(
@@ -112,50 +169,28 @@ export function getOrCreateLimiter(
   redisClient: Redis | null = getUpstashRedis()
 ): RateLimiter {
   const cached = _limiters.get(bucket);
-  if (cached) return cached;
+  if (cached) {
+    // Early return: already created.
+    return cached;
+  }
 
   const config = rateLimitConfig[bucket];
   const r = redisClient;
 
-  const redisConfigured = Boolean(
-    env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
-  );
+  const redisConfigured = Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
 
   const mode = decideLimiterMode(env.RATE_LIMIT_ENABLED, r, redisConfigured);
+
   let limiter: RateLimiter;
 
   if (mode === 'open') {
-    limiter = {
-      check: async () => ({ success: true, remaining: config.points, reset: Date.now() + config.duration * 1000 }),
-    };
+    limiter = createOpenLimiter(config);
   } else if (mode === 'in-memory') {
-    logger.error(
-      `Rate limit: Redis is configured but the client could not be created for bucket "${bucket}". Degrading to per-instance in-memory limiting (weaker on serverless).`
-    );
-    limiter = new InMemoryRateLimiter(config.points, config.duration);
+    limiter = createInMemoryLimiterWithWarning(bucket, config);
   } else {
-    const ratelimit = new Ratelimit({
-      redis: r as Redis,
-      limiter: Ratelimit.slidingWindow(config.points, `${config.duration} s`),
-      analytics: false,
-    });
-
-    const fallback = new InMemoryRateLimiter(config.points, config.duration);
-
-    limiter = {
-      check: async (identifier: string) => {
-        try {
-          const result = await ratelimit.limit(identifier);
-          return { success: result.success, remaining: result.remaining, reset: result.reset };
-        } catch (error) {
-          logger.error(
-            `Rate limit: Redis check failed for bucket "${bucket}", degrading to per-instance in-memory limiting (weaker on serverless):`,
-            error
-          );
-          return fallback.check(identifier);
-        }
-      },
-    };
+    // Redis mode — r is guaranteed non-null here.
+    const redis = r as Redis;
+    limiter = createRedisLimiter(bucket, config, redis);
   }
 
   _limiters.set(bucket, limiter);
@@ -170,9 +205,54 @@ export async function rateLimit(params: {
 export async function rateLimit(
   arg: string | { key: string; type: RateLimitBucket }
 ): Promise<RateLimitResult> {
-  return typeof arg === 'string'
-    ? getOrCreateLimiter('api').check(arg)
-    : getOrCreateLimiter(arg.type).check(arg.key);
+  // Explicit branch instead of ternary.
+  if (typeof arg === 'string') {
+    // Simple string arg — treat as api bucket key.
+    const limiter = getOrCreateLimiter('api');
+    return limiter.check(arg);
+  } else {
+    const key = arg.key;
+    const type = arg.type;
+    const limiter = getOrCreateLimiter(type);
+    return limiter.check(key);
+  }
+}
+
+/**
+ * Façade that centralizes key building behind the shared IP seam.
+ * - `api` bucket uses IP
+ * - `message` bucket uses `message:{userId}` (falls back to IP if no userId)
+ * - ai-reply uses `ai-reply:{userId}:{ip}` (api bucket, userId + IP)
+ *
+ * Keeps the overloaded `rateLimit` for backward compat.
+ */
+export async function rateLimitFor(
+  request: Request,
+  userId?: string,
+  bucket: RateLimitBucket = 'api'
+): Promise<RateLimitResult> {
+  const ip = getRequestIp(request as { headers: Headers });
+
+  // Handle message bucket separately — key is per-user if available.
+  if (bucket === 'message') {
+    let key: string;
+    if (userId) {
+      key = `message:${userId}`;
+    } else {
+      key = ip;
+    }
+    return rateLimit({ key, type: 'message' });
+  }
+
+  // For other buckets with a userId, use ai-reply style composite key.
+  if (userId) {
+    const key = `ai-reply:${userId}:${ip}`;
+    return rateLimit({ key, type: 'api' });
+  }
+
+  // No userId — fall back to IP with requested bucket.
+  const fallbackKey = ip;
+  return rateLimit({ key: fallbackKey, type: bucket });
 }
 
 /**

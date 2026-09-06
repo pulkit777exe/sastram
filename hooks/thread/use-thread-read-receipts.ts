@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { markThreadReadAction } from '@/modules/read-receipts/actions';
 import type { Message } from '@/lib/types/index';
 
+const AUTO_MARK_READ_DELAY_MS = 30_000;
+
 interface UseThreadReadReceiptsOptions {
   threadId: string;
   initialUnreadCount: number;
@@ -53,12 +55,12 @@ export function useThreadReadReceipts({
     [isAtBottom, threadId, liveMessagesRef]
   );
 
-  // Auto-mark as read after 30s if there are unreads
+  // Auto-mark as read after delay if there are unreads
   useEffect(() => {
     if (unreadCount <= 0) return;
     const timer = setTimeout(() => {
       void markThreadAsRead(true);
-    }, 30_000);
+    }, AUTO_MARK_READ_DELAY_MS);
     return () => clearTimeout(timer);
   }, [unreadCount, markThreadAsRead]);
 

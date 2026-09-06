@@ -1,56 +1,123 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { createContext, useContext, useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { X, PanelRightOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 const DetailsContext = createContext<{ open: boolean; setOpen: (v: boolean) => void } | null>(null);
 
-function useDetails() {
-  const ctx = useContext(DetailsContext);
-  if (!ctx) throw new Error('ThreadDetailsPanel subcomponents must be used within ThreadDetailsPanel');
-  return ctx;
+export function useDetails() {
+  return useContext(DetailsContext);
 }
 
 export function ThreadDetailsPanel({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => setOpen(false), []);
+  const openPanel = useCallback(() => setOpen(true), []);
+
+  // Escape key handler
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, close]);
+
+  // Focus trap
+  useEffect(() => {
+    if (!open) return;
+    if (!panelRef.current) return;
+
+    function handleTab(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return;
+      const panelEl = panelRef.current;
+      if (!panelEl) return;
+      const focusable = panelEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      const isFirstFocused = document.activeElement === first;
+      const isLastFocused = document.activeElement === last;
+
+      if (e.shiftKey && isFirstFocused) {
+        e.preventDefault();
+        last.focus();
+        return;
+      }
+
+      if (!e.shiftKey && isLastFocused) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener('keydown', handleTab);
+    return () => document.removeEventListener('keydown', handleTab);
+  }, [open]);
+
+  // Restore focus to trigger when drawer closes
+  useEffect(() => {
+    if (!open && triggerRef.current) {
+      triggerRef.current.focus();
+    }
+  }, [open]);
+
+  const panelId = 'thread-details-panel';
 
   return (
     <DetailsContext.Provider value={{ open, setOpen }}>
-      {/* Static column on xl+ */}
-      <div className="hidden xl:flex xl:flex-col shrink-0">{children}</div>
-
-      {/* Floating trigger (below xl) — top-right, sits above the composer/scroll area */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="xl:hidden fixed top-19 right-4 z-40 flex items-center gap-1.5 px-3 h-9 rounded-lg border border-border/60 bg-card/95 backdrop-blur text-xs font-semibold text-muted-foreground shadow-linear-sm hover:bg-muted/40 hover:text-foreground transition-colors"
+      <Button
+        ref={triggerRef}
+        variant="outline"
+        size="icon"
+        className="fixed top-[4.5rem] right-4 z-40 backdrop-blur rounded-control"
+        onClick={openPanel}
         aria-label="Show thread details"
+        aria-expanded={open}
+        aria-controls={panelId}
+        title="Thread details"
       >
-        Details
-      </button>
+        <PanelRightOpen size={15} />
+      </Button>
 
-      {/* Slide-over below xl */}
       {open && (
-        <div className="fixed inset-0 z-50 xl:hidden">
+        <div className="fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-background/40 backdrop-blur-sm animate-in fade-in duration-150"
-            onClick={() => setOpen(false)}
+            className="absolute inset-0 bg-ink/20 backdrop-blur-sm animate-in fade-in duration-150"
+            aria-hidden="true"
+            onClick={close}
           />
-          <div className="absolute right-0 top-0 bottom-0 w-[88%] max-w-90 bg-card border-l border-border/60 shadow-linear-lg animate-in slide-in-from-right-2 duration-200 overflow-y-auto">
-            <div className="flex items-center justify-between px-4 h-12 border-b border-border/60 sticky top-0 bg-card/95 backdrop-blur z-10">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Thread Details
-              </span>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
+          <div
+            ref={panelRef}
+            id={panelId}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Thread details"
+            className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-canvas border-l border-line shadow-overlay flex flex-col animate-in slide-in-from-right duration-200"
+          >
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+              <span className="text-sm font-semibold text-ink tracking-tight">Thread Details</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={close}
                 aria-label="Close details"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
               >
-                <X size={16} strokeWidth={2.25} />
-              </button>
+                <X size={15} />
+              </Button>
             </div>
-            <div className="flex flex-col">{children}</div>
+            <div className="flex-1 overflow-y-auto">{children}</div>
           </div>
         </div>
       )}

@@ -13,7 +13,7 @@ const TEST_PASSWORD = 'TestPassword123!';
  *    a real session cookie, then persist it as Playwright storageState so the
  *    specs run authenticated.
  */
-async function run(config: FullConfig) {
+async function run(_config: FullConfig) {
   // 1. Seed (best-effort; idempotent upsert). Uses tsx via the project script.
   try {
     execFileSync('pnpm', ['exec', 'tsx', 'scripts/seed-test-user.ts'], {
@@ -27,7 +27,6 @@ async function run(config: FullConfig) {
   // 2. Sign in and capture cookies.
   const browser = await chromium.launch();
   const context = await browser.newContext();
-  const page = await context.newPage();
 
   const res = await context.request.post(`${BASE_URL}/api/auth/sign-in/email`, {
     headers: {

@@ -11,7 +11,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +22,7 @@ import {
 import { resolveAppeal } from '@/modules/appeals/actions';
 import { toasts } from '@/lib/utils/toast';
 import { Check, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Appeal {
   id: string;
@@ -68,7 +68,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
 
   if (appeals.length === 0) {
     return (
-      <div className="text-center py-12 border border-border dashed rounded-xl">
+      <div className="text-center py-12 border border-line dashed rounded-card">
         <p className="text-muted-foreground">No pending appeals</p>
       </div>
     );
@@ -76,7 +76,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
 
   return (
     <>
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="rounded-control border border-line overflow-hidden">
         <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -115,9 +115,9 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 >
                   &quot;{appeal.reason || 'No appeal reason provided'}&quot;
                 </TableCell>
-                <TableCell className="sticky right-0 bg-card z-10 text-right">
+                <TableCell className="sticky right-0 bg-surface z-10 text-right">
                   <div className="flex justify-end gap-2">
-                    <PressDepth
+                    <Button type="button" variant="ghost" size="icon-sm"
                       onClick={() => {
                         setSelectedAppeal(appeal);
                         setActionType('REJECT');
@@ -125,8 +125,8 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <X className="h-4 w-4" />
-                    </PressDepth>
-                    <PressDepth
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon-sm"
                       onClick={() => {
                         setSelectedAppeal(appeal);
                         setActionType('APPROVE');
@@ -134,7 +134,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                       className="text-green-600 hover:text-green-700 hover:bg-green/10"
                     >
                       <Check className="h-4 w-4" />
-                    </PressDepth>
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -167,7 +167,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 <span>{selectedAppeal.banReason}</span>
 
                 <span className="text-muted-foreground">Appeal:</span>
-                <div className="p-3 bg-muted rounded-md text-xs italic">
+                <div className="p-3 bg-muted rounded-control text-xs italic">
                   &quot;{selectedAppeal.reason || 'No appeal reason provided'}&quot;
                 </div>
               </div>
@@ -175,10 +175,10 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
           )}
 
           <DialogFooter>
-            <PressDepth onClick={() => setSelectedAppeal(null)}>
+            <Button type="button" variant="outline" onClick={() => setSelectedAppeal(null)}>
               Cancel
-            </PressDepth>
-            <PressDepth
+            </Button>
+            <Button type="button"
               onClick={handleResolve}
               disabled={isProcessing}
             >
@@ -187,7 +187,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 : actionType === 'APPROVE'
                   ? 'Approve Appeal'
                   : 'Reject Appeal'}
-            </PressDepth>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

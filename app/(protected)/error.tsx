@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/utils/client-logger';
 
 export default function ProtectedError({
@@ -17,13 +18,12 @@ export default function ProtectedError({
   return (
     <div className="flex flex-col items-center justify-center min-h-100 gap-4">
       <p className="text-muted-foreground text-sm">Something went wrong loading this page.</p>
-      <button
-        type="button"
+      <Button
+        variant="outline"
         onClick={reset}
-        className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
       >
         Try again
-      </button>
+      </Button>
     </div>
   );
 }

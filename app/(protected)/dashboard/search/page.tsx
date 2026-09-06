@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { Search, MessageSquare, Users, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { ROUTES } from '@/lib/config/routes';
 import { clientLogger } from '@/lib/utils/client-logger';
 import {
@@ -34,24 +34,33 @@ export default function SearchPage() {
 
     setIsSearching(true);
     try {
-      const promises: Promise<{ data: unknown; error: unknown; ok?: boolean }>[] = [];
+      const nextResults: SearchResults = { threads: null, messages: null, users: null };
+      const tasks: Promise<void>[] = [];
 
       if (searchType === 'all' || searchType === 'threads') {
-        promises.push(searchThreadsAction({ query }));
+        tasks.push(
+          searchThreadsAction({ query }).then((res) => {
+            nextResults.threads = (res.data as SearchResults['threads']) || null;
+          })
+        );
       }
       if (searchType === 'all' || searchType === 'messages') {
-        promises.push(searchMessagesAction({ query }));
+        tasks.push(
+          searchMessagesAction({ query }).then((res) => {
+            nextResults.messages = (res.data as SearchResults['messages']) || null;
+          })
+        );
       }
       if (searchType === 'all' || searchType === 'users') {
-        promises.push(searchUsersAction({ query }));
+        tasks.push(
+          searchUsersAction({ query }).then((res) => {
+            nextResults.users = (res.data as SearchResults['users']) || null;
+          })
+        );
       }
 
-      const searchResults = await Promise.all(promises);
-      setResults({
-        threads: (searchResults[0]?.data as SearchResults['threads']) || null,
-        messages: (searchResults[1]?.data as SearchResults['messages']) || null,
-        users: (searchResults[2]?.data as SearchResults['users']) || null,
-      });
+      await Promise.all(tasks);
+      setResults(nextResults);
     } catch (error) {
       clientLogger.error('Search error', error instanceof Error ? error.message : String(error));
     } finally {
@@ -75,20 +84,19 @@ export default function SearchPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1"
             />
-            <PressDepth onClick={handleSearch} disabled={isSearching}>
+            <Button type="button" onClick={handleSearch} disabled={isSearching}>
               {isSearching ? 'Searching...' : 'Search'}
-            </PressDepth>
+            </Button>
           </div>
 
           <div className="flex flex-wrap gap-2">
             {(['all', 'threads', 'messages', 'users'] as SearchType[]).map((type) => (
-              <PressDepth
+              <Button variant={searchType === type ? 'default' : 'outline'} size="sm"
                 key={type}
                 onClick={() => setSearchType(type)}
-                className={searchType === type ? 'bg-primary text-primary-foreground' : ''}
               >
                 {type.charAt(0).toUpperCase() + type.slice(1)}
-              </PressDepth>
+              </Button>
             ))}
           </div>
         </Card>

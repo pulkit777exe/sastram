@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PressDepth } from '@/components/ui/button-press-depth';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,9 +51,9 @@ export function EmailChangeCard({ currentEmail }: { currentEmail: string }) {
               autoComplete="email"
             />
           </div>
-          <PressDepth type="submit" disabled={saving || !newEmail}>
+          <Button type="submit" disabled={saving || !newEmail}>
             {saving ? 'Sending verification…' : 'Send verification email'}
-          </PressDepth>
+          </Button>
         </form>
       </CardContent>
     </Card>

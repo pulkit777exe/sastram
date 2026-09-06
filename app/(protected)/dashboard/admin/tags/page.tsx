@@ -10,14 +10,26 @@ export default async function AdminTagsPage(props: {
   assertAdmin(session.user);
 
   const sp = await props.searchParams;
-  const page = Number(sp?.page) || 1;
-  const search = sp?.search || '';
+
+  function parsePageParam(value: string | undefined): number {
+    const parsed = Number(value);
+    if (!value || Number.isNaN(parsed) || parsed < 1) return 1;
+    return Math.floor(parsed);
+  }
+
+  function parseSearchParam(value: string | undefined): string {
+    if (!value) return '';
+    return value;
+  }
+
+  const page = parsePageParam(sp?.page);
+  const search = parseSearchParam(sp?.search);
 
   const { tags, total, totalPages } = await listAllTags({ page, pageSize: 50, search });
 
   return (
     <div className="space-y-8">
-      <header className="rounded-4xl border border-border admin-header-gradient p-4 md:p-8 text-white shadow-linear-xl">
+      <header className="rounded-card border border-line admin-header-gradient p-4 md:p-8 text-white shadow-linear-xl">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Admin Workspace</p>

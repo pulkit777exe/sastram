@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail, withErrorHandling } from '@/lib/utils/api-response';
+import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/ai';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
@@ -19,7 +19,12 @@ const similarRequestSchema = z.object({
 function calculateSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
   const topics1 = new Set(dna1.topics || []);
   const topics2 = new Set(dna2.topics || []);
-  const intersection = new Set([...topics1].filter((x) => topics2.has(x)));
+  const intersection = new Set<string>();
+  for (const topic of topics1) {
+    if (topics2.has(topic)) {
+      intersection.add(topic);
+    }
+  }
   const union = new Set([...topics1, ...topics2]);
   const topicSimilarity = union.size === 0 ? 0 : intersection.size / union.size;
 
@@ -28,10 +33,12 @@ function calculateSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
   const expertiseLevels = ['beginner', 'intermediate', 'advanced', 'expert'];
   const level1 = expertiseLevels.indexOf(dna1.expertiseLevel);
   const level2 = expertiseLevels.indexOf(dna2.expertiseLevel);
-  const expertiseSimilarity =
-    level1 !== -1 && level2 !== -1
-      ? 1 - Math.abs(level1 - level2) / (expertiseLevels.length - 1)
-      : 0.5;
+  let expertiseSimilarity: number;
+  if (level1 !== -1 && level2 !== -1) {
+    expertiseSimilarity = 1 - Math.abs(level1 - level2) / (expertiseLevels.length - 1);
+  } else {
+    expertiseSimilarity = 0.5;
+  }
 
   return topicSimilarity * 0.5 + questionTypeSimilarity * 0.3 + expertiseSimilarity * 0.2;
 }
@@ -46,14 +53,14 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: 400 });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   const parsed = similarRequestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       fail('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input'),
-      { status: 400 }
+      { status: HTTP_STATUS.BAD_REQUEST }
     );
   }
 
@@ -66,7 +73,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   try {
     draftDna = await aiService.generateThreadDNA(draftMessage);
   } catch {
-    return NextResponse.json(fail('AI_ERROR', 'Failed to analyze thread similarity.'), { status: 500 });
+    return NextResponse.json(fail('AI_ERROR', 'Failed to analyze thread similarity.'), { status: HTTP_STATUS.INTERNAL });
   }
 
   const existingThreads = await prisma.thread.findMany({
@@ -83,17 +90,16 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     take: 500,
   });
 
-  const similar = existingThreads
-    .map((thread) => {
-      const otherDna = parseThreadDna(thread.threadDna);
-      if (!otherDna) return null;
-      const similarity = calculateSimilarity(draftDna, otherDna);
-      return { id: thread.id, name: thread.name, slug: thread.slug, similarity };
-    })
-    .filter((t): t is { id: string; name: string; slug: string; similarity: number } => t !== null)
-    .filter((t) => t.similarity >= SIMILARITY_THRESHOLD)
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, MAX_RESULTS);
+  const mapped = existingThreads.map((thread) => {
+    const otherDna = parseThreadDna(thread.threadDna);
+    if (!otherDna) return null;
+    const similarity = calculateSimilarity(draftDna, otherDna);
+    return { id: thread.id, name: thread.name, slug: thread.slug, similarity };
+  });
+  const nonNull = mapped.filter((t): t is { id: string; name: string; slug: string; similarity: number } => t !== null);
+  const filtered = nonNull.filter((t) => t.similarity >= SIMILARITY_THRESHOLD);
+  const sorted = filtered.sort((a, b) => b.similarity - a.similarity);
+  const similar = sorted.slice(0, MAX_RESULTS);
 
   return NextResponse.json(ok({ similar, threshold: SIMILARITY_THRESHOLD }));
 });

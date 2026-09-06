@@ -6,7 +6,6 @@ import {
   getMessageLimiter,
   decideLimiterMode,
   InMemoryRateLimiter,
-  type RateLimitBucket,
 } from '@/lib/services/rate-limit';
 
 describe('Rate Limiting Service', () => {

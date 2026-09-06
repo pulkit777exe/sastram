@@ -15,12 +15,15 @@ export const createReportSchema = z.object({
   details: z.string().max(500, 'Details must be less than 500 characters').optional(),
 });
 
+const reportStatusValues = [
+  REPORT_STATUS.PENDING,
+  REPORT_STATUS.RESOLVED,
+  REPORT_STATUS.DISMISSED,
+] as const;
+
 export const updateReportStatusSchema = z.object({
   reportId: z.string().cuid('Invalid report ID'),
-  status: z.enum([REPORT_STATUS.PENDING, REPORT_STATUS.RESOLVED, REPORT_STATUS.DISMISSED] as [
-    string,
-    ...string[],
-  ]),
+  status: z.enum(reportStatusValues),
   resolution: z.string().max(1000).optional(),
 });
 
@@ -30,21 +33,24 @@ export const getReportDetailsSchema = z.object({
 
 const suspensionDurationValues = ['1h', '6h', '24h', '3d', '7d', '30d'] as const;
 
+const resolveActionValues = ['DISMISS', 'REMOVE_MESSAGE', 'WARN_USER', 'SUSPEND_USER', 'BAN_USER'] as const;
+
 export const resolveReportSchema = z
   .object({
     reportId: z.string().cuid('Invalid report ID'),
-    action: z.enum(['DISMISS', 'REMOVE_MESSAGE', 'WARN_USER', 'SUSPEND_USER', 'BAN_USER']),
-    note: z
-      .string()
-      .trim()
-      .max(500, 'Please keep the note under 500 characters')
-      .optional()
-      .default(''),
+    action: z.enum(resolveActionValues),
+    note: z.string().trim().max(500, 'Please keep the note under 500 characters').optional().default(''),
     notifyReporter: z.boolean().default(true),
     duration: z.enum(suspensionDurationValues).optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.action !== 'DISMISS' && value.note.trim().length < 10) {
+    const isDismiss = value.action === 'DISMISS';
+    if (isDismiss) {
+      return;
+    }
+    const noteLength = value.note.trim().length;
+    const needsNote = noteLength < 10;
+    if (needsNote) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['note'],

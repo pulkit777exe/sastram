@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { RefreshCw, TrendingUp, Clock, Globe, Database } from 'lucide-react';
 
 interface SpendTelemetry {
@@ -39,10 +39,27 @@ function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
+function getBarColor(remaining: number, limit: number): string {
+  if (remaining < 1) return 'bg-red-500';
+  if (remaining < limit * 0.3) return 'bg-yellow-500';
+  return 'bg-green-500';
+}
+
 export default function SpendPage() {
   const [data, setData] = useState<SpendTelemetry | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  let remainingTextColor = 'text-foreground';
+  let barColor = 'bg-green-500';
+  let barWidthPercent = 0;
+  if (data) {
+    if (data.today.remaining < 1) {
+      remainingTextColor = 'text-red-600';
+    }
+    barColor = getBarColor(data.today.remaining, data.today.limit);
+    barWidthPercent = Math.min(100, (data.today.used / data.today.limit) * 100);
+  }
 
   const fetchSpend = useCallback(async () => {
     setLoading(true);
@@ -81,14 +98,14 @@ export default function SpendPage() {
             Global AI cost telemetry, operation breakdown, and spend-cap status.
           </p>
         </div>
-        <PressDepth onClick={fetchSpend} disabled={loading}>
+        <Button variant="outline" onClick={fetchSpend} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
-        </PressDepth>
+        </Button>
       </header>
 
       {error && (
-        <Card className="rounded-3xl border-destructive/30 bg-destructive/5">
+        <Card className="rounded-card border-destructive/30 bg-destructive/5">
           <CardContent className="p-6 text-destructive text-sm">{error}</CardContent>
         </Card>
       )}
@@ -96,7 +113,7 @@ export default function SpendPage() {
       {!data && !error && loading && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="rounded-3xl">
+            <Card key={i} className="rounded-card">
               <CardContent className="p-6">
                 <div className="skeleton h-4 w-24 mb-3" />
                 <div className="skeleton h-8 w-16" />
@@ -115,37 +132,35 @@ export default function SpendPage() {
               Today&apos;s Spend
             </h2>
             <div className="grid gap-6 md:grid-cols-4">
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Used</p>
                   <p className="text-2xl font-bold text-foreground mt-1">{formatUsd(data.today.used)}</p>
                   <p className="text-xs text-muted-foreground mt-1">of {formatUsd(data.today.limit)} limit</p>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Remaining</p>
-                  <p className={`text-2xl font-bold mt-1 ${data.today.remaining < 1 ? 'text-red-600' : 'text-foreground'}`}>
+                  <p className={`text-2xl font-bold mt-1 ${remainingTextColor}`}>
                     {formatUsd(data.today.remaining)}
                   </p>
                   <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${
-                        data.today.remaining < 1 ? 'bg-red-500' : data.today.remaining < data.today.limit * 0.3 ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                      style={{ width: `${Math.min(100, (data.today.used / data.today.limit) * 100)}%` }}
+                      className={`h-full rounded-full ${barColor}`}
+                      style={{ width: `${barWidthPercent}%` }}
                     />
                   </div>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Period Calls</p>
                   <p className="text-2xl font-bold text-foreground mt-1">{data.periodTotal.callCount}</p>
                   <p className="text-xs text-muted-foreground mt-1">{data.periodTotal.successCount} succeeded, {data.periodTotal.failureCount} failed</p>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">Period Cost</p>
                   <p className="text-2xl font-bold text-foreground mt-1">{formatUsd(data.periodTotal.costUsd)}</p>
@@ -162,11 +177,11 @@ export default function SpendPage() {
                 <Database className="w-5 h-5" />
                 By Operation
               </h2>
-              <Card className="rounded-3xl">
+              <Card className="rounded-card">
                 <CardContent className="p-0">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border">
+                      <tr className="border-b border-line">
                         <th className="text-left p-4 text-muted-foreground font-medium">Operation</th>
                         <th className="text-right p-4 text-muted-foreground font-medium">Calls</th>
                         <th className="text-right p-4 text-muted-foreground font-medium">Cost</th>
@@ -175,7 +190,7 @@ export default function SpendPage() {
                     </thead>
                     <tbody>
                       {data.byOperation.map((op) => (
-                        <tr key={op.operation} className="border-b border-border/50">
+                        <tr key={op.operation} className="border-b border-line/50">
                           <td className="p-4 text-foreground font-mono text-xs">{op.operation}</td>
                           <td className="p-4 text-right text-muted-foreground">{op.callCount}</td>
                           <td className="p-4 text-right text-foreground">{formatUsd(op.totalCostUsd)}</td>
@@ -198,7 +213,7 @@ export default function SpendPage() {
               </h2>
               <div className="grid gap-6 md:grid-cols-2">
                 {Object.entries(data.byProvider).map(([provider, stats]) => (
-                  <Card key={provider} className="rounded-3xl">
+                  <Card key={provider} className="rounded-card">
                     <CardContent className="p-6">
                       <p className="text-sm text-muted-foreground capitalize">{provider}</p>
                       <p className="text-2xl font-bold text-foreground mt-1">{formatUsd(stats.costUsd)}</p>
@@ -219,7 +234,7 @@ export default function SpendPage() {
               </h2>
               <div className="grid gap-6 md:grid-cols-2">
                 {Object.entries(data.byModel).map(([model, stats]) => (
-                  <Card key={model} className="rounded-3xl">
+                  <Card key={model} className="rounded-card">
                     <CardContent className="p-6">
                       <p className="text-sm text-muted-foreground">{model}</p>
                       <p className="text-2xl font-bold text-foreground mt-1">{formatUsd(stats.costUsd)}</p>

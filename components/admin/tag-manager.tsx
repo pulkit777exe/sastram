@@ -3,9 +3,26 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Merge, Check, X, Search, AlertTriangle } from 'lucide-react';
 import { toasts } from '@/lib/utils/toast';
 import { createTagAction, updateTagAction, deleteTagAction, mergeTagsAction } from '@/modules/tags/actions';
@@ -37,7 +54,6 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deleteClosing, setDeleteClosing] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
   const [mergeSource, setMergeSource] = useState('');
   const [mergeTarget, setMergeTarget] = useState('');
@@ -66,7 +82,14 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
 
     const res = await createTagAction({ name: newName.trim(), color: newColor });
     if (res.ok && res.data) {
-      setTags((prev) => prev.map((t) => t.id === tempId ? { id: res.data!.id, name: newName.trim(), slug: res.data!.slug ?? slug, color: newColor, threadCount: 0 } : t));
+      const created = res.data;
+      setTags((prev) => {
+        if (!created) return prev;
+        return prev.map((t) => {
+          if (t.id !== tempId) return t;
+          return { id: created.id, name: newName.trim(), slug: created.slug ?? slug, color: newColor, threadCount: 0 };
+        });
+      });
     } else {
       setTags((prev) => prev.filter((t) => t.id !== tempId));
       toasts.error(res.error || 'Failed to create tag');
@@ -141,20 +164,20 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
               className="pl-9 h-9 text-sm"
             />
           </div>
-          <PressDepth type="submit" className="h-9">
+          <Button type="submit" variant="secondary">
             Search
-          </PressDepth>
+          </Button>
         </form>
 
-        <PressDepth onClick={() => setShowCreate(true)} className="h-9">
+        <Button type="button" onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4 mr-1.5" />
           New Tag
-        </PressDepth>
+        </Button>
 
-        <PressDepth onClick={() => setShowMerge(true)} className="h-9" disabled={tags.length < 2}>
+        <Button type="button" onClick={() => setShowMerge(true)} disabled={tags.length < 2}>
           <Merge className="w-4 h-4 mr-1.5" />
           Merge Tags
-        </PressDepth>
+        </Button>
       </div>
 
       {/* Create tag form */}
@@ -179,19 +202,19 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                     type="color"
                     value={newColor}
                     onChange={(e) => setNewColor(e.target.value)}
-                    className="w-9 h-9 rounded-md border border-input bg-transparent cursor-pointer"
+                    className="w-9 h-9 rounded-control border border-input bg-transparent cursor-pointer"
                   />
                   <span className="text-xs font-mono text-muted-foreground">{newColor}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <PressDepth onClick={handleCreate} disabled={!newName.trim()} className="h-9">
+                <Button type="button" onClick={handleCreate} disabled={!newName.trim()}>
                   <Check className="w-3.5 h-3.5 mr-1" />
                   Create
-                </PressDepth>
-                <PressDepth onClick={() => setShowCreate(false)} className="h-9">
+                </Button>
+                <Button type="button" onClick={() => setShowCreate(false)} variant="outline" size="icon-sm">
                   <X className="w-3.5 h-3.5" />
-                </PressDepth>
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -209,47 +232,46 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Source tag</Label>
-                <select
-                  value={mergeSource}
-                  onChange={(e) => setMergeSource(e.target.value)}
-                  className="flex h-9 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                >
-                  <option value="">Select source...</option>
-                  {tags.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      #{t.name} ({t.threadCount})
-                    </option>
-                  ))}
-                </select>
+                <Select value={mergeSource} onValueChange={setMergeSource}>
+                  <SelectTrigger className="w-48 h-9">
+                    <SelectValue placeholder="Select source..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tags.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        #{t.name} ({t.threadCount})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Target tag</Label>
-                <select
-                  value={mergeTarget}
-                  onChange={(e) => setMergeTarget(e.target.value)}
-                  className="flex h-9 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                >
-                  <option value="">Select target...</option>
-                  {tags
-                    .filter((t) => t.id !== mergeSource)
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        #{t.name} ({t.threadCount})
-                      </option>
-                    ))}
-                </select>
+                <Select value={mergeTarget} onValueChange={setMergeTarget}>
+                  <SelectTrigger className="w-48 h-9">
+                    <SelectValue placeholder="Select target..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tags
+                      .filter((t) => t.id !== mergeSource)
+                      .map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          #{t.name} ({t.threadCount})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center gap-1.5">
-                <PressDepth
+                <Button type="button"
                   onClick={handleMerge}
                   disabled={!mergeSource || !mergeTarget || mergeSource === mergeTarget}
-                  className="h-9"
                 >
                   Merge
-                </PressDepth>
-                <PressDepth onClick={() => setShowMerge(false)} className="h-9">
+                </Button>
+                <Button type="button" onClick={() => setShowMerge(false)} variant="outline">
                   Cancel
-                </PressDepth>
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -292,7 +314,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                               type="color"
                               value={editColor}
                               onChange={(e) => setEditColor(e.target.value)}
-                              className="w-8 h-8 rounded-md border border-input bg-transparent cursor-pointer"
+                              className="w-8 h-8 rounded-control border border-input bg-transparent cursor-pointer"
                             />
                           </td>
                           <td className="px-4 py-2">
@@ -311,19 +333,18 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                           </td>
                           <td className="px-4 py-2 text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <PressDepth
+                              <Button type="button" variant="ghost" size="icon-sm"
                                 onClick={handleUpdate}
                                 disabled={!editName.trim()}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green/10"
+                                className="text-green-600 hover:text-green-700 hover:bg-green/10"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                              </PressDepth>
-                              <PressDepth
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon-sm"
                                 onClick={() => setEditingId(null)}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <X className="w-3.5 h-3.5" />
-                              </PressDepth>
+                              </Button>
                             </div>
                           </td>
                         </>
@@ -331,7 +352,7 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                         <>
                           <td className="px-4 py-2.5">
                             <span
-                              className="inline-block w-6 h-6 rounded-md border border-border"
+                              className="inline-block w-6 h-6 rounded-control border border-line"
                               style={{ backgroundColor: tag.color }}
                             />
                           </td>
@@ -347,22 +368,21 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                              <PressDepth
+                              <Button type="button" variant="ghost" size="icon-sm"
                                 onClick={() => {
                                   setEditingId(tag.id);
                                   setEditName(tag.name);
                                   setEditColor(tag.color);
                                 }}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
-                              </PressDepth>
-                              <PressDepth
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon-sm"
                                 onClick={() => setDeletingId(tag.id)}
-                                className="min-h-10 min-w-10 h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                              </PressDepth>
+                              </Button>
                             </div>
                           </td>
                         </>
@@ -380,9 +400,10 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <PressDepth
+            <Button type="button"
               key={p}
-              className={`h-8 min-w-8 ${p === currentPage ? 'bg-primary text-primary-foreground' : ''}`}
+              variant={p === currentPage ? 'default' : 'outline'}
+              size="sm"
               onClick={() => {
                 const params = new URLSearchParams();
                 if (searchQuery) params.set('search', searchQuery);
@@ -391,51 +412,33 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
               }}
             >
               {p}
-            </PressDepth>
+            </Button>
           ))}
         </div>
       )}
 
       {/* Delete confirmation */}
-      {deletingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${deleteClosing ? 'opacity-0' : 'opacity-100'}`}
-            onClick={() => {
-              setDeleteClosing(true);
-              setTimeout(() => { setDeletingId(null); setDeleteClosing(false); }, 150);
-            }}
-          />
-          <Card className={`t-modal ${deleteClosing ? '' : 'is-open'} relative w-full max-w-sm mx-4 z-10`}>
-            <CardContent className="pt-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Delete tag?</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    This tag will be removed from{' '}
-                    <span className="font-medium">{tagMap.get(deletingId)?.threadCount ?? 0} threads</span>
-                    .
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <PressDepth onClick={() => {
-                  setDeleteClosing(true);
-                  setTimeout(() => { setDeletingId(null); setDeleteClosing(false); }, 150);
-                }}>
-                  Cancel
-                </PressDepth>
-                <PressDepth onClick={handleDelete}>
-                  Delete
-                </PressDepth>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Delete tag?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This tag will be removed from{' '}
+              <span className="font-medium">{tagMap.get(deletingId ?? '')?.threadCount ?? 0} threads</span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

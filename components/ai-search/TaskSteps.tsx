@@ -21,28 +21,54 @@ export type UseTaskStepsOptions = {
   failed?: boolean;
 };
 
+function getStepStatus(
+  index: number,
+  current: number,
+  failed: boolean,
+  complete: boolean
+): TaskStepStatus {
+  if (index < current) return "done";
+  if (index === current && failed) return "error";
+  if (index === current && !complete) return "active";
+  return "pending";
+}
+
+function getSentence(
+  steps: TaskStep[],
+  current: number,
+  failed: boolean,
+  complete: boolean,
+  active: TaskStep & { status: TaskStepStatus } | undefined
+): string {
+  if (failed) return `Failed at ${steps[Math.min(current, steps.length - 1)]?.label ?? "step"}`;
+  if (complete) return `All ${steps.length} steps complete`;
+  if (active) return `${active.label}, step ${current + 1} of ${steps.length}`;
+  return "";
+}
+
+function getTone(status: TaskStepStatus): string {
+  if (status === "done") return "text-ink-2";
+  if (status === "active") return "font-medium text-ink";
+  if (status === "error") return "font-medium text-sai-red";
+  return "text-ink-3/60";
+}
+
+function getLiveStatus(complete: boolean, failed: boolean): string {
+  if (complete) return "Run complete";
+  if (failed) return "Run failed";
+  return "";
+}
+
 export function useTaskSteps({ steps, current, failed = false }: UseTaskStepsOptions) {
   const complete = !failed && current >= steps.length;
 
   const rows = steps.map((step, i) => ({
     ...step,
-    status: (i < current
-      ? "done"
-      : i === current && failed
-        ? "error"
-        : i === current && !complete
-          ? "active"
-          : "pending") as TaskStepStatus,
+    status: getStepStatus(i, current, failed, complete),
   }));
 
   const active = rows.find((r) => r.status === "active");
-  const sentence = failed
-    ? `Failed at ${steps[Math.min(current, steps.length - 1)]?.label ?? "step"}`
-    : complete
-      ? `All ${steps.length} steps complete`
-      : active
-        ? `${active.label}, step ${current + 1} of ${steps.length}`
-        : "";
+  const sentence = getSentence(steps, current, failed, complete, active);
 
   return { rows, complete, failed, sentence };
 }
@@ -123,14 +149,7 @@ export function TaskSteps({
     <div className={`w-full ${className}`}>
       <ol aria-label={label} className="space-y-0.5">
         {rows.map((row) => {
-          const tone =
-            row.status === "done"
-              ? "text-ink-2"
-              : row.status === "active"
-                ? "font-medium text-ink"
-                : row.status === "error"
-                  ? "font-medium text-sai-red"
-                  : "text-ink-3/60";
+          const tone = getTone(row.status);
 
           return (
             <li
@@ -143,7 +162,7 @@ export function TaskSteps({
                   {row.status === "done" ? (
                     <motion.span
                       key="done"
-                      className="col-start-1 row-start-1 grid size-4 place-items-center rounded-[5px] bg-sai-green/14 text-sai-green"
+                      className="col-start-1 row-start-1 grid size-4 place-items-center rounded-control bg-sai-green/14 text-sai-green"
                       initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.4 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, transition: STILL }}
@@ -154,7 +173,7 @@ export function TaskSteps({
                   ) : row.status === "error" ? (
                     <motion.span
                       key="error"
-                      className="col-start-1 row-start-1 grid size-4 place-items-center rounded-[5px] bg-sai-red/12 text-sai-red"
+                      className="col-start-1 row-start-1 grid size-4 place-items-center rounded-control bg-sai-red/12 text-sai-red"
                       initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.4 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, transition: STILL }}
@@ -222,7 +241,7 @@ export function TaskSteps({
         {spoken}
       </span>
       <span className="sr-only" aria-live={complete || failed ? "polite" : "off"}>
-        {complete ? "Run complete" : failed ? "Run failed" : ""}
+        {getLiveStatus(complete, failed)}
       </span>
     </div>
   );

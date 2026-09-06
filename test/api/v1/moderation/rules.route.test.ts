@@ -1,7 +1,5 @@
-import { describe, it, beforeEach, afterEach } from 'mocha';
+import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import sinon from 'sinon';
-import { mockRequest } from '../../helpers';
 
 describe('Moderation Rules', () => {
   describe('validateRegexPattern (unit tests)', () => {

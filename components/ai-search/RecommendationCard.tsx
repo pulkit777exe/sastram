@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
  * RECOMMENDATION CARD
@@ -26,9 +27,9 @@ const OPTIONS: Option[] = [
     body: (
       <>
         Reorder waffle cones from{' '}
-        <code className="rounded-md bg-sai-accent-tint px-1.5 py-0.5 font-mono text-[12px] text-sai-accent-ink">cone_king</code>{' '}
+        <code className="rounded-control bg-sai-accent-tint px-1.5 py-0.5 font-mono text-[12px] text-sai-accent-ink">cone_king</code>{' '}
         with lead time{' '}
-        <code className="rounded-md bg-sai-accent-tint px-1.5 py-0.5 font-mono text-[12px] text-sai-accent-ink">7_days</code>.
+        <code className="rounded-control bg-sai-accent-tint px-1.5 py-0.5 font-mono text-[12px] text-sai-accent-ink">7_days</code>.
       </>
     ),
     short: 'Reorder from cone_king · 7-day lead',
@@ -43,7 +44,7 @@ const OPTIONS: Option[] = [
     body: (
       <>
         Switch vanilla to{' '}
-        <code className="rounded-md bg-orange-tint px-1.5 py-0.5 font-mono text-[12px] text-orange">vanilla_madagascar</code>{' '}
+        <code className="rounded-control bg-orange-tint px-1.5 py-0.5 font-mono text-[12px] text-orange">vanilla_madagascar</code>{' '}
         for peak season.
       </>
     ),
@@ -122,21 +123,20 @@ export function RecommendationCard() {
               Other options
             </p>
             {others.map(({ o, i }) => (
-              <button
+              <Button
                 key={o.key}
-                type="button"
+                variant="ghost"
+                className="w-full justify-start gap-2.5 rounded-control px-1.5 py-1.5 h-auto text-left"
                 onClick={() => {
                   setSelected(i);
                   setAccepted(false);
                   setOpen(false);
                 }}
-                className="flex w-full items-center gap-2.5 rounded-control px-1.5 py-1.5
-                  text-left transition-colors duration-100 hover:bg-hover cursor-pointer"
               >
                 <Meter signal={o.signal} tone={o.tone} />
                 <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{o.short}</span>
                 <span className="shrink-0 text-[11px] text-ink-3">{o.label}</span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -149,26 +149,23 @@ export function RecommendationCard() {
         </span>
 
         <span className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             aria-expanded={open}
             onClick={() => setOpen((current) => !current)}
-            className={`h-7 rounded-control px-2.5 text-[12.5px] font-medium shadow-btn cursor-pointer
-              transition-[background-color,transform] duration-100 active:scale-[0.96]
-              ${open ? 'bg-hover text-ink' : 'bg-surface text-ink hover:bg-hover'}`}
+            className="h-7 rounded-control px-2.5 text-[12.5px] font-medium shadow-btn"
           >
             Alternatives
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            size="sm"
             onClick={() => setAccepted(true)}
-            className={`h-7 rounded-control px-3 text-[12.5px] font-medium cursor-pointer
-              shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_0_0_1px_rgba(16,24,40,0.12),0_1px_2px_rgba(16,24,40,0.1)]
-              transition-[background-color,transform] duration-150 active:scale-[0.96]
+            className={`h-7 rounded-control px-3 text-[12.5px] font-medium shadow-btn
               ${accepted ? 'bg-green text-white' : active.ctaStyle}`}
           >
             {accepted ? 'Accepted' : active.cta}
-          </button>
+          </Button>
         </span>
       </div>
     </div>

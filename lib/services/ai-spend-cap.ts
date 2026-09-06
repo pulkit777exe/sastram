@@ -5,8 +5,13 @@ import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCRBY_FLOAT_EXP
 const DAILY_DOLLAR_LIMIT = 5.00;
 const SPEND_KEY = 'ai_global_spend';
 
+function getTodayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function todayKey(): string {
-  return `${SPEND_KEY}:${new Date().toISOString().slice(0, 10)}`;
+  const today = getTodayDateString();
+  return `${SPEND_KEY}:${today}`;
 }
 
 /**
@@ -24,12 +29,23 @@ export async function checkAiSpendCap(): Promise<{ allowed: boolean; remaining: 
   const key = todayKey();
 
   try {
-    const used = (await r.get<number>(key)) ?? 0;
-    return {
-      allowed: used < DAILY_DOLLAR_LIMIT,
-      remaining: Math.max(0, DAILY_DOLLAR_LIMIT - used),
-      used,
-    };
+    const rawUsed = await r.get<number>(key);
+    let used: number;
+    if (rawUsed !== null && rawUsed !== undefined) {
+      used = rawUsed;
+    } else {
+      used = 0;
+    }
+
+    let allowed: boolean;
+    if (used < DAILY_DOLLAR_LIMIT) {
+      allowed = true;
+    } else {
+      allowed = false;
+    }
+
+    const remaining = Math.max(0, DAILY_DOLLAR_LIMIT - used);
+    return { allowed, remaining, used };
   } catch (error) {
     logger.error('[checkAiSpendCap] Redis error', error);
     return { allowed: true, remaining: -1, used: 0 };
@@ -73,10 +89,17 @@ export async function consumeSpendCap(costUsd: number = 0.01): Promise<{ allowed
  * Expensive paths (synthesis) atomically check + increment.
  */
 export async function enforceAiSpendCap(path: AiCallPath): Promise<{ allowed: boolean; remaining: number }> {
-  if (classifyAiCallCost(path).tier === AiCostTier.CHEAP) {
+  const classification = classifyAiCallCost(path);
+  const isCheap = classification.tier === AiCostTier.CHEAP;
+
+  if (isCheap) {
+    // Cheap — bounded cost, no spend cap needed.
     return { allowed: true, remaining: -1 };
   }
-  return consumeSpendCap(classifyAiCallCost(path).estimatedCostUsd);
+
+  // Expensive — check and increment spend cap atomically.
+  const estimatedCost = classification.estimatedCostUsd;
+  return consumeSpendCap(estimatedCost);
 }
 
 export async function getAiSpendUsage(): Promise<{ used: number; limit: number; date: string }> {
@@ -84,12 +107,20 @@ export async function getAiSpendUsage(): Promise<{ used: number; limit: number; 
   const date = new Date().toISOString().slice(0, 10);
   const zero = { used: 0, limit: DAILY_DOLLAR_LIMIT, date };
 
-  if (!r) return zero;
+  if (!r) {
+    return zero;
+  }
 
   const key = todayKey();
   try {
-    const used = (await r.get(key)) as number | null;
-    return { used: used ?? 0, limit: DAILY_DOLLAR_LIMIT, date };
+    const rawUsed = (await r.get(key)) as number | null;
+    let used: number;
+    if (rawUsed !== null && rawUsed !== undefined) {
+      used = rawUsed;
+    } else {
+      used = 0;
+    }
+    return { used, limit: DAILY_DOLLAR_LIMIT, date };
   } catch {
     logger.warn('[ai-spend-cap] Failed to read spend from Redis, returning zero', { key });
     return zero;

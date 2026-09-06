@@ -14,19 +14,21 @@ export const metadata: Metadata = {
   description: 'Your saved and bookmarked threads.',
 };
 
+const BOOKMARKS_PAGE_SIZE = 50;
+
 export default async function BookmarksPage() {
   const session = await getSession();
   if (!session) {
     redirect('/login');
   }
 
-  const result = await getBookmarkedThreads({ limit: 50, offset: 0 });
+  const result = await getBookmarkedThreads({ limit: BOOKMARKS_PAGE_SIZE, offset: 0 });
 
   if (result.error || !result.data) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Bookmarks</h1>
-        <Card className="p-6 text-center text-muted-foreground">
+        <h1 className="text-2xl font-bold text-ink">Bookmarks</h1>
+        <Card className="p-6 text-center text-ink-3">
           {result.error || 'Failed to load bookmarks'}
        </Card>
      </div>
@@ -38,16 +40,16 @@ export default async function BookmarksPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Bookmark className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Bookmarks</h1>
-        <span className="text-muted-foreground">({bookmarks.length})</span>
+        <Bookmark className="h-6 w-6 text-ink" />
+        <h1 className="text-2xl font-bold text-ink">Bookmarks</h1>
+        <span className="text-ink-3">({bookmarks.length})</span>
      </div>
 
       {bookmarks.length === 0 ? (
         <Card className="p-6 md:p-12 text-center">
-          <Bookmark className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">No bookmarks yet</p>
-          <p className="text-sm text-muted-foreground mt-2">
+          <Bookmark className="h-12 w-12 mx-auto mb-4 text-ink-3 opacity-50" />
+          <p className="text-ink-3">No bookmarks yet</p>
+          <p className="text-sm text-ink-3 mt-2">
             Bookmark threads to find them easily later
           </p>
         </Card>
@@ -55,14 +57,14 @@ export default async function BookmarksPage() {
         <div className="grid gap-4">
           {bookmarks.map((thread) => (
             <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
-              <Card className="p-4 hover:bg-accent transition-colors">
-                <h3 className="font-semibold text-foreground mb-2">{thread.name}</h3>
+              <Card className="p-4 hover:bg-hover transition-colors">
+                <h3 className="font-semibold text-ink mb-2">{thread.name}</h3>
                 {thread.description && (
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                  <p className="text-sm text-ink-3 mb-3 line-clamp-2">
                     {thread.description}
                   </p>
                 )}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 text-xs text-ink-3">
                   <span className="flex items-center gap-1">
                     <MessageSquare className="h-3 w-3" />
                     {thread.messageCount}

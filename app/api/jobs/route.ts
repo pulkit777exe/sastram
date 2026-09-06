@@ -1,61 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { HTTP_STATUS } from '@/lib/utils/api-response';
 import { Receiver } from '@upstash/qstash';
 import { logger } from '@/lib/infrastructure/logger';
 import { deduplicateJob } from '@/lib/services/job-dedup';
-import {
-  handleThreadSummaryJob,
-  handleThreadDnaJob,
-  handleResolutionScoreJob,
-  handleConflictDetectionJob,
-  handleDailyDigestJob,
-  handleAIInsightNotificationsJob,
-  handleAIInlineJob,
-  handleStalenessCheckJob,
-} from '@/lib/queue/workers/ai.worker';
-import { handleEmailJob } from '@/lib/queue/workers/email.worker';
-import { AIJobType } from '@/lib/queue/config';
-import type {
-  ThreadSummaryJobData,
-  ThreadDnaJobData,
-  ResolutionScoreJobData,
-  ConflictDetectionJobData,
-  DailyDigestJobData,
-  AIInsightNotificationJobData,
-  AIInlineJobData,
-  StalenessCheckJobData,
-  EmailJobData,
-} from '@/lib/queue/types';
+import { jobHandlers, type JobHandlerMap } from '@/lib/queue/registry';
 import { AppError } from '@/lib/utils/errors';
 
 export const maxDuration = 60;
 
-type JobHandlerMap = {
-  'generate-thread-summary': (data: ThreadSummaryJobData) => Promise<unknown>;
-  'generate-thread-dna': (data: ThreadDnaJobData) => Promise<unknown>;
-  'calculate-resolution-score': (data: ResolutionScoreJobData) => Promise<unknown>;
-  'detect-conflicts': (data: ConflictDetectionJobData) => Promise<unknown>;
-  'generate-daily-digest': (data: DailyDigestJobData) => Promise<unknown>;
-  'send-ai-insight-notifications': (data: AIInsightNotificationJobData) => Promise<unknown>;
-  'generate-ai-inline': (data: AIInlineJobData) => Promise<unknown>;
-  [AIJobType.STALENESS_CHECK]: (data: StalenessCheckJobData) => Promise<unknown>;
-  'email': (data: EmailJobData) => Promise<unknown>;
-};
-
-const jobHandlers: JobHandlerMap = {
-  'generate-thread-summary': handleThreadSummaryJob,
-  'generate-thread-dna': handleThreadDnaJob,
-  'calculate-resolution-score': handleResolutionScoreJob,
-  'detect-conflicts': handleConflictDetectionJob,
-  'generate-daily-digest': handleDailyDigestJob,
-  'send-ai-insight-notifications': handleAIInsightNotificationsJob,
-  'generate-ai-inline': handleAIInlineJob,
-  [AIJobType.STALENESS_CHECK]: handleStalenessCheckJob,
-  'email': handleEmailJob,
-};
-
-async function handleJob(request: NextRequest) {
-  const body = await request.text();
-
+async function handleJob(body: string, request: NextRequest) {
   const messageId = request.headers.get('upstash-message-id');
   if (messageId) {
     const isDuplicate = await deduplicateJob(messageId);
@@ -65,15 +18,19 @@ async function handleJob(request: NextRequest) {
     }
   }
 
-  const { jobType, payload } = JSON.parse(body) as {
-    jobType: keyof JobHandlerMap;
-    payload: Record<string, unknown>;
-  };
+  let parsed: { jobType: keyof JobHandlerMap; payload: Record<string, unknown> };
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: HTTP_STATUS.BAD_REQUEST });
+  }
+
+  const { jobType, payload } = parsed;
 
   const handler = jobHandlers[jobType];
   if (!handler) {
     logger.warn(`[jobs] Unknown job type: ${jobType}`);
-    return NextResponse.json({ error: `Unknown job type: ${jobType}` }, { status: 400 });
+    return NextResponse.json({ error: `Unknown job type: ${jobType}` }, { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   try {
@@ -86,7 +43,7 @@ async function handleJob(request: NextRequest) {
       return NextResponse.json({ ok: true, error: error.message });
     }
     logger.error(`[jobs] Job ${jobType} failed:`, error);
-    return NextResponse.json({ error: 'Job failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Job failed' }, { status: HTTP_STATUS.INTERNAL });
   }
 }
 
@@ -100,8 +57,12 @@ async function verifyQstashSignature(
   const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
   const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
 
-  // No keys configured (build-time collection, local dev without QStash): skip verification.
+  // No keys configured: fail-closed in production, skip in dev/build.
   if (!currentKey) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[jobs] QSTASH_CURRENT_SIGNING_KEY missing in production — rejecting');
+      return false;
+    }
     return true;
   }
 
@@ -132,15 +93,8 @@ export async function POST(request: NextRequest) {
   const isValid = await verifyQstashSignature(request, body);
   if (!isValid) {
     logger.warn('[jobs] Invalid or missing QStash signature');
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    return NextResponse.json({ error: 'Invalid signature' }, { status: HTTP_STATUS.UNAUTHORIZED });
   }
 
-  // Reconstruct a request with the consumed body so handleJob can read it again.
-  const clonedRequest = new NextRequest(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body,
-  });
-
-  return handleJob(clonedRequest);
+  return handleJob(body, request);
 }

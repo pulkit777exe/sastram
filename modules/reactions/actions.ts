@@ -23,9 +23,12 @@ const getReactionSummarySchema = z.object({
   messageId: z.string().cuid(),
 });
 
-// Reactions are authorized through the message's thread, so every action has to
-// resolve the thread first.
-async function authorizeMessage(messageId: string) {
+type AuthorizedMessage = {
+  session: Awaited<ReturnType<typeof requireSession>>;
+  threadId: string;
+};
+
+async function requireMessageAccess(messageId: string): Promise<AuthorizedMessage | null> {
   const session = await requireSession();
 
   const message = await prisma.message.findUnique({
@@ -33,28 +36,36 @@ async function authorizeMessage(messageId: string) {
     select: { threadId: true },
   });
 
-  if (!message) return { session: null, notFound: true } as const;
+  if (message === null) {
+    return null;
+  }
 
   await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
-  return { session, notFound: false } as const;
+  return { session, threadId: message.threadId };
 }
 
-const messageNotFound = actionFailure('NOT_FOUND', 'Message not found');
+function revalidateReactionPaths() {
+  revalidatePath('/dashboard/threads');
+}
 
 export const toggleReaction = createServerAction(
   { schema: toggleReactionSchema, actionName: 'toggleReaction' },
   async ({ messageId, emoji }) => {
-    const { session, notFound } = await authorizeMessage(messageId);
-    if (notFound) return messageNotFound;
-
-    const existing = await getUserReaction(messageId, session.user.id, emoji);
-    if (existing) {
-      await removeReaction(messageId, session.user.id, emoji);
-    } else {
-      await addReaction(messageId, session.user.id, emoji);
+    const authorized = await requireMessageAccess(messageId);
+    if (authorized === null) {
+      return actionFailure('NOT_FOUND', 'Message not found');
     }
 
-    revalidatePath('/dashboard/threads');
+    const userId = authorized.session.user.id;
+    const existing = await getUserReaction(messageId, userId, emoji);
+
+    if (existing) {
+      await removeReaction(messageId, userId, emoji);
+    } else {
+      await addReaction(messageId, userId, emoji);
+    }
+
+    revalidateReactionPaths();
     return actionSuccess(null);
   }
 );
@@ -62,10 +73,12 @@ export const toggleReaction = createServerAction(
 export const getReactionSummary = createServerAction(
   { schema: getReactionSummarySchema, actionName: 'getReactionSummary' },
   async ({ messageId }) => {
-    const { session, notFound } = await authorizeMessage(messageId);
-    if (notFound) return messageNotFound;
+    const authorized = await requireMessageAccess(messageId);
+    if (authorized === null) {
+      return actionFailure('NOT_FOUND', 'Message not found');
+    }
 
-    const reactions = await getMessageReactions(messageId, session.user.id);
+    const reactions = await getMessageReactions(messageId, authorized.session.user.id);
     return actionSuccess(reactions);
   }
 );

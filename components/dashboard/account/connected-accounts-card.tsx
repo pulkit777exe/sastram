@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PressDepth } from '@/components/ui/button-press-depth';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GithubIcon } from '@/public/icons/github';
 import { ChromeIcon } from '@/public/icons/google';
@@ -53,7 +53,7 @@ export function ConnectedAccountsCard({ linked }: { linked: LinkedAccount[] }) {
           return (
             <div
               key={provider.id}
-              className="flex items-center justify-between rounded-lg border border-border p-3"
+              className="flex items-center justify-between rounded-control border border-line p-3"
             >
               <div className="flex items-center gap-3">
                 <Icon className="h-5 w-5" />
@@ -65,12 +65,12 @@ export function ConnectedAccountsCard({ linked }: { linked: LinkedAccount[] }) {
                 </div>
               </div>
               {isLinked && (
-                <PressDepth
+                <Button variant="outline" size="sm"
                   disabled={unlinking === provider.id || linkedSet.size <= 1}
                   onClick={() => handleUnlink(provider.id)}
                 >
                   {unlinking === provider.id ? 'Unlinking…' : 'Unlink'}
-                </PressDepth>
+                </Button>
               )}
             </div>
           );

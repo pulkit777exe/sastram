@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/config/env";
 import { logger } from "@/lib/infrastructure/logger";
+import { prisma } from "@/lib/infrastructure/prisma";
+import { Redis } from "@upstash/redis";
+import { HTTP_STATUS } from "@/lib/utils/api-response";
 
 type ServiceStatus = "ok" | "not_configured" | "error";
 
@@ -23,7 +26,6 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: str
 
 async function checkDatabase(): Promise<ServiceStatus> {
   try {
-    const { prisma } = await import("@/lib/infrastructure/prisma");
     await withTimeout(prisma.$queryRaw`SELECT 1`, HEALTH_CHECK_TIMEOUT_MS, "database");
     return "ok";
   } catch (err) {
@@ -38,7 +40,6 @@ async function checkRedis(): Promise<ServiceStatus> {
   }
 
   try {
-    const { Redis } = await import("@upstash/redis");
     const redis = Redis.fromEnv();
     await withTimeout(redis.ping(), HEALTH_CHECK_TIMEOUT_MS, "redis");
     return "ok";
@@ -50,11 +51,16 @@ async function checkRedis(): Promise<ServiceStatus> {
 
 function checkAi(): ServiceStatus {
   try {
-    const aiKey =
-      env.AI_PROVIDER === "gemini"
-        ? env.GEMINI_API_KEY
-        : env.OPENAI_API_KEY;
-    return aiKey ? "ok" : "not_configured";
+    let aiKey: string | undefined;
+    if (env.AI_PROVIDER === "gemini") {
+      aiKey = env.GEMINI_API_KEY;
+    } else {
+      aiKey = env.OPENAI_API_KEY;
+    }
+    if (aiKey) {
+      return "ok";
+    }
+    return "not_configured";
   } catch (err) {
     logger.error("[health] ai config check failed", err);
     return "error";
@@ -89,7 +95,7 @@ export async function GET() {
   );
 
   return NextResponse.json(checks, {
-    status: allHealthy ? 200 : 503,
+    status: allHealthy ? HTTP_STATUS.OK : HTTP_STATUS.SERVICE_UNAVAILABLE,
     headers: {
       "Cache-Control": "no-store, max-age=0",
     },

@@ -8,21 +8,63 @@ import type { AIInlineJobData } from '@/lib/queue/types';
 // not reliably deliver jobs to a local Next.js app. In dev mode, run jobs
 // inline (degraded mode) so summaries and @sai replies complete synchronously
 // and the client-side polling loops terminate.
-const QSTASH_DEV = process.env.QSTASH_DEV === 'true';
-const QSTASH_CONFIGURED = !QSTASH_DEV && !!(process.env.QSTASH_TOKEN && process.env.QSTASH_URL);
+
+function isDevMode(): boolean {
+  // Explicit branch instead of inline comparison.
+  const raw = process.env.QSTASH_DEV;
+  if (raw === 'true') {
+    return true;
+  }
+  return false;
+}
+
+function hasQstashCredentials(): boolean {
+  const token = process.env.QSTASH_TOKEN;
+  const url = process.env.QSTASH_URL;
+  if (token && url) {
+    return true;
+  }
+  return false;
+}
+
+function isQstashConfigured(): boolean {
+  // Dev mode disables QStash even if credentials exist.
+  if (isDevMode()) {
+    return false;
+  }
+  if (hasQstashCredentials()) {
+    return true;
+  }
+  return false;
+}
+
 let client: Client | null = null;
-if (QSTASH_CONFIGURED) {
+
+function getQstashClient(): Client | null {
+  if (!isQstashConfigured()) return null;
+  if (client) return client;
   try {
-    client = new Client({
-      token: process.env.QSTASH_TOKEN!,
-      baseUrl: process.env.QSTASH_URL!,
-    });
+    const token = process.env.QSTASH_TOKEN as string;
+    const baseUrl = process.env.QSTASH_URL as string;
+    client = new Client({ token, baseUrl });
   } catch (error) {
     logger.error(
       '[queue] QSTASH_URL or QSTASH_TOKEN is invalid — Client initialization failed. All jobs will run inline in degraded mode.',
       error,
     );
+    return null;
   }
+  return client;
+}
+
+function shouldRunInline(): boolean {
+  if (!isQstashConfigured()) {
+    return true;
+  }
+  if (!getQstashClient()) {
+    return true;
+  }
+  return false;
 }
 
 // Well under QStash's 1,000/day free tier — the rest is headroom for retries.
@@ -30,20 +72,33 @@ const DAILY_CAP = 450;
 const CRITICAL_JOBS = new Set<string>(['email']);
 
 function getRetries(jobType: string): number {
-  return CRITICAL_JOBS.has(jobType) ? 3 : 1;
+  if (CRITICAL_JOBS.has(jobType)) return 3;
+  return 1;
 }
 
 function getDailyCounterKey(): string {
   const d = new Date();
-  return `qstash:daily:${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  // Explicit named parts instead of inline template with ternaries.
+  const datePart = `${year}-${month}-${day}`;
+  return `qstash:daily:${datePart}`;
 }
 
 export async function getDailyQstashCount(): Promise<number> {
   const redis = getUpstashRedis();
-  if (!redis) return 0;
+  if (!redis) {
+    // No Redis — treat as zero count (fail open for quota).
+    return 0;
+  }
   try {
     const count = await redis.get<number>(getDailyCounterKey());
-    return count ?? 0;
+    // Explicit branch instead of `?? 0` fallback.
+    if (count !== null && count !== undefined) {
+      return count;
+    }
+    return 0;
   } catch {
     return 0;
   }
@@ -62,14 +117,16 @@ export async function incrementDailyQstashCount(): Promise<number> {
 }
 
 export async function enqueueJob<T extends object>(jobType: string, payload: T) {
-  // Local dev fallback: run inline when QStash isn't configured.
-  if (!QSTASH_CONFIGURED || !client) {
+  // Early return: run inline when QStash isn't configured.
+  if (shouldRunInline()) {
     logger.info(`[queue] QStash not configured, running job inline: ${jobType}`);
     await runJobInline(jobType, payload);
     return;
   }
 
   const count = await incrementDailyQstashCount();
+
+  // Early return: daily cap reached — skip enqueue.
   if (count > DAILY_CAP) {
     logger.warn(`[queue] Daily QStash cap (${DAILY_CAP}) reached, skipping job: ${jobType} (count=${count})`);
     return;
@@ -77,10 +134,14 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T) 
 
   logger.info(`[queue] Enqueuing job: ${jobType} (daily count: ${count})`);
   try {
-    await client.publishJSON({
-      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/jobs`,
-      body: { jobType, payload },
-      retries: getRetries(jobType),
+    const retries = getRetries(jobType);
+    const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/jobs`;
+    const body = { jobType, payload };
+    const qstashClient = getQstashClient();
+    await qstashClient!.publishJSON({
+      url,
+      body,
+      retries,
     });
   } catch (error) {
     logger.error(`[queue] QStash publish failed for ${jobType}`, error);
@@ -90,26 +151,14 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T) 
 
 async function runJobInline<T extends object>(jobType: string, payload: T) {
   try {
-    // Deferred imports: the workers import back into this module.
-    const ai = await import('@/lib/queue/workers/ai.worker');
-    const { handleEmailJob } = await import('@/lib/queue/workers/email.worker');
+    // Deferred import to break circular: registry -> workers -> enqueueJob -> registry
+    const { jobHandlers } = await import('@/lib/queue/registry');
 
-    const handlers: Record<string, (data: never) => Promise<unknown>> = {
-      [AIJobType.GENERATE_THREAD_SUMMARY]: ai.handleThreadSummaryJob,
-      [AIJobType.GENERATE_THREAD_DNA]: ai.handleThreadDnaJob,
-      [AIJobType.CALCULATE_RESOLUTION_SCORE]: ai.handleResolutionScoreJob,
-      [AIJobType.DETECT_CONFLICTS]: ai.handleConflictDetectionJob,
-      [AIJobType.GENERATE_DAILY_DIGEST]: ai.handleDailyDigestJob,
-      [AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS]: ai.handleAIInsightNotificationsJob,
-      [AIJobType.STALENESS_CHECK]: ai.handleStalenessCheckJob,
-      [AIJobType.GENERATE_AI_INLINE]: ai.handleAIInlineJob,
-      email: handleEmailJob,
-    };
-
-    const handler = handlers[jobType];
+    const handler = jobHandlers[jobType as keyof typeof jobHandlers];
     if (!handler) {
-      const id = (payload as { id?: unknown })?.id;
-      logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${id ?? 'unknown'}`);
+      const payloadWithId = payload as { id?: unknown };
+      const loggedId = String(payloadWithId?.id ?? 'unknown');
+      logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${loggedId}`);
       return;
     }
 

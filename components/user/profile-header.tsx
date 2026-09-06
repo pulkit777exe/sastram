@@ -27,6 +27,18 @@ interface ProfileHeaderProps {
   limitedView?: boolean;
 }
 
+function getInitials(name: string): string {
+  const parts = name.split(' ');
+  const letters = parts.map((part) => part[0]);
+  const joined = letters.join('');
+  return joined.toUpperCase().slice(0, 2);
+}
+
+function getDisplayName(name: string | null, email: string): string {
+  if (name) return name;
+  return email.split('@')[0];
+}
+
 export function ProfileHeader({
   user,
   isOwnProfile,
@@ -34,17 +46,12 @@ export function ProfileHeader({
   limitedView = false,
 }: ProfileHeaderProps) {
   const [followerCount, setFollowerCount] = useState(user.followerCount);
-  const displayName = user.name || user.email.split('@')[0];
+  const displayName = getDisplayName(user.name, user.email);
   const avatarUrl = user.image;
-  const initials = displayName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = getInitials(displayName);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border bg-card animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
+    <div className="relative overflow-hidden rounded-card border border-line bg-surface animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
       {/* Banner */}
       <div className="relative h-48 w-full bg-linear-to-r from-primary/20 via-primary/10 to-primary/20 dark:from-primary/30 dark:via-primary/20 dark:to-primary/30">
         {user.bannerUrl && (
@@ -74,18 +81,18 @@ export function ProfileHeader({
         {/* User Info */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex-1 space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">
+            <h1 className="text-3xl font-bold text-ink">
               {displayName}
             </h1>
 
             {!limitedView && user.bio && (
-              <p className="text-muted-foreground">
+              <p className="text-ink-3">
                 {user.bio}
               </p>
             )}
 
             {!limitedView && (
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-ink-3">
                 {user.location && (
                   <span className="flex items-center gap-1">📍 {user.location}</span>
                 )}
@@ -94,7 +101,7 @@ export function ProfileHeader({
                     href={user.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-ink transition-colors"
                   >
                     🔗 Website
                   </a>

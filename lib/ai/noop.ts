@@ -21,7 +21,7 @@ export class NoOpAIService implements AIService {
   async detectConflicts() {
     return DEFAULT_CONFLICT;
   }
-  async generateStreamingResponse(_content: string, onChunk: (chunk: string) => void) {
+  async generateStreamingResponse(unusedPrompt: string, onChunk: (chunk: string) => void) {
     onChunk(AI_NOT_CONFIGURED_SENTINEL);
   }
   async classifyToxicity() {

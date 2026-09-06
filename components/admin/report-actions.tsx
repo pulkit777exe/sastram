@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { XCircle } from 'lucide-react';
 import { resolveReport } from '@/modules/reports/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -24,6 +23,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 
 interface ReportActionsProps {
   reportId: string;
@@ -50,7 +50,47 @@ const DURATION_OPTIONS = [
 
 type ActionType = (typeof ACTION_OPTIONS)[number]['value'];
 
-export function ReportActions({ reportId, currentStatus, onStatusChange }: ReportActionsProps) {
+function getActionButtonVariant(
+  action: ActionType
+): 'outline' | 'destructive' | 'default' {
+  if (action === 'DISMISS') return 'outline';
+  if (action === 'BAN_USER') return 'destructive';
+  return 'default';
+}
+
+function getActionButtonClass(action: ActionType): string {
+  if (action === 'REMOVE_MESSAGE') {
+    return 'bg-amber-600 hover:bg-amber-500 text-white dark:bg-amber-700 dark:hover:bg-amber-600';
+  }
+  return '';
+}
+
+function getDialogTitle(action: ActionType | null): string {
+  if (action === 'DISMISS') return 'Dismiss Report';
+  return 'Resolve Report';
+}
+
+function getDialogDescription(action: ActionType | null): string {
+  if (action === 'DISMISS') {
+    return 'Dismiss this report. No action will be taken against the reported user.';
+  }
+  return 'Take action on this report. The reported user will be notified.';
+}
+
+function getSubmitVariant(action: ActionType | null): 'destructive' | 'outline' | 'default' {
+  if (action === 'BAN_USER') return 'destructive';
+  if (action === 'DISMISS') return 'outline';
+  return 'default';
+}
+
+function getSubmitClass(action: ActionType | null): string {
+  if (action === 'REMOVE_MESSAGE') return 'bg-amber-600 hover:bg-amber-500 text-white';
+  if (action === 'DISMISS') return 'bg-muted hover:bg-muted/80 text-foreground';
+  if (action && action !== 'BAN_USER') return 'bg-green-600 hover:bg-green-500 text-white';
+  return '';
+}
+
+export function ReportActions({ reportId, currentStatus: _currentStatus, onStatusChange }: ReportActionsProps) {
   const [open, setOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<ActionType | null>(null);
   const [note, setNote] = useState('');
@@ -104,34 +144,24 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
     <>
       <div className="flex gap-2 flex-wrap">
         {ACTION_OPTIONS.map((opt) => (
-          <PressDepth
+          <Button
+            type="button"
             key={opt.value}
+            variant={getActionButtonVariant(opt.value)}
             onClick={() => handleOpen(opt.value)}
-            className={
-              opt.value === 'DISMISS'
-                ? 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
-                : opt.value === 'BAN_USER'
-                  ? 'bg-destructive hover:bg-destructive/90 text-white dark:bg-destructive/80 dark:hover:bg-destructive/70'
-                  : opt.value === 'REMOVE_MESSAGE'
-                    ? 'bg-amber-600 hover:bg-amber-500 text-white dark:bg-amber-700 dark:hover:bg-amber-600'
-                    : ''
-            }
+            className={getActionButtonClass(opt.value)}
           >
             {opt.value === 'DISMISS' && <XCircle className="w-4 h-4 mr-1" />}
             {opt.label}
-          </PressDepth>
+          </Button>
         ))}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedAction === 'DISMISS' ? 'Dismiss Report' : 'Resolve Report'}</DialogTitle>
-            <DialogDescription>
-              {selectedAction === 'DISMISS'
-                ? 'Dismiss this report. No action will be taken against the reported user.'
-                : 'Take action on this report. The reported user will be notified.'}
-            </DialogDescription>
+            <DialogTitle>{getDialogTitle(selectedAction)}</DialogTitle>
+            <DialogDescription>{getDialogDescription(selectedAction)}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -196,24 +226,18 @@ export function ReportActions({ reportId, currentStatus, onStatusChange }: Repor
           </div>
 
           <DialogFooter>
-            <PressDepth onClick={() => setOpen(false)} disabled={submitting}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
               Cancel
-            </PressDepth>
-            <PressDepth
+            </Button>
+            <Button
+              type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className={
-                selectedAction === 'BAN_USER'
-                  ? 'bg-destructive hover:bg-destructive/90 text-white'
-                  : selectedAction === 'REMOVE_MESSAGE'
-                    ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                    : selectedAction === 'DISMISS'
-                      ? 'bg-muted hover:bg-muted/80 text-foreground'
-                      : 'bg-green-600 hover:bg-green-500 text-white'
-              }
+              variant={getSubmitVariant(selectedAction)}
+              className={getSubmitClass(selectedAction)}
             >
               {submitting ? 'Submitting...' : 'Submit'}
-            </PressDepth>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

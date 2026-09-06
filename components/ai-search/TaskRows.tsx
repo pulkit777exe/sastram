@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
  * TASK ROWS
@@ -136,6 +137,12 @@ function StatusPill({ status }: { status: TaskStatus }) {
   return null;
 }
 
+function getTaskBorderRadius(isList: boolean, isOpen: boolean): number {
+  if (isList) return 0;
+  if (isOpen) return 14;
+  return 22;
+}
+
 export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
   const [openRows, setOpenRows] = useState<Record<string, boolean>>({});
   const list = variant === 'List';
@@ -158,15 +165,16 @@ export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
               list ? 'border-b border-line last:border-0' : 'bg-surface shadow-card'
             }`}
             style={{
-              borderRadius: list ? 0 : open ? 14 : 22,
+              borderRadius: getTaskBorderRadius(list, open),
               animation: `fade-up 450ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both`,
             }}
           >
-            <button
+            <Button
               type="button"
               aria-expanded={open}
               onClick={() => toggle(task.key)}
-              className="flex h-11 w-full items-center gap-2.5 px-2.5 text-left transition-colors duration-100 hover:bg-inset"
+              variant="ghost"
+              className="h-11 w-full items-center gap-2.5 px-2.5 text-left justify-start rounded-none"
             >
               <span className="flex size-6 shrink-0 items-center justify-center">
                 <StatusBadge status={task.status} index={i} />
@@ -197,7 +205,7 @@ export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </span>
-            </button>
+            </Button>
 
             {/* Expandable detail */}
             <div

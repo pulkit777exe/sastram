@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import { drainToText, parseSSE, parseSSEError } from '@/lib/utils/sse';
 
 export interface AIStreamToken {
   content: string;
@@ -36,25 +37,16 @@ interface UseAIReplyStreamOptions {
   onMessageUpdate?: (messageId: string, content: string) => void;
 }
 
-async function drainToText(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let text = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    text += decoder.decode(value, { stream: true });
-  }
-  return text;
-}
 
-function parseSSEError(text: string): AIStreamError | null {
-  const match = text.match(/event: error\ndata: (.+)/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[1]);
-  } catch {
-    return null;
+
+function buildStreamUrl(threadId: string, parentMessageId?: string): string {
+  const baseUrl = `/api/threads/${threadId}/ai-reply/stream`;
+  const hasParent = Boolean(parentMessageId);
+  if (hasParent) {
+    const encodedId = encodeURIComponent(parentMessageId as string);
+    return `${baseUrl}?messageId=${encodedId}`;
   }
+  return baseUrl;
 }
 
 export function useAIReplyStream({
@@ -73,9 +65,7 @@ export function useAIReplyStream({
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const url = parentMessageId
-      ? `/api/threads/${threadId}/ai-reply/stream?messageId=${encodeURIComponent(parentMessageId)}`
-      : `/api/threads/${threadId}/ai-reply/stream`;
+    const url = buildStreamUrl(threadId, parentMessageId);
 
     fetch(url, { method: 'GET', signal: controller.signal })
       .then(async (response) => {
@@ -99,9 +89,6 @@ export function useAIReplyStream({
         let buffer = '';
         let messageId: string | undefined;
         let accumulated = '';
-        // Persists across reads: an `event:` line and its `data:` line can arrive
-        // in different network chunks.
-        let currentEvent = '';
 
         try {
           while (true) {
@@ -109,19 +96,13 @@ export function useAIReplyStream({
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() ?? '';
+            const { events, remaining } = parseSSE(buffer);
+            buffer = remaining;
 
-            for (const line of lines) {
-              if (line.startsWith('event: ')) {
-                currentEvent = line.slice(7).trim();
-                continue;
-              }
-              if (!line.startsWith('data: ')) continue;
-
+            for (const { event: currentEvent, data: raw } of events) {
               let data;
               try {
-                data = JSON.parse(line.slice(6));
+                data = JSON.parse(raw);
               } catch {
                 continue;
               }

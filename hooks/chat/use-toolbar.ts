@@ -1,7 +1,5 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
-
 interface UseToolbarOptions {
   content: string;
   setContent: (value: string) => void;
@@ -16,49 +14,51 @@ interface UseToolbarOptions {
  * refocuses the textarea with the correct selection.
  */
 export function useToolbar({ content, setContent, textareaRef }: UseToolbarOptions) {
-  const wrapSelection = useCallback(
-    (before: string, after: string) => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const selected = content.substring(start, end);
-      const next = content.slice(0, start) + before + selected + after + content.slice(end);
-      setContent(next);
-      requestAnimationFrame(() => {
-        textarea.focus();
-        const cursor = start + before.length;
-        if (selected) {
-          textarea.setSelectionRange(cursor, cursor + selected.length);
-        } else {
-          textarea.setSelectionRange(cursor, cursor);
-        }
-      });
-    },
-    [content, setContent, textareaRef]
-  );
-
-  const insertAtCursor = useCallback(
-    (text: string) => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const next = content.slice(0, start) + text + content.slice(textarea.selectionEnd);
-      setContent(next);
-      requestAnimationFrame(() => {
-        textarea.focus();
-        const cursor = start + text.length;
+  function wrapSelection(before: string, after: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = content.substring(start, end);
+    const next = content.slice(0, start) + before + selected + after + content.slice(end);
+    setContent(next);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = start + before.length;
+      if (selected) {
+        textarea.setSelectionRange(cursor, cursor + selected.length);
+      } else {
         textarea.setSelectionRange(cursor, cursor);
-      });
-    },
-    [content, setContent, textareaRef]
-  );
+      }
+    });
+  }
 
-  const handleBold = useCallback(() => wrapSelection('**', '**'), [wrapSelection]);
-  const handleItalic = useCallback(() => wrapSelection('*', '*'), [wrapSelection]);
-  const handleCode = useCallback(() => wrapSelection('`', '`'), [wrapSelection]);
+  function insertAtCursor(text: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const next = content.slice(0, start) + text + content.slice(textarea.selectionEnd);
+    setContent(next);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = start + text.length;
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  }
 
-  const handleLink = useCallback(() => {
+  function handleBold() {
+    wrapSelection('**', '**');
+  }
+
+  function handleItalic() {
+    wrapSelection('*', '*');
+  }
+
+  function handleCode() {
+    wrapSelection('`', '`');
+  }
+
+  function handleLink() {
     const textarea = textareaRef.current;
     if (!textarea) return;
     const start = textarea.selectionStart;
@@ -73,16 +73,15 @@ export function useToolbar({ content, setContent, textareaRef }: UseToolbarOptio
       textarea.focus();
       textarea.setSelectionRange(start, start + next.length - (content.length - end));
     });
-  }, [content, setContent, textareaRef]);
+  }
 
-  const handleEmojiSelect = useCallback(
-    (emoji: string) => {
-      insertAtCursor(emoji);
-    },
-    [insertAtCursor]
-  );
+  function handleEmojiSelect(emoji: string) {
+    insertAtCursor(emoji);
+  }
 
-  const handleAtSai = useCallback(() => insertAtCursor('@sai '), [insertAtCursor]);
+  function handleAtSai() {
+    insertAtCursor('@sai ');
+  }
 
   return {
     handleBold,

@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PressDepth } from '@/components/ui/button-press-depth';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toasts } from '@/lib/utils/toast';
@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
     <main className="flex flex-1 items-center justify-center py-16 px-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-8 space-y-5 shadow-linear-sm"
+        className="w-full max-w-md rounded-card border border-line bg-surface p-8 space-y-5 shadow-linear-sm"
       >
         <div className="space-y-1">
           <SerifHeading as="h1" className="text-2xl tracking-tight block">
@@ -67,17 +67,17 @@ export default function ForgotPasswordPage() {
             onChange={(event) => setEmail(event.target.value)}
             disabled={isSubmitting}
             placeholder="name@example.com"
-            className="h-11 rounded-xl"
+            className="h-11 rounded-card"
           />
         </div>
 
-        <PressDepth
+        <Button
           type="submit"
-          className="w-full h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+          className="w-full h-11"
           disabled={isSubmitting || !email}
         >
           {isSubmitting ? 'Sending...' : 'Send Reset Code'}
-        </PressDepth>
+        </Button>
       </form>
     </main>
   );

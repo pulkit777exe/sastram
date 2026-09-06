@@ -24,37 +24,52 @@ export type ImageModerationResult = {
  * If the check itself crashes (spend cap, provider outage), the blob is deleted
  * before rethrowing so an unmoderated file is never left publicly reachable.
  */
+function shouldSkipModeration(fileCategory: string): boolean {
+  if (!env.CONTENT_MODERATION_ENABLED) return true;
+  if (fileCategory === 'IMAGE') return false;
+  if (fileCategory === 'GIF') return false;
+  return true;
+}
+
+async function handleQuotaExceeded(blobUrl: string): Promise<ImageModerationResult> {
+  await del(blobUrl);
+  return { allowed: false, reason: 'Daily image moderation limit reached. Please try again tomorrow.' };
+}
+
+async function handleNsfwImage(blobUrl: string, reason: string): Promise<ImageModerationResult> {
+  await del(blobUrl);
+  return { allowed: false, reason: `Image rejected: ${reason}` };
+}
+
 export async function moderateImageUpload(
   blobUrl: string,
   fileCategory: string
 ): Promise<ImageModerationResult> {
-  if (!env.CONTENT_MODERATION_ENABLED || (fileCategory !== 'IMAGE' && fileCategory !== 'GIF')) {
+  if (shouldSkipModeration(fileCategory)) {
     return { allowed: true };
   }
 
   try {
-    const quota = await consumeImageModerationQuota({});
-    if (!quota.allowed) {
-      await del(blobUrl);
-      return { allowed: false, reason: 'Daily image moderation limit reached. Please try again tomorrow.' };
+    const quotaResult = await consumeImageModerationQuota({});
+    if (!quotaResult.allowed) {
+      return handleQuotaExceeded(blobUrl);
     }
 
     await enforceAiSpendCap(AiCallPath.IMAGE_MODERATION);
-    const result = await aiService.moderateImageContent(blobUrl);
+    const moderationResult = await aiService.moderateImageContent(blobUrl);
 
-    if (result.classification === 'NSFW') {
-      await del(blobUrl);
-      return { allowed: false, reason: `Image rejected: ${result.reason}` };
+    if (moderationResult.classification === 'NSFW') {
+      return handleNsfwImage(blobUrl, moderationResult.reason);
     }
 
-    if (result.classification === 'UNKNOWN') {
+    if (moderationResult.classification === 'UNKNOWN') {
       return { allowed: true, flagged: true };
     }
 
     return { allowed: true };
-  } catch (error) {
+  } catch (moderationError) {
     logger.warn('[image-moderation] check failed, deleting unmoderated blob', { blobUrl });
     await del(blobUrl).catch(() => {});
-    throw error;
+    throw moderationError;
   }
 }

@@ -3,14 +3,16 @@
 import { useEffect, useRef } from 'react';
 import { Reply, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PressDepth } from '@/components/ui/button-press-depth';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import { MentionSuggest } from '@/components/chat/mention-suggest';
 import { cn } from '@/lib/utils/cn';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 
 const MAX_VISUAL_DEPTH = 4;
+const SHAKE_DURATION_MS = 300;
+const REPLY_INDENT_PX = 20;
 
 interface InlineReplyBoxProps {
   parentMessage: {
@@ -86,7 +88,7 @@ export function InlineReplyBox({
     input.classList.remove('is-shaking');
     void (input as HTMLElement).offsetWidth;
     input.classList.add('is-shaking');
-    setTimeout(() => input.classList.remove('is-shaking'), 300);
+    setTimeout(() => input.classList.remove('is-shaking'), SHAKE_DURATION_MS);
   };
 
   const handleSubmitWithShake = async () => {
@@ -96,12 +98,14 @@ export function InlineReplyBox({
     await handleSubmit();
   };
 
+  const replyIndent = visualDepth > 0 ? REPLY_INDENT_PX : 0;
+
   return (
     <div
       className="mt-2 animate-in slide-in-from-top-1 fade-in duration-200"
-      style={{ marginLeft: visualDepth > 0 ? `${20}px` : 0 }}
+      style={{ marginLeft: replyIndent }}
     >
-        <div className="border border-brand/20 dark:border-brand/25 rounded-xl p-3 bg-brand/10 dark:bg-brand/10 shadow-linear-sm">
+        <div className="border border-brand/20 dark:border-brand/25 rounded-card p-3 bg-brand/10 dark:bg-brand/10 shadow-linear-sm">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Reply size={11} />
@@ -110,12 +114,13 @@ export function InlineReplyBox({
               @{parentMessage.sender?.name || 'Anonymous'}
             </span>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onCancel}
-            className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
 
         <div className="flex gap-2.5">
@@ -144,20 +149,21 @@ export function InlineReplyBox({
             <p className="t-error-msg text-xs text-destructive mt-1">{error || 'Reply cannot be empty'}</p>
 
             <div className="flex items-center justify-end gap-2 mt-1.5">
-              <PressDepth
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onCancel}
-                className="h-7 text-xs text-muted-foreground"
               >
                 Cancel
-              </PressDepth>
-              <PressDepth
+              </Button>
+              <Button
+                size="sm"
                 onClick={handleSubmitWithShake}
                 disabled={isSubmitting || !content.trim()}
-                className="h-7 text-xs bg-brand hover:bg-brand/90 text-primary-foreground"
               >
                 {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 {isSubmitting ? 'Posting...' : 'Reply'}
-              </PressDepth>
+              </Button>
             </div>
           </div>
         </div>

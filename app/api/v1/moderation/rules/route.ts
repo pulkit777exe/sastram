@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireModerator, requireAdmin } from '@/lib/middleware/moderation';
-import { ok, fail } from '@/lib/utils/api-response';
+import {ok, fail, withErrorHandling, HTTP_STATUS} from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 
 const moderationActionSchema = z.enum(['ALLOW', 'BLOCK', 'REVIEW', 'FLAG']);
@@ -24,17 +23,13 @@ const updateRuleSchema = z.object({
   severity: moderationSeveritySchema.optional(),
 });
 
-export async function GET() {
-  try {
-    await requireModerator();
-    const rules = await prisma.moderationRule.findMany({
-      orderBy: { createdAt: 'asc' },
-    });
-    return NextResponse.json(ok({ rules }));
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Moderator access required'), { status: 403 });
-  }
-}
+export const GET = withErrorHandling(async () => {
+  await requireModerator();
+  const rules = await prisma.moderationRule.findMany({
+    orderBy: { createdAt: 'asc' },
+  });
+  return NextResponse.json(ok({ rules }));
+});
 
 /**
  * Validate regex pattern for ReDoS safety.
@@ -81,124 +76,82 @@ export function validateRegexPattern(pattern: string): { valid: boolean; error?:
   return { valid: true };
 }
 
-export async function POST(request: NextRequest) {
-  let session;
-  try {
-    session = await requireAdmin();
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
+export const POST = withErrorHandling(async (request: NextRequest) => {
+  await requireAdmin();
+
+  const body = await request.json();
+  const validation = createRuleSchema.safeParse(body);
+
+  if (!validation.success) {
+    return NextResponse.json(
+      fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues),
+      { status: HTTP_STATUS.BAD_REQUEST }
+    );
   }
 
-  try {
-    const body = await request.json();
-    const validation = createRuleSchema.safeParse(body);
+  const { pattern, category, action, severity } = validation.data;
 
-    if (!validation.success) {
-      return NextResponse.json(
-        fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues),
-        { status: 400 }
-      );
-    }
+  const regexValidation = validateRegexPattern(pattern);
+  if (!regexValidation.valid) {
+    return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: HTTP_STATUS.BAD_REQUEST });
+  }
 
-    const { pattern, category, action, severity } = validation.data;
+  const newRule = await prisma.moderationRule.create({
+    data: { pattern, category, action, severity },
+  });
 
+  return NextResponse.json(ok({ rule: newRule }));
+});
+
+export const PUT = withErrorHandling(async (request: NextRequest) => {
+  await requireAdmin();
+
+  const body = await request.json();
+  const validation = updateRuleSchema.safeParse(body);
+
+  if (!validation.success) {
+    return NextResponse.json(
+      fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues),
+      { status: HTTP_STATUS.BAD_REQUEST }
+    );
+  }
+
+  const { id, pattern, category, action, severity } = validation.data;
+
+  if (pattern) {
     const regexValidation = validateRegexPattern(pattern);
     if (!regexValidation.valid) {
-      return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: 400 });
+      return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: HTTP_STATUS.BAD_REQUEST });
     }
-
-    const newRule = await prisma.moderationRule.create({
-      data: { pattern, category, action, severity },
-    });
-
-    return NextResponse.json(ok({ rule: newRule }));
-  } catch (error) {
-    logger.error('[moderation/rules] POST failed', { userId: session.user.id, error });
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to create rule'), {
-      status: 500,
-    });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  let session;
-  try {
-    session = await requireAdmin();
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
   }
 
-  try {
-    const body = await request.json();
-    const validation = updateRuleSchema.safeParse(body);
+  const updatedRule = await prisma.moderationRule.update({
+    where: { id },
+    data: {
+      pattern,
+      action,
+      category,
+      severity,
+      updatedAt: new Date(),
+    },
+  });
 
-    if (!validation.success) {
-      return NextResponse.json(
-        fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues),
-        { status: 400 }
-      );
-    }
+  return NextResponse.json(ok({ rule: updatedRule }));
+});
 
-    const { id, pattern, category, action, severity } = validation.data;
+export const DELETE = withErrorHandling(async (request: NextRequest) => {
+  await requireAdmin();
 
-    if (pattern) {
-      const regexValidation = validateRegexPattern(pattern);
-      if (!regexValidation.valid) {
-        return NextResponse.json(fail('VALIDATION_ERROR', regexValidation.error!), { status: 400 });
-      }
-    }
+  const body = await request.json();
 
-    const updatedRule = await prisma.moderationRule.update({
-      where: { id },
-      data: {
-        pattern,
-        action,
-        category,
-        severity,
-        updatedAt: new Date(),
-      },
-    });
-
-    return NextResponse.json(ok({ rule: updatedRule }));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('NotFound')) {
-      return NextResponse.json(fail('NOT_FOUND', 'Rule not found'), { status: 404 });
-    }
-    logger.error('[moderation/rules] PUT failed', { userId: session.user.id, error });
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to update rule'), {
-      status: 500,
-    });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  let session;
-  try {
-    session = await requireAdmin();
-  } catch {
-    return NextResponse.json(fail('AUTH_REQUIRED', 'Admin access required'), { status: 403 });
+  const idValidation = z.object({ id: z.string().min(1) }).safeParse(body);
+  if (!idValidation.success) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'id is required'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
-  try {
-    const body = await request.json();
+  await prisma.moderationRule.delete({
+    where: { id: idValidation.data.id },
+  });
 
-    const idValidation = z.object({ id: z.string().min(1) }).safeParse(body);
-    if (!idValidation.success) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'id is required'), { status: 400 });
-    }
-
-    await prisma.moderationRule.delete({
-      where: { id: idValidation.data.id },
-    });
-
-    return NextResponse.json(ok({ success: true }));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('NotFound')) {
-      return NextResponse.json(fail('NOT_FOUND', 'Rule not found'), { status: 404 });
-    }
-    logger.error('[moderation/rules] DELETE failed', { userId: session.user.id, error });
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to delete rule'), {
-      status: 500,
-    });
-  }
-}
+  return NextResponse.json(ok({ success: true }));
+});
