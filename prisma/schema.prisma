@@ -244,6 +244,7 @@ model Thread {
   relatedTo     ThreadRelation[]     @relation("SourceThread")
   relatedFrom   ThreadRelation[]     @relation("TargetThread")
   collectionItems CollectionItem[]
+  knowledgePage KnowledgePage?
 
   @@index([slug])
   @@index([visibility])
@@ -782,5 +783,19 @@ model CollectionItem {
   @@index([threadId])
   @@index([sessionId])
   @@map("collection_items")
+}
+
+model KnowledgePage {
+  id               String   @id @default(cuid())
+  threadId         String   @unique
+  version          Int      @default(1)
+  synthesizedContent String @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@map("knowledge_pages")
 }
 
