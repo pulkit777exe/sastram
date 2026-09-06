@@ -7,7 +7,7 @@ import { z } from 'zod';
 const addSchema = z.object({ threadId: z.string().cuid().optional(), sessionId: z.string().cuid().optional() }).refine((d) => d.threadId || d.sessionId, 'threadId or sessionId required');
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
-  const session = await requireSessionOrThrow();
+  await requireSessionOrThrow();
   const { id } = await context!.params;
   const body = addSchema.parse(await request.json());
   // ensure collection belongs to user via add (FK will fail if not)

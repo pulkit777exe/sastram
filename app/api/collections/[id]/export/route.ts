@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { ok, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
+import { withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { getCollection } from '@/modules/collections/repository';
 
 export const GET = withErrorHandling(async (_: NextRequest, context?: { params: Promise<Record<string, string>> }) => {

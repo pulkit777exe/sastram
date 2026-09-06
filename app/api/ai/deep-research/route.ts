@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
+import { ok, withErrorHandling } from '@/lib/utils/api-response';
 import { enqueueJob } from '@/lib/services/queue';
 import { AIJobType } from '@/lib/queue/config';
 import { z } from 'zod';

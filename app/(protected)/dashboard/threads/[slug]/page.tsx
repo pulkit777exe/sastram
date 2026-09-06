@@ -15,6 +15,7 @@ import ParticipantsCard from '@/components/panels/ParticipantsCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 import { DetailCard } from '@/components/ui/detail-card';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 const INITIAL_MESSAGE_LIMIT = 50;
 
@@ -155,6 +156,9 @@ async function ThreadSidebar({
 
     return (
     <aside className="flex flex-col gap-4 p-5">
+      <div className="flex justify-end">
+        <CollectionSaveButton threadId={thread.id} />
+      </div>
       <ThreadResolutionCard
         threadId={thread.id}
         score={thread.resolutionScore}
