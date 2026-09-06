@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Send, Loader2, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 const TEXTAREA_MAX_HEIGHT = 120;
 const MIN_QUERY_LENGTH = 3;
@@ -25,6 +26,8 @@ export function SearchInputBar({
   onNewSearch,
 }: SearchInputBarProps) {
   const [deep, setDeep] = useState(false);
+  const { prefs } = useUserPreferences();
+  const deepEnabled = (prefs as unknown as { deepResearchEnabled?: boolean }).deepResearchEnabled !== false;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function resizeTextarea() {
@@ -64,19 +67,21 @@ export function SearchInputBar({
   return (
     <div className="sticky bottom-0 z-10 bg-surface border-t border-line px-4 md:px-6 py-3">
       <div className="max-w-3xl mx-auto">
-        {/* pill — KISS: Deep toggle + send */}
+        {/* pill — Deep toggle respects settings */}
         <div className="flex items-center gap-1.5 bg-canvas border border-line-strong rounded-full shadow-sm px-2 py-2 focus-within:border-sai-accent/30 focus-within:ring-2 focus-within:ring-sai-accent/10 focus-within:shadow-md transition-all">
-          <Button
-            type="button"
-            variant={deep ? 'default' : 'ghost'}
-            size="sm"
-            aria-pressed={deep}
-            onClick={() => setDeep((v) => !v)}
-            className={`h-7 rounded-full gap-1 px-2.5 text-xs ${deep ? 'bg-sai-accent text-white' : 'hover:bg-hover'}`}
-            title="Deep research — 20+ sources, 3-5 min"
-          >
-            <Sparkles size={12} /> Deep
-          </Button>
+          {deepEnabled && (
+            <Button
+              type="button"
+              variant={deep ? 'default' : 'ghost'}
+              size="sm"
+              aria-pressed={deep}
+              onClick={() => setDeep((v) => !v)}
+              className={`h-7 rounded-full gap-1 px-2.5 text-xs ${deep ? 'bg-sai-accent text-white' : 'hover:bg-hover'}`}
+              title="Deep research — 20+ sources, 3-5 min"
+            >
+              <Sparkles size={12} /> Deep
+            </Button>
+          )}
 
           <textarea
             ref={textareaRef}

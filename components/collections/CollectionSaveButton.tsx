@@ -3,20 +3,23 @@
 import { useEffect, useState } from 'react';
 import { Bookmark, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 export function CollectionSaveButton({ threadId, sessionId }: { threadId?: string; sessionId?: string }) {
+  const { prefs } = useUserPreferences();
+  const enabled = (prefs as unknown as { collectionsEnabled?: boolean }).collectionsEnabled !== false;
   const [open, setOpen] = useState(false);
   const [collections, setCollections] = useState<{ id: string; title: string }[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !enabled) return;
     fetch('/api/collections')
       .then((r) => r.json())
       .then((j) => setCollections(j.data ?? []))
       .catch(() => {});
-  }, [open]);
+  }, [open, enabled]);
 
   async function createAndAdd() {
     if (!newTitle.trim()) return;
@@ -51,6 +54,7 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
     setOpen(false);
   }
 
+  if (!enabled) return null;
   if (!threadId && !sessionId) return null;
 
   return (

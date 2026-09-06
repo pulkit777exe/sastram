@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
+import { parseUserPreferences } from '@/lib/schemas/user-preferences';
 import { z } from 'zod';
 
 const paramsSchema = z.object({ threadId: z.string().cuid() });
@@ -15,6 +16,11 @@ const bodySchema = z.object({
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
+  const prefs = parseUserPreferences(user?.preferences);
+  if ((prefs as unknown as { challengeModeEnabled?: boolean }).challengeModeEnabled === false) {
+    return NextResponse.json(fail('FORBIDDEN', 'Challenge mode disabled in settings'), { status: HTTP_STATUS.FORBIDDEN });
+  }
   const { threadId } = paramsSchema.parse(await context!.params);
   await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
 

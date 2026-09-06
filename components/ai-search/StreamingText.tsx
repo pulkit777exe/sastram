@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Source } from '@/modules/ai-search/types';
 import { toasts } from '@/lib/utils/toast';
 import { Button } from '@/components/ui/button';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 /* ─────────────────────────────────────────────────────────
  * STREAMING TEXT
@@ -205,6 +206,8 @@ export function StreamingText({
   onRetry,
   onFeedback,
 }: StreamingTextProps) {
+  const { prefs } = useUserPreferences();
+  const showProvenance = (prefs as unknown as { sourceProvenanceEnabled?: boolean }).sourceProvenanceEnabled !== false;
   const [count, setCount] = useState(fromHistory ? Infinity : 0);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const allTokens = buildTokens(text, sources);
@@ -435,7 +438,7 @@ export function StreamingText({
           )}
         </div>
 
-        {displayedSources.length > 0 && (
+        {showProvenance && displayedSources.length > 0 && (
           <Button
             type="button"
             aria-expanded={sourcesOpen}
@@ -461,7 +464,7 @@ export function StreamingText({
       </div>
 
       {/* Sources drawer */}
-      {displayedSources.length > 0 && (
+      {showProvenance && displayedSources.length > 0 && (
         <div
           className="grid transition-[grid-template-rows,opacity] duration-300"
           style={{

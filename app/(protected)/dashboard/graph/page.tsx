@@ -1,7 +1,22 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { getSession } from '@/modules/auth';
+import { parseUserPreferences } from '@/lib/schemas/user-preferences';
 import Link from 'next/link';
 
 export default async function GraphPage() {
+  const session = await getSession();
+  if (session) {
+    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
+    const prefs = parseUserPreferences(user?.preferences);
+    if ((prefs as unknown as { graphEnabled?: boolean }).graphEnabled === false) {
+      return (
+        <div className="p-8">
+          <h1 className="font-serif-heading text-xl">Graph</h1>
+          <p className="text-sm text-ink-2 mt-2">Graph explorer is disabled in settings. Enable it in Settings → Preferences → Research.</p>
+        </div>
+      );
+    }
+  }
   const relations = await prisma.threadRelation.findMany({
     take: 100,
     orderBy: { similarity: 'desc' },
