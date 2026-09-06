@@ -11,6 +11,7 @@ import { verifyCronAuth } from '@/lib/middleware/cron-auth';
 import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
+import { promoteThreadsToKnowledgePages } from '@/lib/services/knowledge-promotion';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
@@ -161,6 +162,14 @@ export async function GET(req: NextRequest) {
     // Thread + active Message rows; bounded by current prod volume.
     const reconciliationResult = await reconcileCounters();
 
+    // KnowledgePage auto-promotion — promotes threads with resolutionScore > 85 and verified resolution
+    let knowledgeResult: Awaited<ReturnType<typeof promoteThreadsToKnowledgePages>> | null = null;
+    try {
+      knowledgeResult = await promoteThreadsToKnowledgePages();
+    } catch (err) {
+      logger.error('[cron/update-threads] knowledge promotion failed', err);
+    }
+
     return NextResponse.json(
       ok({
         processed: totalProcessed,
@@ -173,6 +182,7 @@ export async function GET(req: NextRequest) {
           scanned: reconciliationResult.scanned,
           driftsFound: reconciliationResult.drifts.length,
         },
+        knowledgePages: knowledgeResult,
       })
     );
   } catch (error) {

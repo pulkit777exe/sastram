@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/daily-digest",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/promote-knowledge",
+      "schedule": "0 5 * * *"
     }
   ]
 }
