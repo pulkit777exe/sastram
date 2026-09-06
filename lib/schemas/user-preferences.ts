@@ -8,6 +8,14 @@ export const userPreferencesSchema = z.object({
   replyEmails: z.boolean(),
   publicActivityFeed: z.boolean(),
   aiSummaryEnabled: z.boolean(),
+  expertiseLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
+  deepResearchEnabled: z.boolean().optional(),
+  collectionsEnabled: z.boolean().optional(),
+  graphEnabled: z.boolean().optional(),
+  sourceProvenanceEnabled: z.boolean().optional(),
+  verifiedResolutionEnabled: z.boolean().optional(),
+  confidenceDecayEnabled: z.boolean().optional(),
+  challengeModeEnabled: z.boolean().optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;
@@ -20,6 +28,14 @@ const DEFAULTS: UserPreferences = {
   replyEmails: true,
   publicActivityFeed: true,
   aiSummaryEnabled: true,
+  expertiseLevel: undefined as unknown as UserPreferences['expertiseLevel'],
+  deepResearchEnabled: true,
+  collectionsEnabled: true,
+  graphEnabled: true,
+  sourceProvenanceEnabled: true,
+  verifiedResolutionEnabled: true,
+  confidenceDecayEnabled: true,
+  challengeModeEnabled: true,
 };
 
 const THEMES = ['light', 'dark', 'system'] as const;
@@ -44,6 +60,7 @@ export function parseUserPreferences(value: unknown): UserPreferences {
     return fallback;
   }
 
+  const EXPERTISE = ['beginner', 'intermediate', 'advanced', 'expert'] as const;
   return {
     theme: oneOf(THEMES, v.theme, DEFAULTS.theme),
     emailDigest: oneOf(DIGESTS, v.emailDigest, DEFAULTS.emailDigest),
@@ -52,5 +69,13 @@ export function parseUserPreferences(value: unknown): UserPreferences {
     replyEmails: bool(v.replyEmails, DEFAULTS.replyEmails),
     publicActivityFeed: bool(v.publicActivityFeed, DEFAULTS.publicActivityFeed),
     aiSummaryEnabled: bool(v.aiSummaryEnabled, DEFAULTS.aiSummaryEnabled),
+    expertiseLevel: (EXPERTISE as readonly string[]).includes(v.expertiseLevel as string) ? (v.expertiseLevel as UserPreferences['expertiseLevel']) : DEFAULTS.expertiseLevel,
+    deepResearchEnabled: bool(v.deepResearchEnabled, DEFAULTS.deepResearchEnabled as boolean),
+    collectionsEnabled: bool(v.collectionsEnabled, DEFAULTS.collectionsEnabled as boolean),
+    graphEnabled: bool(v.graphEnabled, DEFAULTS.graphEnabled as boolean),
+    sourceProvenanceEnabled: bool(v.sourceProvenanceEnabled, DEFAULTS.sourceProvenanceEnabled as boolean),
+    verifiedResolutionEnabled: bool(v.verifiedResolutionEnabled, DEFAULTS.verifiedResolutionEnabled as boolean),
+    confidenceDecayEnabled: bool(v.confidenceDecayEnabled, DEFAULTS.confidenceDecayEnabled as boolean),
+    challengeModeEnabled: bool(v.challengeModeEnabled, DEFAULTS.challengeModeEnabled as boolean),
   };
 }
