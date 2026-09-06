@@ -145,6 +145,7 @@ model User {
 
   aiSearchSessions AiSearchSession[]
   feedback      Feedback[]
+  collections   Collection[]
 
   @@index([email])
   @@index([status])
@@ -236,6 +237,7 @@ model Thread {
   readReceipts  ReadReceipt[]
   relatedTo     ThreadRelation[]     @relation("SourceThread")
   relatedFrom   ThreadRelation[]     @relation("TargetThread")
+  collectionItems CollectionItem[]
 
   @@index([slug])
   @@index([visibility])
@@ -632,6 +634,7 @@ model AiSearchSession {
   results         AiSearchResult[]
   parentSession   AiSearchSession?  @relation("SessionThread", fields: [parentSessionId], references: [id], onDelete: Cascade)
   childSessions   AiSearchSession[] @relation("SessionThread")
+  collectionItems CollectionItem[]
 
   @@index([userId])
   @@index([queryHash])
@@ -719,5 +722,38 @@ model Feedback {
   @@index([type])
   @@index([createdAt])
   @@map("feedback")
+}
+
+model Collection {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CollectionItem[]
+
+  @@index([userId])
+  @@map("collections")
+}
+
+model CollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  threadId     String?
+  sessionId    String?
+  createdAt    DateTime @default(now())
+
+  collection Collection     @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  thread     Thread?        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  session    AiSearchSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, threadId])
+  @@unique([collectionId, sessionId])
+  @@index([collectionId])
+  @@index([threadId])
+  @@index([sessionId])
+  @@map("collection_items")
 }
 
