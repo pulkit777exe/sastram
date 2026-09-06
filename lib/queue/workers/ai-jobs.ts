@@ -371,13 +371,19 @@ export async function handleAIInsightNotificationsJob(data: AIInsightNotificatio
 export async function handleDeepResearchJob(data: import('../types').DeepResearchJobData) {
   logger.info('[worker:ai] deep-research job', { query: data.query, userId: data.userId });
   await assertSpendCapAvailable();
-  // Reuse existing pipeline with deep config (20 sources, advanced depth)
+  let expertiseLevel: string | undefined;
+  try {
+    const u = await prisma.user.findUnique({ where: { id: data.userId }, select: { preferences: true } });
+    expertiseLevel = (u?.preferences as unknown as { expertiseLevel?: string })?.expertiseLevel;
+  } catch {}
   const { executeAISearch } = await import('@/modules/ai-search/service');
   const result = await runAiGeneration('deep-research', data.query, () =>
     executeAISearch(
       data.query,
       { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
-      { exa: process.env.SASTRAM_EXA_KEY ?? '', tavily: process.env.SASTRAM_TAVILY_KEY ?? '', gemini: process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '' }
+      { exa: process.env.SASTRAM_EXA_KEY ?? '', tavily: process.env.SASTRAM_TAVILY_KEY ?? '', gemini: process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '' },
+      undefined,
+      expertiseLevel
     )
   );
   if (!result.ok) return { skipped: true };

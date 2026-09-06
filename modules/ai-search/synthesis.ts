@@ -227,7 +227,8 @@ export async function synthesize(
   geminiKey: string,
   tavilyAnswer?: string,
   openaiKey?: string,
-  conversationHistory?: { role: string; content: string }[]
+  conversationHistory?: { role: string; content: string }[],
+  expertiseLevel?: string
 ): Promise<SynthesisResult> {
   const model = getEnv().GEMINI_SEARCH_MODEL;
 
@@ -237,11 +238,13 @@ export async function synthesize(
   const tavilyBlock = buildTavilyBlock(tavilyAnswer);
   const conflictNote = buildConflictNote(conflictData);
 
+  const expertiseLine = expertiseLevel ? `User expertise: ${expertiseLevel} — adjust depth (beginner: ELI5 with analogies, expert: concise technical, no hand-holding).` : '';
   const synthesisPrompt = `You are a knowledge synthesis engine for a developer forum.
 ${DATA_ONLY_INSTRUCTION}
 
 Query: "${query}"
 Query type: ${classification.type}
+${expertiseLine}
 ${tavilyBlock}
 ${historyBlock}
 Sources (ranked by trust tier):
