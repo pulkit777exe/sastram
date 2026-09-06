@@ -83,10 +83,14 @@ describe('Pagination — getThreadMessagesPaginated', function () {
     const secondPage = await getThreadMessagesPaginated(testThreadId, firstPage.nextCursor ?? undefined, 50);
     expect(secondPage.hasMore).to.be.true;
     expect(secondPage.messages).to.have.lengthOf(50);
-    // Second page messages should be older than first page
+    // Second page messages should be older or equal (bulk inserts share same ms, tie-break on id)
     const firstOldest = firstPage.messages[0].createdAt;
     const secondNewest = secondPage.messages[secondPage.messages.length - 1].createdAt;
-    expect(secondNewest.getTime()).to.be.lessThan(firstOldest.getTime());
+    expect(secondNewest.getTime()).to.be.at.most(firstOldest.getTime());
+    // And ids should be strictly older when timestamps equal
+    if (secondNewest.getTime() === firstOldest.getTime()) {
+      expect(secondPage.messages[0].id < firstPage.messages[0].id).to.be.true;
+    }
   });
 
   it('returns last page with hasMore=false', async function () {
