@@ -6,7 +6,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession, assertAdmin } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/modules/threads/slug';
-import { createThread, deleteThread, updateThreadStaleness, updateThreadVerified } from './threads-write/repository';
+import { createThread, deleteThread, updateThreadVerified } from './threads-write/repository';
 import { infraThreadSideEffects } from './adapters/infra-side-effects';
 import { buildThreadDTO } from './service';
 import { getThreadMessagesPaginated, type ThreadMessage } from './threads-read/repository';

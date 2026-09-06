@@ -14,6 +14,7 @@ import { sanitizeHtmlContent } from '@/lib/services/content-safety';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { assertSpendCapAvailable, assertThreadJob, runAiGeneration } from './_shared';
+import { computeConfidence } from '@/modules/threads/confidence-decay';
 import type {
   ThreadSummaryJobData,
   ThreadDnaJobData,
@@ -206,8 +207,6 @@ const STALE_BATCH_SIZE = 100;
 function isStale(lastVerifiedAt: Date | null, verifiedAt: Date | null): boolean {
   const provenanceAt = verifiedAt ?? lastVerifiedAt;
   if (!provenanceAt) return true;
-  // KISS: single writer via computeConfidence — <0.5 ~30+90 days
-  const { computeConfidence } = require('@/modules/threads/confidence-decay');
   return computeConfidence(provenanceAt).confidence < 0.5;
 }
 
