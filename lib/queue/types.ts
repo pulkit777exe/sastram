@@ -100,3 +100,10 @@ export interface StalenessCheckJobData {
   cronJob?: boolean;
   triggeredBy?: string;
 }
+
+export interface DeepResearchJobData {
+  query: string;
+  userId: string;
+  collectionId?: string;
+  sessionId?: string;
+}

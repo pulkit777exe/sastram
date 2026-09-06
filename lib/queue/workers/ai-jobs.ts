@@ -367,3 +367,28 @@ export async function handleAIInsightNotificationsJob(data: AIInsightNotificatio
     conflictResult,
   );
 }
+
+export async function handleDeepResearchJob(data: import('../types').DeepResearchJobData) {
+  logger.info('[worker:ai] deep-research job', { query: data.query, userId: data.userId });
+  await assertSpendCapAvailable();
+  // Reuse existing pipeline with deep config (20 sources, advanced depth)
+  const { executeAISearch } = await import('@/modules/ai-search/service');
+  const result = await runAiGeneration('deep-research', data.query, () =>
+    executeAISearch(
+      data.query,
+      { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
+      { exa: process.env.SASTRAM_EXA_KEY ?? '', tavily: process.env.SASTRAM_TAVILY_KEY ?? '', gemini: process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '' }
+    )
+  );
+  if (!result.ok) return { skipped: true };
+
+  await dispatch({
+    recipients: { userIds: [data.userId] },
+    category: 'AI_INSIGHT',
+    title: 'Deep research ready',
+    message: `Your deep research for "${data.query.slice(0, 60)}" is ready.`,
+    data: { query: data.query, sessionId: data.sessionId, collectionId: data.collectionId },
+  });
+
+  return { query: data.query, done: true };
+}
