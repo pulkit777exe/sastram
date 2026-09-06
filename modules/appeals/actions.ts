@@ -5,6 +5,7 @@ import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { logAction } from '@/modules/audit';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
 import { withValidation } from '@/lib/utils/server-action';
 import { getBannedUsersSchema } from '@/modules/moderation';
@@ -13,6 +14,10 @@ import { requireModerationRole } from '@/modules/policy';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { actionFailure, actionSuccess } from '@/lib/actions/result';
 import { buildBannedUsersWhereClause } from '@/modules/moderation/policy';
+
+// ── Jury constants (KISS vertical slice) ─────────────────────────────────────
+const JURY_SIZE = 3;
+const JURY_MAJORITY = 2;
 
 // ── Shared select constants ────────────────────────────────────────────────
 const APPEAL_USER_SELECT = { id: true, name: true, email: true, image: true } as const;
@@ -137,13 +142,85 @@ function validateBannedUserStatus(status: string) {
   return null;
 }
 
+// ── Jury helpers ───────────────────────────────────────────────────────────
+function shuffleInPlace<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = a[i]!;
+    a[i] = a[j]!;
+    a[j] = tmp;
+  }
+  return a;
+}
+
+async function pickRandomJurorIds(excludeUserId?: string | null): Promise<string[]> {
+  const moderators = await prisma.user.findMany({
+    where: {
+      role: 'MODERATOR',
+      status: 'ACTIVE',
+      deletedAt: null,
+      ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+    },
+    select: { id: true },
+  });
+  if (moderators.length === 0) return [];
+  const shuffled = shuffleInPlace(moderators.map((m) => m.id));
+  const take = Math.min(JURY_SIZE, shuffled.length);
+  return shuffled.slice(0, take);
+}
+
+async function createJuryForAppeal(appealId: string, appellantUserId: string | null) {
+  try {
+    const jurorIds = await pickRandomJurorIds(appellantUserId);
+    if (jurorIds.length === 0) {
+      logger.warn('[appeals] No moderators available for jury', { appealId });
+      return [];
+    }
+    await prisma.appealVote.createMany({
+      data: jurorIds.map((moderatorId) => ({
+        appealId,
+        moderatorId,
+        vote: null,
+        reason: null,
+      })),
+      skipDuplicates: true,
+    });
+    // Notify jurors — transparent assignment
+    await dispatch({
+      recipients: { userIds: jurorIds },
+      category: 'SYSTEM',
+      title: 'Jury Duty: New Appeal Assigned',
+      message: 'You have been selected as a juror for a ban appeal. Please review and vote.',
+      data: { appealId },
+    });
+    await logAction({
+      action: 'APPEAL_JURY_ASSIGNED',
+      entityType: 'Appeal',
+      entityId: appealId,
+      userId: appellantUserId ?? 'system',
+      details: { jurorIds, jurySize: jurorIds.length } as unknown as import('@prisma/client').Prisma.InputJsonValue,
+    });
+    return jurorIds;
+  } catch (error) {
+    logger.error('[appeals] Failed to create jury', { appealId, error });
+    return [];
+  }
+}
+
 // ── getAppeals helpers ─────────────────────────────────────────────────────
 async function fetchPendingAppeals(limit: number, offset: number) {
   const whereClause = { status: 'PENDING' as const };
   return Promise.all([
     prisma.appeal.findMany({
       where: whereClause,
-      include: { user: { select: APPEAL_USER_SELECT } },
+      include: {
+        user: { select: APPEAL_USER_SELECT },
+        votes: {
+          include: { moderator: { select: APPEAL_USER_SELECT } },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
       orderBy: { createdAt: 'asc' },
       take: limit,
       skip: offset,
@@ -167,11 +244,22 @@ function enrichAppealsWithBanInfo(
   const latestBanByUser = buildBanLookupMap(allBans);
   return appeals.map((appeal) => {
     const activeBan = appeal.userId ? latestBanByUser.get(appeal.userId) : undefined;
+    const votes = (appeal as unknown as { votes: unknown[] }).votes ?? [];
+    // Jury transparency: count votes
+    const approvedCount = (votes as { vote: string | null }[]).filter((v) => v.vote === 'APPROVED').length;
+    const rejectedCount = (votes as { vote: string | null }[]).filter((v) => v.vote === 'REJECTED').length;
     return {
       ...appeal,
       reporter: appeal.user,
       banReason: activeBan?.reason ?? 'Unknown',
       banDate: activeBan?.createdAt ?? new Date(),
+      jury: {
+        votes,
+        approvedCount,
+        rejectedCount,
+        totalJurors: votes.length,
+        majority: JURY_MAJORITY,
+      },
     };
   });
 }
@@ -248,7 +336,11 @@ export const submitAppeal = withValidation(
       details: { reason, banId: activeBan.id },
     });
 
+    // KISS jury: pick 3 random moderators and notify them
+    await createJuryForAppeal(appeal.id, session.user.id);
+
     revalidateAppealPath(ROUTES.BANNED);
+    revalidateAppealPath(ROUTES.ADMIN_APPEALS);
     return actionSuccess(null);
   }
 );
@@ -291,19 +383,105 @@ export const resolveAppeal = withValidation(
       return actionFailure('NOT_FOUND', 'Appeal not found');
     }
 
-    await applyAppealResolution(appealId, appeal.userId, approved, response, session.user.id);
-    await notifyAppealResult(appeal.userId, approved, response, appealId);
+    if (appeal.status !== 'PENDING') {
+      return actionFailure('CONFLICT', 'Appeal already resolved');
+    }
+
+    // Fetch jury votes for this appeal
+    const juryVotes = await prisma.appealVote.findMany({
+      where: { appealId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Legacy fallback: no jury assigned (old appeals or insufficient moderators)
+    // Keep single-moderator behavior so existing tests don't break.
+    if (juryVotes.length === 0) {
+      await applyAppealResolution(appealId, appeal.userId, approved, response, session.user.id);
+      await notifyAppealResult(appeal.userId, approved, response, appealId);
+
+      await logAction({
+        action: 'APPEAL_RESOLVED',
+        entityType: 'Appeal',
+        entityId: appealId,
+        userId: session.user.id,
+        details: { approved, userId: appeal.userId, response, jury: false },
+      });
+
+      revalidateAppealPath(ROUTES.ADMIN_APPEALS);
+      return actionSuccess(null);
+    }
+
+    // Jury mode: caller must be one of the assigned jurors
+    const myVote = juryVotes.find((v: { moderatorId: string }) => v.moderatorId === session.user.id);
+    if (!myVote) {
+      return actionFailure('FORBIDDEN', 'You are not assigned to this jury');
+    }
+    if (myVote.vote !== null) {
+      return actionFailure('CONFLICT', 'You have already voted on this appeal');
+    }
+
+    const voteValue = approved ? 'APPROVED' : 'REJECTED';
+
+    await prisma.appealVote.update({
+      where: { id: myVote.id },
+      data: { vote: voteValue as unknown as never, reason: response ?? null },
+    });
 
     await logAction({
-      action: 'APPEAL_RESOLVED',
+      action: 'APPEAL_VOTE_CAST',
       entityType: 'Appeal',
       entityId: appealId,
       userId: session.user.id,
-      details: { approved, userId: appeal.userId, response },
+      details: { vote: voteValue, response, jurorId: session.user.id },
     });
 
+    // Re-count votes after this vote
+    const updatedVotes = await prisma.appealVote.findMany({ where: { appealId } });
+    const approvedCount = updatedVotes.filter((v: { vote: string | null }) => v.vote === 'APPROVED').length;
+    const rejectedCount = updatedVotes.filter((v: { vote: string | null }) => v.vote === 'REJECTED').length;
+    const pendingCount = updatedVotes.filter((v: { vote: string | null }) => v.vote === null).length;
+
+    const majorityReached = approvedCount >= JURY_MAJORITY || rejectedCount >= JURY_MAJORITY;
+    // If jury is smaller than JURY_SIZE (e.g., only 1 moderator in dev), majority is ceil(n/2)
+    const effectiveMajority = Math.min(JURY_MAJORITY, Math.ceil(updatedVotes.length / 2));
+    const effectiveMajorityReached = approvedCount >= effectiveMajority || rejectedCount >= effectiveMajority;
+
+    const shouldResolve = juryVotes.length >= JURY_SIZE ? majorityReached : effectiveMajorityReached;
+
+    // Also resolve if all jurors have voted even without strict majority (tie-break as reject)
+    const allVoted = pendingCount === 0;
+    const finalShouldResolve = shouldResolve || allVoted;
+
+    if (finalShouldResolve) {
+      // KISS: winner is side with more votes; tie -> REJECTED (conservative)
+      const finalApproved = approvedCount > rejectedCount;
+
+      await applyAppealResolution(appealId, appeal.userId, finalApproved, response, session.user.id);
+      await notifyAppealResult(appeal.userId, finalApproved, response, appealId);
+
+      await logAction({
+        action: 'APPEAL_RESOLVED',
+        entityType: 'Appeal',
+        entityId: appealId,
+        userId: session.user.id,
+        details: {
+          approved: finalApproved,
+          userId: appeal.userId,
+          response,
+          jury: true,
+          approvedCount,
+          rejectedCount,
+          totalJurors: updatedVotes.length,
+        },
+      });
+
+      revalidateAppealPath(ROUTES.ADMIN_APPEALS);
+      return actionSuccess({ resolved: true, approved: finalApproved, approvedCount, rejectedCount } as unknown as null);
+    }
+
+    // Vote recorded but jury not yet decided
     revalidateAppealPath(ROUTES.ADMIN_APPEALS);
-    return actionSuccess(null);
+    return actionSuccess({ resolved: false, approvedCount, rejectedCount, pendingCount } as unknown as null);
   }
 );
 

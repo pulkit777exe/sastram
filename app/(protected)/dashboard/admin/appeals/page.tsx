@@ -18,6 +18,7 @@ export default async function AppealsPage() {
         <p className="text-muted-foreground">Review and resolve ban appeals from users.</p>
       </div>
 
+      {/* @ts-expect-error - enriched appeals with jury field */}
       <AppealsList appeals={appeals} />
     </div>
   );

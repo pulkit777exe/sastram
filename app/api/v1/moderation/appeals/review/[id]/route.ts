@@ -28,8 +28,15 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   const result = await resolveAppeal({ appealId: id, approved });
 
   if ('error' in result && result.error) {
-    return NextResponse.json(fail('INTERNAL_ERROR', result.error), { status: HTTP_STATUS.INTERNAL });
+    const code = (result as { errorCode?: string }).errorCode ?? 'INTERNAL_ERROR';
+    const status =
+      code === 'FORBIDDEN' ? HTTP_STATUS.FORBIDDEN :
+      code === 'NOT_FOUND' ? HTTP_STATUS.NOT_FOUND :
+      code === 'CONFLICT' ? 409 :
+      code === 'VALIDATION_ERROR' ? HTTP_STATUS.BAD_REQUEST :
+      HTTP_STATUS.INTERNAL;
+    return NextResponse.json(fail(code as never, result.error), { status });
   }
 
-  return NextResponse.json(ok({ appeal: { id, approved } }));
+  return NextResponse.json(ok({ appeal: { id, approved, result: (result as { data?: unknown }).data } }));
 });

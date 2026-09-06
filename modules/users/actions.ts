@@ -278,6 +278,8 @@ function buildSoftDeleteTransaction(userId: string) {
     prisma.thread.updateMany({ where: { createdBy: userId }, data: { createdBy: { set: null } } }),
     prisma.report.updateMany({ where: { reporterId: userId }, data: { reporterId: { set: null } } }),
     prisma.appeal.updateMany({ where: { moderatorId: userId }, data: { moderatorId: { set: null } } }),
+    prisma.appealVote.deleteMany({ where: { moderatorId: userId } }),
+    prisma.appeal.updateMany({ where: { userId }, data: { userId: { set: null } } }),
     prisma.userBan.updateMany({ where: { userId: userId }, data: { userId: { set: null } } }),
     prisma.userBan.updateMany({ where: { bannedBy: userId }, data: { bannedBy: { set: null } } }),
     prisma.session.deleteMany({ where: { userId } }),

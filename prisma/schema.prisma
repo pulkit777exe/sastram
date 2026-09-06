@@ -58,6 +58,11 @@ enum AppealStatus {
   REJECTED
 }
 
+enum AppealVoteDecision {
+  APPROVED
+  REJECTED
+}
+
 enum InvitationStatus {
   PENDING
   ACCEPTED
@@ -142,6 +147,7 @@ model User {
   subscriptions ThreadSubscription[]
   appeals       Appeal[]             @relation("AppealSubmitter")
   moderatedAppeals Appeal[]         @relation("AppealModerator")
+  appealVotes   AppealVote[]         @relation("AppealVoter")
 
   aiSearchSessions AiSearchSession[]
   feedback      Feedback[]
@@ -465,6 +471,7 @@ model Appeal {
   message   Message          @relation("MessageAppeal", fields: [messageId], references: [id], onDelete: Cascade)
   user      User?            @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: SetNull)
   moderator User?            @relation("AppealModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+  votes     AppealVote[]
 
   @@index([messageId])
   @@index([userId])
@@ -472,6 +479,25 @@ model Appeal {
   @@index([status])
   @@index([createdAt])
   @@map("appeals")
+}
+
+model AppealVote {
+  id          String              @id @default(cuid())
+  appealId    String
+  moderatorId String
+  vote        AppealVoteDecision?
+  reason      String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  appeal    Appeal @relation(fields: [appealId], references: [id], onDelete: Cascade)
+  moderator User   @relation("AppealVoter", fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@unique([appealId, moderatorId])
+  @@index([appealId])
+  @@index([moderatorId])
+  @@index([appealId, vote])
+  @@map("appeal_votes")
 }
 
 model Report {

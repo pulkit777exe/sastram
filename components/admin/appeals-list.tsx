@@ -24,6 +24,13 @@ import { toasts } from '@/lib/utils/toast';
 import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+interface JuryVote {
+  id: string;
+  vote: string | null;
+  reason: string | null;
+  moderator: { id: string; name: string | null; email: string; image: string | null };
+}
+
 interface Appeal {
   id: string;
   reporter: {
@@ -38,6 +45,13 @@ interface Appeal {
   createdAt: Date;
   banReason: string;
   banDate: Date;
+  jury?: {
+    votes: JuryVote[];
+    approvedCount: number;
+    rejectedCount: number;
+    totalJurors: number;
+    majority: number;
+  };
 }
 
 export function AppealsList({ appeals }: { appeals: Appeal[] }) {
@@ -51,15 +65,22 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
     setIsProcessing(true);
     const approved = actionType === 'APPROVE';
 
-    // In a real app, we might want to send a rejection reason note.
-    // For now assuming resolveAppeal handles basic logic.
-
     const result = await resolveAppeal({ appealId: selectedAppeal.id, approved });
 
     if (result?.error) {
       toasts.error(result.error);
     } else {
-      toasts.success(`Appeal ${approved ? 'approved' : 'rejected'} successfully`);
+      const data = result?.data as unknown as { resolved?: boolean; approved?: boolean; approvedCount?: number; rejectedCount?: number } | null;
+      if (data && typeof data.resolved === 'boolean') {
+        if (!data.resolved) {
+          toasts.success(`Vote recorded — awaiting jury (${data.approvedCount ?? 0} approve / ${data.rejectedCount ?? 0} reject)`);
+        } else {
+          const finalApproved = data.approved ?? approved;
+          toasts.success(`Jury decided: appeal ${finalApproved ? 'approved' : 'rejected'} (${data.approvedCount}-${data.rejectedCount})`);
+        }
+      } else {
+        toasts.success(`Appeal ${approved ? 'approved' : 'rejected'} successfully`);
+      }
       setSelectedAppeal(null);
       setActionType(null);
     }
@@ -85,6 +106,7 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
               <TableHead>Ban Date</TableHead>
               <TableHead>Ban Reason</TableHead>
               <TableHead>Appeal Reason</TableHead>
+              <TableHead>Jury</TableHead>
               <TableHead className="sticky right-0 bg-muted/50 z-10 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -114,6 +136,35 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                   title={appeal.reason}
                 >
                   &quot;{appeal.reason || 'No appeal reason provided'}&quot;
+                </TableCell>
+                <TableCell className="text-xs">
+                  {appeal.jury ? (
+                    <div className="flex flex-col gap-1 min-w-24">
+                      <span className="font-mono text-xs">
+                        {appeal.jury.approvedCount}✓ / {appeal.jury.rejectedCount}✗ / {appeal.jury.totalJurors - appeal.jury.approvedCount - appeal.jury.rejectedCount}…
+                      </span>
+                      <span className="text-muted-foreground text-[10px] leading-none">
+                        {appeal.jury.totalJurors === 0 ? 'Legacy (no jury)' : `${appeal.jury.totalJurors} jurors · 2/3 to decide`}
+                      </span>
+                      {appeal.jury.votes.length > 0 && (
+                        <div className="flex -space-x-1 mt-1">
+                          {appeal.jury.votes.map((v) => (
+                            <span
+                              key={v.id}
+                              title={`${v.moderator.name ?? v.moderator.email}: ${v.vote ?? 'PENDING'}`}
+                              className={`h-5 w-5 rounded-full border border-line flex items-center justify-center text-[9px] font-bold ${
+                                v.vote === 'APPROVED' ? 'bg-green-100 text-green-700' : v.vote === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {v.vote === 'APPROVED' ? '✓' : v.vote === 'REJECTED' ? '✗' : '·'}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="sticky right-0 bg-surface z-10 text-right">
                   <div className="flex justify-end gap-2">
@@ -170,6 +221,34 @@ export function AppealsList({ appeals }: { appeals: Appeal[] }) {
                 <div className="p-3 bg-muted rounded-control text-xs italic">
                   &quot;{selectedAppeal.reason || 'No appeal reason provided'}&quot;
                 </div>
+
+                {selectedAppeal.jury && (
+                  <>
+                    <span className="text-muted-foreground">Jury:</span>
+                    <div className="space-y-2">
+                      <p className="text-xs font-mono">
+                        {selectedAppeal.jury.approvedCount} approve · {selectedAppeal.jury.rejectedCount} reject · {selectedAppeal.jury.totalJurors - selectedAppeal.jury.approvedCount - selectedAppeal.jury.rejectedCount} pending — 2/3 majority decides
+                      </p>
+                      <div className="space-y-1">
+                        {selectedAppeal.jury.votes.map((v) => (
+                          <div key={v.id} className="flex items-center gap-2 text-xs">
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={v.moderator.image || undefined} />
+                              <AvatarFallback className="text-[9px]">{v.moderator.name?.charAt(0) || 'M'}</AvatarFallback>
+                            </Avatar>
+                            <span className="flex-1 truncate">{v.moderator.name ?? v.moderator.email}</span>
+                            <span className={`px-1.5 py-0.5 rounded-chip text-[10px] font-bold ${v.vote === 'APPROVED' ? 'bg-green-100 text-green-700' : v.vote === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'}`}>
+                              {v.vote ?? 'PENDING'}
+                            </span>
+                          </div>
+                        ))}
+                        {selectedAppeal.jury.totalJurors === 0 && (
+                          <p className="text-xs text-muted-foreground">Legacy appeal — single moderator can decide.</p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
