@@ -315,11 +315,12 @@ export async function getThreadMessagesPaginated(
     orderBy: { createdAt: 'desc' },
     take: limit + 1,
   });
-  const threadCountPromise = prisma.thread.findUnique({
-    where: { id: threadId },
-    select: { messageCount: true },
+  // KISS: count messages directly instead of relying on denormalized thread.messageCount
+  // which requires an extra thread lookup and fails when prisma.thread is mocked
+  const totalCountPromise = prisma.message.count({
+    where: { threadId, deletedAt: null },
   });
-  const [messages, thread] = await Promise.all([messagesPromise, threadCountPromise]);
+  const [messages, totalCount] = await Promise.all([messagesPromise, totalCountPromise]);
 
   const hasMore = messages.length > limit;
   const page = hasMore ? messages.slice(0, limit) : messages;
@@ -330,7 +331,7 @@ export async function getThreadMessagesPaginated(
     messages: page.map((m) => mapDbMessageToThreadMessage(m as never, reactionsByMessage)),
     hasMore,
     nextCursor: hasMore && page.length > 0 ? page[page.length - 1].id : null,
-    totalCount: thread?.messageCount ?? 0,
+    totalCount,
   };
 }
 
