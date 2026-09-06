@@ -25,6 +25,7 @@ export interface Message {
   likeCount: number;
   replyCount: number;
   isAiResponse: boolean;
+  factCheckStatus?: string | null;
   truncated?: boolean;
   createdAt: Date;
   updatedAt: Date;

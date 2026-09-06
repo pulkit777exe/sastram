@@ -261,6 +261,7 @@ model Message {
   likeCount    Int       @default(0) // denormalized for perf
   replyCount   Int       @default(0) // denormalized for perf
   isAiResponse Boolean   @default(false) // true when @ai generated this
+  factCheckStatus String  @default("unchecked") // verified | disputed | unchecked
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime? // soft delete — keep for tree integrity

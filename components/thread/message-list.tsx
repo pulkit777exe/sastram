@@ -268,7 +268,7 @@ const MessageRow = React.memo(function MessageRow({
 
         <div className="flex-1 min-w-0">
           {!isCompact && (
-            <div className="flex items-baseline gap-2 mb-0.5">
+            <div className="flex items-baseline gap-2 mb-0.5 flex-wrap">
               <span className="text-sm font-semibold text-foreground leading-none">
                 {message.sender?.name || 'Anonymous'}
               </span>
@@ -280,6 +280,21 @@ const MessageRow = React.memo(function MessageRow({
               {message.isAiResponse && (
                 <Badge variant="live" className="px-1.5 py-px text-xs leading-none">
                   Sai
+                </Badge>
+              )}
+              {message.factCheckStatus === 'verified' && (
+                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-green-500/10 text-green-700 border-green-500/20">
+                  ✓ verified
+                </Badge>
+              )}
+              {message.factCheckStatus === 'disputed' && (
+                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-red-500/10 text-red-700 border-red-500/20">
+                  ! disputed
+                </Badge>
+              )}
+              {message.factCheckStatus === 'unchecked' && (
+                <Badge variant="outline" className="px-1.5 py-px text-xs leading-none text-ink-3">
+                  unchecked
                 </Badge>
               )}
               {message.truncated && (
