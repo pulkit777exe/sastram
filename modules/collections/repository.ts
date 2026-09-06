@@ -19,7 +19,18 @@ export async function getCollection(collectionId: string, userId: string) {
       items: {
         include: {
           thread: { select: { id: true, name: true, slug: true } },
-          session: { select: { id: true, query: true, title: true } },
+          session: {
+            select: {
+              id: true,
+              query: true,
+              title: true,
+              results: {
+                select: { synthesis: true, citations: true, sources: true },
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       },
