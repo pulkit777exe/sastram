@@ -26,7 +26,8 @@ export async function executeAISearch(
   query: string,
   config: SearchConfig,
   keys: { exa: string; tavily: string; gemini: string; openai?: string },
-  conversationHistory?: { role: string; content: string }[]
+  conversationHistory?: { role: string; content: string }[],
+  expertiseLevel?: string
 ): Promise<AISearchPipelineResult> {
   const startTime = Date.now();
 
@@ -78,7 +79,8 @@ export async function executeAISearch(
       keys.gemini,
       rawResults.tavilyAnswer,
       keys.openai,
-      conversationHistory
+      conversationHistory,
+      expertiseLevel
     );
   }
   synthesis.processingTimeMs = elapsedMs(startTime);

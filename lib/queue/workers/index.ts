@@ -1,4 +1,4 @@
-// Single seam for AI jobs — 6 shallow workers coalesced into ai-jobs.ts
+// Single seam for AI jobs — 7 shallow workers coalesced into ai-jobs.ts
 export {
   handleThreadSummaryJob,
   handleThreadDnaJob,
@@ -7,5 +7,6 @@ export {
   handleDailyDigestJob,
   handleStalenessCheckJob,
   handleAIInsightNotificationsJob,
+  handleDeepResearchJob,
 } from './ai-jobs';
 export { handleAIInlineJob } from './ai-inline.worker';

@@ -13,6 +13,7 @@ import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { computeConfidence } from '@/modules/threads/confidence-decay';
 
 const BATCH_SIZE = 25;
 const QSTASH_GUARD_THRESHOLD = 400;
@@ -65,6 +66,8 @@ export async function GET(req: NextRequest) {
           updatedAt: true,
           resolutionScore: true,
           isOutdated: true,
+          verifiedAt: true,
+          lastVerifiedAt: true,
           messages: {
             take: env.AI_ANALYSIS_MESSAGE_LIMIT,
             orderBy: { createdAt: 'desc' as const },
@@ -88,6 +91,13 @@ export async function GET(req: NextRequest) {
       for (const thread of threads) {
         if (thread.messages.length === 0) {
           continue;
+        }
+
+        // KISS: skip human-verified threads while confidence is still high (mirrors ai-jobs isStale <0.5)
+        const provenanceAt = (thread as unknown as { verifiedAt?: Date | null; lastVerifiedAt?: Date | null }).verifiedAt ?? (thread as unknown as { verifiedAt?: Date | null; lastVerifiedAt?: Date | null }).lastVerifiedAt ?? null;
+        if (provenanceAt) {
+          const { confidence } = computeConfidence(new Date(provenanceAt));
+          if (confidence >= 0.5) continue;
         }
 
         const messages = [...thread.messages].reverse();

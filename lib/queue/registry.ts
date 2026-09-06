@@ -7,6 +7,7 @@ import {
   handleDailyDigestJob,
   handleStalenessCheckJob,
   handleAIInsightNotificationsJob,
+  handleDeepResearchJob,
 } from './workers';
 import { handleAIInlineJob } from './workers/ai-inline.worker';
 import { handleEmailJob } from './workers/email.worker';
@@ -20,6 +21,7 @@ import type {
   AIInsightNotificationJobData,
   AIInlineJobData,
   EmailJobData,
+  DeepResearchJobData,
 } from './types';
 
 export type JobHandlerMap = {
@@ -31,6 +33,7 @@ export type JobHandlerMap = {
   [AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS]: (data: AIInsightNotificationJobData) => Promise<unknown>;
   [AIJobType.GENERATE_AI_INLINE]: (data: AIInlineJobData) => Promise<unknown>;
   [AIJobType.STALENESS_CHECK]: (data: StalenessCheckJobData) => Promise<unknown>;
+  [AIJobType.GENERATE_DEEP_RESEARCH]: (data: DeepResearchJobData) => Promise<unknown>;
   email: (data: EmailJobData) => Promise<unknown>;
 };
 
@@ -43,5 +46,6 @@ export const jobHandlers: JobHandlerMap = {
   [AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS]: handleAIInsightNotificationsJob,
   [AIJobType.GENERATE_AI_INLINE]: handleAIInlineJob,
   [AIJobType.STALENESS_CHECK]: handleStalenessCheckJob,
+  [AIJobType.GENERATE_DEEP_RESEARCH]: handleDeepResearchJob,
   email: handleEmailJob,
 };

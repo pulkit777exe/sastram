@@ -360,6 +360,8 @@ async function fetchThreadRow(slug: string, uid: string): Promise<ThreadRow | nu
         s."createdAt" as "createdAt",
         s."updatedAt" as "updatedAt",
         s."lastVerifiedAt" as "lastVerifiedAt",
+        s."verifiedAt" as "verifiedAt",
+        s."verifiedBy" as "verifiedBy",
         CASE WHEN u.id IS NULL THEN NULL ELSE json_build_object(
           'id', u.id,
           'name', u.name,
@@ -396,7 +398,8 @@ async function fetchThreadRow(slug: string, uid: string): Promise<ThreadRow | nu
           'createdAt', p."createdAt"
         ) as poll
         FROM "polls" p
-        WHERE p."threadId" = s.id AND p."messageId" IS NULL
+        WHERE p."threadId" = s.id
+          AND (CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='polls' AND column_name='messageId') THEN p."messageId" IS NULL ELSE true END)
       ) poll ON true
       LEFT JOIN LATERAL (
         SELECT

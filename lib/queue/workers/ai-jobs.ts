@@ -14,6 +14,7 @@ import { sanitizeHtmlContent } from '@/lib/services/content-safety';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { assertSpendCapAvailable, assertThreadJob, runAiGeneration } from './_shared';
+import { computeConfidence } from '@/modules/threads/confidence-decay';
 import type {
   ThreadSummaryJobData,
   ThreadDnaJobData,
@@ -201,14 +202,12 @@ export async function handleDailyDigestJob(data: DailyDigestJobData) {
 // staleness-check
 // ------------------------------------------------------------------
 
-const STALE_THRESHOLD_DAYS = 30;
-const RESOLUTION_SCORE_THRESHOLD = 50;
 const STALE_BATCH_SIZE = 100;
 
-function isStale(updatedAt: Date, resolutionScore: number | null): boolean {
-  const ageDays = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-  if (ageDays < STALE_THRESHOLD_DAYS) return false;
-  return resolutionScore === null || resolutionScore < RESOLUTION_SCORE_THRESHOLD;
+function isStale(lastVerifiedAt: Date | null, verifiedAt: Date | null): boolean {
+  const provenanceAt = verifiedAt ?? lastVerifiedAt;
+  if (!provenanceAt) return true;
+  return computeConfidence(provenanceAt).confidence < 0.5;
 }
 
 async function handleStalenessBatchCheck() {
@@ -219,33 +218,34 @@ async function handleStalenessBatchCheck() {
   while (true) {
     const whereClause: Record<string, unknown> = {
       isOutdated: false,
-      updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000) },
-      OR: [{ resolutionScore: null }, { resolutionScore: { lt: RESOLUTION_SCORE_THRESHOLD } }],
       deletedAt: null,
     };
     if (cursor) {
       (whereClause as { id: { gt: string } }).id = { gt: cursor };
     }
 
-    const threads = await prisma.thread.findMany({
+    const batch = await prisma.thread.findMany({
       where: whereClause as never,
-      select: { id: true },
+      select: { id: true, lastVerifiedAt: true, verifiedAt: true },
       orderBy: { id: 'asc' },
       take: STALE_BATCH_SIZE,
     });
 
-    if (threads.length === 0) break;
+    if (batch.length === 0) break;
 
-    await prisma.thread.updateMany({
-      where: { id: { in: threads.map((t) => t.id) } },
-      data: { isOutdated: true, lastVerifiedAt: new Date() },
-    });
+    const staleIds = batch.filter((t) => isStale(t.lastVerifiedAt, t.verifiedAt as Date | null)).map((t) => t.id);
 
-    updated += threads.length;
-    checked += threads.length;
-    cursor = threads[threads.length - 1].id;
+    if (staleIds.length > 0) {
+      await prisma.thread.updateMany({
+        where: { id: { in: staleIds } },
+        data: { isOutdated: true, lastVerifiedAt: new Date() },
+      });
+      updated += staleIds.length;
+    }
+    checked += batch.length;
+    cursor = batch[batch.length - 1].id;
 
-    if (threads.length < STALE_BATCH_SIZE) break;
+    if (batch.length < STALE_BATCH_SIZE) break;
   }
 
   logger.info(`[worker:ai] staleness batch check complete — ${checked} checked, ${updated} updated`);
@@ -268,7 +268,7 @@ export async function handleStalenessCheckJob(data: StalenessCheckJobData) {
 
   const thread = await prisma.thread.findFirst({
     where: { id: threadId!, deletedAt: null },
-    select: { id: true, updatedAt: true, resolutionScore: true, isOutdated: true },
+    select: { id: true, lastVerifiedAt: true, verifiedAt: true, isOutdated: true },
   });
 
   if (!thread) {
@@ -280,7 +280,7 @@ export async function handleStalenessCheckJob(data: StalenessCheckJobData) {
     return { handled: true, checked: 1, updated: 0 };
   }
 
-  if (isStale(thread.updatedAt, thread.resolutionScore)) {
+  if (isStale(thread.lastVerifiedAt, thread.verifiedAt)) {
     await prisma.thread.update({
       where: { id: threadId! },
       data: { isOutdated: true, lastVerifiedAt: new Date() },
@@ -366,4 +366,35 @@ export async function handleAIInsightNotificationsJob(data: AIInsightNotificatio
     isOutdated,
     conflictResult,
   );
+}
+
+export async function handleDeepResearchJob(data: import('../types').DeepResearchJobData) {
+  logger.info('[worker:ai] deep-research job', { query: data.query, userId: data.userId });
+  await assertSpendCapAvailable();
+  let expertiseLevel: string | undefined;
+  try {
+    const u = await prisma.user.findUnique({ where: { id: data.userId }, select: { preferences: true } });
+    expertiseLevel = (u?.preferences as unknown as { expertiseLevel?: string })?.expertiseLevel;
+  } catch {}
+  const { executeAISearch } = await import('@/modules/ai-search/service');
+  const result = await runAiGeneration('deep-research', data.query, () =>
+    executeAISearch(
+      data.query,
+      { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
+      { exa: process.env.SASTRAM_EXA_KEY ?? '', tavily: process.env.SASTRAM_TAVILY_KEY ?? '', gemini: process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '' },
+      undefined,
+      expertiseLevel
+    )
+  );
+  if (!result.ok) return { skipped: true };
+
+  await dispatch({
+    recipients: { userIds: [data.userId] },
+    category: 'AI_INSIGHT',
+    title: 'Deep research ready',
+    message: `Your deep research for "${data.query.slice(0, 60)}" is ready.`,
+    data: { query: data.query, sessionId: data.sessionId, collectionId: data.collectionId },
+  });
+
+  return { query: data.query, done: true };
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Source } from '@/modules/ai-search/types';
 import { toasts } from '@/lib/utils/toast';
 import { Button } from '@/components/ui/button';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 /* ─────────────────────────────────────────────────────────
  * STREAMING TEXT
@@ -205,6 +206,8 @@ export function StreamingText({
   onRetry,
   onFeedback,
 }: StreamingTextProps) {
+  const { prefs } = useUserPreferences();
+  const showProvenance = (prefs as unknown as { sourceProvenanceEnabled?: boolean }).sourceProvenanceEnabled !== false;
   const [count, setCount] = useState(fromHistory ? Infinity : 0);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const allTokens = buildTokens(text, sources);
@@ -435,7 +438,7 @@ export function StreamingText({
           )}
         </div>
 
-        {displayedSources.length > 0 && (
+        {showProvenance && displayedSources.length > 0 && (
           <Button
             type="button"
             aria-expanded={sourcesOpen}
@@ -461,7 +464,7 @@ export function StreamingText({
       </div>
 
       {/* Sources drawer */}
-      {displayedSources.length > 0 && (
+      {showProvenance && displayedSources.length > 0 && (
         <div
           className="grid transition-[grid-template-rows,opacity] duration-300"
           style={{
@@ -471,22 +474,33 @@ export function StreamingText({
           }}
         >
           <div className="overflow-hidden">
-            <div className="mt-1.5 flex flex-col rounded-card bg-inset p-1 shadow-hairline max-h-[min(50vh,360px)] overflow-y-auto overscroll-contain">
+            <div className="mt-1.5 flex flex-col rounded-card bg-inset p-1 shadow-hairline max-h-[min(50vh,360px)] overflow-y-auto overscroll-contain gap-0.5">
               {displayedSources.map((source) => (
                 <a
                   key={source.id}
                   href={source.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 rounded-control px-1.5 py-1 text-[12px] text-ink-2 transition-colors duration-150 hover:bg-hover hover:text-ink"
+                  className="flex flex-col gap-1 rounded-control px-2 py-1.5 text-[12px] transition-colors duration-150 hover:bg-hover group"
                 >
-                  <span className="size-4 rounded-control bg-ink/10 flex items-center justify-center shrink-0">
-                    <svg width="9" height="9" viewBox="0 0 16 16" fill="var(--ink-3)">
-                      <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"/>
-                    </svg>
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-surface border border-line px-1.5 py-0.5 text-[10px] font-medium text-ink-2 shrink-0">
+                      T{source.tier}
+                    </span>
+                    <span className="flex-1 min-w-0 truncate font-medium text-ink group-hover:text-ink">{source.title || source.domain}</span>
+                    <span className="ml-auto font-mono text-[10.5px] text-ink-3 shrink-0">{source.domain}</span>
                   </span>
-                  <span className="animated-underline flex-1 min-w-0 truncate">{source.title || source.domain}</span>
-                  <span className="ml-auto font-mono text-[10.5px] text-ink-3 shrink-0">{source.domain}</span>
+                  <span className="flex items-center gap-2 text-[11px] text-ink-3">
+                    <span className="h-1 flex-1 max-w-[60px] rounded-full bg-field overflow-hidden">
+                      <span className="block h-full bg-sai-accent" style={{ width: `${Math.round(source.confidence)}%` }} />
+                    </span>
+                    <span className="tabular-nums">{Math.round(source.confidence)}%</span>
+                    <span className="size-1.5 rounded-full shrink-0" style={{ background: source.provider === 'exa' ? 'var(--sai-accent)' : 'var(--sai-green)' }} title={source.provider} />
+                    <span className="truncate">{source.provider}</span>
+                    {source.publishedDate && <span className="truncate">· {new Date(source.publishedDate).toLocaleDateString()}</span>}
+                    {source.isOutdated && <span className="text-sai-orange">· outdated</span>}
+                    {!source.contentFetched && <span className="text-ink-3">· snippet only</span>}
+                  </span>
                 </a>
               ))}
             </div>

@@ -55,5 +55,7 @@ export interface ThreadDetail extends ThreadSummary {
   resolutionScore?: number | null;
   threadDna?: ThreadDNA;
   lastVerifiedAt?: Date | null;
+  verifiedAt?: Date | null;
+  verifiedBy?: string | null;
   isOutdated?: boolean;
 }

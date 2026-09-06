@@ -12,6 +12,8 @@ import { persistSearchSession } from '@/modules/ai-search/repository';
 import { consumeIdempotencyKey } from '@/lib/services/idempotency';
 import { env } from '@/lib/config/env';
 import { sseChunk, blockedStream, sseHeaders } from '@/lib/utils/sse';
+import { refreshUserExpertise } from '@/lib/services/user-memory';
+import { prisma } from '@/lib/infrastructure/prisma';
 
 export const maxDuration = 30;
 
@@ -263,6 +265,14 @@ function buildLiveStream(
       try {
         sendEvent({ phase: 'searching' });
 
+        // KISS: fetch expertiseLevel from User.preferences for personalized depth
+        let expertiseLevel: string | undefined;
+        try {
+          const u = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
+          const prefs = u?.preferences as unknown as { expertiseLevel?: string } | null;
+          if (prefs?.expertiseLevel) expertiseLevel = prefs.expertiseLevel;
+        } catch {}
+
         const result = await executeAISearch(
           params.effectiveQuery,
           params.config,
@@ -272,7 +282,8 @@ function buildLiveStream(
             gemini: params.keys.geminiKey,
             openai: params.keys.openaiKey,
           },
-          params.conversationHistory
+          params.conversationHistory,
+          expertiseLevel
         );
 
         sendEvent({ phase: 'reading', sources: result.sources });
@@ -313,6 +324,8 @@ function buildLiveStream(
             logger.error('[forum-search] cache write failed', { error: e })
           );
         }
+
+        void refreshUserExpertise(session.user.id).catch(() => {});
 
         sendEvent({
           phase: 'done',

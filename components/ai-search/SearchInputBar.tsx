@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import { Send, Loader2, Plus } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { Send, Loader2, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 const TEXTAREA_MAX_HEIGHT = 120;
 const MIN_QUERY_LENGTH = 3;
@@ -24,6 +25,9 @@ export function SearchInputBar({
   isChatActive,
   onNewSearch,
 }: SearchInputBarProps) {
+  const [deep, setDeep] = useState(false);
+  const { prefs } = useUserPreferences();
+  const deepEnabled = (prefs as unknown as { deepResearchEnabled?: boolean }).deepResearchEnabled !== false;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function resizeTextarea() {
@@ -37,11 +41,22 @@ export function SearchInputBar({
     resizeTextarea();
   }, [query]);
 
+  async function handleDeep() {
+    if (query.trim().length < MIN_QUERY_LENGTH || isStreaming) return;
+    await fetch('/api/ai/deep-research', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query.trim() }),
+    });
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (query.trim().length >= MIN_QUERY_LENGTH && !isStreaming) {
-        onSubmit();
+        if (deep) handleDeep();
+        else onSubmit();
         if (textareaRef.current) {
           textareaRef.current.style.height = 'auto';
         }
@@ -52,8 +67,22 @@ export function SearchInputBar({
   return (
     <div className="sticky bottom-0 z-10 bg-surface border-t border-line px-4 md:px-6 py-3">
       <div className="max-w-3xl mx-auto">
-        {/* swapped colors for contrast + Claude-like pill */}
-        <div className="flex items-center gap-2 bg-canvas border border-line-strong rounded-full shadow-sm px-2 py-2 focus-within:border-sai-accent/30 focus-within:ring-2 focus-within:ring-sai-accent/10 focus-within:shadow-md transition-all">
+        {/* pill — Deep toggle respects settings */}
+        <div className="flex items-center gap-1.5 bg-canvas border border-line-strong rounded-full shadow-sm px-2 py-2 focus-within:border-sai-accent/30 focus-within:ring-2 focus-within:ring-sai-accent/10 focus-within:shadow-md transition-all">
+          {deepEnabled && (
+            <Button
+              type="button"
+              variant={deep ? 'default' : 'ghost'}
+              size="sm"
+              aria-pressed={deep}
+              onClick={() => setDeep((v) => !v)}
+              className={`h-7 rounded-full gap-1 px-2.5 text-xs ${deep ? 'bg-sai-accent text-white' : 'hover:bg-hover'}`}
+              title="Deep research — 20+ sources, 3-5 min"
+            >
+              <Sparkles size={12} /> Deep
+            </Button>
+          )}
+
           <textarea
             ref={textareaRef}
             value={query}
@@ -61,16 +90,16 @@ export function SearchInputBar({
               onQueryChange(e.target.value);
             }}
             onKeyDown={handleKeyDown}
-            placeholder={isChatActive ? 'Ask a follow-up question...' : 'Search across Sastram...'}
+            placeholder={isChatActive ? 'Ask a follow-up question...' : deep ? 'Deep research — ask anything...' : 'Search across Sastram...'}
             rows={1}
-            className="flex-1 min-w-0 resize-none bg-transparent px-3 py-1.5 text-[15px] leading-5 text-ink placeholder:text-ink-3 focus:outline-none"
+            className="flex-1 min-w-0 resize-none bg-transparent px-2 py-1.5 text-[15px] leading-5 text-ink placeholder:text-ink-3 focus:outline-none"
             style={{ minHeight: '24px', maxHeight: '120px' }}
           />
 
           <Button
             type="button"
             size="icon"
-            onClick={onSubmit}
+            onClick={() => (deep ? handleDeep() : onSubmit())}
             disabled={isStreaming || query.trim().length < MIN_QUERY_LENGTH}
             aria-label="Send"
             className="shrink-0 size-8 rounded-full bg-sai-accent text-white shadow-btn hover:bg-sai-accent/90 disabled:bg-field disabled:text-ink-3 disabled:shadow-none disabled:border disabled:border-line"

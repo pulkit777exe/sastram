@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils/cn';
 import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 import { truncateHistoryLabel, groupByHistoryDate } from '@/lib/utils/format';
 
 export interface HistoryItem {
@@ -191,6 +192,9 @@ export function SaiSearchLayout({
         </Button>
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {!isPendingDelete && <span className="text-xs text-ink-3 pointer-events-none">{item.sourceCount} src</span>}
+          <span className="hidden group-hover:block">
+            <CollectionSaveButton sessionId={item.id} />
+          </span>
           <Button type="button"
             onClick={(e) => handleDeleteClick(item.id, e)}
             variant="ghost"

@@ -7,4 +7,5 @@ export enum AIJobType {
   SEND_AI_INSIGHT_NOTIFICATIONS = 'send-ai-insight-notifications',
   GENERATE_AI_INLINE = 'generate-ai-inline',
   STALENESS_CHECK = 'staleness-check',
+  GENERATE_DEEP_RESEARCH = 'generate-deep-research',
 }

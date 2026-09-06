@@ -84,3 +84,10 @@ export async function updateThreadStaleness(threadId: string, isOutdated: boolea
     data: { isOutdated, lastVerifiedAt: new Date() },
   });
 }
+
+export async function updateThreadVerified(threadId: string, userId: string): Promise<void> {
+  await prisma.thread.update({
+    where: { id: threadId },
+    data: { verifiedAt: new Date(), verifiedBy: userId, isOutdated: false, lastVerifiedAt: new Date() },
+  });
+}
