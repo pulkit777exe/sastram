@@ -398,7 +398,8 @@ async function fetchThreadRow(slug: string, uid: string): Promise<ThreadRow | nu
           'createdAt', p."createdAt"
         ) as poll
         FROM "polls" p
-        WHERE p."threadId" = s.id AND p."messageId" IS NULL
+        WHERE p."threadId" = s.id
+          AND (CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='polls' AND column_name='messageId') THEN p."messageId" IS NULL ELSE true END)
       ) poll ON true
       LEFT JOIN LATERAL (
         SELECT
