@@ -9,6 +9,8 @@ interface ThreadResolutionCardProps {
   threadId: string;
   score: number | null | undefined;
   lastVerifiedAt: Date | string | null;
+  verifiedAt?: Date | string | null;
+  verifiedBy?: string | null;
 }
 
 let cachedSnapshot = Date.now();
@@ -49,18 +51,22 @@ export default function ThreadResolutionCard({
   threadId,
   score,
   lastVerifiedAt,
+  verifiedAt,
+  verifiedBy,
 }: ThreadResolutionCardProps) {
   const now = useSyncExternalStore(subscribeToClock, getClockSnapshot, getClockSnapshot);
 
-  const lastVerifiedRef = lastVerifiedAt ?? null;
-  const lastVerifiedDays = lastVerifiedRef
-    ? Math.floor((now - new Date(lastVerifiedRef).getTime()) / (1000 * 60 * 60 * 24))
+  const verifiedRef = verifiedAt ?? lastVerifiedAt ?? null;
+  const provenanceAt = verifiedAt ? new Date(verifiedAt) : lastVerifiedAt ? new Date(lastVerifiedAt) : null;
+  const provenanceDays = provenanceAt
+    ? Math.floor((now - provenanceAt.getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
-  const { confidence } = lastVerifiedRef
-    ? computeConfidence(new Date(lastVerifiedRef))
+  const { confidence } = verifiedRef
+    ? computeConfidence(new Date(verifiedRef))
     : { confidence: 0 };
   const isStale = confidence < 1;
+  const effectiveScore = score != null ? Math.round(score * confidence) : null;
 
   if (score === null || score === undefined) {
     return (
@@ -93,12 +99,24 @@ export default function ThreadResolutionCard({
         <div className={`h-full rounded-full transition-[width] duration-500 ease-out ${barClass}`} style={{ width: `${score}%` }} />
       </div>
 
+      {effectiveScore !== null && confidence < 1 && (
+        <p className="text-xs text-ink-3">
+          Effective <span className="font-medium text-ink-2 tabular-nums">{effectiveScore}/100</span> at {Math.round(confidence * 100)}% confidence
+        </p>
+      )}
+
+      {verifiedAt && (
+        <p className="text-xs text-ink-3">
+          Verified by {verifiedBy ? 'OP' : 'moderator'} {provenanceDays !== null ? `${provenanceDays}d ago` : ''}
+        </p>
+      )}
+
       {isStale && (
         <div className="mt-1 flex items-center justify-between gap-3 rounded-control bg-orange-tint border border-line px-3 py-2.5">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-sai-orange">Confidence aged</p>
             <p className="text-xs text-ink-2">
-              Last verified {lastVerifiedDays !== null && lastVerifiedDays > 90 ? `${Math.floor(lastVerifiedDays / 30)} months` : `${lastVerifiedDays} days`} ago
+              Last verified {provenanceDays !== null && provenanceDays > 90 ? `${Math.floor(provenanceDays / 30)} months` : `${provenanceDays} days`} ago
             </p>
           </div>
           <VerifyNowButton threadId={threadId} />

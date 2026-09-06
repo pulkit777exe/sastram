@@ -201,14 +201,14 @@ export async function handleDailyDigestJob(data: DailyDigestJobData) {
 // staleness-check
 // ------------------------------------------------------------------
 
-const STALE_THRESHOLD_DAYS = 30;
-const RESOLUTION_SCORE_THRESHOLD = 50;
 const STALE_BATCH_SIZE = 100;
 
-function isStale(updatedAt: Date, resolutionScore: number | null): boolean {
-  const ageDays = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-  if (ageDays < STALE_THRESHOLD_DAYS) return false;
-  return resolutionScore === null || resolutionScore < RESOLUTION_SCORE_THRESHOLD;
+function isStale(lastVerifiedAt: Date | null, verifiedAt: Date | null): boolean {
+  const provenanceAt = verifiedAt ?? lastVerifiedAt;
+  if (!provenanceAt) return true;
+  // KISS: single writer via computeConfidence — <0.5 ~30+90 days
+  const { computeConfidence } = require('@/modules/threads/confidence-decay');
+  return computeConfidence(provenanceAt).confidence < 0.5;
 }
 
 async function handleStalenessBatchCheck() {
@@ -219,33 +219,34 @@ async function handleStalenessBatchCheck() {
   while (true) {
     const whereClause: Record<string, unknown> = {
       isOutdated: false,
-      updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000) },
-      OR: [{ resolutionScore: null }, { resolutionScore: { lt: RESOLUTION_SCORE_THRESHOLD } }],
       deletedAt: null,
     };
     if (cursor) {
       (whereClause as { id: { gt: string } }).id = { gt: cursor };
     }
 
-    const threads = await prisma.thread.findMany({
+    const batch = await prisma.thread.findMany({
       where: whereClause as never,
-      select: { id: true },
+      select: { id: true, lastVerifiedAt: true, verifiedAt: true },
       orderBy: { id: 'asc' },
       take: STALE_BATCH_SIZE,
     });
 
-    if (threads.length === 0) break;
+    if (batch.length === 0) break;
 
-    await prisma.thread.updateMany({
-      where: { id: { in: threads.map((t) => t.id) } },
-      data: { isOutdated: true, lastVerifiedAt: new Date() },
-    });
+    const staleIds = batch.filter((t) => isStale(t.lastVerifiedAt, t.verifiedAt as Date | null)).map((t) => t.id);
 
-    updated += threads.length;
-    checked += threads.length;
-    cursor = threads[threads.length - 1].id;
+    if (staleIds.length > 0) {
+      await prisma.thread.updateMany({
+        where: { id: { in: staleIds } },
+        data: { isOutdated: true, lastVerifiedAt: new Date() },
+      });
+      updated += staleIds.length;
+    }
+    checked += batch.length;
+    cursor = batch[batch.length - 1].id;
 
-    if (threads.length < STALE_BATCH_SIZE) break;
+    if (batch.length < STALE_BATCH_SIZE) break;
   }
 
   logger.info(`[worker:ai] staleness batch check complete — ${checked} checked, ${updated} updated`);
@@ -268,7 +269,7 @@ export async function handleStalenessCheckJob(data: StalenessCheckJobData) {
 
   const thread = await prisma.thread.findFirst({
     where: { id: threadId!, deletedAt: null },
-    select: { id: true, updatedAt: true, resolutionScore: true, isOutdated: true },
+    select: { id: true, lastVerifiedAt: true, verifiedAt: true, isOutdated: true },
   });
 
   if (!thread) {
@@ -280,7 +281,7 @@ export async function handleStalenessCheckJob(data: StalenessCheckJobData) {
     return { handled: true, checked: 1, updated: 0 };
   }
 
-  if (isStale(thread.updatedAt, thread.resolutionScore)) {
+  if (isStale(thread.lastVerifiedAt, thread.verifiedAt)) {
     await prisma.thread.update({
       where: { id: threadId! },
       data: { isOutdated: true, lastVerifiedAt: new Date() },

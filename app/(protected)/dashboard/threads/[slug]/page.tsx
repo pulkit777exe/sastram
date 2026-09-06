@@ -153,12 +153,14 @@ async function ThreadSidebar({
   const threadDna = parseThreadDna(thread.threadDna);
   const visibleTopics = threadDna ? threadDna.topics.slice(0, MAX_VISIBLE_TOPICS) : [];
 
-  return (
+    return (
     <aside className="flex flex-col gap-4 p-5">
       <ThreadResolutionCard
         threadId={thread.id}
         score={thread.resolutionScore}
         lastVerifiedAt={thread.lastVerifiedAt ?? thread.updatedAt}
+        verifiedAt={(thread as unknown as { verifiedAt?: Date | null }).verifiedAt ?? null}
+        verifiedBy={(thread as unknown as { verifiedBy?: string | null }).verifiedBy ?? null}
       />
 
       <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
