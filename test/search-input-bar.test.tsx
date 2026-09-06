@@ -99,7 +99,7 @@ describe('SearchInputBar', () => {
         })}
       />
     );
-    const submitBtn = screen.getByRole('button') as HTMLButtonElement;
+    const submitBtn = screen.getByLabelText('Send') as HTMLButtonElement;
     expect(submitBtn.disabled).to.be.true;
   });
 
@@ -111,7 +111,7 @@ describe('SearchInputBar', () => {
         })}
       />
     );
-    const submitBtn = screen.getByRole('button') as HTMLButtonElement;
+    const submitBtn = screen.getByLabelText('Send') as HTMLButtonElement;
     expect(submitBtn.disabled).to.be.true;
   });
 
@@ -170,8 +170,7 @@ describe('SearchInputBar', () => {
         })}
       />
     );
-    const buttons = screen.getAllByRole('button');
-    fireEvent.click(buttons[0]);
+    fireEvent.click(screen.getByLabelText('Send'));
     expect(submitted).to.be.true;
   });
 });
