@@ -20,7 +20,7 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
 
   const body = bodySchema.parse(await request.json());
 
-  const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { name: true } });
+  const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { name: true, resolutionScore: true, isOutdated: true } });
   if (!thread) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
 
   const messages = await prisma.message.findMany({
@@ -49,5 +49,15 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
     cronJob: false,
   });
 
-  return NextResponse.json(ok({ queued: true }));
+  await enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, {
+    threadId,
+    messages: challengeMessages as never,
+    subscriberIds: subscribers.map((s) => s.userId!),
+    threadName: thread.name,
+    oldScore: thread.resolutionScore,
+    isOutdated: thread.isOutdated,
+    cronJob: false,
+  });
+
+  return NextResponse.json(ok({ queued: true, jobs: 2 }));
 });
