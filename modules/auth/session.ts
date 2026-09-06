@@ -10,7 +10,7 @@ import { AppError } from '@/lib/utils/errors';
 import { isAdmin } from '@/lib/config/permissions';
 import { requireThreadAccessOrThrow, requireThreadWriteOrThrow } from '@/lib/thread-access';
 
-export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status'>;
+export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status' | 'preferences'>;
 
 export interface SessionPayload {
   user: SessionUser;
@@ -27,11 +27,11 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
 
   const { user } = session;
 
-  async function tryFetchWithLogging(attempt: number): Promise<Pick<User, 'role' | 'status'> | null> {
+  async function tryFetchWithLogging(attempt: number): Promise<Pick<User, 'role' | 'status' | 'preferences'> | null> {
     try {
       return await prisma.user.findUnique({
         where: { id: user.id, deletedAt: null },
-        select: { role: true, status: true },
+        select: { role: true, status: true, preferences: true },
       });
     } catch (err) {
       logger.warn('[auth] Failed to fetch full user profile', {
@@ -63,6 +63,7 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
       image: user.image ?? null,
       role: fullUser.role as Role,
       status: fullUser.status,
+      preferences: (fullUser as unknown as { preferences: unknown }).preferences ?? {},
     },
   };
 });
