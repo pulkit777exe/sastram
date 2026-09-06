@@ -12,6 +12,7 @@ import { persistSearchSession } from '@/modules/ai-search/repository';
 import { consumeIdempotencyKey } from '@/lib/services/idempotency';
 import { env } from '@/lib/config/env';
 import { sseChunk, blockedStream, sseHeaders } from '@/lib/utils/sse';
+import { refreshUserExpertise } from '@/lib/services/user-memory';
 
 export const maxDuration = 30;
 
@@ -313,6 +314,8 @@ function buildLiveStream(
             logger.error('[forum-search] cache write failed', { error: e })
           );
         }
+
+        void refreshUserExpertise(session.user.id).catch(() => {});
 
         sendEvent({
           phase: 'done',

@@ -9,6 +9,7 @@ import { buildThreadSlug } from '@/modules/threads/slug';
 import { createThread, deleteThread, updateThreadVerified } from './threads-write/repository';
 import { infraThreadSideEffects } from './adapters/infra-side-effects';
 import { buildThreadDTO } from './service';
+import { refreshUserExpertise } from '@/lib/services/user-memory';
 import { getThreadMessagesPaginated, type ThreadMessage } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
 import { ROUTES } from '@/lib/config/routes';
@@ -97,6 +98,8 @@ export const createThreadAction = createServerAction(
           },
         });
       }
+
+      void refreshUserExpertise(session.user.id).catch(() => {});
 
       if (pollQuestion && pollOptions && pollOptions.length >= 2) {
         const summary = buildThreadDTO(result.thread, result.messageCount, 0);
