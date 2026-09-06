@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils/cn';
+import { CodeRunner } from '@/components/thread/code-runner';
 
 // Inline formatting regexes — named constants with comments for readability
 // Matches complete **bold** pairs — a lone '**' during streaming is left as-is
@@ -71,109 +70,8 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-const LANG_DISPLAY: Record<string, string> = {
-  js: 'JavaScript', javascript: 'JavaScript', jsx: 'JSX',
-  ts: 'TypeScript', typescript: 'TypeScript', tsx: 'TSX',
-  py: 'Python', python: 'Python',
-  rb: 'Ruby', ruby: 'Ruby',
-  go: 'Go',
-  rs: 'Rust', rust: 'Rust',
-  java: 'Java',
-  cs: 'C#', csharp: 'C#',
-  cpp: 'C++', c: 'C',
-  html: 'HTML', css: 'CSS', scss: 'SCSS',
-  json: 'JSON', yaml: 'YAML', toml: 'TOML',
-  sql: 'SQL', graphql: 'GraphQL',
-  sh: 'Shell', bash: 'Bash', zsh: 'Zsh',
-  md: 'Markdown', markdown: 'Markdown',
-  diff: 'Diff', dockerfile: 'Dockerfile',
-  prisma: 'Prisma',
-};
-
 function CodeBlock({ lang, code }: { lang: string; code: string }) {
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = React.useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard denied — leave the button in its idle state.
-    }
-  }, [code]);
-
-  const displayLang = LANG_DISPLAY[lang.toLowerCase()] ?? lang ?? '';
-
-  return (
-    <div
-      className="my-2.5 animate-in fade-in duration-200 rounded-control overflow-hidden border border-line/60"
-      style={{ background: 'var(--background)' }}
-    >
-      <div
-        className="flex items-center justify-between px-3 py-1.5 border-b border-line/40"
-        style={{ background: 'var(--card)' }}
-      >
-        <span
-          className="font-mono text-xs uppercase tracking-[0.12em] select-none"
-          style={{ color: 'var(--muted-foreground)' }}
-        >
-          {displayLang || 'code'}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCopy}
-          className={cn(
-            'flex items-center gap-1.5 rounded-control px-2 py-0.5 text-xs font-medium',
-            copied
-              ? 'text-emerald-600 bg-emerald-600/10'
-              : 'text-muted-foreground bg-transparent'
-          )}
-          aria-label="Copy code"
-        >
-          <span
-            className="t-icon-swap"
-            data-state={copied ? 'b' : 'a'}
-            style={{ display: 'inline-grid' }}
-          >
-            <svg
-              data-icon="a"
-              className="t-icon"
-              width="11"
-              height="11"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-            >
-              <rect x="5" y="5" width="9" height="9" rx="2" />
-              <path d="M11 5V3a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
-            </svg>
-            <svg
-              data-icon="b"
-              className="t-icon"
-              width="11"
-              height="11"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M2 8l4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-          {copied ? 'Copied' : 'Copy'}
-        </Button>
-      </div>
-      <pre
-        className="overflow-x-auto p-3 text-xs leading-[1.6] font-mono"
-        style={{ color: 'var(--foreground)', background: 'var(--background)' }}
-      >
-        <code>{code}</code>
-      </pre>
-    </div>
-  );
+  return <CodeRunner lang={lang} code={code} />;
 }
 
 type MatchCandidate = { type: string; match: RegExpMatchArray; index: number };
