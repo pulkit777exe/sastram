@@ -169,8 +169,13 @@ function UserAuthForm({
                 setMode('otp-verify');
                 setCountdown(RESEND_COUNTDOWN);
                 setTimeout(() => inputRefs.current[0]?.focus(), 100);
+              } else {
+                setError(otpData.error?.message || 'Failed to send verification code');
               }
-            } catch {}
+            } catch (err) {
+              clientLogger.error('LoginForm', 'send OTP after not-verified failed', err);
+              setError('Failed to send verification code. Please try again.');
+            }
           }
           setError(result.error.message || 'Login failed. Please check your credentials.');
           setLoadingState(null);

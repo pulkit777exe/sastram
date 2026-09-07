@@ -5,6 +5,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { dispatch } from '@/modules/notifications/dispatcher';
+import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
 
 const paramsSchema = z.object({ threadId: z.string().cuid() });
@@ -41,13 +42,13 @@ export const POST = withErrorHandling(async (_: Request, context?: { params: Pro
 
   if (sorted.length === 0) return NextResponse.json(ok({ invited: [] }));
 
-  // Create invitations
+  // Create invitations — duplicate invite is expected (unique constraint), log at debug
   for (const userId of sorted) {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
     if (!user?.email) continue;
     await prisma.threadInvitation.create({
       data: { threadId, senderId: session.user.id, email: user.email, status: 'PENDING' },
-    }).catch(() => {});
+    }).catch((err) => logger.debug('[route-experts] invitation create skipped (likely duplicate)', { userId, error: err }));
   }
 
   await dispatch({

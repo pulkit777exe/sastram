@@ -90,7 +90,9 @@ function VideoPlayer({ file }: { file: Attachment }) {
       setIsPlaying(false);
       return;
     }
-    video.play().then(() => setIsPlaying(true)).catch(() => {});
+    video.play().then(() => setIsPlaying(true)).catch(() => {
+      // Autoplay may be blocked by the browser — not an error to surface to the user.
+    });
   };
 
   const toggleMute = (e: React.MouseEvent) => {

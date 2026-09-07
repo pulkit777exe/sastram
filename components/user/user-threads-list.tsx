@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { MessageSquare, Calendar, Users } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ROUTES } from '@/lib/config/routes';
+import { Button } from '@/components/ui/button';
 
 interface Thread {
   id: string;
@@ -23,9 +24,15 @@ interface UserThreadsListProps {
 export function UserThreadsList({ threads }: UserThreadsListProps) {
   if (threads.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p>No threads yet</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center rounded-card border border-dashed border-line bg-surface">
+        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+          <MessageSquare size={22} className="text-muted-foreground" />
+        </div>
+        <p className="text-lg font-semibold text-ink">No threads yet</p>
+        <p className="text-sm text-ink-3 mt-1 max-w-sm">This user hasn&apos;t created any threads yet.</p>
+        <Button asChild variant="outline" size="sm" className="mt-4">
+          <Link href="/dashboard/threads">Browse threads</Link>
+        </Button>
       </div>
     );
   }

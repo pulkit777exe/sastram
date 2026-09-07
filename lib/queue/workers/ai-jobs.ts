@@ -375,7 +375,9 @@ export async function handleDeepResearchJob(data: import('../types').DeepResearc
   try {
     const u = await prisma.user.findUnique({ where: { id: data.userId }, select: { preferences: true } });
     expertiseLevel = (u?.preferences as unknown as { expertiseLevel?: string })?.expertiseLevel;
-  } catch {}
+  } catch (err) {
+    logger.debug('[deep-research] failed to load expertiseLevel', { error: err });
+  }
   const { executeAISearch } = await import('@/modules/ai-search/service');
   const result = await runAiGeneration('deep-research', data.query, () =>
     executeAISearch(

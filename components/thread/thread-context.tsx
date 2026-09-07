@@ -28,7 +28,7 @@ interface ThreadUIStateContextValue {
   collapsedIds: Set<string>;
   allMessages: Message[];
   animateMessageId: string | null;
-  aiInlineStatus: Record<string, 'pending' | 'failed'>;
+  aiInlineStatus: Record<string, 'pending' | 'failed' | 'limited'>;
 }
 
 const ThreadDataContext = createContext<ThreadDataContextValue | null>(null);

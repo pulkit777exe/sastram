@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SynthesisCard } from '@/components/ai-search/SynthesisCard';
 import { TaskSteps } from '@/components/ai-search/TaskSteps';
@@ -86,6 +86,8 @@ interface ChatMessageListProps {
   onRetry: (style: RetryStyle) => void;
   onFeedback: (type: FeedbackType, reason?: string) => void;
   onNewSearch: () => void;
+  onRetryLast?: () => void;
+  onAbort?: () => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -102,6 +104,8 @@ export function ChatMessageList({
   onRetry,
   onFeedback,
   onNewSearch,
+  onRetryLast,
+  onAbort,
   messagesEndRef,
 }: ChatMessageListProps) {
   return (
@@ -126,11 +130,25 @@ export function ChatMessageList({
               failed={taskFailed}
               label="Search progress"
             />
+            {streamingMessage.sources && streamingMessage.sources.length > 0 && (
+              <p className="text-xs text-ink-3">
+                Found {streamingMessage.sources.length} source{streamingMessage.sources.length !== 1 ? 's' : ''} — cross-referencing…
+              </p>
+            )}
 
             {slowHint && (
               <p className="text-xs text-ink-2 animate-pulse">
                 This is taking longer than usual — still working on it…
               </p>
+            )}
+
+            {onAbort && (
+              <div className="flex justify-start">
+                <Button variant="ghost" size="sm" onClick={onAbort} className="h-7 gap-1.5 text-xs text-ink-3 hover:text-ink">
+                  <X size={12} />
+                  Cancel search
+                </Button>
+              </div>
             )}
 
             {streamingMessage.text && (
@@ -192,12 +210,19 @@ export function ChatMessageList({
               {isOffline ? "You're offline" : 'Something went wrong'}
             </h2>
             <p className="text-sm text-ink-2 max-w-md mb-6">{errorMessage}</p>
-            <Button
-              onClick={onNewSearch}
-              className="px-4 py-2 text-sm font-medium"
-            >
-              {isOffline ? 'Retry when back online' : 'Try Again'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => (onRetryLast ? onRetryLast() : onNewSearch())}
+                className="px-4 py-2 text-sm font-medium"
+              >
+                {isOffline ? 'Retry when back online' : 'Try again'}
+              </Button>
+              {onRetryLast && (
+                <Button variant="outline" onClick={onNewSearch} className="px-4 py-2 text-sm font-medium">
+                  New search
+                </Button>
+              )}
+            </div>
           </div>
         )}
 

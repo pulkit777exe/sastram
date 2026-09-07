@@ -96,7 +96,7 @@ function InputBar({ onNewSearchInitial }: { onNewSearchInitial: string }) {
 function MessageList() {
   const {
     state: { messages, streamingMessage, appState, currentStep, taskFailed, slowHint, errorMessage, isOffline },
-    actions: { run, newSearch },
+    actions: { run, newSearch, abort },
   } = useSearch();
   const {
     state: { query, lastConfig },
@@ -115,6 +115,10 @@ function MessageList() {
     const styled = style === 'same' ? query : `${query} (Please provide a ${style} response)`;
     run(styled, lastConfig);
   }
+  function handleRetryLast() {
+    if (!query) return;
+    run(query, lastConfig);
+  }
   function handleFeedback(_type: FeedbackType, _reason?: string) {}
 
   // Use derived isChatActive from context — not raw prop
@@ -132,6 +136,8 @@ function MessageList() {
       onRetry={handleRetry}
       onFeedback={handleFeedback}
       onNewSearch={() => newSearch(query)}
+      onRetryLast={handleRetryLast}
+      onAbort={abort}
       messagesEndRef={messagesEndRef}
     />
   );

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { Source } from '@/modules/ai-search/types';
 import { toasts } from '@/lib/utils/toast';
 import { Button } from '@/components/ui/button';
-import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 /* ─────────────────────────────────────────────────────────
  * STREAMING TEXT
@@ -206,10 +205,8 @@ export function StreamingText({
   onRetry,
   onFeedback,
 }: StreamingTextProps) {
-  const { prefs } = useUserPreferences();
-  const showProvenance = (prefs as unknown as { sourceProvenanceEnabled?: boolean }).sourceProvenanceEnabled !== false;
   const [count, setCount] = useState(fromHistory ? Infinity : 0);
-  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(true);
   const allTokens = buildTokens(text, sources);
   const done = !isStreaming && count >= allTokens.length;
 
@@ -438,7 +435,7 @@ export function StreamingText({
           )}
         </div>
 
-        {showProvenance && displayedSources.length > 0 && (
+        {displayedSources.length > 0 && (
           <Button
             type="button"
             aria-expanded={sourcesOpen}
@@ -459,12 +456,13 @@ export function StreamingText({
               ))}
             </span>
             <span className="text-[12px] text-ink-2">{displayedSources.length} source{displayedSources.length !== 1 ? 's' : ''}</span>
+            <span className="text-[10px] text-ink-3 ml-1">{sourcesOpen ? '▲' : '▼'}</span>
           </Button>
         )}
       </div>
 
-      {/* Sources drawer */}
-      {showProvenance && displayedSources.length > 0 && (
+      {/* Sources drawer — always visible provenance, expanded by default */}
+      {displayedSources.length > 0 && (
         <div
           className="grid transition-[grid-template-rows,opacity] duration-300"
           style={{

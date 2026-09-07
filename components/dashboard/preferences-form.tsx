@@ -301,30 +301,6 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             </div>
             <Switch checked={(prefs as unknown as { deepResearchEnabled?: boolean }).deepResearchEnabled ?? true} onCheckedChange={(v) => void updatePreference('deepResearchEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
           </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base font-medium text-foreground">Collections</Label>
-              <p className="text-sm text-muted-foreground">Save threads + searches into workspaces.</p>
-            </div>
-            <Switch checked={(prefs as unknown as { collectionsEnabled?: boolean }).collectionsEnabled ?? true} onCheckedChange={(v) => void updatePreference('collectionsEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base font-medium text-foreground">Graph Explorer</Label>
-              <p className="text-sm text-muted-foreground">Show semantic thread graph.</p>
-            </div>
-            <Switch checked={(prefs as unknown as { graphEnabled?: boolean }).graphEnabled ?? true} onCheckedChange={(v) => void updatePreference('graphEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base font-medium text-foreground">Source Provenance</Label>
-              <p className="text-sm text-muted-foreground">Show tier, freshness, confidence in drawer.</p>
-            </div>
-            <Switch checked={(prefs as unknown as { sourceProvenanceEnabled?: boolean }).sourceProvenanceEnabled ?? true} onCheckedChange={(v) => void updatePreference('sourceProvenanceEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
-          </div>
         </div>
       </div>
 
@@ -334,35 +310,22 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
             <Shield className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Resolution Engine</h2>
-            <p className="text-sm text-muted-foreground">Control verified resolution and decay.</p>
+            <h2 className="text-lg font-bold text-foreground">Trust &amp; Provenance</h2>
+            <p className="text-sm text-muted-foreground">Verified resolution and source provenance are always visible to keep research trustworthy.</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-base font-medium text-foreground">Verified Resolution</Label>
-              <p className="text-sm text-muted-foreground">Allow OP/admin to mark threads verified.</p>
-            </div>
-            <Switch checked={(prefs as unknown as { verifiedResolutionEnabled?: boolean }).verifiedResolutionEnabled ?? true} onCheckedChange={(v) => void updatePreference('verifiedResolutionEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base font-medium text-foreground">Confidence Decay Timeline</Label>
-              <p className="text-sm text-muted-foreground">Show effective score sparkline.</p>
-            </div>
-            <Switch checked={(prefs as unknown as { confidenceDecayEnabled?: boolean }).confidenceDecayEnabled ?? true} onCheckedChange={(v) => void updatePreference('confidenceDecayEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
               <Label className="text-base font-medium text-foreground">Challenge Mode</Label>
-              <p className="text-sm text-muted-foreground">Allow counter-source challenges.</p>
+              <p className="text-sm text-muted-foreground">Allow anyone to challenge claims with counter-sources.</p>
             </div>
             <Switch checked={(prefs as unknown as { challengeModeEnabled?: boolean }).challengeModeEnabled ?? true} onCheckedChange={(v) => void updatePreference('challengeModeEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
           </div>
+          <p className="text-xs text-ink-3 rounded-control bg-field border border-line px-3 py-2">
+            Collections, Graph explorer, Source provenance, and Verified resolution are always enabled — no toggle needed.
+          </p>
         </div>
       </div>
     </div>

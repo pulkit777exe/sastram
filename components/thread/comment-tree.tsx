@@ -69,7 +69,7 @@ interface CommentTreeProps {
     image: string | null;
     role?: string;
   };
-  aiInlineStatus?: Record<string, 'pending' | 'failed'>;
+  aiInlineStatus?: Record<string, 'pending' | 'failed' | 'limited'>;
   onOptimisticMessage?: (message: Message) => void;
   /**
    * Notified for messages posted from inline reply boxes, so the parent

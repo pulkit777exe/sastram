@@ -119,7 +119,7 @@ export function CreateThreadDialog() {
       if (result && 'error' in result && result.error) {
         toasts.error(result.error as string);
       } else {
-        toasts.success('Thread created');
+        toasts.success('Thread created', 'Sai is analyzing topics and resolution — open the thread to watch it update.');
         setOpen(false);
         router.refresh();
       }

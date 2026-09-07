@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Monitor, Smartphone, LogOut } from 'lucide-react';
+import { Monitor, Smartphone, LogOut, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { listSessionsAction, revokeSessionAction } from '@/modules/users/account-actions';
 
 interface SessionItem {
@@ -126,9 +127,32 @@ export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading sessions…</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <Loader2 size={14} className="animate-spin" />
+              Loading sessions…
+            </div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between rounded-control border border-line p-3">
+                <div className="flex items-center gap-3 flex-1">
+                  <Skeleton className="h-5 w-5 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-40" />
+                  </div>
+                </div>
+                <Skeleton className="h-7 w-16 rounded-control" />
+              </div>
+            ))}
+          </div>
         ) : sessions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No active sessions found.</p>
+          <div className="flex flex-col items-center justify-center py-10 text-center rounded-card border border-dashed border-line bg-muted/30">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+              <Monitor size={20} className="text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold text-ink">No active sessions</p>
+            <p className="text-xs text-ink-3 mt-1">You&apos;re signed in on this device only.</p>
+          </div>
         ) : (
           sessions.map((session) => {
             const { icon: Icon, label, detail } = parseUA(session.userAgent);

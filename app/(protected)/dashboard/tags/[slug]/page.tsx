@@ -4,6 +4,7 @@ import { ArrowLeft, Hash } from 'lucide-react';
 import { getSession } from '@/modules/auth';
 import { getTagBySlug, getThreadsByTag } from '@/modules/tags';
 import { TopicGrid } from '@/components/dashboard/topic-grid';
+import { Button } from '@/components/ui/button';
 
 export default async function TagDetailPage({ params }: { params: { slug: string } }) {
   const { slug } = await params;
@@ -41,12 +42,15 @@ export default async function TagDetailPage({ params }: { params: { slug: string
       </header>
 
       {threads.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Hash size={48} className="text-muted-foreground mb-4" />
-          <p className="text-lg font-semibold text-foreground">No threads with this tag</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Threads tagged with #{tag.name} will appear here.
-          </p>
+        <div className="flex flex-col items-center justify-center py-16 text-center rounded-card border border-dashed border-line bg-surface">
+          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Hash size={22} className="text-muted-foreground" />
+          </div>
+          <p className="text-lg font-semibold text-ink">No threads with this tag</p>
+          <p className="text-sm text-ink-3 mt-1 max-w-sm">Threads tagged with #{tag.name} will appear here.</p>
+          <Button asChild variant="outline" size="sm" className="mt-4">
+            <Link href="/dashboard/threads">Browse threads</Link>
+          </Button>
         </div>
       ) : (
         <TopicGrid topics={threads} />

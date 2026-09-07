@@ -21,7 +21,6 @@ import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
-import { SkeletonSwap } from '@/components/ui/skeleton-swap';
 
 interface MessageListProps {
   firstUnreadMessageId: string | null;
@@ -283,18 +282,13 @@ const MessageRow = React.memo(function MessageRow({
                 </Badge>
               )}
               {message.factCheckStatus === 'verified' && (
-                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-green-500/10 text-green-700 border-green-500/20">
+                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-emerald-500/10 text-emerald-700 border-emerald-500/20" title="Fact-checked and verified — sources confirm this claim">
                   ✓ verified
                 </Badge>
               )}
               {message.factCheckStatus === 'disputed' && (
-                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-red-500/10 text-red-700 border-red-500/20">
+                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-red-500/10 text-red-700 border-red-500/20" title="Fact-checked and disputed — sources contradict this claim">
                   ! disputed
-                </Badge>
-              )}
-              {message.factCheckStatus === 'unchecked' && (
-                <Badge variant="outline" className="px-1.5 py-px text-xs leading-none text-ink-3">
-                  unchecked
                 </Badge>
               )}
               {message.truncated && (
@@ -380,23 +374,23 @@ const MessageRow = React.memo(function MessageRow({
           )}
 
           {aiStatus === 'pending' && !message.isAiResponse && (
-            <SkeletonSwap
-              ready={false}
-              lines={2}
-              barHeight={12}
-              lineHeight={16}
-              className="mt-2 max-w-sm"
-              skeleton={
-                <div className="space-y-2">
-                  <div className="h-3 w-full bg-brand/10 rounded" />
-                  <div className="h-3 w-5/6 bg-brand/10 rounded" />
-                </div>
-              }
-            />
+            <div className="mt-2 flex items-center gap-2 rounded-control border border-brand/20 bg-brand/5 px-3 py-2">
+              <Loader2 size={12} className="animate-spin text-brand shrink-0" />
+              <span className="text-xs font-medium text-brand">Sai is drafting a reply…</span>
+              <span className="text-xs text-ink-3">a few seconds</span>
+            </div>
+          )}
+
+          {aiStatus === 'limited' && !message.isAiResponse && (
+            <div className="mt-2 flex items-center gap-2 rounded-control border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
+              <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">@sai limit reached</span>
+              <span className="text-xs text-amber-700/70 dark:text-amber-300/70">3 per thread per day — try tomorrow or continue without @sai.</span>
+            </div>
           )}
 
           {aiStatus === 'failed' && !message.isAiResponse && (
-            <p className="text-xs text-chart-4 mt-1">
+            <p className="text-xs text-sai-red mt-2 flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-sai-red shrink-0" />
               Sai couldn&apos;t process this. Try rephrasing your question.
             </p>
           )}

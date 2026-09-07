@@ -2,6 +2,7 @@ import { getBookmarkedThreads } from '@/modules/bookmarks/actions';
 import { getSession } from '@/modules/auth';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Bookmark, MessageSquare, Users, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
@@ -46,12 +47,15 @@ export default async function BookmarksPage() {
      </div>
 
       {bookmarks.length === 0 ? (
-        <Card className="p-6 md:p-12 text-center">
-          <Bookmark className="h-12 w-12 mx-auto mb-4 text-ink-3 opacity-50" />
-          <p className="text-ink-3">No bookmarks yet</p>
-          <p className="text-sm text-ink-3 mt-2">
-            Bookmark threads to find them easily later
-          </p>
+        <Card className="p-8 md:p-12 text-center flex flex-col items-center border-dashed">
+          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Bookmark size={22} className="text-muted-foreground" />
+          </div>
+          <p className="text-lg font-semibold text-ink">No bookmarks yet</p>
+          <p className="text-sm text-ink-3 mt-1 max-w-sm">Bookmark threads to find them easily later.</p>
+          <Button asChild variant="outline" size="sm" className="mt-4">
+            <Link href="/dashboard/threads">Browse threads</Link>
+          </Button>
         </Card>
       ) : (
         <div className="grid gap-4">

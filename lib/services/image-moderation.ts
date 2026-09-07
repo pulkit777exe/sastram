@@ -69,7 +69,7 @@ export async function moderateImageUpload(
     return { allowed: true };
   } catch (moderationError) {
     logger.warn('[image-moderation] check failed, deleting unmoderated blob', { blobUrl });
-    await del(blobUrl).catch(() => {});
+    await del(blobUrl).catch((err) => logger.warn('[image-moderation] blob delete failed', { blobUrl, error: err }));
     throw moderationError;
   }
 }

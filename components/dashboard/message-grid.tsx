@@ -4,6 +4,7 @@ import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { MessageSquare, ArrowRight } from 'lucide-react';
 import { ROUTES } from '@/lib/config/routes';
+import { Button } from '@/components/ui/button';
 
 interface Message {
   id: string;
@@ -23,9 +24,15 @@ interface MessageGridProps {
 export function MessageGrid({ messages }: MessageGridProps) {
   if (messages.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex flex-col items-center justify-center py-16 text-center rounded-card border border-dashed border-line bg-surface">
+        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+          <MessageSquare size={22} className="text-muted-foreground" />
+        </div>
         <p className="text-lg font-semibold text-ink">No messages yet</p>
-        <p className="text-ink-3">You haven&apos;t posted any messages yet.</p>
+        <p className="text-sm text-ink-3 mt-1 max-w-sm">You haven&apos;t posted any messages yet. Join a thread to start the conversation.</p>
+        <Button asChild variant="outline" size="sm" className="mt-4">
+          <Link href="/dashboard/threads">Browse threads</Link>
+        </Button>
       </div>
     );
   }

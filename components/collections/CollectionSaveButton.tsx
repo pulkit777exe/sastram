@@ -3,12 +3,9 @@
 import { useEffect, useState } from 'react';
 import { Bookmark, Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useUserPreferences } from '@/hooks/use-user-preferences';
 import { toasts } from '@/lib/utils/toast';
 
 export function CollectionSaveButton({ threadId, sessionId }: { threadId?: string; sessionId?: string }) {
-  const { prefs } = useUserPreferences();
-  const enabled = (prefs as unknown as { collectionsEnabled?: boolean }).collectionsEnabled !== false;
   const [open, setOpen] = useState(false);
   const [collections, setCollections] = useState<{ id: string; title: string }[]>([]);
   const [newTitle, setNewTitle] = useState('');
@@ -16,7 +13,7 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!open || !enabled) return;
+    if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetch('/api/collections')
@@ -27,7 +24,7 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
       .then((j) => setCollections(j.data ?? []))
       .catch(() => toasts.error('Failed to load collections'))
       .finally(() => setLoading(false));
-  }, [open, enabled]);
+  }, [open]);
 
   async function createAndAdd() {
     if (!newTitle.trim()) return;
@@ -77,7 +74,6 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
     }
   }
 
-  if (!enabled) return null;
   if (!threadId && !sessionId) return null;
 
   return (

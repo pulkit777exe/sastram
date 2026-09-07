@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 import { DetailCard } from '@/components/ui/detail-card';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
+import { Loader2 } from 'lucide-react';
 
 const INITIAL_MESSAGE_LIMIT = 50;
 
@@ -169,7 +170,7 @@ async function ThreadSidebar({
 
       <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
 
-      {threadDna && (
+      {threadDna ? (
         <DetailCard className="space-y-2">
           <div className="flex flex-wrap gap-1.5">
             <Badge variant="live" className="px-2.5 py-1 text-xs">
@@ -188,6 +189,16 @@ async function ThreadSidebar({
               </Badge>
             ))}
           </div>
+        </DetailCard>
+      ) : (
+        <DetailCard className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-ink-3">
+            <Loader2 size={12} className="animate-spin" />
+            Sai is analyzing topics…
+          </div>
+          <p className="text-xs leading-relaxed text-ink-2">
+            Thread DNA (question type & topics) appears after the first reply. We refresh automatically.
+          </p>
         </DetailCard>
       )}
 

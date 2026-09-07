@@ -290,7 +290,12 @@ export function TagManager({ tags: initialTags, total, totalPages, currentPage, 
           {tags.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
               <TagsIcon className="w-10 h-10 text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground/60">No tags found</p>
+              <p className="text-sm font-semibold text-ink">No tags found</p>
+              <p className="text-xs text-ink-3 mt-1 max-w-xs">Create your first tag above. Tags help organize threads by topic.</p>
+              <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Create tag
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">

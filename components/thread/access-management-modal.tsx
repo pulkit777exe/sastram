@@ -93,7 +93,13 @@ export function ThreadAccessModal({
 
     if (invitations.length === 0) {
       return (
-        <div className="text-center py-8 text-muted-foreground text-sm">No invitations found.</div>
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+            <Mail size={20} className="text-muted-foreground" />
+          </div>
+          <p className="text-sm font-semibold text-ink">No invitations yet</p>
+          <p className="text-xs text-ink-3 mt-1 max-w-xs">Invite someone to this thread to give them access. They&apos;ll appear here once invited.</p>
+        </div>
       );
     }
 

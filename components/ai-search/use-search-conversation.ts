@@ -99,6 +99,9 @@ export function getApiKeysOrNotify(): { exa: string; tavily: string; gemini: str
   const keys = getStoredApiKeys();
   if (!keys.exa || !keys.tavily || !keys.gemini) {
     toasts.error('Please configure your API keys first', 'Click the API Keys button to get started.');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sastram:open-api-keys'));
+    }
     return null;
   }
   return keys as { exa: string; tavily: string; gemini: string };

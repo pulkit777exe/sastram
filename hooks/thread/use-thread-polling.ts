@@ -8,7 +8,7 @@ import { toasts } from '@/lib/utils/toast';
 interface UseThreadPollingOptions {
   threadId: string;
   lastMessageTimestampRef: React.MutableRefObject<string>;
-  aiInlineStatusRef: React.MutableRefObject<Record<string, 'pending' | 'failed'>>;
+  aiInlineStatusRef: React.MutableRefObject<Record<string, 'pending' | 'failed' | 'limited'>>;
   liveMessagesRef: React.MutableRefObject<Message[]>;
   mapBackfillMessage: (m: import('@/modules/threads/service').ThreadMessage) => Message;
   mergeBackfill: (newMessages: Message[]) => boolean;

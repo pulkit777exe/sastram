@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, withErrorHandling } from '@/lib/utils/api-response';
-import { addToCollection, removeFromCollection } from '@/modules/collections/repository';
+import { addToCollection, removeFromCollectionOwned } from '@/modules/collections/repository';
 import { z } from 'zod';
 
 const addSchema = z.object({ threadId: z.string().cuid().optional(), sessionId: z.string().cuid().optional() }).refine((d) => d.threadId || d.sessionId, 'threadId or sessionId required');
@@ -16,9 +16,10 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
 });
 
 export const DELETE = withErrorHandling(async (request: NextRequest) => {
+  const session = await requireSessionOrThrow();
   const { searchParams } = new URL(request.url);
   const itemId = searchParams.get('itemId');
   if (!itemId) return NextResponse.json({ error: 'itemId required' }, { status: 400 });
-  await removeFromCollection(itemId);
+  await removeFromCollectionOwned(itemId, session.user.id);
   return NextResponse.json(ok({ ok: true }));
 });

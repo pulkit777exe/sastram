@@ -271,7 +271,9 @@ function buildLiveStream(
           const u = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
           const prefs = u?.preferences as unknown as { expertiseLevel?: string } | null;
           if (prefs?.expertiseLevel) expertiseLevel = prefs.expertiseLevel;
-        } catch {}
+        } catch (err) {
+          logger.debug('[forum-search] failed to load expertiseLevel', { error: err });
+        }
 
         const result = await executeAISearch(
           params.effectiveQuery,
@@ -325,7 +327,9 @@ function buildLiveStream(
           );
         }
 
-        void refreshUserExpertise(session.user.id).catch(() => {});
+        void refreshUserExpertise(session.user.id).catch((err) =>
+          logger.warn('[forum-search] refreshUserExpertise failed', { error: err })
+        );
 
         sendEvent({
           phase: 'done',

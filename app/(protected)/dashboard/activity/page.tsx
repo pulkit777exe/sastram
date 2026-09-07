@@ -104,12 +104,15 @@ export default async function ActivityPage() {
           </div>
 
           {messages.length === 0 ? (
-            <Card className="p-8 text-center">
-              <MessageSquare className="h-10 w-10 mx-auto mb-3 text-ink-3 opacity-50" />
-              <p className="text-ink-3">No comments yet</p>
-              <p className="text-sm text-ink-3 mt-1">
-                Join a thread and start the conversation
-              </p>
+            <Card className="p-8 text-center flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+                <MessageSquare size={22} className="text-muted-foreground" />
+              </div>
+              <p className="text-lg font-semibold text-ink">No comments yet</p>
+              <p className="text-sm text-ink-3 mt-1 max-w-sm">Join a thread and start the conversation.</p>
+              <Button asChild variant="outline" size="sm" className="mt-4">
+                <Link href="/dashboard/threads">Browse threads</Link>
+              </Button>
             </Card>
           ) : (
             <div className="space-y-3">

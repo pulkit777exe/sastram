@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ApiKeysModal, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
 import { SaiSearchLayout } from '@/components/ai-search/sai-search-layout';
@@ -31,6 +31,12 @@ function SearchPageInner({ initialQuery }: { initialQuery: string }) {
   } = useSearch();
   const [showApiKeys, setShowApiKeys] = useState(false);
   const hasKeys = useSyncExternalStore(subscribeToApiKeys, getHasApiKeys, () => false);
+
+  useEffect(() => {
+    const handler = () => setShowApiKeys(true);
+    window.addEventListener('sastram:open-api-keys', handler);
+    return () => window.removeEventListener('sastram:open-api-keys', handler);
+  }, []);
 
   // Explicit variants — patterns-explicit-variants (no isChatActive prop to Composer)
   const content = !isChatActive && appState === 'idle'

@@ -190,7 +190,10 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
             </tbody>
           </table>
           {threads.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">No threads yet.</p>
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <p className="text-sm font-medium text-ink">No threads yet</p>
+              <p className="text-xs text-ink-3 mt-1">Create a thread above to get started.</p>
+            </div>
           )}
         </div>
       </section>

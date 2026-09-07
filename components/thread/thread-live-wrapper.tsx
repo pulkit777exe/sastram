@@ -166,8 +166,8 @@ export function ThreadLiveWrapper({
   const [pollResults, setPollResults] = useState<PollResults | null>(null);
   const [pollRefreshKey, setPollRefreshKey] = useState(0);
 
-  // AI inline status
-  const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed'>>({});
+  // AI inline status — 'limited' persists so user understands quota block
+  const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed' | 'limited'>>({});
   const aiInlineStatusRef = useRef(aiInlineStatus);
   useEffect(() => {
     aiInlineStatusRef.current = aiInlineStatus;
@@ -324,6 +324,8 @@ export function ThreadLiveWrapper({
       startStream(newMessage.id);
     } else if (aiInline === 'queued') {
       setAiPending(newMessage.id);
+    } else if (aiInline === 'limited') {
+      setAiInlineStatus((prev) => ({ ...prev, [newMessage.id]: 'limited' }));
     }
   }
 

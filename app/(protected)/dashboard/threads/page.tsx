@@ -77,10 +77,15 @@ async function ThreadList({ userId, userRole }: { userId: string; userRole: Role
 
   if (threads.length === 0) {
     return (
-      <div className="text-center py-16">
-        <Hash size={32} className="mx-auto text-ink-3 mb-3" />
-        <p className="text-sm font-medium text-ink-3">No threads yet</p>
-        <p className="text-xs text-ink-3 mt-1">Create a thread to get started.</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center rounded-card border border-dashed border-line bg-surface">
+        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+          <Hash size={22} className="text-muted-foreground" />
+        </div>
+        <p className="text-lg font-semibold text-ink">No threads yet</p>
+        <p className="text-sm text-ink-3 mt-1 max-w-sm">Create a thread to start a discussion — @sai will help track it.</p>
+        <div className="mt-4">
+          <CreateThreadDialog />
+        </div>
       </div>
     );
   }

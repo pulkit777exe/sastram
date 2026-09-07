@@ -99,7 +99,9 @@ export const createThreadAction = createServerAction(
         });
       }
 
-      void refreshUserExpertise(session.user.id).catch(() => {});
+      void refreshUserExpertise(session.user.id).catch((err) =>
+        logger.warn('[createThreadAction] refreshUserExpertise failed', { error: err })
+      );
 
       if (pollQuestion && pollOptions && pollOptions.length >= 2) {
         const summary = buildThreadDTO(result.thread, result.messageCount, 0);
