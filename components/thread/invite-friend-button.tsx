@@ -34,6 +34,7 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState(false);
+  const [serverEmailError, setServerEmailError] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const triggerShake = () => {
@@ -52,10 +53,12 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
 
     if (!email.trim()) {
       setEmailError(true);
+      setServerEmailError(null);
       triggerShake();
       return;
     }
     setEmailError(false);
+    setServerEmailError(null);
 
     setIsSubmitting(true);
     const formData = new FormData();
@@ -69,13 +72,37 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
     setIsSubmitting(false);
 
     if (result?.error) {
-      toasts.error(result.error);
+      if (result.errorCode === 'CONFLICT') {
+        setServerEmailError(result.error);
+        setEmailError(true);
+        triggerShake();
+        toasts.info(result.error);
+        return;
+      } else if (result.errorCode === 'FORBIDDEN') {
+        setServerEmailError(result.error);
+        setEmailError(true);
+        triggerShake();
+        toasts.error(result.error);
+        return;
+      } else if (result.errorCode === 'AUTH_REQUIRED') {
+        toasts.error('Please sign in again');
+        return;
+      } else {
+        toasts.error(result.error);
+        return;
+      }
+    }
+
+    // Check if email failed but invite was created
+    const data = result?.data as unknown as { emailed?: boolean } | undefined;
+    if (data && 'emailed' in data && data.emailed === false) {
+      toasts.info('Invited, but email failed — share the link manually from thread members');
     } else {
       toasts.success('Invitation sent successfully!');
-      setEmail('');
-      setMessage('');
-      setOpen(false);
     }
+    setEmail('');
+    setMessage('');
+    setOpen(false);
   }
 
   return (
@@ -110,12 +137,13 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
                     type="email"
                     placeholder="friend@example.com"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setEmailError(false); }}
+                    onChange={(e) => { setEmail(e.target.value); setEmailError(false); setServerEmailError(null); }}
                     className="pl-10"
                     required
                   />
                 </div>
                 <p className="t-error-msg text-xs text-destructive mt-1">Please enter an email address</p>
+                {serverEmailError && <p className="text-xs text-destructive mt-1">{serverEmailError}</p>}
               </div>
             </div>
             <div className="space-y-2">

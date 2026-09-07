@@ -118,7 +118,15 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
                 </button>
               ))
             )}
-            {!loading && collections.length === 0 && <p className="px-2 py-1 text-xs text-ink-3">No collections yet — create one above</p>}
+            {!loading && collections.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-4 text-center">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mb-2">
+                  <Bookmark size={14} className="text-muted-foreground" />
+                </div>
+                <p className="text-xs font-medium text-ink">No collections yet</p>
+                <p className="text-xs text-ink-3 mt-0.5">Create one above to get started</p>
+              </div>
+            )}
           </div>
         </div>
       )}

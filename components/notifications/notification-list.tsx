@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { MessageSquare, AtSign, Bell, Reply, Pin, CheckCheck, Inbox } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { Button } from '@/components/ui/button';
@@ -179,6 +180,10 @@ export function NotificationList({ notifications: initial }: NotificationListPro
           <Inbox size={24} className="text-muted-foreground" />
         </div>
         <p className="text-lg font-semibold text-foreground">You&apos;re all caught up</p>
+        <p className="text-sm text-muted-foreground mt-1 max-w-sm">No notifications yet — we&apos;ll let you know when someone mentions you or replies.</p>
+        <Button asChild variant="outline" size="sm" className="mt-4">
+          <Link href="/dashboard/threads">Browse threads</Link>
+        </Button>
       </div>
     );
   }

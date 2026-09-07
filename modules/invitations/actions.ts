@@ -62,15 +62,21 @@ async function requireManageableThread(
   return null;
 }
 
-async function sendInvitationEmail(email: string, inviterName: string, threadName: string, invitationId: string) {
+async function sendInvitationEmail(email: string, inviterName: string, threadName: string, invitationId: string): Promise<boolean> {
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invitations/accept?id=${invitationId}`;
-  await sendThreadInvitation(
-    email,
-    inviterName,
-    threadName,
-    `You've been invited to join the discussion on "${threadName}".`,
-    inviteUrl
-  ).catch((err) => logger.error('[inviteFriendToThread] Failed to send email:', err));
+  try {
+    await sendThreadInvitation(
+      email,
+      inviterName,
+      threadName,
+      `You've been invited to join the discussion on "${threadName}".`,
+      inviteUrl
+    );
+    return true;
+  } catch (err) {
+    logger.error('[inviteFriendToThread] Failed to send email:', err);
+    return false;
+  }
 }
 
 export async function inviteFriendToThread(formData: FormData) {
@@ -105,10 +111,10 @@ export async function inviteFriendToThread(formData: FormData) {
     }
 
     const inviterName = session.user.name || 'Someone';
-    await sendInvitationEmail(invitation.email, inviterName, thread.name, invitation.id);
+    const emailed = await sendInvitationEmail(invitation.email, inviterName, thread.name, invitation.id);
 
     revalidateThreadPath(thread.slug);
-    return actionSuccess(invitation);
+    return actionSuccess({ ...invitation, emailed } as typeof invitation & { emailed: boolean });
   } catch (error) {
     logger.error('[inviteFriendToThread]', error);
     return toEnvelope(error);
