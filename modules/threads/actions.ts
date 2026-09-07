@@ -109,7 +109,7 @@ export const createThreadAction = createServerAction(
       }
 
       revalidatePath(ROUTES.DASHBOARD);
-      return actionSuccess(null);
+      return actionSuccess({ slug: result.thread.slug });
     } catch (error) {
       return failure('createThreadAction', error);
     }

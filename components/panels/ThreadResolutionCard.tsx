@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- polling lifecycle syncs external AI job completion to local loading state */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, RefreshCw } from 'lucide-react';
@@ -63,7 +64,6 @@ export default function ThreadResolutionCard({
   const [timedOut, setTimedOut] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- polling lifecycle syncs external AI job completion to local loading state
   useEffect(() => {
     if (score !== null && score !== undefined) {
       setIsGenerating(false);

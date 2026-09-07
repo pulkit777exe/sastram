@@ -119,9 +119,14 @@ export function CreateThreadDialog() {
       if (result && 'error' in result && result.error) {
         toasts.error(result.error as string);
       } else {
-        toasts.success('Thread created', 'Sai is analyzing topics and resolution — open the thread to watch it update.');
+        const slug = (result as { data?: { slug?: string } })?.data?.slug;
+        toasts.success('Thread created', 'Sai is analyzing topics and resolution — opening thread…');
         setOpen(false);
-        router.refresh();
+        if (slug) {
+          router.push(`/dashboard/threads/${slug}`);
+        } else {
+          router.refresh();
+        }
       }
     });
   };

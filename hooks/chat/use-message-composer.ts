@@ -136,6 +136,9 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
 
       const messageContent = content.trim() || (hasPoll ? `Poll: ${pollQuestion.trim()}` : '');
       const tempId = `temp-${crypto.randomUUID()}`;
+      // Preserve for restore if post fails — avoids “app ate my message” feeling
+      const prevContent = content;
+      const prevMentions = [...mentions.mentionedUserIds];
 
       const optimisticMessage: Message = {
         id: tempId,
@@ -212,18 +215,22 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
             toasts.error('Failed to upload file');
             setIsSubmitting(false);
             onMessageError?.(tempId);
+            setContent(prevContent);
+            mentions.setMentionedUserIds(prevMentions);
             return;
           }
         } catch {
           toasts.error('Failed to upload file');
           setIsSubmitting(false);
           onMessageError?.(tempId);
+          setContent(prevContent);
+          mentions.setMentionedUserIds(prevMentions);
           return;
         }
       }
 
-      if (mentions.mentionedUserIds.length > 0) {
-        data.append('mentions', JSON.stringify(mentions.mentionedUserIds));
+      if (prevMentions.length > 0) {
+        data.append('mentions', JSON.stringify(prevMentions));
       }
 
       if (aiClientStream) {
@@ -235,6 +242,8 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
 
       if (result?.error) {
         onMessageError?.(tempId);
+        setContent(prevContent);
+        mentions.setMentionedUserIds(prevMentions);
         setError(result.error);
         toasts.error(result.error);
       } else if (result?.data?.message) {

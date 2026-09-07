@@ -206,7 +206,6 @@ export function StreamingText({
   onFeedback,
 }: StreamingTextProps) {
   const [count, setCount] = useState(fromHistory ? Infinity : 0);
-  const [sourcesOpen, setSourcesOpen] = useState(true);
   const allTokens = buildTokens(text, sources);
   const done = !isStreaming && count >= allTokens.length;
 
@@ -436,13 +435,7 @@ export function StreamingText({
         </div>
 
         {displayedSources.length > 0 && (
-          <Button
-            type="button"
-            aria-expanded={sourcesOpen}
-            onClick={() => setSourcesOpen((o) => !o)}
-            variant="ghost"
-            className="ml-1.5 items-center gap-1.5 rounded-control px-1 py-0.5 h-auto"
-          >
+          <span className="ml-1.5 inline-flex items-center gap-1.5 rounded-control px-1.5 py-0.5 text-[12px] text-ink-2">
             <span className="flex -space-x-1">
               {displayedSources.slice(0, 3).map((s) => (
                 <span
@@ -455,24 +448,25 @@ export function StreamingText({
                 </span>
               ))}
             </span>
-            <span className="text-[12px] text-ink-2">{displayedSources.length} source{displayedSources.length !== 1 ? 's' : ''}</span>
-            <span className="text-[10px] text-ink-3 ml-1">{sourcesOpen ? '▲' : '▼'}</span>
-          </Button>
+            {displayedSources.length} source{displayedSources.length !== 1 ? 's' : ''}
+          </span>
         )}
       </div>
 
-      {/* Sources drawer — always visible provenance, expanded by default */}
+      {/* Sources drawer — always visible provenance */}
       {displayedSources.length > 0 && (
         <div
           className="grid transition-[grid-template-rows,opacity] duration-300"
           style={{
-            gridTemplateRows: done && sourcesOpen ? '1fr' : '0fr',
-            opacity: done && sourcesOpen ? 1 : 0,
+            gridTemplateRows: done ? '1fr' : '0fr',
+            opacity: done ? 1 : 0,
             transitionTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)',
           }}
         >
           <div className="overflow-hidden">
-            <div className="mt-1.5 flex flex-col rounded-card bg-inset p-1 shadow-hairline max-h-[min(50vh,360px)] overflow-y-auto overscroll-contain gap-0.5">
+            <div className="mt-2">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-ink-3 mb-1.5 px-1">Sources &amp; provenance · tier · confidence · freshness</p>
+              <div className="flex flex-col rounded-card bg-inset p-1 shadow-hairline max-h-[min(50vh,360px)] overflow-y-auto overscroll-contain gap-0.5">
               {displayedSources.map((source) => (
                 <a
                   key={source.id}
@@ -501,6 +495,7 @@ export function StreamingText({
                   </span>
                 </a>
               ))}
+              </div>
             </div>
           </div>
         </div>

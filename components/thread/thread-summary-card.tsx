@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 interface ThreadSummaryCardProps {
   threadId: string;
   initialSummary?: string | null;
+  messageCount?: number;
   className?: string;
 }
 
@@ -23,7 +24,7 @@ const POLL_INTERVAL_MS = 3_000;
 const TIMEOUT_MS = 90_000;
 const SUMMARY_UNAVAILABLE = 'Summary unavailable.';
 
-export function ThreadSummaryCard({ threadId, initialSummary, className }: ThreadSummaryCardProps) {
+export function ThreadSummaryCard({ threadId, initialSummary, messageCount, className }: ThreadSummaryCardProps) {
   const router = useRouter();
   const summary = initialSummary ?? null;
   const [isPending, setIsPending] = useState(false);
@@ -195,6 +196,18 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
                 <p className="text-xs text-sai-accent/80 leading-relaxed">{summary}</p>
               </div>
             )
+          ) : messageCount !== undefined && messageCount < 20 ? (
+            <div className="flex flex-col items-center justify-center py-3 text-center">
+              <div className="flex items-center justify-center size-8 rounded-full bg-sai-accent-tint mb-2">
+                <Sparkles size={16} className="text-sai-accent" aria-hidden />
+              </div>
+              <p className="text-sm font-semibold text-ink">Summary unlocks at 20 messages</p>
+              <p className="text-xs text-ink-2 mb-2">{20 - messageCount} more message{(20 - messageCount) !== 1 ? 's' : ''} to go — keep the conversation going.</p>
+              <div className="w-full h-1.5 rounded-full bg-field overflow-hidden mb-3">
+                <div className="h-full bg-sai-accent transition-[width] duration-500" style={{ width: `${Math.round((messageCount / 20) * 100)}%` }} />
+              </div>
+              <p className="text-xs text-ink-3">Sai needs a bit more context to synthesize well (resolution & DNA work from the first reply).</p>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-3 text-center">
               <div className="flex items-center justify-center size-8 rounded-full bg-sai-accent-tint mb-2">

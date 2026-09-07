@@ -84,6 +84,8 @@ export function buildThreadDTO(
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
     createdBy: thread.createdBy ?? '',
+    verifiedAt: (thread as unknown as { verifiedAt?: Date | null }).verifiedAt ?? null,
+    resolutionScore: (thread as unknown as { resolutionScore?: number | null }).resolutionScore ?? null,
   };
 }
 

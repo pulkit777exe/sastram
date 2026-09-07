@@ -44,6 +44,8 @@ export interface ThreadSummary {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string | null;
+  verifiedAt?: Date | null;
+  resolutionScore?: number | null;
 }
 
 export interface ThreadDetail extends ThreadSummary {

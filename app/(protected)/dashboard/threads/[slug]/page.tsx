@@ -168,7 +168,7 @@ async function ThreadSidebar({
         verifiedBy={(thread as unknown as { verifiedBy?: string | null }).verifiedBy ?? null}
       />
 
-      <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} />
+      <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} messageCount={thread._count.messages} />
 
       {threadDna ? (
         <DetailCard className="space-y-2">

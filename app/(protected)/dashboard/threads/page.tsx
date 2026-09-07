@@ -36,6 +36,7 @@ function ThreadListSkeleton() {
 }
 
 function ThreadRow({ thread }: { thread: ThreadSummary }) {
+  const isVerified = !!thread.verifiedAt;
   return (
     <Link
       href={`/dashboard/threads/${thread.slug}`}
@@ -45,10 +46,18 @@ function ThreadRow({ thread }: { thread: ThreadSummary }) {
         <Hash size={14} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2 flex-wrap">
           <h3 className="text-sm font-semibold text-ink truncate group-hover:text-brand transition-colors">
             {thread.name}
           </h3>
+          {isVerified && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+              ✓ Verified
+            </span>
+          )}
+          {thread.resolutionScore != null && (
+            <span className="text-[11px] font-medium text-ink-3 tabular-nums">{thread.resolutionScore}/100</span>
+          )}
         </div>
         {thread.description && (
           <p className="text-xs text-ink-3 mt-1 line-clamp-1">{thread.description}</p>
