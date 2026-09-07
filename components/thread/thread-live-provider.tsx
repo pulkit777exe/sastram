@@ -11,7 +11,7 @@ import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hook
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Pin, Loader2, ChevronDown } from 'lucide-react';
+import { Pin, Loader2, ChevronDown, AlertCircle } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Constants — magic numbers with intent
@@ -49,6 +49,7 @@ export interface ThreadLiveState {
     expiresAt: Date | null;
   } | null;
   pollResults: PollResults | null;
+  isPollingStale: boolean;
 }
 
 export interface ThreadLiveActions {
@@ -260,8 +261,8 @@ export function ThreadLiveProvider({
     onError: handleStreamError,
   });
 
-  // Polling adapter — gated behind future SSE flag
-  useThreadPolling({
+  // Polling adapter — gated behind future SSE flag, banner when stale
+  const isPollingStale = useThreadPolling({
     threadId,
     lastMessageTimestampRef: threadMessages.lastMessageTimestampRef,
     aiInlineStatusRef: aiStatusRef,
@@ -361,6 +362,7 @@ export function ThreadLiveProvider({
     firstUnreadId: readReceipts.firstUnreadMessageId,
     currentPoll,
     pollResults,
+    isPollingStale,
   };
 
   const actions: ThreadLiveActions = {
@@ -381,7 +383,19 @@ export function ThreadLiveProvider({
 
   const value: ThreadLiveContextValue = { state, actions, meta };
 
-  return <ThreadLiveContext.Provider value={value}>{children}</ThreadLiveContext.Provider>;
+  return (
+    <ThreadLiveContext.Provider value={value}>
+      {isPollingStale && (
+        <div className="shrink-0 px-4 pt-3">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-card border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <AlertCircle size={14} className="shrink-0" aria-hidden />
+            <span className="text-xs font-medium">Connection unstable — live updates paused. Retrying…</span>
+          </div>
+        </div>
+      )}
+      {children}
+    </ThreadLiveContext.Provider>
+  );
 }
 
 // ---------------------------------------------------------------------------

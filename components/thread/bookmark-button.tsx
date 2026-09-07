@@ -18,17 +18,28 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkBookmarkStatus({ threadId })
-      .then((result) => {
+    let cancelled = false;
+    async function checkStatus() {
+      try {
+        const result = await checkBookmarkStatus({ threadId });
+        if (cancelled) return;
         if (result?.error) {
+          // stale count — show error but keep button enabled for retry
           toasts.error(result.error);
         } else {
           const bookmarked = result?.data?.isBookmarked;
           if (typeof bookmarked === 'boolean') setIsBookmarked(bookmarked);
         }
-      })
-      .catch(() => toasts.error('Failed to check bookmark'))
-      .finally(() => setIsLoading(false));
+      } catch {
+        if (!cancelled) toasts.error('Failed to check bookmark');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    checkStatus();
+    return () => {
+      cancelled = true;
+    };
   }, [threadId]);
 
   const handleToggle = async () => {

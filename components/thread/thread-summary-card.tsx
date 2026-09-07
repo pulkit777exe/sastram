@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import { Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
@@ -154,7 +154,11 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
           label="Sai summary"
         >
           {timedOut ? (
-            <div className="flex flex-col items-center justify-center py-2 text-center">
+            <div className="flex flex-col items-center justify-center py-3 text-center">
+              <div className="flex items-center justify-center size-8 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-2">
+                <AlertCircle size={16} className="text-amber-600 dark:text-amber-400" aria-hidden />
+              </div>
+              <p className="text-sm font-semibold text-ink">Failed — Try Again</p>
               <p className="text-xs text-ink-2 mb-3">This is taking longer than expected. You can try again.</p>
               <Button
                 variant="outline"
@@ -162,7 +166,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
                 className="w-full bg-sai-accent-tint border-sai-accent/20 text-sai-accent hover:bg-sai-accent-tint"
                 onClick={() => void requestSummary()}
               >
-                <Sparkles size={12} className="mr-2" />
+                <RefreshCw size={12} className="mr-2" />
                 Try Again
               </Button>
             </div>
@@ -170,7 +174,11 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
             isAiNotConfigured(summary) ? (
               <AiNotConfiguredNotice />
             ) : summary === SUMMARY_UNAVAILABLE ? (
-              <div className="flex flex-col items-center justify-center py-2 text-center">
+              <div className="flex flex-col items-center justify-center py-3 text-center">
+                <div className="flex items-center justify-center size-8 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-2">
+                  <AlertCircle size={16} className="text-amber-600 dark:text-amber-400" aria-hidden />
+                </div>
+                <p className="text-sm font-semibold text-ink">Failed — Try Again</p>
                 <p className="text-xs text-ink-2 mb-3">Sai couldn&apos;t generate a summary this time. Please try again.</p>
                 <Button
                   variant="outline"
@@ -178,7 +186,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
                   className="w-full bg-sai-accent-tint border-sai-accent/20 text-sai-accent hover:bg-sai-accent-tint"
                   onClick={() => void requestSummary()}
                 >
-                  <Sparkles size={12} className="mr-2" />
+                  <RefreshCw size={12} className="mr-2" />
                   Try Again
                 </Button>
               </div>
@@ -188,7 +196,11 @@ export function ThreadSummaryCard({ threadId, initialSummary, className }: Threa
               </div>
             )
           ) : (
-            <div className="flex flex-col items-center justify-center py-2 text-center">
+            <div className="flex flex-col items-center justify-center py-3 text-center">
+              <div className="flex items-center justify-center size-8 rounded-full bg-sai-accent-tint mb-2">
+                <Sparkles size={16} className="text-sai-accent" aria-hidden />
+              </div>
+              <p className="text-sm font-semibold text-ink">Not yet scored — Generate</p>
               <p className="text-xs text-ink-2 mb-3">Get a quick Sai-powered summary of this thread.</p>
               <Button
                 variant="outline"

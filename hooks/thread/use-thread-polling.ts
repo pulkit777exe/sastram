@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { backfillThreadMessages } from '@/modules/threads/actions';
 import type { Message } from '@/lib/types/index';
 import { toasts } from '@/lib/utils/toast';
@@ -15,6 +15,10 @@ interface UseThreadPollingOptions {
   onAiStatusCleared?: (parentId: string) => void;
 }
 
+interface InternalPollingOptions extends UseThreadPollingOptions {
+  onStaleChange?: (stale: boolean) => void;
+}
+
 // Adaptive polling: 20s base → 60s after 3 empty polls, 3s when AI pending, paused when tab hidden
 const BASE_INTERVAL_MS = 20_000;
 const FAST_INTERVAL_MS = 3_000;
@@ -22,7 +26,7 @@ const MAX_INTERVAL_MS = 60_000;
 const BACKOFF_MULTIPLIER = 2;
 const BACKOFF_THRESHOLD = 3;
 
-function syncThreadPolling(options: UseThreadPollingOptions): () => void {
+function syncThreadPolling(options: InternalPollingOptions): () => void {
   const {
     threadId,
     lastMessageTimestampRef,
@@ -30,6 +34,7 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
     mapBackfillMessage,
     mergeBackfill,
     onAiStatusCleared,
+    onStaleChange,
   } = options;
 
   let currentInterval = BASE_INTERVAL_MS;
@@ -45,6 +50,7 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
       const since = lastMessageTimestampRef.current;
       const result = await backfillThreadMessages({ threadId, since });
       failureCount = 0;
+      onStaleChange?.(false);
 
       const hasNoMessages = !result?.ok || !result.data?.messages?.length;
       if (hasNoMessages) {
@@ -63,6 +69,7 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
       if (hasNew) {
         emptyPollCount = 0;
         failureCount = 0;
+        onStaleChange?.(false);
         currentInterval = BASE_INTERVAL_MS;
         // Clear AI pending for any AI replies that arrived
         for (const msg of newMessages) {
@@ -82,7 +89,10 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
     } catch {
       failureCount++;
       if (failureCount === 2) toasts.error('Connection slow — retrying');
-      if (failureCount >= 3) currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL_MS);
+      if (failureCount >= 3) {
+        currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL_MS);
+        onStaleChange?.(true);
+      }
     }
   }
 
@@ -115,17 +125,24 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
   };
 }
 
-export function useThreadPolling(options: UseThreadPollingOptions): void {
-  const { threadId, lastMessageTimestampRef, aiInlineStatusRef, mapBackfillMessage, mergeBackfill, onAiStatusCleared } = options;
+export function useThreadPolling(options: UseThreadPollingOptions): boolean {
+  const { threadId, lastMessageTimestampRef, aiInlineStatusRef, liveMessagesRef, mapBackfillMessage, mergeBackfill, onAiStatusCleared } = options;
+  const [isStale, setIsStale] = useState(false);
 
-  // syncThreadPolling captures stable refs; deps are granular fields
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => syncThreadPolling(options), [
-    threadId,
-    mapBackfillMessage,
-    mergeBackfill,
-    lastMessageTimestampRef,
-    aiInlineStatusRef,
-    onAiStatusCleared,
-  ]);
+  useEffect(
+    () =>
+      syncThreadPolling({
+        threadId,
+        lastMessageTimestampRef,
+        aiInlineStatusRef,
+        liveMessagesRef,
+        mapBackfillMessage,
+        mergeBackfill,
+        onAiStatusCleared,
+        onStaleChange: setIsStale,
+      }),
+    [threadId, liveMessagesRef, mapBackfillMessage, mergeBackfill, lastMessageTimestampRef, aiInlineStatusRef, onAiStatusCleared]
+  );
+
+  return isStale;
 }

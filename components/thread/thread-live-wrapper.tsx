@@ -12,7 +12,7 @@ import type { PollResults } from '@/modules/polls/types';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
 import { SaiViewTransition } from '@/components/ui/view-transition';
-import { ChevronDown, Loader2, Pin } from 'lucide-react';
+import { ChevronDown, Loader2, Pin, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useThreadMessages } from '@/hooks/thread/use-thread-messages';
 import { useThreadPolling } from '@/hooks/thread/use-thread-polling';
@@ -354,8 +354,8 @@ export function ThreadLiveWrapper({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- threadMessages fields stable; object identity unstable
   }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
 
-  // Polling
-  useThreadPolling({
+  // Polling — banner when stale (failureCount >= 3)
+  const isPollingStale = useThreadPolling({
     threadId,
     lastMessageTimestampRef: threadMessages.lastMessageTimestampRef,
     aiInlineStatusRef,
@@ -453,6 +453,15 @@ export function ThreadLiveWrapper({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <ThreadPageHeader title={title} threadId={threadId} slug={slug} initialFrequency={initialFrequency} />
+
+      {isPollingStale && (
+        <div className="shrink-0 px-6 pt-3">
+          <div className="max-w-4xl mx-auto flex items-center gap-2 px-3 py-2 rounded-card border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <AlertCircle size={14} className="shrink-0" aria-hidden />
+            <span className="text-xs font-medium">Connection unstable — live updates paused. Retrying…</span>
+          </div>
+        </div>
+      )}
 
       {hasPinnedMessage && <PinnedBanner message={pinnedMessage as Message} />}
 
