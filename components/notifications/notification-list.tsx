@@ -153,7 +153,6 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     // side-effecting a mark-all-read write on every mount (which previously
     // re-toasted serverError() on each navigation / StrictMode double-invoke).
     setNotificationCount(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;

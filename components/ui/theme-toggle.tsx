@@ -10,7 +10,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Detect mount to avoid SSR hydration mismatch for theme-dependent markup.
     setMounted(true);
   }, []);
 

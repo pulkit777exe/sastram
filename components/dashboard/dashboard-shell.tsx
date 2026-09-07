@@ -38,9 +38,8 @@ export function DashboardShell({
   const [sheetOpen, setSheetOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  // Close sheet on navigation (next.js route change)
+  // Close mobile nav on mount (one-shot)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSheetOpen(false);
   }, []);
 

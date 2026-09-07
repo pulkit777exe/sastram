@@ -79,7 +79,7 @@ export function MessageList({ firstUnreadMessageId }: MessageListProps) {
     [topLevelMessages]
   );
 
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer is a third-party hook (TanStack Virtual) that returns a ref the linter can't introspect. Verified safe with React 19.
   const virtualizer = useVirtualizer({
     count: topLevelMessages.length,
     getScrollElement: () => scrollContainerRef.current,

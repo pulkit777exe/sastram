@@ -28,8 +28,8 @@ export function attachApiInterceptor(queryClient: QueryClient) {
       toasts.sessionExpired();
 
       window.setTimeout(() => {
-        // Global fetch interceptor runs outside React; Next.js router is unavailable here.
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        // Global fetch interceptor runs outside React; the Next.js router is
+        // unavailable here, so a plain location assignment is the only option.
         window.location.href = '/login?reason=session_expired';
       }, SESSION_REDIRECT_DELAY_MS);
     }

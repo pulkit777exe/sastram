@@ -14,16 +14,27 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
 
   useEffect(() => {
     if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    let cancelled = false;
     setLoading(true);
     fetch('/api/collections')
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load');
         return r.json();
       })
-      .then((j) => setCollections(j.data ?? []))
-      .catch(() => toasts.error('Failed to load collections'))
-      .finally(() => setLoading(false));
+      .then((j) => {
+        if (cancelled) return;
+        setCollections(j.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) toasts.error('Failed to load collections');
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   async function createAndAdd() {

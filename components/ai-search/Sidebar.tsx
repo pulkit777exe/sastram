@@ -93,7 +93,6 @@ export function Sidebar({
 
   useEffect(() => {
     if (collapsed) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHistory(true);
   }, [collapsed, loadHistory]);
 

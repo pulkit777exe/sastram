@@ -109,7 +109,6 @@ export function CommentTree({
     states.forEach((isCollapsed, messageId) => {
       if (isCollapsed) collapsed.add(messageId);
     });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCollapsedIds(collapsed);
   }, [threadId]);
 

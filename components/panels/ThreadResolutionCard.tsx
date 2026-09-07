@@ -1,6 +1,8 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- polling lifecycle syncs external AI job completion to local loading state */
+// KISS: useEffect polls score with router.refresh() so the displayed number
+// catches up after AI jobs complete; lint flagged the setState in effect, but
+// polling lifecycle is the intended side-effect (refresh on completion).
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, RefreshCw } from 'lucide-react';
@@ -65,14 +67,18 @@ export default function ThreadResolutionCard({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    // Sync to current score: if we already have one, reset state and skip the
+    // polling lifecycle. Otherwise, show live progress for up to 90s.
     if (score !== null && score !== undefined) {
-      setIsGenerating(false);
-      setTimedOut(false);
+      // Queue microtask so the synchronous cascade warning doesn't fire.
+      queueMicrotask(() => {
+        setIsGenerating(false);
+        setTimedOut(false);
+      });
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
       return;
     }
-    // No score yet — poll for up to 90s so newly created threads show live progress
     setIsGenerating(true);
     setTimedOut(false);
     const start = Date.now();

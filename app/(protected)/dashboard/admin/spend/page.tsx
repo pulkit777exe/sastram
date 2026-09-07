@@ -79,13 +79,11 @@ export default function SpendPage() {
     }
   }, []);
 
+  // Initial fetch on mount + 60s refresh.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
     fetchSpend();
     const interval = setInterval(fetchSpend, 60000);
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [fetchSpend]);
 
   return (

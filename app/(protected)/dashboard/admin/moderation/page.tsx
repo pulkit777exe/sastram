@@ -50,8 +50,8 @@ export default async function ModerationPage() {
     return { name: null };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function normalizeBan(ban: any): any {
+  type BanRecord = NonNullable<Awaited<ReturnType<typeof getBannedUsers>>['data']>['bans'][number];
+  function normalizeBan(ban: BanRecord) {
     return {
       ...ban,
       status: getBanStatus(ban),

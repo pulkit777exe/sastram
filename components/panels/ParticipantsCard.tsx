@@ -1,6 +1,7 @@
 import { getThreadParticipants } from '@/modules/threads';
 import type { ThreadParticipant } from '@/modules/threads';
 import { DetailCard } from '@/components/ui/detail-card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface ParticipantsCardProps {
   threadId: string;
@@ -41,23 +42,22 @@ export default async function ParticipantsCard({ threadId, ownerId }: Participan
             const ownerSuffix = p.id === ownerId ? ' · owner' : '';
             const messageLabel = p.messageCount === 1 ? 'message' : 'messages';
             return (
-              <div
+              <Avatar
                 key={p.id}
                 title={`${p.name ?? 'Anonymous'}${ownerSuffix} — ${p.messageCount} ${messageLabel}`}
-              className="relative h-7 w-7 overflow-hidden rounded-full border-2 border-surface bg-field"
-            >
-              {p.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.image} alt={p.name ?? 'User'} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-sai-accent-tint text-xs font-semibold text-sai-accent">
-                  {(p.name ?? 'U').charAt(0).toUpperCase()}
-                </div>
-              )}
-              {p.id === ownerId && (
-                <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-surface bg-sai-green" />
-              )}
-            </div>
+                className="relative h-7 w-7 overflow-hidden rounded-full border-2 border-surface bg-field"
+              >
+                {p.image ? (
+                  <AvatarImage src={p.image} alt={p.name ?? 'User'} className="h-full w-full object-cover" />
+                ) : (
+                  <AvatarFallback className="text-xs font-semibold text-sai-accent bg-sai-accent-tint">
+                    {(p.name ?? 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                )}
+                {p.id === ownerId && (
+                  <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-surface bg-sai-green" />
+                )}
+              </Avatar>
             );
           })}
         </div>

@@ -353,7 +353,6 @@ export function ThreadLiveWrapper({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- threadMessages fields stable; object identity unstable
   }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
 
   // Polling — banner when stale (failureCount >= 3)

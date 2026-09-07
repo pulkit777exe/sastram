@@ -215,7 +215,7 @@ export function ChatMessageList({
                 onClick={() => (onRetryLast ? onRetryLast() : onNewSearch())}
                 className="px-4 py-2 text-sm font-medium"
               >
-                {isOffline ? 'Retry when back online' : 'Try again'}
+                {isOffline ? 'Retry when back online' : 'Try Again'}
               </Button>
               {onRetryLast && (
                 <Button variant="outline" onClick={onNewSearch} className="px-4 py-2 text-sm font-medium">

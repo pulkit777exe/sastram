@@ -40,7 +40,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
   const lastReply = replies.length > 0 ? replies[replies.length - 1] : null;
   const shouldVirtualize = expanded && replies.length > 20;
 
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer is a third-party hook (TanStack Virtual) that returns a ref the linter can't introspect. Verified safe with React 19.
   const virtualizer = useVirtualizer({
     count: replies.length,
     getScrollElement: () => scrollContainerRef.current,

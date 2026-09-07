@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, forwardRef, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { Message } from '@/lib/types/index';
 import type { PollResults } from '@/modules/polls/types';
@@ -300,7 +300,6 @@ export function ThreadLiveProvider({
     }
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- markThreadAsRead stable, readReceipts object identity unstable
   }, [readReceipts.markThreadAsRead]);
 
   // ---- Load-more sentinel ----
@@ -318,7 +317,6 @@ export function ThreadLiveProvider({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
 
   // ---- Poll refresh (stub, future SSE) ----
@@ -432,13 +430,32 @@ interface ThreadLiveScrollAreaProps {
   children: ReactNode;
 }
 
-function ThreadLiveScrollArea({ variant = 'thread', className, children }: ThreadLiveScrollAreaProps) {
+const ThreadLiveScrollAreaInner = (
+  { variant = 'thread', className, children }: ThreadLiveScrollAreaProps,
+  forwardedRef: React.ForwardedRef<HTMLDivElement>
+) => {
   const ctx = useContext(ThreadLiveContext);
   if (!ctx) throw new Error('ThreadLive.ScrollArea must be used within ThreadLiveProvider');
+  // Combine external ref with the provider's scrollRef inside an effect.
+  // ref-callbacks are flagged as setting local during render; the useEffect
+  // is the supported escape hatch and wraps the side-effect in a microtask
+  // so the assignment is deferred to after the commit.
+  const localRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (ctx.meta.scrollRef.current !== localRef.current) {
+        ctx.meta.scrollRef.current = localRef.current;
+      }
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(localRef.current);
+      } else if (forwardedRef) {
+        (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current = localRef.current;
+      }
+    });
+  });
   return (
     <div
-      // eslint-disable-next-line react-hooks/refs
-      ref={ctx.meta.scrollRef}
+      ref={localRef}
       role="log"
       aria-live="polite"
       aria-label="Thread messages"
@@ -447,7 +464,10 @@ function ThreadLiveScrollArea({ variant = 'thread', className, children }: Threa
       <div className="max-w-4xl mx-auto">{children}</div>
     </div>
   );
-}
+};
+
+const ThreadLiveScrollArea = forwardRef<HTMLDivElement, ThreadLiveScrollAreaProps>(ThreadLiveScrollAreaInner);
+ThreadLiveScrollArea.displayName = 'ThreadLive.ScrollArea';
 
 type PinnedBannerVariant = 'pinned' | 'placeholder';
 interface ThreadLivePinnedBannerProps {

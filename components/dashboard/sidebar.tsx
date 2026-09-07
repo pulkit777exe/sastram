@@ -53,11 +53,10 @@ export function Sidebar({
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Hydrate persisted collapse state after mount to avoid SSR/client mismatch.
+  // Hydrate persisted collapse state after mount (avoids SSR/client mismatch).
   useEffect(() => {
     if (mobile) return;
     const saved = localStorage.getItem('sidebarCollapsed');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved !== null) setIsCollapsed(saved === 'true');
   }, [mobile]);
 
