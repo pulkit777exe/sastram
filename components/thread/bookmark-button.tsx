@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bookmark, BookmarkCheck } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Loader2 } from 'lucide-react';
 import { toggleBookmark, checkBookmarkStatus } from '@/modules/bookmarks/actions';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
@@ -18,11 +18,17 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkBookmarkStatus({ threadId }).then((result) => {
-      const bookmarked = result?.data?.isBookmarked;
-      if (typeof bookmarked === 'boolean') setIsBookmarked(bookmarked);
-      setIsLoading(false);
-    });
+    checkBookmarkStatus({ threadId })
+      .then((result) => {
+        if (result?.error) {
+          toasts.error(result.error);
+        } else {
+          const bookmarked = result?.data?.isBookmarked;
+          if (typeof bookmarked === 'boolean') setIsBookmarked(bookmarked);
+        }
+      })
+      .catch(() => toasts.error('Failed to check bookmark'))
+      .finally(() => setIsLoading(false));
   }, [threadId]);
 
   const handleToggle = async () => {
@@ -64,7 +70,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
   return (
     <div className="hover:scale-105 active:scale-95 transition-transform duration-100">
       <Button variant="outline" onClick={handleToggle} disabled={isLoading} className={cn('gap-2', className)}>
-        {renderBookmarkContent()}
+        {isLoading ? <Loader2 size={14} className="animate-spin" /> : renderBookmarkContent()}
       </Button>
     </div>
   );

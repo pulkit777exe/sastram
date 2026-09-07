@@ -9,11 +9,14 @@ export function useUserPreferences() {
 
   useEffect(() => {
     fetch('/api/user/preferences')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed');
+        return r.json();
+      })
       .then((j) => {
         if (j?.data) setPrefs(parseUserPreferences(j.data));
       })
-      .catch(() => {})
+      .catch((e) => console.warn('[prefs] failed to load', e))
       .finally(() => setLoading(false));
   }, []);
 
