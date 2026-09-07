@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { backfillThreadMessages } from '@/modules/threads/actions';
 import type { Message } from '@/lib/types/index';
+import { toasts } from '@/lib/utils/toast';
 
 interface UseThreadPollingOptions {
   threadId: string;
@@ -33,6 +34,7 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
 
   let currentInterval = BASE_INTERVAL_MS;
   let emptyPollCount = 0;
+  let failureCount = 0;
   let cancelled = false;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -42,6 +44,7 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
     try {
       const since = lastMessageTimestampRef.current;
       const result = await backfillThreadMessages({ threadId, since });
+      failureCount = 0;
 
       const hasNoMessages = !result?.ok || !result.data?.messages?.length;
       if (hasNoMessages) {
@@ -59,6 +62,7 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
 
       if (hasNew) {
         emptyPollCount = 0;
+        failureCount = 0;
         currentInterval = BASE_INTERVAL_MS;
         // Clear AI pending for any AI replies that arrived
         for (const msg of newMessages) {
@@ -76,7 +80,9 @@ function syncThreadPolling(options: UseThreadPollingOptions): () => void {
         }
       }
     } catch {
-      // best-effort — poll is non-critical
+      failureCount++;
+      if (failureCount === 2) toasts.error('Connection slow — retrying');
+      if (failureCount >= 3) currentInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, MAX_INTERVAL_MS);
     }
   }
 
