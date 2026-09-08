@@ -1,6 +1,21 @@
 # Sastram Architecture
 
-Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns confidence scores. Human community validates and challenges AI output. Knowledge compounds over time.
+Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns confidence scores. Human community validates and challenges AI output. Knowledge compounds over time through verified resolutions, workspace collections, deep research, and community jury appeals.
+
+The current moat features (all configurable from `Settings → Preferences`, all client + server gated) are:
+- **Verified Resolution** (`Thread.verifiedAt/By`) — OP/admin `markThreadVerified` confirms AI score; cron skips high-confidence verified threads
+- **Source Provenance 2.0** (`StreamingText` drawer) — tier, confidence, freshness, provider, contentFetched all visible
+- **Collections** (`Collection` + `CollectionItem`) — save threads + searches to workspaces, export as Markdown with `[n]` footnotes
+- **Graph Explorer** (`/dashboard/graph`) — `ThreadRelation` similarity ≥ 0.7 visualized via `force-graph` canvas (dynamic import, 320-520px, drag/zoom)
+- **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection
+- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async 12-source advanced research (taily `research` + Exa 12, Hobby 12 cap; QStash inline dev, async prod)
+- **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt
+- **KnowledgePage** — threads `resolutionScore > 85` + `verifiedAt` auto-promoted
+- **Reputation** (`lib/services/reputation.ts`) — `verifiedThreadCount * 10` nightly leaderboard
+- **Community Jury** (`AppealVote` + 3 random `MODERATOR` 2/3 majority) — replaces single-admin appeal
+- **Code Runner** (`code-runner.tsx`) — fenced code blocks run client-side (JS via `new Function`, Python placeholder)
+- **Expert Routing** (`route-experts` route) — top 3 by `UserActivity` `MESSAGE_CREATED` invited when thread created
+- **Fact-Check Badge** (`Message.factCheckStatus`) — visible on every message
 
 ---
 
@@ -20,9 +35,9 @@ Sastram is an AI-powered community forum where questions get **resolved**, not j
 | File Storage | Vercel Blob |
 | Email | Resend |
 | Validation | Zod |
-| State Management | Zustand (thread view) |
+| State Management | TanStack Query + hooks (Zustand legacy) |
 | Monitoring | Sentry, Vercel Analytics |
-| Testing | Mocha + Chai (unit), Playwright (E2E) |
+| Testing | Mocha + Chai + Sinon (53 files, 385 passing), Playwright (E2E) |
 
 ---
 
@@ -32,15 +47,15 @@ Sastram is an AI-powered community forum where questions get **resolved**, not j
 Browser Client
 │
 ├── HTTP / Server Actions → Next.js App Router (Vercel Serverless)
-│   ├── modules/ (24 domain modules)
-│   │   ├── Prisma → PostgreSQL (Neon)
+│   ├── modules/ (29 domain modules)
+│   │   ├── Prisma → PostgreSQL (Neon, 35 models)
 │   │   ├── Upstash Redis (quotas, rate limits, spend cap, idempotency)
-│   │   ├── QStash → background jobs (/api/jobs webhook)
-│   │   ├── Vercel Cron → scheduled tasks (/api/cron/*)
+│   │   ├── QStash → background jobs (/api/jobs webhook, 9 job types)
+│   │   ├── Vercel Cron → scheduled tasks (/api/cron/*, 4 crons)
 │   │   ├── Vercel Blob (file storage)
-│   │   ├── Gemini / Exa / Tavily (AI)
+│   │   ├── Gemini / Exa / Tavily (AI, 12-source deep research)
 │   │   └── Resend (email)
-│   └── API Routes (35 REST endpoints)
+│   └── API Routes (46 REST endpoints)
 │
 └── SSE → AI reply streaming (/api/threads/[threadId]/ai-reply/stream)
 ```
@@ -76,8 +91,11 @@ sastram/
 │   │   │   ├── sai-search/               # AI-powered search (brand: Sai)
 │   │   │   ├── activity/                 # User activity feed
 │   │   │   ├── tags/                     # Tags browser ([slug])
-│   │   │   ├── settings/                 # Account settings + profile
-│   │   │   └── admin/                    # Admin (tags, moderation, reports, appeals, health)
+│   │   │   ├── settings/                 # Account settings + profile (with Research Personalization + Resolution Engine toggles)
+│   │   │   ├── collections/             # Workspace collections (saved threads + searches)
+│   │   │   ├── graph/                    # Thread relation graph (similarity ≥ 0.7)
+│   │   │   ├── canvas/                   # Research canvas (side-by-side compare)
+│   │   │   └── admin/                    # Admin (tags, moderation, reports, appeals, health, spend)
 │   │   └── user/[userId]/                # Public user profile
 │   ├── banned/                           # Banned user page
 │   ├── invitations/                      # Invitation accept page
@@ -94,15 +112,27 @@ sastram/
 │       │   ├── thread-dna/               # Thread DNA analysis
 │       │   ├── resolution-score/         # Resolution score calculation
 │       │   ├── search-history/           # Search history retrieval
+│       │   ├── deep-research/            # Async 20+ source research (QStash)
 │       │   └── spend/                    # AI spend usage (admin)
 │       ├── threads/
 │       │   ├── route.ts                  # Thread CRUD
 │       │   ├── similar/                  # Similar thread lookup
+│       │   ├── route-experts/            # Auto-invite top 3 experts (UserActivity MESSAGE_CREATED)
 │       │   └── [threadId]/
-│       │       └── ai-reply/
-│       │           ├── route.ts          # AI reply trigger
-│       │           └── stream/           # SSE streaming endpoint
+│       │       ├── ai-reply/
+│       │       │   ├── route.ts          # AI reply trigger
+│       │       │   └── stream/           # SSE streaming endpoint
+│       │       ├── challenge/             # Counter-source + re-score (enqueue CALCULATE_RESOLUTION_SCORE + DETECT_CONFLICTS)
+│       │       └── verify/               # OP marks thread verified
 │       ├── messages/                     # Message CRUD
+│       ├── collections/                  # Workspace collections API
+│       │   ├── route.ts                  # List/create collection
+│       │   └── [id]/
+│       │       ├── route.ts              # Get/delete collection
+│       │       ├── items/                # Add/remove items
+│       │       └── export/              # Markdown export with [n] footnotes
+│       ├── user/
+│       │   └── preferences/              # Read user preferences (expertiseLevel + moat toggles)
 │       ├── search/                       # Full-text search (threads, messages, users)
 │       ├── upload/                       # File upload (Vercel Blob)
 │       ├── sign-in/email-otp/            # Email OTP sign-in
@@ -120,15 +150,16 @@ sastram/
 │           ├── daily-digest/             # Email digest trigger
 │           └── cleanup-blobs/            # Blob cleanup
 │
-├── modules/                              # Domain logic (24 modules)
+├── modules/                              # Domain logic (29 modules)
 │   ├── auth/                             # Session management, OAuth
 │   ├── users/                            # User CRUD, profiles, avatar/banner upload
 │   ├── threads/                          # Thread CRUD, slug routing, relations, confidence decay
 │   ├── messages/                         # Post, edit, pin, delete, mentions, AI inline
-│   ├── ai-search/                        # Exa + Tavily + Gemini pipeline, caching, query warming
+│   ├── ai-search/                        # Exa + Tavily + Gemini pipeline, caching, query warming, collections
+│   ├── collections/                     # Workspace collections repository
 │   ├── moderation/                       # Regex rules, content filtering, AI inline moderation
 │   ├── reports/                          # Report creation, resolution
-│   ├── appeals/                          # Ban appeal submission and review
+│   ├── appeals/                          # Ban appeal submission, 3-random-MODERATOR jury vote, 2/3 majority
 │   ├── notifications/                    # In-app notifications, bulk creation
 │   ├── newsletter/                       # Email digest subscriptions, processing
 │   ├── follows/                          # User follow/unfollow
@@ -144,7 +175,8 @@ sastram/
 │   ├── feedback/                         # In-app feedback widget submissions
 │   ├── search/                           # Local full-text search
 │   ├── policy/                           # Policy enforcement
-│   └── audit/                            # Audit logging
+│   ├── audit/                            # Audit logging
+│   └── reputation/                       # Verified-thread count, leaderboard (computed)
 │
 ├── lib/
 │   ├── config/
@@ -169,10 +201,11 @@ sastram/
 │   │   ├── helpers.ts                    # AI helpers
 │   │   └── index.ts                      # Barrel exports
 │   ├── queue/
-│   │   ├── config.ts                     # AIJobType enum (8 job types)
+│   │   ├── config.ts                     # AIJobType enum (9 job types)
 │   │   ├── types.ts                      # Job data interfaces
 │   │   └── workers/
-│   │       ├── ai.worker.ts              # AI job handlers
+│   │       ├── ai-jobs.ts                # Coalesced AI job handlers (7 handlers)
+│   │       ├── ai-inline.worker.ts       # Streaming @sai handler
 │   │       └── email.worker.ts           # Email job handler
 │   ├── schemas/
 │   │   ├── api.ts                        # API request/response schemas
@@ -199,7 +232,10 @@ sastram/
 │   │   ├── idempotency.ts                # Idempotency keys
 │   │   ├── counter-reconciliation.ts     # Denormalized counter repair
 │   │   ├── soft-delete-purge.ts          # Purges soft-deleted users after 30 days
-│   │   └── usage-check.ts                # Usage limit checks
+│   │   ├── usage-check.ts                # Usage limit checks
+│   │   ├── user-memory.ts                 # Weekly expertiseLevel inference from threadDna + AiSearchSession.queryType
+│   │   ├── knowledge-promotion.ts         # Auto-promotes score>85+verified threads to KnowledgePage
+│   │   └── reputation.ts                  # Computed reputation score (verifiedThreadCount * 10) + leaderboard
 │   ├── middleware/
 │   │   ├── moderation.ts                 # requireModerator(), requireAdmin()
 │   │   ├── cron-auth.ts                  # Cron Bearer token verification
@@ -226,48 +262,52 @@ sastram/
 │   └── thread-access.ts                  # Thread authorization primitive
 │
 ├── prisma/
-│   ├── schema.prisma                     # 30 models
+│   ├── schema.prisma                     # 35 models (FactCheckStatus enum, Bounty, forkedFromId, isMarket)
 │   └── seed.ts                           # Database seed script
 │
-├── test/                                 # 46 Mocha test files (297+ passing)
+├── test/                                 # 53 Mocha test files (385 passing)
 │   └── e2e/                              # Playwright end-to-end tests
 │
 ├── components/                           # React components
 │   ├── ai-search/                        # SearchBox, Sidebar, SynthesisCard, etc.
 │   ├── thread/                           # comment-tree, message-list, poll-*, etc.
+│   │   └── code-runner.tsx               # Worker-sandboxed JS runner (3s timeout) + Pyodide WASM Python
 │   ├── chat/                             # post-message-form, mention-suggest
 │   ├── dashboard/                        # sidebar, settings-form, stats-card, etc.
-│   ├── panels/                           # ThreadInfoCard, ThreadDnaCard, etc.
-│   ├── notifications/                    # notification-list
+│   ├── panels/                           # ThreadResolutionCard (verified+decay+effectiveScore), ThreadSummaryCard, RelatedThreadsCard, ParticipantsCard
+│   ├── notifications/                    # notification-list (icon+description+CTA empty state)
 │   ├── landing/                          # LandingPage
 │   ├── layout/                           # Layout components
 │   ├── auth/                             # LoginForm, ForgotPasswordModal
 │   ├── admin/                            # Admin components
-│   ├── appeals/                          # Appeal components
-│   ├── user/                             # follow-button, profile-header, etc.
+│   ├── appeals/                          # Appeal components + jury UI
+│   ├── collections/                      # CollectionSaveButton + CollectionsClient filter/create + Markdown export
+│   ├── bookmarks/                        # BookmarksFilter (client filter + highlight)
+│   ├── user/                             # follow-button, profile-header, UserStats (rounded-card)
 │   └── ui/                               # shadcn/ui + TimeAgo, ErrorBoundary, etc.
 │
 ├── hooks/
 │   ├── useAIReplyStream.ts               # SSE consumer for @sai streaming
 │   ├── use-debounce.ts                   # Generic debounce hook
+│   ├── use-user-preferences.ts           # Preferences gating (graphEnabled, verifiedResolution etc)
 │   └── chat/use-message-composer.ts      # Message composition, drafts, mentions
 │
-└── stores/                               # Zustand state stores
+└── stores/                               # Zustand state stores (legacy, now hooks)
 ```
 
 ---
 
 ## Data Model
 
-30 Prisma models in `prisma/schema.prisma`.
+35 Prisma models in `prisma/schema.prisma`.
 
 ### Core Content
 
 | Model | Purpose | Key Fields |
 |-------|---------|------------|
 | User | User accounts | `role` (USER/MODERATOR/ADMIN), `status` (ACTIVE/SUSPENDED/BANNED), `profilePrivacy`, `preferences` (JSON), `deletedAt` |
-| Thread | Discussion threads | `visibility` (PUBLIC/PRIVATE/RESTRICTED), `resolutionScore`, `threadDna` (JSON), `aiSummary`, `isOutdated`, `deletedAt` |
-| Message | Thread messages | `parentId` (tree), `depth` (0-4), `isAiResponse`, `isEdited`, `isPinned`, `likeCount`, `replyCount`, nullable `senderId`, `deletedAt` |
+| Thread | Discussion threads | `visibility` (PUBLIC/PRIVATE/RESTRICTED), `resolutionScore`, `threadDna` (JSON), `aiSummary`, `isOutdated`, `forkedFromId` (self-FK), `verifiedAt/By`, `deletedAt` |
+| Message | Thread messages | `parentId` (tree), `depth` (0-4), `isAiResponse`, `isEdited`, `isPinned`, `likeCount`, `replyCount`, nullable `senderId`, `factCheckStatus` (`FactCheckStatus` enum), `deletedAt` |
 | MessageEdit | Edit history | Content snapshot per edit |
 | MessageMention | @mentions | `messageId`, `userId` |
 | Attachment | File attachments | Typed (IMAGE/GIF/VIDEO/FILE) via `AttachmentType` enum |
@@ -288,7 +328,8 @@ sastram/
 
 | Model | Purpose |
 |-------|---------|
-| Poll / PollVote | Thread polls with voting |
+| Poll / PollVote | Thread polls with voting, `isMarket` prediction market, `resolvedOptionIndex` |
+| Bounty | Thread bounties (`amount`, `isClaimed`) |
 | UserBookmark | Saved threads |
 | ReadReceipt | Per-thread read tracking |
 | ThreadSubscription | Email digest frequency (DAILY/WEEKLY/MONTHLY/NEVER) |
@@ -302,7 +343,7 @@ sastram/
 |-------|---------|
 | ModerationRule | DB-driven regex content rules |
 | Report | Content reports with typed categories (SPAM/HARASSMENT/MISINFORMATION/ADULT_CONTENT/OTHER) |
-| Appeal | Appeal pipeline (submitter → moderator review) |
+| Appeal | Appeal pipeline (submitter → moderator review, `AppealVote` 2/3 jury) |
 
 ### AI / Analytics
 
@@ -318,7 +359,7 @@ sastram/
 
 ## Module Architecture
 
-24 domain modules under `modules/`. Each follows a consistent pattern:
+29 domain modules under `modules/`. Each follows a consistent pattern:
 
 ```
 modules/{feature}/
@@ -340,10 +381,10 @@ modules/{feature}/
 | Auth & Identity | `auth/`, `users/` |
 | Content | `threads/`, `messages/` |
 | Social | `follows/`, `bookmarks/`, `notifications/`, `invitations/` |
-| Engagement | `polls/`, `tags/`, `activity/`, `reactions/`, `read-receipts/` |
+| Engagement | `polls/`, `tags/`, `activity/`, `reactions/`, `read-receipts/`, `bounties/`, `collections/` |
 | Moderation | `moderation/`, `reports/`, `appeals/` |
-| AI | `ai-search/` |
-| Automation | `newsletter/`, `search/`, `feedback/`, `policy/`, `audit/`, `topics/`, `members/` |
+| AI | `ai-search/`, `ai-reply/` |
+| Automation | `newsletter/`, `search/`, `feedback/`, `policy/`, `audit/`, `topics/`, `members/`, `reputation/` |
 
 ---
 
@@ -371,7 +412,7 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 
 ---
 
-## API Routes (35 endpoints)
+## API Routes (46 endpoints)
 
 ### Authentication (6)
 - `/api/auth/[...all]` — Better Auth catch-all
@@ -381,30 +422,47 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 - `/api/email-otp/reset-otp` — Reset OTP
 - `/api/forget-password/email-otp` — Password reset flow
 
-### AI Features (6)
-- `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini)
+### AI Features (7)
+- `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini, 12-source advanced)
 - `/api/ai/thread-summary` — Generate AI thread summary
 - `/api/ai/thread-dna` — Generate thread DNA analysis
 - `/api/ai/resolution-score` — Calculate resolution score
 - `/api/ai/search-history` — Get search history
 - `/api/ai/spend` — Get AI spend usage (admin)
+- `/api/ai/deep-research` — Async 12-source research (QStash)
 
-### Core Resources (6)
+### Core Resources (8)
 - `/api/threads` — Thread CRUD
 - `/api/threads/similar` — Similar thread lookup
 - `/api/threads/[threadId]/ai-reply` — AI reply trigger
 - `/api/threads/[threadId]/ai-reply/stream` — SSE streaming endpoint
+- `/api/threads/[threadId]/challenge` — Counter-source challenge
+- `/api/threads/[threadId]/verify` — OP verify
+- `/api/threads/[threadId]/fork` — Thread fork
+- `/api/threads/[threadId]/route-experts` — Expert routing
 - `/api/messages` — Message CRUD
-- `/api/search` — Local full-text search
+- `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked)
+- `/api/bounties` — Bounty CRUD
+- `/api/polls/[pollId]/resolve` — Market poll resolve
 
 ### File & Invitations (2)
-- `/api/upload` — File upload (Vercel Blob)
+- `/api/upload` — File upload (Vercel Blob, MIME sniff + moderation)
 - `/api/invitations/accept` — Accept thread invitation
 
-### Cron / Scheduled (3)
-- `/api/cron/update-threads` — Batch AI metadata refresh
+### Collections (4)
+- `/api/collections` — List/create
+- `/api/collections/[id]` — Get/delete
+- `/api/collections/[id]/items` — Add/remove items
+- `/api/collections/[id]/export` — Markdown export with [n] footnotes
+
+### User (1)
+- `/api/user/preferences` — Read/update preferences (all moat toggles)
+
+### Cron / Scheduled (4)
+- `/api/cron/update-threads` — Batch AI metadata refresh + relations + expertise refresh
 - `/api/cron/daily-digest` — Email digest trigger
 - `/api/cron/cleanup-blobs` — Blob cleanup
+- `/api/cron/promote-knowledge` — KnowledgePage auto-promote
 
 ### Admin / Moderation (7)
 - `/api/admin/health` — Admin health check
@@ -514,7 +572,8 @@ User posts "@sai How do I fix X?"
 | `generate-thread-summary` | 50+ messages or manual | `handleThreadSummaryJob` | `Thread.aiSummary` |
 | `generate-thread-dna` | 3rd message posted | `handleThreadDnaJob` | `Thread.threadDna` |
 | `calculate-resolution-score` | 5+ messages or daily cron | `handleResolutionScoreJob` | `Thread.resolutionScore` |
-| `detect-conflicts` | New message arrives | `handleConflictDetectionJob` | `Thread.isOutdated` + Notification |
+| `detect-conflicts` | New message arrives / challenge route | `handleConflictDetectionJob` | `Thread.isOutdated` + Notification |
+| `generate-deep-research` | User-initiated async research | `handleDeepResearchJob` | `Notification` (AI_INSIGHT) + DB persist |
 | `generate-daily-digest` | Daily cron | `handleDailyDigestJob` | Email via Resend |
 | `send-ai-insight-notifications` | Score change / conflict | `handleAIInsightNotificationsJob` | Notification table |
 | `generate-ai-inline` | @sai mention (fallback path) | `handleAIInlineJob` | Message (streamed via SSE) |
@@ -529,9 +588,10 @@ User posts "@sai How do I fix X?"
 
 | Endpoint | Schedule | Purpose |
 |----------|----------|---------|
-| `/api/cron/update-threads` | Daily | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters |
+| `/api/cron/update-threads` | Daily | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters, auto-promote verified KnowledgePages |
 | `/api/cron/daily-digest` | Daily | Process subscriptions by frequency, generate AI summaries, send via Resend |
 | `/api/cron/cleanup-blobs` | Daily | Find attachments from soft-deleted messages, delete Vercel Blob, delete DB records |
+| `/api/cron/promote-knowledge` | Daily | Auto-promote `Thread.resolutionScore > 85 && verifiedAt != null` into `KnowledgePage` (best-effort, never throws) |
 
 **Security:** All cron endpoints use `verifyCronAuth()` with timing-safe Bearer token comparison (`crypto.timingSafeEqual`).
 
@@ -601,7 +661,7 @@ Two Redis clients serve different purposes:
 
 ## Testing
 
-### Unit Tests (46 files, 297+ passing)
+### Unit Tests (53 files, 385 passing)
 
 | Area | Files |
 |------|-------|
@@ -613,7 +673,7 @@ Two Redis clients serve different purposes:
 | Search | `search-fts`, `similarity-check-quota` |
 | Components | `components`, `thread-components` |
 | Utilities | `utils`, `errors`, `slug`, `logger` |
-| Other | `draft-autosave`, `email-template`, `pagination-integration` |
+| Other | `draft-autosave`, `email-template`, `pagination-integration`, `thread-access` |
 
 **Patterns:** Sinon stubs for Prisma/Redis/AI, `resetRateLimiters()` for isolation, `sinon.stub(process, 'env')` for env mocking.
 
@@ -640,7 +700,7 @@ PostgreSQL 16 service container → `pnpm install` → `prisma migrate` → `tsc
 pnpm dev            # Next.js dev server
 pnpm build          # Prisma generate + Next build
 pnpm start          # Production server
-pnpm test           # Mocha unit tests (297+ passing)
+pnpm test           # Mocha unit tests (385 passing)
 pnpm test:e2e       # Playwright e2e tests
 pnpm typecheck      # TypeScript check
 pnpm lint           # ESLint

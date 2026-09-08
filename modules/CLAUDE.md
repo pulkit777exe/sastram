@@ -2,7 +2,7 @@
 
 ## Overview
 
-Domain modules implementing business logic, organized by feature. 25 modules. Each module typically contains actions, optionally repository, types, and schemas.
+Domain modules implementing business logic, organized by feature. 29 modules. Each module typically contains actions, optionally repository, types, and schemas.
 
 ## Module List
 
@@ -24,10 +24,12 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 - `modules/read-receipts/` - Per-user thread read state
 
 ### Engagement
-- `modules/polls/` - Embedded polls
+- `modules/polls/` - Embedded polls (incl. prediction markets)
 - `modules/tags/` - Thread tags
 - `modules/activity/` - Activity tracking
 - `modules/feedback/` - User feedback submissions
+- `modules/collections/` - Workspace collections
+- `modules/bounties/` - Thread bounties
 
 ### Communication
 - `modules/newsletter/` - Email digests
@@ -36,7 +38,7 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 
 ### Moderation
 - `modules/moderation/` - Moderation rules, policy, executors, dashboard
-- `modules/appeals/` - Moderation appeals
+- `modules/appeals/` - Moderation appeals (3-jury votes)
 - `modules/reports/` - Report management (actions + service for transactional logic)
 - `modules/policy/` - Policy lookups
 - `modules/audit/` - Audit logging
@@ -44,6 +46,7 @@ Domain modules implementing business logic, organized by feature. 25 modules. Ea
 
 ### Automation
 - `modules/ai-search/` - AI forum search: service, cache, citations, query warming
+- `modules/search/` - Local full-text search (ranked, typo-tolerant)
 
 ## Removed Modules
 The following modules no longer exist (removed during refactor):

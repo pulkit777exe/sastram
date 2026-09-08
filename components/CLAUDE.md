@@ -37,12 +37,13 @@ Thread-specific components:
 - ThreadLiveWrapper, ThreadDetailsPanel, ThreadPageHeader
 - ThreadSummaryCard
 - InlinePoll, InlinePollButton, InlineReplyBox, InlineReplyThread
-- PollDisplay, PollPanel
-- BookmarkButton, SubscribeButton, InviteFriendButton
+- PollDisplay, PollPanel (incl. market resolve)
+- BookmarkButton, SubscribeButton, InviteFriendButton, BountyButton, ForkButton
 - TagChip, AttachmentItem, MessageActions
 - AccessManagementModal, AppealMessageModal
 - VerifyNowButton
 - TimeAgo
+- CodeRunner (Worker-sandboxed JS + Pyodide WASM Python)
 
 ### `components/chat/`
 Message composition components:
@@ -51,8 +52,8 @@ Message composition components:
 
 ### `components/panels/`
 Thread info panel components:
-- ThreadInfoCard, ThreadDnaCard, ThreadResolutionCard
-- AiSynthesisCard, RelatedThreadsCard, ParticipantsCard
+- ThreadResolutionCard (verified+decay+effectiveScore, pref-gated), ThreadSummaryCard, RelatedThreadsCard, ParticipantsCard
+- ThreadInfoCard, ThreadDnaCard
 
 ### `components/admin/`
 Admin dashboard components
@@ -77,9 +78,9 @@ Layout components
 
 ### `components/ai-search/`
 AI search interface:
-- SearchBox, Sidebar, PhaseTracker
-- SynthesisCard, SourceCard, TableView
-- ApiKeysModal
+- SearchBox, Sidebar, PhaseTracker, SearchInputBar, SearchComposer
+- SynthesisCard, SourceCard, TableView, StreamingText
+- ApiKeysModal, ForceGraphCanvas (graph)
 
 ### Top-level
 - `providers.tsx` - Client providers
@@ -89,7 +90,7 @@ AI search interface:
 
 ## Pattern
 
-Components use client-side rendering where needed. Zustand for state management.
+Components use client-side rendering where needed. TanStack Query + hooks (Zustand legacy in stores/). SAI tokens: every card `border border-line rounded-card shadow-card`, `rounded-control` for inputs, `useUserPreferences` gates moat features.
 
 ## Testing Notes
 

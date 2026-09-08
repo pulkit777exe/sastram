@@ -33,7 +33,7 @@ Business logic services.
 - `moderation.ts` - Content moderation pipeline (RateLimitFilter, RegexFilter, MLClassifier, ContextualAnalyzer, MessageModerationPipeline)
 - `image-moderation.ts` - Shared image NSFW moderation for upload routes (quota + spend cap + AI check)
 - `moderation-sla.ts` - Stale report escalation
-- `content-safety.ts` - Profanity filtering, file validation
+- `content-safety.ts` - HTML sanitization, file validation, SSRF `isSafePublicUrl`
 - `rate-limit.ts` - Redis rate limiting with in-memory fallback
 - `queue.ts` - QStash job enqueueing
 - `job-dedup.ts` - Job deduplication
@@ -41,6 +41,9 @@ Business logic services.
 - `counter-reconciliation.ts` - Denormalized counter repair
 - `soft-delete-purge.ts` - Purges soft-deleted users after 30 days
 - `usage-check.ts` - Usage limit checks
+- `user-memory.ts` - Weekly expertiseLevel inference
+- `knowledge-promotion.ts` - Auto-promotes verified high-score threads
+- `reputation.ts` - Verified-thread reputation scoring
 
 ### `lib/infrastructure/`
 Database, cache, logging.
@@ -79,10 +82,12 @@ Zod validation schemas.
 
 ### `lib/queue/`
 Background job definitions and handlers.
-- `config.ts` - Job configuration
+- `config.ts` - Job configuration (9 types)
 - `types.ts` - Job data interfaces
-- `workers/ai.worker.ts` - AI job handlers (summary, DNA, score, conflicts, inline, staleness)
+- `workers/ai-jobs.ts` - Coalesced AI job handlers (7 handlers)
+- `workers/ai-inline.worker.ts` - Streaming @sai handler
 - `workers/email.worker.ts` - Email job handler
+- `workers/_shared.ts` - Spend-cap + validation helpers
 
 ### `lib/middleware/`
 - `moderation.ts` - `requireModerator()`, `requireAdmin()`

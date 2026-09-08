@@ -1,6 +1,7 @@
 # Architecture Review — Sastram
 
 Date: 2026-08-31 · Scope: full codebase · Approach: `improve-codebase-architecture` skill (deepening pass)
+> **Update 2026-09-08:** Re-audited. `C1` dispatcher now exists (`modules/notifications/dispatcher.ts` via `lib/queue/workers/ai-jobs: dispatch`), `C7` `createTopic` now delegates to `threads-write/createThread` (not duplicate `prisma.create`), `C3` no `newsletter/service.ts` file on disk (already removed), `C2` still split (invitations + members), `C4-C6,C8` still open. Counts drift fixed: 29 modules / 35 models / 46 routes / 53 tests (was 24/30/35/46). New moat: `Bounty`, `isMarket`, `forkedFromId`, `FactCheckStatus` enum, Worker sandbox for `code-runner`.
 
 > Domain vocabulary: see `UBIQUITOUS_LANGUAGE.md`. No `docs/adr/` directory yet.
 > Architecture vocabulary: module, interface, implementation, depth, seam, adapter, leverage, locality (per the `codebase-design` skill).

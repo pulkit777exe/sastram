@@ -51,33 +51,34 @@ pnpm db:studio   # Prisma studio
 
 ### Directory Structure
 
-- `app/` - Next.js App Router pages and API routes
+- `app/` - Next.js App Router pages and API routes (46 endpoints)
 - `lib/` - Core utilities, services, infrastructure
-- `modules/` - Domain modules (25 feature modules)
+- `modules/` - Domain modules (29 feature modules)
 - `components/` - UI components
-- `prisma/` - Database schema
-- `test/` - Mocha unit tests (54 files)
+- `prisma/` - Database schema (35 models)
+- `test/` - Mocha unit tests (53 files, 385 passing)
 - `hooks/` - React hooks and state (replaces former `stores/` Zustand layer)
 
 ### Database Models
 
-30 models in `prisma/schema.prisma`:
+35 models in `prisma/schema.prisma`:
 - User (deletedAt), Account, Session, Verification
-- Thread (deletedAt, visibility, memberCount)
-- Message (deletedAt, nullable senderId), MessageEdit, MessageMention, Attachment
+- Thread (deletedAt, visibility, memberCount, forkedFromId, verifiedAt/By)
+- Message (deletedAt, nullable senderId, factCheckStatus enum), MessageEdit, MessageMention, Attachment
 - Reaction, ReadReceipt
 - UserFollow, UserBookmark
 - Notification
 - ThreadSubscription
-- ModerationRule (CHECK constraints), Appeal (own table), Report (escalatedAt, firstResponseAt), UserBan
+- ModerationRule (CHECK constraints), Appeal (own table + AppealVote jury), Report (escalatedAt, firstResponseAt), UserBan
 - ThreadTag, ThreadTagRelation
-- Poll, PollVote
+- Poll (isMarket, resolvedOptionIndex), PollVote
 - UserActivity (CHECK constraint)
 - ThreadInvitation
 - AiSearchSession, AiSearchResult
 - AiUsageLog (costUsd)
 - ThreadRelation
 - Feedback
+- Collection, CollectionItem, KnowledgePage, Bounty
 
 ### Key Services
 
@@ -172,20 +173,22 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
 - QStash webhook callback at `app/api/jobs/route.ts`
 - Job handlers in `lib/queue/workers/ai-jobs.ts` (coalesced), `ai-inline.worker.ts` and `email.worker.ts` (re-exported via `workers/index.ts`)
-- Vercel Cron for scheduled tasks (update-threads, cleanup-blobs, daily-digest)
-- Jobs: thread summary, thread DNA, resolution score, conflict detection, daily digest, AI inline, email, staleness check, AI insight notifications
+- Vercel Cron for scheduled tasks (update-threads, cleanup-blobs, daily-digest, promote-knowledge)
+- Jobs: thread summary, thread DNA, resolution score, conflict detection, daily digest, AI inline, email, staleness check, AI insight notifications, deep research (12-source, advanced)
 - Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); non-retryable `AppError` returns 200 to prevent retry amplification
 
 ### API Routes
 
 - `/api/auth/*` - Authentication endpoints
-- `/api/threads/*` - Thread operations
+- `/api/threads/*` - Thread operations (incl. `fork`, `challenge`, `verify`, `route-experts`)
 - `/api/messages/*` - Message operations
-- `/api/ai/*` - AI-powered features (forum-search SSE, thread-summary, thread-dna, resolution-score, search-history, spend)
-- `/api/cron/*` - Scheduled jobs (cron auth via `CRON_SECRET` Bearer token)
+- `/api/ai/*` - AI-powered features (forum-search SSE, thread-summary, thread-dna, resolution-score, search-history, spend, deep-research)
+- `/api/cron/*` - Scheduled jobs (cron auth via `CRON_SECRET` Bearer token) — `update-threads`, `daily-digest`, `cleanup-blobs`, `promote-knowledge`
 - `/api/jobs` - QStash webhook callback for background jobs
 - `/api/v1/moderation/*` - Moderation tools (admin-only)
-- `/api/bootstrap`, `/api/health`, `/api/search`, `/api/upload`, `/api/invitations/accept`, `/api/csp-report`, `/api/email-otp/*` etc. — see `shared/ARCHITECTURE.md` for full 35-route inventory
+- `/api/collections/*` - Workspace collections (CRUD + export with [n] footnotes)
+- `/api/bounties`, `/api/polls/[pollId]/resolve` - Bounties & prediction markets
+- `/api/bootstrap`, `/api/health`, `/api/search`, `/api/upload`, `/api/invitations/accept`, `/api/csp-report`, `/api/email-otp/*` etc. — see `shared/ARCHITECTURE.md` for full 46-route inventory
 
 ## Authorization Patterns
 
@@ -201,7 +204,7 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
 ## Test Coverage
 
-- **Current**: 54 Mocha test files covering utilities, services, API routes, and some components
+- **Current**: 53 Mocha test files covering utilities, services, API routes, and some components (385 passing)
 - **E2E**: Playwright smoke tests in `test/e2e/`
 - **Missing**: integration tests with real DB, component storybook
 
