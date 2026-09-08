@@ -182,7 +182,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
             className={cn(
               'h-1.5 w-1.5 rounded-full shrink-0',
               isEffectivelyActive
-                ? 'bg-sai-green shadow-linear-sm'
+                ? 'bg-sai-green shadow-card'
                 : 'bg-ink-3/40'
             )}
           />

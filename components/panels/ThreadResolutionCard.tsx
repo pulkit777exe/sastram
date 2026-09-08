@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { VerifyNowButton } from '@/components/thread/verify-now-button';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
 import { DetailCard } from '@/components/ui/detail-card';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 interface ThreadResolutionCardProps {
   threadId: string;
@@ -62,6 +63,9 @@ export default function ThreadResolutionCard({
 }: ThreadResolutionCardProps) {
   const router = useRouter();
   const now = useSyncExternalStore(subscribeToClock, getClockSnapshot, getClockSnapshot);
+  const { prefs } = useUserPreferences();
+  const verifiedEnabled = (prefs as unknown as { verifiedResolutionEnabled?: boolean }).verifiedResolutionEnabled !== false;
+  const decayEnabled = (prefs as unknown as { confidenceDecayEnabled?: boolean }).confidenceDecayEnabled !== false;
   const [isGenerating, setIsGenerating] = useState(score === null || score === undefined);
   const [timedOut, setTimedOut] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -185,7 +189,7 @@ export default function ThreadResolutionCard({
         <div className={`h-full rounded-full transition-[width] duration-500 ease-out ${barClass}`} style={{ width: `${score}%` }} />
       </div>
 
-      {isVerified && (
+      {verifiedEnabled && isVerified && (
         <div className="flex items-center gap-1.5">
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
@@ -196,19 +200,19 @@ export default function ThreadResolutionCard({
           </span>
         </div>
       )}
-      {!isVerified && provenanceDays !== null && (
+      {verifiedEnabled && !isVerified && provenanceDays !== null && (
         <p className="text-xs text-ink-3">
           Last activity {provenanceDays}d ago · not yet verified
         </p>
       )}
 
-      {effectiveScore !== null && confidence < 1 && (
+      {decayEnabled && effectiveScore !== null && confidence < 1 && (
         <p className="text-xs text-ink-3">
           Effective <span className="font-medium text-ink-2 tabular-nums">{effectiveScore}/100</span> at {Math.round(confidence * 100)}% confidence
         </p>
       )}
 
-      {isStale && (
+      {decayEnabled && isStale && (
         <div className="mt-1 flex items-center justify-between gap-3 rounded-control bg-orange-tint border border-line px-3 py-2.5">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-sai-orange">Confidence aged</p>

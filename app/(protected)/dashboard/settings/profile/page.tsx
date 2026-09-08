@@ -30,7 +30,7 @@ export default async function ProfilePage() {
         </Link>
       </div>
 
-      <Card className="rounded-card border p-4 md:p-8 shadow-linear-sm">
+      <Card className="rounded-card border border-line p-4 md:p-8 shadow-card">
         <CardContent className="flex flex-col gap-6 p-0 md:flex-row md:items-center">
           <div className="flex h-20 w-20 items-center justify-center bg-secondary overflow-hidden rounded-full">
             {user.image ? (
@@ -67,7 +67,7 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-card border p-6 shadow-linear-sm">
+      <Card className="rounded-card border border-line p-6 shadow-card">
         <CardContent className="space-y-4 p-0">
           <h2 className="text-lg font-semibold">Account Information</h2>
           <p className="text-sm text-muted-foreground">

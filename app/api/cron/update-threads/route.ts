@@ -15,6 +15,7 @@ import { promoteThreadsToKnowledgePages } from '@/lib/services/knowledge-promoti
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
+import { refreshUserExpertise } from '@/lib/services/user-memory';
 
 const BATCH_SIZE = 25;
 const QSTASH_GUARD_THRESHOLD = 400;
@@ -319,6 +320,25 @@ export async function GET(req: NextRequest) {
       logger.error('[cron/update-threads] knowledge promotion failed', error);
     }
 
+    let expertiseRefreshed = 0;
+    try {
+      const activeUserIds = await prisma.user.findMany({
+        where: { threads: { some: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } } },
+        select: { id: true },
+        take: 50,
+      });
+      for (const u of activeUserIds) {
+        try {
+          await refreshUserExpertise(u.id);
+          expertiseRefreshed++;
+        } catch (err) {
+          logger.debug('[cron/update-threads] refreshUserExpertise failed', { userId: u.id, error: err });
+        }
+      }
+    } catch (error) {
+      logger.warn('[cron/update-threads] expertise refresh failed', error);
+    }
+
     return NextResponse.json(
       ok({
         processed: totalProcessed,
@@ -332,6 +352,7 @@ export async function GET(req: NextRequest) {
           driftsFound: reconciliationResult.drifts.length,
         },
         knowledgePages: knowledgeResult,
+        expertiseRefreshed,
       })
     );
   } catch (error) {

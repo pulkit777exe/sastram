@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Send, Loader2, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
+import { toasts } from '@/lib/utils/toast';
 
 const TEXTAREA_MAX_HEIGHT = 120;
 const MIN_QUERY_LENGTH = 3;
@@ -42,25 +43,57 @@ export function SearchInputBar({
   }, [query]);
 
   async function handleDeep() {
-    if (query.trim().length < MIN_QUERY_LENGTH || isStreaming) return;
-    await fetch('/api/ai/deep-research', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: query.trim() }),
-    });
+    if (query.trim().length < MIN_QUERY_LENGTH) {
+      toasts.error('Type at least 3 characters');
+      return;
+    }
+    if (isStreaming) return;
+    try {
+      const res = await fetch('/api/ai/deep-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query.trim() }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toasts.error(j?.error?.message || 'Deep research failed');
+      }
+    } catch {
+      toasts.error('Deep research failed, please try again');
+    }
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (query.trim().length >= MIN_QUERY_LENGTH && !isStreaming) {
-        if (deep) handleDeep();
-        else onSubmit();
-        if (textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-        }
+      if (isStreaming) return;
+      if (query.trim().length < MIN_QUERY_LENGTH) {
+        toasts.error('Type at least 3 characters');
+        return;
       }
+      if (deep) handleDeep();
+      else onSubmit();
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    }
+  }
+
+  function handleSendClick() {
+    if (isStreaming) return;
+    if (query.trim().length < MIN_QUERY_LENGTH) {
+      toasts.error('Type at least 3 characters');
+      return;
+    }
+    if (deep) handleDeep();
+    else onSubmit();
+  }
+
+  function handleDisabledClick(e: React.MouseEvent) {
+    if (query.trim().length < MIN_QUERY_LENGTH) {
+      e.preventDefault();
+      toasts.error('Type at least 3 characters');
     }
   }
 
@@ -96,11 +129,12 @@ export function SearchInputBar({
             style={{ minHeight: '24px', maxHeight: '120px' }}
           />
 
-          <Button
-            type="button"
-            size="icon"
-            onClick={() => (deep ? handleDeep() : onSubmit())}
-            disabled={isStreaming || query.trim().length < MIN_QUERY_LENGTH}
+          <span onClick={handleDisabledClick} className="shrink-0">
+            <Button
+              type="button"
+              size="icon"
+              onClick={handleSendClick}
+              disabled={isStreaming || query.trim().length < MIN_QUERY_LENGTH}
             aria-label="Send"
             className="shrink-0 size-8 rounded-full bg-sai-accent text-white shadow-btn hover:bg-sai-accent/90 disabled:bg-field disabled:text-ink-3 disabled:shadow-none disabled:border disabled:border-line"
           >
@@ -110,6 +144,7 @@ export function SearchInputBar({
               <Send size={14} />
             )}
           </Button>
+          </span>
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[11px] leading-none text-ink-3">

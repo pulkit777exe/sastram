@@ -44,6 +44,18 @@ function calculateSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
 }
 
 const handler = withErrorHandling(async (req: NextRequest) => {
+  if (req.method === 'GET') {
+    const relations = await prisma.threadRelation.findMany({
+      take: 200,
+      orderBy: { similarity: 'desc' },
+      include: {
+        source: { select: { id: true, name: true, slug: true, messageCount: true } },
+        target: { select: { id: true, name: true, slug: true, messageCount: true } },
+      },
+    });
+    return NextResponse.json(ok(relations));
+  }
+
   const preflight = await withAiPreflight(req, {
     aiCallPath: AiCallPath.THREAD_DNA,
   });
@@ -104,4 +116,4 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   return NextResponse.json(ok({ similar, threshold: SIMILARITY_THRESHOLD }));
 });
 
-export { handler as POST };
+export { handler as GET, handler as POST };

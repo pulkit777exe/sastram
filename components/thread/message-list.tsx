@@ -281,12 +281,12 @@ const MessageRow = React.memo(function MessageRow({
                   Sai
                 </Badge>
               )}
-              {message.factCheckStatus === 'verified' && (
+              {String(message.factCheckStatus ?? '').toLowerCase() === 'verified' && (
                 <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-emerald-500/10 text-emerald-700 border-emerald-500/20" title="Fact-checked and verified — sources confirm this claim">
                   ✓ verified
                 </Badge>
               )}
-              {message.factCheckStatus === 'disputed' && (
+              {String(message.factCheckStatus ?? '').toLowerCase() === 'disputed' && (
                 <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-red-500/10 text-red-700 border-red-500/20" title="Fact-checked and disputed — sources contradict this claim">
                   ! disputed
                 </Badge>

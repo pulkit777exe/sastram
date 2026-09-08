@@ -295,7 +295,7 @@ export function Sidebar({
         onMouseLeave={!effectiveCollapsed ? handleMouseLeave : undefined}
       >
         {!effectiveCollapsed ? (
-          <div className="flex items-center justify-between rounded-card border border-line bg-surface p-3 shadow-linear-sm hover:bg-hover cursor-pointer transition-colors">
+          <div className="flex items-center justify-between rounded-card border border-line bg-surface p-3 shadow-card hover:bg-hover cursor-pointer transition-colors">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-field shrink-0 flex items-center justify-center text-xs font-medium text-ink">
                 {name.charAt(0).toUpperCase()}
@@ -404,7 +404,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
       className={cn(
         'group flex items-center gap-3 px-3 py-2 rounded-control cursor-pointer transition-all duration-200',
         active
-          ? 'bg-brand/5 text-brand shadow-linear-sm border-r-2 border-brand'
+          ? 'bg-brand/5 text-brand shadow-card border-r-2 border-brand'
           : 'text-ink-3 hover:text-ink hover:bg-hover',
         collapsed && 'justify-center'
       )}
@@ -447,7 +447,7 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
       )}
 
       {active && !collapsed && !badge && (
-        <div className="ml-auto w-2 h-2 rounded-full bg-brand shadow-linear-sm" />
+        <div className="ml-auto w-2 h-2 rounded-full bg-brand shadow-card" />
       )}
     </Link>
   );

@@ -198,7 +198,7 @@ export function Sidebar({
   const groupedSearches = groupByHistoryDate(searches);
 
   // Tailwind groups — layout / color / motion — extracted to avoid 8+ class inline
-  const sidebarBaseClasses = 'relative h-full flex flex-col overflow-hidden bg-surface border border-line rounded-card shadow-linear-md';
+  const sidebarBaseClasses = 'relative h-full flex flex-col overflow-hidden bg-surface border border-line rounded-card shadow-card';
   const sidebarMotionClasses = 'transition-all duration-250 ease-in-out';
   const sidebarWidthClasses = collapsed ? 'w-0 border-0 p-0' : 'w-55';
 

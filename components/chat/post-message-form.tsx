@@ -170,7 +170,7 @@ export function PostMessageForm({
   // Tailwind class constants — grouped: layout / color / interactivity
   // Extracted to avoid 8+ class inline strings.
   const replyBannerClasses = 'absolute -top-11 left-0 right-0 bg-brand/10 border-x border-t border-brand/15 px-4 py-2 rounded-t-card text-xs flex items-center justify-between z-10 animate-in slide-in-from-bottom-1 duration-150';
-  const fileChipBase = 'absolute left-0 bg-muted/90 backdrop-blur border border-line px-3 py-1.5 rounded-t-card text-xs flex items-center gap-2 shadow-linear-sm z-10';
+  const fileChipBase = 'absolute left-0 bg-muted/90 backdrop-blur border border-line px-3 py-1.5 rounded-t-card text-xs flex items-center gap-2 shadow-card z-10';
   const composerBase = 'flex flex-col border border-line rounded-card bg-surface shadow-card overflow-hidden';
   const composerInteractive = 'hover:border-brand/20 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all';
   const composerReplyVariant = 'rounded-t-none border-t-0';

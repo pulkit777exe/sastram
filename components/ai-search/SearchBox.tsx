@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Filter } from 'lucide-react';
+import { toasts } from '@/lib/utils/toast';
 
 import type { SearchConfig } from '@/modules/ai-search/types';
 import { Button } from '@/components/ui/button';
@@ -114,7 +115,11 @@ export function SearchBox({
   const canSend = draft.trim().length >= MIN_QUERY_LENGTH && !isLoading;
 
   const send = () => {
-    if (!canSend) return;
+    if (isLoading) return;
+    if (draft.trim().length < MIN_QUERY_LENGTH) {
+      toasts.error('Type at least 3 characters');
+      return;
+    }
     onSearch(draft.trim(), {
       exaMode: 'agentic',
       tavilyMode: 'search',
@@ -379,7 +384,7 @@ export function SearchBox({
             <Button
               type="button"
               aria-label="Send"
-              disabled={!canSend}
+              disabled={isLoading}
               onClick={send}
               className="size-9 shrink-0 rounded-full transition-all duration-200 enabled:active:scale-[0.94] col-start-4 row-start-2"
               style={{

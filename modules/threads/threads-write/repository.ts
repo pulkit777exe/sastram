@@ -91,3 +91,15 @@ export async function updateThreadVerified(threadId: string, userId: string): Pr
     data: { verifiedAt: new Date(), verifiedBy: userId, isOutdated: false, lastVerifiedAt: new Date() },
   });
 }
+
+export async function forkThread(payload: { name: string; description?: string | null; slug: string; createdBy: string; forkedFromId: string }) {
+  return prisma.thread.create({
+    data: {
+      name: payload.name,
+      description: payload.description,
+      slug: payload.slug,
+      createdBy: payload.createdBy,
+      forkedFromId: payload.forkedFromId,
+    },
+  });
+}

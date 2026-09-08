@@ -6,6 +6,9 @@ export interface PollResults {
     isActive: boolean;
     expiresAt: Date | null;
     totalVotes: number;
+    isMarket?: boolean;
+    resolvedOptionIndex?: number | null;
+    marketResolvedAt?: Date | null;
   };
   results: Array<{
     option: string;

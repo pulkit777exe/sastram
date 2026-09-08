@@ -7,6 +7,7 @@ import { toasts } from '@/lib/utils/toast';
 import { CheckCircle2, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { TimeAgo } from '@/components/ui/TimeAgo';
+import { Button } from '@/components/ui/button';
 import type { PollResults } from '@/modules/polls/types';
 
 const POLL_EXPIRY_TICK_MS = 30_000;
@@ -19,6 +20,8 @@ interface PollDisplayProps {
     options: string[];
     isActive: boolean;
     expiresAt: Date | null;
+    isMarket?: boolean;
+    resolvedOptionIndex?: number | null;
   };
   /** Fresh results from parent's poll tick — skips internal fetch when provided. */
   pollResults?: PollResults | null;
@@ -144,6 +147,25 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
 
   const isExpired = isPollExpired(poll.expiresAt, now);
   const showResults = hasVoted || !poll.isActive || isExpired;
+  const isMarket = Boolean(poll.isMarket);
+  const resolvedIndex = poll.resolvedOptionIndex ?? null;
+  const [resolving, setResolving] = useState(false);
+
+  const handleResolveMarket = async (idx: number) => {
+    if (!isMarket || !poll.isActive || resolving) return;
+    setResolving(true);
+    try {
+      const res = await fetch(`/api/polls/${poll.id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resolvedOptionIndex: idx }) });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error?.message || 'Resolve failed');
+      toasts.success(`Market resolved to "${poll.options[idx]}"`);
+      await loadPollData();
+    } catch (e) {
+      toasts.error(e instanceof Error ? e.message : 'Resolve failed');
+    } finally {
+      setResolving(false);
+    }
+  };
 
   if (isLoading) {
     return <PollSkeleton optionCount={poll.options.length} />;
@@ -153,10 +175,14 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-card border border-line bg-surface p-5 space-y-4 shadow-sm max-w-lg"
+      className="rounded-card border border-line bg-surface p-5 space-y-4 shadow-card max-w-lg"
     >
-      <div className="flex items-start justify-between">
-        <h3 className="text-sm font-semibold text-ink tracking-tight">{poll.question}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-ink tracking-tight">{poll.question}</h3>
+          {isMarket && <span className="inline-flex items-center rounded-chip border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">MARKET</span>}
+          {isMarket && resolvedIndex != null && <span className="text-xs text-ink-3">Resolved: {poll.options[resolvedIndex]}</span>}
+        </div>
         {showResults && <BarChart3 className="h-4 w-4 text-ink-3 shrink-0" />}
       </div>
 
@@ -223,6 +249,18 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
         <p className="text-xs font-mono uppercase tracking-wider text-ink-3">
           Poll expires <TimeAgo date={poll.expiresAt} />
         </p>
+      )}
+      {isMarket && poll.isActive && showResults && (
+        <div className="pt-2 border-t border-line/60">
+          <p className="text-xs font-medium text-ink mb-1.5">Resolve market (OP/admin only)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {poll.options.map((opt, idx) => (
+              <Button key={idx} variant={resolvedIndex === idx ? 'default' : 'outline'} size="sm" className="h-7 text-xs" disabled={resolving} onClick={() => handleResolveMarket(idx)}>
+                {opt}
+              </Button>
+            ))}
+          </div>
+        </div>
       )}
     </motion.div>
   );

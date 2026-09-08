@@ -4,6 +4,8 @@ import { ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@/lib/config/routes';
 import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
 import { InviteFriendButton } from '@/components/thread/invite-friend-button';
+import { BountyButton } from '@/components/thread/BountyButton';
+import { ForkButton } from '@/components/thread/ForkButton';
 
 interface ThreadPageHeaderProps {
   title: string;
@@ -35,6 +37,8 @@ export function ThreadPageHeader({
       </div>
 
       <div className="flex items-center gap-1">
+        <BountyButton threadId={threadId} />
+        <ForkButton threadId={threadId} threadName={title} />
         <ThreadSubscribeButton
           threadId={threadId}
           slug={slug}

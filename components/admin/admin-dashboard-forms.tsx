@@ -148,7 +148,7 @@ export function AdminDashboardForms({ threadsPromise }: AdminDashboardFormsProps
         </Card>
       </section>
 
-      <section className="rounded-card border border-line bg-surface p-6 shadow-linear-sm">
+      <section className="rounded-card border border-line bg-surface p-6 shadow-card">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Threads</h2>

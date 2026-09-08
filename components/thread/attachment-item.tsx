@@ -30,7 +30,7 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
 
   if (isImage) {
     return (
-       <div className="relative group animate-in fade-in duration-200 overflow-hidden rounded-control border border-line/50 bg-surface max-w-65 transition-all duration-300 hover:shadow-linear-md hover:border-line">
+       <div className="relative group animate-in fade-in duration-200 overflow-hidden rounded-control border border-line/50 bg-surface max-w-65 transition-all duration-300 hover:shadow-card hover:border-line">
         <Image
           src={file.url}
           alt={file.name || 'attachment'}
@@ -52,8 +52,8 @@ export const AttachmentItem = React.memo(function AttachmentItem({ file }: Attac
   }
 
   return (
-    <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-control border border-line/60 bg-surface p-2.5 transition-all duration-200 hover:border-line hover:shadow-linear-sm group max-w-70">
-      <div className="p-2 rounded-control border border-line/50 bg-field text-ink-3 shadow-linear-sm transition-transform duration-200 group-hover:scale-105">
+    <div className="flex animate-in fade-in duration-200 items-center gap-3 rounded-control border border-line/60 bg-surface p-2.5 transition-all duration-200 hover:border-line hover:shadow-card group max-w-70">
+      <div className="p-2 rounded-control border border-line/50 bg-field text-ink-3 shadow-card transition-transform duration-200 group-hover:scale-105">
         <FileIcon size={16} className="text-ink opacity-80" />
       </div>
       <div className="flex-1 min-w-0">
@@ -136,7 +136,7 @@ function VideoPlayer({ file }: { file: Attachment }) {
           </span>
           <Button
             size="icon"
-            className="p-2 rounded-full bg-brand text-primary-foreground shadow-linear-sm hover:scale-105 transition-transform"
+            className="p-2 rounded-full bg-brand text-primary-foreground shadow-card hover:scale-105 transition-transform"
           >
             {isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
           </Button>

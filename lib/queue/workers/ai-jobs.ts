@@ -382,7 +382,7 @@ export async function handleDeepResearchJob(data: import('../types').DeepResearc
   const result = await runAiGeneration('deep-research', data.query, () =>
     executeAISearch(
       data.query,
-      { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
+      { exaMode: 'agentic', tavilyMode: 'research', sourceFilter: 'all', searchMode: 'advanced' },
       { exa: process.env.SASTRAM_EXA_KEY ?? '', tavily: process.env.SASTRAM_TAVILY_KEY ?? '', gemini: process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '' },
       undefined,
       expertiseLevel

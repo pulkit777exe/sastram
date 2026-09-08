@@ -26,7 +26,8 @@ export async function createPoll(
   question: string,
   options: string[],
   expiresAt?: Date,
-  messageId?: string
+  messageId?: string,
+  isMarket = false
 ) {
   return prisma.poll.create({
     data: {
@@ -36,7 +37,27 @@ export async function createPoll(
       options: options as Prisma.InputJsonValue,
       expiresAt,
       isActive: true,
+      isMarket,
     },
+  });
+}
+
+export async function resolveMarketPoll(pollId: string, resolvedOptionIndex: number) {
+  const poll = await prisma.poll.findUnique({ where: { id: pollId }, select: { isMarket: true, isActive: true } });
+  if (!poll) throw new Error('Poll not found');
+  if (!poll.isMarket) throw new Error('Not a market poll');
+  if (!poll.isActive) throw new Error('Poll already closed');
+  return prisma.poll.update({
+    where: { id: pollId },
+    data: { resolvedOptionIndex, marketResolvedAt: new Date(), isActive: false },
+  });
+}
+
+export async function getMarketPolls(threadId?: string) {
+  return prisma.poll.findMany({
+    where: { isMarket: true, ...(threadId ? { threadId } : {}) },
+    orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { votes: true } } },
   });
 }
 
@@ -79,6 +100,9 @@ export async function getPollResults(pollId: string) {
         options: true,
         isActive: true,
         expiresAt: true,
+        isMarket: true,
+        resolvedOptionIndex: true,
+        marketResolvedAt: true,
         _count: { select: { votes: true } },
       },
     }),
@@ -106,6 +130,9 @@ export async function getPollResults(pollId: string) {
       options,
       isActive: poll.isActive,
       expiresAt: poll.expiresAt,
+      isMarket: (poll as unknown as { isMarket?: boolean }).isMarket ?? false,
+      resolvedOptionIndex: (poll as unknown as { resolvedOptionIndex?: number | null }).resolvedOptionIndex ?? null,
+      marketResolvedAt: (poll as unknown as { marketResolvedAt?: Date | null }).marketResolvedAt ?? null,
       totalVotes,
     },
     results: options.map((option, index) => {

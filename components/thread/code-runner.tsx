@@ -52,38 +52,131 @@ function truncateOutput(text: string): string {
 }
 
 /**
- * Execute JS code client-side in a sandboxed manner.
- * - Only intended for client execution (never on server).
- * - Mocks console to capture log/warn/error/info.
- * - Returns captured output and error if thrown.
- * KISS: synchronous only, no Worker, no async handling.
+ * Execute JS code in a Worker sandbox to avoid blocking the main thread.
+ * - No unsafe-eval on main thread; user code runs inside Worker via new Function.
+ * - Captures console output via postMessage.
+ * - 3s timeout terminates Worker to prevent infinite loops.
+ * - Falls back to main-thread execution if Worker unavailable.
  */
-export function executeJs(code: string): { output: string; error: string | null } {
-  const logs: string[] = [];
+export async function executeJs(code: string): Promise<{ output: string; error: string | null }> {
+  if (typeof window === 'undefined') {
+    return { output: '', error: 'Execution unavailable (no window)' };
+  }
 
-  const mockConsole = {
-    log: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-    warn: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-    error: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-    info: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-    debug: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-  };
+  function fallbackSync(): { output: string; error: string | null } {
+    const logs: string[] = [];
+    const mockConsole = {
+      log: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
+      warn: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
+      error: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
+      info: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
+      debug: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
+    };
+    try {
+      const fn = new Function('console', `"use strict";\n${code}`);
+      const result = fn(mockConsole);
+      if (result !== undefined) logs.push(stringifyValue(result));
+      return { output: truncateOutput(logs.join('\n')), error: null };
+    } catch (e) {
+      return { output: truncateOutput(logs.join('\n')), error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  if (typeof Worker === 'undefined') {
+    return fallbackSync();
+  }
+
+  let worker: Worker | null = null;
+  let url: string | null = null;
 
   try {
-    // "use strict" prevents implicit globals; console is injected explicitly.
-    // Using new Function is intentional for KISS client-only sandboxing — never called on server.
-    const fn = new Function('console', `"use strict";\n${code}`);
-    const result = fn(mockConsole);
-    if (result !== undefined) {
-      logs.push(stringifyValue(result));
-    }
-    const output = truncateOutput(logs.join('\n'));
-    return { output, error: null };
-  } catch (e) {
-    const output = truncateOutput(logs.join('\n'));
-    const message = e instanceof Error ? e.message : String(e);
-    return { output, error: message };
+    const workerCode = `
+const logs=[];
+function stringifyValue(v){
+  if(v===null)return'null';
+  if(v===undefined)return'undefined';
+  if(typeof v==='string')return v;
+  if(typeof v==='number'||typeof v==='boolean'||typeof v==='bigint')return String(v);
+  try{return JSON.stringify(v,null,2)??String(v);}catch{return String(v);}
+}
+const mockConsole={
+  log(...a){logs.push(a.map(stringifyValue).join(' '))},
+  warn(...a){logs.push(a.map(stringifyValue).join(' '))},
+  error(...a){logs.push(a.map(stringifyValue).join(' '))},
+  info(...a){logs.push(a.map(stringifyValue).join(' '))},
+  debug(...a){logs.push(a.map(stringifyValue).join(' '))},
+};
+self.onmessage=async(e)=>{
+  const code=e.data&&e.data.code||'';
+  try{
+    const fn=new Function('console','"use strict";\\n'+code);
+    const result=fn(mockConsole);
+    const awaited=result&&typeof result.then==='function'?await result:result;
+    if(awaited!==undefined)logs.push(stringifyValue(awaited));
+    self.postMessage({output:logs.join('\\n'),error:null});
+  }catch(err){
+    self.postMessage({output:logs.join('\\n'),error:err&&err.message?err.message:String(err)});
   }
+};
+`;
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    url = URL.createObjectURL(blob);
+    worker = new Worker(url);
+  } catch {
+    if (url) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    }
+    return fallbackSync();
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    // eslint-disable-next-line prefer-const
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const cleanup = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (worker) {
+        try {
+          worker.terminate();
+        } catch {}
+        worker = null;
+      }
+      if (url) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+        url = null;
+      }
+    };
+
+    const done = (res: { output: string; error: string | null }) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve({ output: truncateOutput(res.output), error: res.error });
+    };
+
+    timeoutId = setTimeout(() => {
+      done({ output: '', error: 'Execution timeout (3s)' });
+    }, 3000);
+
+    worker!.onmessage = (e: MessageEvent<{ output: string; error: string | null }>) => {
+      done({ output: e.data?.output ?? '', error: e.data?.error ?? null });
+    };
+
+    worker!.onerror = (e: ErrorEvent) => {
+      done({ output: '', error: e.message || 'Worker error' });
+    };
+
+    try {
+      worker!.postMessage({ code });
+    } catch (e) {
+      done({ output: '', error: e instanceof Error ? e.message : String(e) });
+    }
+  });
 }
 
 const LANG_DISPLAY: Record<string, string> = {
@@ -128,6 +221,95 @@ interface CodeRunnerProps {
   code: string;
 }
 
+let cachedPyodide: unknown = null;
+let pyodideLoadPromise: Promise<unknown> | null = null;
+
+async function loadPyodideSafely(): Promise<unknown> {
+  if (cachedPyodide) return cachedPyodide;
+  if (pyodideLoadPromise) return pyodideLoadPromise;
+  if (typeof window === 'undefined') throw new Error('No window');
+  const existing = (window as unknown as { loadPyodide?: () => Promise<unknown> }).loadPyodide;
+  if (existing) {
+    pyodideLoadPromise = existing().then((p) => {
+      cachedPyodide = p;
+      return p;
+    });
+    return pyodideLoadPromise;
+  }
+  pyodideLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/pyodide/v0.28.0/full/pyodide.js';
+    script.async = true;
+    const timeout = setTimeout(() => {
+      script.remove();
+      reject(new Error('Pyodide load timeout'));
+    }, 15000);
+    script.onload = async () => {
+      clearTimeout(timeout);
+      try {
+        const loader = (window as unknown as { loadPyodide?: () => Promise<unknown> }).loadPyodide;
+        if (!loader) throw new Error('loadPyodide not found after script load');
+        const py = await loader();
+        cachedPyodide = py;
+        resolve(py);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    script.onerror = () => {
+      clearTimeout(timeout);
+      reject(new Error('Failed to load Pyodide script'));
+    };
+    document.head.appendChild(script);
+  });
+  try {
+    const result = await pyodideLoadPromise;
+    return result;
+  } catch (e) {
+    pyodideLoadPromise = null;
+    throw e;
+  }
+}
+
+async function executePython(code: string): Promise<{ output: string; error: string | null }> {
+  const timeoutMs = 8000;
+  function withTimeout<T>(p: Promise<T>): Promise<T> {
+    return Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Python execution timeout (8s)')), timeoutMs))]);
+  }
+  try {
+    const py = (await withTimeout(loadPyodideSafely())) as {
+      runPythonAsync: (c: string) => Promise<unknown>;
+      setStdout?: (opts: { batched: (s: string) => void }) => void;
+      setStderr?: (opts: { batched: (s: string) => void }) => void;
+    };
+    const logs: string[] = [];
+    try {
+      py.setStdout?.({ batched: (s: string) => logs.push(s) });
+      py.setStderr?.({ batched: (s: string) => logs.push(s) });
+    } catch {
+      // ignore if not supported
+    }
+    let result: unknown = null;
+    try {
+      result = await withTimeout(py.runPythonAsync(code) as Promise<unknown>);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const out = truncateOutput(logs.join('\n'));
+      return { output: out, error: msg };
+    }
+    const captured = logs.join('\n');
+    const extra = result !== undefined && result !== null ? stringifyValue(result) : '';
+    const combined = [captured, extra].filter(Boolean).join('\n');
+    return { output: truncateOutput(combined), error: null };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes('timeout') || msg.includes('Failed to load')) {
+      return { output: '', error: `Python unavailable: ${msg}. Check network and try again.` };
+    }
+    return { output: '', error: msg };
+  }
+}
+
 export function CodeRunner({ lang, code }: CodeRunnerProps) {
   const [copied, setCopied] = React.useState(false);
   const [output, setOutput] = React.useState('');
@@ -153,26 +335,33 @@ export function CodeRunner({ lang, code }: CodeRunnerProps) {
   const handleRun = React.useCallback(() => {
     if (isRunning) return;
     setIsRunning(true);
-    // Defer to next tick so the loading state paints before sync execution blocks.
-    setTimeout(() => {
-      if (support === 'python') {
+    setTimeout(async () => {
+      try {
+        if (support === 'python') {
+          setIsPythonPlaceholder(false);
+          const result = await executePython(code);
+          setOutput(result.output);
+          setError(result.error);
+          setHasRun(true);
+          setIsRunning(false);
+          return;
+        }
+        if (support === 'js') {
+          const result = await executeJs(code);
+          setOutput(result.output);
+          setError(result.error);
+          setIsPythonPlaceholder(false);
+          setHasRun(true);
+          setIsRunning(false);
+          return;
+        }
+        setIsRunning(false);
+      } catch (e) {
         setOutput('');
-        setError(null);
-        setIsPythonPlaceholder(true);
+        setError(e instanceof Error ? e.message : String(e));
         setHasRun(true);
         setIsRunning(false);
-        return;
       }
-      if (support === 'js') {
-        const result = executeJs(code);
-        setOutput(result.output);
-        setError(result.error);
-        setIsPythonPlaceholder(false);
-        setHasRun(true);
-        setIsRunning(false);
-        return;
-      }
-      setIsRunning(false);
     }, 30);
   }, [code, support, isRunning]);
 

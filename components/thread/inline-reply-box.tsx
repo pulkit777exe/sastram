@@ -105,7 +105,7 @@ export function InlineReplyBox({
       className="mt-2 animate-in slide-in-from-top-1 fade-in duration-200"
       style={{ marginLeft: replyIndent }}
     >
-        <div className="border border-brand/20 dark:border-brand/25 rounded-card p-3 bg-brand/10 dark:bg-brand/10 shadow-linear-sm">
+        <div className="border border-brand/20 dark:border-brand/25 rounded-card p-3 bg-brand/10 dark:bg-brand/10 shadow-card">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Reply size={11} />

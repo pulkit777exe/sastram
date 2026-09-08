@@ -83,7 +83,7 @@ export default function ForgotPasswordResetPage() {
     <main className="flex flex-1 items-center justify-center py-16 px-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-card border border-line bg-surface p-8 space-y-5 shadow-linear-sm"
+        className="w-full max-w-md rounded-card border border-line bg-surface p-8 space-y-5 shadow-card"
       >
         <div className="space-y-1">
           <SerifHeading as="h1" className="text-2xl tracking-tight block">
