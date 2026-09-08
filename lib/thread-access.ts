@@ -4,6 +4,10 @@
  * Visibility rule (private/restricted threads):
  *   creator OR accepted ThreadInvitation OR global MODERATOR/ADMIN
  * Public threads are readable by anyone; write still requires session.
+ *
+ * RLS note: row-level security is not enabled on Neon; access is enforced
+ * at the application layer via canAccessThread/visibilityFilter. If RLS is
+ * added, mirror this logic in a policy on threads + thread_invitations.
  */
 
 import { Prisma, Role, ThreadVisibility } from '@prisma/client';

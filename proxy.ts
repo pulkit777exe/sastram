@@ -38,19 +38,18 @@ const isProd = process.env.NODE_ENV === 'production';
 // Whether to send the CSP as Report-Only (observe violations, don't block).
 // Defaults to Report-Only so the nonce can be validated against real traffic
 // via /api/csp-report before flipping to enforcing (CSP_REPORT_ONLY=false).
+// In prod, set CSP_REPORT_ONLY=false after ~1 week of clean reports.
 const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY !== 'false';
 
 function buildCsp(nonce: string): string {
   const scriptParts = ["'self'", `'nonce-${nonce}'`];
   if (!isProd) scriptParts.push("'unsafe-eval'");
-  scriptParts.push("'unsafe-inline'", "https://va.vercel-scripts.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com");
-  const scriptSrcElem = `script-src-elem ${scriptParts.join(' ')}`;
-  const scriptSrc = `script-src ${scriptParts.join(' ')}`;
+  scriptParts.push("https://va.vercel-scripts.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com");
+  const strictScript = scriptParts.join(' ');
+  const scriptSrcElem = `script-src-elem ${strictScript} 'strict-dynamic'`;
+  const scriptSrc = `script-src ${strictScript} 'strict-dynamic'`;
   return [
     "default-src 'self'",
-    // Nonce-based script-src with 'unsafe-inline' fallback: nonces take precedence
-    // for scripts we control, 'unsafe-inline' covers Next.js bootstrap/HMR scripts
-    // that don't carry the nonce attribute.
     scriptSrcElem,
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",

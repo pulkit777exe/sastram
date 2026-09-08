@@ -57,6 +57,21 @@ export function sanitizeContent(content: string): string {
   return sanitizeUserContent(content).sanitized;
 }
 
+const PRIVATE_IP_RE =
+  /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|0\.0\.0\.0|::1|fc00:|fe80:)/i;
+
+export function isSafePublicUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    if (PRIVATE_IP_RE.test(u.hostname)) return false;
+    if (u.hostname === 'localhost' || u.hostname.endsWith('.local')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const ALLOWED_FILE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
 const BYTES_PER_MEGABYTE = 1024 * 1024;
 

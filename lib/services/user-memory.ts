@@ -6,13 +6,13 @@ const LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'] as const;
 export async function refreshUserExpertise(userId: string): Promise<void> {
   const [threads, sessions] = await Promise.all([
     prisma.thread.findMany({
-      where: { createdBy: userId },
+      where: { createdBy: userId, deletedAt: null },
       select: { threadDna: true },
       orderBy: { createdAt: 'desc' },
       take: 20,
     }),
     prisma.aiSearchSession.findMany({
-      where: { userId, queryType: { not: null } },
+      where: { userId, queryType: { not: null }, deletedAt: null },
       select: { queryType: true },
       orderBy: { createdAt: 'desc' },
       take: 20,

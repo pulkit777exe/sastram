@@ -23,8 +23,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --audit-level=high
-        continue-on-error: true
+      - run: pnpm audit --audit-level=critical
 
   check:
     runs-on: ubuntu-latest
