@@ -1,14 +1,12 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Hash, MessageSquare, Clock } from 'lucide-react';
+import { Hash } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { requireSession } from '@/modules/auth';
 import { listThreads } from '@/modules/threads/repository';
-import type { ThreadSummary } from '@/modules/threads/types';
-import TimeAgo from '@/components/ui/TimeAgo';
 import { CreateThreadDialog } from '@/components/create-thread-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ThreadListFilter } from '@/components/thread/ThreadListFilter';
 
 export const metadata: Metadata = {
   title: 'Threads - Sastram',
@@ -17,7 +15,7 @@ export const metadata: Metadata = {
 
 function ThreadListSkeleton() {
   return (
-    <div className="rounded-control border border-line bg-surface shadow-linear-xs">
+    <div className="rounded-card border border-line bg-surface shadow-card">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
@@ -32,48 +30,6 @@ function ThreadListSkeleton() {
         </div>
       ))}
     </div>
-  );
-}
-
-function ThreadRow({ thread }: { thread: ThreadSummary }) {
-  const isVerified = !!thread.verifiedAt;
-  return (
-    <Link
-      href={`/dashboard/threads/${thread.slug}`}
-      className="group flex items-start gap-3 border-b border-line/60 p-4 transition-colors last:border-b-0 hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-brand/15 bg-brand/10 text-brand transition-colors group-hover:bg-brand group-hover:text-primary-foreground">
-        <Hash size={14} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex min-w-0 items-center gap-2 flex-wrap">
-          <h3 className="text-sm font-semibold text-ink truncate group-hover:text-brand transition-colors">
-            {thread.name}
-          </h3>
-          {isVerified && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-              ✓ Verified
-            </span>
-          )}
-          {thread.resolutionScore != null && (
-            <span className="text-[11px] font-medium text-ink-3 tabular-nums">{thread.resolutionScore}/100</span>
-          )}
-        </div>
-        {thread.description && (
-          <p className="text-xs text-ink-3 mt-1 line-clamp-1">{thread.description}</p>
-        )}
-        <div className="mt-2 flex items-center gap-3 text-xs text-ink-3">
-          <span className="flex items-center gap-1">
-            <MessageSquare size={10} />
-            {thread.messageCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock size={10} />
-            <TimeAgo date={thread.updatedAt} />
-          </span>
-        </div>
-      </div>
-    </Link>
   );
 }
 
@@ -99,13 +55,7 @@ async function ThreadList({ userId, userRole }: { userId: string; userRole: Role
     );
   }
 
-  return (
-    <div className="overflow-hidden rounded-control border border-line bg-surface shadow-linear-xs">
-      {threads.map((thread) => (
-        <ThreadRow key={thread.id} thread={thread} />
-      ))}
-    </div>
-  );
+  return <ThreadListFilter threads={threads} />;
 }
 
 export default async function ThreadsPage() {

@@ -2,7 +2,7 @@ export interface SearchConfig {
   exaMode: 'agentic' | 'instant' | 'websets';
   tavilyMode: 'search' | 'extract' | 'crawl' | 'research';
   sourceFilter: 'all' | 'technical' | 'reddit-hn' | 'docs';
-  searchMode: 'standard' | 'instant' | 'table';
+  searchMode: 'standard' | 'instant' | 'table' | 'advanced';
 }
 
 export interface QueryClassification {

@@ -46,15 +46,15 @@ export default async function ActivityPage() {
           </div>
 
           {threads.length === 0 ? (
-            <Card className="p-8 text-center">
-              <FileText className="h-10 w-10 mx-auto mb-3 text-ink-3 opacity-50" />
-              <p className="text-ink-3">No threads created yet</p>
-              <Link
-                href="/dashboard/threads"
-                className="text-brand text-sm mt-2 inline-block hover:underline"
-              >
-                Create your first thread
-              </Link>
+            <Card className="p-8 text-center flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+                <FileText size={22} className="text-muted-foreground" />
+              </div>
+              <p className="text-lg font-semibold text-ink">No threads yet</p>
+              <p className="text-sm text-ink-3 mt-1 max-w-sm">Create a thread to start a discussion — @sai will help track it.</p>
+              <Button asChild variant="outline" size="sm" className="mt-4">
+                <Link href="/dashboard/threads">Create thread</Link>
+              </Button>
             </Card>
           ) : (
             <div className="space-y-3">
@@ -143,9 +143,7 @@ export default async function ActivityPage() {
                 </Link>
               ))}
               {messagesResult.hasMore && (
-                <Button type="button" variant="link" className="w-full">
-                  Load more comments
-                </Button>
+                <p className="text-xs text-center text-ink-3 py-2">Showing 20 most recent · <Link href="/dashboard/threads" className="text-brand hover:underline">Browse threads</Link> to see more</p>
               )}
             </div>
           )}

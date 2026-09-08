@@ -131,11 +131,12 @@ function getConfidenceForTier(tier: 1 | 2 | 3 | 4): number {
 
 function buildExaBody(query: string, classification: QueryClassification, config: SearchConfig): Record<string, unknown> {
   const searchQuery = classification.searchTerms[0] ?? query;
+  const isAdvanced = config.searchMode === 'advanced';
   const body: Record<string, unknown> = {
     query: searchQuery,
     type: config.exaMode === 'instant' ? 'keyword' : 'neural',
-    numResults: 8,
-    text: { maxCharacters: 8000 },
+    numResults: isAdvanced ? 12 : 8,
+    text: { maxCharacters: isAdvanced ? 12000 : 8000 },
     useAutoprompt: true,
   };
   const includeDomains = getIncludeDomains(config.sourceFilter);
@@ -190,10 +191,11 @@ export async function searchWithExa(
 
 function buildTavilyBody(query: string, classification: QueryClassification, config: SearchConfig): Record<string, unknown> {
   const searchQuery = classification.searchTerms[0] ?? query;
+  const isAdvanced = config.searchMode === 'advanced';
   const body: Record<string, unknown> = {
     query: searchQuery,
-    search_depth: config.tavilyMode === 'research' ? 'advanced' : 'basic',
-    max_results: 6,
+    search_depth: config.tavilyMode === 'research' || isAdvanced ? 'advanced' : 'basic',
+    max_results: isAdvanced ? 12 : 6,
     include_answer: true,
   };
   const includeDomains = getIncludeDomains(config.sourceFilter);

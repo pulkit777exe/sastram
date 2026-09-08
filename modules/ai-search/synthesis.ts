@@ -52,10 +52,14 @@ function getErrorStatus(error: unknown, fallback = 502): number {
 }
 
 function compareSourcesByTierAndConfidence(a: Source, b: Source): number {
-  if (a.tier !== b.tier) {
-    return a.tier - b.tier;
-  }
-  return b.confidence - a.confidence;
+  if (a.tier !== b.tier) return a.tier - b.tier;
+  if (a.contentFetched !== b.contentFetched) return a.contentFetched ? -1 : 1;
+  if (a.isOutdated !== b.isOutdated) return a.isOutdated ? 1 : -1;
+  if (a.confidence !== b.confidence) return b.confidence - a.confidence;
+  const aDate = a.publishedDate ? new Date(a.publishedDate).getTime() : 0;
+  const bDate = b.publishedDate ? new Date(b.publishedDate).getTime() : 0;
+  if (aDate !== bDate) return bDate - aDate;
+  return 0;
 }
 
 function mergeAllSources(rawResults: { exaSources: Source[]; tavilySources: Source[] }): Source[] {
