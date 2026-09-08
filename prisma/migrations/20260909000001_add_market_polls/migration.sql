@@ -1,0 +1,4 @@
+ALTER TABLE "polls" ADD COLUMN IF NOT EXISTS "isMarket" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "polls" ADD COLUMN IF NOT EXISTS "resolvedOptionIndex" INTEGER;
+ALTER TABLE "polls" ADD COLUMN IF NOT EXISTS "marketResolvedAt" TIMESTAMP(3);
+CREATE INDEX IF NOT EXISTS "polls_isMarket_idx" ON "polls"("isMarket");
