@@ -73,7 +73,6 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     setIsLoading(true);
 
     try {
-      // Both requests fire in parallel
       const [voteResult, resultsResult] = await Promise.all([
         getUserVoteAction({ pollId: poll.id }),
         getPollResultsAction({ pollId: poll.id }),
@@ -124,7 +123,6 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
         setHasVoted(true);
         // "saved" is misleading for a vote action
         toasts.success('Vote recorded!');
-        // Reload results to show updated counts
         await loadPollData();
       }
     } catch {

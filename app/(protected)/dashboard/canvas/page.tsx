@@ -16,8 +16,8 @@ export default async function CanvasPage({
   const rightId = params.right;
 
   const [left, right] = await Promise.all([
-    leftId ? prisma.thread.findUnique({ where: { id: leftId }, select: { id: true, name: true, slug: true, aiSummary: true, threadDna: true, resolutionScore: true } }) : null,
-    rightId ? prisma.thread.findUnique({ where: { id: rightId }, select: { id: true, name: true, slug: true, aiSummary: true, threadDna: true, resolutionScore: true } }) : null,
+    leftId ? prisma.thread.findUnique({ where: { id: leftId }, select: { id: true, name: true, slug: true, aiSummary: true, threadDna: true, resolutionScore: true } }).catch(() => null) : null,
+    rightId ? prisma.thread.findUnique({ where: { id: rightId }, select: { id: true, name: true, slug: true, aiSummary: true, threadDna: true, resolutionScore: true } }).catch(() => null) : null,
   ]);
 
   let diff: { conflictDetected: boolean; description: string; sideA: string; sideB: string; ranked: { title: string; tier: number; domain: string }[] } | null = null;

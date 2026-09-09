@@ -258,12 +258,14 @@ export function Sidebar({
             <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false} onNavigate={onNavigate}></NavItem>
           </nav>
 
-          <div className="mx-3 mb-3 px-3 py-2 text-ink-3">
-            <div className="flex items-center gap-2 mb-1 text-ink">
-              <AnimatedIcon icon={Sparkles} size={14} className="text-brand" />
-              <p className="text-sm font-semibold">Boost with Sai</p>
+          <div className="mx-3 mb-3 p-3 rounded-card border border-line bg-canvas">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-6 h-6 rounded-control bg-brand flex items-center justify-center">
+                <AnimatedIcon icon={Sparkles} size={12} className="text-white" />
+              </div>
+              <p className="text-sm font-semibold text-ink">Boost with Sai</p>
             </div>
-            <p className="text-xs text-ink-3">
+            <p className="text-xs text-ink-3 leading-relaxed">
               Sai-powered replies and tools that save hours.
             </p>
           </div>

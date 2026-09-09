@@ -223,8 +223,8 @@ export function SaiSearchLayout({
         <div className="h-14 flex items-center justify-between gap-3 px-4 bg-surface/90 backdrop-blur-md border-b border-line shrink-0 supports-[backdrop-filter]:bg-surface/70">
           <div className="flex items-center gap-2 min-w-0">
             <Logo className="size-6 shrink-0 hidden sm:block" />
-            <span className="font-serif-heading text-[15px] font-medium tracking-tight text-ink truncate">Sai Search</span>
-            <span className="hidden sm:inline-flex items-center rounded-full bg-sai-accent/10 px-2 py-0.5 text-[10px] font-medium tracking-wider text-sai-accent uppercase">Beta</span>
+            <span className="font-serif-heading text-[17px] font-semibold tracking-tight text-ink truncate">Sai Search</span>
+            <span className="hidden sm:inline-flex items-center rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-2.5 py-0.5 text-[10px] font-bold tracking-widest text-amber-950 uppercase shadow-sm shadow-amber-500/20 border border-amber-300/50">Beta</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <Button type="button"

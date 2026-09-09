@@ -43,7 +43,7 @@ export default async function GraphPage() {
       source: { select: { id: true, name: true, slug: true } },
       target: { select: { id: true, name: true, slug: true } },
     },
-  });
+  }).catch(() => []);
 
   const nodeMap = new Map<string, { id: string; name: string; slug: string }>();
   for (const r of relations) {

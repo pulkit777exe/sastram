@@ -16,11 +16,11 @@ function NotificationListSkeleton() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-6 w-24 rounded-control" />
       </div>
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex items-start gap-3 p-4 rounded-card">
+          <div key={i} className="flex items-start gap-3 p-4 rounded-card border border-line bg-canvas">
             <Skeleton className="h-8 w-8 rounded-full shrink-0" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-3 w-3/4" />
@@ -93,19 +93,19 @@ export default async function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-10 max-w-3xl">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div>
-        <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-[0.2em] mb-2">
-          <Bell size={14} />
-          <span>Notifications</span>
-        </div>
-        <h1 className="text-4xl font-bold tracking-tight">Notifications</h1>
-        <p className="text-muted-foreground mt-2">Stay updated with mentions, replies, and activity.</p>
+        <h1 className="font-serif-heading text-2xl text-ink flex items-center gap-2">
+          <Bell size={18} className="text-ink-3" /> Notifications
+        </h1>
+        <p className="text-sm text-ink-3 mt-1">Stay updated with mentions, replies, and activity.</p>
       </div>
 
-      <Suspense fallback={<NotificationListSkeleton />}>
-        <NotificationListData />
-      </Suspense>
+      <div className="rounded-card border border-line bg-surface shadow-card p-4">
+        <Suspense fallback={<NotificationListSkeleton />}>
+          <NotificationListData />
+        </Suspense>
+      </div>
     </div>
   );
 }

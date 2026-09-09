@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, withErrorHandling } from '@/lib/utils/api-response';
-import { addToCollection, removeFromCollectionOwned } from '@/modules/collections/repository';
+import { removeFromCollectionOwned } from '@/modules/collections/repository';
 import { z } from 'zod';
 
 const addSchema = z.object({ threadId: z.string().cuid().optional(), sessionId: z.string().cuid().optional() }).refine((d) => d.threadId || d.sessionId, 'threadId or sessionId required');
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
-  await requireSessionOrThrow();
+  const session = await requireSessionOrThrow();
   const { id } = await context!.params;
+  const parsedId = z.string().cuid().safeParse(id);
+  if (!parsedId.success) return NextResponse.json({ error: 'Invalid collection id' }, { status: 400 });
   const body = addSchema.parse(await request.json());
-  // ensure collection belongs to user via add (FK will fail if not)
-  const item = await addToCollection(id, body.threadId, body.sessionId);
+  const item = await (await import('@/modules/collections/repository')).addToCollectionOwned(parsedId.data, session.user.id, session.user.role, body.threadId, body.sessionId);
   return NextResponse.json(ok(item), { status: 201 });
 });
 

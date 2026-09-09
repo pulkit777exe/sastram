@@ -169,7 +169,7 @@ export default function SearchPage() {
     <div className="mx-auto w-full max-w-4xl space-y-6 px-4 md:px-6">
       <div className="flex items-center gap-3">
         <Search className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Search</h1>
+        <h1 className="font-serif-heading text-2xl">Search</h1>
     </div>
 
         <Card className="p-6 space-y-4">

@@ -153,7 +153,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     // side-effecting a mark-all-read write on every mount (which previously
     // re-toasted serverError() on each navigation / StrictMode double-invoke).
     setNotificationCount(0);
-  }, []);
+  }, [setNotificationCount]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -176,10 +176,10 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
-          <Inbox size={24} className="text-muted-foreground" />
+          <Inbox size={24} className="text-ink-3" />
         </div>
-        <p className="text-lg font-semibold text-foreground">You&apos;re all caught up</p>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">No notifications yet — we&apos;ll let you know when someone mentions you or replies.</p>
+        <p className="text-lg font-semibold text-ink">You&apos;re all caught up</p>
+        <p className="text-sm text-ink-3 mt-1 max-w-sm">No notifications yet — we&apos;ll let you know when someone mentions you or replies.</p>
         <Button asChild variant="outline" size="sm" className="mt-4">
           <Link href="/dashboard/threads">Browse threads</Link>
         </Button>
@@ -191,8 +191,8 @@ export function NotificationList({ notifications: initial }: NotificationListPro
     if (unreadCount <= 0) return null;
     return (
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{unreadCount} unread</span>
-        <Button type="button" variant="link" onClick={handleMarkAllRead} disabled={isPending} className="text-xs h-auto p-0">
+        <span className="text-sm text-ink-3">{unreadCount} unread</span>
+        <Button type="button" variant="link" onClick={handleMarkAllRead} disabled={isPending} className="text-xs h-auto p-0 text-brand">
           <CheckCheck size={14} className="mr-1" />
           Mark all read
         </Button>
@@ -214,7 +214,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
 
           return (
             <div key={label} className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                 {label}
               </h2>
               <div className="space-y-1">
@@ -222,12 +222,12 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                   const Icon = TYPE_ICONS[notification.type] ?? TYPE_ICONS.DEFAULT;
                   const isUnread = !notification.isRead;
                   // Tailwind extracted — layout / color / interactivity grouped
-                  const notificationBase = 'w-full flex items-start gap-3 p-4 rounded-card text-left transition-all hover:bg-muted/50 justify-start h-auto';
+                  const notificationBase = 'w-full flex items-start gap-3 p-4 rounded-card border border-transparent text-left transition-all hover:bg-hover hover:border-line justify-start h-auto';
                   const notificationUnread = 'bg-brand/5 border border-brand/10';
                   const notificationClasses = cn(notificationBase, isUnread && notificationUnread);
                   const iconBase = 'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full';
                   const iconUnread = 'bg-brand/10 text-brand';
-                  const iconRead = 'bg-muted text-muted-foreground';
+                  const iconRead = 'bg-canvas border border-line text-ink-3';
                   return (
                     <Button
                       type="button"
@@ -253,11 +253,11 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                           >
                             {notification.title}
                           </p>
-                          <span className="text-xs text-muted-foreground shrink-0">
+                          <span className="text-xs text-ink-3 shrink-0">
                             <TimeAgo date={notification.createdAt} />
                           </span>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        <div className="text-xs text-ink-3 mt-0.5 line-clamp-2">
                           {isAiNotConfigured(notification.message) ? (
                             <AiNotConfiguredNotice className="border-0 bg-transparent p-0" />
                           ) : (
@@ -279,12 +279,12 @@ export function NotificationList({ notifications: initial }: NotificationListPro
 
       {hasMore && (
         <div ref={sentinelRef} className="h-8 flex items-center justify-center">
-          {isLoadingMore && <span className="text-xs text-muted-foreground">Loading more...</span>}
+          {isLoadingMore && <span className="text-xs text-ink-3">Loading more...</span>}
         </div>
       )}
 
       {!hasMore && notifications.length > 20 && (
-        <div className="text-center text-xs text-muted-foreground py-2">No more notifications</div>
+        <div className="text-center text-xs text-ink-3 py-2">No more notifications</div>
       )}
     </div>
   );

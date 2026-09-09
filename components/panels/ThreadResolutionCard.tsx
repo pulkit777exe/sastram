@@ -175,9 +175,14 @@ export default function ThreadResolutionCard({
   return (
     <DetailCard className="space-y-3">
       <div className="flex items-end justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.12em] text-ink-3">Resolution</p>
-          <p className="mt-0.5 text-xs text-ink-2">{label}</p>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-control bg-brand/10 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-brand"><path d="M12 2l3.09 6.26L22 9.27l-5 5.14 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.12em] text-ink-3">Resolution</p>
+            <p className="text-xs text-ink-2 font-medium">{label}</p>
+          </div>
         </div>
         <span className="text-2xl leading-none font-bold tabular-nums text-ink">
           {Math.round(score)}

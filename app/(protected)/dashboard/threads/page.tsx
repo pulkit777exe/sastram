@@ -5,6 +5,7 @@ import type { Role } from '@prisma/client';
 import { requireSession } from '@/modules/auth';
 import { listThreads } from '@/modules/threads/repository';
 import { CreateThreadDialog } from '@/components/create-thread-dialog';
+import { ForkFromUrlButton } from '@/components/thread/ForkFromUrlButton';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadListFilter } from '@/components/thread/ThreadListFilter';
 
@@ -65,10 +66,13 @@ export default async function ThreadsPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink">Threads</h1>
+          <h1 className="font-serif-heading text-2xl tracking-tight text-ink">Threads</h1>
           <p className="text-sm text-ink-3 mt-1">Your discussions and topics.</p>
         </div>
-        <CreateThreadDialog />
+        <div className="flex items-center gap-2">
+          <ForkFromUrlButton />
+          <CreateThreadDialog />
+        </div>
       </div>
 
       <Suspense fallback={<ThreadListSkeleton />}>

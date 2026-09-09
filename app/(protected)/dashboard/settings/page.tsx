@@ -21,8 +21,13 @@ export default async function SettingsPage({
   }
 
   const tab = (await searchParams).tab || 'profile';
-  const subscriptionsResult = await getUserNewsletterSubscriptions();
-  const subscriptions = subscriptionsResult.data ?? [];
+  let subscriptions: Awaited<ReturnType<typeof getUserNewsletterSubscriptions>>['data'] = [];
+  try {
+    const subscriptionsResult = await getUserNewsletterSubscriptions();
+    subscriptions = subscriptionsResult.data ?? [];
+  } catch {
+    subscriptions = [];
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -41,18 +46,18 @@ export default async function SettingsPage({
       preferences: true,
       profilePrivacy: true,
     },
-  });
+  }).catch(() => null);
 
   return (
-    <div className="space-y-10 max-w-4xl">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
-        <p className="mt-2">
-          Manage your account settings, notifications, and appearance preferences.
-        </p>
+        <h1 className="font-serif-heading text-2xl text-ink">Settings</h1>
+        <p className="text-sm text-ink-3 mt-1">Manage your account, notifications, and appearance.</p>
       </div>
 
-      <SettingsTabs activeTab={tab} />
+      <div className="rounded-card border border-line bg-surface shadow-card p-2">
+        <SettingsTabs activeTab={tab} />
+      </div>
       {tab === 'profile' && user && <SettingsForm user={user} />}
       {tab === 'newsletters' && <NewsletterManagement subscriptions={subscriptions} />}
       {tab === 'preferences' && user && <PreferencesForm user={user} />}

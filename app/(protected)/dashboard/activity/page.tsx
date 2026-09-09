@@ -34,19 +34,23 @@ export default async function ActivityPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Activity className="h-6 w-6 text-brand" />
-        <h1 className="text-2xl font-bold text-ink">Your Activity</h1>
+        <h1 className="font-serif-heading text-2xl text-ink">Your Activity</h1>
     </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className="h-5 w-5 text-ink-3" />
-            <h2 className="text-lg font-semibold text-ink">Threads Created</h2>
-            <span className="text-sm text-ink-3">({threadsResult.total})</span>
+      <div className="grid lg:grid-cols-2 gap-10">
+        <section className="space-y-5">
+          <div className="flex items-center gap-2.5 pb-3 border-b border-line/60">
+            <div className="w-8 h-8 rounded-control bg-brand/10 flex items-center justify-center">
+              <FileText className="h-4 w-4 text-brand" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-ink leading-none">Threads Created</h2>
+              <span className="text-xs text-ink-3">({threadsResult.total}) total</span>
+            </div>
           </div>
 
           {threads.length === 0 ? (
-            <Card className="p-8 text-center flex flex-col items-center">
+            <Card className="p-10 text-center flex flex-col items-center border-dashed shadow-none">
               <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
                 <FileText size={22} className="text-muted-foreground" />
               </div>
@@ -57,27 +61,27 @@ export default async function ActivityPage() {
               </Button>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {threads.map((thread) => (
-                <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
-                  <Card className="p-4 hover:bg-hover transition-colors">
-                    <h3 className="font-semibold text-ink mb-1">{thread.name}</h3>
+                <Link key={thread.id} href={ROUTES.THREAD(thread.slug)} className="block group">
+                  <Card className="p-5 hover:bg-hover hover:border-line-strong hover:shadow-card transition-all duration-200">
+                    <h3 className="font-semibold text-ink mb-1.5 line-clamp-1 group-hover:text-brand transition-colors">{thread.name}</h3>
                     {thread.description && (
-                      <p className="text-sm text-ink-3 mb-2 line-clamp-1">
+                      <p className="text-sm text-ink-3 mb-3 line-clamp-2 leading-relaxed">
                         {thread.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-4 text-xs text-ink-3">
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="h-3 w-3" />
+                    <div className="flex items-center gap-4 text-xs text-ink-3 pt-3 border-t border-line/50">
+                      <span className="flex items-center gap-1.5">
+                        <MessageSquare className="h-3.5 w-3.5" />
                         {thread.messageCount}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
+                      <span className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" />
                         {thread.memberCount}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
+                      <span className="flex items-center gap-1.5 ml-auto">
+                        <Calendar className="h-3.5 w-3.5" />
                         <TimeAgo date={thread.createdAt} />
                       </span>
                     </div>
@@ -87,7 +91,7 @@ export default async function ActivityPage() {
               {threadsResult.hasMore && (
                 <Link
                   href="/dashboard/threads?filter=mine"
-                  className="block text-center text-sm text-brand hover:underline py-2"
+                  className="block text-center text-sm font-medium text-brand hover:text-brand/80 hover:underline py-3 rounded-card border border-dashed border-line bg-surface/50"
                 >
                   View all threads →
                 </Link>
@@ -96,15 +100,19 @@ export default async function ActivityPage() {
           )}
         </section>
 
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <MessageSquare className="h-5 w-5 text-ink-3" />
-            <h2 className="text-lg font-semibold text-ink">Your Comments</h2>
-            <span className="text-sm text-ink-3">({messagesResult.total})</span>
+        <section className="space-y-5">
+          <div className="flex items-center gap-2.5 pb-3 border-b border-line/60">
+            <div className="w-8 h-8 rounded-control bg-violet-500/10 flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-violet-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-ink leading-none">Your Comments</h2>
+              <span className="text-xs text-ink-3">({messagesResult.total}) total</span>
+            </div>
           </div>
 
           {messages.length === 0 ? (
-            <Card className="p-8 text-center flex flex-col items-center">
+            <Card className="p-10 text-center flex flex-col items-center border-dashed shadow-none">
               <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
                 <MessageSquare size={22} className="text-muted-foreground" />
               </div>
@@ -115,27 +123,28 @@ export default async function ActivityPage() {
               </Button>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {messages.map((message) => (
-                <Link key={message.id} href={ROUTES.THREAD(message.thread.slug)}>
-                  <Card className="p-4 hover:bg-hover transition-colors">
+                <Link key={message.id} href={ROUTES.THREAD(message.thread.slug)} className="block group">
+                  <Card className="p-5 hover:bg-hover hover:border-line-strong hover:shadow-card transition-all duration-200">
                     {message.parent && (
-                      <div className="flex items-center gap-2 text-xs text-ink-3 mb-2 pb-2 border-b border-line">
-                        <Reply className="h-3 w-3" />
+                      <div className="flex items-center gap-2 text-xs text-ink-3 mb-3 pb-3 border-b border-line/60">
+                        <Reply className="h-3.5 w-3.5" />
                         <span>
                           Replying to{' '}
-                          <span className="font-medium">
+                          <span className="font-medium text-ink">
                             {getReplySenderName(message.parent.sender)}
                           </span>
                         </span>
                       </div>
                     )}
 
-                    <p className="text-sm text-ink line-clamp-2 mb-2">{message.content}</p>
+                    <p className="text-sm text-ink line-clamp-2 mb-3 leading-relaxed">{message.content}</p>
 
-                    <div className="flex items-center justify-between text-xs text-ink-3">
-                      <span className="font-medium text-brand">{message.thread.name}</span>
-                      <span>
+                    <div className="flex items-center justify-between text-xs text-ink-3 pt-3 border-t border-line/50">
+                      <span className="font-medium text-brand truncate pr-2">{message.thread.name}</span>
+                      <span className="shrink-0 flex items-center gap-1">
+                        <Calendar size={12} />
                         <TimeAgo date={message.createdAt} />
                       </span>
                     </div>
@@ -143,7 +152,7 @@ export default async function ActivityPage() {
                 </Link>
               ))}
               {messagesResult.hasMore && (
-                <p className="text-xs text-center text-ink-3 py-2">Showing 20 most recent · <Link href="/dashboard/threads" className="text-brand hover:underline">Browse threads</Link> to see more</p>
+                <p className="text-xs text-center text-ink-3 py-3 rounded-card border border-dashed border-line bg-surface/50">Showing 20 most recent · <Link href="/dashboard/threads" className="text-brand hover:underline font-medium">Browse threads</Link> to see more</p>
               )}
             </div>
           )}

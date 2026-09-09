@@ -25,7 +25,7 @@ export default async function BookmarksPage() {
   if (result.error || !result.data) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-ink">Bookmarks</h1>
+        <h1 className="font-serif-heading text-2xl text-ink">Bookmarks</h1>
         <Card className="p-6 text-center text-ink-3 border border-line">
           {result.error || 'Failed to load bookmarks'}
         </Card>
@@ -39,7 +39,7 @@ export default async function BookmarksPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Bookmark className="h-6 w-6 text-ink" />
-        <h1 className="text-2xl font-bold text-ink">Bookmarks</h1>
+        <h1 className="font-serif-heading text-2xl text-ink">Bookmarks</h1>
         <span className="text-ink-3">({bookmarks.length})</span>
      </div>
 
