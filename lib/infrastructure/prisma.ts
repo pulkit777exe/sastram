@@ -68,12 +68,33 @@ function getPrismaLogLevels(): ('error' | 'warn' | 'query')[] {
 }
 
 function createPrismaClient() {
-  const connectionString = resolveConnectionString();
+  let connectionString: string;
+  try {
+    connectionString = resolveConnectionString();
+  } catch (err) {
+    logger.error('[prisma] Failed to resolve DATABASE_URL', err);
+    // Fallback to dummy URL that will fail gracefully at query time, not at boot
+    connectionString = 'postgresql://dummy:dummy@localhost:5432/dummy?schema=public';
+  }
   const adapter = createAdapter(connectionString);
-  return new PrismaClient({
+  const client = new PrismaClient({
     adapter,
     log: getPrismaLogLevels(),
   });
+
+  // Test connection in background, log warning if unreachable (don't crash)
+  if (process.env.NODE_ENV !== 'production') {
+    // Use $connect() which will trigger DNS lookup; catch ENOTFOUND
+    client.$connect().catch((err) => {
+      logger.warn('[prisma] Database connection failed on startup - app will run in degraded mode', {
+        code: (err as NodeJS.ErrnoException)?.code,
+        hostname: (err as { hostname?: string })?.hostname,
+        message: (err as Error)?.message?.slice(0, 100),
+      });
+    });
+  }
+
+  return client;
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -133,32 +134,32 @@ model User {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  threads       Thread[]             @relation("ThreadCreator")
-  verifiedThreads Thread[]           @relation("ThreadVerifier")
-  messages      Message[]
-  reactions     Reaction[]
-  notifications Notification[]
-  reports       Report[]             @relation("Reporter")
-  invitations   ThreadInvitation[]   @relation("InvitationSender")
-  bans          UserBan[]            @relation("BannedUser")
-  issuedBans    UserBan[]            @relation("BanIssuer")
-  followers     UserFollow[]         @relation("Follower")
-  following     UserFollow[]         @relation("Following")
-  bookmarks     UserBookmark[]
-  activities    UserActivity[]
-  pollVotes     PollVote[]
-  readReceipts  ReadReceipt[]
-  subscriptions ThreadSubscription[]
-  appeals       Appeal[]             @relation("AppealSubmitter")
-  moderatedAppeals Appeal[]         @relation("AppealModerator")
-  appealVotes   AppealVote[]         @relation("AppealVoter")
+  accounts         Account[]
+  sessions         Session[]
+  threads          Thread[]             @relation("ThreadCreator")
+  verifiedThreads  Thread[]             @relation("ThreadVerifier")
+  messages         Message[]
+  reactions        Reaction[]
+  notifications    Notification[]
+  reports          Report[]             @relation("Reporter")
+  invitations      ThreadInvitation[]   @relation("InvitationSender")
+  bans             UserBan[]            @relation("BannedUser")
+  issuedBans       UserBan[]            @relation("BanIssuer")
+  followers        UserFollow[]         @relation("Follower")
+  following        UserFollow[]         @relation("Following")
+  bookmarks        UserBookmark[]
+  activities       UserActivity[]
+  pollVotes        PollVote[]
+  readReceipts     ReadReceipt[]
+  subscriptions    ThreadSubscription[]
+  appeals          Appeal[]             @relation("AppealSubmitter")
+  moderatedAppeals Appeal[]             @relation("AppealModerator")
+  appealVotes      AppealVote[]         @relation("AppealVoter")
 
   aiSearchSessions AiSearchSession[]
-  feedback      Feedback[]
-  collections   Collection[]
-  bounties      Bounty[]
+  feedback         Feedback[]
+  collections      Collection[]
+  bounties         Bounty[]
 
   @@index([email])
   @@index([status])
@@ -168,20 +169,22 @@ model User {
 }
 
 model Account {
-  id           String    @id @default(cuid())
-  accountId    String    @unique
-  providerId   String
-  userId      String
-  accessToken  String?
-  refreshToken String?
-  idToken      String?
+  id                   String    @id @default(cuid())
+  accountId            String    @unique
+  providerId           String
+  userId               String
+  accessToken          String?
+  refreshToken         String?
+  idToken              String?
   accessTokenExpiresAt DateTime?
-  scope              String?
-  password           String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  scope                String?
+  password             String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenExpiresAt DateTime?
 
   @@unique([providerId, accountId])
   @@index([userId])
@@ -215,19 +218,20 @@ model Verification {
 
   @@unique([identifier, value])
   @@map("verifications")
+  @@index([identifier])
 }
 
 model Thread {
-  id           String            @id @default(cuid())
+  id           String           @id @default(cuid())
   name         String
-  slug         String            @unique
+  slug         String           @unique
   description  String?
   visibility   ThreadVisibility @default(PUBLIC)
-  messageCount Int               @default(0)
-  memberCount  Int               @default(0)
+  messageCount Int              @default(0)
+  memberCount  Int              @default(0)
   createdBy    String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   resolutionScore Int?
   lastVerifiedAt  DateTime?
@@ -237,25 +241,25 @@ model Thread {
   aiSummary       String?   @db.Text
   threadDna       Json?
   deletedAt       DateTime?
-  forkedFromId  String?
+  forkedFromId    String?
 
-  creator       User?                @relation("ThreadCreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  verifier      User?                @relation("ThreadVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
-  forkedFrom    Thread?              @relation("ThreadFork", fields: [forkedFromId], references: [id], onDelete: SetNull)
-  forks         Thread[]             @relation("ThreadFork")
-  messages      Message[]
-  invitations   ThreadInvitation[]
-  bans          UserBan[]
-  bookmarks     UserBookmark[]
-  tags          ThreadTagRelation[]
-  polls         Poll[]
-  subscriptions ThreadSubscription[]
-  readReceipts  ReadReceipt[]
-  relatedTo     ThreadRelation[]     @relation("SourceThread")
-  relatedFrom   ThreadRelation[]     @relation("TargetThread")
+  creator         User?                @relation("ThreadCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  verifier        User?                @relation("ThreadVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
+  forkedFrom      Thread?              @relation("ThreadFork", fields: [forkedFromId], references: [id], onDelete: SetNull)
+  forks           Thread[]             @relation("ThreadFork")
+  messages        Message[]
+  invitations     ThreadInvitation[]
+  bans            UserBan[]
+  bookmarks       UserBookmark[]
+  tags            ThreadTagRelation[]
+  polls           Poll[]
+  subscriptions   ThreadSubscription[]
+  readReceipts    ReadReceipt[]
+  relatedTo       ThreadRelation[]     @relation("SourceThread")
+  relatedFrom     ThreadRelation[]     @relation("TargetThread")
   collectionItems CollectionItem[]
-  knowledgePage KnowledgePage?
-  bounties      Bounty[]
+  knowledgePage   KnowledgePage?
+  bounties        Bounty[]
 
   @@index([slug])
   @@index([visibility])
@@ -269,26 +273,26 @@ model Thread {
 }
 
 model Message {
-  id           String    @id @default(cuid())
-  content      String    @db.Text
-  threadId     String
-  senderId     String?
-  parentId     String? // null = root post
-  depth        Int       @default(0) // 0=root, 1=reply, 2=reply-to-reply, max 4
-  isEdited     Boolean   @default(false)
-  isPinned     Boolean   @default(false)
-  likeCount    Int       @default(0) // denormalized for perf
-  replyCount   Int       @default(0) // denormalized for perf
-  isAiResponse Boolean   @default(false) // true when @ai generated this
+  id              String          @id @default(cuid())
+  content         String          @db.Text
+  threadId        String
+  senderId        String?
+  parentId        String? // null = root post
+  depth           Int             @default(0) // 0=root, 1=reply, 2=reply-to-reply, max 4
+  isEdited        Boolean         @default(false)
+  isPinned        Boolean         @default(false)
+  likeCount       Int             @default(0) // denormalized for perf
+  replyCount      Int             @default(0) // denormalized for perf
+  isAiResponse    Boolean         @default(false) // true when @ai generated this
   factCheckStatus FactCheckStatus @default(UNCHECKED)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime? // soft delete — keep for tree integrity
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime? // soft delete — keep for tree integrity
 
-  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender      User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
-  parent      Message?         @relation("MessageReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies     Message[]        @relation("MessageReplies")
+  thread       Thread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender       User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  parent       Message?         @relation("MessageReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies      Message[]        @relation("MessageReplies")
   attachments  Attachment[]
   reactions    Reaction[]
   reports      Report[]
@@ -302,15 +306,19 @@ model Message {
   // in Postgres but retaining [threadId] and [parentId] makes hot paths
   // (feed scan, tree build) obvious without EXPLAIN. Revisit if write
   // amplification is measured; do not drop without index-usage stats.
-  @@index([threadId]) // prefix of [threadId,createdAt] — kept for clarity on feed queries
+  // prefix of [threadId,createdAt] — kept for clarity on feed queries
+  // prefix of [parentId,threadId] — kept for tree building
+  // critical for tree building
+  // hot thread-feed path
+  @@index([threadId])
   @@index([threadId, createdAt])
   @@index([threadId, senderId, createdAt])
   @@index([senderId])
-  @@index([parentId]) // prefix of [parentId,threadId] — kept for tree building
-  @@index([parentId, threadId]) // critical for tree building
+  @@index([parentId])
+  @@index([parentId, threadId])
   @@index([depth])
   @@index([deletedAt])
-  @@index([threadId, deletedAt, createdAt]) // hot thread-feed path
+  @@index([threadId, deletedAt, createdAt])
   @@map("messages")
 }
 
@@ -370,15 +378,15 @@ model Reaction {
 }
 
 model ReadReceipt {
-  id                String    @id @default(cuid())
+  id                String   @id @default(cuid())
   threadId          String
   userId            String
   lastReadMessageId String?
-  readAt            DateTime  @default(now())
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  readAt            DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  thread          Thread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread          Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   lastReadMessage Message? @relation("ReadReceiptMessage", fields: [lastReadMessageId], references: [id], onDelete: SetNull)
 
@@ -410,7 +418,7 @@ model UserBookmark {
   threadId  String
   createdAt DateTime @default(now())
 
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@unique([userId, threadId])
@@ -446,7 +454,7 @@ model ThreadSubscription {
   createdAt DateTime        @default(now())
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user   User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, userId])
   @@unique([threadId, email])
@@ -481,9 +489,9 @@ model Appeal {
   updatedAt   DateTime     @updatedAt
   resolvedAt  DateTime?
 
-  message   Message          @relation("MessageAppeal", fields: [messageId], references: [id], onDelete: Cascade)
-  user      User?            @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: SetNull)
-  moderator User?            @relation("AppealModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+  message   Message      @relation("MessageAppeal", fields: [messageId], references: [id], onDelete: Cascade)
+  user      User?        @relation("AppealSubmitter", fields: [userId], references: [id], onDelete: SetNull)
+  moderator User?        @relation("AppealModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
   votes     AppealVote[]
 
   @@index([messageId])
@@ -514,11 +522,11 @@ model AppealVote {
 }
 
 model Report {
-  id         String         @id @default(cuid())
-  messageId  String
-  reporterId String?
-  category   ReportCategory
-  details    String?        @db.Text
+  id              String         @id @default(cuid())
+  messageId       String
+  reporterId      String?
+  category        ReportCategory
+  details         String?        @db.Text
   status          ReportStatus   @default(PENDING)
   resolvedBy      String?
   resolution      String?
@@ -546,8 +554,8 @@ model UserBan {
   expiresAt DateTime?
   createdAt DateTime  @default(now())
 
-  user   User?    @relation("BannedUser", fields: [userId], references: [id], onDelete: SetNull)
-  issuer User?    @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: SetNull)
+  user   User?   @relation("BannedUser", fields: [userId], references: [id], onDelete: SetNull)
+  issuer User?   @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: SetNull)
   thread Thread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
@@ -572,7 +580,7 @@ model ThreadTagRelation {
   threadId String
   tagId    String
 
-  thread Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
   tag    ThreadTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([threadId, tagId])
@@ -581,20 +589,20 @@ model ThreadTagRelation {
 }
 
 model Poll {
-  id        String    @id @default(cuid())
-  threadId  String
-  messageId String?   @unique // null = legacy thread-level poll; set = message-level poll
-  question  String
-  options   Json // string[]
-  isActive  Boolean   @default(true)
-  expiresAt DateTime?
-  isMarket  Boolean   @default(false)
+  id                  String    @id @default(cuid())
+  threadId            String
+  messageId           String?   @unique // null = legacy thread-level poll; set = message-level poll
+  question            String
+  options             Json // string[]
+  isActive            Boolean   @default(true)
+  expiresAt           DateTime?
+  isMarket            Boolean   @default(false)
   resolvedOptionIndex Int?
-  marketResolvedAt DateTime?
-  createdAt DateTime  @default(now())
+  marketResolvedAt    DateTime?
+  createdAt           DateTime  @default(now())
 
-  thread  Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  message Message?  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  thread  Thread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  message Message?   @relation(fields: [messageId], references: [id], onDelete: Cascade)
   votes   PollVote[]
 
   @@index([threadId])
@@ -646,7 +654,7 @@ model ThreadInvitation {
   createdAt DateTime         @default(now())
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender User    @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  sender User   @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, email])
   @@index([token])
@@ -654,27 +662,27 @@ model ThreadInvitation {
 }
 
 model AiSearchSession {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
-  query           String   @db.Text
+  query           String    @db.Text
   queryHash       String // sha256 of normalized query for dedup
   queryType       String? // factual | opinion | technical | comparison
   title           String? // short human title for sidebar (generated at done time)
   parentSessionId String? // threading: follow-up child points at its parent
-  cacheHit        Boolean  @default(false)
+  cacheHit        Boolean   @default(false)
   processingMs    Int?
   // Phase timing metadata (cheap to capture at write time; enables "why slow" diagnostics)
-  classifyMs   Int?
-  searchMs     Int?
-  crossrefMs   Int?
-  synthesizeMs Int?
-  provider     String? // "exa+tavily+gemini" etc.
-  tokenCostUsd Float? // per-session cost estimate
-  deletedAt    DateTime? // soft-delete for user-initiated "remove from history"
-  createdAt       DateTime @default(now())
+  classifyMs      Int?
+  searchMs        Int?
+  crossrefMs      Int?
+  synthesizeMs    Int?
+  provider        String? // "exa+tavily+gemini" etc.
+  tokenCostUsd    Float? // per-session cost estimate
+  deletedAt       DateTime? // soft-delete for user-initiated "remove from history"
+  createdAt       DateTime  @default(now())
   lastPrewarmedAt DateTime?
 
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   results         AiSearchResult[]
   parentSession   AiSearchSession?  @relation("SessionThread", fields: [parentSessionId], references: [id], onDelete: Cascade)
   childSessions   AiSearchSession[] @relation("SessionThread")
@@ -689,6 +697,7 @@ model AiSearchSession {
 }
 
 // Stores the synthesized result (shared across users via queryHash)
+
 model AiSearchResult {
   id            String   @id @default(cuid())
   sessionId     String
@@ -789,8 +798,8 @@ model CollectionItem {
   sessionId    String?
   createdAt    DateTime @default(now())
 
-  collection Collection     @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  thread     Thread?        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  collection Collection       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  thread     Thread?          @relation(fields: [threadId], references: [id], onDelete: Cascade)
   session    AiSearchSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([collectionId, threadId])
@@ -802,12 +811,12 @@ model CollectionItem {
 }
 
 model KnowledgePage {
-  id               String   @id @default(cuid())
-  threadId         String   @unique
-  version          Int      @default(1)
-  synthesizedContent String @db.Text
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  threadId           String   @unique
+  version            Int      @default(1)
+  synthesizedContent String   @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
@@ -830,4 +839,5 @@ model Bounty {
   @@index([userId])
   @@map("bounties")
 }
+
 

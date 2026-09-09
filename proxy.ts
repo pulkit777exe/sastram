@@ -34,32 +34,35 @@ function isPublicThreadPath(pathname: string): boolean {
 }
 
 const isProd = process.env.NODE_ENV === 'production';
-
-// Whether to send the CSP as Report-Only (observe violations, don't block).
-// Defaults to Report-Only so the nonce can be validated against real traffic
-// via /api/csp-report before flipping to enforcing (CSP_REPORT_ONLY=false).
-// In prod, set CSP_REPORT_ONLY=false after ~1 week of clean reports.
 const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY !== 'false';
 
 function buildCsp(nonce: string): string {
   const scriptParts = ["'self'", `'nonce-${nonce}'`];
-  if (!isProd) scriptParts.push("'unsafe-eval'");
+  if (!isProd) {
+    // In dev, allow unsafe-inline/eval for HMR and Next.js chunks that don't carry nonce
+    scriptParts.push("'unsafe-inline'", "'unsafe-eval'", 'http://localhost:3000', 'http://192.168.1.222:3000', 'ws://localhost:3000', 'ws://192.168.1.222:3000');
+  }
   scriptParts.push("https://va.vercel-scripts.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com");
   const strictScript = scriptParts.join(' ');
-  const scriptSrcElem = `script-src-elem ${strictScript} 'strict-dynamic'`;
-  const scriptSrc = `script-src ${strictScript} 'strict-dynamic'`;
+  // In dev, keep unsafe-inline for Next.js; strict-dynamic is for prod trusted chain.
+  const scriptSrcElem = isProd
+    ? `script-src-elem ${strictScript} 'strict-dynamic'`
+    : `script-src-elem ${strictScript}`;
+  const scriptSrc = isProd
+    ? `script-src ${strictScript} 'strict-dynamic'`
+    : `script-src ${strictScript}`;
   return [
     "default-src 'self'",
     scriptSrcElem,
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https: http:",
-    "connect-src 'self' https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io wss: ws:",
+    "connect-src 'self' http://localhost:3000 ws://localhost:3000 ws://192.168.1.222:3000 https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io wss: ws:",
     "font-src 'self' data: https://fonts.gstatic.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "upgrade-insecure-requests",
+    ...(isProd ? ["upgrade-insecure-requests"] : []),
     'report-uri /api/csp-report',
   ].join('; ');
 }

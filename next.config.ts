@@ -31,6 +31,9 @@ const isVercel = process.env.VERCEL === '1';
 
 const baseNextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
+  turbopack: {
+    root: process.cwd(),
+  },
   async headers() {
     return [
       {
@@ -116,7 +119,7 @@ const sentryConfig = {
   widenClientFileUpload: true,
   tunnelRoute: '/monitoring',
   webpack: {
-    automaticVercelMonitors: true,
+    automaticVercelMonitors: false,
   },
 };
 
