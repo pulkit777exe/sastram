@@ -2,7 +2,7 @@
 
 This file was previously missing (404). The verified system reference lives at:
 
-→ **[shared/ARCHITECTURE.md](../shared/ARCHITECTURE.md)** — 685-line canonical architecture, 35-route inventory, 30-model schema, env var table.
+→ **[shared/ARCHITECTURE.md](../shared/ARCHITECTURE.md)** — 745-line canonical architecture, 46-route inventory, 35-model schema, 29-module domain, env var table.
 
 Also see:
 
