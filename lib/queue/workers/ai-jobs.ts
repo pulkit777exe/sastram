@@ -31,11 +31,70 @@ import type {
 // thread-summary
 // ------------------------------------------------------------------
 
+async function getForkedContext(threadId: string): Promise<JobMessageData[]> {
+  try {
+    const thread = await prisma.thread.findUnique({
+      where: { id: threadId },
+      select: { forkedFromId: true, description: true },
+    });
+    const extra: JobMessageData[] = [];
+    if (thread?.forkedFromId) {
+      const source = await prisma.thread.findUnique({
+        where: { id: thread.forkedFromId },
+        select: { aiSummary: true, description: true, name: true },
+      });
+      if (source?.aiSummary) {
+        extra.push({ id: thread.forkedFromId, content: `Original thread "${source.name}" summary: ${source.aiSummary.slice(0, 2000)}`, senderId: null, createdAt: new Date() } as unknown as JobMessageData);
+      } else if (source?.description) {
+        extra.push({ id: thread.forkedFromId, content: `Original thread "${source.name}": ${source.description.slice(0, 1000)}`, senderId: null, createdAt: new Date() } as unknown as JobMessageData);
+      }
+      const sourceMessages = await prisma.message.findMany({
+        where: { threadId: thread.forkedFromId, deletedAt: null },
+        select: { id: true, content: true, senderId: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      });
+      for (const m of sourceMessages.reverse()) {
+        extra.push({ id: m.id, content: `[Forked context] ${m.content.slice(0, 800)}`, senderId: m.senderId, createdAt: m.createdAt } as JobMessageData);
+      }
+    }
+    // For external forks, description contains "Forked from https://..."
+    const urlMatch = thread?.description?.match(/https?:\/\/[^\s"')\]]+/);
+    if (urlMatch) {
+      const url = urlMatch[0];
+      try {
+        const exaKey = process.env.SASTRAM_EXA_KEY;
+        if (exaKey) {
+          const res = await fetch('https://api.exa.ai/contents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
+            body: JSON.stringify({ urls: [url], text: { maxCharacters: 4000 } }),
+            signal: AbortSignal.timeout(4000),
+          });
+          if (res.ok) {
+            const json = (await res.json()) as { results?: Array<{ text?: string; title?: string }> };
+            const text = json.results?.[0]?.text?.slice(0, 3000);
+            const title = json.results?.[0]?.title;
+            if (text) extra.unshift({ id: 'fork-external', content: `External source ${url} ${title ? `(${title})` : ''}: ${text}`, senderId: null, createdAt: new Date() } as unknown as JobMessageData);
+          }
+        }
+      } catch {
+        // best-effort, ignore fetch failures
+      }
+    }
+    return extra;
+  } catch {
+    return [];
+  }
+}
+
 async function generateThreadSummary(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread summary for thread: ${threadId}`);
   await assertSpendCapAvailable();
+  const forkedExtra = await getForkedContext(threadId);
+  const allMessages = [...forkedExtra, ...messages];
   const result = await runAiGeneration('thread-summary', threadId, () =>
-    aiService.generateThreadSummary(messages)
+    aiService.generateThreadSummary(allMessages)
   );
   if (!result.ok) return { summary: null, skipped: true };
   const { sanitized: summary } = sanitizeUserContent(result.value);
@@ -56,7 +115,9 @@ export async function handleThreadSummaryJob(data: ThreadSummaryJobData) {
 async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread DNA for thread: ${threadId}`);
   await assertSpendCapAvailable();
-  const result = await runAiGeneration('thread-dna', threadId, () => aiService.generateThreadDNA(messages));
+  const forkedExtra = await getForkedContext(threadId);
+  const allMessages = [...forkedExtra, ...messages];
+  const result = await runAiGeneration('thread-dna', threadId, () => aiService.generateThreadDNA(allMessages));
   if (!result.ok) return { threadDNA: null, skipped: true };
   await prisma.thread.update({ where: { id: threadId }, data: { threadDna: result.value } });
   return { threadDNA: result.value };
@@ -75,8 +136,10 @@ export async function handleThreadDnaJob(data: ThreadDnaJobData) {
 async function calculateResolutionScore(threadId: string, messages: JobMessageData[]) {
   logger.info(`Calculating resolution score for thread: ${threadId}`);
   await assertSpendCapAvailable();
+  const forkedExtra = await getForkedContext(threadId);
+  const allMessages = [...forkedExtra, ...messages];
   const result = await runAiGeneration('resolution-score', threadId, () =>
-    aiService.calculateResolutionScore(messages)
+    aiService.calculateResolutionScore(allMessages)
   );
   if (!result.ok) return null;
   const score = result.value;
@@ -131,8 +194,10 @@ export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
 async function detectConflicts(threadId: string, messages: JobMessageData[]) {
   logger.info(`Detecting conflicts for thread: ${threadId}`);
   await assertSpendCapAvailable();
+  const forkedExtra = await getForkedContext(threadId);
+  const allMessages = [...forkedExtra, ...messages];
   const result = await runAiGeneration('conflict-detection', threadId, () =>
-    aiService.detectConflicts(messages)
+    aiService.detectConflicts(allMessages)
   );
   if (!result.ok) return { conflictResult: null, skipped: true };
   const conflictResult = result.value;

@@ -12,6 +12,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import ThreadResolutionCard from '@/components/panels/ThreadResolutionCard';
 import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
 import ParticipantsCard from '@/components/panels/ParticipantsCard';
+import { ForkRelationCard } from '@/components/thread/ForkRelationCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 import { DetailCard } from '@/components/ui/detail-card';
@@ -122,25 +123,27 @@ async function ThreadContent({
 
   return (
     <ThreadLiveWrapper
-      messages={allMessages}
-      threadId={thread.id}
-      initialUnreadCount={initialUnreadCount}
-      initialFirstUnreadMessageId={firstUnreadMessageId}
-      hasMoreMessages={hasMoreMessages}
-      nextCursor={nextCursorValue}
-      totalMessageCount={thread._count.messages}
-      poll={pollViewModel}
-      canManagePoll={canManagePoll}
-      currentUser={{
-        id: session.user.id,
-        name: session.user.name ?? 'User',
-        image: session.user.image ?? null,
-        role: session.user.role,
-      }}
-      title={thread.name}
-      slug={thread.slug}
-      initialFrequency={(subscription?.frequency as 'DAILY' | 'WEEKLY' | 'NEVER') ?? null}
-    />
+        messages={allMessages}
+        threadId={thread.id}
+        initialUnreadCount={initialUnreadCount}
+        initialFirstUnreadMessageId={firstUnreadMessageId}
+        hasMoreMessages={hasMoreMessages}
+        nextCursor={nextCursorValue}
+        totalMessageCount={thread._count.messages}
+        poll={pollViewModel}
+        canManagePoll={canManagePoll}
+        currentUser={{
+          id: session.user.id,
+          name: session.user.name ?? 'User',
+          image: session.user.image ?? null,
+          role: session.user.role,
+        }}
+        title={thread.name}
+        slug={thread.slug}
+        initialFrequency={(subscription?.frequency as 'DAILY' | 'WEEKLY' | 'NEVER') ?? null}
+        threadDescription={thread.description}
+        aiSummary={thread.aiSummary}
+      />
   );
 }
 
@@ -204,6 +207,8 @@ async function ThreadSidebar({
 
       <RelatedThreadsCard threadId={thread.id} />
 
+      <ForkRelationCard threadId={thread.id} />
+
       <ParticipantsCard threadId={thread.id} ownerId={thread.createdBy} />
 
       {isAdmin(session.user) && (
@@ -224,6 +229,47 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
 
   const thread = await getThreadWithFullContext(slug, session.user.id);
   if (!thread) notFound();
+
+  // Forked or large threads get the polished dark view like the screenshot (Gunroad Courses forked from Reddit)
+  const isLargeThread = thread._count.messages > 50 || !!(thread as unknown as { forkedFromId?: string | null }).forkedFromId;
+
+  if (isLargeThread) {
+    return (
+      <div className="flex h-full w-full overflow-hidden bg-[#0a0a0a] dark">
+        <main className="flex-1 flex flex-col min-w-0 bg-[#0a0a0a] dark">
+          <div className="shrink-0 flex items-center justify-between px-4 h-14 border-b border-white/10 bg-[#0a0a0a]">
+            <div className="flex items-center gap-3">
+              <Link href="/dashboard/threads" className="w-8 h-8 grid place-items-center rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M10 12L6 8l4-4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </Link>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <h1 className="text-sm font-medium text-white tracking-tight">{thread.name}</h1>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-white/10 text-zinc-300 border border-white/10"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Bounty</span>
+              <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-white/10 text-zinc-300 border border-white/10"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM11 8a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM6 8a3 3 0 0 1 3-3M11 11a3 3 0 0 1-3-3"/><path d="M8.5 6.5L11 8l-2.5 1.5"/></svg> Fork</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+              <div className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-400">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg>
+                Forked from <span className="text-amber-400 underline decoration-amber-400/30 underline-offset-2">reddit.com/search/...</span> on {new Date(thread.createdAt).toISOString().slice(0, 10)}
+              </div>
+              <Suspense fallback={<ThreadContentSkeleton />}>
+                <ThreadContent thread={thread} session={session} />
+              </Suspense>
+            </div>
+          </div>
+        </main>
+        <ThreadDetailsPanel>
+          <Suspense fallback={<ThreadSidebarSkeleton />}>
+            <ThreadSidebar thread={thread} session={session} />
+          </Suspense>
+        </ThreadDetailsPanel>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full overflow-hidden">

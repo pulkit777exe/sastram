@@ -9,13 +9,21 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     // CSP reports are wrapped in { "csp-report": { ... } } for report-uri.
     const report = body['csp-report'] ?? body;
-    logger.warn('[csp-report] violation', {
-      blockedUri: report['blocked-uri'],
-      violatedDirective: report['violated-directive'],
-      effectiveDirective: report['effective-directive'],
-      documentUri: report['document-uri'],
-      originalPolicy: report['original-policy'],
-    });
+    // In dev, log as info to reduce noise; in prod, warn
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd) {
+      logger.warn('[csp-report] violation', {
+        blockedUri: report['blocked-uri'],
+        violatedDirective: report['violated-directive'],
+        effectiveDirective: report['effective-directive'],
+        documentUri: report['document-uri'],
+      });
+    } else {
+      logger.info('[csp-report] violation', {
+        blockedUri: report['blocked-uri'],
+        violatedDirective: report['violated-directive'],
+      });
+    }
   } catch {
     // Never fail loudly on a report; it's observational only.
   }

@@ -92,14 +92,31 @@ export async function updateThreadVerified(threadId: string, userId: string): Pr
   });
 }
 
-export async function forkThread(payload: { name: string; description?: string | null; slug: string; createdBy: string; forkedFromId: string }) {
-  return prisma.thread.create({
+export async function forkThread(payload: { name: string; description?: string | null; slug: string; createdBy: string; forkedFromId: string; visibility?: 'PUBLIC' | 'PRIVATE' | 'RESTRICTED' }) {
+  const forked = await prisma.thread.create({
     data: {
       name: payload.name,
       description: payload.description,
       slug: payload.slug,
       createdBy: payload.createdBy,
       forkedFromId: payload.forkedFromId,
+      visibility: payload.visibility ?? 'PUBLIC',
     },
   });
+  // Copy tags from source (reddit-style crosspost keeps tags)
+  try {
+    const sourceTags = await prisma.threadTagRelation.findMany({
+      where: { threadId: payload.forkedFromId },
+      select: { tagId: true },
+    });
+    if (sourceTags.length > 0) {
+      await prisma.threadTagRelation.createMany({
+        data: sourceTags.map((t) => ({ threadId: forked.id, tagId: t.tagId })),
+        skipDuplicates: true,
+      });
+    }
+  } catch {
+    // best-effort, don't fail fork if tags copy fails
+  }
+  return forked;
 }

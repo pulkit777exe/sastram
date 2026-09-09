@@ -97,6 +97,7 @@ export type ThreadWithFullContext = {
   createdAt: Date;
   updatedAt: Date;
   lastVerifiedAt: Date | null;
+  forkedFromId: string | null;
   author: {
     id: string;
     name: string | null;
@@ -362,6 +363,7 @@ async function fetchThreadRow(slug: string, uid: string): Promise<ThreadRow | nu
         s."lastVerifiedAt" as "lastVerifiedAt",
         s."verifiedAt" as "verifiedAt",
         s."verifiedBy" as "verifiedBy",
+        s."forkedFromId" as "forkedFromId",
         CASE WHEN u.id IS NULL THEN NULL ELSE json_build_object(
           'id', u.id,
           'name', u.name,

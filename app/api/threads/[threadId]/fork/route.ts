@@ -8,7 +8,24 @@ import { buildThreadSlug } from '@/modules/threads/slug';
 import { forkThread } from '@/modules/threads/threads-write/repository';
 import { rateLimit } from '@/lib/services/rate-limit';
 
-const bodySchema = z.object({ title: z.string().min(3).max(120).optional() });
+const bodySchema = z.object({ title: z.string().min(3).max(120).optional(), visibility: z.enum(['PUBLIC', 'PRIVATE']).optional() });
+
+export const GET = withErrorHandling(async (_request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
+  const params = await context?.params;
+  const threadId = params?.threadId;
+  if (!threadId) return NextResponse.json(fail('BAD_REQUEST', 'threadId required'), { status: HTTP_STATUS.BAD_REQUEST });
+  const forks = await prisma.thread.findMany({
+    where: { forkedFromId: threadId, deletedAt: null },
+    select: { id: true, name: true, slug: true, description: true, createdAt: true, createdBy: true, visibility: true, messageCount: true, resolutionScore: true },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  });
+  const forkedFrom = await prisma.thread.findUnique({
+    where: { id: threadId },
+    select: { forkedFromId: true, forkedFrom: { select: { id: true, name: true, slug: true, description: true } } },
+  });
+  return NextResponse.json(ok({ forks, forkedFrom: forkedFrom?.forkedFrom ?? null }));
+});
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
@@ -21,10 +38,14 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   if (!zid.success) return NextResponse.json(fail('BAD_REQUEST', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
 
   let title: string | undefined;
+  let visibility: 'PUBLIC' | 'PRIVATE' | undefined;
   try {
     const json = await request.json().catch(() => ({}));
     const parsed = bodySchema.safeParse(json);
-    if (parsed.success) title = parsed.data.title;
+    if (parsed.success) {
+      title = parsed.data.title;
+      visibility = parsed.data.visibility as 'PUBLIC' | 'PRIVATE' | undefined;
+    }
   } catch {
     // no body is fine
   }
@@ -39,6 +60,6 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   const existing = await prisma.thread.findUnique({ where: { slug }, select: { id: true } });
   if (existing) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
 
-  const forked = await forkThread({ name: newTitle, description: source.description, slug, createdBy: session.user.id, forkedFromId: source.id });
+  const forked = await forkThread({ name: newTitle, description: source.description, slug, createdBy: session.user.id, forkedFromId: source.id, visibility });
   return NextResponse.json(ok({ id: forked.id, slug: forked.slug }), { status: HTTP_STATUS.OK });
 });

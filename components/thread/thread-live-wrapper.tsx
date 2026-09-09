@@ -12,6 +12,7 @@ import type { PollResults } from '@/modules/polls/types';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
 import { SaiViewTransition } from '@/components/ui/view-transition';
+import { ThreadExternalPreview } from '@/components/thread/ExternalLinkPreview';
 import { ChevronDown, Loader2, Pin, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useThreadMessages } from '@/hooks/thread/use-thread-messages';
@@ -141,6 +142,7 @@ interface ThreadLiveWrapperProps {
   initialFrequency: 'DAILY' | 'WEEKLY' | 'NEVER' | null;
   resolutionScore?: number | null;
   aiSummary?: string | null;
+  threadDescription?: string | null;
 }
 
 export function ThreadLiveWrapper({
@@ -158,7 +160,8 @@ export function ThreadLiveWrapper({
   slug,
   initialFrequency,
   resolutionScore: _resolutionScore = null,
-  aiSummary: _aiSummary = null,
+  aiSummary = null,
+  threadDescription = null,
 }: ThreadLiveWrapperProps) {
   // Poll state
   const [showPoll, setShowPoll] = useState(false);
@@ -496,6 +499,11 @@ export function ThreadLiveWrapper({
               />
             </div>
           )}
+        </div>
+
+        {/* Source preview — in discussion, not title — subtle card with images from post */}
+        <div className="max-w-4xl mx-auto mb-4">
+          <ThreadExternalPreview description={threadDescription} content={aiSummary} title={title} />
         </div>
 
         {/* Thread content */}

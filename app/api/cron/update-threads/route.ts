@@ -335,6 +335,9 @@ export async function GET(req: NextRequest) {
           logger.debug('[cron/update-threads] refreshUserExpertise failed', { userId: u.id, error: err });
         }
       }
+      if (expertiseRefreshed > 0) {
+        logger.info('[cron/update-threads] expertise refreshed', { expertiseRefreshed });
+      }
     } catch (error) {
       logger.warn('[cron/update-threads] expertise refresh failed', error);
     }

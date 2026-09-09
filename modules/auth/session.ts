@@ -16,10 +16,43 @@ export interface SessionPayload {
   user: SessionUser;
 }
 
-export const getSession = cache(async (): Promise<SessionPayload | null> => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
   });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+export const getSession = cache(async (): Promise<SessionPayload | null> => {
+  let session: Awaited<ReturnType<typeof auth.api.getSession>> | null;
+  try {
+    session = await withTimeout(
+      auth.api.getSession({
+        headers: await headers(),
+      }),
+      3000,
+      'getSession'
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const isDbError =
+      msg.includes('ENOTFOUND') ||
+      msg.includes('Failed to get session') ||
+      msg.includes('network error') ||
+      msg.includes('getaddrinfo') ||
+      msg.includes('ENETUNREACH') ||
+      msg.includes('timeout after') ||
+      (err as { code?: string })?.code === 'ENOTFOUND' ||
+      (err as { code?: string })?.code === 'ENETUNREACH';
+    if (isDbError) {
+      logger.warn('[auth] getSession failed - DB unavailable, treating as no session', {
+        error: msg.slice(0, 120),
+      });
+      return null;
+    }
+    throw err;
+  }
 
   if (!session) {
     return null;

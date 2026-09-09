@@ -162,7 +162,7 @@ export const unlinkAccountAction = createServerAction(
     try {
       const accounts = await prisma.account.findMany({
         where: { userId: session.user.id },
-        select: { providerId: true },
+        select: { providerId: true, accountId: true },
       });
       if (accounts.length <= 1) {
         return {
@@ -172,7 +172,11 @@ export const unlinkAccountAction = createServerAction(
           errorCode: 'FORBIDDEN',
         };
       }
-      await auth.api.unlinkAccount({ body: { providerId: provider }, headers: await headers() });
+      const target = accounts.find((a) => a.providerId === provider);
+      if (!target) {
+        return { data: null, error: 'Account not found', ok: false, errorCode: 'NOT_FOUND' };
+      }
+      await (auth.api.unlinkAccount as unknown as (args: unknown) => Promise<void>)({ body: { providerId: provider }, headers: await headers() });
       return actionSuccess({ ok: true });
     } catch (error) {
       logger.error('[unlinkAccountAction]', error);
