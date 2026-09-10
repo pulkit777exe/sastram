@@ -26,7 +26,7 @@ describe('POST /api/ai/thread-summary', () => {
 
     const res = await POST()(mockRequest('/api/ai/thread-summary', {
       method: 'POST',
-      body: { threadId: 't1' },
+      body: { threadId: 'cklxy00000000000000000000' },
     }));
     const body = await res.json();
     expect(res.status).to.equal(401);

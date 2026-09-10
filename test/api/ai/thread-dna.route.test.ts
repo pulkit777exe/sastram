@@ -49,7 +49,7 @@ describe('POST /api/ai/thread-dna', () => {
 
     const res = await POST()(mockRequest('/api/ai/thread-dna', {
       method: 'POST',
-      body: { threadId: 'thread-1' },
+      body: { threadId: 'cklxy00000000000000000000' },
     }));
     const body = await res.json();
 
@@ -59,7 +59,7 @@ describe('POST /api/ai/thread-dna', () => {
 
   it('returns 403 when not a member', async () => {
     stubs.push(sinon.stub(prisma.thread, 'findUnique').resolves({
-      id: 'thread-1',
+      id: 'cklxy00000000000000000000',
       createdBy: 'other-user',
       visibility: 'PRIVATE',
     } as never));
@@ -67,7 +67,7 @@ describe('POST /api/ai/thread-dna', () => {
 
     const res = await POST()(mockRequest('/api/ai/thread-dna', {
       method: 'POST',
-      body: { threadId: 'thread-1' },
+      body: { threadId: 'cklxy00000000000000000000' },
     }));
     const body = await res.json();
 

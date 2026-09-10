@@ -120,18 +120,21 @@ describe('Auth Service', function () {
 
   describe('OTP Logging Behavior', function () {
     let infoStub: sinon.SinonStub;
+    let debugStub: sinon.SinonStub;
 
     this.timeout(10000);
 
     beforeEach(function () {
       infoStub = sinon.stub(logger, 'info');
+      debugStub = sinon.stub(logger, 'debug');
     });
 
     afterEach(function () {
       infoStub.restore();
+      debugStub.restore();
     });
 
-    it('should log OTP in development mode', async function () {
+    it('should log masked OTP in development mode (never raw)', async function () {
       const originalEnv = process.env.NODE_ENV;
 
       (process.env as unknown as Record<string, string | undefined>).NODE_ENV = 'development';
@@ -151,7 +154,8 @@ describe('Auth Service', function () {
               type: 'sign-in',
             });
 
-            expect(infoStub.calledWithMatch(/\[DEV\].*123456/)).to.equal(true);
+            expect(infoStub.calledWithMatch(/123456/)).to.equal(false);
+            expect(debugStub.calledWithMatch(/\*\*\*56/)).to.equal(true);
           }
         }
       } finally {
@@ -180,7 +184,8 @@ describe('Auth Service', function () {
               type: 'sign-in',
             });
 
-            expect(infoStub.calledWithMatch(/\[DEV\].*654321/)).to.equal(false);
+            expect(infoStub.calledWithMatch(/654321/)).to.equal(false);
+            expect(debugStub.calledWithMatch(/654321/)).to.equal(false);
           }
         }
       } finally {

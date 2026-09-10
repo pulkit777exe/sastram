@@ -26,7 +26,11 @@ describe('POST /api/ai/forum-search', () => {
 
     const res = await POST()(mockRequest('/api/ai/forum-search', {
       method: 'POST',
-      body: { query: 'test' },
+      body: {
+        query: 'test query for auth',
+        keys: { exa: '123e4567-e89b-12d3-a456-426614174000', tavily: 'tvly-1234567890abcdef', gemini: 'AIzaSyDummyKey12345678901234567890' },
+        config: { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
+      },
     }));
     const body = await res.json();
     expect(res.status).to.equal(401);
