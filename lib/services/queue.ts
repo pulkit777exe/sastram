@@ -1,7 +1,7 @@
 import { Client } from '@upstash/qstash';
 import { logger } from '@/lib/infrastructure/logger';
 import { AIJobType } from '@/lib/queue/config';
-import { getUpstashRedis, ATOMIC_INCR_EXPIRE_LUA, getSecondsUntilUtcMidnight } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, ATOMIC_INCR_EXPIRE_LUA, getSecondsUntilUtcMidnight, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
 import type { AIInlineJobData } from '@/lib/queue/types';
 
 // QSTASH_DEV points the SDK at a local dev server (127.0.0.1:8080) that does
@@ -93,7 +93,7 @@ export async function getDailyQstashCount(): Promise<number> {
     return 0;
   }
   try {
-    const count = await redis.get<number>(getDailyCounterKey());
+    const count = await withRedisTimeout(redis.get<number>(getDailyCounterKey()), 4000);
     // Explicit branch instead of `?? 0` fallback.
     if (count !== null && count !== undefined) {
       return count;
@@ -109,7 +109,7 @@ export async function incrementDailyQstashCount(): Promise<number> {
   if (!redis) return 0;
   try {
     const ttl = getSecondsUntilUtcMidnight();
-    return (await redis.eval(ATOMIC_INCR_EXPIRE_LUA, [getDailyCounterKey()], [ttl])) as number;
+    return (await withRedisTimeout(redis.eval(ATOMIC_INCR_EXPIRE_LUA, [getDailyCounterKey()], [ttl]) as Promise<number>, 4000)) as number;
   } catch (error) {
     logger.error('[queue] Failed to increment daily QStash counter', error);
     return 0;
@@ -142,6 +142,7 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T) 
       url,
       body,
       retries,
+      deduplicationId: `${jobType}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
     });
     await Promise.race([
       publish,

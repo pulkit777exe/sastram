@@ -116,3 +116,10 @@ export function getSecondsUntilUtcMidnight(): number {
   const clamped = Math.max(MIN_TTL_SECONDS, secondsUntilMidnight);
   return clamped;
 }
+
+export async function withRedisTimeout<T>(promise: Promise<T>, ms = 5000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), ms)),
+  ]);
+}

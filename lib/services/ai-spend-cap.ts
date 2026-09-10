@@ -1,6 +1,6 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { classifyAiCallCost, AiCostTier, AiCallPath } from '@/lib/services/ai-cost-classification';
-import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
 
 const DAILY_DOLLAR_LIMIT = 5.00;
 const SPEND_KEY = 'ai_global_spend';
@@ -29,7 +29,7 @@ export async function checkAiSpendCap(): Promise<{ allowed: boolean; remaining: 
   const key = todayKey();
 
   try {
-    const rawUsed = await r.get<number>(key);
+    const rawUsed = await withRedisTimeout(r.get<number>(key), 4000);
     let used: number;
     if (rawUsed !== null && rawUsed !== undefined) {
       used = rawUsed;
@@ -66,7 +66,7 @@ export async function consumeSpendCap(costUsd: number = 0.01): Promise<{ allowed
   const key = todayKey();
 
   try {
-    const result = (await r.eval(CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA, [key], [DAILY_DOLLAR_LIMIT, getSecondsUntilUtcMidnight(), costUsd])) as number;
+    const result = (await withRedisTimeout(r.eval(CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA, [key], [DAILY_DOLLAR_LIMIT, getSecondsUntilUtcMidnight(), costUsd]) as Promise<number>, 4000)) as number;
 
     if (result === -1) {
       logger.warn(`[consumeSpendCap] Daily spend cap reached: $${DAILY_DOLLAR_LIMIT}/$${DAILY_DOLLAR_LIMIT}`);
@@ -113,7 +113,7 @@ export async function getAiSpendUsage(): Promise<{ used: number; limit: number; 
 
   const key = todayKey();
   try {
-    const rawUsed = (await r.get(key)) as number | null;
+    const rawUsed = (await withRedisTimeout(r.get(key) as Promise<number | null>, 4000)) as number | null;
     let used: number;
     if (rawUsed !== null && rawUsed !== undefined) {
       used = rawUsed;

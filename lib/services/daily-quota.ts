@@ -1,5 +1,5 @@
 import { logger } from '@/lib/infrastructure/logger';
-import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCR_EXPIRE_LUA } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCR_EXPIRE_LUA, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
 
 export interface QuotaResult {
   allowed: boolean;
@@ -70,7 +70,7 @@ async function checkQuota(
   }
   try {
     const ttlSeconds = getSecondsUntilUtcMidnight();
-    const result = (await r.eval(CHECK_AND_INCR_EXPIRE_LUA, [key], [limit, ttlSeconds])) as number;
+    const result = (await withRedisTimeout(r.eval(CHECK_AND_INCR_EXPIRE_LUA, [key], [limit, ttlSeconds]) as Promise<number>, 4000)) as number;
     if (result === -1) {
       return { allowed: false, remaining: 0 };
     }

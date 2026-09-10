@@ -1,4 +1,4 @@
-import { getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
 
 const DEFAULT_JOB_DEDUP_TTL_SECONDS = 3600; // 1 hour — covers QStash retry window
 
@@ -8,6 +8,6 @@ export async function deduplicateJob(jobId: string, ttlSeconds: number = DEFAULT
   // No Redis means no dedup — better to risk a double-run than drop the job.
   if (redis === null || redis === undefined) return true;
 
-  const setResult = await redis.set(`job:dedup:${jobId}`, '1', { ex: ttlSeconds, nx: true });
+  const setResult = await withRedisTimeout(redis.set(`job:dedup:${jobId}`, '1', { ex: ttlSeconds, nx: true }), 4000);
   return setResult === 'OK';
 }

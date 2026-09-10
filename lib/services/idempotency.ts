@@ -1,4 +1,4 @@
-import { getUpstashRedis, getSecondsUntilUtcMidnight } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, getSecondsUntilUtcMidnight, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
 
 const MIN_IDEMPOTENCY_TTL_SECONDS = 60; // safety floor — at least 1 minute
 
@@ -10,7 +10,7 @@ export async function consumeIdempotencyKey(idempotencyKey: string): Promise<boo
   try {
     const ttlSeconds = Math.max(MIN_IDEMPOTENCY_TTL_SECONDS, getSecondsUntilUtcMidnight());
     // 'OK' on first write; null when the key already existed.
-    const setResult = await redis.set(idempotencyKey, '1', { nx: true, ex: ttlSeconds });
+    const setResult = await withRedisTimeout(redis.set(idempotencyKey, '1', { nx: true, ex: ttlSeconds }), 4000);
     return setResult === 'OK';
   } catch {
     return true;

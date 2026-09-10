@@ -2,7 +2,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import type { Redis } from '@upstash/redis';
 import { logger } from '@/lib/infrastructure/logger';
 import { env } from '@/lib/config/env';
-import { getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
+import { getUpstashRedis, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
 import { getRequestIp } from '@/lib/utils/request-ip';
 
 // duration is in seconds.
@@ -147,7 +147,7 @@ function createRedisLimiter(
   return {
     check: async (identifier: string) => {
       try {
-        const result = await ratelimit.limit(identifier);
+        const result = await withRedisTimeout(ratelimit.limit(identifier), 4000);
         return {
           success: result.success,
           remaining: result.remaining,
