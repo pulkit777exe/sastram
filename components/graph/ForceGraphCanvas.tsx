@@ -268,13 +268,13 @@ export function ForceGraphCanvas({
       <div className="flex flex-wrap items-center gap-2 p-3 border-b border-line bg-canvas/60">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-          <Input placeholder="Search threads in graph…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm bg-surface" />
-          {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"><X size={14}/></button>}
+          <Input aria-label="Search threads in graph" placeholder="Search threads in graph…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm bg-surface" />
+          {search && <button aria-label="Clear search" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"><X size={14}/></button>}
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => { try { (fgRef.current as unknown as { zoom: (k: number, ms: number) => void })?.zoom(1.4, 300); } catch {} }}><ZoomIn size={14}/></Button>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => { try { (fgRef.current as unknown as { zoom: (k: number, ms: number) => void })?.zoom(0.7, 300); } catch {} }}><ZoomOut size={14}/></Button>
-          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => { try { (fgRef.current as unknown as { zoomToFit: (a: number, b: number) => void })?.zoomToFit(400, 40); } catch {} }}><Maximize2 size={14}/> Fit</Button>
+          <Button aria-label="Zoom in" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => { try { (fgRef.current as unknown as { zoom: (k: number, ms: number) => void })?.zoom(1.4, 300); } catch {} }}><ZoomIn size={14}/></Button>
+          <Button aria-label="Zoom out" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => { try { (fgRef.current as unknown as { zoom: (k: number, ms: number) => void })?.zoom(0.7, 300); } catch {} }}><ZoomOut size={14}/></Button>
+          <Button aria-label="Fit graph" variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => { try { (fgRef.current as unknown as { zoomToFit: (a: number, b: number) => void })?.zoomToFit(400, 40); } catch {} }}><Maximize2 size={14}/> Fit</Button>
         </div>
       </div>
       <div className="relative">

@@ -91,8 +91,8 @@ export function CollectionsClient({ initial }: { initial: Collection[] }) {
           <div className="flex items-center gap-2">
             <div className="relative flex-1 sm:w-64">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-              <Input placeholder="Filter…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-8 h-9 text-sm bg-canvas" />
-              {query && <button onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"><X size={14}/></button>}
+              <Input aria-label="Filter collections" placeholder="Filter…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-8 h-9 text-sm bg-canvas" />
+              {query && <button aria-label="Clear filter" onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"><X size={14}/></button>}
             </div>
             <div className="hidden sm:flex items-center rounded-control border border-line bg-canvas p-0.5">
               <button onClick={() => setView('grid')} className={`px-2.5 py-1 rounded-sm text-xs font-medium transition-colors ${view==='grid' ? 'bg-surface shadow-sm text-ink' : 'text-ink-3 hover:text-ink'}`}>Grid</button>
@@ -114,7 +114,7 @@ export function CollectionsClient({ initial }: { initial: Collection[] }) {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center rounded-card border border-dashed border-line bg-surface">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mb-5 shadow-lg">
+            <div className="w-16 h-16 rounded-card bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mb-5 shadow-lg">
               <FolderOpen size={28} className="text-white" />
             </div>
             <p className="text-lg font-semibold text-ink">No collections yet</p>

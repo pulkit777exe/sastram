@@ -5,7 +5,7 @@ export function AiNotConfiguredNotice({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-amber-700 dark:text-amber-400',
+        'flex items-start gap-2 rounded-card border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-amber-700 dark:text-amber-400',
         className
       )}
     >

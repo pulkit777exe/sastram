@@ -27,7 +27,7 @@ export default async function CollectionDetailPage({ params }: { params: Promise
 
       <div className="rounded-card border border-line bg-surface shadow-card overflow-hidden mb-6">
         <div className={`h-20 bg-gradient-to-r ${grad} relative`}>
-          <div className="absolute -bottom-6 left-6 w-12 h-12 rounded-xl bg-surface border border-line shadow-card flex items-center justify-center">
+          <div className="absolute -bottom-6 left-6 w-12 h-12 rounded-card bg-surface border border-line shadow-card flex items-center justify-center">
             <Bookmark size={20} className="text-ink" />
           </div>
         </div>
@@ -52,7 +52,7 @@ export default async function CollectionDetailPage({ params }: { params: Promise
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-card border border-dashed border-line bg-surface">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mb-4 shadow-md">
+          <div className="w-14 h-14 rounded-card bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mb-4 shadow-md">
             <FolderOpen size={22} className="text-white" />
           </div>
           <p className="text-base font-semibold text-ink">No items yet</p>

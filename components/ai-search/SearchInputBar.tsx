@@ -118,6 +118,7 @@ export function SearchInputBar({
 
           <textarea
             ref={textareaRef}
+            aria-label="Search input"
             value={query}
             onChange={(e) => {
               onQueryChange(e.target.value);

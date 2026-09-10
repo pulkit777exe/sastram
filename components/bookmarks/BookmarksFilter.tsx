@@ -39,8 +39,8 @@ export function BookmarksFilter({ bookmarks }: { bookmarks: Thread[] }) {
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-          <Input placeholder="Filter bookmarks…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-8 h-8 text-sm" />
-          {query && <button onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"><X size={14}/></button>}
+          <Input aria-label="Filter bookmarks" placeholder="Filter bookmarks…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-8 h-8 text-sm" />
+          {query && <button aria-label="Clear filter" onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"><X size={14}/></button>}
         </div>
         <span className="text-xs text-ink-3">{filtered.length} of {bookmarks.length}{query ? ` for “${query}”` : ''}</span>
       </div>
