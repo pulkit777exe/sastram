@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bookmark, Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
@@ -11,6 +11,7 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
   const [newTitle, setNewTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -37,6 +38,23 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
     };
   }, [open]);
 
+  // Close on outside click / Escape - foolproof
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   const payload = { threadId, sessionId, messageId, metadata } as Record<string, unknown>;
 
   async function createAndAdd() {
@@ -48,7 +66,14 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle.trim() }),
       });
-      if (!res.ok) throw new Error('Create failed');
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          toasts.error(j?.error?.message || 'Already exists');
+          return;
+        }
+        throw new Error(j?.error?.message || 'Create failed');
+      }
       const j = await res.json();
       const coll = j.data;
       if (coll?.id) {
@@ -57,13 +82,21 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if (!itemRes.ok) throw new Error('Add failed');
+        if (!itemRes.ok) {
+          const jd = await itemRes.json().catch(() => ({}));
+          if (itemRes.status === 409) {
+            toasts.error('Already saved to this collection');
+          } else {
+            throw new Error(jd?.error?.message || 'Add failed');
+          }
+          return;
+        }
         toasts.success('Saved to collection');
         setNewTitle('');
         setOpen(false);
       }
-    } catch {
-      toasts.error('Failed to save');
+    } catch (e) {
+      toasts.error(e instanceof Error ? e.message : 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -77,11 +110,18 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Add failed');
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          toasts.error('Already saved to this collection');
+          return;
+        }
+        throw new Error(j?.error?.message || 'Add failed');
+      }
       toasts.success('Saved');
       setOpen(false);
-    } catch {
-      toasts.error('Failed to save');
+    } catch (e) {
+      toasts.error(e instanceof Error ? e.message : 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -90,8 +130,8 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
   if (!threadId && !sessionId && !messageId && !metadata) return null;
 
   return (
-    <div className="relative">
-      <Button variant="outline" size="sm" className="h-7 gap-1.5 rounded-full" onClick={() => setOpen((v) => !v)}>
+    <div className="relative" ref={containerRef}>
+      <Button variant="outline" size="sm" className="h-7 gap-1.5 rounded-full border-line bg-surface hover:bg-hover" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="dialog">
         <Bookmark size={12} /> {label}
       </Button>
       {open && (
@@ -101,6 +141,7 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && createAndAdd()}
               placeholder="New collection"
               className="flex-1 rounded-control border border-line bg-field px-2 py-1.5 text-xs focus:outline-none focus:border-line-strong"
             />

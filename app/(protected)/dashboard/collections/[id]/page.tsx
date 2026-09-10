@@ -103,7 +103,7 @@ export default async function CollectionDetailPage({ params }: { params: Promise
                   ) : isCanvas ? (
                     <span className="text-sm font-medium text-ink truncate">Canvas: {String(meta?.leftName ?? '?')} vs {String(meta?.rightName ?? '?')}</span>
                   ) : isSummary ? (
-                    <Link href={`/dashboard/threads/${item.threadId}`} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
+                    <Link href={String((meta as Record<string,unknown>)?.threadId ? `/dashboard/threads/${String((meta as Record<string,unknown>).threadId)}` : '/dashboard/threads')} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
                       <span className="text-sm font-medium text-ink truncate">Summary: {String((meta as Record<string,string>)?.content?.slice(0,80) ?? 'summary')}</span>
                       <ExternalLink size={12} className="text-ink-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Link>

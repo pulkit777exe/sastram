@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/lib/config/routes';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { toasts } from '@/lib/utils/toast';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 import {
   searchThreadsAction,
   searchMessagesAction,
@@ -278,15 +279,18 @@ export default function SearchPage() {
                 ) : (
                   <div className="grid gap-4">
                     {results.threads.threads?.map((thread) => (
-                      <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
-                        <Card className="p-4 hover:bg-hover transition-colors">
-                          <h3 className="font-semibold text-ink">{highlight(thread.name, query)}</h3>
+                      <div key={thread.id} className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-hover transition-colors">
+                        <Link href={ROUTES.THREAD(thread.slug)} className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-ink group-hover:text-brand truncate">{highlight(thread.name, query)}</h3>
                           {thread.description && (
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{highlight(thread.description, query)}</p>
                           )}
                           <p className="text-xs text-ink-3 mt-2">{thread.messageCount} msgs · {thread.memberCount ?? 0} members</p>
-                        </Card>
-                      </Link>
+                        </Link>
+                        <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <CollectionSaveButton threadId={thread.id} />
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -304,17 +308,17 @@ export default function SearchPage() {
                 ) : (
                   <div className="grid gap-4">
                     {results.messages.messages?.map((message) => (
-                      <Link
-                        key={message.id}
-                        href={ROUTES.THREAD(message.thread.slug)}
-                      >
-                        <Card className="p-4 hover:bg-hover transition-colors">
-                          <p className="text-sm text-ink line-clamp-3">{highlight(message.content.slice(0, 280), query)}</p>
+                      <div key={message.id} className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-hover transition-colors">
+                        <Link href={ROUTES.THREAD(message.thread.slug)} className="flex-1 min-w-0">
+                          <p className="text-sm text-ink line-clamp-3 group-hover:text-brand">{highlight(message.content.slice(0, 280), query)}</p>
                           <p className="text-xs text-muted-foreground mt-2">
                             by {message.sender.name || 'Unknown'} in <span className="font-medium">{message.thread.name}</span>
                           </p>
-                        </Card>
-                      </Link>
+                        </Link>
+                        <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <CollectionSaveButton messageId={message.id} />
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}

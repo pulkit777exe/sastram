@@ -53,8 +53,8 @@ export async function getCollection(collectionId: string, userId: string) {
 }
 
 export async function addToCollection(collectionId: string, threadId?: string, sessionId?: string, messageId?: string, metadata?: unknown) {
-  if (!threadId && !sessionId && !messageId) {
-    throw new AppError('threadId or sessionId or messageId required', 'VALIDATION_ERROR', 400);
+  if (!threadId && !sessionId && !messageId && !metadata) {
+    throw new AppError('threadId or sessionId or messageId or metadata required', 'VALIDATION_ERROR', 400);
   }
   try {
     return await prisma.collectionItem.create({

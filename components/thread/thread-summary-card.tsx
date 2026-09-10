@@ -135,7 +135,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, messageCount, clas
 
         <div className="flex items-center gap-1">
           {summary && (
-            <CollectionSaveButton threadId={threadId} metadata={{ type: 'summary', content: summary }} label="Save" />
+            <CollectionSaveButton metadata={{ type: 'summary', threadId, content: summary }} label="Save" />
           )}
           {summary && !isPending && (
             <Button

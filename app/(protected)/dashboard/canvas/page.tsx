@@ -121,7 +121,7 @@ export default async function CanvasPage({
           </p>
         </div>
         {left && right && (
-          <CollectionSaveButton metadata={{ type: 'canvas', leftId: left.id, rightId: right.id, leftName: left.name, rightName: right.name, diff }} label="Save Canvas" />
+          <CollectionSaveButton metadata={{ type: 'canvas', leftId: left.id, rightId: right.id, leftName: left.name, rightName: right.name, diff }} label="Save" />
         )}
       </div>
       <div className="grid md:grid-cols-2 gap-4 mt-4">

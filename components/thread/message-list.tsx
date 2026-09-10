@@ -449,7 +449,7 @@ const MessageRow = React.memo(function MessageRow({
         {!isEditing && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-100 scale-95 group-hover:scale-100">
             <div className="scale-90">
-              <CollectionSaveButton messageId={message.id} label={message.isAiResponse ? 'Save AI' : 'Save'} />
+              <CollectionSaveButton messageId={message.id} label="Save" />
             </div>
             <MessageActions
               onReply={() => onReply(message.id)}

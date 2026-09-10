@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ROUTES } from '@/lib/config/routes';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 type Thread = { id: string; slug: string; name: string; description: string | null; messageCount: number; memberCount: number; createdAt: Date | string };
 
@@ -56,17 +57,20 @@ export function BookmarksFilter({ bookmarks }: { bookmarks: Thread[] }) {
       ) : (
         <div className="grid gap-4">
           {filtered.map((thread) => (
-            <Link key={thread.id} href={ROUTES.THREAD(thread.slug)}>
-              <Card className="p-4 hover:bg-hover transition-colors rounded-card border border-line shadow-card">
-                <h3 className="font-semibold text-ink mb-2">{thread.name}</h3>
-                {thread.description && <p className="text-sm text-ink-3 mb-3 line-clamp-2">{thread.description}</p>}
-                <div className="flex items-center gap-4 text-xs text-ink-3">
+            <div key={thread.id} className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-hover shadow-card transition-colors">
+              <Link href={ROUTES.THREAD(thread.slug)} className="flex-1 min-w-0">
+                <h3 className="font-semibold text-ink group-hover:text-brand truncate">{thread.name}</h3>
+                {thread.description && <p className="text-sm text-ink-3 mt-1 line-clamp-2">{thread.description}</p>}
+                <div className="flex items-center gap-4 text-xs text-ink-3 mt-2">
                   <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{thread.messageCount}</span>
                   <span className="flex items-center gap-1"><Users className="h-3 w-3" />{thread.memberCount}</span>
                   <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /><TimeAgo date={thread.createdAt as unknown as Date} /></span>
                 </div>
-              </Card>
-            </Link>
+              </Link>
+              <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                <CollectionSaveButton threadId={thread.id} />
+              </div>
+            </div>
           ))}
         </div>
       )}

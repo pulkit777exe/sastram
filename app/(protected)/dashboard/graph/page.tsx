@@ -98,7 +98,7 @@ export default async function GraphPage() {
             <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sai-green" /> 85%+ high</span>
             <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sai-orange" /> 70-85%</span>
           </div>
-          <CollectionSaveButton metadata={{ type: 'graph', nodes, links, savedAt: new Date().toISOString() }} label="Save Graph" />
+          <CollectionSaveButton metadata={{ type: 'graph', nodes, links, savedAt: new Date().toISOString() }} label="Save" />
         </div>
       </div>
       <ForceGraphCanvas nodes={nodes} links={links} />
