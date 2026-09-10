@@ -47,7 +47,7 @@ The current moat features (all configurable from `Settings → Preferences`, all
 Browser Client
 │
 ├── HTTP / Server Actions → Next.js App Router (Vercel Serverless)
-│   ├── modules/ (29 domain modules)
+│   ├── modules/ (27 domain modules)
 │   │   ├── Prisma → PostgreSQL (Neon, 35 models)
 │   │   ├── Upstash Redis (quotas, rate limits, spend cap, idempotency)
 │   │   ├── QStash → background jobs (/api/jobs webhook, 9 job types)
@@ -55,7 +55,7 @@ Browser Client
 │   │   ├── Vercel Blob (file storage)
 │   │   ├── Gemini / Exa / Tavily (AI, 12-source deep research)
 │   │   └── Resend (email)
-│   └── API Routes (46 REST endpoints)
+│   └── API Routes (48 REST endpoints)
 │
 └── SSE → AI reply streaming (/api/threads/[threadId]/ai-reply/stream)
 ```
@@ -150,13 +150,14 @@ sastram/
 │           ├── daily-digest/             # Email digest trigger
 │           └── cleanup-blobs/            # Blob cleanup
 │
-├── modules/                              # Domain logic (29 modules)
+ ├── modules/                              # Domain logic (27 modules)
 │   ├── auth/                             # Session management, OAuth
 │   ├── users/                            # User CRUD, profiles, avatar/banner upload
 │   ├── threads/                          # Thread CRUD, slug routing, relations, confidence decay
 │   ├── messages/                         # Post, edit, pin, delete, mentions, AI inline
-│   ├── ai-search/                        # Exa + Tavily + Gemini pipeline, caching, query warming, collections
+│   ├── ai-search/                        # Exa + Tavily + Gemini pipeline, caching, query warming
 │   ├── collections/                     # Workspace collections repository
+│   ├── bounties/                         # Thread bounties (amount, isClaimed)
 │   ├── moderation/                       # Regex rules, content filtering, AI inline moderation
 │   ├── reports/                          # Report creation, resolution
 │   ├── appeals/                          # Ban appeal submission, 3-random-MODERATOR jury vote, 2/3 majority
@@ -169,14 +170,13 @@ sastram/
 │   ├── tags/                             # Tag CRUD, thread-tag associations
 │   ├── topics/                           # Topic creation (thread categories)
 │   ├── members/                          # Thread membership management
-│   ├── polls/                            # Poll creation, voting, results
+│   ├── polls/                            # Poll creation, voting, results + prediction markets (isMarket)
 │   ├── invitations/                      # Thread invitations
 │   ├── activity/                         # User activity logging
 │   ├── feedback/                         # In-app feedback widget submissions
-│   ├── search/                           # Local full-text search
+│   ├── search/                           # Local full-text search (ranked, typo-tolerant)
 │   ├── policy/                           # Policy enforcement
-│   ├── audit/                            # Audit logging
-│   └── reputation/                       # Verified-thread count, leaderboard (computed)
+│   └── audit/                            # Audit logging
 │
 ├── lib/
 │   ├── config/
@@ -359,7 +359,7 @@ sastram/
 
 ## Module Architecture
 
-29 domain modules under `modules/`. Each follows a consistent pattern:
+27 domain modules under `modules/`. Each follows a consistent pattern:
 
 ```
 modules/{feature}/
@@ -384,7 +384,7 @@ modules/{feature}/
 | Engagement | `polls/`, `tags/`, `activity/`, `reactions/`, `read-receipts/`, `bounties/`, `collections/` |
 | Moderation | `moderation/`, `reports/`, `appeals/` |
 | AI | `ai-search/`, `ai-reply/` |
-| Automation | `newsletter/`, `search/`, `feedback/`, `policy/`, `audit/`, `topics/`, `members/`, `reputation/` |
+| Automation | `newsletter/`, `search/`, `feedback/`, `policy/`, `audit/`, `topics/`, `members/` |
 
 ---
 
@@ -412,7 +412,7 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 
 ---
 
-## API Routes (46 endpoints)
+## API Routes (48 endpoints)
 
 ### Authentication (6)
 - `/api/auth/[...all]` — Better Auth catch-all
@@ -431,28 +431,29 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 - `/api/ai/spend` — Get AI spend usage (admin)
 - `/api/ai/deep-research` — Async 12-source research (QStash)
 
-### Core Resources (8)
+### Core Resources (10)
 - `/api/threads` — Thread CRUD
 - `/api/threads/similar` — Similar thread lookup
+- `/api/threads/fork-external` — External URL fork (isSafePublicUrl + sanitized title)
 - `/api/threads/[threadId]/ai-reply` — AI reply trigger
 - `/api/threads/[threadId]/ai-reply/stream` — SSE streaming endpoint
 - `/api/threads/[threadId]/challenge` — Counter-source challenge
-- `/api/threads/[threadId]/verify` — OP verify
 - `/api/threads/[threadId]/fork` — Thread fork
 - `/api/threads/[threadId]/route-experts` — Expert routing
 - `/api/messages` — Message CRUD
 - `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked)
 - `/api/bounties` — Bounty CRUD
 - `/api/polls/[pollId]/resolve` — Market poll resolve
+- `/api/link-preview` — Link preview (OG + Exa fallback, SSRF-safe manual redirect)
 
 ### File & Invitations (2)
 - `/api/upload` — File upload (Vercel Blob, MIME sniff + moderation)
 - `/api/invitations/accept` — Accept thread invitation
 
 ### Collections (4)
-- `/api/collections` — List/create
-- `/api/collections/[id]` — Get/delete
-- `/api/collections/[id]/items` — Add/remove items
+- `/api/collections` — List/create (FEATURE_DISABLED if collectionsEnabled=false)
+- `/api/collections/[id]` — Get/delete (ownership)
+- `/api/collections/[id]/items` — Add/remove items (thread access + cuid)
 - `/api/collections/[id]/export` — Markdown export with [n] footnotes
 
 ### User (1)
@@ -461,7 +462,7 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 ### Cron / Scheduled (4)
 - `/api/cron/update-threads` — Batch AI metadata refresh + relations + expertise refresh
 - `/api/cron/daily-digest` — Email digest trigger
-- `/api/cron/cleanup-blobs` — Blob cleanup
+- `/api/cron/cleanup-blobs` — Blob cleanup (paginated 50×20 batches)
 - `/api/cron/promote-knowledge` — KnowledgePage auto-promote
 
 ### Admin / Moderation (7)
@@ -473,10 +474,9 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 - `/api/v1/moderation/appeals/submit` — Submit appeal
 - `/api/v1/moderation/appeals/review/[id]` — Review appeal
 
-### Other (5)
+### Other (4)
 - `/api/health` — Public health check
 - `/api/bootstrap` — App init (user + notifications + activity)
-- `/api/newsletter/generate` — Newsletter generation
 - `/api/jobs` — QStash webhook (background jobs)
 - `/api/csp-report` — CSP violation collector
 

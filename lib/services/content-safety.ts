@@ -58,14 +58,17 @@ export function sanitizeContent(content: string): string {
 }
 
 const PRIVATE_IP_RE =
-  /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|0\.0\.0\.0|::1|fc00:|fe80:)/i;
+  /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|0\.0\.0\.0|::1|fc00:|fe80:|169\.254\.|::ffff:)/i;
 
 export function isSafePublicUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-    if (PRIVATE_IP_RE.test(u.hostname)) return false;
-    if (u.hostname === 'localhost' || u.hostname.endsWith('.local')) return false;
+    const host = u.hostname.toLowerCase();
+    if (PRIVATE_IP_RE.test(host)) return false;
+    if (host === 'localhost' || host.endsWith('.local')) return false;
+    if (host === 'metadata.google.internal' || host === 'metadata.google' || host.endsWith('.internal')) return false;
+    if (/^0x[0-9a-f]+\.0x[0-9a-f]+/i.test(host) || /^0[0-7]+\.[0-9.]+/.test(host)) return false;
     return true;
   } catch {
     return false;

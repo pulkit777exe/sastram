@@ -55,7 +55,11 @@ export async function moderateImageUpload(
       return handleQuotaExceeded(blobUrl);
     }
 
-    await enforceAiSpendCap(AiCallPath.IMAGE_MODERATION);
+    const spendCap = await enforceAiSpendCap(AiCallPath.IMAGE_MODERATION);
+    if (!spendCap.allowed) {
+      await del(blobUrl);
+      return { allowed: false, reason: 'AI spend cap reached — image moderation unavailable until UTC midnight reset.' };
+    }
     const moderationResult = await aiService.moderateImageContent(blobUrl);
 
     if (moderationResult.classification === 'NSFW') {

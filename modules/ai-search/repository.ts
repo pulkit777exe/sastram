@@ -45,40 +45,44 @@ export async function persistSearchSession(
     const queryHash = hashQuery(query);
     const timings = opts.timings;
     const sessionId = opts.id ?? crypto.randomUUID();
-    const session = await prisma.aiSearchSession.create({
-      data: {
-        id: sessionId,
-        userId,
-        query,
-        queryHash,
-        queryType: synthesis.queryType,
-        title: opts.title ?? null,
-        parentSessionId: opts.parentSessionId ?? null,
-        cacheHit: Boolean(synthesis.cachedAt),
-        processingMs: synthesis.processingTimeMs,
-        classifyMs: timings?.classifyMs ?? null,
-        searchMs: timings?.searchMs ?? null,
-        crossrefMs: timings?.crossrefMs ?? null,
-        synthesizeMs: timings?.synthesizeMs ?? null,
-        provider: timings?.provider ?? null,
-        tokenCostUsd: timings?.tokenCostUsd ?? null,
-      },
-    });
+    const session = await prisma.$transaction(async (tx) => {
+      const s = await tx.aiSearchSession.create({
+        data: {
+          id: sessionId,
+          userId,
+          query,
+          queryHash,
+          queryType: synthesis.queryType,
+          title: opts.title ?? null,
+          parentSessionId: opts.parentSessionId ?? null,
+          cacheHit: Boolean(synthesis.cachedAt),
+          processingMs: synthesis.processingTimeMs,
+          classifyMs: timings?.classifyMs ?? null,
+          searchMs: timings?.searchMs ?? null,
+          crossrefMs: timings?.crossrefMs ?? null,
+          synthesizeMs: timings?.synthesizeMs ?? null,
+          provider: timings?.provider ?? null,
+          tokenCostUsd: timings?.tokenCostUsd ?? null,
+        },
+      });
 
-    await prisma.aiSearchResult.create({
-      data: {
-        sessionId: session.id,
-        queryHash,
-        synthesis: synthesis.text || synthesis.content,
-        citations: (synthesis.citations ?? []) as unknown as Prisma.InputJsonValue,
-        followUps: (followUps ?? []) as unknown as Prisma.InputJsonValue,
-        confidence: Math.round(synthesis.confidence ?? 0),
-        sourceCount: sources.length,
-        conflictFound: synthesis.conflictData?.detected ?? false,
-        conflictData: (synthesis.conflictData ?? null) as unknown as Prisma.InputJsonValue,
-        sources: (sources ?? []) as unknown as Prisma.InputJsonValue,
-        expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000),
-      },
+      await tx.aiSearchResult.create({
+        data: {
+          sessionId: s.id,
+          queryHash,
+          synthesis: synthesis.text || synthesis.content,
+          citations: (synthesis.citations ?? []) as unknown as Prisma.InputJsonValue,
+          followUps: (followUps ?? []) as unknown as Prisma.InputJsonValue,
+          confidence: Math.round(synthesis.confidence ?? 0),
+          sourceCount: sources.length,
+          conflictFound: synthesis.conflictData?.detected ?? false,
+          conflictData: (synthesis.conflictData ?? null) as unknown as Prisma.InputJsonValue,
+          sources: (sources ?? []) as unknown as Prisma.InputJsonValue,
+          expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000),
+        },
+      });
+
+      return s;
     });
 
     return session.id;

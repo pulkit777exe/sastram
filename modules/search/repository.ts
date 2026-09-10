@@ -282,7 +282,8 @@ export function highlightMatches(text: string | null | undefined, query: string 
   if (!text || !query) return (text as string) ?? '';
   const tokens = tokenize(query);
   if (tokens.length === 0) return text as string;
-  let highlighted = text as string;
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  let highlighted = esc(text as string);
   for (const tok of tokens) {
     const re = new RegExp(`(${tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
     highlighted = highlighted.replace(re, '<mark>$1</mark>');

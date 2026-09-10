@@ -48,10 +48,10 @@ describe('Logger', () => {
       expect(out.Authorization).to.equal('[REDACTED]');
     });
 
-    it('preserves metadata objects untouched', () => {
+    it('scrubs metadata objects (no bypass)', () => {
       const meta = { nested: { token: 'leak' } };
       const out = scrub({ metadata: meta }) as Record<string, unknown>;
-      expect(out.metadata).to.deep.equal(meta);
+      expect((out.metadata as Record<string, Record<string, unknown>>).nested.token).to.equal('[REDACTED]');
     });
   });
 

@@ -17,6 +17,11 @@ const PUBLIC_PATHS = [
   '/api/sign-in',
   '/api/forget-password',
   '/api/cron',
+  '/api/health',
+  '/api/csp-report',
+  '/api/jobs',
+  '/api/link-preview',
+  '/api/upload',
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -151,7 +156,9 @@ export default async function proxy(request: NextRequest) {
   }
 
   const unsafeMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
-  if (unsafeMethods.includes(request.method)) {
+  // Exempt QStash webhook (no Origin) — it has its own timingSafe signature verification
+  const isQStashWebhook = pathname === '/api/jobs';
+  if (unsafeMethods.includes(request.method) && !isQStashWebhook) {
     const origin = request.headers.get('origin');
     const referer = request.headers.get('referer');
     const appUrl = new URL(getEnv().NEXT_PUBLIC_APP_URL);

@@ -130,8 +130,7 @@ function scrubObject(record: Record<string, unknown>, seen: WeakSet<object>): Re
 
     const isMetadata = key === 'metadata' && entry !== null && typeof entry === 'object';
     if (isMetadata) {
-      // `metadata` is caller-curated structured context; pass it through untouched.
-      result[key] = entry;
+      result[key] = scrub(entry, seen);
       continue;
     }
 
