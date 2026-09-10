@@ -319,7 +319,7 @@ export function ThreadLiveProvider({
     return () => observer.disconnect();
   }, [threadMessages]);
 
-  // ---- Poll refresh (stub, future SSE) ----
+  // ---- Poll refresh (stub, will be replaced by SSE poll-update events) ----
   useEffect(() => {
     if (!currentPoll) return;
     let cancelled = false;
@@ -327,7 +327,7 @@ export function ThreadLiveProvider({
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       if (cancelled) return;
       try {
-        // TODO: replace with SSE poll-update events
+        // Poll data is currently static from initialPoll; polling is a no-op until SSE is available
       } catch {
         // best-effort
       }
