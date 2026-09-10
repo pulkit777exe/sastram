@@ -15,7 +15,7 @@ const createBountyInput = z.object({ threadId: z.string().cuid(), amount: z.numb
 export const createBountyAction = createServerAction({ schema: createBountyInput, actionName: 'createBountyAction' }, async ({ threadId, amount }) => {
   try {
     const session = await requireSession();
-    const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true, createdBy: true, visibility: true } });
+    const thread = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { id: true, createdBy: true, visibility: true } });
     if (!thread) throw new AppError('THREAD_NOT_FOUND', 'Thread not found', 404);
     const canAccess = await canAccessThread({ threadId, createdBy: thread.createdBy, visibility: thread.visibility as never }, session.user.id, session.user.role as never);
     if (!canAccess) throw new AppError('FORBIDDEN', 'No access', 403);

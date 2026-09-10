@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadThreadMessages } from '@/modules/threads/actions';
 import { toClientMessage, type ThreadMessage } from '@/modules/threads/service';
 import { toasts } from '@/lib/utils/toast';
+import { clientLogger } from '@/lib/utils/client-logger';
 import type { Message } from '@/lib/types/index';
 
 function buildIdIndex(messages: Message[]): Map<string, number> {
@@ -116,7 +117,7 @@ export function useThreadMessages({
         toasts.serverError();
       }
     } catch (error) {
-      console.error('[thread-live] Failed to load more messages:', error);
+      clientLogger.error('thread-live', 'Failed to load more messages:', error as Error);
       toasts.serverError();
     } finally {
       isLoadingMoreRef.current = false;

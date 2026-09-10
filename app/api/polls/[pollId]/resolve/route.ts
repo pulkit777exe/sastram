@@ -28,7 +28,7 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   const options = Array.isArray(poll.options) ? poll.options : [];
   if (resolvedOptionIndex >= options.length) return NextResponse.json(fail('BAD_REQUEST', 'Invalid option index'), { status: HTTP_STATUS.BAD_REQUEST });
 
-  const thread = await prisma.thread.findUnique({ where: { id: poll.threadId }, select: { id: true, createdBy: true, visibility: true } });
+  const thread = await prisma.thread.findUnique({ where: { id: poll.threadId, deletedAt: null }, select: { id: true, createdBy: true, visibility: true } });
   if (!thread) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
   const canManage = await canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility as never }, session.user.id, session.user.role as never);
   if (!canManage) return NextResponse.json(fail('FORBIDDEN', 'Only OP or admin can resolve market'), { status: HTTP_STATUS.FORBIDDEN });

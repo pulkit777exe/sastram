@@ -4,7 +4,8 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 
 function computeBackoffDelay(baseDelayMs: number, attemptIndex: number): number {
   const exponentialFactor = Math.pow(2, attemptIndex);
-  return baseDelayMs * exponentialFactor;
+  const jitter = Math.floor(Math.random() * 100);
+  return baseDelayMs * exponentialFactor + jitter;
 }
 
 function createTimeoutController(timeoutMs: number, externalSignal?: AbortSignal): { controller: AbortController; clear: () => void } {

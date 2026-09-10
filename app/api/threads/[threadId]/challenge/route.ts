@@ -39,7 +39,7 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   }
   const safeNote = body.note ? sanitizeUserContent(body.note).sanitized.slice(0, 500) : '';
 
-  const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { name: true, resolutionScore: true, isOutdated: true } });
+  const thread = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { name: true, resolutionScore: true, isOutdated: true } });
   if (!thread) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
 
   const messages = await prisma.message.findMany({

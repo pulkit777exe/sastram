@@ -15,11 +15,15 @@ export async function escalateStaleReports(): Promise<{ escalated24h: number; es
   const stale24h = await prisma.report.findMany({
     where: { status: 'PENDING', createdAt: { lt: cutoff24h }, escalatedAt: null },
     select: { id: true, category: true, createdAt: true },
+    take: 200,
+    orderBy: { createdAt: 'asc' },
   });
 
   const stale72h = await prisma.report.findMany({
     where: { status: 'PENDING', createdAt: { lt: cutoff72h }, escalatedAt: { not: null } },
     select: { id: true, category: true, createdAt: true },
+    take: 200,
+    orderBy: { createdAt: 'asc' },
   });
 
   if (stale24h.length > 0) {

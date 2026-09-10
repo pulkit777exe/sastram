@@ -47,6 +47,9 @@ function calculateSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
 
 export const GET = withErrorHandling(async (_req: NextRequest) => {
   const session = await requireSessionOrThrow();
+  const { rateLimit } = await import('@/lib/services/rate-limit');
+  const rl = await rateLimit({ key: `similar:${session.user.id}`, type: 'api' });
+  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
   const filter = await visibilityFilter(session.user.id, session.user.role as never);
   const isModeratorFilterEmpty = Object.keys(filter).length === 0;
   const baseSourceFilter: Prisma.ThreadWhereInput = isModeratorFilterEmpty ? { deletedAt: null } : { ...filter, deletedAt: null };

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { parseUserPreferences, type UserPreferences } from '@/lib/schemas/user-preferences';
+import { clientLogger } from '@/lib/utils/client-logger';
 
 export function useUserPreferences() {
   const [prefs, setPrefs] = useState<UserPreferences>(() => parseUserPreferences({}));
@@ -16,7 +17,7 @@ export function useUserPreferences() {
       .then((j) => {
         if (j?.data) setPrefs(parseUserPreferences(j.data));
       })
-      .catch((e) => console.warn('[prefs] failed to load', e))
+      .catch((e) => clientLogger.warn('prefs', 'failed to load', e as Error))
       .finally(() => setLoading(false));
   }, []);
 

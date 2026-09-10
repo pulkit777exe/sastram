@@ -15,7 +15,7 @@ export const POST = withErrorHandling(async (_: Request, context?: { params: Pro
   const { threadId } = paramsSchema.parse(await context!.params);
   await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
 
-  const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { threadDna: true, name: true } });
+  const thread = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { threadDna: true, name: true } });
   if (!thread?.threadDna) return NextResponse.json(fail('NOT_FOUND', 'No DNA'), { status: HTTP_STATUS.NOT_FOUND });
 
   const dna = parseThreadDna(thread.threadDna);
@@ -26,9 +26,10 @@ export const POST = withErrorHandling(async (_: Request, context?: { params: Pro
   if (!topic) return NextResponse.json(fail('NOT_FOUND', 'No topic'), { status: HTTP_STATUS.NOT_FOUND });
 
   const experts = await prisma.userActivity.findMany({
-    where: { type: 'MESSAGE_CREATED', entityType: 'THREAD' },
+    where: { type: 'MESSAGE_CREATED', entityType: 'THREAD', user: { deletedAt: null } },
     select: { userId: true },
     take: 100,
+    orderBy: { createdAt: 'desc' },
   });
 
   // Simple KISS: count by userId, pick top 3 not already invited and not OP
