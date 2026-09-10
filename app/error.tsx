@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/utils/client-logger';
 
@@ -20,6 +21,7 @@ export default function RootError({
     }
   }, [error]);
 
+  const router = useRouter();
   const msg = error.message ?? '';
   const isDbError = msg.includes('Failed to get session') || error.digest === '3914836991' || msg.includes('network error');
   const isEnotfound = msg.includes('ENOTFOUND') || msg.includes('getaddrinfo') || (error as unknown as { code?: string })?.code === 'ENOTFOUND';
@@ -40,7 +42,7 @@ export default function RootError({
           <Button variant="outline" onClick={reset}>
             Try again
           </Button>
-          <Button variant="default" onClick={() => window.location.href = '/login'}>
+          <Button variant="default" onClick={() => router.push('/login')}>
             Go to Login
           </Button>
         </div>

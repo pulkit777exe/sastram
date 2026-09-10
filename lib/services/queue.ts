@@ -138,11 +138,15 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T) 
     const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/jobs`;
     const body = { jobType, payload };
     const qstashClient = getQstashClient();
-    await qstashClient!.publishJSON({
+    const publish = qstashClient!.publishJSON({
       url,
       body,
       retries,
     });
+    await Promise.race([
+      publish,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QStash publish timeout')), 10000)),
+    ]);
   } catch (error) {
     logger.error(`[queue] QStash publish failed for ${jobType}`, error);
     throw error;

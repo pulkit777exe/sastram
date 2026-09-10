@@ -15,6 +15,12 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('RATE_LIMITED', 'Upload limit reached. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
   }
 
+  const contentLength = req.headers.get('content-length');
+  const maxBytes = 5 * 1024 * 1024;
+  if (contentLength && Number(contentLength) > maxBytes) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Upload too large'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+
   const formData = await req.formData();
   const threadId = formData.get('threadId') as string;
   const files = formData.getAll('files') as File[];

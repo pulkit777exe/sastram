@@ -356,7 +356,7 @@ export function ThreadLiveWrapper({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
+  }, [threadMessages]);
 
   // Polling — banner when stale (failureCount >= 3)
   const isPollingStale = useThreadPolling({

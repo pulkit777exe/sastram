@@ -300,7 +300,7 @@ export function ThreadLiveProvider({
     }
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-  }, [readReceipts.markThreadAsRead]);
+  }, [readReceipts]);
 
   // ---- Load-more sentinel ----
   useEffect(() => {
@@ -317,7 +317,7 @@ export function ThreadLiveProvider({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [threadMessages.hasMoreMessages, threadMessages.loadMoreMessages]);
+  }, [threadMessages]);
 
   // ---- Poll refresh (stub, future SSE) ----
   useEffect(() => {

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
         where: { id: invitationId },
         data: { status: 'ACCEPTED' },
       });
-    });
+    }, { maxWait: 5000, timeout: 10000 });
 
     revalidatePath(`/dashboard/threads/${invitation.thread.slug}`);
     return NextResponse.json(ok({ threadSlug: invitation.thread.slug }));

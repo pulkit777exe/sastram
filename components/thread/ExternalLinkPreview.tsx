@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { ExternalLink, Link2, Globe } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -63,12 +64,13 @@ export function ExternalLinkPreview({ url, compact }: { url?: string | null; com
       {hasImage ? (
         <div className={`grid gap-px bg-line ${imgs.length === 1 ? 'grid-cols-1' : imgs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} max-h-56 overflow-hidden`}>
           {imgs.map((src, i) => (
-            <div key={i} className="relative bg-canvas overflow-hidden" style={{ display: imgErrors[i] ? 'none' : undefined }}>
-              <img
+            <div key={i} className="relative bg-canvas overflow-hidden h-32" style={{ display: imgErrors[i] ? 'none' : undefined }}>
+              <Image
                 src={src}
                 alt=""
-                className="w-full h-32 object-cover"
-                loading="lazy"
+                fill
+                unoptimized
+                className="object-cover"
                 referrerPolicy="no-referrer"
                 onError={() => setImgErrors((prev) => ({ ...prev, [i]: true }))}
               />

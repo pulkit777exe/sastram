@@ -87,6 +87,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
         body: JSON.stringify({ urls: [url], text: { maxCharacters: 8000 }, livecrawl: 'preferred' }),
+        signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {
         const json = await res.json() as { results?: Array<{ title?: string; url?: string; text?: string; image?: string }> };

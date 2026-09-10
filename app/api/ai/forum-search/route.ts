@@ -258,11 +258,21 @@ function buildLiveStream(
 ): Response {
   const encoder = new TextEncoder();
   let activeController: ReadableStreamDefaultController<Uint8Array> | null = null;
+  const closedRef = { closed: false };
+  const safeClose = () => {
+    if (!closedRef.closed) {
+      closedRef.closed = true;
+      try { activeController?.close(); } catch {}
+    }
+  };
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       activeController = controller;
-      const sendEvent = (event: SSEEvent) => controller.enqueue(encoder.encode(sseChunk(event)));
+      const sendEvent = (event: SSEEvent) => {
+        if (closedRef.closed) return;
+        try { controller.enqueue(encoder.encode(sseChunk(event))); } catch { closedRef.closed = true; }
+      };
 
       try {
         sendEvent({ phase: 'searching' });
@@ -342,23 +352,18 @@ function buildLiveStream(
           sessionId: createdSessionId,
           sources: result.sources,
         });
-        controller.close();
+        safeClose();
       } catch (error) {
         logger.error('AI Search streaming error:', error instanceof Error ? error.message : 'Unknown error');
         const { message, errorCode } = mapStreamError(error);
         sendEvent({ phase: 'error', message, errorCode });
-        controller.close();
+        safeClose();
       }
     },
   });
 
-  request.signal.addEventListener('abort', () => {
-    try {
-      activeController?.close();
-    } catch {
-      /* already closed */
-    }
-  });
+  const onAbort = () => safeClose();
+  request.signal.addEventListener('abort', onAbort, { once: true });
 
   return new Response(stream, {
     status: HTTP_STATUS.OK,
