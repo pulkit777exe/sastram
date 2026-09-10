@@ -50,6 +50,16 @@ export async function withRetry<T>(
     } catch (taskError) {
       lastError = taskError;
       clear();
+      // Don't retry non-retryable errors: AppError 4xx, Prisma P2002, quota
+      const code = (taskError as { code?: string })?.code;
+      const status = (taskError as { statusCode?: number })?.statusCode;
+      const message = taskError instanceof Error ? taskError.message : String(taskError);
+      const isNonRetryable =
+        (typeof status === 'number' && status >= 400 && status < 500) ||
+        code === 'P2002' ||
+        /quota|RATE_LIMITED|VALIDATION_ERROR/i.test(message) ||
+        /429/.test(message);
+      if (isNonRetryable) throw taskError;
       const isLastAttempt = attemptIndex >= retries - 1;
       if (isLastAttempt) {
         throw taskError;

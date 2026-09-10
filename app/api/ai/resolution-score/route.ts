@@ -40,6 +40,7 @@ async function fetchThreadForScore(threadId: string) {
       updatedAt: true,
       lastVerifiedAt: true,
       messages: {
+        where: { deletedAt: null },
         take: Math.min(parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10) || 50, 100),
         orderBy: { createdAt: 'desc' },
         include: { sender: true },

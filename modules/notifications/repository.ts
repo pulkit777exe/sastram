@@ -141,21 +141,12 @@ export const getUserNotifications = cache(async (filters: NotificationFilters) =
 });
 
 export async function markAsRead(notificationId: string, userId: string) {
-  const notification = await prisma.notification.findUnique({
-    where: { id: notificationId },
-    select: { userId: true },
+  const res = await prisma.notification.updateMany({
+    where: { id: notificationId, userId },
+    data: { isRead: true },
   });
-
-  if (!notification || notification.userId !== userId) {
-    throw new Error('Notification not found or unauthorized');
-  }
-
-  return prisma.notification.update({
-    where: { id: notificationId },
-    data: {
-      isRead: true,
-    },
-  });
+  if (res.count === 0) throw new Error('Notification not found or unauthorized');
+  return prisma.notification.findUnique({ where: { id: notificationId } });
 }
 
 export async function markAllAsRead(userId: string, type?: NotificationType) {

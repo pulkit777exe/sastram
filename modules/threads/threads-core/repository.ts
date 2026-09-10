@@ -111,13 +111,48 @@ export const listThreads = cache(
       _count: { select: { messages: { where: { deletedAt: null } } } },
     };
 
+    const clampedPage = Math.max(1, Math.min(page, 100));
+    const clampedPageSize = Math.max(1, Math.min(pageSize, 50));
+
+    if (sortBy === 'trending') {
+      const trendingTake = Math.max(clampedPageSize * 5, 50);
+      const totalItemsPromise = prisma.thread.count({ where });
+      const threadRowsPromise = prisma.thread.findMany({
+        where,
+        include: messageCountSelect,
+        orderBy,
+        take: trendingTake + (clampedPage - 1) * clampedPageSize,
+      });
+      const [totalItems, threadRows] = await Promise.all([totalItemsPromise, threadRowsPromise]);
+      const threadIdsForActive = threadRows.map((t) => t.id);
+      const activeUsers = await countActiveUsersByThread(threadIdsForActive);
+      const mappedThreads = mapThreadsToSummaries(
+        threadRows as Array<ThreadRecord & { _count: { messages: number } }>,
+        activeUsers
+      );
+      mappedThreads.sort((a, b) => trendingScore(b) - trendingScore(a));
+      const paginated = mappedThreads.slice((clampedPage - 1) * clampedPageSize, clampedPage * clampedPageSize);
+      const totalPages = Math.ceil(totalItems / clampedPageSize);
+      return {
+        threads: paginated,
+        pagination: {
+          page: clampedPage,
+          pageSize: clampedPageSize,
+          totalItems,
+          totalPages,
+          hasNextPage: clampedPage < totalPages,
+          hasPreviousPage: clampedPage > 1,
+        },
+      };
+    }
+
     const totalItemsPromise = prisma.thread.count({ where });
     const threadRowsPromise = prisma.thread.findMany({
       where,
       include: messageCountSelect,
       orderBy,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip: (clampedPage - 1) * clampedPageSize,
+      take: clampedPageSize,
     });
     const [totalItems, threadRows] = await Promise.all([totalItemsPromise, threadRowsPromise]);
 
@@ -129,19 +164,17 @@ export const listThreads = cache(
       activeUsers
     );
 
-    if (sortBy === 'trending') mappedThreads.sort((a, b) => trendingScore(b) - trendingScore(a));
-
-    const totalPages = Math.ceil(totalItems / pageSize);
+    const totalPages = Math.ceil(totalItems / clampedPageSize);
 
     return {
       threads: mappedThreads,
       pagination: {
-        page,
-        pageSize,
+        page: clampedPage,
+        pageSize: clampedPageSize,
         totalItems,
         totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
+        hasNextPage: clampedPage < totalPages,
+        hasPreviousPage: clampedPage > 1,
       },
     };
   }

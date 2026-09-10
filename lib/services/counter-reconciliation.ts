@@ -63,10 +63,21 @@ function toCountMap(
 // scanning/logging code.
 
 async function loadThreads(): Promise<AnyRow[]> {
-  return prisma.thread.findMany({
-    where: { deletedAt: null },
-    select: { id: true, messageCount: true },
-  });
+  const batchSize = 1000;
+  const all: AnyRow[] = [];
+  let cursor: string | undefined;
+  while (true) {
+    const batch: AnyRow[] = await prisma.thread.findMany({
+      where: { deletedAt: null, ...(cursor ? { id: { gt: cursor } } : {}) },
+      select: { id: true, messageCount: true },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+    });
+    all.push(...batch);
+    if (batch.length < batchSize) break;
+    cursor = batch[batch.length - 1].id;
+  }
+  return all;
 }
 
 async function loadThreadMessageActuals(): Promise<Map<string, number>> {
@@ -79,10 +90,21 @@ async function loadThreadMessageActuals(): Promise<Map<string, number>> {
 }
 
 async function loadMessagesForLike(): Promise<AnyRow[]> {
-  return prisma.message.findMany({
-    where: { deletedAt: null, thread: { deletedAt: null } },
-    select: { id: true, likeCount: true },
-  });
+  const batchSize = 1000;
+  const all: AnyRow[] = [];
+  let cursor: string | undefined;
+  while (true) {
+    const batch: AnyRow[] = await prisma.message.findMany({
+      where: { deletedAt: null, thread: { deletedAt: null }, ...(cursor ? { id: { gt: cursor } } : {}) },
+      select: { id: true, likeCount: true },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+    });
+    all.push(...batch);
+    if (batch.length < batchSize) break;
+    cursor = batch[batch.length - 1].id;
+  }
+  return all;
 }
 
 async function loadLikeActuals(): Promise<Map<string, number>> {
@@ -96,10 +118,21 @@ async function loadLikeActuals(): Promise<Map<string, number>> {
 }
 
 async function loadRootMessages(): Promise<AnyRow[]> {
-  return prisma.message.findMany({
-    where: { deletedAt: null, thread: { deletedAt: null }, depth: 0 },
-    select: { id: true, replyCount: true },
-  });
+  const batchSize = 1000;
+  const all: AnyRow[] = [];
+  let cursor: string | undefined;
+  while (true) {
+    const batch: AnyRow[] = await prisma.message.findMany({
+      where: { deletedAt: null, thread: { deletedAt: null }, depth: 0, ...(cursor ? { id: { gt: cursor } } : {}) },
+      select: { id: true, replyCount: true },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+    });
+    all.push(...batch);
+    if (batch.length < batchSize) break;
+    cursor = batch[batch.length - 1].id;
+  }
+  return all;
 }
 
 async function loadReplyActuals(): Promise<Map<string, number>> {
@@ -112,10 +145,21 @@ async function loadReplyActuals(): Promise<Map<string, number>> {
 }
 
 async function loadUsersForFollower(): Promise<AnyRow[]> {
-  return prisma.user.findMany({
-    where: { deletedAt: null },
-    select: { id: true, followerCount: true },
-  });
+  const batchSize = 1000;
+  const all: AnyRow[] = [];
+  let cursor: string | undefined;
+  while (true) {
+    const batch: AnyRow[] = await prisma.user.findMany({
+      where: { deletedAt: null, ...(cursor ? { id: { gt: cursor } } : {}) },
+      select: { id: true, followerCount: true },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+    });
+    all.push(...batch);
+    if (batch.length < batchSize) break;
+    cursor = batch[batch.length - 1].id;
+  }
+  return all;
 }
 
 async function loadFollowerActuals(): Promise<Map<string, number>> {
@@ -127,10 +171,21 @@ async function loadFollowerActuals(): Promise<Map<string, number>> {
 }
 
 async function loadUsersForFollowing(): Promise<AnyRow[]> {
-  return prisma.user.findMany({
-    where: { deletedAt: null },
-    select: { id: true, followingCount: true },
-  });
+  const batchSize = 1000;
+  const all: AnyRow[] = [];
+  let cursor: string | undefined;
+  while (true) {
+    const batch: AnyRow[] = await prisma.user.findMany({
+      where: { deletedAt: null, ...(cursor ? { id: { gt: cursor } } : {}) },
+      select: { id: true, followingCount: true },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+    });
+    all.push(...batch);
+    if (batch.length < batchSize) break;
+    cursor = batch[batch.length - 1].id;
+  }
+  return all;
 }
 
 async function loadFollowingActuals(): Promise<Map<string, number>> {

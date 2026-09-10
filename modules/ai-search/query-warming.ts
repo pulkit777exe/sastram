@@ -4,13 +4,17 @@ import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
 import type { SearchConfig } from '@/modules/ai-search/types';
 
-try {
-  const envConfig = getEnv();
-  if (!envConfig.SASTRAM_EXA_KEY || !envConfig.SASTRAM_TAVILY_KEY) {
-    logger.warn('[query-warming] EXA/TAVILY keys missing — query warming disabled');
+function isWarmingEnabled(): boolean {
+  try {
+    const envConfig = getEnv();
+    if (!envConfig.SASTRAM_EXA_KEY || !envConfig.SASTRAM_TAVILY_KEY) {
+      logger.warn('[query-warming] EXA/TAVILY keys missing — query warming disabled');
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
   }
-} catch {
-  // env validation handled elsewhere
 }
 
 const FOLLOW_UP_PATTERNS = {
@@ -97,9 +101,14 @@ async function prewarmSingleSession(
     sourceFilter: 'all',
   };
 
-  for (const followUpQuery of followUpQueries) {
-    await executeAISearch(followUpQuery, config, keys);
-    stats.prewarmed++;
+  for (let i = 0; i < followUpQueries.length; i += 2) {
+    const batch = followUpQueries.slice(i, i + 2);
+    const results = await Promise.allSettled(batch.map((q) => executeAISearch(q, config, keys)));
+    for (const r of results) {
+      if (r.status === 'fulfilled') stats.prewarmed++;
+      else logger.warn('[query-warming] follow-up failed', { error: (r as PromiseRejectedResult).reason });
+    }
+    await new Promise((res) => setTimeout(res, 800));
   }
   await prisma.aiSearchSession.update({ where: { id: search.id }, data: { lastPrewarmedAt: new Date() } });
 }
@@ -110,6 +119,7 @@ export async function prewarmFollowUpQueries(): Promise<{
   errors: number;
 }> {
   const stats = { processed: 0, prewarmed: 0, errors: 0 };
+  if (!isWarmingEnabled()) return stats;
   try {
     const filteredSearches = await fetchRecentSessionsForWarming();
     stats.processed = filteredSearches.length;
@@ -120,6 +130,7 @@ export async function prewarmFollowUpQueries(): Promise<{
         logger.error(`Failed to pre-warm queries for search ${search.id}:`, error);
         stats.errors++;
       }
+      await new Promise((res) => setTimeout(res, 500));
     }
   } catch (error) {
     logger.error('Failed to pre-warm follow-up queries:', error);

@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireModerator } from '@/lib/middleware/moderation';
-import { ok, withErrorHandling } from '@/lib/utils/api-response';
-import type { ReportStatus } from '@prisma/client';
+import { fail, ok, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
+import { ReportStatus } from '@prisma/client';
+import { z } from 'zod';
 
 export const GET = withErrorHandling(async (request: NextRequest) => {
   await requireModerator();
 
   const rawStatus = request.nextUrl.searchParams.get('status');
-  let status: ReportStatus;
+  const statusSchema = z.nativeEnum(ReportStatus);
+  let status: ReportStatus = 'PENDING';
   if (rawStatus !== null && rawStatus !== '') {
-    status = rawStatus as ReportStatus;
-  } else {
-    status = 'PENDING';
+    const parsed = statusSchema.safeParse(rawStatus);
+    if (!parsed.success) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid status'), { status: HTTP_STATUS.BAD_REQUEST });
+    status = parsed.data;
   }
 
   const items = await prisma.report.findMany({

@@ -36,6 +36,7 @@ async function fetchThreadForDna(threadId: string) {
     where: { id: threadId, deletedAt: null },
     include: {
       messages: {
+        where: { deletedAt: null },
         take: Math.min(parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10) || 50, 100),
         orderBy: { createdAt: 'desc' },
         include: { sender: true },

@@ -48,6 +48,7 @@ async function fetchThreadForSummary(threadId: string) {
     where: { id: threadId, deletedAt: null },
     include: {
       messages: {
+        where: { deletedAt: null },
         take: getEnv().AI_ANALYSIS_MESSAGE_LIMIT,
         orderBy: { createdAt: 'asc' },
         include: { sender: true },

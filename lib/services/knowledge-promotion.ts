@@ -23,19 +23,30 @@ export async function promoteThreadsToKnowledgePages(): Promise<KnowledgePromoti
   try {
     let threads: Array<{ id: string; name: string; aiSummary: string | null; description: string | null }>;
     try {
-      threads = await prisma.thread.findMany({
-        where: {
-          resolutionScore: { gt: KNOWLEDGE_PROMOTION_THRESHOLD },
-          verifiedAt: { not: null },
-          deletedAt: null,
-        },
-        select: {
-          id: true,
-          name: true,
-          aiSummary: true,
-          description: true,
-        },
-      });
+      const batchSize = 100;
+      threads = [];
+      let cursor: string | undefined;
+      while (true) {
+        const batch = await prisma.thread.findMany({
+          where: {
+            resolutionScore: { gt: KNOWLEDGE_PROMOTION_THRESHOLD },
+            verifiedAt: { not: null },
+            deletedAt: null,
+            ...(cursor ? { id: { gt: cursor } } : {}),
+          },
+          select: {
+            id: true,
+            name: true,
+            aiSummary: true,
+            description: true,
+          },
+          orderBy: { id: 'asc' },
+          take: batchSize,
+        });
+        threads.push(...batch);
+        if (batch.length < batchSize) break;
+        cursor = batch[batch.length - 1].id;
+      }
     } catch (error) {
       logger.error('[knowledge-promotion] failed to fetch candidates', error);
       return { candidates: 0, created: 0, updated: 0, skipped: 0 };
