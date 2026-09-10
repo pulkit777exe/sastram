@@ -5,6 +5,8 @@ import { aiService } from '@/lib/ai';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { parseThreadDna, type ThreadDNA } from '@/lib/schemas/thread-dna';
 import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { requireSessionOrThrow } from '@/modules/auth';
+import { visibilityFilter } from '@/lib/thread-access';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
@@ -43,19 +45,27 @@ function calculateSimilarity(dna1: ThreadDNA, dna2: ThreadDNA): number {
   return topicSimilarity * 0.5 + questionTypeSimilarity * 0.3 + expertiseSimilarity * 0.2;
 }
 
-const handler = withErrorHandling(async (req: NextRequest) => {
-  if (req.method === 'GET') {
-    const relations = await prisma.threadRelation.findMany({
-      take: 200,
-      orderBy: { similarity: 'desc' },
-      include: {
-        source: { select: { id: true, name: true, slug: true, messageCount: true } },
-        target: { select: { id: true, name: true, slug: true, messageCount: true } },
-      },
-    });
-    return NextResponse.json(ok(relations));
-  }
+export const GET = withErrorHandling(async (_req: NextRequest) => {
+  const session = await requireSessionOrThrow();
+  const filter = await visibilityFilter(session.user.id, session.user.role as never);
+  const isModeratorFilterEmpty = Object.keys(filter).length === 0;
+  const baseSourceFilter: Prisma.ThreadWhereInput = isModeratorFilterEmpty ? { deletedAt: null } : { ...filter, deletedAt: null };
+  const baseTargetFilter: Prisma.ThreadWhereInput = isModeratorFilterEmpty ? { deletedAt: null } : { ...filter, deletedAt: null };
+  const relations = await prisma.threadRelation.findMany({
+    where: isModeratorFilterEmpty
+      ? { source: baseSourceFilter, target: baseTargetFilter }
+      : { source: baseSourceFilter, target: baseTargetFilter },
+    take: 200,
+    orderBy: { similarity: 'desc' },
+    include: {
+      source: { select: { id: true, name: true, slug: true, messageCount: true } },
+      target: { select: { id: true, name: true, slug: true, messageCount: true } },
+    },
+  });
+  return NextResponse.json(ok(relations));
+});
 
+export const POST = withErrorHandling(async (req: NextRequest) => {
   const preflight = await withAiPreflight(req, {
     aiCallPath: AiCallPath.THREAD_DNA,
   });
@@ -88,11 +98,14 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('AI_ERROR', 'Failed to analyze thread similarity.'), { status: HTTP_STATUS.INTERNAL });
   }
 
+  const filter = await visibilityFilter(preflight.session.user.id, preflight.session.user.role as never);
+  const whereClause: Prisma.ThreadWhereInput = {
+    threadDna: { not: Prisma.DbNull },
+    deletedAt: null,
+    ...filter,
+  };
   const existingThreads = await prisma.thread.findMany({
-    where: {
-      threadDna: { not: Prisma.DbNull },
-      deletedAt: null,
-    },
+    where: whereClause,
     select: {
       id: true,
       name: true,
@@ -115,5 +128,3 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
   return NextResponse.json(ok({ similar, threshold: SIMILARITY_THRESHOLD }));
 });
-
-export { handler as GET, handler as POST };

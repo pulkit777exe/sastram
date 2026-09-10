@@ -7,7 +7,7 @@ import { withAiPreflight } from '@/lib/middleware/ai-preflight';
 import { z } from 'zod';
 
 const dnaRequestSchema = z.object({
-  threadId: z.string(),
+  threadId: z.string().cuid(),
 });
 
 async function parseAndValidateBody(req: NextRequest): Promise<{ threadId: string } | NextResponse> {

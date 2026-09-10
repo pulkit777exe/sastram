@@ -46,7 +46,7 @@ const searchRequestSchema = z.object({
     .array(
       z.object({
         role: z.enum(['user', 'assistant']),
-        content: z.string(),
+        content: z.string().max(2000),
       })
     )
     .max(20)
@@ -147,18 +147,19 @@ function checkApiKeyFormat(keys: ReturnType<typeof resolveApiKeys>): NextRespons
   );
 }
 
-async function checkIdempotency(clientNonce: string | undefined): Promise<NextResponse | null> {
+async function checkIdempotency(clientNonce: string | undefined, userId?: string): Promise<NextResponse | null> {
   if (!clientNonce) return null;
-  const ok = await consumeIdempotencyKey(`ai-search:nonce:${clientNonce}`);
+  const key = userId ? `ai-search:nonce:${userId}:${clientNonce}` : `ai-search:nonce:${clientNonce}`;
+  const ok = await consumeIdempotencyKey(key);
   if (!ok) {
     return blockedStream('This search was already submitted.');
   }
   return null;
 }
 
-async function tryGetCachedResult(query: string): Promise<AISearchPipelineResult | null> {
+async function tryGetCachedResult(query: string, expertiseLevel?: string): Promise<AISearchPipelineResult | null> {
   try {
-    const cached = await getCachedResult(query);
+    const cached = await getCachedResult(query, expertiseLevel);
     if (cached) return cached as AISearchPipelineResult;
     return null;
   } catch (err) {
@@ -252,6 +253,7 @@ function buildLiveStream(
     query: string;
     sessionId: string | undefined;
     hasHistory: boolean;
+    expertiseLevel?: string;
   }
 ): Response {
   const encoder = new TextEncoder();
@@ -265,14 +267,16 @@ function buildLiveStream(
       try {
         sendEvent({ phase: 'searching' });
 
-        // KISS: fetch expertiseLevel from User.preferences for personalized depth
-        let expertiseLevel: string | undefined;
-        try {
-          const u = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
-          const prefs = u?.preferences as unknown as { expertiseLevel?: string } | null;
-          if (prefs?.expertiseLevel) expertiseLevel = prefs.expertiseLevel;
-        } catch (err) {
-          logger.debug('[forum-search] failed to load expertiseLevel', { error: err });
+        // Use pre-loaded expertiseLevel when available (fix cache poisoning), otherwise fetch
+        let expertiseLevel = params.expertiseLevel;
+        if (expertiseLevel === undefined) {
+          try {
+            const u = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
+            const prefs = u?.preferences as unknown as { expertiseLevel?: string } | null;
+            if (prefs?.expertiseLevel) expertiseLevel = prefs.expertiseLevel;
+          } catch (err) {
+            logger.debug('[forum-search] failed to load expertiseLevel', { error: err });
+          }
         }
 
         const result = await executeAISearch(
@@ -322,7 +326,7 @@ function buildLiveStream(
         }
 
         if (!params.hasHistory) {
-          cacheResult(params.query, result, result.synthesis.queryType).catch((e) =>
+          cacheResult(params.query, result, result.synthesis.queryType, expertiseLevel).catch((e) =>
             logger.error('[forum-search] cache write failed', { error: e })
           );
         }
@@ -367,14 +371,6 @@ export async function POST(request: NextRequest) {
     const contentTypeError = validateContentType(request);
     if (contentTypeError) return contentTypeError;
 
-    const preflight = await withAiPreflight(request, {
-      aiCallPath: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
-      quotaType: 'search',
-      sseMode: true,
-    });
-    if (preflight instanceof NextResponse) return preflight;
-    const session = preflight.session;
-
     const parsedBody = await parseJsonBody(request);
     if ('error' in parsedBody) return parsedBody.error;
 
@@ -397,7 +393,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const idempotencyError = await checkIdempotency(clientNonce);
+    // Validate conversationHistory total chars before burning quota
+    if (conversationHistory) {
+      const totalHistoryChars = conversationHistory.reduce((acc, m) => acc + (m.content?.length ?? 0), 0);
+      if (totalHistoryChars > 10000) {
+        return NextResponse.json(
+          fail('VALIDATION_ERROR', 'Conversation history too large'),
+          { status: HTTP_STATUS.BAD_REQUEST, headers: { 'Cache-Control': 'no-store' } }
+        );
+      }
+    }
+
+    const preflight = await withAiPreflight(request, {
+      aiCallPath: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
+      quotaType: 'search',
+      sseMode: true,
+    });
+    if (preflight instanceof NextResponse) return preflight;
+    const session = preflight.session;
+
+    const idempotencyError = await checkIdempotency(clientNonce, session.user.id);
     if (idempotencyError) return idempotencyError;
 
     const effectiveQuery = query;

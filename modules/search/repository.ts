@@ -116,7 +116,7 @@ export async function searchThreads(
     const tokens = tokenize(trimmed);
     const where = await buildThreadSearchWhere(trimmed, threadIds, viewerUserId, viewerRole);
 
-    const candidateLimit = Math.max(limit * 5, 50);
+    const candidateLimit = Math.max(limit * 5, 200);
     const [candidates, total] = await Promise.all([
       prisma.thread.findMany({
         where,
@@ -125,7 +125,7 @@ export async function searchThreads(
           _count: { select: { messages: true } },
         },
         orderBy: { createdAt: 'desc' },
-        take: candidateLimit + offset,
+        take: candidateLimit,
       }),
       prisma.thread.count({ where }),
     ]);
@@ -190,7 +190,7 @@ export async function searchMessages(
     if (trimmed.length < 2) return { messages: [], total: 0, hasMore: false };
     const tokens = tokenize(trimmed);
     const where = await buildMessageSearchWhere(trimmed, threadId, viewerUserId, viewerRole);
-    const candidateLimit = Math.max(limit * 5, 50);
+    const candidateLimit = Math.max(limit * 5, 200);
     const [candidates, total] = await Promise.all([
       prisma.message.findMany({
         where,
@@ -199,7 +199,7 @@ export async function searchMessages(
           thread: { select: { id: true, name: true, slug: true } },
         },
         orderBy: { createdAt: 'desc' },
-        take: candidateLimit + offset,
+        take: candidateLimit,
       }),
       prisma.message.count({ where }),
     ]);
@@ -247,7 +247,7 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
       OR: or,
     };
 
-    const candidateLimit = Math.max(limit * 5, 50);
+    const candidateLimit = Math.max(limit * 5, 200);
     const [candidates, total] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -260,7 +260,7 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
           followingCount: true,
         },
         orderBy: [{ followerCount: 'desc' }],
-        take: candidateLimit + offset,
+        take: candidateLimit,
       }),
       prisma.user.count({ where }),
     ]);

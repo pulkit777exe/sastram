@@ -10,9 +10,12 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/ai';
 import { enqueueJob } from '@/lib/services/queue';
 import { AIJobType } from '../config';
-import { sanitizeHtmlContent } from '@/lib/services/content-safety';
+import { sanitizeHtmlContent, isSafePublicUrl } from '@/lib/services/content-safety';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { dispatch } from '@/modules/notifications/dispatcher';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { z } from 'zod';
+import { AppError } from '@/lib/utils/errors';
 import { assertSpendCapAvailable, assertThreadJob, runAiGeneration } from './_shared';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
 import type {
@@ -62,24 +65,28 @@ async function getForkedContext(threadId: string): Promise<JobMessageData[]> {
     const urlMatch = thread?.description?.match(/https?:\/\/[^\s"')\]]+/);
     if (urlMatch) {
       const url = urlMatch[0];
-      try {
-        const exaKey = process.env.SASTRAM_EXA_KEY;
-        if (exaKey) {
-          const res = await fetch('https://api.exa.ai/contents', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
-            body: JSON.stringify({ urls: [url], text: { maxCharacters: 4000 } }),
-            signal: AbortSignal.timeout(4000),
-          });
-          if (res.ok) {
-            const json = (await res.json()) as { results?: Array<{ text?: string; title?: string }> };
-            const text = json.results?.[0]?.text?.slice(0, 3000);
-            const title = json.results?.[0]?.title;
-            if (text) extra.unshift({ id: 'fork-external', content: `External source ${url} ${title ? `(${title})` : ''}: ${text}`, senderId: null, createdAt: new Date() } as unknown as JobMessageData);
+      if (url.length >= 2048 || !isSafePublicUrl(url)) {
+        // SSRF protection: skip private/internal or overlong URLs
+      } else {
+        try {
+          const exaKey = process.env.SASTRAM_EXA_KEY;
+          if (exaKey) {
+            const res = await fetch('https://api.exa.ai/contents', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
+              body: JSON.stringify({ urls: [url], text: { maxCharacters: 4000 } }),
+              signal: AbortSignal.timeout(4000),
+            });
+            if (res.ok) {
+              const json = (await res.json()) as { results?: Array<{ text?: string; title?: string }> };
+              const text = json.results?.[0]?.text?.slice(0, 3000);
+              const title = json.results?.[0]?.title;
+              if (text) extra.unshift({ id: 'fork-external', content: `External source ${url} ${title ? `(${title})` : ''}: ${text}`, senderId: null, createdAt: new Date() } as unknown as JobMessageData);
+            }
           }
+        } catch {
+          // best-effort, ignore fetch failures
         }
-      } catch {
-        // best-effort, ignore fetch failures
       }
     }
     return extra;
@@ -90,7 +97,7 @@ async function getForkedContext(threadId: string): Promise<JobMessageData[]> {
 
 async function generateThreadSummary(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread summary for thread: ${threadId}`);
-  await assertSpendCapAvailable();
+  await assertSpendCapAvailable(AiCallPath.THREAD_SUMMARY);
   const forkedExtra = await getForkedContext(threadId);
   const allMessages = [...forkedExtra, ...messages];
   const result = await runAiGeneration('thread-summary', threadId, () =>
@@ -114,7 +121,7 @@ export async function handleThreadSummaryJob(data: ThreadSummaryJobData) {
 
 async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
   logger.info(`Generating thread DNA for thread: ${threadId}`);
-  await assertSpendCapAvailable();
+  await assertSpendCapAvailable(AiCallPath.THREAD_DNA);
   const forkedExtra = await getForkedContext(threadId);
   const allMessages = [...forkedExtra, ...messages];
   const result = await runAiGeneration('thread-dna', threadId, () => aiService.generateThreadDNA(allMessages));
@@ -135,7 +142,7 @@ export async function handleThreadDnaJob(data: ThreadDnaJobData) {
 
 async function calculateResolutionScore(threadId: string, messages: JobMessageData[]) {
   logger.info(`Calculating resolution score for thread: ${threadId}`);
-  await assertSpendCapAvailable();
+  await assertSpendCapAvailable(AiCallPath.RESOLUTION_SCORE);
   const forkedExtra = await getForkedContext(threadId);
   const allMessages = [...forkedExtra, ...messages];
   const result = await runAiGeneration('resolution-score', threadId, () =>
@@ -193,7 +200,7 @@ export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
 
 async function detectConflicts(threadId: string, messages: JobMessageData[]) {
   logger.info(`Detecting conflicts for thread: ${threadId}`);
-  await assertSpendCapAvailable();
+  await assertSpendCapAvailable(AiCallPath.CONFLICT_DETECTION);
   const forkedExtra = await getForkedContext(threadId);
   const allMessages = [...forkedExtra, ...messages];
   const result = await runAiGeneration('conflict-detection', threadId, () =>
@@ -240,7 +247,7 @@ export async function handleConflictDetectionJob(data: ConflictDetectionJobData)
 
 async function generateDailyDigest(messages: JobMessageData[], subscriberIds: string[]) {
   logger.info(`Generating daily digest for ${subscriberIds.length} subscribers`);
-  await assertSpendCapAvailable();
+  await assertSpendCapAvailable(AiCallPath.DAILY_DIGEST);
   const result = await runAiGeneration('daily-digest', 'global', () => aiService.generateDailyDigest(messages));
   if (!result.ok) return { digestLength: 0, skipped: true };
   const digest = sanitizeHtmlContent(result.value);
@@ -434,19 +441,37 @@ export async function handleAIInsightNotificationsJob(data: AIInsightNotificatio
 }
 
 export async function handleDeepResearchJob(data: import('../types').DeepResearchJobData) {
-  logger.info('[worker:ai] deep-research job', { query: data.query, userId: data.userId });
-  await assertSpendCapAvailable();
+  // zod validation for QStash payload — prevents injection / overlong queries
+  const deepResearchJobSchema = z.object({
+    query: z.string().min(3).max(500),
+    userId: z.string().cuid(),
+    collectionId: z.string().cuid().optional(),
+    sessionId: z.string().cuid().optional(),
+  });
+  const parsed = deepResearchJobSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new AppError(parsed.error.issues[0]?.message || 'Invalid deep research payload', 'VALIDATION_ERROR', 400);
+  }
+  const validated = parsed.data;
+  if (validated.collectionId) {
+    const owned = await prisma.collection.findFirst({ where: { id: validated.collectionId, userId: validated.userId } });
+    if (!owned) {
+      throw new AppError('Collection not found', 'NOT_FOUND', 404);
+    }
+  }
+  logger.info('[worker:ai] deep-research job', { query: validated.query, userId: validated.userId });
+  await assertSpendCapAvailable(AiCallPath.FORUM_SEARCH_SYNTHESIZE);
   let expertiseLevel: string | undefined;
   try {
-    const u = await prisma.user.findUnique({ where: { id: data.userId }, select: { preferences: true } });
+    const u = await prisma.user.findUnique({ where: { id: validated.userId }, select: { preferences: true } });
     expertiseLevel = (u?.preferences as unknown as { expertiseLevel?: string })?.expertiseLevel;
   } catch (err) {
     logger.debug('[deep-research] failed to load expertiseLevel', { error: err });
   }
   const { executeAISearch } = await import('@/modules/ai-search/service');
-  const result = await runAiGeneration('deep-research', data.query, () =>
+  const result = await runAiGeneration('deep-research', validated.query, () =>
     executeAISearch(
-      data.query,
+      validated.query,
       { exaMode: 'agentic', tavilyMode: 'research', sourceFilter: 'all', searchMode: 'advanced' },
       { exa: process.env.SASTRAM_EXA_KEY ?? '', tavily: process.env.SASTRAM_TAVILY_KEY ?? '', gemini: process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '' },
       undefined,
@@ -456,12 +481,12 @@ export async function handleDeepResearchJob(data: import('../types').DeepResearc
   if (!result.ok) return { skipped: true };
 
   await dispatch({
-    recipients: { userIds: [data.userId] },
+    recipients: { userIds: [validated.userId] },
     category: 'AI_INSIGHT',
     title: 'Deep research ready',
-    message: `Your deep research for "${data.query.slice(0, 60)}" is ready.`,
-    data: { query: data.query, sessionId: data.sessionId, collectionId: data.collectionId },
+    message: `Your deep research for "${validated.query.slice(0, 60)}" is ready.`,
+    data: { query: validated.query, sessionId: validated.sessionId, collectionId: validated.collectionId },
   });
 
-  return { query: data.query, done: true };
+  return { query: validated.query, done: true };
 }

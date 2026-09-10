@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { canAccessThread } from '@/lib/thread-access';
+import { canAccessThread, requireThreadAccessOrThrow, visibilityFilter } from '@/lib/thread-access';
 import { buildThreadSlug } from '@/modules/threads/slug';
 import { forkThread } from '@/modules/threads/threads-write/repository';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -11,11 +11,25 @@ import { rateLimit } from '@/lib/services/rate-limit';
 const bodySchema = z.object({ title: z.string().min(3).max(120).optional(), visibility: z.enum(['PUBLIC', 'PRIVATE']).optional() });
 
 export const GET = withErrorHandling(async (_request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
+  const session = await requireSessionOrThrow();
   const params = await context?.params;
   const threadId = params?.threadId;
   if (!threadId) return NextResponse.json(fail('BAD_REQUEST', 'threadId required'), { status: HTTP_STATUS.BAD_REQUEST });
+  const zid = z.string().cuid().safeParse(threadId);
+  if (!zid.success) return NextResponse.json(fail('BAD_REQUEST', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
+  const source = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { id: true, visibility: true, createdBy: true } });
+  if (!source) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
+  if (source.visibility !== 'PUBLIC') {
+    await requireThreadAccessOrThrow(source.id, session.user.id, session.user.role as never);
+  }
+  const filter = await visibilityFilter(session.user.id, session.user.role as never);
+  const forksWhere: import('@prisma/client').Prisma.ThreadWhereInput = {
+    forkedFromId: threadId,
+    deletedAt: null,
+    ...filter,
+  };
   const forks = await prisma.thread.findMany({
-    where: { forkedFromId: threadId, deletedAt: null },
+    where: forksWhere,
     select: { id: true, name: true, slug: true, description: true, createdAt: true, createdBy: true, visibility: true, messageCount: true, resolutionScore: true },
     orderBy: { createdAt: 'desc' },
     take: 20,
