@@ -6,6 +6,7 @@ import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
 import { InviteFriendButton } from '@/components/thread/invite-friend-button';
 import { BountyButton } from '@/components/thread/BountyButton';
 import { ForkButton } from '@/components/thread/ForkButton';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 interface ThreadPageHeaderProps {
   title: string;
@@ -37,6 +38,7 @@ export function ThreadPageHeader({
       </div>
 
       <div className="flex items-center gap-1">
+        <CollectionSaveButton threadId={threadId} />
         <BountyButton threadId={threadId} />
         <ForkButton threadId={threadId} threadName={title} />
         <ThreadSubscribeButton

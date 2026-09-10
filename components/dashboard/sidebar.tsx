@@ -16,6 +16,7 @@ import {
   Flag,
   Shield,
   Bookmark,
+  FolderOpen,
   Activity,
   LogOut,
   LineChart,
@@ -130,6 +131,7 @@ export function Sidebar({
   const navItems = [
     { icon: Sparkles, label: 'Sai Search', href: '/dashboard/sai-search' },
     { icon: FileText, label: 'Threads', href: '/dashboard/threads' },
+    { icon: FolderOpen, label: 'Collections', href: '/dashboard/collections' },
     { icon: Bookmark, label: 'Bookmarks', href: '/dashboard/bookmarks' },
     { icon: Search, label: 'Search', href: '/dashboard/search' },
     { icon: Activity, label: 'Activity', href: '/dashboard/activity' },

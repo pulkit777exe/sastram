@@ -7,6 +7,7 @@ import type { ThreadSummary } from '@/modules/threads/types';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 function tokenize(q: string): string[] {
   return q.toLowerCase().trim().split(/\s+/).map((t) => t.replace(/[^a-z0-9_-]/g, '')).filter((t) => t.length >= 2).slice(0, 5);
@@ -71,43 +72,50 @@ export function ThreadListFilter({ threads }: { threads: ThreadSummary[] }) {
           {filtered.map((thread) => {
             const isVerified = !!thread.verifiedAt;
             return (
-              <Link
+              <div
                 key={thread.id}
-                href={`/dashboard/threads/${thread.slug}`}
-                className="group flex items-start gap-3 border-b border-line/60 p-4 transition-colors last:border-b-0 hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
+                className="group flex items-center gap-3 border-b border-line/60 p-4 transition-colors last:border-b-0 hover:bg-hover"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-brand/15 bg-brand/10 text-brand transition-colors group-hover:bg-brand group-hover:text-primary-foreground">
-                  <Hash size={14} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex min-w-0 items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-semibold text-ink truncate group-hover:text-brand transition-colors">
-                      {highlight(thread.name, query)}
-                    </h3>
-                    {isVerified && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-                        ✓ Verified
+                <Link
+                  href={`/dashboard/threads/${thread.slug}`}
+                  className="flex flex-1 min-w-0 items-start gap-3 focus-visible:outline-none"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-brand/15 bg-brand/10 text-brand transition-colors group-hover:bg-brand group-hover:text-primary-foreground">
+                    <Hash size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex min-w-0 items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-ink truncate group-hover:text-brand transition-colors">
+                        {highlight(thread.name, query)}
+                      </h3>
+                      {isVerified && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                          ✓ Verified
+                        </span>
+                      )}
+                      {thread.resolutionScore != null && (
+                        <span className="text-[11px] font-medium text-ink-3 tabular-nums">{thread.resolutionScore}/100</span>
+                      )}
+                    </div>
+                    {thread.description && (
+                      <p className="text-xs text-ink-3 mt-1 line-clamp-1">{highlight(thread.description, query)}</p>
+                    )}
+                    <div className="mt-2 flex items-center gap-3 text-xs text-ink-3">
+                      <span className="flex items-center gap-1">
+                        <MessageSquare size={10} />
+                        {thread.messageCount}
                       </span>
-                    )}
-                    {thread.resolutionScore != null && (
-                      <span className="text-[11px] font-medium text-ink-3 tabular-nums">{thread.resolutionScore}/100</span>
-                    )}
+                      <span className="flex items-center gap-1">
+                        <Clock size={10} />
+                        <TimeAgo date={thread.updatedAt} />
+                      </span>
+                    </div>
                   </div>
-                  {thread.description && (
-                    <p className="text-xs text-ink-3 mt-1 line-clamp-1">{highlight(thread.description, query)}</p>
-                  )}
-                  <div className="mt-2 flex items-center gap-3 text-xs text-ink-3">
-                    <span className="flex items-center gap-1">
-                      <MessageSquare size={10} />
-                      {thread.messageCount}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={10} />
-                      <TimeAgo date={thread.updatedAt} />
-                    </span>
-                  </div>
+                </Link>
+                <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.preventDefault()}>
+                  <CollectionSaveButton threadId={thread.id} />
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
