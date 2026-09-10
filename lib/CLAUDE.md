@@ -49,8 +49,7 @@ Business logic services.
 Database, cache, logging.
 - `prisma.ts` - Prisma Client (Neon adapter)
 - `logger.ts` - Structured logging
-- `redis.ts` - ioredis connection factory
-- `redis-upstash.ts` - Upstash REST Redis (quotas, rate limits)
+- `redis-upstash.ts` - Upstash REST Redis (quotas, rate limits, idempotency, spend cap)
 
 ### `lib/ai/`
 AI security and prompt utilities.

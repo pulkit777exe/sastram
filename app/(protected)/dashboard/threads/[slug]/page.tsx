@@ -235,9 +235,9 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
 
   if (isLargeThread) {
     return (
-      <div className="flex h-full w-full overflow-hidden bg-[#0a0a0a] dark">
-        <main className="flex-1 flex flex-col min-w-0 bg-[#0a0a0a] dark">
-          <div className="shrink-0 flex items-center justify-between px-4 h-14 border-b border-white/10 bg-[#0a0a0a]">
+      <div className="flex h-full w-full overflow-hidden bg-zinc-950 dark">
+        <main className="flex-1 flex flex-col min-w-0 bg-zinc-950 dark">
+          <div className="shrink-0 flex items-center justify-between px-4 h-14 border-b border-white/10 bg-zinc-950">
             <div className="flex items-center gap-3">
               <Link href="/dashboard/threads" className="w-8 h-8 grid place-items-center rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M10 12L6 8l4-4" strokeLinecap="round" strokeLinejoin="round"/></svg>

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Domain modules implementing business logic, organized by feature. 29 modules. Each module typically contains actions, optionally repository, types, and schemas.
+Domain modules implementing business logic, organized by feature. 27 modules. Each module typically contains actions, optionally repository, types, and schemas.
 
 ## Module List
 
