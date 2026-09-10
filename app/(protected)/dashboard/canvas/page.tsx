@@ -2,7 +2,9 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { crossReference } from '@/modules/ai-search/synthesis';
 import { logger } from '@/lib/infrastructure/logger';
+import { canAccessThread } from '@/lib/thread-access';
 import Link from 'next/link';
+import { z } from 'zod';
 
 export default async function CanvasPage({
   searchParams,
@@ -12,13 +14,31 @@ export default async function CanvasPage({
   const session = await requireSession();
   if (!session) return null;
   const params = await searchParams;
-  const leftId = params.left;
-  const rightId = params.right;
+  const rawLeft = params.left;
+  const rawRight = params.right;
+  const leftId = rawLeft && z.string().cuid().safeParse(rawLeft).success ? rawLeft : undefined;
+  const rightId = rawRight && z.string().cuid().safeParse(rawRight).success ? rawRight : undefined;
 
-  const [left, right] = await Promise.all([
-    leftId ? prisma.thread.findUnique({ where: { id: leftId }, select: { id: true, name: true, slug: true, aiSummary: true, threadDna: true, resolutionScore: true } }).catch(() => null) : null,
-    rightId ? prisma.thread.findUnique({ where: { id: rightId }, select: { id: true, name: true, slug: true, aiSummary: true, threadDna: true, resolutionScore: true } }).catch(() => null) : null,
-  ]);
+  async function fetchAccessibleThread(threadId: string | undefined) {
+    if (!threadId) return null;
+    const thread = await prisma.thread
+      .findUnique({
+        where: { id: threadId, deletedAt: null },
+        select: { id: true, name: true, slug: true, aiSummary: true, threadDna: true, resolutionScore: true, visibility: true, createdBy: true },
+      })
+      .catch(() => null);
+    if (!thread) return null;
+    const hasAccess = await canAccessThread(
+      { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility as never },
+      session.user.id,
+      session.user.role as never
+    );
+    if (!hasAccess) return null;
+    const { visibility: _v, createdBy: _c, ...rest } = thread;
+    return rest;
+  }
+
+  const [left, right] = await Promise.all([fetchAccessibleThread(leftId), fetchAccessibleThread(rightId)]);
 
   let diff: { conflictDetected: boolean; description: string; sideA: string; sideB: string; ranked: { title: string; tier: number; domain: string }[] } | null = null;
 

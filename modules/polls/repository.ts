@@ -84,6 +84,7 @@ export async function getPollById(pollId: string) {
       threadId: true,
       isActive: true,
       expiresAt: true,
+      options: true,
       thread: { select: { id: true, slug: true, createdBy: true } },
     },
   });

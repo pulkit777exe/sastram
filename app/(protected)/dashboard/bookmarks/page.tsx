@@ -33,17 +33,25 @@ export default async function BookmarksPage() {
     );
   }
 
-  const { bookmarks } = result.data as BookmarkedThreadsResponse;
+  const { bookmarks, total, hasMore } = result.data as BookmarkedThreadsResponse;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Bookmark className="h-6 w-6 text-ink" />
         <h1 className="font-serif-heading text-2xl text-ink">Bookmarks</h1>
-        <span className="text-ink-3">({bookmarks.length})</span>
-     </div>
+        <span className="text-ink-3">
+          ({bookmarks.length}{total !== undefined && total > bookmarks.length ? ` of ${total}` : ''})
+        </span>
+        {hasMore && <span className="text-xs text-ink-3">— showing first {BOOKMARKS_PAGE_SIZE}</span>}
+      </div>
 
-      <BookmarksFilter bookmarks={bookmarks as unknown as { id: string; slug: string; name: string; description: string | null; messageCount: number; memberCount: number; createdAt: Date }[]} />
+      <BookmarksFilter
+        bookmarks={bookmarks as unknown as { id: string; slug: string; name: string; description: string | null; messageCount: number; memberCount: number; createdAt: Date }[]}
+      />
+      {hasMore && (
+        <p className="text-xs text-ink-3 text-center">Pagination: showing {bookmarks.length} of {total} — use offset/limit to load more (hasMore=true)</p>
+      )}
     </div>
   );
 }

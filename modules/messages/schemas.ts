@@ -6,14 +6,29 @@ const MAX_CONTENT_LENGTH = 10000;
 // which is always TLS, and path traversal sequences would escape the bucket.
 const SAFE_URL_RE = /^https:\/\//;
 
+function isBlobDomainUrl(value: string): boolean {
+  // Hobby-safe: restrict attachments to Vercel Blob provenance.
+  // Accepts any *.public.blob.vercel-storage.com or vercel-blob host,
+  // plus optional BLOB_URL / BLOB_READ_WRITE_TOKEN prefix when configured.
+  if (typeof process !== 'undefined' && process.env.BLOB_URL) {
+    if (value.startsWith(process.env.BLOB_URL)) return true;
+  }
+  // Vercel Blob URLs always contain blob.vercel-storage.com or vercel-blob
+  return value.includes('blob.vercel-storage.com') || value.includes('vercel-blob');
+}
+
 function isSafeUrl(value: string): boolean {
   // Reject path traversal attempts and require HTTPS.
   if (value.includes('..') || value.includes('\\')) return false;
-  return SAFE_URL_RE.test(value);
+  if (!SAFE_URL_RE.test(value)) return false;
+  return isBlobDomainUrl(value);
 }
 
 export const attachmentInputSchema = z.object({
-  url: z.string().url('Invalid attachment URL').refine(isSafeUrl, 'URL must start with https:// and not contain path traversal'),
+  url: z
+    .string()
+    .url('Invalid attachment URL')
+    .refine(isSafeUrl, 'URL must be a Vercel Blob URL (https://*.public.blob.vercel-storage.com)'),
   type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO', 'PDF']),
   name: z.string().nullable(),
   size: z.number().int().positive('File size must be positive').nullable(),

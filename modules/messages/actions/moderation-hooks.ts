@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
+import { AppError } from '@/lib/utils/errors';
 import { MessageService } from '@/modules/messages/moderation-processor';
 
 const messageService = new MessageService();
@@ -13,6 +14,15 @@ export async function moderateIncomingMessage(args: {
   attachments?: { name?: string | null; url: string; type: string; size?: number | null }[];
   poll?: { question: string; options: string[]; expiresAt?: string | Date | null } | null;
 }) {
+  if (args.parentId) {
+    const parent = await prisma.message.findUnique({
+      where: { id: args.parentId },
+      select: { threadId: true },
+    });
+    if (parent && parent.threadId !== args.threadId) {
+      throw new AppError('Parent message belongs to a different thread', 'VALIDATION_ERROR', 400);
+    }
+  }
   const recentHistory = await prisma.message.findMany({
     where: { threadId: args.threadId, deletedAt: null },
     orderBy: { createdAt: 'desc' },

@@ -108,9 +108,9 @@ export async function addToCollectionOwned(
   return addToCollection(collectionId, threadId, sessionId);
 }
 
-export async function removeFromCollection(itemId: string) {
+export async function removeFromCollection(where: { id: string; collectionId: string }) {
   try {
-    return await prisma.collectionItem.delete({ where: { id: itemId } });
+    return await prisma.collectionItem.delete({ where });
   } catch (error) {
     const err = error as { code?: string };
     if (err?.code === 'P2025') {
@@ -126,7 +126,7 @@ export async function removeFromCollection(itemId: string) {
 export async function removeFromCollectionOwned(itemId: string, userId: string) {
   const item = await prisma.collectionItem.findUnique({
     where: { id: itemId },
-    include: { collection: { select: { userId: true } } },
+    select: { id: true, collectionId: true, collection: { select: { userId: true } } },
   });
   if (!item) {
     throw new AppError('Item not found', 'NOT_FOUND', 404);
@@ -134,7 +134,7 @@ export async function removeFromCollectionOwned(itemId: string, userId: string) 
   if (item.collection.userId !== userId) {
     throw new AppError('Forbidden', 'FORBIDDEN', 403);
   }
-  return removeFromCollection(itemId);
+  return removeFromCollection({ id: item.id, collectionId: item.collectionId });
 }
 
 export async function deleteCollection(collectionId: string, userId: string) {

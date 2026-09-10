@@ -23,11 +23,16 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 });
 
 export const GET = withErrorHandling(async (request: NextRequest) => {
+  const session = await requireSessionOrThrow();
   const { searchParams } = new URL(request.url);
   const threadId = searchParams.get('threadId');
   if (!threadId) return NextResponse.json(fail('BAD_REQUEST', 'threadId required'), { status: HTTP_STATUS.BAD_REQUEST });
   const zId = z.string().cuid().safeParse(threadId);
   if (!zId.success) return NextResponse.json(fail('BAD_REQUEST', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
+  const thread = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { id: true, createdBy: true, visibility: true } });
+  if (!thread) return NextResponse.json(fail('THREAD_NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
+  const canAccess = await canAccessThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility as never }, session.user.id, session.user.role as never);
+  if (!canAccess) return NextResponse.json(fail('FORBIDDEN', 'No access'), { status: HTTP_STATUS.FORBIDDEN });
   const bounties = await listBounties(threadId);
   const total = await totalBounty(threadId);
   return NextResponse.json(ok({ bounties, total }));

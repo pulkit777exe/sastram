@@ -10,7 +10,8 @@ import { listSessionsAction, revokeSessionAction } from '@/modules/users/account
 
 interface SessionItem {
   id: string;
-  token: string;
+  tokenPreview?: string;
+  token?: string;
   ipAddress?: string | null;
   userAgent?: string | null;
   createdAt: Date | string;
@@ -79,7 +80,7 @@ function parseUA(ua?: string | null) {
   };
 }
 
-export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
+export function ActiveSessionsCard({ currentToken: _currentToken }: { currentToken: string }) {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -93,26 +94,23 @@ export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
         toast.error('Failed to load sessions');
         return;
       }
-      const items = (result.data.sessions as SessionItem[]).map((s) => ({
-        ...s,
-        isCurrent: s.token === currentToken,
-      }));
+      const items = result.data.sessions as SessionItem[];
       setSessions(items);
     });
     return () => {
       active = false;
     };
-  }, [currentToken]);
+  }, []);
 
-  async function handleRevoke(token: string) {
-    setRevoking(token);
+  async function handleRevoke(sessionId: string) {
+    setRevoking(sessionId);
     try {
-      const result = await revokeSessionAction({ token });
+      const result = await revokeSessionAction({ sessionId });
       if (result.error) {
         toast.error(result.error);
         return;
       }
-      setSessions((prev) => prev.filter((s) => s.token !== token));
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       toast.success('Session revoked');
     } finally {
       setRevoking(null);
@@ -181,11 +179,11 @@ export function ActiveSessionsCard({ currentToken }: { currentToken: string }) {
                 </div>
                 {!session.isCurrent && (
                   <Button variant="ghost" size="sm"
-                    disabled={revoking === session.token}
-                    onClick={() => handleRevoke(session.token)}
+                    disabled={revoking === session.id}
+                    onClick={() => handleRevoke(session.id)}
                   >
                     <LogOut className="mr-1 h-3 w-3" />
-                    {revoking === session.token ? 'Revoking…' : 'Revoke'}
+                    {revoking === session.id ? 'Revoking…' : 'Revoke'}
                   </Button>
                 )}
               </div>

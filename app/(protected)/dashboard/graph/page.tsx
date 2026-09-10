@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { parseUserPreferences } from '@/lib/schemas/user-preferences';
+import { visibilityFilter } from '@/lib/thread-access';
 import Link from 'next/link';
 import { Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,14 +37,21 @@ export default async function GraphPage() {
     );
   }
 
-  const relations = await prisma.threadRelation.findMany({
-    take: 100,
-    orderBy: { similarity: 'desc' },
-    include: {
-      source: { select: { id: true, name: true, slug: true } },
-      target: { select: { id: true, name: true, slug: true } },
-    },
-  }).catch(() => []);
+  const filter = await visibilityFilter(session!.user.id, (session!.user.role as never) ?? null);
+  const isEmptyFilter = Object.keys(filter).length === 0;
+  const sourceWhere = isEmptyFilter ? { deletedAt: null } : { ...filter, deletedAt: null };
+  const targetWhere = isEmptyFilter ? { deletedAt: null } : { ...filter, deletedAt: null };
+  const relations = await prisma.threadRelation
+    .findMany({
+      where: { source: sourceWhere, target: targetWhere },
+      take: 100,
+      orderBy: { similarity: 'desc' },
+      include: {
+        source: { select: { id: true, name: true, slug: true } },
+        target: { select: { id: true, name: true, slug: true } },
+      },
+    })
+    .catch(() => []);
 
   const nodeMap = new Map<string, { id: string; name: string; slug: string }>();
   for (const r of relations) {

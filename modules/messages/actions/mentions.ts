@@ -67,12 +67,20 @@ export async function createMentionsForMessage({
 }) {
   if (mentions.length === 0) return;
 
+  // Validate mentionIds exist and are not soft-deleted — prevents FK errors and mention injection
+  const existing = await prisma.user.findMany({
+    where: { id: { in: mentions }, deletedAt: null },
+    select: { id: true },
+  });
+  const validIds = existing.map((u) => u.id);
+  if (validIds.length === 0) return;
+
   const mentionerName = mentionedBy.name ?? mentionedBy.email;
-  const mentionRows = buildMentionRows(messageId, mentions);
-  await prisma.messageMention.createMany({ data: mentionRows });
+  const mentionRows = buildMentionRows(messageId, validIds);
+  await prisma.messageMention.createMany({ data: mentionRows, skipDuplicates: true });
 
   const linkUrl = threadSlug ? `${ROUTES.THREAD(threadSlug)}?focus=${messageId}` : null;
-  const notifications = buildMentionNotifications(mentions, mentionerName, messageId, threadId, linkUrl);
+  const notifications = buildMentionNotifications(validIds, mentionerName, messageId, threadId, linkUrl);
   await sideEffects.createBulkNotifications(notifications);
 
   const thread = await prisma.thread.findFirst({
@@ -84,7 +92,7 @@ export async function createMentionsForMessage({
 
   const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}`;
   const mentionedUsers = await prisma.user.findMany({
-    where: { id: { in: mentions }, deletedAt: null },
+    where: { id: { in: validIds }, deletedAt: null },
     select: { email: true },
   });
 
@@ -114,6 +122,7 @@ export const searchMentionUsers = createServerAction(
 
       const users = await prisma.user.findMany({
         where: {
+          deletedAt: null,
           id: { not: session.user.id },
           OR: [
             { name: { contains: query, mode: 'insensitive' } },

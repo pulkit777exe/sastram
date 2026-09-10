@@ -9,6 +9,7 @@ import { getMemberRole } from '@/modules/members';
 import { logAction } from '@/modules/audit/repository';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
+import { AppError } from '@/lib/utils/errors';
 
 export const deleteMessage = createServerAction(
   { schema: deleteMessageSchema, actionName: 'deleteMessage' },
@@ -38,10 +39,13 @@ export const deleteMessage = createServerAction(
       }
 
       await prisma.$transaction(async (tx) => {
-        await tx.message.update({
-          where: { id: messageId },
+        const upd = await tx.message.updateMany({
+          where: { id: messageId, deletedAt: null },
           data: { deletedAt: new Date() },
         });
+        if (upd.count === 0) {
+          throw new AppError('Message already deleted', 'CONFLICT', 409);
+        }
 
         await tx.thread.update({
           where: { id: message.threadId },
@@ -69,6 +73,10 @@ export const deleteMessage = createServerAction(
 
       return actionSuccess(null);
     } catch (error) {
+      if (AppError.isAppError(error)) {
+        const code = (error.code as 'CONFLICT' | 'NOT_FOUND' | 'FORBIDDEN') ?? 'CONFLICT';
+        return actionFailure(code as never, error.message);
+      }
       logger.error('[deleteMessage]', error);
       return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }

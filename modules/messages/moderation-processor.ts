@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { dispatch } from '@/modules/notifications/dispatcher';
+import { AppError } from '@/lib/utils/errors';
 import {
   MessageModerationPipeline,
   type MessageLike,
@@ -37,10 +38,16 @@ async function getSystemUser() {
   });
 }
 
-async function resolveReplyDepth(parentId: string | null): Promise<number> {
+async function resolveReplyDepth(parentId: string | null, expectedThreadId?: string): Promise<number> {
   if (!parentId) return 0;
-  const parent = await prisma.message.findUnique({ where: { id: parentId }, select: { depth: true } });
+  const parent = await prisma.message.findUnique({
+    where: { id: parentId },
+    select: { depth: true, threadId: true },
+  });
   if (!parent) return 0;
+  if (expectedThreadId && parent.threadId !== expectedThreadId) {
+    throw new AppError('Parent message belongs to a different thread', 'VALIDATION_ERROR', 400);
+  }
   return computeReplyDepth(parent.depth);
 }
 
@@ -75,7 +82,7 @@ export class MessageService {
     const result = await this.pipeline.process(message, context);
 
     try {
-      const depth = await resolveReplyDepth(message.parentId ?? null);
+      const depth = await resolveReplyDepth(message.parentId ?? null, message.threadId);
       const attachmentCreate = buildAttachmentCreate(message.attachments);
 
       const created = await prisma.$transaction(async (tx) => {
@@ -156,6 +163,7 @@ export class MessageService {
         },
       };
     } catch (error) {
+      if (AppError.isAppError(error)) throw error;
       logger.error('Message processing error:', error);
       throw new Error(
         `Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`

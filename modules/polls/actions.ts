@@ -2,6 +2,7 @@
 
 import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
+import { prisma } from '@/lib/infrastructure/prisma';
 import {
   createPoll as createPollRepo,
   voteOnPoll as voteOnPollRepo,
@@ -21,6 +22,7 @@ import { AppError, isPrismaUniqueConstraintError } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { actionFailure, actionSuccess, type ActionErrorCode } from '@/lib/actions/result';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { rateLimit } from '@/lib/services/rate-limit';
 import type { Role } from '@prisma/client';
 
 const pollIdSchema = z.object({ pollId: z.string().cuid() });
@@ -126,8 +128,30 @@ function validatePollVoteAccess(
   return null;
 }
 
+function validateOptionIndexBounds(
+  poll: NonNullable<Awaited<ReturnType<typeof getPollByIdRepo>>>,
+  optionIndex: number
+): ReturnType<typeof fail> | null {
+  const rawOptions = (poll as unknown as { options: unknown }).options;
+  const options = Array.isArray(rawOptions) ? rawOptions : [];
+  if (optionIndex < 0 || optionIndex >= options.length) {
+    return fail('Invalid option index', 'VALIDATION_ERROR');
+  }
+  return null;
+}
+
 async function applyVote(pollId: string, userId: string, optionIndex: number) {
   await voteOnPollRepo(pollId, userId, optionIndex);
+}
+
+async function checkPollVoteRateLimit(userId: string): Promise<ReturnType<typeof fail> | null> {
+  try {
+    const rl = await rateLimit({ key: `poll-vote:${userId}`, type: 'api' });
+    if (!rl.success) return fail('Too many vote attempts, try later', 'RATE_LIMITED');
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export const createPollAction = withValidation(
@@ -135,6 +159,9 @@ export const createPollAction = withValidation(
   'createPoll',
   async ({ threadId, messageId, question, options, expiresAt }) => {
     try {
+      if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
+        return fail('Poll expiry must be in the future', 'VALIDATION_ERROR');
+      }
       const session = await requireSession();
       const memberRole = await getMemberRole(threadId, session.user.id);
 
@@ -173,10 +200,23 @@ export const voteOnPollAction = withValidation(
     try {
       const session = await requireSession();
 
+      const rateLimited = await checkPollVoteRateLimit(session.user.id);
+      if (rateLimited) return rateLimited;
+
       const poll = await fetchPollForVote(pollId);
       if (poll === null) {
         return pollNotFound();
       }
+
+      // Distinguish thread-not-found vs forbidden — getMemberRole returns null for both
+      const threadExists = await prisma.thread.findFirst({
+        where: { id: poll.threadId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!threadExists) return pollNotFound();
+
+      const boundsError = validateOptionIndexBounds(poll, optionIndex);
+      if (boundsError) return boundsError;
 
       const memberRole = await getMemberRole(poll.threadId, session.user.id);
       const accessError = validatePollVoteAccess(poll, memberRole);

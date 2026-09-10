@@ -16,6 +16,7 @@ import { queueAiInlineIfRequested } from './ai-inline';
 import { requireThreadWriteOrThrow } from '@/lib/thread-access';
 import { createServerAction, type ActionResult } from '@/lib/utils/server-action';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
+import { AppError } from '@/lib/utils/errors';
 
 const MAX_MENTIONS = 10;
 
@@ -88,6 +89,16 @@ async function gatherMentionIds(content: string, mentionsJson: string | undefine
   const parsedHandles = parseMentions(content).usernames;
   const resolvedHandles = await resolveUserMentions(parsedHandles, prisma);
   return mergeMentions(resolvedHandles, mentionsJson);
+}
+
+async function filterValidMentionIds(mentionIds: string[]): Promise<string[]> {
+  if (!mentionIds.length) return [];
+  const existing = await prisma.user.findMany({
+    where: { id: { in: mentionIds }, deletedAt: null },
+    select: { id: true },
+  });
+  const validSet = new Set(existing.map((u) => u.id));
+  return mentionIds.filter((id) => validSet.has(id));
 }
 
 function buildBlockedResult(
@@ -186,7 +197,8 @@ export const postMessage = createServerAction(
   { schema: postMessageSchema, actionName: 'postMessage' },
   async (input): Promise<ActionResult<PostMessageData>> => {
     const { content, threadId, parentId, clientStreams } = input;
-    const mentions = await gatherMentionIds(content, input.mentions);
+    const rawMentions = await gatherMentionIds(content, input.mentions);
+    const mentions = await filterValidMentionIds(rawMentions);
     const parentIdValue = parentId ?? undefined;
 
     const validation = createMessageWithAttachmentsSchema.safeParse({
@@ -198,6 +210,14 @@ export const postMessage = createServerAction(
       poll: parseJsonField(input.poll),
     });
     if (!validation.success) return actionFailure('VALIDATION_ERROR', 'Invalid input');
+
+    // Low fix: reject poll with past expiry
+    if (validation.data.poll?.expiresAt) {
+      const exp = new Date(validation.data.poll.expiresAt);
+      if (Number.isNaN(exp.getTime()) || exp.getTime() <= Date.now()) {
+        return actionFailure('VALIDATION_ERROR', 'Poll expiry must be in the future');
+      }
+    }
 
     const session = await requireSession();
     await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
@@ -234,6 +254,13 @@ export const postMessage = createServerAction(
         moderationResult,
       });
     } catch (error) {
+      if (AppError.isAppError(error)) {
+        const code = (error.code as 'VALIDATION_ERROR' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT' | 'RATE_LIMITED') ?? 'VALIDATION_ERROR';
+        const mapped = ['VALIDATION_ERROR', 'FORBIDDEN', 'NOT_FOUND', 'CONFLICT', 'RATE_LIMITED'].includes(code)
+          ? code
+          : 'VALIDATION_ERROR';
+        return actionFailure(mapped as never, error.message);
+      }
       logger.error('[postMessage]', error);
       return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }

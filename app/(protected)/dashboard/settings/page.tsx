@@ -20,7 +20,9 @@ export default async function SettingsPage({
     );
   }
 
-  const tab = (await searchParams).tab || 'profile';
+  const search = await searchParams;
+  const VALID_SETTINGS_TABS = ['profile', 'newsletters', 'preferences', 'account'] as const;
+  const tab = (VALID_SETTINGS_TABS as readonly string[]).includes(search.tab ?? '') ? search.tab! : 'profile';
   let subscriptions: Awaited<ReturnType<typeof getUserNewsletterSubscriptions>>['data'] = [];
   try {
     const subscriptionsResult = await getUserNewsletterSubscriptions();
