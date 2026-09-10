@@ -46,10 +46,10 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
       (err as { code?: string })?.code === 'ENOTFOUND' ||
       (err as { code?: string })?.code === 'ENETUNREACH';
     if (isDbError) {
-      logger.warn('[auth] getSession failed - DB unavailable, treating as no session', {
+      logger.warn('[auth] getSession failed - DB unavailable', {
         error: msg.slice(0, 120),
       });
-      return null;
+      throw new AppError('Service temporarily unavailable', 'SERVICE_UNAVAILABLE', 503);
     }
     throw err;
   }

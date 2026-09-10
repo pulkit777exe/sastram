@@ -132,7 +132,7 @@ function getFullBanMessage(threadName: string | undefined, reason: string, threa
 // ── Bulk delete helpers ────────────────────────────────────────────────────
 async function fetchMessagesForBulk(tx: Prisma.TransactionClient, messageIds: string[]) {
   return tx.message.findMany({
-    where: { id: { in: messageIds } },
+    where: { id: { in: messageIds }, deletedAt: null },
     select: { id: true, threadId: true, senderId: true },
   });
 }

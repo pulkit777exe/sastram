@@ -106,7 +106,7 @@ export const auth = betterAuth({
         }
 
         if (process.env.NODE_ENV !== 'production') {
-          logger.info(`[DEV] ${otpType} OTP for ${email}: ${otp}`);
+          logger.debug(`[DEV] ${otpType} OTP for ${email}: ***${otp.slice(-2)}`);
         }
 
         // In development the logged code above is the delivery mechanism.
@@ -122,7 +122,7 @@ export const auth = betterAuth({
         } catch (otpSendError) {
           logger.error(`Failed to send ${otpType} OTP to ${email}:`, otpSendError);
           if (process.env.NODE_ENV !== 'production') {
-            logger.info(`[DEV FALLBACK] ${otpType} OTP for ${email}: ${otp}`);
+            logger.debug(`[DEV FALLBACK] ${otpType} OTP for ${email}: ***${otp.slice(-2)}`);
           }
         }
       },

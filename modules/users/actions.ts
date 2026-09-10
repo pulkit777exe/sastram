@@ -15,6 +15,7 @@ import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { actionFailure, actionSuccess, type ActionErrorCode } from '@/lib/actions/result';
 import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 import { verifyPassword } from 'better-auth/crypto';
+import { sanitizeUserContent, isSafePublicUrl } from '@/lib/services/content-safety';
 
 const fileSchema = z.object({
   file: z.custom<File>((val) => val instanceof File),
@@ -146,17 +147,25 @@ async function uploadProfileImage(
 
 export const updateUserProfile = withValidation(
   z.object({
-    name: z.string().optional(),
-    bio: z.string().optional(),
-    location: z.string().optional(),
-    website: z.string().optional(),
-    twitter: z.string().optional(),
-    github: z.string().optional(),
+    name: z.string().trim().max(50).optional().or(z.literal('')),
+    bio: z.string().trim().max(500).optional().or(z.literal('')),
+    location: z.string().trim().max(100).optional().or(z.literal('')),
+    website: z.string().url().or(z.literal('')).optional().or(z.literal('')).refine((v) => !v || isSafePublicUrl(v), { message: 'Invalid or unsafe URL' }),
+    twitter: z.string().trim().max(50).optional().or(z.literal('')),
+    github: z.string().trim().max(50).optional().or(z.literal('')),
   }),
   'updateUserProfile',
   async (data) => {
     const session = await requireSession();
-    const updateData = buildProfileUpdateData(data);
+    const sanitized = {
+      name: data.name ? sanitizeUserContent(data.name).sanitized.trim().slice(0, 50) : data.name,
+      bio: data.bio ? sanitizeUserContent(data.bio).sanitized.trim().slice(0, 500) : data.bio,
+      location: data.location ? sanitizeUserContent(data.location).sanitized.trim().slice(0, 100) : data.location,
+      website: data.website ? data.website.trim().slice(0, 2048) : data.website,
+      twitter: data.twitter ? sanitizeUserContent(data.twitter).sanitized.trim().slice(0, 50) : data.twitter,
+      github: data.github ? sanitizeUserContent(data.github).sanitized.trim().slice(0, 50) : data.github,
+    };
+    const updateData = buildProfileUpdateData(sanitized);
     await prisma.user.update({
       where: { id: session.user.id },
       data: updateData,
@@ -245,11 +254,12 @@ async function validateDeletionPassword(userId: string, password: string) {
     select: { password: true },
   });
 
-  if (credentialAccount?.password) {
-    const valid = await verifyPassword({ password, hash: credentialAccount.password });
-    if (!valid) {
-      return actionFailure('VALIDATION_ERROR', 'Incorrect password');
-    }
+  if (!credentialAccount?.password) {
+    return actionFailure('VALIDATION_ERROR', 'Password not set — verify email OTP');
+  }
+  const valid = await verifyPassword({ password, hash: credentialAccount.password });
+  if (!valid) {
+    return actionFailure('VALIDATION_ERROR', 'Incorrect password');
   }
   return null;
 }

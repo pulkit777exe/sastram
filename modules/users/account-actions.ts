@@ -80,7 +80,7 @@ export const listSessionsAction = createServerAction(
       return actionSuccess({
         sessions: sessions.map((s) => ({
           id: s.id,
-          token: s.token,
+          tokenPreview: s.token.slice(-4),
           ipAddress: s.ipAddress,
           userAgent: s.userAgent,
           createdAt: s.createdAt,
@@ -96,16 +96,23 @@ export const listSessionsAction = createServerAction(
 );
 
 const revokeSessionSchema = z.object({
-  token: z.string().min(1),
+  sessionId: z.string().cuid(),
 });
 
 export const revokeSessionAction = createServerAction(
   { schema: revokeSessionSchema, actionName: 'revokeSessionAction' },
-  async ({ token }) => {
+  async ({ sessionId }) => {
     const session = await getSession();
     if (!session) return NOT_AUTHENTICATED;
     try {
-      await auth.api.revokeSession({ body: { token }, headers: await headers() });
+      const target = await prisma.session.findUnique({
+        where: { id: sessionId },
+        select: { userId: true },
+      });
+      if (!target || target.userId !== session.user.id) {
+        return { data: null, error: 'Session not found', ok: false, errorCode: 'NOT_FOUND' };
+      }
+      await prisma.session.delete({ where: { id: sessionId } });
       return actionSuccess({ ok: true });
     } catch (error) {
       logger.error('[revokeSessionAction]', error);

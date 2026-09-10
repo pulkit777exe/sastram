@@ -63,7 +63,8 @@ export async function getSlaMetrics(): Promise<{
 
   const [totalPending, pendingOver24h, pendingOver72h, resolvedReports] = await Promise.all([
     prisma.report.count({ where: { status: 'PENDING' } }),
-    prisma.report.count({ where: { status: 'PENDING', createdAt: { lt: cutoff24h } } }),
+    // pendingOver24h is 24-72h bucket (exclusive of 72h) to avoid overlap double-count with pendingOver72h
+    prisma.report.count({ where: { status: 'PENDING', createdAt: { lt: cutoff24h, gte: cutoff72h } } }),
     prisma.report.count({ where: { status: 'PENDING', createdAt: { lt: cutoff72h } } }),
     prisma.report.findMany({
       where: { status: { in: ['RESOLVED', 'DISMISSED'] }, firstResponseAt: { not: null } },

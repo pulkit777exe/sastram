@@ -1,11 +1,12 @@
 import { logger } from '@/lib/infrastructure/logger';
-import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
-import { isQuotaError } from '@/lib/utils/errors';
+import { consumeSpendCap, enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { AppError, isQuotaError } from '@/lib/utils/errors';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 
-export async function assertSpendCapAvailable(): Promise<void> {
-  const spendCapResult = await consumeSpendCap();
+export async function assertSpendCapAvailable(path?: AiCallPath): Promise<void> {
+  const spendCapResult = path ? await enforceAiSpendCap(path) : await consumeSpendCap();
   if (!spendCapResult.allowed) {
-    throw new Error('AI spend cap exceeded — job skipped until UTC midnight reset');
+    throw new AppError('AI spend cap exceeded — job skipped until UTC midnight reset', 'SERVICE_UNAVAILABLE', 503);
   }
 }
 

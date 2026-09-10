@@ -437,20 +437,19 @@ export const resolveAppeal = withValidation(
 
     // Re-count votes after this vote
     const updatedVotes = await prisma.appealVote.findMany({ where: { appealId } });
+    // Enforce JURY_SIZE invariant — degraded juries are not allowed to decide
+    if (updatedVotes.length < JURY_SIZE) {
+      return actionFailure('SERVICE_UNAVAILABLE', `Jury unavailable — requires ${JURY_SIZE} moderators, have ${updatedVotes.length}`);
+    }
     const approvedCount = updatedVotes.filter((v: { vote: string | null }) => v.vote === 'APPROVED').length;
     const rejectedCount = updatedVotes.filter((v: { vote: string | null }) => v.vote === 'REJECTED').length;
     const pendingCount = updatedVotes.filter((v: { vote: string | null }) => v.vote === null).length;
 
     const majorityReached = approvedCount >= JURY_MAJORITY || rejectedCount >= JURY_MAJORITY;
-    // If jury is smaller than JURY_SIZE (e.g., only 1 moderator in dev), majority is ceil(n/2)
-    const effectiveMajority = Math.min(JURY_MAJORITY, Math.ceil(updatedVotes.length / 2));
-    const effectiveMajorityReached = approvedCount >= effectiveMajority || rejectedCount >= effectiveMajority;
-
-    const shouldResolve = juryVotes.length >= JURY_SIZE ? majorityReached : effectiveMajorityReached;
 
     // Also resolve if all jurors have voted even without strict majority (tie-break as reject)
     const allVoted = pendingCount === 0;
-    const finalShouldResolve = shouldResolve || allVoted;
+    const finalShouldResolve = majorityReached || allVoted;
 
     if (finalShouldResolve) {
       // KISS: winner is side with more votes; tie -> REJECTED (conservative)

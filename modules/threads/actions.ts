@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { requireSession, assertAdmin } from '@/modules/auth';
+import { requireSessionOrThrow, assertAdminOrThrow } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/modules/threads/slug';
 import { createThread, deleteThread, updateThreadVerified, forkThread } from './threads-write/repository';
@@ -24,7 +24,15 @@ import { rateLimit } from '@/lib/services/rate-limit';
 const PAGE_SIZE = 50;
 const BACKFILL_LIMIT = 100;
 
+function isRedirectError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const digest = (err as Record<string, unknown>).digest;
+  if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) return true;
+  return err instanceof Error && err.message?.includes('NEXT_REDIRECT');
+}
+
 function failure(actionName: string, error: unknown): ActionResult<never> {
+  if (isRedirectError(error)) throw error;
   if (error instanceof AppError) {
     const code = error.code as ActionResult<never>['errorCode'];
     return {
@@ -65,21 +73,25 @@ function splitPollOptions(raw: string): string[] {
 }
 
 const createThreadInput = z.object({
-  title: z.string().min(3),
+  title: z.string().min(3).max(120),
   description: z.string().max(480).optional().or(z.literal('')),
   initialMessage: z.string().optional(),
   pollQuestion: z.string().min(1).max(500).optional().or(z.literal('')),
   // Poll options arrive as a newline-separated textarea value from the form.
   pollOptions: z.string().transform(splitPollOptions).optional().or(z.literal('')),
-  pollExpiresAt: z.coerce.date().optional().or(z.literal('')),
+  pollExpiresAt: z
+    .coerce.date()
+    .refine((d) => d.getTime() > Date.now(), { message: 'Expiry must be in the future' })
+    .optional()
+    .or(z.literal('')),
 });
 
 export const createThreadAction = createServerAction(
   { schema: createThreadInput, actionName: 'createThreadAction' },
   async ({ title, description, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
     try {
-      const session = await requireSession();
-      const rl = await rateLimit({ key: `create-thread:${session.user.id}`, type: 'api' });
+      const session = await requireSessionOrThrow();
+      const rl = await rateLimit({ key: `create-thread:${session.user.id}`, type: 'message' });
       if (!rl.success) throw new AppError('Too many threads, slow down', 'RATE_LIMITED', 429);
       const safeTitle = sanitizeUserContent(title).sanitized.trim().slice(0, 120);
       const safeDesc = description ? sanitizeUserContent(description).sanitized.trim().slice(0, 480) : description;
@@ -129,8 +141,8 @@ export const deleteThreadAction = createServerAction(
   { schema: threadIdSchema, actionName: 'deleteThreadAction' },
   async ({ threadId }) => {
     try {
-      const session = await requireSession();
-      assertAdmin(session.user);
+      const session = await requireSessionOrThrow();
+      assertAdminOrThrow(session.user);
 
       await deleteThread(threadId);
       revalidatePath(ROUTES.DASHBOARD);
@@ -148,7 +160,7 @@ export const loadThreadMessages = createServerAction(
   },
   async ({ threadId, cursor }) => {
     try {
-      const session = await requireSession();
+      const session = await requireSessionOrThrow();
       await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
       return actionSuccess(await getThreadMessagesPaginated(threadId, cursor, PAGE_SIZE));
@@ -162,11 +174,11 @@ export const markThreadVerified = createServerAction(
   { schema: threadIdOnly, actionName: 'markThreadVerified' },
   async ({ threadId }) => {
     try {
-      const session = await requireSession();
+      const session = await requireSessionOrThrow();
       const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { createdBy: true, visibility: true } });
-      if (!thread) throw new AppError('THREAD_NOT_FOUND', 'Thread not found', 404);
+      if (!thread) throw new AppError('Thread not found', 'NOT_FOUND', 404);
       const canManage = await canManageThread({ threadId, createdBy: thread.createdBy, visibility: thread.visibility as never }, session.user.id, session.user.role as never);
-      if (!canManage) throw new AppError('FORBIDDEN', 'Only OP or admin can verify', 403);
+      if (!canManage) throw new AppError('Only OP or admin can verify', 'FORBIDDEN', 403);
 
       await updateThreadVerified(threadId, session.user.id);
       revalidatePath(`${ROUTES.DASHBOARD_THREADS}/${threadId}`);
@@ -182,16 +194,16 @@ export const forkThreadAction = createServerAction(
   { schema: z.object({ threadId: z.string().cuid(), title: z.string().min(3).max(120).optional() }), actionName: 'forkThreadAction' },
   async ({ threadId, title }) => {
     try {
-      const session = await requireSession();
-      const rl = await rateLimit({ key: `fork:${session.user.id}`, type: 'api' });
+      const session = await requireSessionOrThrow();
+      const rl = await rateLimit({ key: `fork:${session.user.id}`, type: 'message' });
       if (!rl.success) throw new AppError('Too many forks, slow down', 'RATE_LIMITED', 429);
       const source = await prisma.thread.findUnique({
         where: { id: threadId, deletedAt: null },
         select: { id: true, name: true, description: true, visibility: true, createdBy: true, slug: true },
       });
-      if (!source) throw new AppError('THREAD_NOT_FOUND', 'Thread not found', 404);
+      if (!source) throw new AppError('Thread not found', 'NOT_FOUND', 404);
       const canAccess = await canAccessThread({ threadId: source.id, createdBy: source.createdBy, visibility: source.visibility as never }, session.user.id, session.user.role as never);
-      if (!canAccess) throw new AppError('FORBIDDEN', 'No access to fork', 403);
+      if (!canAccess) throw new AppError('No access to fork', 'FORBIDDEN', 403);
 
       const rawTitle = title?.trim() ? title.trim() : `${source.name} (fork)`;
       const newTitle = sanitizeUserContent(rawTitle).sanitized.trim().slice(0, 120) || rawTitle.slice(0, 120);
@@ -286,7 +298,7 @@ export const backfillThreadMessages = createServerAction(
   },
   async ({ threadId, since }) => {
     try {
-      const session = await requireSession();
+      const session = await requireSessionOrThrow();
       await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
       const where = {

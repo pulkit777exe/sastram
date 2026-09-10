@@ -9,6 +9,7 @@ export type ActionErrorCode =
   | 'NOT_FOUND'
   | 'RATE_LIMITED'
   | 'CONFLICT'
+  | 'SERVICE_UNAVAILABLE'
   | 'INTERNAL_ERROR';
 
 export interface ActionEnvelope<T> {

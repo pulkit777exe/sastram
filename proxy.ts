@@ -29,12 +29,12 @@ function isPublicPath(pathname: string): boolean {
 }
 
 function isPublicThreadPath(pathname: string): boolean {
-  const segments = pathname.split('/').filter(Boolean);
-  return segments.length === 2;
+  return /^\/dashboard\/threads\/[^/]+$/.test(pathname);
 }
 
 const isProd = process.env.NODE_ENV === 'production';
-const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY !== 'false';
+// Enforce in prod (isProd ? false : true), allow explicit override via CSP_REPORT_ONLY env
+const CSP_REPORT_ONLY = isProd ? process.env.CSP_REPORT_ONLY === 'true' : process.env.CSP_REPORT_ONLY !== 'false';
 
 function buildCsp(nonce: string): string {
   const scriptParts = ["'self'", `'nonce-${nonce}'`];
@@ -42,7 +42,7 @@ function buildCsp(nonce: string): string {
     // In dev, allow unsafe-inline/eval for HMR and Next.js chunks that don't carry nonce
     scriptParts.push("'unsafe-inline'", "'unsafe-eval'", 'http://localhost:3000', 'http://192.168.1.222:3000', 'ws://localhost:3000', 'ws://192.168.1.222:3000');
   }
-  scriptParts.push("https://va.vercel-scripts.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com");
+  scriptParts.push("https://va.vercel-scripts.com");
   const strictScript = scriptParts.join(' ');
   // In dev, keep unsafe-inline for Next.js; strict-dynamic is for prod trusted chain.
   const scriptSrcElem = isProd
