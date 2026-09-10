@@ -29,7 +29,7 @@ export async function getCollection(collectionId: string, userId: string) {
     include: {
       items: {
         include: {
-          thread: { select: { id: true, name: true, slug: true } },
+          thread: { select: { id: true, name: true, slug: true, aiSummary: true } },
           session: {
             select: {
               id: true,
@@ -42,6 +42,9 @@ export async function getCollection(collectionId: string, userId: string) {
               },
             },
           },
+          message: {
+            select: { id: true, content: true, threadId: true, isAiResponse: true, createdAt: true, thread: { select: { id: true, name: true, slug: true } } },
+          },
         },
         orderBy: { createdAt: 'desc' },
       },
@@ -49,13 +52,13 @@ export async function getCollection(collectionId: string, userId: string) {
   });
 }
 
-export async function addToCollection(collectionId: string, threadId?: string, sessionId?: string) {
-  if (!threadId && !sessionId) {
-    throw new AppError('threadId or sessionId required', 'VALIDATION_ERROR', 400);
+export async function addToCollection(collectionId: string, threadId?: string, sessionId?: string, messageId?: string, metadata?: unknown) {
+  if (!threadId && !sessionId && !messageId) {
+    throw new AppError('threadId or sessionId or messageId required', 'VALIDATION_ERROR', 400);
   }
   try {
     return await prisma.collectionItem.create({
-      data: { collectionId, threadId: threadId ?? null, sessionId: sessionId ?? null },
+      data: { collectionId, threadId: threadId ?? null, sessionId: sessionId ?? null, messageId: messageId ?? null, metadata: metadata as never },
     });
   } catch (error) {
     const err = error as { code?: string };
@@ -81,7 +84,9 @@ export async function addToCollectionOwned(
   userId: string,
   userRole: Role | string,
   threadId?: string,
-  sessionId?: string
+  sessionId?: string,
+  messageId?: string,
+  metadata?: unknown
 ) {
   const collection = await prisma.collection.findFirst({
     where: { id: collectionId, userId },
@@ -105,7 +110,13 @@ export async function addToCollectionOwned(
     }
   }
 
-  return addToCollection(collectionId, threadId, sessionId);
+  if (messageId) {
+    const msg = await prisma.message.findFirst({ where: { id: messageId, deletedAt: null }, select: { id: true, threadId: true } });
+    if (!msg) throw new AppError('Message not found', 'NOT_FOUND', 404);
+    await requireThreadAccessOrThrow(msg.threadId, userId, userRole as Role);
+  }
+
+  return addToCollection(collectionId, threadId, sessionId, messageId, metadata);
 }
 
 export async function removeFromCollection(where: { id: string; collectionId: string }) {

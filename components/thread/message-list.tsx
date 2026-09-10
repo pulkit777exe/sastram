@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 interface MessageListProps {
   firstUnreadMessageId: string | null;
@@ -446,41 +447,45 @@ const MessageRow = React.memo(function MessageRow({
         </div>
 
         {!isEditing && (
-          <MessageActions
-            className="opacity-0 group-hover:opacity-100 transition-all duration-100 scale-95 group-hover:scale-100"
-            onReply={() => onReply(message.id)}
-            onEdit={canEdit ? () => setIsEditing(true) : undefined}
-            onReact={async () => {
-              if (isLiking) return;
-              setIsLiking(true);
-              const wasLiked = isLiked;
-              setIsLiked(!wasLiked);
-              setLikeCount((prev) => (wasLiked ? Math.max(0, prev - 1) : prev + 1));
-              const result = await toggleReaction({ messageId: message.id, emoji: '👍' });
-              if (result?.error) {
-                setIsLiked(wasLiked);
-                setLikeCount((prev) => (wasLiked ? prev + 1 : Math.max(0, prev - 1)));
-                toasts.error('Failed to update reaction');
-              }
-              setIsLiking(false);
-            }}
-            onPin={canPin ? async () => {
-              setIsPinning(true);
-              const wasPinned = message.isPinned;
-              onMessageUpdate(message.id, { isPinned: !wasPinned });
-              const res = await pinMessage({ messageId: message.id });
-              if (res?.error) {
-                onMessageUpdate(message.id, { isPinned: wasPinned });
-                toasts.error('Failed to pin message');
-              }
-              setIsPinning(false);
-            } : undefined}
-            onDelete={canDelete ? () => setShowDeleteConfirm(true) : undefined}
-            isPinned={message.isPinned}
-            canPin={canPin}
-            canDelete={canDelete}
-            canEdit={canEdit}
-          />
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-100 scale-95 group-hover:scale-100">
+            <div className="scale-90">
+              <CollectionSaveButton messageId={message.id} label={message.isAiResponse ? 'Save AI' : 'Save'} />
+            </div>
+            <MessageActions
+              onReply={() => onReply(message.id)}
+              onEdit={canEdit ? () => setIsEditing(true) : undefined}
+              onReact={async () => {
+                if (isLiking) return;
+                setIsLiking(true);
+                const wasLiked = isLiked;
+                setIsLiked(!wasLiked);
+                setLikeCount((prev) => (wasLiked ? Math.max(0, prev - 1) : prev + 1));
+                const result = await toggleReaction({ messageId: message.id, emoji: '👍' });
+                if (result?.error) {
+                  setIsLiked(wasLiked);
+                  setLikeCount((prev) => (wasLiked ? prev + 1 : Math.max(0, prev - 1)));
+                  toasts.error('Failed to update reaction');
+                }
+                setIsLiking(false);
+              }}
+              onPin={canPin ? async () => {
+                setIsPinning(true);
+                const wasPinned = message.isPinned;
+                onMessageUpdate(message.id, { isPinned: !wasPinned });
+                const res = await pinMessage({ messageId: message.id });
+                if (res?.error) {
+                  onMessageUpdate(message.id, { isPinned: wasPinned });
+                  toasts.error('Failed to pin message');
+                }
+                setIsPinning(false);
+              } : undefined}
+              onDelete={canDelete ? () => setShowDeleteConfirm(true) : undefined}
+              isPinned={message.isPinned}
+              canPin={canPin}
+              canDelete={canDelete}
+              canEdit={canEdit}
+            />
+          </div>
         )}
 
         {showDeleteConfirm && (

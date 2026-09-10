@@ -69,10 +69,18 @@ export default async function CollectionDetailPage({ params }: { params: Promise
             <span className="text-xs text-ink-3">Sorted by saved date</span>
           </div>
           <div className="grid gap-3">
-            {items.map((item: { id: string; threadId: string | null; sessionId: string | null; createdAt: Date; thread?: { id: string; name: string; slug: string } | null; session?: { id: string; query: string; title: string | null; results: Array<{ synthesis: string }> } | null }) => (
+            {items.map((item: { id: string; threadId: string | null; sessionId: string | null; messageId: string | null; metadata: unknown; createdAt: Date; thread?: { id: string; name: string; slug: string; aiSummary?: string | null } | null; session?: { id: string; query: string; title: string | null; results: Array<{ synthesis: string }> } | null; message?: { id: string; content: string; threadId: string; isAiResponse: boolean; thread?: { name: string; slug: string } | null } | null }) => {
+              const meta = item.metadata as Record<string, unknown> | null;
+              const metaType = meta?.type as string | undefined;
+              const isGraph = metaType === 'graph';
+              const isCanvas = metaType === 'canvas';
+              const isSummary = metaType === 'summary';
+              const isAiSynthesis = metaType === 'ai_synthesis';
+              const iconBg = item.thread ? 'bg-brand/10 text-brand' : item.session ? 'bg-violet-500/10 text-violet-600' : item.message ? (item.message.isAiResponse ? 'bg-emerald-500/10 text-emerald-600' : 'bg-brand/10 text-brand') : isGraph ? 'bg-amber-500/10 text-amber-600' : isCanvas ? 'bg-indigo-500/10 text-indigo-600' : 'bg-muted text-ink-3';
+              return (
               <div key={item.id} className="group flex items-center gap-4 rounded-card border border-line bg-surface p-4 hover:bg-hover hover:border-line-strong hover:shadow-card transition-all">
-                <div className={`w-9 h-9 rounded-control flex items-center justify-center shrink-0 ${item.thread ? 'bg-brand/10 text-brand' : 'bg-violet-500/10 text-violet-600'}`}>
-                  {item.thread ? <MessageSquare size={16} /> : <Search size={16} />}
+                <div className={`w-9 h-9 rounded-control flex items-center justify-center shrink-0 ${iconBg}`}>
+                  {item.thread ? <MessageSquare size={16} /> : item.session ? <Search size={16} /> : item.message ? <MessageSquare size={16} /> : <FileText size={16} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   {item.thread ? (
@@ -85,18 +93,36 @@ export default async function CollectionDetailPage({ params }: { params: Promise
                       <span className="text-sm font-medium text-ink truncate">{item.session.title || item.session.query}</span>
                       <ExternalLink size={12} className="text-ink-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Link>
+                  ) : item.message ? (
+                    <Link href={item.message.thread ? `/dashboard/threads/${item.message.thread.slug}#message-${item.message.id}` : `/dashboard/threads/${item.message.threadId}`} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
+                      <span className="text-sm font-medium text-ink truncate">{item.message.isAiResponse ? 'AI: ' : ''}{item.message.content.slice(0, 80)}{item.message.content.length > 80 ? '…' : ''}</span>
+                      <ExternalLink size={12} className="text-ink-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+                  ) : isGraph ? (
+                    <span className="text-sm font-medium text-ink truncate">Graph: {(meta?.nodes as unknown[])?.length ?? 0} nodes · {(meta?.links as unknown[])?.length ?? 0} edges</span>
+                  ) : isCanvas ? (
+                    <span className="text-sm font-medium text-ink truncate">Canvas: {String(meta?.leftName ?? '?')} vs {String(meta?.rightName ?? '?')}</span>
+                  ) : isSummary ? (
+                    <Link href={`/dashboard/threads/${item.threadId}`} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
+                      <span className="text-sm font-medium text-ink truncate">Summary: {String((meta as Record<string,string>)?.content?.slice(0,80) ?? 'summary')}</span>
+                      <ExternalLink size={12} className="text-ink-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+                  ) : isAiSynthesis ? (
+                    <span className="text-sm font-medium text-ink truncate">AI Synthesis: {String((meta as Record<string,string>)?.text?.slice(0,80) ?? 'synthesis')}</span>
+                  ) : meta ? (
+                    <span className="text-sm font-medium text-ink truncate">{String((meta as Record<string,string>)?.title ?? metaType ?? 'Saved item')}</span>
                   ) : (
                     <span className="text-sm text-ink-3">Unknown item</span>
                   )}
                   <div className="flex items-center gap-2 mt-1 text-xs text-ink-3">
                     <span className="inline-flex items-center gap-1"><Calendar size={12}/> {new Date(item.createdAt).toLocaleDateString()}</span>
                     <span>·</span>
-                    <span>{item.thread ? 'Thread' : 'Sai search'}</span>
+                    <span>{item.thread ? 'Thread' : item.session ? 'Sai search' : item.message ? (item.message.isAiResponse ? 'AI response' : 'Message') : isGraph ? 'Graph' : isCanvas ? 'Canvas' : isSummary ? 'Summary' : isAiSynthesis ? 'Synthesis' : 'Item'}</span>
                   </div>
                 </div>
                 <CollectionItemActions itemId={item.id} collectionId={collection.id} />
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}

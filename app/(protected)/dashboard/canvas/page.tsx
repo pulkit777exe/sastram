@@ -5,6 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { canAccessThread } from '@/lib/thread-access';
 import Link from 'next/link';
 import { z } from 'zod';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 export default async function CanvasPage({
   searchParams,
@@ -111,11 +112,18 @@ export default async function CanvasPage({
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="font-serif-heading text-xl">Research Canvas</h1>
-      <p className="text-xs text-ink-3 mt-1">Compare two threads side-by-side. AI diff via <code>crossReference</code> tier sort + conflict detection.</p>
-      <p className="text-xs text-ink-3 mt-1">
-        Pick threads via <code>?left=&lt;id&gt;&amp;right=&lt;id&gt;</code> or <Link href="/dashboard/threads" className="underline hover:text-ink">browse threads</Link>.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif-heading text-xl">Research Canvas</h1>
+          <p className="text-xs text-ink-3 mt-1">Compare two threads side-by-side. AI diff via <code>crossReference</code> tier sort + conflict detection.</p>
+          <p className="text-xs text-ink-3 mt-1">
+            Pick threads via <code>?left=&lt;id&gt;&amp;right=&lt;id&gt;</code> or <Link href="/dashboard/threads" className="underline hover:text-ink">browse threads</Link>.
+          </p>
+        </div>
+        {left && right && (
+          <CollectionSaveButton metadata={{ type: 'canvas', leftId: left.id, rightId: right.id, leftName: left.name, rightName: right.name, diff }} label="Save Canvas" />
+        )}
+      </div>
       <div className="grid md:grid-cols-2 gap-4 mt-4">
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between">

@@ -4,6 +4,7 @@ import { Sparkles, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { ConflictInfo, Citation, Source } from '@/modules/ai-search/types';
 import { StreamingText, type RetryStyle, type FeedbackType } from './StreamingText';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 interface SynthesisCardProps {
   text: string;
@@ -74,7 +75,8 @@ export function SynthesisCard({
           </span>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
+          <CollectionSaveButton metadata={{ type: 'ai_synthesis', text, queryType, sourceCount, sources: sources.slice(0, 3) }} label="Save" />
           <Badge variant={typeConfig.variant} className="px-2 py-0.5 text-[11px] font-medium rounded-full">
             {typeConfig.label}
           </Badge>

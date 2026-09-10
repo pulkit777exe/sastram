@@ -19,7 +19,7 @@ export const GET = withErrorHandling(async (_: NextRequest, context?: { params: 
 
   let md = `# ${escapeMd(collection.title)}\n\n`;
   for (const item of collection.items) {
-    if (item.thread) md += `## [${escapeMd(item.thread.name)}](/dashboard/threads/${item.thread.slug})\n\n`;
+    if (item.thread) md += `## [${escapeMd(item.thread.name)}](/dashboard/threads/${item.thread.slug})\n\n${item.thread.aiSummary ? `${escapeMd(item.thread.aiSummary.slice(0, 800))}\n\n` : ''}`;
     if (item.session) {
       const title = escapeMd(item.session.title ?? item.session.query);
       md += `## ${title}\n\n> Query: ${escapeMd(item.session.query)}\n\n`;
@@ -44,6 +44,23 @@ export const GET = withErrorHandling(async (_: NextRequest, context?: { params: 
         md += `_${escapeMd(item.session.query)}_\n`;
       }
       md += `\n`;
+    }
+    const msg = (item as unknown as { message?: { content: string; isAiResponse: boolean; thread?: { name: string; slug: string } | null } }).message;
+    if (msg) {
+      md += `## ${msg.isAiResponse ? 'AI Response' : 'Message'} — ${msg.thread ? `[${escapeMd(msg.thread.name)}](/dashboard/threads/${msg.thread.slug})` : 'Thread'}\n\n${escapeMd(msg.content.slice(0, 2000))}\n\n`;
+    }
+    const meta = (item as unknown as { metadata?: Record<string, unknown> | null }).metadata;
+    if (meta && typeof meta === 'object') {
+      const t = (meta as Record<string, unknown>).type as string | undefined;
+      if (t === 'graph') {
+        md += `## Graph Snapshot\n\nNodes: ${((meta as Record<string, unknown>).nodes as unknown[])?.length ?? 0}, Edges: ${((meta as Record<string, unknown>).links as unknown[])?.length ?? 0}\n\n`;
+      } else if (t === 'canvas') {
+        md += `## Canvas — ${escapeMd(String((meta as Record<string, unknown>).leftName ?? ''))} vs ${escapeMd(String((meta as Record<string, unknown>).rightName ?? ''))}\n\n${(meta as Record<string, unknown>).diff ? escapeMd(String((meta as Record<string, unknown>).diff)) : ''}\n\n`;
+      } else if (t === 'summary') {
+        md += `## Summary\n\n${escapeMd(String((meta as Record<string, unknown>).content ?? ''))}\n\n`;
+      } else if (t === 'ai_synthesis') {
+        md += `## AI Synthesis\n\n${escapeMd(String((meta as Record<string, unknown>).text ?? ''))}\n\n`;
+      }
     }
   }
 

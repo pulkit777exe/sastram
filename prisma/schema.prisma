@@ -298,9 +298,10 @@ model Message {
   reports      Report[]
   editHistory  MessageEdit[]
   mentions     MessageMention[]
-  readReceipts ReadReceipt[]    @relation("ReadReceiptMessage")
-  appeals      Appeal[]         @relation("MessageAppeal")
-  poll         Poll?
+  readReceipts    ReadReceipt[]    @relation("ReadReceiptMessage")
+  appeals         Appeal[]         @relation("MessageAppeal")
+  poll            Poll?
+  collectionItems CollectionItem[]
 
   // 9 indexes — keep explicit; composites cover single-column prefixes
   // in Postgres but retaining [threadId] and [parentId] makes hot paths
@@ -796,17 +797,22 @@ model CollectionItem {
   collectionId String
   threadId     String?
   sessionId    String?
+  messageId    String?
+  metadata     Json? // for graphs (left/right threadIds + diff), summaries snapshot, etc.
   createdAt    DateTime @default(now())
 
   collection Collection       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   thread     Thread?          @relation(fields: [threadId], references: [id], onDelete: Cascade)
   session    AiSearchSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  message    Message?         @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@unique([collectionId, threadId])
   @@unique([collectionId, sessionId])
+  @@unique([collectionId, messageId])
   @@index([collectionId])
   @@index([threadId])
   @@index([sessionId])
+  @@index([messageId])
   @@map("collection_items")
 }
 

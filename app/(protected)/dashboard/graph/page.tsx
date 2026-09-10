@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ForceGraphCanvas } from '@/components/graph/ForceGraphCanvas';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 export default async function GraphPage() {
   const session = await requireSession();
@@ -92,9 +93,12 @@ export default async function GraphPage() {
           <p className="text-sm text-ink-2 mt-1">Semantic links between threads — auto-built from thread DNA (topics + question type).</p>
           <p className="text-xs text-ink-3 mt-1">{nodes.length} threads · {links.length} edges · similarity ≥ 70%</p>
         </div>
-        <div className="hidden sm:flex items-center gap-2 text-xs text-ink-3">
-          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sai-green" /> 85%+ high</span>
-          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sai-orange" /> 70-85%</span>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-ink-3">
+            <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sai-green" /> 85%+ high</span>
+            <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sai-orange" /> 70-85%</span>
+          </div>
+          <CollectionSaveButton metadata={{ type: 'graph', nodes, links, savedAt: new Date().toISOString() }} label="Save Graph" />
         </div>
       </div>
       <ForceGraphCanvas nodes={nodes} links={links} />

@@ -5,7 +5,7 @@ import { Bookmark, Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 
-export function CollectionSaveButton({ threadId, sessionId }: { threadId?: string; sessionId?: string }) {
+export function CollectionSaveButton({ threadId, sessionId, messageId, metadata, label = 'Save' }: { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown; label?: string }) {
   const [open, setOpen] = useState(false);
   const [collections, setCollections] = useState<{ id: string; title: string }[]>([]);
   const [newTitle, setNewTitle] = useState('');
@@ -37,6 +37,8 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
     };
   }, [open]);
 
+  const payload = { threadId, sessionId, messageId, metadata } as Record<string, unknown>;
+
   async function createAndAdd() {
     if (!newTitle.trim()) return;
     setSaving(true);
@@ -53,7 +55,7 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
         const itemRes = await fetch(`/api/collections/${coll.id}/items`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ threadId, sessionId }),
+          body: JSON.stringify(payload),
         });
         if (!itemRes.ok) throw new Error('Add failed');
         toasts.success('Saved to collection');
@@ -73,7 +75,7 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
       const res = await fetch(`/api/collections/${id}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ threadId, sessionId }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Add failed');
       toasts.success('Saved');
@@ -85,12 +87,12 @@ export function CollectionSaveButton({ threadId, sessionId }: { threadId?: strin
     }
   }
 
-  if (!threadId && !sessionId) return null;
+  if (!threadId && !sessionId && !messageId && !metadata) return null;
 
   return (
     <div className="relative">
       <Button variant="outline" size="sm" className="h-7 gap-1.5 rounded-full" onClick={() => setOpen((v) => !v)}>
-        <Bookmark size={12} /> Save
+        <Bookmark size={12} /> {label}
       </Button>
       {open && (
         <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-card border border-line bg-surface p-2 shadow-xl">

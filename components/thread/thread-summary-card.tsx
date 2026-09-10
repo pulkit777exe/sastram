@@ -10,6 +10,7 @@ import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 import { SkeletonSwap } from '@/components/ui/skeleton-swap';
 import { DetailCard } from '@/components/ui/detail-card';
 import { Button } from '@/components/ui/button';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 interface ThreadSummaryCardProps {
   threadId: string;
@@ -132,17 +133,22 @@ export function ThreadSummaryCard({ threadId, initialSummary, messageCount, clas
           </span>
         </div>
 
-        {summary && !isPending && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => void requestSummary()}
-            aria-label="Refresh summary"
-          >
-            <RefreshCw size={12} />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {summary && (
+            <CollectionSaveButton threadId={threadId} metadata={{ type: 'summary', content: summary }} label="Save" />
+          )}
+          {summary && !isPending && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => void requestSummary()}
+              aria-label="Refresh summary"
+            >
+              <RefreshCw size={12} />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Body */}
