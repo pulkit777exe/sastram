@@ -47,6 +47,12 @@ function getNotificationLinkUrl(data: Record<string, unknown>): string | null {
   return null;
 }
 
+function getNotificationIds(data: Record<string, unknown>): { threadId: string | null; messageId: string | null } {
+  const threadId = typeof data.threadId === 'string' ? data.threadId : null;
+  const messageId = typeof data.messageId === 'string' ? data.messageId : null;
+  return { threadId, messageId };
+}
+
 function toNotificationViewModel(notification: {
   id: string;
   data: unknown;
@@ -57,6 +63,7 @@ function toNotificationViewModel(notification: {
   createdAt: Date;
 }) {
   const data = extractNotificationData(notification.data);
+  const { threadId, messageId } = getNotificationIds(data);
   return {
     id: notification.id,
     type: notification.type,
@@ -65,6 +72,8 @@ function toNotificationViewModel(notification: {
     isRead: notification.isRead,
     createdAt: notification.createdAt,
     linkUrl: getNotificationLinkUrl(data),
+    threadId,
+    messageId,
   };
 }
 

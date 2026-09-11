@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { truncateHistoryLabel, groupByHistoryDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 export interface HistoryItem {
   id: string;
@@ -169,6 +170,9 @@ export function Sidebar({
               {item.sourceCount} src
             </span>
           )}
+          <span className="hidden group-hover:block" onClick={(e) => e.stopPropagation()}>
+            <CollectionSaveButton sessionId={item.id} />
+          </span>
           <Button type="button"
             onClick={(e) => handleDeleteClick(item.id, e)}
             variant="ghost"

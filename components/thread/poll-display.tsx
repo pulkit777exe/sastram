@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils/cn';
 import { TimeAgo } from '@/components/ui/TimeAgo';
 import { Button } from '@/components/ui/button';
 import type { PollResults } from '@/modules/polls/types';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 const POLL_EXPIRY_TICK_MS = 30_000;
 
@@ -181,7 +182,10 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
           {isMarket && <span className="inline-flex items-center rounded-chip border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">MARKET</span>}
           {isMarket && resolvedIndex != null && <span className="text-xs text-ink-3">Resolved: {poll.options[resolvedIndex]}</span>}
         </div>
-        {showResults && <BarChart3 className="h-4 w-4 text-ink-3 shrink-0" />}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <CollectionSaveButton threadId={poll.threadId} label="Save" />
+          {showResults && <BarChart3 className="h-4 w-4 text-ink-3 shrink-0" />}
+        </div>
       </div>
 
       <div className="space-y-2.5" role="radiogroup" aria-label={poll.question}>

@@ -17,6 +17,7 @@ import { toasts } from '@/lib/utils/toast';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 import { getNotificationDateGroup } from '@/lib/utils/format';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 interface NotificationItem {
   id: string;
@@ -26,6 +27,8 @@ interface NotificationItem {
   isRead: boolean;
   createdAt: Date;
   linkUrl: string | null;
+  threadId: string | null;
+  messageId: string | null;
 }
 
 interface NotificationListProps {
@@ -121,6 +124,8 @@ export function NotificationList({ notifications: initial }: NotificationListPro
             isRead: notification.isRead,
             createdAt: notification.createdAt,
             linkUrl: (data.linkUrl as string) ?? null,
+            threadId: typeof data.threadId === 'string' ? (data.threadId as string) : null,
+            messageId: typeof data.messageId === 'string' ? (data.messageId as string) : null,
           } as NotificationItem;
         })
         .filter((item) => !existingIds.has(item.id));
@@ -221,54 +226,65 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                 {items.map((notification) => {
                   const Icon = TYPE_ICONS[notification.type] ?? TYPE_ICONS.DEFAULT;
                   const isUnread = !notification.isRead;
+                  const canSave = Boolean(notification.threadId || notification.messageId);
                   // Tailwind extracted — layout / color / interactivity grouped
-                  const notificationBase = 'w-full flex items-start gap-3 p-4 rounded-card border border-transparent text-left transition-all hover:bg-hover hover:border-line justify-start h-auto';
-                  const notificationUnread = 'bg-brand/5 border border-brand/10';
-                  const notificationClasses = cn(notificationBase, isUnread && notificationUnread);
+                  const itemWrapperBase = 'group flex items-center gap-2 rounded-card border p-1 pr-2 transition-all hover:bg-hover hover:border-line';
+                  const itemWrapperUnread = 'bg-brand/5 border-brand/10';
+                  const itemWrapperRead = 'border-transparent';
+                  const notificationBase = 'flex-1 flex items-start gap-3 p-3 rounded-control text-left justify-start h-auto hover:bg-transparent';
                   const iconBase = 'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full';
                   const iconUnread = 'bg-brand/10 text-brand';
                   const iconRead = 'bg-canvas border border-line text-ink-3';
                   return (
-                    <Button
-                      type="button"
+                    <div
                       key={notification.id}
-                      variant="ghost"
-                      onClick={() => void handleClick(notification)}
-                      className={notificationClasses}
+                      className={cn(itemWrapperBase, isUnread ? itemWrapperUnread : itemWrapperRead)}
                     >
-                      <div
-                        className={cn(iconBase, isUnread ? iconUnread : iconRead)}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => void handleClick(notification)}
+                        className={notificationBase}
                       >
-                        <Icon size={14} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p
-                            className={cn(
-                              'text-sm truncate',
-                              !notification.isRead
-                                ? 'font-semibold text-foreground'
-                                : 'text-foreground/80'
+                        <div
+                          className={cn(iconBase, isUnread ? iconUnread : iconRead)}
+                        >
+                          <Icon size={14} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p
+                              className={cn(
+                                'text-sm truncate',
+                                !notification.isRead
+                                  ? 'font-semibold text-foreground'
+                                  : 'text-foreground/80'
+                              )}
+                            >
+                              {notification.title}
+                            </p>
+                            <span className="text-xs text-ink-3 shrink-0">
+                              <TimeAgo date={notification.createdAt} />
+                            </span>
+                          </div>
+                          <div className="text-xs text-ink-3 mt-0.5 line-clamp-2">
+                            {isAiNotConfigured(notification.message) ? (
+                              <AiNotConfiguredNotice className="border-0 bg-transparent p-0" />
+                            ) : (
+                              notification.message
                             )}
-                          >
-                            {notification.title}
-                          </p>
-                          <span className="text-xs text-ink-3 shrink-0">
-                            <TimeAgo date={notification.createdAt} />
-                          </span>
+                          </div>
                         </div>
-                        <div className="text-xs text-ink-3 mt-0.5 line-clamp-2">
-                          {isAiNotConfigured(notification.message) ? (
-                            <AiNotConfiguredNotice className="border-0 bg-transparent p-0" />
-                          ) : (
-                            notification.message
-                          )}
+                        {!notification.isRead && (
+                          <div className="mt-2 w-2 h-2 rounded-full bg-brand shrink-0" />
+                        )}
+                      </Button>
+                      {canSave && (
+                        <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                          <CollectionSaveButton threadId={notification.threadId ?? undefined} messageId={notification.messageId ?? undefined} />
                         </div>
-                      </div>
-                      {!notification.isRead && (
-                        <div className="mt-2 w-2 h-2 rounded-full bg-brand shrink-0" />
                       )}
-                    </Button>
+                    </div>
                   );
                 })}
               </div>

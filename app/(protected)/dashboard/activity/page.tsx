@@ -7,6 +7,7 @@ import { Activity, MessageSquare, FileText, Users, Calendar, Reply } from 'lucid
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ROUTES } from '@/lib/config/routes';
+import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
 const THREADS_PAGE_SIZE = 10;
 const MESSAGES_PAGE_SIZE = 20;
@@ -63,8 +64,8 @@ export default async function ActivityPage() {
           ) : (
             <div className="space-y-4">
               {threads.map((thread) => (
-                <Link key={thread.id} href={ROUTES.THREAD(thread.slug)} className="block group">
-                  <Card className="p-5 hover:bg-hover hover:border-line-strong hover:shadow-card transition-all duration-200">
+                <div key={thread.id} className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-hover hover:border-line-strong hover:shadow-card transition-all duration-200">
+                  <Link href={ROUTES.THREAD(thread.slug)} prefetch={false} className="flex-1 min-w-0">
                     <h3 className="font-semibold text-ink mb-1.5 line-clamp-1 group-hover:text-brand transition-colors">{thread.name}</h3>
                     {thread.description && (
                       <p className="text-sm text-ink-3 mb-3 line-clamp-2 leading-relaxed">
@@ -85,8 +86,11 @@ export default async function ActivityPage() {
                         <TimeAgo date={thread.createdAt} />
                       </span>
                     </div>
-                  </Card>
-                </Link>
+                  </Link>
+                  <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <CollectionSaveButton threadId={thread.id} />
+                  </div>
+                </div>
               ))}
               {threadsResult.hasMore && (
                 <Link
@@ -125,10 +129,10 @@ export default async function ActivityPage() {
           ) : (
             <div className="space-y-4">
               {messages.map((message) => (
-                <Link key={message.id} href={ROUTES.THREAD(message.thread.slug)} className="block group">
-                  <Card className="p-5 hover:bg-hover hover:border-line-strong hover:shadow-card transition-all duration-200">
+                <div key={message.id} className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-hover hover:border-line-strong hover:shadow-card transition-all duration-200">
+                  <Link href={ROUTES.THREAD(message.thread.slug)} prefetch={false} className="flex-1 min-w-0">
                     {message.parent && (
-                      <div className="flex items-center gap-2 text-xs text-ink-3 mb-3 pb-3 border-b border-line/60">
+                      <div className="flex items-center gap-2 text-xs text-ink-3 mb-2">
                         <Reply className="h-3.5 w-3.5" />
                         <span>
                           Replying to{' '}
@@ -138,18 +142,19 @@ export default async function ActivityPage() {
                         </span>
                       </div>
                     )}
-
-                    <p className="text-sm text-ink line-clamp-2 mb-3 leading-relaxed">{message.content}</p>
-
-                    <div className="flex items-center justify-between text-xs text-ink-3 pt-3 border-t border-line/50">
+                    <p className="text-sm text-ink line-clamp-2 mb-2 leading-relaxed group-hover:text-brand transition-colors">{message.content}</p>
+                    <div className="flex items-center justify-between text-xs text-ink-3">
                       <span className="font-medium text-brand truncate pr-2">{message.thread.name}</span>
                       <span className="shrink-0 flex items-center gap-1">
                         <Calendar size={12} />
                         <TimeAgo date={message.createdAt} />
                       </span>
                     </div>
-                  </Card>
-                </Link>
+                  </Link>
+                  <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <CollectionSaveButton messageId={message.id} />
+                  </div>
+                </div>
               ))}
               {messagesResult.hasMore && (
                 <p className="text-xs text-center text-ink-3 py-3 rounded-card border border-dashed border-line bg-surface/50">Showing 20 most recent · <Link href="/dashboard/threads" className="text-brand hover:underline font-medium">Browse threads</Link> to see more</p>
