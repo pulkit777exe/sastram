@@ -121,6 +121,10 @@ export function createAttachments(deps: AttachmentsDeps = { storage: vercelBlobS
     try {
       for (const file of files) {
         const detected = await detectMimeTypeFromFile(file);
+        if (file.size > 0 && !detected) {
+          logger.warn('[attachments] MIME unknown', { declared: file.type, filename: file.name });
+          throw new AttachmentError('File content does not match declared type', 'VALIDATION_ERROR', 400);
+        }
         if (detected && detected !== file.type) {
           logger.warn('[attachments] MIME mismatch', { declared: file.type, detected, filename: file.name });
           throw new AttachmentError('File content does not match declared type', 'VALIDATION_ERROR', 400);

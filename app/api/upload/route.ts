@@ -28,12 +28,22 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   if (!threadId) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Missing threadId'), { status: HTTP_STATUS.BAD_REQUEST });
   }
-
-  await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+  if (!/^c[a-z0-9]{24}$/.test(threadId)) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
 
   if (!files || files.length === 0) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'No files provided'), { status: HTTP_STATUS.BAD_REQUEST });
   }
+  if (files.length > 10) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Maximum 10 files allowed'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const totalSize = files.reduce((a, f) => a + (f instanceof File ? f.size : 0), 0);
+  if (totalSize > maxBytes) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Upload too large'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+
+  await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
   // Deep Module: single seam hides validate→sniff→ext→put→moderate→rollback.
   // Previously 60 lines duplicated in /api/messages; now one call, atomic batch.

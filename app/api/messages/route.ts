@@ -26,8 +26,21 @@ function validateFormInputs(formData: FormData): { threadId: string; rawContent:
   if (!threadId) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Missing threadId'), { status: HTTP_STATUS.BAD_REQUEST });
   }
+  if (!/^c[a-z0-9]{24}$/.test(threadId)) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
   const rawContent = formData.get('content') as string;
+  if (rawContent && rawContent.length > 5000) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Content too long (max 5000)'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const parentId = formData.get('parentId') as string | null;
+  if (parentId && !/^c[a-z0-9]{24}$/.test(parentId)) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid parentId'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
   const files = formData.getAll('files') as File[];
+  if (files.length > 10) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Maximum 10 files allowed'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
   if (!rawContent?.trim() && files.length === 0) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Missing content or files'), { status: HTTP_STATUS.BAD_REQUEST });
   }
