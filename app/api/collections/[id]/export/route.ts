@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
+import { fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { getCollection } from '@/modules/collections/repository';
+import { isCollectionsEnabled } from '@/modules/collections/enabled';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-z0-9-_ ]/gi, '_').slice(0, 80) || 'collection';
@@ -13,9 +15,14 @@ function escapeMd(s: string): string {
 
 export const GET = withErrorHandling(async (_: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
+  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
+  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
+  if (!(await isCollectionsEnabled(session.user.id))) {
+    return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
+  }
   const { id } = await context!.params;
   const collection = await getCollection(id, session.user.id);
-  if (!collection) return NextResponse.json({ error: 'Not found' }, { status: HTTP_STATUS.NOT_FOUND });
+  if (!collection) return NextResponse.json(fail('NOT_FOUND', 'Collection not found'), { status: HTTP_STATUS.NOT_FOUND });
 
   let md = `# ${escapeMd(collection.title)}\n\n`;
   for (const item of collection.items) {

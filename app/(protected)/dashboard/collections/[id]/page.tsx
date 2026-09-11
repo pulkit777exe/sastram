@@ -11,10 +11,12 @@ export default async function CollectionDetailPage({ params }: { params: Promise
   const session = await getSession();
   if (!session) return <div className="p-8">Please log in</div>;
 
-  const collection = await getCollection(id, session.user.id);
+  const collection = await getCollection(id, session.user.id, { take: 51 });
   if (!collection) notFound();
 
-  const items = collection.items ?? [];
+  const rawItems = collection.items ?? [];
+  const hasMore = rawItems.length > 50;
+  const items = hasMore ? rawItems.slice(0, 50) : rawItems;
 
   const grad = (() => { let h=0; for(let i=0;i<collection.title.length;i++) h=(h*31+collection.title.charCodeAt(i))>>>0; const gs=['from-violet-500 via-indigo-500 to-blue-500','from-emerald-500 via-teal-500 to-cyan-500','from-amber-500 via-orange-500 to-red-500','from-pink-500 via-rose-500 to-red-500','from-blue-500 via-cyan-500 to-teal-500']; return gs[h%gs.length]; })();
 
@@ -65,8 +67,8 @@ export default async function CollectionDetailPage({ params }: { params: Promise
       ) : (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Items — {items.length}</h2>
-            <span className="text-xs text-ink-3">Sorted by saved date</span>
+            <h2 className="text-sm font-semibold text-ink">Items — {items.length}{hasMore ? '+' : ''}</h2>
+            <span className="text-xs text-ink-3">Sorted by saved date{hasMore ? ' · showing 50, export for all' : ''}</span>
           </div>
           <div className="grid gap-3">
             {items.map((item: { id: string; threadId: string | null; sessionId: string | null; messageId: string | null; metadata: unknown; createdAt: Date; thread?: { id: string; name: string; slug: string; aiSummary?: string | null } | null; session?: { id: string; query: string; title: string | null; results: Array<{ synthesis: string }> } | null; message?: { id: string; content: string; threadId: string; isAiResponse: boolean; thread?: { name: string; slug: string } | null } | null }) => {
@@ -84,17 +86,17 @@ export default async function CollectionDetailPage({ params }: { params: Promise
                 </div>
                 <div className="flex-1 min-w-0">
                   {item.thread ? (
-                    <Link href={`/dashboard/threads/${item.thread.slug}`} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
+                    <Link href={`/dashboard/threads/${item.thread.slug}`} prefetch={false} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
                       <span className="text-sm font-medium text-ink truncate">{item.thread.name}</span>
                       <ExternalLink size={12} className="text-ink-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Link>
                   ) : item.session ? (
-                    <Link href={`/dashboard/sai-search?session=${item.session.id}`} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
+                    <Link href={`/dashboard/sai-search?session=${item.session.id}`} prefetch={false} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
                       <span className="text-sm font-medium text-ink truncate">{item.session.title || item.session.query}</span>
                       <ExternalLink size={12} className="text-ink-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Link>
                   ) : item.message ? (
-                    <Link href={item.message.thread ? `/dashboard/threads/${item.message.thread.slug}#message-${item.message.id}` : `/dashboard/threads/${item.message.threadId}`} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
+                    <Link href={item.message.thread ? `/dashboard/threads/${item.message.thread.slug}#message-${item.message.id}` : `/dashboard/threads/${item.message.threadId}`} prefetch={false} className="flex items-center gap-1.5 hover:underline decoration-ink/20">
                       <span className="text-sm font-medium text-ink truncate">{item.message.isAiResponse ? 'AI: ' : ''}{item.message.content.slice(0, 80)}{item.message.content.length > 80 ? '…' : ''}</span>
                       <ExternalLink size={12} className="text-ink-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Link>

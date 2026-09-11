@@ -3,12 +3,15 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { getCollection, deleteCollection } from '@/modules/collections/repository';
 import { isCollectionsEnabled } from '@/modules/collections/enabled';
+import { rateLimit } from '@/lib/services/rate-limit';
 import { z } from 'zod';
 
 const idSchema = z.string().cuid();
 
 export const GET = withErrorHandling(async (_: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
+  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
+  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
   if (!(await isCollectionsEnabled(session.user.id))) {
     return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
   }
@@ -26,6 +29,8 @@ export const GET = withErrorHandling(async (_: NextRequest, context?: { params: 
 
 export const DELETE = withErrorHandling(async (_: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
+  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
+  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
   if (!(await isCollectionsEnabled(session.user.id))) {
     return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
   }

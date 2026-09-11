@@ -3,6 +3,7 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { removeFromCollectionOwned } from '@/modules/collections/repository';
 import { isCollectionsEnabled } from '@/modules/collections/enabled';
+import { rateLimit } from '@/lib/services/rate-limit';
 import { z } from 'zod';
 
 const addSchema = z.object({ threadId: z.string().cuid().optional(), sessionId: z.string().cuid().optional(), messageId: z.string().cuid().optional(), metadata: z.unknown().optional() }).refine((d) => d.threadId || d.sessionId || d.messageId || d.metadata, 'threadId or sessionId or messageId or metadata required');
@@ -10,6 +11,8 @@ const itemIdSchema = z.string().cuid();
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
+  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
+  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
   if (!(await isCollectionsEnabled(session.user.id))) {
     return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
   }
@@ -23,6 +26,8 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
 
 export const DELETE = withErrorHandling(async (request: NextRequest, _context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
+  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
+  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
   const { searchParams } = new URL(request.url);
   const itemId = searchParams.get('itemId');
   if (!itemId) return NextResponse.json(fail('BAD_REQUEST', 'itemId required'), { status: HTTP_STATUS.BAD_REQUEST });
