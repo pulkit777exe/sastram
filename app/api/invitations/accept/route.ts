@@ -3,11 +3,14 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
+import { rateLimit } from '@/lib/services/rate-limit';
 import { revalidatePath } from 'next/cache';
 
 export async function POST(request: NextRequest) {
   try {
     const session = await requireSessionOrThrow();
+    const rl = await rateLimit({ key: `invitations:${session.user.id}`, type: 'api' });
+    if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many invitation attempts'), { status: HTTP_STATUS.RATE_LIMITED });
 
     const body = await request.json();
     const rawInvitationId = body.invitationId as string;

@@ -42,7 +42,7 @@ function parseQueryParams(searchParams: URLSearchParams) {
   return { q: rawQ, type, threadId, limit, offset };
 }
 
-function validateSearchParams(q: string | null, type: string): NextResponse | null {
+function validateSearchParams(q: string | null, type: string, threadId?: string): NextResponse | null {
   if (q === null || q.trim().length === 0) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Missing query parameter: q'), { status: HTTP_STATUS.BAD_REQUEST });
   }
@@ -54,6 +54,9 @@ function validateSearchParams(q: string | null, type: string): NextResponse | nu
       fail('VALIDATION_ERROR', `Invalid type: ${type}. Must be one of: threads, messages, users`),
       { status: HTTP_STATUS.BAD_REQUEST }
     );
+  }
+  if (threadId !== undefined && threadId !== null && threadId !== '' && !/^c[a-z0-9]{24}$/.test(threadId)) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
   }
   return null;
 }
@@ -89,7 +92,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const { q, type, threadId, limit, offset } = parseQueryParams(searchParams);
 
-    const validationError = validateSearchParams(q, type);
+    const validationError = validateSearchParams(q, type, threadId);
     if (validationError) return validationError;
 
     const session = await authenticateRequest();
