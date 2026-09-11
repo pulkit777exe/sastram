@@ -21,7 +21,7 @@ export const GET = withErrorHandling(async (_: NextRequest, context?: { params: 
     return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
   }
   const { id } = await context!.params;
-  const collection = await getCollection(id, session.user.id);
+  const collection = await getCollection(id, session.user.id, { take: 100 });
   if (!collection) return NextResponse.json(fail('NOT_FOUND', 'Collection not found'), { status: HTTP_STATUS.NOT_FOUND });
 
   let md = `# ${escapeMd(collection.title)}\n\n`;

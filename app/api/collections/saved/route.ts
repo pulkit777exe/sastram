@@ -13,6 +13,7 @@ function parsePayloadFromSearchParams(searchParams: URLSearchParams) {
   const metadataRaw = searchParams.get('metadata');
   let metadata: unknown = undefined;
   if (metadataRaw) {
+    if (metadataRaw.length > 5000) return { threadId, sessionId, messageId, metadata: undefined };
     try {
       metadata = JSON.parse(metadataRaw);
     } catch {
@@ -20,6 +21,10 @@ function parsePayloadFromSearchParams(searchParams: URLSearchParams) {
     }
   }
   return { threadId, sessionId, messageId, metadata };
+}
+
+function isValidCuid(id: string | undefined): boolean {
+  return !id || /^c[a-z0-9]{24}$/.test(id);
 }
 
 async function getSavedCollectionIds(payload: { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown }, userId: string): Promise<string[]> {
@@ -46,6 +51,9 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
   }
   const payload = parsePayloadFromSearchParams(new URL(request.url).searchParams);
+  if (payload.threadId && !isValidCuid(payload.threadId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
+  if (payload.sessionId && !isValidCuid(payload.sessionId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid sessionId'), { status: HTTP_STATUS.BAD_REQUEST });
+  if (payload.messageId && !isValidCuid(payload.messageId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid messageId'), { status: HTTP_STATUS.BAD_REQUEST });
   if (!payload.threadId && !payload.sessionId && !payload.messageId && payload.metadata === undefined) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'threadId or sessionId or messageId or metadata required'), { status: HTTP_STATUS.BAD_REQUEST });
   }
@@ -72,6 +80,17 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     messageId: typeof body.messageId === 'string' ? body.messageId : undefined,
     metadata: body.metadata,
   };
+  if (payload.threadId && !isValidCuid(payload.threadId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
+  if (payload.sessionId && !isValidCuid(payload.sessionId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid sessionId'), { status: HTTP_STATUS.BAD_REQUEST });
+  if (payload.messageId && !isValidCuid(payload.messageId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid messageId'), { status: HTTP_STATUS.BAD_REQUEST });
+  if (payload.metadata !== undefined) {
+    try {
+      const s = JSON.stringify(payload.metadata);
+      if (s.length > 5000) return NextResponse.json(fail('VALIDATION_ERROR', 'Metadata too large'), { status: HTTP_STATUS.BAD_REQUEST });
+    } catch {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid metadata'), { status: HTTP_STATUS.BAD_REQUEST });
+    }
+  }
   if (!payload.threadId && !payload.sessionId && !payload.messageId && payload.metadata === undefined) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'threadId or sessionId or messageId or metadata required'), { status: HTTP_STATUS.BAD_REQUEST });
   }

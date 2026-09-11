@@ -24,15 +24,24 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   return NextResponse.json(ok(item), { status: 201 });
 });
 
-export const DELETE = withErrorHandling(async (request: NextRequest, _context?: { params: Promise<Record<string, string>> }) => {
+export const DELETE = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
   const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
   if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
+  const { id } = await context!.params;
+  const parsedColId = z.string().cuid().safeParse(id);
+  if (!parsedColId.success) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid collection id'), { status: HTTP_STATUS.BAD_REQUEST });
   const { searchParams } = new URL(request.url);
   const itemId = searchParams.get('itemId');
   if (!itemId) return NextResponse.json(fail('BAD_REQUEST', 'itemId required'), { status: HTTP_STATUS.BAD_REQUEST });
   const parsedItemId = itemIdSchema.safeParse(itemId);
   if (!parsedItemId.success) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid itemId'), { status: HTTP_STATUS.BAD_REQUEST });
+  // Verify collection ownership and that item belongs to this collection (IDOR hardening)
+  const { prisma } = await import('@/lib/infrastructure/prisma');
+  const item = await prisma.collectionItem.findUnique({ where: { id: parsedItemId.data }, select: { collectionId: true, collection: { select: { userId: true } } } });
+  if (!item) return NextResponse.json(fail('NOT_FOUND', 'Item not found'), { status: HTTP_STATUS.NOT_FOUND });
+  if (item.collection.userId !== session.user.id) return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: HTTP_STATUS.FORBIDDEN });
+  if (item.collectionId !== parsedColId.data) return NextResponse.json(fail('VALIDATION_ERROR', 'Item does not belong to this collection'), { status: HTTP_STATUS.BAD_REQUEST });
   await removeFromCollectionOwned(parsedItemId.data, session.user.id);
   return NextResponse.json(ok({ ok: true }));
 });

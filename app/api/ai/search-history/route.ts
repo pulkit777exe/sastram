@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { AppError } from '@/lib/utils/errors';
+import { rateLimit } from '@/lib/services/rate-limit';
 import {
   listThreadedSessions,
   listUserSearchSessions,
@@ -13,7 +14,7 @@ import {
 
 export const maxDuration = 30;
 
-const idSchema = z.object({ id: z.string().min(1) });
+const idSchema = z.object({ id: z.string().min(1).max(64) });
 
 async function authenticateRequest() {
   return requireSessionOrThrow();
@@ -62,6 +63,8 @@ function handleAuthError(error: unknown): NextResponse | null {
 export async function GET(request: NextRequest) {
   try {
     const session = await authenticateRequest();
+    const rl = await rateLimit({ key: `search-history:${session.user.id}`, type: 'api' });
+    if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
 
     const url = new URL(request.url);
     const rawSingle = url.searchParams.get('id');
@@ -105,6 +108,8 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await authenticateRequest();
+    const rl = await rateLimit({ key: `search-history:${session.user.id}`, type: 'api' });
+    if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
 
     const url = new URL(request.url);
     const rawId = url.searchParams.get('id');
