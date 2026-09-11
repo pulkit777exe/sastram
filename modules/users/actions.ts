@@ -242,6 +242,14 @@ export const updateUserPreferencesAction = withValidation(
       data: { preferences: newPrefs },
     });
 
+    // Invalidate collections gate cache if that toggle changed (Hobby: 60s otherwise)
+    if ('collectionsEnabled' in incomingPrefs) {
+      try {
+        const { invalidateCollectionsEnabledCache } = await import('@/modules/collections/enabled');
+        invalidateCollectionsEnabledCache(session.user.id);
+      } catch {}
+    }
+
     revalidateSettingsPaths();
     return actionSuccess(null);
   }

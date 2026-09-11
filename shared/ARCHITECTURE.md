@@ -55,7 +55,7 @@ Browser Client
 │   │   ├── Vercel Blob (file storage)
 │   │   ├── Gemini / Exa / Tavily (AI, 12-source deep research)
 │   │   └── Resend (email)
-│   └── API Routes (48 REST endpoints)
+│   └── API Routes (49 REST endpoints)
 │
 └── SSE → AI reply streaming (/api/threads/[threadId]/ai-reply/stream)
 ```
@@ -412,7 +412,7 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 
 ---
 
-## API Routes (48 endpoints)
+## API Routes (49 endpoints)
 
 ### Authentication (6)
 - `/api/auth/[...all]` — Better Auth catch-all
@@ -450,11 +450,12 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 - `/api/upload` — File upload (Vercel Blob, MIME sniff + moderation)
 - `/api/invitations/accept` — Accept thread invitation
 
-### Collections (4)
-- `/api/collections` — List/create (FEATURE_DISABLED if collectionsEnabled=false)
-- `/api/collections/[id]` — Get/delete (ownership)
-- `/api/collections/[id]/items` — Add/remove items (thread access + cuid)
-- `/api/collections/[id]/export` — Markdown export with [n] footnotes
+### Collections (5)
+- `/api/collections` — List/create (FEATURE_DISABLED if collectionsEnabled=false, `?light=1` for dropdown, `private max-age 10`)
+- `/api/collections/[id]` — Get/delete (ownership, `rateLimit:api`)
+- `/api/collections/[id]/items` — Add/remove items (thread access + cuid, `rateLimit:api`)
+- `/api/collections/[id]/export` — Markdown export with [n] footnotes (`rateLimit:api`)
+- `/api/collections/saved` — Check saved collections for item (threadId|sessionId|messageId|metadata, `rateLimit:api`)
 
 ### User (1)
 - `/api/user/preferences` — Read/update preferences (all moat toggles)
