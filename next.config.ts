@@ -31,6 +31,12 @@ const isVercel = process.env.VERCEL === '1';
 
 const baseNextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
+  compress: true,
+  poweredByHeader: false,
+  reactStrictMode: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
   turbopack: {
     root: process.cwd(),
   },

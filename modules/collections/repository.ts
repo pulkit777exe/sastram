@@ -23,7 +23,15 @@ export async function getUserCollections(userId: string) {
   });
 }
 
-export async function getCollection(collectionId: string, userId: string) {
+export async function getUserCollectionsLight(userId: string) {
+  return prisma.collection.findMany({
+    where: { userId },
+    select: { id: true, title: true, updatedAt: true },
+    orderBy: { updatedAt: 'desc' },
+  });
+}
+
+export async function getCollection(collectionId: string, userId: string, opts?: { take?: number; skip?: number }) {
   return prisma.collection.findFirst({
     where: { id: collectionId, userId },
     include: {
@@ -47,6 +55,8 @@ export async function getCollection(collectionId: string, userId: string) {
           },
         },
         orderBy: { createdAt: 'desc' },
+        ...(opts?.take ? { take: opts.take } : {}),
+        ...(opts?.skip ? { skip: opts.skip } : {}),
       },
     },
   });
