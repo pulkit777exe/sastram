@@ -10,6 +10,7 @@ import { ROUTES } from '@/lib/config/routes';
 import { clientLogger } from '@/lib/utils/client-logger';
 import { toasts } from '@/lib/utils/toast';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
+import { BulkSaveButton } from '@/components/collections/BulkSaveButton';
 import {
   searchThreadsAction,
   searchMessagesAction,
@@ -83,6 +84,7 @@ export default function SearchPage() {
   const [recent, setRecent] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeqRef = useRef(0);
 
   useEffect(() => {
     setRecent(loadRecent());
@@ -107,6 +109,7 @@ export default function SearchPage() {
       return;
     }
 
+    const seq = ++searchSeqRef.current;
     setIsSearching(true);
     setSearchError(null);
     const start = Date.now();
@@ -140,17 +143,19 @@ export default function SearchPage() {
       }
 
       await Promise.all(tasks);
+      if (seq !== searchSeqRef.current) return;
       setResults(nextResults);
       setElapsedMs(Date.now() - start);
       saveRecent(q);
       setRecent(loadRecent());
     } catch (error) {
+      if (seq !== searchSeqRef.current) return;
       const msg = error instanceof Error ? error.message : 'Search failed. Please try again.';
       clientLogger.error('Search error', msg);
       setSearchError(msg);
       toasts.error(msg);
     } finally {
-      setIsSearching(false);
+      if (seq === searchSeqRef.current) setIsSearching(false);
     }
   }, [query, searchType]);
 
@@ -270,17 +275,22 @@ export default function SearchPage() {
             })()}
             {results.threads && (
               <div>
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Threads ({results.threads.total || 0}){results.threads.hasMore ? ' — more available' : ''}
-                </h2>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Threads ({results.threads.total || 0}){results.threads.hasMore ? ' — more available' : ''}
+                  </h2>
+                  {results.threads.threads && results.threads.threads.length > 0 && (
+                    <BulkSaveButton items={results.threads.threads.map((t) => ({ threadId: t.id }))} />
+                  )}
+                </div>
                 {results.threads.total === 0 ? (
                   <p className="text-sm text-ink-3 ml-1">No thread matches — try a broader term or check “Messages”.</p>
                 ) : (
                   <div className="grid gap-4">
                     {results.threads.threads?.map((thread) => (
                       <div key={thread.id} className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-hover transition-colors">
-                        <Link href={ROUTES.THREAD(thread.slug)} className="flex-1 min-w-0">
+                        <Link href={ROUTES.THREAD(thread.slug)} prefetch={false} className="flex-1 min-w-0">
                           <h3 className="font-semibold text-ink group-hover:text-brand truncate">{highlight(thread.name, query)}</h3>
                           {thread.description && (
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{highlight(thread.description, query)}</p>
@@ -299,17 +309,22 @@ export default function SearchPage() {
 
             {results.messages && (
               <div>
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Messages ({results.messages.total || 0}){results.messages.hasMore ? ' — more available' : ''}
-                </h2>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    Messages ({results.messages.total || 0}){results.messages.hasMore ? ' — more available' : ''}
+                  </h2>
+                  {results.messages.messages && results.messages.messages.length > 0 && (
+                    <BulkSaveButton items={results.messages.messages.map((m) => ({ messageId: m.id }))} />
+                  )}
+                </div>
                 {results.messages.total === 0 ? (
                   <p className="text-sm text-ink-3 ml-1">No message matches — try “Threads” or fewer keywords.</p>
                 ) : (
                   <div className="grid gap-4">
                     {results.messages.messages?.map((message) => (
                       <div key={message.id} className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-hover transition-colors">
-                        <Link href={ROUTES.THREAD(message.thread.slug)} className="flex-1 min-w-0">
+                        <Link href={ROUTES.THREAD(message.thread.slug)} prefetch={false} className="flex-1 min-w-0">
                           <p className="text-sm text-ink line-clamp-3 group-hover:text-brand">{highlight(message.content.slice(0, 280), query)}</p>
                           <p className="text-xs text-muted-foreground mt-2">
                             by {message.sender.name || 'Unknown'} in <span className="font-medium">{message.thread.name}</span>

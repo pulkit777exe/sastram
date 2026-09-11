@@ -4,12 +4,15 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { AppError } from '@/lib/utils/errors';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 export async function GET(request: NextRequest) {
   const requestId = request.headers.get('x-request-id') ?? '';
 
   try {
     const session = await authenticateRequest();
+    const rl = await rateLimit({ key: `threads:${session.user.id}`, type: 'api' });
+    if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
     const threads = await handleListThreads(session);
     return NextResponse.json(ok(threads, requestId));
   } catch (error) {

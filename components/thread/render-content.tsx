@@ -1,7 +1,12 @@
 'use client';
 
 import React from 'react';
-import { CodeRunner } from '@/components/thread/code-runner';
+import dynamic from 'next/dynamic';
+
+const CodeRunner = dynamic(() => import('@/components/thread/code-runner').then((m) => m.CodeRunner), {
+  ssr: false,
+  loading: () => <div className="h-20 animate-pulse rounded-control bg-muted border border-line" />,
+});
 
 // Inline formatting regexes — named constants with comments for readability
 // Matches complete **bold** pairs — a lone '**' during streaming is left as-is

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { isSafePublicUrl } from '@/lib/services/content-safety';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 const querySchema = z.object({ url: z.string().url() });
 
@@ -70,6 +71,9 @@ function parseOg(html: string, url: string) {
 }
 
 export const GET = withErrorHandling(async (request: NextRequest) => {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'anon';
+  const rl = await rateLimit({ key: `link-preview:${ip}`, type: 'api' });
+  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many link previews'), { status: HTTP_STATUS.RATE_LIMITED });
   const { searchParams } = new URL(request.url);
   const rawUrl = searchParams.get('url');
   const parsed = querySchema.safeParse({ url: rawUrl });

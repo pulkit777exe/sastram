@@ -8,6 +8,7 @@ import TimeAgo from '@/components/ui/TimeAgo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
+import { BulkSaveButton } from '@/components/collections/BulkSaveButton';
 
 function tokenize(q: string): string[] {
   return q.toLowerCase().trim().split(/\s+/).map((t) => t.replace(/[^a-z0-9_-]/g, '')).filter((t) => t.length >= 2).slice(0, 5);
@@ -31,12 +32,17 @@ function matches(thread: ThreadSummary, tokens: string[]): boolean {
 
 export function ThreadListFilter({ threads }: { threads: ThreadSummary[] }) {
   const [query, setQuery] = React.useState('');
+  const deferredQuery = React.useDeferredValue(query);
+  const isStale = deferredQuery !== query;
 
-  const tokens = React.useMemo(() => tokenize(query), [query]);
+  const tokens = React.useMemo(() => tokenize(deferredQuery), [deferredQuery]);
   const filtered = React.useMemo(() => {
     if (tokens.length === 0) return threads;
     return threads.filter((t) => matches(t, tokens));
   }, [threads, tokens]);
+  const [visibleCount, setVisibleCount] = React.useState(30);
+  React.useEffect(() => { setVisibleCount(30); }, [tokens]);
+  const visible = filtered.slice(0, visibleCount);
 
   return (
     <div className="space-y-3">
@@ -58,7 +64,13 @@ export function ThreadListFilter({ threads }: { threads: ThreadSummary[] }) {
           </div>
           <span className="text-xs text-ink-3 whitespace-nowrap">
             {tokens.length ? `${filtered.length} of ${threads.length}` : `${threads.length} threads`}
+            {isStale && ' · filtering…'}
           </span>
+        </div>
+      )}
+      {filtered.length > 1 && (
+        <div className="flex justify-end">
+          <BulkSaveButton items={filtered.map((t) => ({ threadId: t.id }))} label={`Save all ${filtered.length}`} />
         </div>
       )}
       {filtered.length === 0 ? (
@@ -68,8 +80,8 @@ export function ThreadListFilter({ threads }: { threads: ThreadSummary[] }) {
           <Button variant="outline" size="sm" className="mt-3 h-7 text-xs" onClick={() => setQuery('')}>Clear filter</Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
-          {filtered.map((thread) => {
+        <div className={`overflow-hidden rounded-card border border-line bg-surface shadow-card ${isStale ? 'opacity-60' : ''}`}>
+          {visible.map((thread) => {
             const isVerified = !!thread.verifiedAt;
             return (
               <div
@@ -78,6 +90,7 @@ export function ThreadListFilter({ threads }: { threads: ThreadSummary[] }) {
               >
                 <Link
                   href={`/dashboard/threads/${thread.slug}`}
+                  prefetch={false}
                   className="flex flex-1 min-w-0 items-start gap-3 focus-visible:outline-none"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-brand/15 bg-brand/10 text-brand transition-colors group-hover:bg-brand group-hover:text-primary-foreground">
@@ -86,7 +99,7 @@ export function ThreadListFilter({ threads }: { threads: ThreadSummary[] }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex min-w-0 items-center gap-2 flex-wrap">
                       <h3 className="text-sm font-semibold text-ink truncate group-hover:text-brand transition-colors">
-                        {highlight(thread.name, query)}
+                        {highlight(thread.name, deferredQuery)}
                       </h3>
                       {isVerified && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -98,7 +111,7 @@ export function ThreadListFilter({ threads }: { threads: ThreadSummary[] }) {
                       )}
                     </div>
                     {thread.description && (
-                      <p className="text-xs text-ink-3 mt-1 line-clamp-1">{highlight(thread.description, query)}</p>
+                      <p className="text-xs text-ink-3 mt-1 line-clamp-1">{highlight(thread.description, deferredQuery)}</p>
                     )}
                     <div className="mt-2 flex items-center gap-3 text-xs text-ink-3">
                       <span className="flex items-center gap-1">
@@ -118,6 +131,13 @@ export function ThreadListFilter({ threads }: { threads: ThreadSummary[] }) {
               </div>
             );
           })}
+          {filtered.length > visibleCount && (
+            <div className="p-3 flex justify-center border-t border-line/60">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setVisibleCount((c) => c + 30)}>
+                Show {Math.min(30, filtered.length - visibleCount)} more · {filtered.length - visibleCount} left
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
