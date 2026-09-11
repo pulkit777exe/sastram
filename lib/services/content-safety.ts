@@ -60,6 +60,8 @@ export function sanitizeContent(content: string): string {
 const PRIVATE_IP_RE =
   /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|0\.0\.0\.0|::1|fc00:|fe80:|169\.254\.|::ffff:)/i;
 
+const SUSPICIOUS_SUFFIX_RE = /\.(nip\.io|xip\.io|sslip\.io|trycloudflare\.com)$/i;
+
 export function isSafePublicUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
@@ -68,7 +70,18 @@ export function isSafePublicUrl(raw: string): boolean {
     if (PRIVATE_IP_RE.test(host)) return false;
     if (host === 'localhost' || host.endsWith('.local')) return false;
     if (host === 'metadata.google.internal' || host === 'metadata.google' || host.endsWith('.internal')) return false;
+    if (SUSPICIOUS_SUFFIX_RE.test(host)) return false;
+    // Block single-value IP encodings (decimal, hex, octal) that bypass string checks
+    if (/^\d+$/.test(host)) return false;
+    if (/^0x[0-9a-f]+$/i.test(host)) return false;
+    if (/^0[0-7]+$/.test(host)) return false;
     if (/^0x[0-9a-f]+\.0x[0-9a-f]+/i.test(host) || /^0[0-7]+\.[0-9.]+/.test(host)) return false;
+    // Block 0x7f.0.0.1 style and 2130706433 decimal already covered; also check dotted hex/octal
+    if (/^(0x[0-9a-f]+\.)+0x[0-9a-f]+$/i.test(host)) return false;
+    if (/^(0[0-7]+\.)+0*[0-7]+$/.test(host) && host.includes('.')) {
+      // Dotted octal like 0177.0.0.1 — already partially covered but keep explicit
+      return false;
+    }
     return true;
   } catch {
     return false;

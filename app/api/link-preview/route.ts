@@ -107,51 +107,37 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   }
 
   try {
-    // Use manual redirect to validate final destination and prevent SSRF via redirect to private IP/localhost
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'SastramBot/1.0 (+https://sastram.wtfpulkit.dev)', Accept: 'text/html,application/xhtml+xml' },
-      signal: AbortSignal.timeout(5000),
-      redirect: 'manual',
-    });
-    // Handle redirect manually: validate Location header before following
-    if (res.status >= 300 && res.status < 400) {
+    // Manual redirect loop — validate every hop before fetching, never use redirect:follow
+    let currentUrl = url;
+    let res: Response | null = null;
+    for (let hop = 0; hop < 3; hop++) {
+      if (!isSafePublicUrl(currentUrl)) {
+        return NextResponse.json(fail('VALIDATION_ERROR', 'Redirect to private URL blocked'), { status: HTTP_STATUS.BAD_REQUEST });
+      }
+      res = await fetch(currentUrl, {
+        headers: { 'User-Agent': 'SastramBot/1.0 (+https://sastram.wtfpulkit.dev)', Accept: 'text/html,application/xhtml+xml' },
+        signal: AbortSignal.timeout(5000),
+        redirect: 'manual',
+      });
+      if (res.status < 300 || res.status >= 400) break;
       const location = res.headers.get('location');
-      if (location) {
-        let redirectUrl: string;
-        try {
-          redirectUrl = new URL(location, url).toString();
-        } catch {
-          return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid redirect URL'), { status: HTTP_STATUS.BAD_REQUEST });
-        }
-        if (!isSafePublicUrl(redirectUrl)) {
-          return NextResponse.json(fail('VALIDATION_ERROR', 'Redirect to private URL blocked'), { status: HTTP_STATUS.BAD_REQUEST });
-        }
-        // Safe redirect — follow once with validation on final URL
-        const finalRes = await fetch(redirectUrl, {
-          headers: { 'User-Agent': 'SastramBot/1.0 (+https://sastram.wtfpulkit.dev)', Accept: 'text/html,application/xhtml+xml' },
-          signal: AbortSignal.timeout(5000),
-          redirect: 'follow',
-        });
-        if (!finalRes.ok) throw new Error(`fetch ${finalRes.status}`);
-        if (finalRes.url && !isSafePublicUrl(finalRes.url)) {
-          return NextResponse.json(fail('VALIDATION_ERROR', 'Redirect to private URL blocked'), { status: HTTP_STATUS.BAD_REQUEST });
-        }
-        const html = await finalRes.text();
-        const og = parseOg(html.slice(0, 25000), finalRes.url || redirectUrl);
-        if (exaTitle) og.title = exaTitle;
-        if (exaDescription) og.description = exaDescription;
-        if (exaImage && !og.images.includes(exaImage)) og.images.unshift(exaImage);
-        if (exaImage && !og.image) og.image = exaImage;
-        return NextResponse.json(ok(og));
+      if (!location) break;
+      try {
+        currentUrl = new URL(location, currentUrl).toString();
+      } catch {
+        return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid redirect URL'), { status: HTTP_STATUS.BAD_REQUEST });
+      }
+      if (hop === 2) {
+        return NextResponse.json(fail('VALIDATION_ERROR', 'Too many redirects'), { status: HTTP_STATUS.BAD_REQUEST });
       }
     }
+    if (!res) throw new Error('No response');
     if (!res.ok) throw new Error(`fetch ${res.status}`);
-    // For non-redirect follow chains, fetch already validated initial URL; also verify final res.url if redirected via follow edge
-    if (res.url && res.url !== url && !isSafePublicUrl(res.url)) {
+    if (res.url && res.url !== currentUrl && !isSafePublicUrl(res.url)) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Redirect to private URL blocked'), { status: HTTP_STATUS.BAD_REQUEST });
     }
     const html = await res.text();
-    const og = parseOg(html.slice(0, 25000), res.url || url);
+    const og = parseOg(html.slice(0, 25000), res.url || currentUrl);
     // Merge Exa data (better text) with OG images
     if (exaTitle) og.title = exaTitle;
     if (exaDescription) og.description = exaDescription;
