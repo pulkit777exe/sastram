@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Bookmark, Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { getCollectionsCache, setCollectionsCache, invalidateCollectionsCache } from './collections-cache';
 
-export function CollectionSaveButton({ threadId, sessionId, messageId, metadata, label = 'Save' }: { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown; label?: string }) {
+export const CollectionSaveButton = memo(function CollectionSaveButton({ threadId, sessionId, messageId, metadata, label = 'Save' }: { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown; label?: string }) {
   const [open, setOpen] = useState(false);
   const [collections, setCollections] = useState<{ id: string; title: string }[]>([]);
   const [newTitle, setNewTitle] = useState('');
@@ -180,7 +180,7 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
         <Bookmark size={12} /> {label}
       </Button>
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-card border border-line bg-surface p-2 shadow-xl">
+        <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-card border border-line bg-surface p-2 shadow-overlay">
           <p className="px-2 pb-2 text-xs font-medium text-ink">Save to collection</p>
           <div className="flex gap-1.5 px-1 pb-2">
             <input
@@ -208,22 +208,22 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
                     onClick={() => addTo(c.id)}
                     className={cn(
                       'flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-xs hover:bg-hover',
-                      isSaved && 'bg-emerald-50/60'
+                      isSaved && 'bg-green-tint'
                     )}
                     disabled={saving}
                     title={isSaved ? 'Already saved — click to try again' : undefined}
                   >
-                    <Bookmark size={12} className={cn(isSaved ? 'text-emerald-600' : 'text-ink-3')} />
-                    <span className={cn('truncate', isSaved && 'text-emerald-700')}>{c.title}</span>
-                    <Check size={12} className={cn('ml-auto', isSaved ? 'opacity-100 text-emerald-600' : 'opacity-0')} />
+                    <Bookmark size={12} className={cn(isSaved ? 'text-green' : 'text-ink-3')} />
+                    <span className={cn('truncate', isSaved && 'text-green')}>{c.title}</span>
+                    <Check size={12} className={cn('ml-auto', isSaved ? 'opacity-100 text-green' : 'opacity-0')} />
                   </button>
                 );
               })
             )}
             {!loading && collections.length === 0 && (
               <div className="flex flex-col items-center justify-center py-4 text-center">
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mb-2">
-                  <Bookmark size={14} className="text-muted-foreground" />
+                <div className="w-8 h-8 rounded-full bg-field flex items-center justify-center mb-2">
+                  <Bookmark size={14} className="text-ink-2" />
                 </div>
                 <p className="text-xs font-medium text-ink">No collections yet</p>
                 <p className="text-xs text-ink-3 mt-0.5">Create one above to get started</p>
@@ -234,4 +234,4 @@ export function CollectionSaveButton({ threadId, sessionId, messageId, metadata,
       )}
     </div>
   );
-}
+});

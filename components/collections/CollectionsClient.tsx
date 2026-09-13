@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toasts } from '@/lib/utils/toast';
 import { useRouter } from 'next/navigation';
+import { invalidateCollectionsCache } from './collections-cache';
 
 type Collection = { id: string; title: string; _count: { items: number }; updatedAt: Date | string };
 
@@ -68,6 +69,7 @@ export function CollectionsClient({ initial }: { initial: Collection[] }) {
       const res = await fetch(`/api/collections/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       toasts.success('Collection deleted');
+      invalidateCollectionsCache();
       setCollections((prev) => prev.filter((c) => c.id !== id));
       router.refresh();
     } catch {
@@ -105,8 +107,8 @@ export function CollectionsClient({ initial }: { initial: Collection[] }) {
       {filtered.length === 0 ? (
         query ? (
           <div className="flex flex-col items-center py-12 text-center rounded-card border border-dashed border-line bg-surface">
-            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
-              <Search size={18} className="text-muted-foreground" />
+            <div className="w-10 h-10 rounded-full bg-field flex items-center justify-center mb-3">
+              <Search size={18} className="text-ink-2" />
             </div>
             <p className="text-sm font-medium text-ink">No matches for “{query}”</p>
             <p className="text-xs text-ink-3 mt-1">Try a different keyword</p>
@@ -141,7 +143,7 @@ export function CollectionsClient({ initial }: { initial: Collection[] }) {
                   <div className={`w-10 h-10 rounded-control bg-gradient-to-br ${hashToGradient(c.title)} flex items-center justify-center shadow-sm`}>
                     <FolderOpen size={18} className="text-white" />
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-ink-3">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-field px-2.5 py-1 text-xs font-medium text-ink-3">
                     <FileText size={12}/> {c._count.items}
                   </span>
                 </div>

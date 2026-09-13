@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Bookmark, Check, Plus, Loader2, BookmarkPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
@@ -8,7 +8,7 @@ import { getCollectionsCache, setCollectionsCache, invalidateCollectionsCache } 
 
 type BulkItem = { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown };
 
-export function BulkSaveButton({ items, label }: { items: BulkItem[]; label?: string }) {
+export const BulkSaveButton = memo(function BulkSaveButton({ items, label }: { items: BulkItem[]; label?: string }) {
   const [open, setOpen] = useState(false);
   const [collections, setCollections] = useState<{ id: string; title: string }[]>([]);
   const [newTitle, setNewTitle] = useState('');
@@ -159,7 +159,7 @@ export function BulkSaveButton({ items, label }: { items: BulkItem[]; label?: st
         <BookmarkPlus size={12} /> {displayLabel}
       </Button>
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-card border border-line bg-surface p-2 shadow-xl">
+        <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-card border border-line bg-surface p-2 shadow-overlay">
           <p className="px-2 pb-2 text-xs font-medium text-ink">Save all {count} to collection</p>
           <div className="flex gap-1.5 px-1 pb-2">
             <input
@@ -199,8 +199,8 @@ export function BulkSaveButton({ items, label }: { items: BulkItem[]; label?: st
             )}
             {!loading && collections.length === 0 && (
               <div className="flex flex-col items-center justify-center py-4 text-center">
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mb-2">
-                  <Bookmark size={14} className="text-muted-foreground" />
+                <div className="w-8 h-8 rounded-full bg-field flex items-center justify-center mb-2">
+                  <Bookmark size={14} className="text-ink-2" />
                 </div>
                 <p className="text-xs font-medium text-ink">No collections yet</p>
                 <p className="text-xs text-ink-3 mt-0.5">Create one above to get started</p>
@@ -211,4 +211,4 @@ export function BulkSaveButton({ items, label }: { items: BulkItem[]; label?: st
       )}
     </div>
   );
-}
+});

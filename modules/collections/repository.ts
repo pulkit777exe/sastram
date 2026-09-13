@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AppError } from '@/lib/utils/errors';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
-import type { Role } from '@prisma/client';
+import { Prisma, type Role } from '@prisma/client';
+
+export const MAX_COLLECTION_METADATA_BYTES = 100_000;
 
 export async function createCollection(userId: string, title: string) {
   try {
@@ -65,6 +67,29 @@ export async function getCollection(collectionId: string, userId: string, opts?:
 export async function addToCollection(collectionId: string, threadId?: string, sessionId?: string, messageId?: string, metadata?: unknown) {
   if (!threadId && !sessionId && !messageId && !metadata) {
     throw new AppError('threadId or sessionId or messageId or metadata required', 'VALIDATION_ERROR', 400);
+  }
+  if (metadata !== undefined) {
+    let size = 0;
+    try {
+      size = JSON.stringify(metadata).length;
+    } catch {
+      throw new AppError('Invalid metadata', 'VALIDATION_ERROR', 400);
+    }
+    if (size > MAX_COLLECTION_METADATA_BYTES) {
+      throw new AppError('Metadata too large', 'VALIDATION_ERROR', 400);
+    }
+  }
+  // Metadata-only saves have no FK to dedupe on — enforce exact-metadata uniqueness
+  // so the 409 conflict path (and saved-checkmark prefetch) stay honest for
+  // graph/canvas/summary/ai_synthesis snapshots.
+  if (metadata !== undefined && !threadId && !sessionId && !messageId) {
+    const existing = await prisma.collectionItem.findFirst({
+      where: { collectionId, metadata: { equals: metadata as Prisma.InputJsonValue } },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new AppError('Already saved to this collection', 'CONFLICT', 409);
+    }
   }
   try {
     return await prisma.collectionItem.create({

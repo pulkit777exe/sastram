@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Sparkles, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { ConflictInfo, Citation, Source } from '@/modules/ai-search/types';
@@ -42,6 +43,11 @@ export function SynthesisCard({
 }: SynthesisCardProps) {
   const typeConfig = QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
 
+  const saveMetadata = useMemo(
+    () => ({ type: 'ai_synthesis', text, queryType, sourceCount, sources: sources.slice(0, 3) }),
+    [text, queryType, sourceCount, sources]
+  );
+
   if (!text) {
     return (
       <div className="bg-surface border border-line rounded-card p-5 text-center text-sm text-ink-2 shadow-card">
@@ -76,7 +82,7 @@ export function SynthesisCard({
         </div>
 
         <div className="flex items-center gap-2">
-          <CollectionSaveButton metadata={{ type: 'ai_synthesis', text, queryType, sourceCount, sources: sources.slice(0, 3) }} label="Save" />
+          <CollectionSaveButton metadata={saveMetadata} label="Save" />
           <Badge variant={typeConfig.variant} className="px-2 py-0.5 text-[11px] font-medium rounded-full">
             {typeConfig.label}
           </Badge>

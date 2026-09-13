@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
-import { removeFromCollectionOwned } from '@/modules/collections/repository';
+import { removeFromCollectionOwned, MAX_COLLECTION_METADATA_BYTES } from '@/modules/collections/repository';
 import { isCollectionsEnabled } from '@/modules/collections/enabled';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { z } from 'zod';
 
-const addSchema = z.object({ threadId: z.string().cuid().optional(), sessionId: z.string().cuid().optional(), messageId: z.string().cuid().optional(), metadata: z.unknown().optional() }).refine((d) => d.threadId || d.sessionId || d.messageId || d.metadata, 'threadId or sessionId or messageId or metadata required');
+const addSchema = z
+  .object({ threadId: z.string().cuid().optional(), sessionId: z.string().cuid().optional(), messageId: z.string().cuid().optional(), metadata: z.unknown().optional() })
+  .refine((d) => d.threadId || d.sessionId || d.messageId || d.metadata, 'threadId or sessionId or messageId or metadata required')
+  .refine((d) => {
+    if (d.metadata === undefined) return true;
+    try {
+      return JSON.stringify(d.metadata).length <= MAX_COLLECTION_METADATA_BYTES;
+    } catch {
+      return false;
+    }
+  }, 'Metadata too large');
 const itemIdSchema = z.string().cuid();
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {

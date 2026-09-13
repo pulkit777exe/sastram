@@ -4,6 +4,7 @@ import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-respon
 import { isCollectionsEnabled } from '@/modules/collections/enabled';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { MAX_COLLECTION_METADATA_BYTES } from '@/modules/collections/repository';
 import { Prisma } from '@prisma/client';
 
 function parsePayloadFromSearchParams(searchParams: URLSearchParams) {
@@ -13,7 +14,7 @@ function parsePayloadFromSearchParams(searchParams: URLSearchParams) {
   const metadataRaw = searchParams.get('metadata');
   let metadata: unknown = undefined;
   if (metadataRaw) {
-    if (metadataRaw.length > 5000) return { threadId, sessionId, messageId, metadata: undefined };
+    if (metadataRaw.length > MAX_COLLECTION_METADATA_BYTES) return { threadId, sessionId, messageId, metadata: undefined };
     try {
       metadata = JSON.parse(metadataRaw);
     } catch {
@@ -86,7 +87,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   if (payload.metadata !== undefined) {
     try {
       const s = JSON.stringify(payload.metadata);
-      if (s.length > 5000) return NextResponse.json(fail('VALIDATION_ERROR', 'Metadata too large'), { status: HTTP_STATUS.BAD_REQUEST });
+      if (s.length > MAX_COLLECTION_METADATA_BYTES) return NextResponse.json(fail('VALIDATION_ERROR', 'Metadata too large'), { status: HTTP_STATUS.BAD_REQUEST });
     } catch {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid metadata'), { status: HTTP_STATUS.BAD_REQUEST });
     }
