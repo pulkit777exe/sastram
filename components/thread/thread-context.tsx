@@ -57,10 +57,3 @@ export function useThreadUIStateContext(): ThreadUIStateContextValue {
   }
   return ctx;
 }
-
-// Combined hook for components that need both contexts (e.g., MessageRow)
-export function useThreadContext(): ThreadDataContextValue & ThreadUIStateContextValue {
-  const data = useThreadDataContext();
-  const ui = useThreadUIStateContext();
-  return { ...data, ...ui };
-}

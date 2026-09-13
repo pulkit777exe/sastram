@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import LoginPageClient from './LoginPageClient';
 import type { Metadata } from 'next';
@@ -14,5 +15,9 @@ export default async function LoginPage() {
     redirect('/dashboard');
   }
 
-  return <LoginPageClient />;
+  return (
+    <Suspense fallback={null}>
+      <LoginPageClient />
+    </Suspense>
+  );
 }

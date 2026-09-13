@@ -129,19 +129,32 @@ export async function getThreadsByTag(tagId: string) {
         messageCount: true,
         memberCount: true,
         tags: { select: { tag: { select: { name: true, slug: true, color: true } } } },
-        messages: { select: { senderId: true, createdAt: true } },
         _count: { select: { messages: true } },
       },
       orderBy: { updatedAt: 'desc' },
       take: 50,
     });
 
+    // Count active (non-null) senders per thread without pulling every message row.
+    const senderPairs = await prisma.message.groupBy({
+      by: ['threadId', 'senderId'],
+      where: {
+        senderId: { not: null },
+        thread: { tags: { some: { tagId } }, deletedAt: null },
+      },
+    });
+    const activeUsersByThread = new Map<string, number>();
+    for (const row of senderPairs) {
+      if (!row.senderId) continue;
+      activeUsersByThread.set(row.threadId, (activeUsersByThread.get(row.threadId) ?? 0) + 1);
+    }
+
     return threads.map((t) => ({
       id: t.id,
       slug: t.slug,
       name: t.name,
       description: t.description ?? '',
-      activeUsers: new Set(t.messages.map((m) => m.senderId)).size,
+      activeUsers: activeUsersByThread.get(t.id) ?? 0,
       messagesCount: t._count.messages,
       trending: t._count.messages > 10,
       tags: t.tags.map((rel) => rel.tag.name),

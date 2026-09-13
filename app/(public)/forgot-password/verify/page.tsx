@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { toasts } from '@/lib/utils/toast';
 import { SerifHeading } from '@/components/layout/serif-heading';
 import { clientLogger } from '@/lib/utils/client-logger';
 
-export default function ForgotPasswordVerifyPage() {
+function ForgotPasswordVerifyPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawEmail = searchParams.get('email');
@@ -205,5 +205,13 @@ export default function ForgotPasswordVerifyPage() {
         </Button>
       </div>
     </main>
+  );
+}
+
+export default function ForgotPasswordVerifyPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordVerifyPageInner />
+    </Suspense>
   );
 }

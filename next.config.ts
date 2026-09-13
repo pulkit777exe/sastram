@@ -34,6 +34,9 @@ const baseNextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
+  // React Compiler (stable in Next 16) auto-memoizes components; the native Rust
+  // port runs inside Turbopack so no babel-plugin-react-compiler dependency is needed.
+  reactCompiler: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
@@ -62,6 +65,8 @@ const baseNextConfig: NextConfig = {
   ],
   experimental: {
     optimizePackageImports: ['lucide-react', '@tanstack/react-virtual', 'date-fns', 'framer-motion'],
+    // Native Rust React Compiler inside Turbopack (avoids the slower Babel transform).
+    turbopackRustReactCompiler: true,
   },
 
   images: {

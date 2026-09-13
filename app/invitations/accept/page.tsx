@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 type Status = 'loading' | 'checking-auth' | 'accepting' | 'done' | 'error';
 
-export default function InvitationAcceptPage() {
+function InvitationAcceptPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteId = searchParams.get('id');
@@ -108,8 +108,8 @@ export default function InvitationAcceptPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 text-center space-y-4">
-          <h1 className="text-xl font-bold text-foreground">Invitation</h1>
-          <p className="text-sm text-red-600">{error}</p>
+          <h1 className="text-xl font-bold text-ink">Invitation</h1>
+          <p className="text-sm text-red">{error}</p>
           <Button variant="outline"
             onClick={() => router.push('/dashboard')}
           >
@@ -123,8 +123,8 @@ export default function InvitationAcceptPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 text-center space-y-4">
-        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin mx-auto text-ink-2" />
+        <p className="text-sm text-ink-2">
           {status === 'loading' && 'Loading invitation...'}
           {status === 'checking-auth' && 'Checking your account...'}
           {status === 'accepting' && 'Accepting invitation...'}
@@ -132,5 +132,13 @@ export default function InvitationAcceptPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function InvitationAcceptPage() {
+  return (
+    <Suspense fallback={null}>
+      <InvitationAcceptPageInner />
+    </Suspense>
   );
 }
