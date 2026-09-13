@@ -44,8 +44,8 @@ async function ThreadList({ userId, userRole }: { userId: string; userRole: Role
   if (threads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center rounded-card border border-dashed border-line bg-surface">
-        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
-          <Hash size={22} className="text-muted-foreground" />
+        <div className="w-14 h-14 rounded-full bg-field flex items-center justify-center mb-4">
+          <Hash size={22} className="text-ink-2" />
         </div>
         <p className="text-lg font-semibold text-ink">No threads yet</p>
         <p className="text-sm text-ink-3 mt-1 max-w-sm">Create a thread to start a discussion — @sai will help track it.</p>

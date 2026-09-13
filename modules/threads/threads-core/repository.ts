@@ -90,11 +90,11 @@ async function buildThreadWhereClause(params: {
 }
 
 function mapThreadsToSummaries(
-  threadRows: Array<ThreadRecord & { _count: { messages: number } }>,
+  threadRows: ThreadRecord[],
   activeUsers: Map<string, number>
 ): ThreadSummary[] {
   return threadRows.map((thread) => {
-    const count = thread._count.messages;
+    const count = thread.messageCount;
     const active = activeUsers.get(thread.id) ?? 0;
     return buildThreadDTO(thread as ThreadRecord, count, active);
   });
@@ -107,10 +107,6 @@ export const listThreads = cache(
     const where = await buildThreadWhereClause({ memberUserId, memberRole, threadIds });
     const orderBy = getThreadOrderBy(sortBy);
 
-    const messageCountSelect = {
-      _count: { select: { messages: { where: { deletedAt: null } } } },
-    };
-
     const clampedPage = Math.max(1, Math.min(page, 100));
     const clampedPageSize = Math.max(1, Math.min(pageSize, 50));
 
@@ -119,17 +115,13 @@ export const listThreads = cache(
       const totalItemsPromise = prisma.thread.count({ where });
       const threadRowsPromise = prisma.thread.findMany({
         where,
-        include: messageCountSelect,
         orderBy,
         take: trendingTake + (clampedPage - 1) * clampedPageSize,
       });
       const [totalItems, threadRows] = await Promise.all([totalItemsPromise, threadRowsPromise]);
       const threadIdsForActive = threadRows.map((t) => t.id);
       const activeUsers = await countActiveUsersByThread(threadIdsForActive);
-      const mappedThreads = mapThreadsToSummaries(
-        threadRows as Array<ThreadRecord & { _count: { messages: number } }>,
-        activeUsers
-      );
+      const mappedThreads = mapThreadsToSummaries(threadRows, activeUsers);
       mappedThreads.sort((a, b) => trendingScore(b) - trendingScore(a));
       const paginated = mappedThreads.slice((clampedPage - 1) * clampedPageSize, clampedPage * clampedPageSize);
       const totalPages = Math.ceil(totalItems / clampedPageSize);
@@ -149,7 +141,6 @@ export const listThreads = cache(
     const totalItemsPromise = prisma.thread.count({ where });
     const threadRowsPromise = prisma.thread.findMany({
       where,
-      include: messageCountSelect,
       orderBy,
       skip: (clampedPage - 1) * clampedPageSize,
       take: clampedPageSize,
@@ -159,10 +150,7 @@ export const listThreads = cache(
     const threadIdsForActive = threadRows.map((t) => t.id);
     const activeUsers = await countActiveUsersByThread(threadIdsForActive);
 
-    const mappedThreads = mapThreadsToSummaries(
-      threadRows as Array<ThreadRecord & { _count: { messages: number } }>,
-      activeUsers
-    );
+    const mappedThreads = mapThreadsToSummaries(threadRows, activeUsers);
 
     const totalPages = Math.ceil(totalItems / clampedPageSize);
 
@@ -186,7 +174,6 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
     include: {
       _count: {
         select: {
-          messages: { where: { deletedAt: null } },
           subscriptions: true,
         },
       },
@@ -199,7 +186,7 @@ export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail 
 
   return buildThreadDetailDTO(
     row as ThreadRecord,
-    row._count.messages,
+    row.messageCount,
     activeUsers.get(row.id) ?? 0,
     row.aiSummary,
     row._count.subscriptions

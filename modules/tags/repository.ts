@@ -129,7 +129,6 @@ export async function getThreadsByTag(tagId: string) {
         messageCount: true,
         memberCount: true,
         tags: { select: { tag: { select: { name: true, slug: true, color: true } } } },
-        _count: { select: { messages: true } },
       },
       orderBy: { updatedAt: 'desc' },
       take: 50,
@@ -155,8 +154,8 @@ export async function getThreadsByTag(tagId: string) {
       name: t.name,
       description: t.description ?? '',
       activeUsers: activeUsersByThread.get(t.id) ?? 0,
-      messagesCount: t._count.messages,
-      trending: t._count.messages > 10,
+      messagesCount: t.messageCount,
+      trending: t.messageCount > 10,
       tags: t.tags.map((rel) => rel.tag.name),
     }));
   } catch (error) {

@@ -122,7 +122,6 @@ export async function searchThreads(
         where,
         include: {
           creator: { select: { id: true, name: true, image: true } },
-          _count: { select: { messages: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: candidateLimit,

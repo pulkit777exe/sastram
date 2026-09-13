@@ -133,8 +133,6 @@ self.onmessage=async(e)=>{
 
   return new Promise((resolve) => {
     let settled = false;
-    // eslint-disable-next-line prefer-const
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const cleanup = () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -159,7 +157,7 @@ self.onmessage=async(e)=>{
       resolve({ output: truncateOutput(res.output), error: res.error });
     };
 
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       done({ output: '', error: 'Execution timeout (3s)' });
     }, 3000);
 

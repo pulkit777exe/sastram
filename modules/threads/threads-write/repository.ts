@@ -30,7 +30,6 @@ export async function createThread(payload: {
     },
     include: {
       messages: true,
-      _count: { select: { messages: true } },
     },
   });
 
@@ -47,7 +46,7 @@ export async function createThread(payload: {
 
   return {
     thread: record,
-    messageCount: thread._count.messages,
+    messageCount: thread.messageCount,
     initialMessage,
   };
 }
