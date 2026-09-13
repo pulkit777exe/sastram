@@ -1,5 +1,5 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { Analytics } from '@vercel/analytics/next';
@@ -26,9 +26,73 @@ const instrumentSerif = Instrument_Serif({
   adjustFontFallback: true,
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
 export const metadata: Metadata = {
-  title: 'Sastram - A Modern Sai Powered Forum',
-  description: 'Sastram is the modern forum for people with power of Sai.',
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: 'Sastram - AI-Powered Discussion & Research Platform',
+    template: '%s | Sastram',
+  },
+  description:
+    'Sastram is an AI-powered discussion and research platform. Verified resolutions, thread DNA, AI-assisted search, and collaborative collections.',
+  applicationName: 'Sastram',
+  authors: [{ name: 'Sastram' }],
+  category: 'technology',
+  keywords: [
+    'forum',
+    'discussion',
+    'research',
+    'AI search',
+    'thread DNA',
+    'verified resolution',
+    'knowledge base',
+  ],
+  openGraph: {
+    type: 'website',
+    url: siteUrl,
+    siteName: 'Sastram',
+    title: 'Sastram - AI-Powered Discussion & Research Platform',
+    description:
+      'Sastram is an AI-powered discussion and research platform. Verified resolutions, thread DNA, AI-assisted search, and collaborative collections.',
+    images: [
+      {
+        url: '/sastram-image-light.png',
+        width: 1200,
+        height: 630,
+        alt: 'Sastram - AI-Powered Discussion & Research Platform',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Sastram - AI-Powered Discussion & Research Platform',
+    description:
+      'Sastram is an AI-powered discussion and research platform. Verified resolutions, thread DNA, AI-assisted search, and collaborative collections.',
+    images: ['/sastram-image-light.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  icons: {
+    icon: '/favicon.ico',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f0f14' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
