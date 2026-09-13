@@ -95,10 +95,22 @@ warning(
   `AI_PROVIDER=${env.AI_PROVIDER ?? 'gemini'} has no matching provider key; AI features will be disabled`,
 );
 
+const databaseUrl = env.DATABASE_URL ?? '';
+const isNeon = databaseUrl.includes('neon.tech');
+const isPooledHost = databaseUrl.includes('-pooler.');
+const isPgbouncerFlagged = databaseUrl.includes('pgbouncer=true');
+const unpooledUrl = env.DATABASE_URL_UNPOOLED ?? '';
+
 warning(
   'neon-pooling',
-  !env.DATABASE_URL?.includes('neon.tech') || env.DATABASE_URL.includes('pgbouncer=true'),
-  'Neon production DATABASE_URL should include pgbouncer=true for pooled app traffic',
+  !isNeon || isPooledHost || isPgbouncerFlagged,
+  'Neon production DATABASE_URL should use the pooled (-pooler host or pgbouncer=true) endpoint for app traffic',
+);
+
+warning(
+  'neon-migrations-direct',
+  !isNeon || Boolean(unpooledUrl) || !(isPooledHost || isPgbouncerFlagged),
+  'Neon migrations run over the pooled connection; set DATABASE_URL_UNPOOLED to the direct endpoint',
 );
 
 const failures = checks.filter((check) => !check.ok && check.severity === 'error');

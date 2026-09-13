@@ -217,7 +217,8 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 ## Environment Variables
 
 Required in `.env`:
-- `DATABASE_URL` - PostgreSQL connection (Neon)
+- `DATABASE_URL` - PostgreSQL connection (Neon; keep the pooled `-pooler`/`pgbouncer=true` endpoint for app traffic)
+- `DATABASE_URL_UNPOOLED` - Neon **direct** endpoint (no `-pooler`, no `pgbouncer=true`). Used by Prisma CLI for schema migrations — NEVER run `prisma migrate`/`db push` over the pooled URL (fails with "prepared statement s0 already exists", non-persistent `SET search_path`, or SQLSTATE 25006). If unset, `prisma.config.ts` derives the direct URL by stripping `-pooler`/`pgbouncer=true` from `DATABASE_URL`.
 - `BETTER_AUTH_SECRET` - Auth secret (32+ chars)
 - `BETTER_AUTH_URL` - Auth base URL
 - `NEXT_PUBLIC_APP_URL` - Public URL
