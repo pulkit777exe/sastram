@@ -137,10 +137,9 @@ function StatusPill({ status }: { status: TaskStatus }) {
   return null;
 }
 
-function getTaskBorderRadius(isList: boolean, isOpen: boolean): number {
-  if (isList) return 0;
-  if (isOpen) return 14;
-  return 22;
+function getTaskRadiusClass(isList: boolean, isOpen: boolean): string {
+  if (isList) return 'rounded-none';
+  return isOpen ? 'rounded-card' : 'rounded-full';
 }
 
 export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
@@ -153,7 +152,7 @@ export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
   return (
     <div
       className={`flex w-full flex-col ${
-        list ? 'gap-0 self-start overflow-hidden rounded-card bg-surface shadow-card' : 'min-h-[196px] gap-2'
+        list ? 'gap-0 self-start overflow-hidden rounded-card border border-line bg-surface shadow-card' : 'min-h-[196px] gap-2'
       }`}
     >
       {tasks.map((task, i) => {
@@ -162,10 +161,9 @@ export function TaskRows({ tasks, variant = 'Capsules' }: TaskRowsProps) {
           <div
             key={task.key}
             className={`self-stretch overflow-hidden transition-[border-radius] duration-300 ${
-              list ? 'border-b border-line last:border-0' : 'bg-surface shadow-card'
-            }`}
+              list ? 'border-b last:border-0 border-line' : 'bg-surface shadow-card border border-line'
+            } ${getTaskRadiusClass(list, open)}`}
             style={{
-              borderRadius: getTaskBorderRadius(list, open),
               animation: `fade-up 450ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both`,
             }}
           >

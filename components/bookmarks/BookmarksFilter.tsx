@@ -23,8 +23,8 @@ export function BookmarksFilter({ bookmarks }: { bookmarks: Thread[] }) {
   if (bookmarks.length === 0) {
     return (
       <Card className="p-8 md:p-12 text-center flex flex-col items-center border-dashed shadow-none">
-        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
-          <Bookmark size={22} className="text-muted-foreground" />
+        <div className="w-14 h-14 rounded-full bg-field flex items-center justify-center mb-4">
+          <Bookmark size={22} className="text-ink-2" />
         </div>
         <p className="text-lg font-semibold text-ink">No bookmarks yet</p>
         <p className="text-sm text-ink-3 mt-1 max-w-sm">Bookmark threads to find them easily later.</p>
@@ -47,8 +47,8 @@ export function BookmarksFilter({ bookmarks }: { bookmarks: Thread[] }) {
       </div>
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center py-10 text-center rounded-card border border-dashed border-line bg-surface">
-          <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center mb-2">
-            <Search size={16} className="text-muted-foreground" />
+          <div className="w-9 h-9 rounded-full bg-field flex items-center justify-center mb-2">
+            <Search size={16} className="text-ink-2" />
           </div>
           <p className="text-sm font-medium text-ink">No matches for “{query}”</p>
           <p className="text-xs text-ink-3 mt-1">Try a different keyword</p>

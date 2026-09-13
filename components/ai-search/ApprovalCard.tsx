@@ -76,7 +76,7 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
 
   return (
     <div className="w-full max-w-80">
-      <div className="w-full overflow-hidden rounded-card bg-surface shadow-card">
+      <div className="w-full overflow-hidden rounded-card border border-line bg-surface shadow-card">
         {sent ? (
           <div className="flex h-37 flex-col items-center justify-center gap-2">
             <span
@@ -235,7 +235,7 @@ export function ApprovalCard({ questions, onSubmit, onDismiss }: ApprovalCardPro
               aria-label={last ? 'Send answers' : 'Next question'}
               disabled={!hasAnswer}
               onClick={() => (last ? handleSend() : setQi((q) => q + 1))}
-              className="-mr-0.5 size-7 rounded-card transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
+              className="-mr-0.5 size-7 rounded-control transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
               style={{
                 background: hasAnswer ? 'var(--ink)' : 'var(--field)',
                 color: hasAnswer ? 'var(--surface)' : 'var(--ink-3)',

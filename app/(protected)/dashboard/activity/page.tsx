@@ -52,8 +52,8 @@ export default async function ActivityPage() {
 
           {threads.length === 0 ? (
             <Card className="p-10 text-center flex flex-col items-center border-dashed shadow-none">
-              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
-                <FileText size={22} className="text-muted-foreground" />
+              <div className="w-14 h-14 rounded-full bg-field flex items-center justify-center mb-4">
+                <FileText size={22} className="text-ink-2" />
               </div>
               <p className="text-lg font-semibold text-ink">No threads yet</p>
               <p className="text-sm text-ink-3 mt-1 max-w-sm">Create a thread to start a discussion — @sai will help track it.</p>
@@ -106,8 +106,8 @@ export default async function ActivityPage() {
 
         <section className="space-y-5">
           <div className="flex items-center gap-2.5 pb-3 border-b border-line/60">
-            <div className="w-8 h-8 rounded-control bg-violet-500/10 flex items-center justify-center">
-              <MessageSquare className="h-4 w-4 text-violet-600" />
+            <div className="w-8 h-8 rounded-control bg-brand/10 flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-brand" />
             </div>
             <div>
               <h2 className="text-base font-semibold text-ink leading-none">Your Comments</h2>
@@ -117,8 +117,8 @@ export default async function ActivityPage() {
 
           {messages.length === 0 ? (
             <Card className="p-10 text-center flex flex-col items-center border-dashed shadow-none">
-              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
-                <MessageSquare size={22} className="text-muted-foreground" />
+              <div className="w-14 h-14 rounded-full bg-field flex items-center justify-center mb-4">
+                <MessageSquare size={22} className="text-ink-2" />
               </div>
               <p className="text-lg font-semibold text-ink">No comments yet</p>
               <p className="text-sm text-ink-3 mt-1 max-w-sm">Join a thread and start the conversation.</p>

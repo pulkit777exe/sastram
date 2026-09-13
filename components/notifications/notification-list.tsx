@@ -180,7 +180,7 @@ export function NotificationList({ notifications: initial }: NotificationListPro
   function renderEmptyState() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+        <div className="w-14 h-14 rounded-full bg-field flex items-center justify-center mb-4">
           <Inbox size={24} className="text-ink-3" />
         </div>
         <p className="text-lg font-semibold text-ink">You&apos;re all caught up</p>
@@ -257,8 +257,8 @@ export function NotificationList({ notifications: initial }: NotificationListPro
                               className={cn(
                                 'text-sm truncate',
                                 !notification.isRead
-                                  ? 'font-semibold text-foreground'
-                                  : 'text-foreground/80'
+                                  ? 'font-semibold text-ink'
+                                  : 'text-ink-2'
                               )}
                             >
                               {notification.title}

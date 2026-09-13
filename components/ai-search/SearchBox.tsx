@@ -146,7 +146,7 @@ export function SearchBox({
               {SOURCE_FILTERS.find((f) => f.value === sourceFilter)?.label ?? 'All Sources'}
             </Button>
             {sourceOpen && (
-              <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-card bg-surface border border-line p-1 shadow-xl">
+              <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-card bg-surface border border-line p-1 shadow-overlay">
                 {SOURCE_FILTERS.map((f) => (
                   <Button
                     key={f.value}
@@ -182,7 +182,7 @@ export function SearchBox({
         {menu && rows.length > 0 && (
           <div
             onMouseLeave={() => setEngaged(false)}
-            className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-card bg-surface border border-line p-1 shadow-xl"
+            className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-card bg-surface border border-line p-1 shadow-overlay"
             style={{
               animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
               transformOrigin: 'bottom center',
@@ -317,7 +317,7 @@ export function SearchBox({
 
               {modelOpen && (
                 <div
-                  className="absolute left-0 bottom-full z-20 mb-1 w-fit min-w-30 rounded-card bg-surface border border-line p-1 shadow-xl"
+                  className="absolute left-0 bottom-full z-20 mb-1 w-fit min-w-30 rounded-card bg-surface border border-line p-1 shadow-overlay"
                   style={{
                     animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both',
                     transformOrigin: 'bottom left',

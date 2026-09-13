@@ -339,7 +339,7 @@ export function StreamingText({
           </Button>
           {showRetryPopover && (
             <div
-              className="absolute left-0 bottom-full z-20 mb-2 w-56 rounded-card bg-surface p-1 shadow-raised"
+              className="absolute left-0 bottom-full z-20 mb-2 w-56 rounded-card border border-line bg-surface p-1 shadow-overlay"
               style={{ animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both' }}
             >
               <p className="px-2 pt-1.5 pb-1 text-[11px] font-medium text-ink-3 uppercase tracking-wider">Regenerate as</p>
@@ -389,7 +389,7 @@ export function StreamingText({
           </Button>
           {showDislikePopover && (
             <div
-              className="absolute right-0 bottom-full z-20 mb-2 w-60 rounded-card bg-surface p-2 shadow-raised"
+              className="absolute right-0 bottom-full z-20 mb-2 w-60 rounded-card border border-line bg-surface p-2 shadow-overlay"
               style={{ animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both' }}
             >
               <p className="px-1 pb-1.5 text-[12px] font-medium text-ink">What didn&apos;t you like?</p>
@@ -466,7 +466,7 @@ export function StreamingText({
           <div className="overflow-hidden">
             <div className="mt-2">
               <p className="text-[11px] font-medium uppercase tracking-wider text-ink-3 mb-1.5 px-1">Sources &amp; provenance · tier · confidence · freshness</p>
-              <div className="flex flex-col rounded-card bg-inset p-1 shadow-hairline max-h-[min(50vh,360px)] overflow-y-auto overscroll-contain gap-0.5">
+              <div className="flex flex-col rounded-card border border-line bg-inset p-1 shadow-hairline max-h-[min(50vh,360px)] overflow-y-auto overscroll-contain gap-0.5">
               {displayedSources.map((source) => (
                 <a
                   key={source.id}
