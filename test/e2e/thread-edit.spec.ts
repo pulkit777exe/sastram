@@ -89,6 +89,17 @@ test.describe('Thread edit flows (no full-page reloads)', () => {
     await expect(row.getByText('1', { exact: true })).toBeVisible();
     expect(page.url()).toBe(urlBeforeEdit);
 
+    // 6b. Like survives a full reload (column maintained + state seeded).
+    // The chip renders optimistically first, so give the toggle's server
+    // roundtrip a grace window and re-assert (a server error rolls back
+    // the chip) — otherwise reload can win the race and read pre-commit.
+    await page.waitForTimeout(1500);
+    await expect(row.getByText('1', { exact: true })).toBeVisible();
+    await page.reload();
+    const reloadedRow = page.locator(`#message-${messageId}`);
+    await expect(reloadedRow.getByText(editedBody)).toBeVisible();
+    await expect(reloadedRow.getByText('1', { exact: true })).toBeVisible();
+
     // 7. Lightweight status endpoints (feed the cards' polling, no RSC refresh).
     const sumRes = await request.get(
       `/api/ai/thread-summary?threadId=${threadId}`,
