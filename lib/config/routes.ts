@@ -15,7 +15,11 @@ export const ROUTES = {
 
   BANNED: '/banned',
 
-  THREAD: (slug: string) => `/thread/${slug}`,
+  // Real App Router location. `/thread/:slug` still exists as a permanent
+  // redirect in next.config.ts for legacy/external links, but internal links
+  // and revalidatePath calls must target the actual route to avoid a redirect
+  // hop per navigation and no-op cache invalidation.
+  THREAD: (slug: string) => `/dashboard/threads/${slug}`,
   USER_PROFILE: (userId: string) => `/user/${userId}`,
 
   API: {

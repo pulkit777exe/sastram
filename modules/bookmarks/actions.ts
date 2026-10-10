@@ -16,9 +16,12 @@ import { actionSuccess } from '@/lib/actions/result';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import type { Role } from '@prisma/client';
 
-function revalidateBookmarkPaths(threadId: string) {
+function revalidateBookmarkPaths() {
+  // Only the bookmarks list is server-rendered from this data; the thread page
+  // reconciles bookmark state locally from the action result. (The old
+  // ROUTES.THREAD(threadId) call here was a no-op: it targeted the redirect
+  // route with an ID where a slug is expected.)
   revalidatePath(ROUTES.DASHBOARD_BOOKMARKS);
-  revalidatePath(ROUTES.THREAD(threadId));
 }
 
 async function assertThreadAccess(threadId: string, userId: string, role: Role) {
@@ -38,7 +41,7 @@ export const toggleBookmark = createServerAction(
       await bookmarkThreadRepo(session.user.id, threadId);
     }
 
-    revalidateBookmarkPaths(threadId);
+    revalidateBookmarkPaths();
 
     const newBookmarkedState = !currentlyBookmarked;
     return actionSuccess({ isBookmarked: newBookmarkedState });
@@ -85,7 +88,7 @@ export const setBookmarkStatus = createServerAction(
       await unbookmarkThreadRepo(session.user.id, threadId);
     }
 
-    revalidateBookmarkPaths(threadId);
+    revalidateBookmarkPaths();
 
     return actionSuccess({ isBookmarked: bookmarked });
   }

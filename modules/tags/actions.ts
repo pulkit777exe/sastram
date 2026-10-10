@@ -66,7 +66,6 @@ export const addTagToThreadAction = createServerAction(
     const session = await requireSession();
     await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     await addTagToThreadRepo(threadId, tagId);
-    revalidatePath(ROUTES.THREAD(threadId));
     return actionSuccess(null);
   }
 );
@@ -77,7 +76,6 @@ export const removeTagFromThreadAction = createServerAction(
     const session = await requireSession();
     await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
     await removeTagFromThreadRepo(threadId, tagId);
-    revalidatePath(ROUTES.THREAD(threadId));
     return actionSuccess(null);
   }
 );

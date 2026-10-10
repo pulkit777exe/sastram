@@ -3,7 +3,6 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
-import { revalidatePath } from 'next/cache';
 import {
   addReaction,
   removeReaction,
@@ -44,10 +43,6 @@ async function requireMessageAccess(messageId: string): Promise<AuthorizedMessag
   return { session, threadId: message.threadId };
 }
 
-function revalidateReactionPaths() {
-  revalidatePath('/dashboard/threads');
-}
-
 export const toggleReaction = createServerAction(
   { schema: toggleReactionSchema, actionName: 'toggleReaction' },
   async ({ messageId, emoji }) => {
@@ -65,8 +60,13 @@ export const toggleReaction = createServerAction(
       await addReaction(messageId, userId, emoji);
     }
 
-    revalidateReactionPaths();
-    return actionSuccess(null);
+    // No revalidation: the client owns this state optimistically and we return
+    // the authoritative post-toggle values so it can reconcile in place.
+    const hasReacted = !existing;
+    const likeCount = await prisma.reaction.count({
+      where: { messageId, emoji },
+    });
+    return actionSuccess({ hasReacted, likeCount });
   }
 );
 

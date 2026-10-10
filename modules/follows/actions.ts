@@ -18,8 +18,10 @@ import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 const followListSchema = userIdSchema.merge(paginationSchema);
 
 function revalidateFollowPaths(userId: string) {
+  // Only the profile page renders follower/following counts server-side; the
+  // FollowButton itself reconciles optimistically. The old '/dashboard'
+  // invalidation re-rendered the whole dashboard tree per toggle for nothing.
   revalidatePath(`/user/${userId}`);
-  revalidatePath('/dashboard');
 }
 
 function getFollowerDisplayName(user: { name: string | null; email: string }): string {

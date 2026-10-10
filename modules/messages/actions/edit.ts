@@ -1,6 +1,5 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
@@ -54,7 +53,8 @@ export const editMessage = createServerAction(
         }),
       ]);
 
-      revalidatePath('/dashboard/threads');
+      // No path revalidation: the editing client applies the change in place
+      // via onMessageUpdate, and other viewers get fresh data on navigation.
       return actionSuccess(null);
     } catch (error) {
       logger.error('[editMessage]', error);
@@ -74,9 +74,6 @@ export const pinMessage = createServerAction(
         select: {
           isPinned: true,
           threadId: true,
-          thread: {
-            select: { slug: true },
-          },
         },
       });
 
@@ -113,7 +110,8 @@ export const pinMessage = createServerAction(
         userId: session.user.id,
       });
 
-      revalidatePath(`/dashboard/threads/${message.thread?.slug}`);
+      // No path revalidation: the pinning client updates the pinned state in
+      // place optimistically (with rollback on failure).
       return actionSuccess(null);
     } catch (error) {
       logger.error('[pinMessage]', error);

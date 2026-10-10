@@ -102,19 +102,6 @@ function isVotingClosed(poll: { isActive: boolean; expiresAt: Date | null }): bo
   return !poll.isActive || isPollExpired(poll.expiresAt);
 }
 
-async function assertThreadAccess(threadId: string, userId: string, role: Role) {
-  await requireThreadAccessOrThrow(threadId, userId, role);
-}
-
-// ── Fetch helpers ──────────────────────────────────────────────────────────
-async function fetchPollForVote(pollId: string) {
-  return getPollByIdRepo(pollId);
-}
-
-async function fetchPollForClose(pollId: string) {
-  return getPollByIdRepo(pollId);
-}
-
 function validatePollVoteAccess(
   poll: NonNullable<Awaited<ReturnType<typeof getPollByIdRepo>>>,
   memberRole: { role: string } | null
@@ -138,10 +125,6 @@ function validateOptionIndexBounds(
     return fail('Invalid option index', 'VALIDATION_ERROR');
   }
   return null;
-}
-
-async function applyVote(pollId: string, userId: string, optionIndex: number) {
-  await voteOnPollRepo(pollId, userId, optionIndex);
 }
 
 async function checkPollVoteRateLimit(userId: string): Promise<ReturnType<typeof fail> | null> {
@@ -184,7 +167,9 @@ export const createPollAction = withValidation(
         createdBy: session.user.id,
       });
 
-      revalidatePollThread(threadId);
+      // Revalidate the real thread page — needs the slug, not the id.
+      const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { slug: true } });
+      if (thread) revalidatePollThread(thread.slug);
       return actionSuccess(poll);
     } catch (err) {
       logger.error('[createPoll]', { error: err });
@@ -203,7 +188,7 @@ export const voteOnPollAction = withValidation(
       const rateLimited = await checkPollVoteRateLimit(session.user.id);
       if (rateLimited) return rateLimited;
 
-      const poll = await fetchPollForVote(pollId);
+      const poll = await getPollByIdRepo(pollId);
       if (poll === null) {
         return pollNotFound();
       }
@@ -222,7 +207,7 @@ export const voteOnPollAction = withValidation(
       const accessError = validatePollVoteAccess(poll, memberRole);
       if (accessError !== null) return accessError;
 
-      await applyVote(pollId, session.user.id, optionIndex);
+      await voteOnPollRepo(pollId, session.user.id, optionIndex);
 
       if (poll.thread?.slug) {
         revalidatePollThread(poll.thread.slug);
@@ -245,7 +230,7 @@ export const closePollAction = createServerAction(
     try {
       const session = await requireSession();
 
-      const poll = await fetchPollForClose(pollId);
+      const poll = await getPollByIdRepo(pollId);
       if (poll === null) {
         return pollNotFound();
       }
@@ -280,7 +265,7 @@ export const getPollResultsAction = createServerAction(
       }
       const fullPoll = await getPollByIdRepo(pollId);
       if (fullPoll?.threadId) {
-        await assertThreadAccess(fullPoll.threadId, session.user.id, session.user.role as Role);
+        await requireThreadAccessOrThrow(fullPoll.threadId, session.user.id, session.user.role as Role);
       }
       return actionSuccess(poll);
     } catch (error) {
@@ -316,7 +301,7 @@ export const getPollByIdAction = createServerAction(
       if (poll === null) {
         return pollNotFound();
       }
-      await assertThreadAccess(poll.threadId, session.user.id, session.user.role as Role);
+      await requireThreadAccessOrThrow(poll.threadId, session.user.id, session.user.role as Role);
       return actionSuccess(poll);
     } catch (error) {
       const mapped = toActionError(error);
@@ -334,7 +319,7 @@ export const getPollByThreadAction = createServerAction(
   async ({ threadId }) => {
     try {
       const session = await requireSession();
-      await assertThreadAccess(threadId, session.user.id, session.user.role as Role);
+      await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as Role);
       const poll = await getPollByThreadIdRepo(threadId);
       if (poll === null) {
         return pollNotFound();
