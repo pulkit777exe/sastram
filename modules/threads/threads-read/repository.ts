@@ -58,7 +58,9 @@ export type ThreadMessage = {
 
 type ThreadTag = {
   tag: {
+    id: string;
     name: string;
+    slug: string;
   };
 };
 
@@ -384,7 +386,7 @@ async function fetchThreadRow(slug: string, uid: string): Promise<ThreadRow | nu
       LEFT JOIN "users" u ON u.id = s."createdBy"
       LEFT JOIN LATERAL (
         SELECT json_agg(
-          json_build_object('tag', json_build_object('name', tt.name))
+          json_build_object('tag', json_build_object('id', tt.id, 'name', tt.name, 'slug', tt.slug))
         ) as tags
         FROM "thread_tag_relations" ttr
         JOIN "thread_tags" tt ON tt.id = ttr."tagId"

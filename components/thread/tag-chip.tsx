@@ -52,6 +52,7 @@ export function TagChip({ tag, onRemove, clickable = true }: TagChipProps) {
           variant="ghost"
           size="icon"
           className="h-4 w-4 hover:opacity-70 p-0"
+          aria-label={`Remove #${tag.name}`}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
