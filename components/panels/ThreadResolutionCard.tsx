@@ -1,10 +1,9 @@
 'use client';
 
-// KISS: useEffect polls score with router.refresh() so the displayed number
-// catches up after AI jobs complete; lint flagged the setState in effect, but
-// polling lifecycle is the intended side-effect (refresh on completion).
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { useRouter } from 'next/navigation';
+// KISS: while the resolution score is pending, poll a lightweight GET
+// endpoint (one JSON row) instead of router.refresh() — the old approach
+// re-rendered the entire thread page every 4s just to catch one number.
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VerifyNowButton } from '@/components/thread/verify-now-button';
@@ -54,6 +53,31 @@ function getBarClass(score: number): string {
   return 'bg-sai-red';
 }
 
+interface ScoreSnapshot {
+  score: number | null;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  lastVerifiedAt: string | null;
+}
+
+async function fetchScoreSnapshot(threadId: string): Promise<ScoreSnapshot | null> {
+  try {
+    const res = await fetch(`/api/ai/resolution-score?threadId=${encodeURIComponent(threadId)}`);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: ScoreSnapshot };
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const POLL_INTERVAL_MS = 4_000;
+const POLL_TIMEOUT_MS = 90_000;
+
+function hasScore(value: number | null | undefined): value is number {
+  return value !== null && value !== undefined;
+}
+
 export default function ThreadResolutionCard({
   threadId,
   score,
@@ -61,49 +85,58 @@ export default function ThreadResolutionCard({
   verifiedAt,
   verifiedBy,
 }: ThreadResolutionCardProps) {
-  const router = useRouter();
   const now = useSyncExternalStore(subscribeToClock, getClockSnapshot, getClockSnapshot);
   const { prefs } = useUserPreferences();
   const verifiedEnabled = (prefs as unknown as { verifiedResolutionEnabled?: boolean }).verifiedResolutionEnabled !== false;
   const decayEnabled = (prefs as unknown as { confidenceDecayEnabled?: boolean }).confidenceDecayEnabled !== false;
-  const [isGenerating, setIsGenerating] = useState(score === null || score === undefined);
+  // Live values picked up by the poll; server props win until a poll lands.
+  const [live, setLive] = useState<ScoreSnapshot | null>(null);
   const [timedOut, setTimedOut] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const currentScore = hasScore(score) ? score : live?.score ?? null;
 
   useEffect(() => {
-    // Sync to current score: if we already have one, reset state and skip the
-    // polling lifecycle. Otherwise, show live progress for up to 90s.
-    if (score !== null && score !== undefined) {
-      // Queue microtask so the synchronous cascade warning doesn't fire.
-      queueMicrotask(() => {
-        setIsGenerating(false);
-        setTimedOut(false);
-      });
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = null;
-      return;
-    }
-    setIsGenerating(true);
-    setTimedOut(false);
-    const start = Date.now();
-    pollRef.current = setInterval(() => {
-      if (Date.now() - start > 90_000) {
-        if (pollRef.current) clearInterval(pollRef.current);
-        pollRef.current = null;
-        setIsGenerating(false);
-        setTimedOut(true);
+    if (currentScore !== null) return; // already have a score — nothing to poll for
+    let cancelled = false;
+    let elapsed = 0;
+    const id = setInterval(async () => {
+      elapsed += POLL_INTERVAL_MS;
+      if (elapsed > POLL_TIMEOUT_MS) {
+        clearInterval(id);
+        if (!cancelled) setTimedOut(true);
         return;
       }
-      router.refresh();
-    }, 4000);
+      const snapshot = await fetchScoreSnapshot(threadId);
+      if (cancelled) return;
+      if (snapshot && hasScore(snapshot.score)) {
+        clearInterval(id);
+        setLive(snapshot);
+        setTimedOut(false);
+      }
+    }, POLL_INTERVAL_MS);
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = null;
+      cancelled = true;
+      clearInterval(id);
     };
-  }, [score, router]);
+  }, [currentScore, threadId]);
 
-  const verifiedRef = verifiedAt ?? lastVerifiedAt ?? null;
-  const provenanceAt = verifiedAt ? new Date(verifiedAt) : lastVerifiedAt ? new Date(lastVerifiedAt) : null;
+  // Manual check — targeted fetch, no page refresh.
+  async function handleCheckAgain() {
+    setTimedOut(false);
+    const snapshot = await fetchScoreSnapshot(threadId);
+    if (snapshot && hasScore(snapshot.score)) {
+      setLive(snapshot);
+    } else {
+      setTimedOut(true);
+    }
+  }
+
+  const currentVerifiedAt = verifiedAt ?? live?.verifiedAt ?? null;
+  const currentVerifiedBy = verifiedBy ?? live?.verifiedBy ?? null;
+  const currentLastVerifiedAt = lastVerifiedAt ?? live?.lastVerifiedAt ?? null;
+
+  const verifiedRef = currentVerifiedAt ?? currentLastVerifiedAt ?? null;
+  const provenanceAt = currentVerifiedAt ? new Date(currentVerifiedAt) : currentLastVerifiedAt ? new Date(currentLastVerifiedAt) : null;
   const provenanceDays = provenanceAt
     ? Math.floor((now - provenanceAt.getTime()) / (1000 * 60 * 60 * 24))
     : null;
@@ -112,11 +145,11 @@ export default function ThreadResolutionCard({
     ? computeConfidence(new Date(verifiedRef))
     : { confidence: 1 };
   const isStale = confidence < 1;
-  const effectiveScore = score != null ? Math.round(score * confidence) : null;
-  const isVerified = !!verifiedAt;
+  const effectiveScore = currentScore != null ? Math.round(currentScore * confidence) : null;
+  const isVerified = !!currentVerifiedAt;
 
-  if (score === null || score === undefined) {
-    if (isGenerating) {
+  if (currentScore === null) {
+    if (!timedOut) {
       return (
         <DetailCard className="space-y-3">
           <div className="flex items-center justify-between">
@@ -130,16 +163,16 @@ export default function ThreadResolutionCard({
             <div className="h-full w-2/3 rounded-full bg-sai-accent/40 animate-pulse" style={{ width: '66%' }} />
           </div>
           <p className="text-xs leading-relaxed text-ink-2">
-            Sai is analyzing this thread’s resolution. Usually takes a few seconds — we’ll refresh automatically.
+            Sai is analyzing this thread’s resolution. Usually takes a few seconds — we’ll update automatically.
           </p>
           <Button
             variant="ghost"
             size="sm"
             className="h-7 gap-1.5 text-xs text-ink-3 hover:text-ink"
-            onClick={() => router.refresh()}
+            onClick={() => void handleCheckAgain()}
           >
             <RefreshCw size={12} />
-            Refresh now
+            Check now
           </Button>
         </DetailCard>
       );
@@ -148,19 +181,13 @@ export default function ThreadResolutionCard({
       <DetailCard className="space-y-3">
         <p className="text-xs uppercase tracking-[0.12em] text-ink-3">Resolution</p>
         <p className="text-sm text-ink-2">
-          {timedOut
-            ? 'Sai couldn’t score this thread yet — it may be queued or over quota. Try refreshing.'
-            : 'Not yet scored — Sai updates the resolution as replies and polls settle the thread.'}
+          Sai couldn’t score this thread yet — it may be queued or over quota. Try again.
         </p>
         <Button
           variant="outline"
           size="sm"
           className="w-full gap-1.5 text-xs"
-          onClick={() => {
-            setIsGenerating(true);
-            setTimedOut(false);
-            router.refresh();
-          }}
+          onClick={() => void handleCheckAgain()}
         >
           <RefreshCw size={12} />
           Check again
@@ -169,8 +196,8 @@ export default function ThreadResolutionCard({
     );
   }
 
-  const label = getLabel(score);
-  const barClass = getBarClass(score);
+  const label = getLabel(currentScore);
+  const barClass = getBarClass(currentScore);
 
   return (
     <DetailCard className="space-y-3">
@@ -185,13 +212,13 @@ export default function ThreadResolutionCard({
           </div>
         </div>
         <span className="text-2xl leading-none font-bold tabular-nums text-ink">
-          {Math.round(score)}
+          {Math.round(currentScore)}
           <span className="text-sm text-ink-3 font-medium">/100</span>
         </span>
       </div>
 
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-field">
-        <div className={`h-full rounded-full transition-[width] duration-500 ease-out ${barClass}`} style={{ width: `${score}%` }} />
+        <div className={`h-full rounded-full transition-[width] duration-500 ease-out ${barClass}`} style={{ width: `${currentScore}%` }} />
       </div>
 
       {verifiedEnabled && isVerified && (
@@ -201,7 +228,7 @@ export default function ThreadResolutionCard({
             Verified
           </span>
           <span className="text-xs text-ink-3">
-            by {verifiedBy ? 'OP' : 'moderator'} {provenanceDays !== null ? `· ${provenanceDays}d ago` : ''}
+            by {currentVerifiedBy ? 'OP' : 'moderator'} {provenanceDays !== null ? `· ${provenanceDays}d ago` : ''}
           </span>
         </div>
       )}

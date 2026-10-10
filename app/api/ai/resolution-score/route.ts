@@ -5,6 +5,8 @@ import { aiService } from '@/lib/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { requireSessionOrThrow } from '@/modules/auth';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { z } from 'zod';
 
 const scoreRequestSchema = z.object({
@@ -92,6 +94,33 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   }
 
   return NextResponse.json(ok({ score }));
+});
+
+/**
+ * Lightweight status poll — returns just the score columns so the client can
+ * pick up a completed AI job without a full RSC page refresh.
+ */
+export const GET = withErrorHandling(async (req: NextRequest) => {
+  const session = await requireSessionOrThrow();
+  const parsed = scoreRequestSchema.safeParse({ threadId: req.nextUrl.searchParams.get('threadId') });
+  if (!parsed.success) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  await requireThreadAccessOrThrow(parsed.data.threadId, session.user.id, session.user.role as never);
+
+  const thread = await prisma.thread.findUnique({
+    where: { id: parsed.data.threadId, deletedAt: null },
+    select: { resolutionScore: true, verifiedAt: true, verifiedBy: true, lastVerifiedAt: true },
+  });
+  if (!thread) {
+    return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
+  }
+  return NextResponse.json(ok({
+    score: thread.resolutionScore,
+    verifiedAt: thread.verifiedAt,
+    verifiedBy: thread.verifiedBy,
+    lastVerifiedAt: thread.lastVerifiedAt,
+  }));
 });
 
 export { handler as POST };

@@ -6,6 +6,8 @@ import { enqueueJob } from '@/lib/services/queue';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { getEnv } from '@/lib/config/env';
 import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { requireSessionOrThrow } from '@/modules/auth';
+import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { z } from 'zod';
 
 const summaryRequestSchema = z.object({
@@ -79,6 +81,28 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   await enqueueJob(AIJobType.GENERATE_THREAD_SUMMARY, { threadId, messages: thread.messages, userId: preflight.session.user.id });
 
   return NextResponse.json(ok({ status: 'pending', message: 'Summary generation started' }));
+});
+
+/**
+ * Lightweight status poll — returns just the summary column so the client can
+ * pick up a completed AI job without a full RSC page refresh.
+ */
+export const GET = withErrorHandling(async (req: NextRequest) => {
+  const session = await requireSessionOrThrow();
+  const parsed = summaryRequestSchema.safeParse({ threadId: req.nextUrl.searchParams.get('threadId') });
+  if (!parsed.success) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  await requireThreadAccessOrThrow(parsed.data.threadId, session.user.id, session.user.role as never);
+
+  const thread = await prisma.thread.findUnique({
+    where: { id: parsed.data.threadId, deletedAt: null },
+    select: { aiSummary: true },
+  });
+  if (!thread) {
+    return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
+  }
+  return NextResponse.json(ok({ summary: thread.aiSummary }));
 });
 
 export { handler as POST };
