@@ -424,9 +424,9 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 
 ### AI Features (7)
 - `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini, 12-source advanced)
-- `/api/ai/thread-summary` — Generate AI thread summary
+- `/api/ai/thread-summary` — Generate AI thread summary (POST); poll current summary (GET)
 - `/api/ai/thread-dna` — Generate thread DNA analysis
-- `/api/ai/resolution-score` — Calculate resolution score
+- `/api/ai/resolution-score` — Calculate resolution score (POST); poll current score (GET)
 - `/api/ai/search-history` — Get search history
 - `/api/ai/spend` — Get AI spend usage (admin)
 - `/api/ai/deep-research` — Async 12-source research (QStash)

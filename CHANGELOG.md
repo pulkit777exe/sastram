@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] — Architecture Refactor (Rounds 1–4)
 
+### Added
+
+- **Thread editing**: OP/moderators can rename a thread and edit its description via a pencil dialog in the thread header (`updateThreadAction` — slug is kept stable so existing links don't break); title/description update in place with no page refresh
+- **Header bookmark**: thread header now has an icon-only BookmarkButton seeded from the page's `isBookmarked` (no extra status round-trip)
+- **Edit history viewer**: the "edited" label on messages is now clickable — prior versions load on demand in a small popover (the `getMessageEditHistory` action finally has a UI)
+- **Thread tags visible**: the thread query already fetched user tags but nothing rendered them — they now show as clickable chips under the source preview (query extended with tag slugs; previously dead `TagChip` component now has its first importer)
+- **Thread tag editing**: OP/moderators get inline attach/detach via `ThreadTagsManager` (search existing tags + attach, X to remove — optimistic with rollback, no refresh). New-tag creation stays admin-gated per existing server policy, and the picker says so
+- **Contract tests**: `collections-cache` TTL/set/invalidate round-trips and `ROUTES.THREAD` shape now have unit tests (392 passing total)
+- **E2E edit-flow spec**: `test/e2e/thread-edit.spec.ts` drives every new flow live against real Postgres — dialog create→navigate, message post→inline edit (URL unchanged), edit-history popover, title edit, tag attach/detach, reaction toggle, both AI status GETs — with zero page errors and no `Invalid input` toasts
+- **Smoke spec repairs** (all 5 pre-existing failures fixed, full e2e 9/9 green): updated stale `Search with Sai` heading assertions to the current `Search across Sastram` UI, accepted the explicit missing-keys 400 on forum-search, seeded the long-missing fixture thread via new `scripts/seed-e2e-thread.ts` (wired into global-setup), and fixed the composer placeholder + icon-only send-button selectors
+- **E2E safety fixes**: `global-setup` now pins `DATABASE_URL` to the test database for its seed steps (an unpinned run once wrote fixtures to the Neon dev DB — fully cleaned and verified empty); probe tag uses a valid cuid id; `TagChip` remove button gained an accessible name (also used by the spec for unambiguous targeting)
+
+### Changed
+
+- **Lighter reloads**: `ThreadSummaryCard` and `ThreadResolutionCard` poll new lightweight GET endpoints (`/api/ai/thread-summary`, `/api/ai/resolution-score`) instead of `router.refresh()` — waiting on AI jobs no longer re-renders the whole thread page every 3–4s
+- **Correct route helper**: `ROUTES.THREAD(slug)` now returns `/dashboard/threads/${slug}` (the real route) instead of the `/thread/:slug` redirect — removes a redirect hop per thread link and makes tag/newsletter/polls revalidation hit the actual page
+- **Deduped fork dialogs**: `ForkButton` + `ForkFromUrlButton` merged into `components/thread/fork-button.tsx` sharing one submit flow; both always navigate to the new thread instead of `router.refresh()`-ing into the old page
+- **Deduped collections dropdown**: shared `useCollectionsDropdown()` hook (fetch + cache + dismissal + create) behind `CollectionSaveButton` and `BulkSaveButton`
+- **Simplified thread actions**: removed the local `isRedirectError`/`failure()` copy in `modules/threads/actions.ts` — `createServerAction` already handles all of it
+- **Simplified poll actions**: inlined single-use forwarder helpers (`fetchPollForVote`, `fetchPollForClose`, `applyVote`, `assertThreadAccess`) — bodies now call the repository / access check directly
+- **Collection detail list**: `collection-item-actions.tsx` (per-row `router.refresh()`) replaced by client-owned `CollectionItemsList` — deletes filter local state instantly with rollback on failure, no page refresh
+- **Dead code removal**: deleted unused `CreateTopicButton` + `modules/topics/actions.ts` (a duplicate thread-creation path nobody imported — canonical flow is `CreateThreadDialog` → `createThreadAction`)
+
+### Fixed
+
+- **No-op revalidations**: removed `revalidatePath` calls that targeted wrong paths — bookmarks (`/thread/<id>`), tags (`/thread/<id>`), `markThreadVerified` (`/dashboard/threads/<id>`), poll creation (id where slug expected); reactions/edit/pin/follow no longer invalidate broad trees (`/dashboard/threads`, `/dashboard`) per action — clients already reconcile optimistically
+- **Reaction toggle truth**: `toggleReaction` now returns `{ hasReacted, likeCount }` so the optimistic like UI reconciles with the server instead of drifting on races
+
 ### Security
 
 - **Search visibility**: `searchThreads` and `searchMessages` now apply `visibilityFilter()` — private/restricted threads no longer leak to unauthenticated search

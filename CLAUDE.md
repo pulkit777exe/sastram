@@ -164,10 +164,14 @@ interface ChatMessage {
 
 The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
-- **Header** (`thread-page-header.tsx`): `h-14`, icon-only subscribe/invite buttons, green dot for live indicator, no Hash icon box
+- **Header** (`thread-page-header.tsx`): `h-14`, icon-only bookmark/subscribe/invite buttons, green dot for live indicator, no Hash icon box; OP/moderators get an Edit pencil (`edit-thread-dialog.tsx` → `updateThreadAction`) that updates title/description in place
+- **AI card polling**: summary and resolution cards poll lightweight GET endpoints (`/api/ai/thread-summary`, `/api/ai/resolution-score`) — never `router.refresh()`
 - **Sidebar** (`thread-details-panel.tsx`): Slide-over drawer triggered by `PanelRightOpen` icon at `fixed top-[4.5rem] right-4`. Contains DetailCard-wrapped panels (resolution, summary, DNA, related, participants)
 - **Composer** (`post-message-form.tsx`): 4 visible toolbar icons (Paperclip, Emoji, @sai, format overflow with Bold/Italic/Code/Link/Poll), icon-only Send button
 - **Messages** (`thread-live-wrapper.tsx`): No mobile summary bar, InlinePoll kept as poll creation drawer
+- **Message rows** (`message-list.tsx`): inline edit/pin/delete reconcile via `onMessageUpdate` (no refresh); the "edited" label opens `EditHistory` popover with prior versions on demand
+- **Thread tags** (`thread-live-wrapper.tsx` + `thread-tags-manager.tsx` + `tag-chip.tsx`): user tags render as clickable chips under the source preview; OP/moderators attach existing tags or remove them in place (no refresh, rollback on failure)
+- **Collections** (`CollectionItemsList.tsx`, `use-collections-dropdown.ts`): item deletes and save-dropdowns are client-state owned — no `router.refresh()`; dead `CreateTopicButton`/`modules/topics` duplicate creation path removed
 
 ### Background Jobs
 
@@ -239,3 +243,13 @@ Optional/feature flags:
 ## CI
 
 GitHub Actions workflow in `.github/workflows/ci.yml` — runs typecheck, lint, build, and tests with PostgreSQL + Redis service containers, gitleaks and audit checks.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
