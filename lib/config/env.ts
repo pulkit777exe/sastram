@@ -43,7 +43,6 @@ const serverEnvSchema = z.object({
   MODERATION_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
   MAX_MESSAGES_PER_MINUTE: z.coerce.number().int().positive().default(20),
   MAX_MESSAGES_PER_HOUR: z.coerce.number().int().positive().default(200),
-  MODERATION_WEBHOOK_URL: z.url().optional(),
   AI_ANALYSIS_MESSAGE_LIMIT: z.coerce.number().int().positive().default(200),
   GEMINI_FLASH_MODEL: z.string().default('gemini-3.6-flash'),
   GEMINI_PRO_MODEL: z.string().default('gemini-2.5-flash'),
@@ -61,7 +60,6 @@ const serverEnvSchema = z.object({
 const fullyClientSafeSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL').optional().default('http://localhost:3000'),
-  NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
   NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED: z
     .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
     .transform(toBool)

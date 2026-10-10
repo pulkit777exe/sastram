@@ -1,0 +1,13 @@
+# Local crash dumps — 5GB+ and not deployable (Vercel upload aborted without this)
+core.*
+*.core
+
+# Local env files — only .env.example is meant to ship
+.env
+.env.local
+.env.*.local
+
+# Test artifacts and local-only config
+test-results
+e2e
+.vercel
