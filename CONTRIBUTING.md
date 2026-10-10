@@ -6,13 +6,13 @@ Thanks for your interest in contributing to Sastram.
 
 ### Option A — Docker (recommended)
 
-`docker compose up` starts PostgreSQL, Redis, and the Next.js app in one command. Copy `.env.sample` to `.env` first and fill in at least the required values.
+`docker compose up` starts PostgreSQL, Redis, and the Next.js app in one command. Copy `.env.example` to `.env` first and fill in at least the required values.
 
 ### Option B — Local without Docker
 
 1. Fork the repository
 2. Run `pnpm install`
-3. Copy `.env.sample` to `.env` and fill in the values
+3. Copy `.env.example` to `.env` and fill in the values
 4. Provide PostgreSQL (e.g. free-tier Neon: append `?pgbouncer=true` to `DATABASE_URL`) and optionally Redis (free-tier Upstash)
 5. Run `pnpm db:migrate`
 6. Run `pnpm dev` to start the development server

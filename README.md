@@ -43,7 +43,7 @@ A discussion platform with AI-powered search, threading, and moderation. Origina
 
 ```bash
 pnpm install
-cp .env.sample .env      # fill in required values
+cp .env.example .env      # fill in required values
 pnpm db:migrate
 pnpm dev
 ```

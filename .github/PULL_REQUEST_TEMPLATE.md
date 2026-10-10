@@ -21,7 +21,7 @@
 - [ ] `pnpm lint` passes
 - [ ] `pnpm test` passes (298 tests)
 - [ ] New tests added for the change
-- [ ] Environment variables documented in `.env.sample` (if applicable)
+- [ ] Environment variables documented in `.env.example` (if applicable)
 
 ## Module Conventions
 

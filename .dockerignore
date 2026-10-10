@@ -3,7 +3,7 @@ node_modules
 .next
 .env
 .env.*
-!.env.sample
+!.env.example
 test/
 e2e/
 *.md

@@ -94,7 +94,7 @@ The original spec assumed React 19 stable ships `<ViewTransition>`. It does not 
 add  lib/utils/view-transitions.ts
 add  components/ui/view-transition.tsx
 mod  lib/config/env.ts                  # NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED (default true)
-mod  .env.sample
+mod  .env.example
 mod  app/globals.css                    # ::view-transition-* rules + reduced-motion guard
 mod  components/ai-search/SearchPage.tsx          # removed framer-motion wrapper
 mod  components/ai-search/search-composer.tsx     # wrapped SearchField + InputBar with distinct names
@@ -126,7 +126,7 @@ mod  package.json                       # react + react-dom → canary
 add  lib/utils/view-transitions.ts          # isViewTransitionsEnabled + supportsViewTransitions
 add  components/ui/view-transition.tsx     # <SaiViewTransition> wrapper, SSR-safe + reduced-motion aware
 mod  lib/config/env.ts                      # register NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED
-mod  .env.sample                            # document the flag
+mod  .env.example                            # document the flag
 mod  app/globals.css                        # prefers-reduced-motion + ::view-transition-group styling
 mod  components/thread/thread-live-wrapper.tsx
 mod  components/thread/thread-details-panel.tsx
