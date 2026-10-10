@@ -22,6 +22,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
+import { EditHistory } from './edit-history';
 
 interface MessageListProps {
   firstUnreadMessageId: string | null;
@@ -308,7 +309,7 @@ const MessageRow = React.memo(function MessageRow({
                 <TimeAgo date={message.createdAt} />
               </span>
               {message.isEdited && (
-                <span className="text-xs text-muted-foreground/40 italic">edited</span>
+                <EditHistory messageId={message.id} />
               )}
             </div>
           )}
@@ -466,6 +467,10 @@ const MessageRow = React.memo(function MessageRow({
                   setIsLiked(wasLiked);
                   setLikeCount((prev) => (wasLiked ? prev + 1 : Math.max(0, prev - 1)));
                   toasts.error('Failed to update reaction');
+                } else if (result?.data) {
+                  // Reconcile optimistic state with the authoritative counts.
+                  setIsLiked(result.data.hasReacted);
+                  setLikeCount(result.data.likeCount);
                 }
                 setIsLiking(false);
               }}
