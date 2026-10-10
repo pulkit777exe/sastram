@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins';
 import { oAuthProxy } from 'better-auth/plugins';
+import { dash } from '@better-auth/infra';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
@@ -95,6 +96,7 @@ export const auth = betterAuth({
   },
   socialProviders: buildSocialProviders(),
   plugins: [
+    dash(),
     oAuthProxy({
       currentURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     }),
