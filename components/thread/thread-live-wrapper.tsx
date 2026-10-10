@@ -11,6 +11,7 @@ import { getPollResultsAction, getPollByThreadAction } from '@/modules/polls/act
 import type { PollResults } from '@/modules/polls/types';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
+import { ThreadTagsManager, type ThreadTagItem } from './thread-tags-manager';
 import { SaiViewTransition } from '@/components/ui/view-transition';
 import { ThreadExternalPreview } from '@/components/thread/ExternalLinkPreview';
 import { ChevronDown, Loader2, Pin, AlertCircle } from 'lucide-react';
@@ -143,6 +144,12 @@ interface ThreadLiveWrapperProps {
   resolutionScore?: number | null;
   aiSummary?: string | null;
   threadDescription?: string | null;
+  /** OP/moderators can edit the thread title/description. */
+  canEditThread?: boolean;
+  /** Server-known bookmark state — avoids a status round-trip on mount. */
+  isBookmarked?: boolean;
+  /** User tags for this thread (managed in place, no refresh). */
+  tags?: ThreadTagItem[];
 }
 
 export function ThreadLiveWrapper({
@@ -156,13 +163,24 @@ export function ThreadLiveWrapper({
   poll,
   canManagePoll,
   currentUser,
-  title,
+  title: initialTitle,
   slug,
   initialFrequency,
   resolutionScore: _resolutionScore = null,
   aiSummary = null,
   threadDescription = null,
+  canEditThread = false,
+  isBookmarked,
+  tags = [],
 }: ThreadLiveWrapperProps) {
+  // Editable thread metadata — EditThreadDialog updates these in place.
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState<string | null>(threadDescription);
+
+  const handleThreadEdited = useCallback((nextTitle: string, nextDescription: string | null) => {
+    setTitle(nextTitle);
+    setDescription(nextDescription);
+  }, []);
   // Poll state
   const [showPoll, setShowPoll] = useState(false);
   const [currentPoll, setCurrentPoll] = useState(poll);
@@ -456,7 +474,16 @@ export function ThreadLiveWrapper({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <ThreadPageHeader title={title} threadId={threadId} slug={slug} initialFrequency={initialFrequency} />
+      <ThreadPageHeader
+        title={title}
+        threadId={threadId}
+        slug={slug}
+        initialFrequency={initialFrequency}
+        description={description}
+        canEdit={canEditThread}
+        onEdited={handleThreadEdited}
+        isBookmarked={isBookmarked}
+      />
 
       {isPollingStale && (
         <div className="shrink-0 px-6 pt-3">
@@ -503,8 +530,11 @@ export function ThreadLiveWrapper({
 
         {/* Source preview — in discussion, not title — subtle card with images from post */}
         <div className="max-w-4xl mx-auto mb-4">
-          <ThreadExternalPreview description={threadDescription} content={aiSummary} title={title} />
+          <ThreadExternalPreview description={description} content={aiSummary} title={title} />
         </div>
+
+        {/* User tags — attach/detach in place for editors, chips for viewers */}
+        <ThreadTagsManager threadId={threadId} initialTags={tags} canEdit={canEditThread} />
 
         {/* Thread content */}
         <div className="max-w-4xl mx-auto">

@@ -11,13 +11,21 @@ import { Button } from '@/components/ui/button';
 interface BookmarkButtonProps {
   threadId: string;
   className?: string;
+  /** Header mode: icon-only, no label. */
+  iconOnly?: boolean;
+  /**
+   * Known status from the server-rendered page. When provided, the button
+   * skips the mount-time status round-trip.
+   */
+  initialIsBookmarked?: boolean;
 }
 
-export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+export function BookmarkButton({ threadId, className, iconOnly = false, initialIsBookmarked }: BookmarkButtonProps) {
+  const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked ?? false);
+  const [isLoading, setIsLoading] = useState(initialIsBookmarked === undefined);
 
   useEffect(() => {
+    if (initialIsBookmarked !== undefined) return;
     let cancelled = false;
     async function checkStatus() {
       try {
@@ -40,7 +48,7 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
     return () => {
       cancelled = true;
     };
-  }, [threadId]);
+  }, [threadId, initialIsBookmarked]);
 
   const handleToggle = async () => {
     setIsLoading(true);
@@ -61,27 +69,26 @@ export function BookmarkButton({ threadId, className }: BookmarkButtonProps) {
     }
   };
 
-  function renderBookmarkContent() {
-    if (isBookmarked) {
-      return (
-        <>
-          <AnimatedIcon icon={BookmarkCheck} className="h-4 w-4 fill-current" animateOnHover />
-          <span className="hidden sm:inline">Bookmarked</span>
-        </>
-      );
-    }
-    return (
-      <>
-        <AnimatedIcon icon={Bookmark} className="h-4 w-4" animateOnHover />
-        <span className="hidden sm:inline">Bookmark</span>
-      </>
-    );
-  }
+  const label = isBookmarked ? 'Bookmarked' : 'Bookmark';
+  const Icon = isBookmarked ? BookmarkCheck : Bookmark;
 
   return (
     <div className="hover:scale-105 active:scale-95 transition-transform duration-100">
-      <Button variant="outline" onClick={handleToggle} disabled={isLoading} className={cn('gap-2', className)}>
-        {isLoading ? <Loader2 size={14} className="animate-spin" /> : renderBookmarkContent()}
+      <Button
+        variant="outline"
+        onClick={handleToggle}
+        disabled={isLoading}
+        aria-label={label}
+        className={cn(iconOnly ? 'h-7 w-7 p-0 gap-0' : 'gap-2', className)}
+      >
+        {isLoading ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <>
+            <AnimatedIcon icon={Icon} className={cn('h-4 w-4', isBookmarked && 'fill-current')} animateOnHover />
+            {!iconOnly && <span className="hidden sm:inline">{label}</span>}
+          </>
+        )}
       </Button>
     </div>
   );

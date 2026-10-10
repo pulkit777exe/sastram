@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 import { DetailCard } from '@/components/ui/detail-card';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
+import { canModerate } from '@/lib/config/permissions';
 import { Loader2 } from 'lucide-react';
 
 const INITIAL_MESSAGE_LIMIT = 50;
@@ -143,6 +144,9 @@ async function ThreadContent({
         initialFrequency={(subscription?.frequency as 'DAILY' | 'WEEKLY' | 'NEVER') ?? null}
         threadDescription={thread.description}
         aiSummary={thread.aiSummary}
+        canEditThread={thread.createdBy === session.user.id || canModerate(session.user.role)}
+        isBookmarked={thread.isBookmarked}
+        tags={thread.tags}
       />
   );
 }

@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -5,14 +7,23 @@ import { ROUTES } from '@/lib/config/routes';
 import { ThreadSubscribeButton } from '@/components/thread/subscribe-button';
 import { InviteFriendButton } from '@/components/thread/invite-friend-button';
 import { BountyButton } from '@/components/thread/BountyButton';
-import { ForkButton } from '@/components/thread/ForkButton';
+import { ForkButton } from '@/components/thread/fork-button';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
+import { BookmarkButton } from '@/components/thread/bookmark-button';
+import { EditThreadDialog } from '@/components/thread/edit-thread-dialog';
 
 interface ThreadPageHeaderProps {
   title: string;
   threadId: string;
   slug: string;
   initialFrequency: 'DAILY' | 'WEEKLY' | 'NEVER' | null;
+  description?: string | null;
+  /** OP/moderators get the edit affordance. */
+  canEdit?: boolean;
+  /** Fired after a successful edit so the wrapper can update in place. */
+  onEdited?: (title: string, description: string | null) => void;
+  /** Server-known bookmark state for the header bookmark button. */
+  isBookmarked?: boolean;
 }
 
 export function ThreadPageHeader({
@@ -20,6 +31,10 @@ export function ThreadPageHeader({
   threadId,
   slug,
   initialFrequency,
+  description,
+  canEdit,
+  onEdited,
+  isBookmarked,
 }: ThreadPageHeaderProps) {
   return (
     <header className="flex items-center justify-between px-4 sm:px-6 h-14 border-b border-line/60 shrink-0 bg-surface/95 backdrop-blur z-30">
@@ -34,11 +49,20 @@ export function ThreadPageHeader({
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-1.5 h-1.5 rounded-full bg-sai-green animate-pulse shrink-0" />
           <span className="text-sm font-semibold text-ink tracking-tight truncate">{title}</span>
+          {canEdit && onEdited && (
+            <EditThreadDialog
+              threadId={threadId}
+              initialTitle={title}
+              initialDescription={description}
+              onSaved={onEdited}
+            />
+          )}
         </div>
       </div>
 
       <div className="flex items-center gap-1">
         <CollectionSaveButton threadId={threadId} />
+        <BookmarkButton threadId={threadId} iconOnly initialIsBookmarked={isBookmarked} />
         <BountyButton threadId={threadId} />
         <ForkButton threadId={threadId} threadName={title} />
         <ThreadSubscribeButton
