@@ -58,6 +58,7 @@ export function toClientMessage(
     likeCount: message.likeCount,
     replyCount: message.replyCount,
     isAiResponse: message.isAI,
+    isLiked: message.likedByUser ?? false,
     createdAt: message.createdAt,
     updatedAt: message.updatedAt,
     deletedAt: message.deletedAt,

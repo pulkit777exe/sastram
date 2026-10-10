@@ -29,6 +29,11 @@ export type ThreadMessage = {
     image: string | null;
   };
   reactions: ThreadMessageReactionAggregate[];
+  /**
+   * Whether the requesting user liked this message (👍 — the only emoji the
+   * UI toggles). Set when the query runs with a user id; absent otherwise.
+   */
+  likedByUser?: boolean;
   _count: {
     replies: number;
   };
@@ -238,7 +243,8 @@ function mapDbMessageToThreadMessage(
       votes: Array<{ id: string; pollId: string; userId: string; optionIndex: number; createdAt: Date }>;
     } | null;
   },
-  reactionsByMessage: Map<string, ThreadMessageReactionAggregate[]>
+  reactionsByMessage: Map<string, ThreadMessageReactionAggregate[]>,
+  likedByUser?: Set<string>
 ): ThreadMessage {
   return {
     id: m.id,
@@ -257,6 +263,7 @@ function mapDbMessageToThreadMessage(
     replyCount: m.replyCount,
     author: resolveAuthor(m.sender, m.senderId),
     reactions: reactionsByMessage.get(m.id) ?? [],
+    likedByUser: likedByUser?.has(m.id) ?? false,
     _count: { replies: m.replyCount },
     attachments: m.attachments.map((a) => ({
       id: a.id,
@@ -309,10 +316,22 @@ async function fetchReactionsByMessage(
   return byMessage;
 }
 
+// Single query for the requesting user's 👍 reactions on this page — seeds
+// the clients' liked state so it survives reloads.
+async function fetchLikedMessageIds(messageIds: string[], userId: string): Promise<Set<string>> {
+  if (messageIds.length === 0) return new Set();
+  const rows = await prisma.reaction.findMany({
+    where: { messageId: { in: messageIds }, userId, emoji: '👍' },
+    select: { messageId: true },
+  });
+  return new Set(rows.map((r) => r.messageId));
+}
+
 export async function getThreadMessagesPaginated(
   threadId: string,
   cursor?: string | null,
-  limit: number = 50
+  limit: number = 50,
+  userId?: string
 ): Promise<PaginatedMessagesResult> {
   const effectiveLimit = Math.min(Math.max(limit, 1), 100);
   const where = await buildMessageWhereClause(threadId, cursor);
@@ -338,9 +357,10 @@ export async function getThreadMessagesPaginated(
   const page = hasMore ? messages.slice(0, effectiveLimit) : messages;
   const messageIds = page.map((m) => m.id);
   const reactionsByMessage = await fetchReactionsByMessage(messageIds);
+  const likedByUser = userId ? await fetchLikedMessageIds(messageIds, userId) : undefined;
 
   return {
-    messages: page.map((m) => mapDbMessageToThreadMessage(m as never, reactionsByMessage)),
+    messages: page.map((m) => mapDbMessageToThreadMessage(m as never, reactionsByMessage, likedByUser)),
     hasMore,
     nextCursor: hasMore && page.length > 0 ? page[page.length - 1].id : null,
     totalCount,

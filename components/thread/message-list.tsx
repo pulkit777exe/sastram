@@ -178,7 +178,7 @@ const MessageRow = React.memo(function MessageRow({
   const [editContent, setEditContent] = useState(message.content);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(message.isLiked ?? false);
   const [likeCount, setLikeCount] = useState(message.likeCount ?? 0);
   const [isLiking, setIsLiking] = useState(false);
 
@@ -455,6 +455,7 @@ const MessageRow = React.memo(function MessageRow({
             </div>
             <MessageActions
               onReply={() => onReply(message.id)}
+              isLiked={isLiked}
               onEdit={canEdit ? () => setIsEditing(true) : undefined}
               onReact={async () => {
                 if (isLiking) return;

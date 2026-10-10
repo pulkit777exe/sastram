@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { getMessageEditHistory } from '@/modules/messages/actions';
 
@@ -18,6 +18,24 @@ export function EditHistory({ messageId }: { messageId: string }) {
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<EditRecord[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+
+  // Dismiss on outside click / Escape, like the other popovers.
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
   async function toggle() {
     if (open) {
@@ -42,7 +60,7 @@ export function EditHistory({ messageId }: { messageId: string }) {
   }
 
   return (
-    <span className="relative inline-block">
+    <span className="relative inline-block" ref={containerRef}>
       <button
         type="button"
         onClick={() => void toggle()}

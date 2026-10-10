@@ -99,7 +99,7 @@ async function ThreadContent({
   const threadRef = { id: thread.id, name: thread.name, slug: thread.slug };
 
   const { messages: messagePage, hasMore: hasMoreMessages, nextCursor: oldestCursor } =
-    await getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT);
+    await getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT, session.user.id);
   const reversedMessages = [...messagePage].reverse();
   const visibleMessages = reversedMessages;
 

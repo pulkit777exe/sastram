@@ -24,6 +24,8 @@ export interface Message {
   isPinned: boolean;
   likeCount: number;
   replyCount: number;
+  /** Seeded from the server when known (thread queries); client state otherwise. */
+  isLiked?: boolean;
   isAiResponse: boolean;
   factCheckStatus?: 'UNCHECKED' | 'VERIFIED' | 'DISPUTED' | string | null;
   truncated?: boolean;

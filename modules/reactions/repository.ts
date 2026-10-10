@@ -5,16 +5,33 @@ import type { ReactionSummary } from './types';
 const userPreview = { select: { id: true, name: true, image: true } };
 
 export async function addReaction(messageId: string, userId: string, emoji: string) {
-  return prisma.reaction.create({
-    data: { messageId, userId, emoji },
-    include: { user: userPreview },
-  });
+  // Keep the denormalized message.likeCount in step — listings read the
+  // column, and nothing else maintains it (counter-reconciliation only
+  // repairs drift after the fact).
+  const [reaction] = await prisma.$transaction([
+    prisma.reaction.create({
+      data: { messageId, userId, emoji },
+      include: { user: userPreview },
+    }),
+    prisma.message.update({
+      where: { id: messageId },
+      data: { likeCount: { increment: 1 } },
+    }),
+  ]);
+  return reaction;
 }
 
 export async function removeReaction(messageId: string, userId: string, emoji: string) {
-  return prisma.reaction.deleteMany({
-    where: { messageId, userId, emoji },
-  });
+  const [result] = await prisma.$transaction([
+    prisma.reaction.deleteMany({
+      where: { messageId, userId, emoji },
+    }),
+    prisma.message.update({
+      where: { id: messageId },
+      data: { likeCount: { decrement: 1 } },
+    }),
+  ]);
+  return result;
 }
 
 export async function getMessageReactions(

@@ -166,7 +166,7 @@ export const loadThreadMessages = createServerAction(
     const session = await requireSessionOrThrow();
     await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
 
-    return actionSuccess(await getThreadMessagesPaginated(threadId, cursor, PAGE_SIZE));
+    return actionSuccess(await getThreadMessagesPaginated(threadId, cursor, PAGE_SIZE, session.user.id));
   }
 );
 

@@ -10,6 +10,7 @@ interface MessageActionsProps {
   onDelete?: () => void;
   onEdit?: () => void;
   isPinned?: boolean;
+  isLiked?: boolean;
   canPin?: boolean;
   canDelete?: boolean;
   canEdit?: boolean;
@@ -23,6 +24,7 @@ export function MessageActions({
   onDelete,
   onEdit,
   isPinned = false,
+  isLiked = false,
   canPin = false,
   canDelete = false,
   canEdit = false,
@@ -44,8 +46,12 @@ export function MessageActions({
 
       {/* React */}
       {onReact && (
-        <ActionBtn title="Like" onClick={onReact}>
-          <Smile size={12} />
+        <ActionBtn
+          title="Like"
+          onClick={onReact}
+          className={isLiked ? 'text-chart-4 hover:text-chart-4' : undefined}
+        >
+          <Smile size={12} className={isLiked ? 'fill-current' : undefined} />
         </ActionBtn>
       )}
 
