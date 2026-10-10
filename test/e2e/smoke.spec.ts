@@ -9,7 +9,7 @@ test.describe('Authenticated smoke', () => {
 
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/dashboard\/sai-search/);
-    await expect(page.locator('h1').first()).toHaveText('Search with Sai');
+    await expect(page.locator('h1').first()).toHaveText('Search across Sastram');
     // Exactly one h1 on the search page (no duplicate header block).
     expect(await page.locator('h1').count()).toBe(1);
 
@@ -23,7 +23,7 @@ test.describe('Authenticated smoke', () => {
     await page.goto('/dashboard/sai-search');
     // Only one H1, and the old duplicate "Sai-Powered" block is gone.
     expect(await page.locator('h1').count()).toBe(1);
-    await expect(page.getByRole('heading', { name: 'Search with Sai' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Search across Sastram' })).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 1 }).filter({ hasText: 'Sai-Powered' })
     ).toHaveCount(0);
@@ -54,7 +54,8 @@ test.describe('Authenticated smoke', () => {
       expect(body?.data?.synthesis?.content?.trim().length ?? 0).toBeGreaterThan(0);
     } else {
       // Otherwise it must be a clear error status with a string message.
-      expect([429, 503, 500]).toContain(res.status());
+      // 400 covers the explicit missing-keys path (no provider configured).
+      expect([400, 429, 503, 500]).toContain(res.status());
       const body = await res.json().catch(() => ({}));
       expect(typeof body?.error?.message).toBe('string');
     }
@@ -64,13 +65,14 @@ test.describe('Authenticated smoke', () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    // Use the known seeded public thread.
+    // Use the known seeded public thread (seeded by global-setup).
     await page.goto('/thread/new-thread-9849b823-5fe6-4f1a-88e0-78178fd06a1d');
-    await expect(page.getByRole('heading', { name: 'new thread' })).toBeVisible();
-    // The count label renders as e.g. "9 messages" (number + text in separate nodes).
-    await expect(page.getByText(/messages/i).first()).toBeVisible();
-    // Reply box is present (the RSC function-prop crash would break this page).
-    await expect(page.getByPlaceholder(/reply/i).first()).toBeVisible();
+    // Thread title renders as header text (span, not a heading element).
+    await expect(page.getByText('new thread').first()).toBeVisible();
+    // The seeded message body renders (sidebar counts live in the drawer).
+    await expect(page.getByText('Seed message for smoke tests')).toBeVisible();
+    // Composer box is present (the RSC function-prop crash would break this page).
+    await expect(page.getByPlaceholder(/ask a question|mention @sai/i).first()).toBeVisible();
 
     expect(errors, errors.join('\n')).toHaveLength(0);
   });
@@ -79,12 +81,15 @@ test.describe('Authenticated smoke', () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    // Use the known seeded public thread.
+    // Use the known seeded public thread (seeded by global-setup).
     await page.goto('/thread/new-thread-9849b823-5fe6-4f1a-88e0-78178fd06a1d');
-    const box = page.getByPlaceholder(/reply/i).first();
+    const box = page.getByPlaceholder(/ask a question|mention @sai/i).first();
     await box.click();
     await box.fill(`@sai what is this thread about?`);
-    await page.getByRole('button', { name: /send|post|reply/i }).first().click();
+    // The composer send button is icon-only (no accessible name), so submit
+    // via its own form — a loose /send|post|reply/ matcher would hit message
+    // Reply buttons instead.
+    await box.locator('xpath=ancestor::form').locator('button[type="submit"]').click();
 
     // The inline AI reply is best-effort: it must appear (real answer or a clear
     // placeholder) and never throw / 500 the job. Allow time for the async job.

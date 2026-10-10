@@ -15,13 +15,24 @@ const TEST_PASSWORD = 'TestPassword123!';
  */
 async function run(_config: FullConfig) {
   // 1. Seed (best-effort; idempotent upsert). Uses tsx via the project script.
-  try {
-    execFileSync('pnpm', ['exec', 'tsx', 'scripts/seed-test-user.ts'], {
-      cwd: process.cwd(),
-      stdio: 'inherit',
-    });
-  } catch (err) {
-    console.warn('[global-setup] seed step failed (continuing):', (err as Error).message);
+  // DATABASE_URL is pinned explicitly: each shell invocation is fresh, so an
+  // exported override would be lost and the seeds would hit the dev database
+  // from .env instead (this exact mistake polluted Neon once — cleaned up).
+  const seedEnv = {
+    ...process.env,
+    DATABASE_URL:
+      process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/sastram_test',
+  };
+  for (const script of ['scripts/seed-test-user.ts', 'scripts/seed-e2e-thread.ts']) {
+    try {
+      execFileSync('pnpm', ['exec', 'tsx', script], {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        env: seedEnv,
+      });
+    } catch (err) {
+      console.warn(`[global-setup] seed step ${script} failed (continuing):`, (err as Error).message);
+    }
   }
 
   // 2. Sign in and capture cookies.
