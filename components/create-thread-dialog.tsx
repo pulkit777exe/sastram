@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { createThreadAction } from '@/modules/threads/actions';
 import { toasts } from '@/lib/utils/toast';
+import { ROUTES } from '@/lib/config/routes';
 import { cn } from '@/lib/utils/cn';
 
 interface SimilarThread {
@@ -123,9 +124,10 @@ export function CreateThreadDialog() {
         toasts.success('Thread created', 'Sai is analyzing topics and resolution — opening thread…');
         setOpen(false);
         if (slug) {
-          router.push(`/dashboard/threads/${slug}`);
+          router.push(ROUTES.THREAD(slug));
         } else {
-          router.refresh();
+          // No slug in the response — the thread exists, so land on the list.
+          router.push(ROUTES.DASHBOARD_THREADS);
         }
       }
     });

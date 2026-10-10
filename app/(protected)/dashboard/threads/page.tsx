@@ -5,7 +5,7 @@ import type { Role } from '@prisma/client';
 import { requireSession } from '@/modules/auth';
 import { listThreads } from '@/modules/threads/repository';
 import { CreateThreadDialog } from '@/components/create-thread-dialog';
-import { ForkFromUrlButton } from '@/components/thread/ForkFromUrlButton';
+import { ForkFromUrlButton } from '@/components/thread/fork-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadListFilter } from '@/components/thread/ThreadListFilter';
 
