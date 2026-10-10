@@ -32,10 +32,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - **No-op revalidations**: removed `revalidatePath` calls that targeted wrong paths — bookmarks (`/thread/<id>`), tags (`/thread/<id>`), `markThreadVerified` (`/dashboard/threads/<id>`), poll creation (id where slug expected); reactions/edit/pin/follow no longer invalidate broad trees (`/dashboard/threads`, `/dashboard`) per action — clients already reconcile optimistically
+- **Like persistence**: `message.likeCount` is now maintained transactionally on toggle (it was only repaired by a periodic job, so likes vanished on reload); the clients' liked state is seeded from a single per-page query and the Like button shows a filled state when active
 - **Reaction toggle truth**: `toggleReaction` now returns `{ hasReacted, likeCount }` so the optimistic like UI reconciles with the server instead of drifting on races
 
 ### Security
 
+- **Dependency audit 16 → 8 (0 critical)**: bumped `next`/`eslint-config-next` to 16.4.0, `@sentry/nextjs` to 10.76.2, `concurrently` to 10.0.6 — clears the Next.js RCE/SSRF, shell-quote injection, and sentry-chain advisories. The remaining 8 are upstream-blocked (no fixed release from the owning packages) or dev/build-time-only exposure (mocha, eslint, webpack plugin, prisma dev chain)
 - **Search visibility**: `searchThreads` and `searchMessages` now apply `visibilityFilter()` — private/restricted threads no longer leak to unauthenticated search
 - **Search authentication**: All three search actions now call `requireSession()` — previously no auth check at all
 - **Search email exposure**: Removed `email` from user search selects and creator/sender includes
