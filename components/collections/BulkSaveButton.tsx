@@ -1,81 +1,20 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useState } from 'react';
 import { Bookmark, Check, Plus, Loader2, BookmarkPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
-import { getCollectionsCache, setCollectionsCache, invalidateCollectionsCache } from './collections-cache';
+import { useCollectionsDropdown } from './use-collections-dropdown';
 
 type BulkItem = { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown };
 
 export const BulkSaveButton = memo(function BulkSaveButton({ items, label }: { items: BulkItem[]; label?: string }) {
-  const [open, setOpen] = useState(false);
-  const [collections, setCollections] = useState<{ id: string; title: string }[]>([]);
-  const [newTitle, setNewTitle] = useState('');
+  const { open, setOpen, collections, loading, newTitle, setNewTitle, containerRef, createCollectionFromInput } = useCollectionsDropdown();
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const count = items.length;
   const displayLabel = label ?? `Save all (${count})`;
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    const cached = getCollectionsCache();
-    if (cached) {
-      setCollections(cached);
-      setLoading(false);
-    } else {
-      setLoading(true);
-      fetch('/api/collections?light=1')
-        .then((r) => {
-          if (!r.ok) {
-            if (r.status === 401 || r.status === 403 || r.status === 429) {
-              if (!cancelled) setCollections([]);
-              throw new Error('auth');
-            }
-            throw new Error('Failed to load');
-          }
-          return r.json();
-        })
-        .then((j) => {
-          if (cancelled) return;
-          const data = (j.data ?? []) as { id: string; title: string }[];
-          setCollections(data);
-          setCollectionsCache(data);
-        })
-        .catch((e) => {
-          if (cancelled) return;
-          if (e instanceof Error && e.message === 'auth') return;
-          toasts.error('Failed to load collections');
-        })
-        .finally(() => {
-          if (cancelled) return;
-          setLoading(false);
-        });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
 
   async function bulkAddTo(collectionId: string) {
     if (count === 0) return;
@@ -124,28 +63,9 @@ export const BulkSaveButton = memo(function BulkSaveButton({ items, label }: { i
     if (!newTitle.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/collections', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle.trim() }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        if (res.status === 409) {
-          toasts.error(j?.error?.message || 'Already exists');
-          return;
-        }
-        throw new Error(j?.error?.message || 'Create failed');
-      }
-      const j = await res.json();
-      const coll = j.data;
-      if (coll?.id) {
-        invalidateCollectionsCache();
-        setNewTitle('');
-        await bulkAddTo(coll.id);
-      }
-    } catch (e) {
-      toasts.error(e instanceof Error ? e.message : 'Failed to create');
+      const collectionId = await createCollectionFromInput();
+      if (!collectionId) return;
+      await bulkAddTo(collectionId);
     } finally {
       setSaving(false);
     }

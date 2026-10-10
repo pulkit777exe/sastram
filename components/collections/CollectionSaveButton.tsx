@@ -1,62 +1,25 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Bookmark, Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
-import { getCollectionsCache, setCollectionsCache, invalidateCollectionsCache } from './collections-cache';
+import { useCollectionsDropdown } from './use-collections-dropdown';
 
 export const CollectionSaveButton = memo(function CollectionSaveButton({ threadId, sessionId, messageId, metadata, label = 'Save' }: { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown; label?: string }) {
-  const [open, setOpen] = useState(false);
-  const [collections, setCollections] = useState<{ id: string; title: string }[]>([]);
-  const [newTitle, setNewTitle] = useState('');
+  const { open, setOpen, collections, loading, newTitle, setNewTitle, containerRef, createCollectionFromInput } = useCollectionsDropdown();
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const payload = { threadId, sessionId, messageId, metadata } as Record<string, unknown>;
   const metadataKey = metadata ? JSON.stringify(metadata) : '';
 
+  // Pre-fetch saved state — shows Check when already in a collection
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     setSavedIds(new Set());
-    const cached = getCollectionsCache();
-    if (cached) {
-      setCollections(cached);
-      setLoading(false);
-    } else {
-      setLoading(true);
-      fetch('/api/collections?light=1')
-        .then((r) => {
-          if (!r.ok) {
-            if (r.status === 401 || r.status === 403 || r.status === 429) {
-              if (!cancelled) setCollections([]);
-              throw new Error('auth');
-            }
-            throw new Error('Failed to load');
-          }
-          return r.json();
-        })
-        .then((j) => {
-          if (cancelled) return;
-          const data = (j.data ?? []) as { id: string; title: string }[];
-          setCollections(data);
-          setCollectionsCache(data);
-        })
-        .catch((e) => {
-          if (cancelled) return;
-          if (e instanceof Error && e.message === 'auth') return;
-          toasts.error('Failed to load collections');
-        })
-        .finally(() => {
-          if (cancelled) return;
-          setLoading(false);
-        });
-    }
-    // Pre-fetch saved state — shows Check when already in collection (KISS: stringify key avoids object identity loops)
     let parsedMetadata: unknown = undefined;
     if (metadataKey) {
       try {
@@ -84,73 +47,10 @@ export const CollectionSaveButton = memo(function CollectionSaveButton({ threadI
     };
   }, [open, threadId, sessionId, messageId, metadataKey]);
 
-  // Close on outside click / Escape - foolproof
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  async function createAndAdd() {
-    if (!newTitle.trim()) return;
+  async function addTo(collectionId: string) {
     setSaving(true);
     try {
-      const res = await fetch('/api/collections', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle.trim() }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        if (res.status === 409) {
-          toasts.error(j?.error?.message || 'Already exists');
-          return;
-        }
-        throw new Error(j?.error?.message || 'Create failed');
-      }
-      const j = await res.json();
-      const coll = j.data;
-      if (coll?.id) {
-        invalidateCollectionsCache();
-        const itemRes = await fetch(`/api/collections/${coll.id}/items`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (!itemRes.ok) {
-          const jd = await itemRes.json().catch(() => ({}));
-          if (itemRes.status === 409) {
-            toasts.error('Already saved to this collection');
-          } else {
-            throw new Error(jd?.error?.message || 'Add failed');
-          }
-          return;
-        }
-        toasts.success('Saved to collection');
-        setNewTitle('');
-        setOpen(false);
-      }
-    } catch (e) {
-      toasts.error(e instanceof Error ? e.message : 'Failed to save');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function addTo(id: string) {
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/collections/${id}/items`, {
+      const res = await fetch(`/api/collections/${collectionId}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -167,6 +67,18 @@ export const CollectionSaveButton = memo(function CollectionSaveButton({ threadI
       setOpen(false);
     } catch (e) {
       toasts.error(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createAndAdd() {
+    if (!newTitle.trim()) return;
+    setSaving(true);
+    try {
+      const collectionId = await createCollectionFromInput();
+      if (!collectionId) return;
+      await addTo(collectionId);
     } finally {
       setSaving(false);
     }

@@ -6,7 +6,6 @@ import { Search, Plus, Loader2, X, FolderOpen, FileText, Sparkles, MoreHorizonta
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toasts } from '@/lib/utils/toast';
-import { useRouter } from 'next/navigation';
 import { invalidateCollectionsCache } from './collections-cache';
 
 type Collection = { id: string; title: string; _count: { items: number }; updatedAt: Date | string };
@@ -32,7 +31,6 @@ export function CollectionsClient({ initial }: { initial: Collection[] }) {
   const [newTitle, setNewTitle] = React.useState('');
   const [creating, setCreating] = React.useState(false);
   const [view, setView] = React.useState<'grid' | 'list'>('grid');
-  const router = useRouter();
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,8 +52,8 @@ export function CollectionsClient({ initial }: { initial: Collection[] }) {
       const created = json.data as Collection;
       toasts.success('Collection created');
       setNewTitle('');
+      // Local state is the source of truth — no router.refresh() needed.
       setCollections((prev) => [created ?? { id: json.data?.id ?? Date.now().toString(), title, _count: { items: 0 }, updatedAt: new Date().toISOString() } as Collection, ...prev]);
-      router.refresh();
     } catch (e) {
       toasts.error(e instanceof Error ? e.message : 'Failed to create');
     } finally {
@@ -71,7 +69,6 @@ export function CollectionsClient({ initial }: { initial: Collection[] }) {
       toasts.success('Collection deleted');
       invalidateCollectionsCache();
       setCollections((prev) => prev.filter((c) => c.id !== id));
-      router.refresh();
     } catch {
       toasts.error('Failed to delete');
     }
