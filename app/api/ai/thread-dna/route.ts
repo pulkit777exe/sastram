@@ -3,7 +3,7 @@ import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-respon
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/ai';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
-import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { z } from 'zod';
 
 const dnaRequestSchema = z.object({
@@ -50,11 +50,14 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   if (validated instanceof NextResponse) return validated;
   const threadId = validated.threadId;
 
-  const preflight = await withAiPreflight(req, {
-    aiCallPath: AiCallPath.THREAD_DNA,
+  const guard = await guardAiRoute(req, {
+    path: AiCallPath.THREAD_DNA,
+    quota: { kind: 'analysis' },
     threadId,
+    rateLimitScope: 'ai-thread-dna',
+    sse: false,
   });
-  if (preflight instanceof NextResponse) return preflight;
+  if (!guard.ok) return guard.response;
 
   const thread = await fetchThreadForDna(threadId);
   if (!thread) {

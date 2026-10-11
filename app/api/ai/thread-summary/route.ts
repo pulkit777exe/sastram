@@ -5,7 +5,7 @@ import { AIJobType } from '@/lib/queue/config';
 import { enqueueJob } from '@/lib/services/queue';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { getEnv } from '@/lib/config/env';
-import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { z } from 'zod';
@@ -64,11 +64,14 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   if (validated instanceof NextResponse) return validated;
   const threadId = validated.threadId;
 
-  const preflight = await withAiPreflight(req, {
-    aiCallPath: AiCallPath.THREAD_SUMMARY,
+  const guard = await guardAiRoute(req, {
+    path: AiCallPath.THREAD_SUMMARY,
+    quota: { kind: 'analysis' },
     threadId,
+    rateLimitScope: 'ai-thread-summary',
+    sse: false,
   });
-  if (preflight instanceof NextResponse) return preflight;
+  if (!guard.ok) return guard.response;
 
   const eligibilityError = await validateThreadEligibility(threadId);
   if (eligibilityError) return eligibilityError;
@@ -78,7 +81,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
   }
 
-  await enqueueJob(AIJobType.GENERATE_THREAD_SUMMARY, { threadId, messages: thread.messages, userId: preflight.session.user.id });
+  await enqueueJob(AIJobType.GENERATE_THREAD_SUMMARY, { threadId, messages: thread.messages, userId: guard.session.user.id });
 
   return NextResponse.json(ok({ status: 'pending', message: 'Summary generation started' }));
 });

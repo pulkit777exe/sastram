@@ -4,7 +4,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/ai';
 import { logger } from '@/lib/infrastructure/logger';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
-import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { z } from 'zod';
@@ -56,12 +56,14 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   if (validated instanceof NextResponse) return validated;
   const threadId = validated.threadId;
 
-  const preflight = await withAiPreflight(req, {
-    aiCallPath: AiCallPath.RESOLUTION_SCORE,
-    skipCostGate: true,
+  const guard = await guardAiRoute(req, {
+    path: AiCallPath.RESOLUTION_SCORE,
+    quota: { kind: 'analysis' },
     threadId,
+    rateLimitScope: 'ai-resolution-score',
+    sse: false,
   });
-  if (preflight instanceof NextResponse) return preflight;
+  if (!guard.ok) return guard.response;
 
   const thread = await fetchThreadForScore(threadId);
   if (!thread) {

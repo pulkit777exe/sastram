@@ -4,7 +4,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/ai';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { parseThreadDna, type ThreadDNA } from '@/lib/schemas/thread-dna';
-import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { visibilityFilter } from '@/lib/thread-access';
 import { Prisma } from '@prisma/client';
@@ -69,10 +69,13 @@ export const GET = withErrorHandling(async (_req: NextRequest) => {
 });
 
 export const POST = withErrorHandling(async (req: NextRequest) => {
-  const preflight = await withAiPreflight(req, {
-    aiCallPath: AiCallPath.THREAD_DNA,
+  const guard = await guardAiRoute(req, {
+    path: AiCallPath.THREAD_DNA,
+    quota: { kind: 'analysis' },
+    rateLimitScope: 'ai-similar',
+    sse: false,
   });
-  if (preflight instanceof NextResponse) return preflight;
+  if (!guard.ok) return guard.response;
 
   let body: unknown;
   try {
@@ -92,7 +95,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const { title, description } = parsed.data;
 
   const draftText = description ? `${title}\n\n${description}` : title;
-  const draftMessage = [{ content: draftText, sender: { name: preflight.session.user.name ?? 'User' } }];
+  const draftMessage = [{ content: draftText, sender: { name: guard.session.user.name ?? 'User' } }];
 
   let draftDna: ThreadDNA;
   try {
@@ -101,7 +104,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('AI_ERROR', 'Failed to analyze thread similarity.'), { status: HTTP_STATUS.INTERNAL });
   }
 
-  const filter = await visibilityFilter(preflight.session.user.id, preflight.session.user.role as never);
+  const filter = await visibilityFilter(guard.session.user.id, guard.session.user.role as never);
   const whereClause: Prisma.ThreadWhereInput = {
     threadDna: { not: Prisma.DbNull },
     deletedAt: null,

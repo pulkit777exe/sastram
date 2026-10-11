@@ -4,19 +4,21 @@ import { enqueueJob } from '@/lib/services/queue';
 import { AIJobType } from '@/lib/queue/config';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { parseUserPreferences } from '@/lib/schemas/user-preferences';
-import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { z } from 'zod';
 
 const bodySchema = z.object({ query: z.string().min(3).max(500), collectionId: z.string().cuid().optional() });
 
 export const POST = withErrorHandling(async (request: NextRequest) => {
-  const preflight = await withAiPreflight(request, {
-    aiCallPath: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
-    quotaType: 'search',
+  const guard = await guardAiRoute(request, {
+    path: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
+    quota: { kind: 'search' },
+    rateLimitScope: 'ai-deep-research',
+    sse: false,
   });
-  if (preflight instanceof NextResponse) return preflight;
-  const session = preflight.session;
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
   const prefs = parseUserPreferences(user?.preferences);
   if ((prefs as unknown as { deepResearchEnabled?: boolean }).deepResearchEnabled === false) {
