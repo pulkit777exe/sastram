@@ -19,7 +19,7 @@ describe('POST /api/ai/resolution-score', () => {
 
     require.cache[quotaModulePath] = {
       id: quotaModulePath, filename: quotaModulePath, loaded: true, exports: {
-        consumeAiAnalysisQuota: async () => ({ allowed: true, remaining: 29 }),
+        consumeQuota: async () => ({ allowed: true, remaining: 29 }),
       },
     } as NodeModule;
     require.cache[spendCapModulePath] = {

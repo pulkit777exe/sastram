@@ -6,7 +6,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { startOfDay, endOfDay, subDays, getDay } from 'date-fns';
 import { verifyCronAuth } from '@/lib/middleware/cron-auth';
 import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { checkCronSpendCaps } from '@/lib/ai/guard';
 import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import type { DigestFrequency } from '@prisma/client';
 
@@ -96,6 +96,11 @@ export async function GET(req: NextRequest) {
     // Group subscriptions by thread to avoid re-generating summary for same thread
     const threadSummaries = new Map();
 
+    // Spend is checked once up front (fail-open), not per subscription — the
+    // old loop consumed $0.015 of cap per subscriber.
+    const spendCaps = await checkCronSpendCaps([AiCallPath.DAILY_DIGEST]);
+    const digestCap = spendCaps[AiCallPath.DAILY_DIGEST] ?? { allowed: true, remaining: -1 };
+
     for (const sub of allSubscriptions) {
       // Check if this frequency should be processed today
       const window = getDigestWindow(sub.frequency, today);
@@ -131,8 +136,7 @@ export async function GET(req: NextRequest) {
        // Generate or retrieve summary for this thread
        let summaryHtml = '';
        try {
-         const spendCap = await enforceAiSpendCap(AiCallPath.DAILY_DIGEST);
-         const gate = evaluateAiCostGate({ path: AiCallPath.DAILY_DIGEST, spendCapAllowed: spendCap.allowed });
+         const gate = evaluateAiCostGate({ path: AiCallPath.DAILY_DIGEST, spendCapAllowed: digestCap.allowed });
          if (!gate.allowed) {
            results.skipped++;
            continue;

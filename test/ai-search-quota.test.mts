@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { consumeAiSearchQuota } from '@/lib/services/daily-quota';
+import { consumeQuota } from '@/lib/services/daily-quota';
 import { getSecondsUntilUtcMidnight, getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
 
 describe('AI Search Quota', function () {
@@ -13,21 +13,21 @@ describe('AI Search Quota', function () {
     });
   });
 
-  describe('consumeAiSearchQuota', () => {
+  describe('consumeQuota search', () => {
     it('should return numeric remaining and boolean allowed', async () => {
-      const result = await consumeAiSearchQuota('test-user-id');
+      const result = await consumeQuota('search', 'test-user-id');
       expect(result.allowed).to.be.a('boolean');
       expect(result.remaining).to.be.a('number');
     });
 
     it('should handle empty user IDs', async () => {
-      const result = await consumeAiSearchQuota('');
+      const result = await consumeQuota('search', '');
       expect(result.allowed).to.be.a('boolean');
     });
 
     it('should handle long user IDs', async () => {
       const longId = 'a'.repeat(1000);
-      const result = await consumeAiSearchQuota(longId);
+      const result = await consumeQuota('search', longId);
       expect(result.allowed).to.be.a('boolean');
     });
 
@@ -37,10 +37,10 @@ describe('AI Search Quota', function () {
         return;
       }
       const userId = 'quota-test-user';
-      const first = await consumeAiSearchQuota(userId);
+      const first = await consumeQuota('search', userId);
       expect(first.remaining).to.be.at.least(0);
 
-      const second = await consumeAiSearchQuota(userId);
+      const second = await consumeQuota('search', userId);
       expect(second.remaining).to.be.at.most(first.remaining);
     });
   });

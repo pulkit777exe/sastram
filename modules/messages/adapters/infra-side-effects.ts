@@ -1,5 +1,6 @@
 import { sendMentionNotification } from '@/lib/services/email';
 import { enqueueInlineJob } from '@/lib/services/queue';
+import { randomUUID } from 'node:crypto';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { recordActivity } from '@/modules/activity/repository';
 import { revalidatePath } from 'next/cache';
@@ -10,7 +11,10 @@ export const infraMessageSideEffects: MessageSideEffectsPort = {
     await sendMentionNotification(toEmail, mentionedByName, threadName, contentPreview, threadUrl);
   },
   async enqueueAiInline(args) {
-    await enqueueInlineJob(args);
+    // Quota + spend were already consumed by the enqueueing caller
+    // (queueAiInlineIfRequested pre-flights both) — stamp the request-scoped
+    // idempotency key so the worker skips re-consumption (no double-billing).
+    await enqueueInlineJob({ ...args, alreadyBilled: randomUUID() });
   },
   async createBulkNotifications(notifications) {
     // Dispatcher is best-effort; fan out per notification to preserve category/title variance

@@ -93,6 +93,12 @@ export interface AIInlineJobData {
   threadId: string;
   query: string;
   userId: string;
+  /**
+   * Request-scoped idempotency key. The route consumes AI spend before
+   * enqueueing; when present the worker skips re-consumption
+   * (routes-consume/workers-skip per docs/adr/0001-grilling-decisions.md).
+   */
+  alreadyBilled?: string;
 }
 
 export interface StalenessCheckJobData {

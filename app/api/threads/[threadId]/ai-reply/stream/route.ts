@@ -1,13 +1,9 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { NextRequest } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
-import { requireSessionOrThrow } from '@/modules/auth';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
-import { rateLimit } from '@/lib/services/rate-limit';
-import { getRequestIp } from '@/lib/utils/request-ip';
-import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, AiCallPath } from '@/lib/services/ai-cost-classification';
 import { trackNeonRequest } from '@/lib/services/usage-check';
+import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
 import { sseEvent, sseHeaders } from '@/lib/utils/sse';
@@ -47,39 +43,12 @@ function createSseSender(
   };
 }
 
-async function authenticateRequest(): Promise<{ session: Awaited<ReturnType<typeof requireSessionOrThrow>> } | { error: Response }> {
-  try {
-    const session = await requireSessionOrThrow();
-    return { session };
-  } catch {
-    return { error: errorSseResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED) };
-  }
-}
-
 function validateThreadParams(threadId: string): Response | null {
   const parsedParams = paramsSchema.safeParse({ threadId });
   if (!parsedParams.success) {
     return errorSseResponse('Invalid thread ID', HTTP_STATUS.BAD_REQUEST);
   }
   return null;
-}
-
-async function checkRateLimitOrThrow(session: { user: { id: string } }, request: NextRequest): Promise<Response | null> {
-  const ip = getRequestIp(request);
-  const rateLimitResult = await rateLimit({ key: `ai-reply-stream:${session.user.id}:${ip}`, type: 'api' });
-  if (!rateLimitResult.success) {
-    return errorSseResponse('Too many requests', HTTP_STATUS.RATE_LIMITED);
-  }
-  return null;
-}
-
-async function checkThreadAccessOrResponse(threadId: string, session: { user: { id: string; role: unknown } }): Promise<Response | null> {
-  try {
-    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
-    return null;
-  } catch {
-    return errorSseResponse('Forbidden', HTTP_STATUS.FORBIDDEN);
-  }
 }
 
 async function resolveParentMessage(threadId: string, requestedMessageIdRaw: string | null) {
@@ -122,27 +91,11 @@ function resolveQuery(parentMessage: { content: string }): { query: string | nul
   return { query, error: null };
 }
 
-async function checkSpendCapOrResponse(): Promise<Response | null> {
-  const spendCap = await consumeSpendCap();
-  const gate = evaluateAiCostGate({
-    path: AiCallPath.AI_REPLY_STREAM,
-    spendCapAllowed: spendCap.allowed,
-  });
-  if (!gate.allowed) {
-    return errorSseResponse('AI features temporarily unavailable', HTTP_STATUS.SERVICE_UNAVAILABLE);
-  }
-  return null;
-}
-
 export async function GET(
   request: NextRequest,
   context?: { params: Promise<Record<string, string>> }
 ) {
   const encoder = new TextEncoder();
-
-  const auth = await authenticateRequest();
-  if ('error' in auth) return auth.error;
-  const session = auth.session;
 
   let threadId: string;
   if (context && context.params) {
@@ -155,11 +108,16 @@ export async function GET(
   const paramError = validateThreadParams(threadId);
   if (paramError) return paramError;
 
-  const rateLimitError = await checkRateLimitOrThrow(session, request);
-  if (rateLimitError) return rateLimitError;
-
-  const accessError = await checkThreadAccessOrResponse(threadId, session);
-  if (accessError) return accessError;
+  // Spend is consumed here, before any DB writes — the sync stream path bills
+  // once in the route; no worker is involved.
+  const guard = await guardAiRoute(request, {
+    path: AiCallPath.AI_REPLY_STREAM,
+    quota: null,
+    threadId,
+    rateLimitScope: 'ai-reply-stream',
+    sse: true,
+  });
+  if (!guard.ok) return guard.response;
 
   const rawMessageId = request.nextUrl.searchParams.get('messageId');
   const parentMessage = await resolveParentMessage(threadId, rawMessageId);
@@ -171,9 +129,6 @@ export async function GET(
   const queryResult = resolveQuery(parentMessage);
   if (queryResult.error) return queryResult.error;
   const query = queryResult.query as string;
-
-  const spendError = await checkSpendCapOrResponse();
-  if (spendError) return spendError;
 
   const threadContext = await fetchThreadContext(threadId);
   const aiUser = await getOrCreateAiUser();

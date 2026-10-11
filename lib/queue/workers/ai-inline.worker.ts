@@ -1,7 +1,8 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { isQuotaError } from '@/lib/utils/errors';
-import { assertSpendCapAvailable } from './_shared';
+import { runGuardedWorker, readAlreadyBilled } from './_shared';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import {
   fetchThreadContext,
   createAiReplyMessageTx,
@@ -28,8 +29,6 @@ async function generateAIInlineResponse(
   let aiMessage: { id: string } | null = null;
 
   try {
-    await assertSpendCapAvailable();
-
     const existingAiMessage = await prisma.message.findFirst({
       where: { threadId, parentId: parentMessage.id, isAiResponse: true },
       select: { id: true },
@@ -92,5 +91,18 @@ export async function handleAIInlineJob(data: AIInlineJobData) {
   if (!messageId || !threadId || !query) {
     throw new Error('Missing required fields: messageId, threadId, query');
   }
-  return generateAIInlineResponse(messageId, threadId, query);
+  // Routes consume spend before enqueueing; honor the request-scoped
+  // idempotency key so the worker skips re-consumption (no double-billing).
+  const alreadyBilled = readAlreadyBilled(data);
+  const result = await runGuardedWorker(
+    'ai-inline',
+    AiCallPath.AI_INLINE_REPLY,
+    threadId,
+    () => generateAIInlineResponse(messageId, threadId, query),
+    { alreadyBilled }
+  );
+  if (!result.ok) {
+    return { queued: false, handled: false, skipped: true };
+  }
+  return result.value;
 }

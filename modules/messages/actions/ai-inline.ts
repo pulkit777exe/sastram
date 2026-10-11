@@ -1,4 +1,4 @@
-import { consumeAiInlineQuota } from '@/lib/services/daily-quota';
+import { consumeQuota } from '@/lib/services/daily-quota';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath, evaluateAiCostGate } from '@/lib/services/ai-cost-classification';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
@@ -61,7 +61,7 @@ export async function queueAiInlineIfRequested(args: {
       threadId: args.threadId,
     });
   } else {
-    quota = await consumeAiInlineQuota({
+    quota = await consumeQuota('inline', {
       userId: args.userId,
       threadId: args.threadId,
     });

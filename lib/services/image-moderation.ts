@@ -1,7 +1,7 @@
 import { del } from '@vercel/blob';
 import { aiService } from '@/lib/ai';
 import { env } from '@/lib/config/env';
-import { consumeImageModerationQuota } from '@/lib/services/daily-quota';
+import { consumeQuota } from '@/lib/services/daily-quota';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
@@ -50,7 +50,7 @@ export async function moderateImageUpload(
   }
 
   try {
-    const quotaResult = await consumeImageModerationQuota({});
+    const quotaResult = await consumeQuota('image', {});
     if (!quotaResult.allowed) {
       return handleQuotaExceeded(blobUrl);
     }

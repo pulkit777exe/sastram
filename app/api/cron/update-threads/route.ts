@@ -12,7 +12,7 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
 import { promoteThreadsToKnowledgePages } from '@/lib/services/knowledge-promotion';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { checkCronSpendCaps } from '@/lib/ai/guard';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
 import { refreshUserExpertise } from '@/lib/services/user-memory';
@@ -52,31 +52,21 @@ export async function GET(req: NextRequest) {
     dailyCount = 0;
   }
 
-  // Spend cap pre-flight — each path isolated, fail-open on error (KISS: simple try/catch per item)
-  let dnaAllowed: { allowed: boolean; remaining: number } = { allowed: true, remaining: -1 };
-  let scoreAllowed: { allowed: boolean; remaining: number } = { allowed: true, remaining: -1 };
-  let conflictAllowed: { allowed: boolean; remaining: number } = { allowed: true, remaining: -1 };
-  let digestAllowed: { allowed: boolean; remaining: number } = { allowed: true, remaining: -1 };
-  try {
-    dnaAllowed = await enforceAiSpendCap(AiCallPath.THREAD_DNA);
-  } catch (error) {
-    logger.warn('[cron/update-threads] spend cap check failed for THREAD_DNA, allowing (fail-open)', error);
-  }
-  try {
-    scoreAllowed = await enforceAiSpendCap(AiCallPath.RESOLUTION_SCORE);
-  } catch (error) {
-    logger.warn('[cron/update-threads] spend cap check failed for RESOLUTION_SCORE, allowing (fail-open)', error);
-  }
-  try {
-    conflictAllowed = await enforceAiSpendCap(AiCallPath.CONFLICT_DETECTION);
-  } catch (error) {
-    logger.warn('[cron/update-threads] spend cap check failed for CONFLICT_DETECTION, allowing (fail-open)', error);
-  }
-  try {
-    digestAllowed = await enforceAiSpendCap(AiCallPath.DAILY_DIGEST);
-  } catch (error) {
-    logger.warn('[cron/update-threads] spend cap check failed for DAILY_DIGEST, allowing (fail-open)', error);
-  }
+  // Spend cap pre-flight — one fail-open check per path. The cron consumes
+  // spend once here; enqueued workers skip via the alreadyBilled key below.
+  const spendCaps = await checkCronSpendCaps([
+    AiCallPath.THREAD_DNA,
+    AiCallPath.RESOLUTION_SCORE,
+    AiCallPath.CONFLICT_DETECTION,
+    AiCallPath.DAILY_DIGEST,
+  ]);
+  const dnaAllowed = spendCaps[AiCallPath.THREAD_DNA] ?? { allowed: true, remaining: -1 };
+  const scoreAllowed = spendCaps[AiCallPath.RESOLUTION_SCORE] ?? { allowed: true, remaining: -1 };
+  const conflictAllowed = spendCaps[AiCallPath.CONFLICT_DETECTION] ?? { allowed: true, remaining: -1 };
+  const digestAllowed = spendCaps[AiCallPath.DAILY_DIGEST] ?? { allowed: true, remaining: -1 };
+
+  // Request-scoped idempotency key: marks enqueued AI jobs as already billed.
+  const alreadyBilled = `cron:update-threads:${Date.now()}`;
 
   try {
     let totalProcessed = 0;
@@ -175,7 +165,7 @@ export async function GET(req: NextRequest) {
           try {
             if (dnaAllowed.allowed) {
               jobs.push(
-                enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages, cronJob: true })
+                enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages, cronJob: true, alreadyBilled })
               );
             }
           } catch (error) {
@@ -193,6 +183,7 @@ export async function GET(req: NextRequest) {
                   oldScore,
                   isOutdated,
                   cronJob: true,
+                  alreadyBilled,
                 })
               );
             }
@@ -210,6 +201,7 @@ export async function GET(req: NextRequest) {
                   threadName: thread.name,
                   oldScore,
                   cronJob: true,
+                  alreadyBilled,
                 })
               );
             }
@@ -222,7 +214,7 @@ export async function GET(req: NextRequest) {
           try {
             if (subscriberIds.length > 0 && digestAllowed.allowed) {
               jobs.push(
-                enqueueJob(AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true })
+                enqueueJob(AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true, alreadyBilled })
               );
             }
           } catch (error) {

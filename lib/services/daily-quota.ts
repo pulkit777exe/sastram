@@ -82,7 +82,51 @@ async function checkQuota(
   }
 }
 
-export async function consumeAiInlineQuota(params: Record<string, string> | string): Promise<QuotaResult> {
+export type QuotaKind = 'inline' | 'analysis' | 'image' | 'search';
+
+export type QuotaParams = Record<string, string> | string;
+
+interface QuotaSpec {
+  buildKey: (params: { userId: string; threadId: string }, date: string) => string;
+  limit: number;
+  onRedisUnavailable: QuotaErrorPolicy;
+  onRedisError: QuotaErrorPolicy;
+  logPrefix: string;
+}
+
+const QUOTAS: Record<QuotaKind, QuotaSpec> = {
+  inline: {
+    buildKey: ({ userId, threadId }, date) => `ai_inline:${userId}:${threadId}:${date}`,
+    limit: 3,
+    onRedisUnavailable: 'failOpen',
+    onRedisError: 'failClosed',
+    logPrefix: 'ai_inline',
+  },
+  analysis: {
+    buildKey: ({ userId }, date) => `ai_analysis:${userId}:${date}`,
+    limit: 30,
+    onRedisUnavailable: 'failOpen',
+    onRedisError: 'failClosed',
+    logPrefix: 'ai_analysis',
+  },
+  image: {
+    buildKey: (_params, date) => `img_moderation:global:${date}`,
+    limit: 50,
+    onRedisUnavailable: 'failOpen',
+    onRedisError: 'failOpen',
+    logPrefix: 'img_moderation',
+  },
+  search: {
+    buildKey: ({ userId }, date) => `ai_search:${userId}:${date}`,
+    limit: 20,
+    onRedisUnavailable: 'failOpen',
+    onRedisError: 'inMemory',
+    logPrefix: 'ai_search',
+  },
+};
+
+export async function consumeQuota(kind: QuotaKind, params: QuotaParams): Promise<QuotaResult> {
+  const spec = QUOTAS[kind];
   let paramsObj: Record<string, string>;
   if (typeof params === 'string') {
     paramsObj = { userId: params };
@@ -91,39 +135,6 @@ export async function consumeAiInlineQuota(params: Record<string, string> | stri
   }
   const userId = paramsObj.userId ?? '';
   const threadId = paramsObj.threadId ?? '';
-  const date = getTodayDateString();
-  const key = `ai_inline:${userId}:${threadId}:${date}`;
-  return checkQuota(key, 3, 'failOpen', 'failClosed', 'ai_inline');
-}
-
-export async function consumeAiAnalysisQuota(params: Record<string, string> | string): Promise<QuotaResult> {
-  let paramsObj: Record<string, string>;
-  if (typeof params === 'string') {
-    paramsObj = { userId: params };
-  } else {
-    paramsObj = params;
-  }
-  const userId = paramsObj.userId ?? '';
-  const date = getTodayDateString();
-  const key = `ai_analysis:${userId}:${date}`;
-  return checkQuota(key, 30, 'failOpen', 'failClosed', 'ai_analysis');
-}
-
-export async function consumeImageModerationQuota(_params: Record<string, string> | string): Promise<QuotaResult> {
-  const date = getTodayDateString();
-  const key = `img_moderation:global:${date}`;
-  return checkQuota(key, 50, 'failOpen', 'failOpen', 'img_moderation');
-}
-
-export async function consumeAiSearchQuota(params: Record<string, string> | string): Promise<QuotaResult> {
-  let paramsObj: Record<string, string>;
-  if (typeof params === 'string') {
-    paramsObj = { userId: params };
-  } else {
-    paramsObj = params;
-  }
-  const userId = paramsObj.userId ?? '';
-  const date = getTodayDateString();
-  const key = `ai_search:${userId}:${date}`;
-  return checkQuota(key, 20, 'failOpen', 'inMemory', 'ai_search');
+  const key = spec.buildKey({ userId, threadId }, getTodayDateString());
+  return checkQuota(key, spec.limit, spec.onRedisUnavailable, spec.onRedisError, spec.logPrefix);
 }
