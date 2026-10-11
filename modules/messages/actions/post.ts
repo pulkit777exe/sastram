@@ -13,7 +13,8 @@ import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireWriteOrThrow } from '@/lib/thread-access';
+import { validatePollExpiry } from '@/modules/polls/validate';
 import { createServerAction, type ActionResult } from '@/lib/utils/server-action';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 import { AppError } from '@/lib/utils/errors';
@@ -137,7 +138,7 @@ async function persistModeratedMessage(args: {
   attachments?: { name?: string | null; url: string; type: string; size?: number | null }[];
   poll?: { question: string; options: string[]; expiresAt?: string | Date | null } | null;
 }) {
-  return moderateIncomingMessage(args);
+  return moderateIncomingMessage({ ...args, sideEffects: infraMessageSideEffects });
 }
 
 async function finalizePostSuccess(args: {
@@ -211,16 +212,16 @@ export const postMessage = createServerAction(
     });
     if (!validation.success) return actionFailure('VALIDATION_ERROR', 'Invalid input');
 
-    // Low fix: reject poll with past expiry
-    if (validation.data.poll?.expiresAt) {
-      const exp = new Date(validation.data.poll.expiresAt);
-      if (Number.isNaN(exp.getTime()) || exp.getTime() <= Date.now()) {
-        return actionFailure('VALIDATION_ERROR', 'Poll expiry must be in the future');
-      }
+    // Unified poll-expiry guard (see modules/polls/validate.ts validatePollExpiry).
+    const expiryError = validatePollExpiry(
+      (validation.data.poll as { expiresAt?: string | Date | null } | null | undefined)?.expiresAt
+    );
+    if (expiryError) {
+      return actionFailure('VALIDATION_ERROR', expiryError);
     }
 
     const session = await requireSession();
-    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+    await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
     const withinRateLimit = await checkRateLimit(session.user.id);
     if (!withinRateLimit) return actionFailure('RATE_LIMITED', 'Rate limit exceeded. Please slow down.');

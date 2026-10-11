@@ -3,10 +3,12 @@ import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { canAccessThread, requireThreadAccessOrThrow, visibilityFilter } from '@/lib/thread-access';
-import { buildThreadSlug } from '@/modules/threads/slug';
-import { forkThread } from '@/modules/threads/threads-write/repository';
+import { requireReadOrThrow, visibilityFilter } from '@/lib/thread-access';
+import { forkThreadDomain } from '@/modules/threads/threads-write/service';
+import { infraThreadSideEffects } from '@/modules/threads/adapters/infra-side-effects';
+import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { AppError } from '@/lib/utils/errors';
 
 const bodySchema = z.object({ title: z.string().min(3).max(120).optional(), visibility: z.enum(['PUBLIC', 'PRIVATE']).optional() });
 
@@ -20,7 +22,7 @@ export const GET = withErrorHandling(async (_request: NextRequest, context?: { p
   const source = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { id: true, visibility: true, createdBy: true } });
   if (!source) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
   if (source.visibility !== 'PUBLIC') {
-    await requireThreadAccessOrThrow(source.id, session.user.id, session.user.role as never);
+    await requireReadOrThrow(source.id, session.user.id, session.user.role);
   }
   const filter = await visibilityFilter(session.user.id, session.user.role as never);
   const forksWhere: import('@prisma/client').Prisma.ThreadWhereInput = {
@@ -64,16 +66,27 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
     // no body is fine
   }
 
-  const source = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { id: true, name: true, description: true, visibility: true, createdBy: true } });
-  if (!source) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
-  const canAccess = await canAccessThread({ threadId: source.id, createdBy: source.createdBy, visibility: source.visibility as never }, session.user.id, session.user.role as never);
-  if (!canAccess) return NextResponse.json(fail('FORBIDDEN', 'No access to fork'), { status: HTTP_STATUS.FORBIDDEN });
+  try {
+    await requireReadOrThrow(threadId, session.user.id, session.user.role);
+  } catch (error) {
+    if (AppError.isAppError(error)) {
+      const status = error.statusCode === 404 ? HTTP_STATUS.NOT_FOUND : HTTP_STATUS.FORBIDDEN;
+      const code = error.statusCode === 404 ? 'NOT_FOUND' : 'FORBIDDEN';
+      return NextResponse.json(fail(code, error.message), { status });
+    }
+    throw error;
+  }
 
-  const newTitle = title?.trim() ? title.trim() : `${source.name} (fork)`;
-  let slug = buildThreadSlug(newTitle);
-  const existing = await prisma.thread.findUnique({ where: { slug }, select: { id: true } });
-  if (existing) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+  const safeTitle = title?.trim()
+    ? sanitizeUserContent(title.trim()).sanitized.trim().slice(0, 120) || title.trim().slice(0, 120)
+    : undefined;
 
-  const forked = await forkThread({ name: newTitle, description: source.description, slug, createdBy: session.user.id, forkedFromId: source.id, visibility });
+  const forked = await forkThreadDomain({
+    sourceThreadId: threadId,
+    title: safeTitle,
+    visibility,
+    userId: session.user.id,
+    sideEffects: infraThreadSideEffects,
+  });
   return NextResponse.json(ok({ id: forked.id, slug: forked.slug }), { status: HTTP_STATUS.OK });
 });

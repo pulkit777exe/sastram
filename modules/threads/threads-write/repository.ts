@@ -102,20 +102,7 @@ export async function forkThread(payload: { name: string; description?: string |
       visibility: payload.visibility ?? 'PUBLIC',
     },
   });
-  // Copy tags from source (reddit-style crosspost keeps tags)
-  try {
-    const sourceTags = await prisma.threadTagRelation.findMany({
-      where: { threadId: payload.forkedFromId },
-      select: { tagId: true },
-    });
-    if (sourceTags.length > 0) {
-      await prisma.threadTagRelation.createMany({
-        data: sourceTags.map((t) => ({ threadId: forked.id, tagId: t.tagId })),
-        skipDuplicates: true,
-      });
-    }
-  } catch {
-    // best-effort, don't fail fork if tags copy fails
-  }
+  // Tag copy lives in threads-write/service.ts forkThreadDomain via
+  // ThreadSideEffectsPort.copyThreadTags (keeps this repository thin).
   return forked;
 }

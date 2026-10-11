@@ -78,6 +78,7 @@ interface CommentTreeProps {
    * to the wrapper and never triggered AI delivery.
    */
   onMessagePosted?: (message: Message, meta?: AiInlineMeta) => void;
+  onMessageUpdate?: (messageId: string, updates: Partial<Message>) => void;
   firstUnreadMessageId: string | null;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
@@ -89,15 +90,14 @@ export function CommentTree({
   aiInlineStatus = {},
   onOptimisticMessage,
   onMessagePosted,
+  onMessageUpdate,
   firstUnreadMessageId,
   scrollContainerRef,
 }: CommentTreeProps) {
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
-  const [localMessages, setLocalMessages] = useState<Message[]>(messages);
   const [animateMessageId, setAnimateMessageId] = useState<string | null>(null);
   const animateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevMessagesRef = useRef(messages);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -112,22 +112,8 @@ export function CommentTree({
     setCollapsedIds(collapsed);
   }, [threadId]);
 
-  useEffect(() => {
-    const prev = prevMessagesRef.current;
-    if (prev === messages) return;
-    prevMessagesRef.current = messages;
-
-    if (prev.length === messages.length) {
-      const same = prev.every((msg, i) => {
-        const incoming = messages[i];
-        return msg.id === incoming.id && msg.content === incoming.content && msg.deletedAt === incoming.deletedAt;
-      });
-      if (same) return;
-    }
-    setLocalMessages(messages);
-  }, [messages]);
-
-  const tree = useMemo(() => buildMessageTree(localMessages), [localMessages]);
+  // Pure: tree derives directly from props via useMemo — no local shadow copy.
+  const tree = useMemo(() => buildMessageTree(messages), [messages]);
   const _focusedNode = useMemo(
     () => (focusedId ? findNodeById(tree, focusedId) : null),
     [tree, focusedId]
@@ -178,12 +164,15 @@ export function CommentTree({
     setActiveReplyId(null);
   }, []);
 
-  const handleMessageUpdate = useCallback((messageId: string, updates: Partial<Message>) => {
-    setLocalMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, ...updates } : m)));
-  }, []);
+  const handleMessageUpdate = useCallback(
+    (messageId: string, updates: Partial<Message>) => {
+      // Pure: bubble to the sync owner (useThreadSync.applyMessagePatch).
+      onMessageUpdate?.(messageId, updates);
+    },
+    [onMessageUpdate]
+  );
 
   const handleMessagePosted = useCallback((newMessage: Message, meta?: AiInlineMeta) => {
-    setLocalMessages((prev) => (prev.some((m) => m.id === newMessage.id) ? prev : [...prev, newMessage]));
     setActiveReplyId(null);
     setAnimateMessageId(newMessage.id);
     if (animateTimerRef.current) clearTimeout(animateTimerRef.current);
@@ -240,14 +229,14 @@ export function CommentTree({
     () => ({
       activeReplyId,
       collapsedIds,
-      allMessages: localMessages,
+      allMessages: messages,
       animateMessageId,
       aiInlineStatus,
     }),
-    [activeReplyId, collapsedIds, localMessages, animateMessageId, aiInlineStatus]
+    [activeReplyId, collapsedIds, messages, animateMessageId, aiInlineStatus]
   );
 
-  if (localMessages.length === 0) return null;
+  if (messages.length === 0) return null;
 
   return (
     <ThreadDataProvider value={dataContextValue}>

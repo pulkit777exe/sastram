@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import { dispatch } from '@/modules/notifications/dispatcher';
+import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
+import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { AppError } from '@/lib/utils/errors';
 import {
   MessageModerationPipeline,
@@ -72,12 +73,39 @@ function buildAttachmentCreate(
   return { create: creates };
 }
 
+async function notifyModeratorsOfFlag(
+  sideEffects: MessageSideEffectsPort,
+  args: { action: string; preview: string; messageId: string }
+): Promise<void> {
+  try {
+    const moderators = await prisma.user.findMany({
+      where: { role: { in: ['MODERATOR', 'ADMIN'] }, deletedAt: null },
+      select: { id: true },
+      take: 50,
+    });
+    if (moderators.length === 0) return;
+    await sideEffects.createBulkNotifications(
+      moderators.map((m) => ({
+        userId: m.id,
+        type: 'SYSTEM' as const,
+        title: `Auto-mod flagged: ${args.action}`,
+        message: `Message in thread auto-flagged: ${args.preview}`,
+        data: { messageId: args.messageId, action: args.action, autoMod: true },
+      }))
+    );
+  } catch (error) {
+    // Best-effort: a failed notification must not fail the post.
+    logger.warn('[moderation-processor] moderator notify failed', error);
+  }
+}
+
 export class MessageService {
   private pipeline = new MessageModerationPipeline();
 
   async processMessage(
     message: MessageLike,
-    context: ConversationContext
+    context: ConversationContext,
+    sideEffects: MessageSideEffectsPort = infraMessageSideEffects
   ): Promise<ModerationResult> {
     const result = await this.pipeline.process(message, context);
 
@@ -143,12 +171,10 @@ export class MessageService {
 
         // Best-effort: a failed notification must not fail the post.
         const preview = (result.reason || 'content policy').substring(0, 120);
-        await dispatch({
-          recipients: { roles: ['MODERATOR', 'ADMIN'] },
-          category: 'SYSTEM',
-          title: `Auto-mod flagged: ${result.action}`,
-          message: `Message in thread auto-flagged: ${preview}`,
-          data: { messageId: created.id, action: result.action, autoMod: true },
+        await notifyModeratorsOfFlag(sideEffects, {
+          action: result.action,
+          preview,
+          messageId: created.id,
         });
       }
 

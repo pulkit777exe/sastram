@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROUTES } from '@/lib/config/routes';
+import { forkThreadAction } from '@/modules/threads/actions';
 
 type Visibility = 'PUBLIC' | 'PRIVATE';
 
@@ -70,7 +71,8 @@ export function ForkButton({ threadId, threadName }: { threadId: string; threadN
   const [title, setTitle] = React.useState(`${threadName} (fork)`);
   const [visibility, setVisibility] = React.useState<Visibility>('PUBLIC');
   const [count, setCount] = React.useState<number | null>(null);
-  const { loading, submit } = useForkSubmit(`/api/threads/${threadId}/fork`);
+  const [loading, setLoading] = React.useState(false);
+  const router = useRouter();
 
   React.useEffect(() => {
     if (open) setTitle(`${threadName} (fork)`);
@@ -96,11 +98,21 @@ export function ForkButton({ threadId, threadName }: { threadId: string; threadN
       toasts.error('Title must be at least 3 characters');
       return;
     }
-    const ok = await submit(
-      { title: title.trim(), visibility },
-      `Forked as ${visibility === 'PRIVATE' ? 'private' : 'public'} thread`
-    );
-    if (ok) setOpen(false);
+    setLoading(true);
+    try {
+      const result = await forkThreadAction({ threadId, title: title.trim(), visibility });
+      if (!result.ok || !result.data) {
+        throw new Error(result.error || 'Fork failed');
+      }
+      const slug = (result.data as { slug?: string }).slug;
+      toasts.success(`Forked as ${visibility === 'PRIVATE' ? 'private' : 'public'} thread`);
+      setOpen(false);
+      router.push(slug ? ROUTES.THREAD(slug) : ROUTES.DASHBOARD_THREADS);
+    } catch (e) {
+      toasts.error(e instanceof Error ? e.message : 'Fork failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

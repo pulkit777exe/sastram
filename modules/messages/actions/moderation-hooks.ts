@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AppError } from '@/lib/utils/errors';
 import { MessageService } from '@/modules/messages/moderation-processor';
+import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
+import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
 
 const messageService = new MessageService();
 
@@ -13,6 +15,7 @@ export async function moderateIncomingMessage(args: {
   parentId: string | null;
   attachments?: { name?: string | null; url: string; type: string; size?: number | null }[];
   poll?: { question: string; options: string[]; expiresAt?: string | Date | null } | null;
+  sideEffects?: MessageSideEffectsPort;
 }) {
   if (args.parentId) {
     const parent = await prisma.message.findUnique({
@@ -60,7 +63,11 @@ export async function moderateIncomingMessage(args: {
     relationships: new Map(),
   };
 
-  const result = await messageService.processMessage(messageLike, context);
+  const result = await messageService.processMessage(
+    messageLike,
+    context,
+    args.sideEffects ?? infraMessageSideEffects
+  );
 
   if (result.message) {
     if (thread && thread.slug) {

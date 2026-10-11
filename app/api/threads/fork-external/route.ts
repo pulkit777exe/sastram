@@ -4,6 +4,8 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { buildThreadSlug } from '@/modules/threads/slug';
+import { ensureUniqueSlug } from '@/modules/threads/threads-write/service';
+import { infraThreadSideEffects } from '@/modules/threads/adapters/infra-side-effects';
 import { createThread } from '@/modules/threads/threads-write/repository';
 import { sanitizeUserContent, isSafePublicUrl } from '@/lib/services/content-safety';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -41,9 +43,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
   const safeTitle = sanitizeUserContent(title).sanitized.trim().slice(0, 120);
   const slugBase = buildThreadSlug(safeTitle);
-  let slug = slugBase;
-  const existing = await prisma.thread.findUnique({ where: { slug }, select: { id: true } });
-  if (existing) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+  const slug = await ensureUniqueSlug(slugBase, infraThreadSideEffects);
 
   const description = `Forked from ${url}`;
   const initialMessage = `Forked from ${url}\n\n@sai summarize this thread and extract key points from the source.`;

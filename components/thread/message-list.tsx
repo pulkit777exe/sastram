@@ -16,13 +16,17 @@ import { Badge } from '@/components/ui/badge';
 import { AttachmentItem } from './attachment-item';
 import { PollDisplay } from './poll-display';
 import { renderContent } from '@/components/thread/render-content';
-import { canModerate } from '@/lib/config/permissions';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { isAiNotConfigured } from '@/lib/services/ai-sentinel';
 import { AiNotConfiguredNotice } from '@/components/ui/ai-not-configured';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 import { EditHistory } from './edit-history';
+import {
+  canDeleteMessageView,
+  canEditMessageView,
+  canPinMessageView,
+} from '@/lib/thread-access/client';
 
 interface MessageListProps {
   firstUnreadMessageId: string | null;
@@ -190,14 +194,29 @@ const MessageRow = React.memo(function MessageRow({
   const isOwnMessage = message.senderId === currentUser.id;
   const isShowingReplyBox = activeReplyId === message.id;
   const isDeleted = !!message.deletedAt;
-  const isModerator = canModerate(currentUser.role);
   const activeReplyTarget = activeReplyId
     ? replies.find((reply) => reply.id === activeReplyId) ?? null
     : null;
 
-  const canEdit = isOwnMessage && !isDeleted;
-  const canDelete = (isOwnMessage || isModerator) && !isDeleted;
-  const canPin = isModerator && !isDeleted;
+  // CONTRACT view fns (lib/thread-access/client.ts — pure, no I/O).
+  // Ephemeral edit-draft state (isEditing/editContent/isSavingEdit) stays local.
+  const canEdit = canEditMessageView({
+    senderId: message.senderId ?? '',
+    userId: currentUser.id,
+    deletedAt: message.deletedAt,
+  });
+  const canDelete = canDeleteMessageView({
+    senderId: message.senderId ?? '',
+    userId: currentUser.id,
+    userRole: currentUser.role ?? 'USER',
+    deletedAt: message.deletedAt,
+  });
+  const canPin = canPinMessageView({
+    createdBy: null,
+    userId: currentUser.id,
+    userRole: currentUser.role ?? 'USER',
+    deletedAt: message.deletedAt,
+  });
 
   const aiStatus = aiInlineStatus[message.id];
 

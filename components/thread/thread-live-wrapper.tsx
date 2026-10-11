@@ -7,8 +7,6 @@ import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hook
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { PollPanel } from '@/components/thread/poll-panel';
 import { InlinePoll } from '@/components/thread/inline-poll';
-import { getPollResultsAction, getPollByThreadAction } from '@/modules/polls/actions';
-import type { PollResults } from '@/modules/polls/types';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ThreadPageHeader } from './thread-page-header';
 import { ThreadTagsManager, type ThreadTagItem } from './thread-tags-manager';
@@ -16,19 +14,17 @@ import { SaiViewTransition } from '@/components/ui/view-transition';
 import { ThreadExternalPreview } from '@/components/thread/ExternalLinkPreview';
 import { ChevronDown, Loader2, Pin, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useThreadMessages } from '@/hooks/thread/use-thread-messages';
-import { useThreadPolling } from '@/hooks/thread/use-thread-polling';
+import { useThreadSync } from '@/hooks/thread/use-thread-sync';
 import { useThreadReadReceipts } from '@/hooks/thread/use-thread-read-receipts';
+import { usePollRefresh } from '@/hooks/thread/use-poll-refresh';
 
 const SAI_MENTION_RE = /\B@sai\b/i;
 
 // Magic numbers with intent
-const AI_PENDING_TIMEOUT_MS = 120_000;
 const SCROLL_BOTTOM_THRESHOLD_PX = 80;
 const SCROLLED_UP_THRESHOLD_PX = 120;
 const READ_DEBOUNCE_MS = 250;
 const SCROLL_DEBOUNCE_MS = 100;
-const POLL_REFRESH_MS = 20_000;
 const SENTINEL_ROOT_MARGIN = '200px 0px 0px 0px';
 
 function EmptyThreadState({ title, onCreatePoll }: { title: string; onCreatePoll: () => void }) {
@@ -181,18 +177,12 @@ export function ThreadLiveWrapper({
     setTitle(nextTitle);
     setDescription(nextDescription);
   }, []);
-  // Poll state
+  // Poll UI state
   const [showPoll, setShowPoll] = useState(false);
-  const [currentPoll, setCurrentPoll] = useState(poll);
-  const [pollResults, setPollResults] = useState<PollResults | null>(null);
-  const [pollRefreshKey, setPollRefreshKey] = useState(0);
-
-  // AI inline status — 'limited' persists so user understands quota block
-  const [aiInlineStatus, setAiInlineStatus] = useState<Record<string, 'pending' | 'failed' | 'limited'>>({});
-  const aiInlineStatusRef = useRef(aiInlineStatus);
-  useEffect(() => {
-    aiInlineStatusRef.current = aiInlineStatus;
-  }, [aiInlineStatus]);
+  const { currentPoll, setCurrentPoll, pollResults, pollRefreshKey } = usePollRefresh({
+    threadId,
+    initialPoll: poll,
+  });
 
   // Scroll state
   const [isScrolledUp, setIsScrolledUp] = useState(false);
@@ -200,10 +190,9 @@ export function ThreadLiveWrapper({
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const readDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const aiInlineTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Sub-hooks
-  const threadMessages = useThreadMessages({
+  // Live sync: messages + AI inline status + polling (+ stream ref)
+  const sync = useThreadSync({
     initialMessages: messages,
     threadId,
     title,
@@ -212,6 +201,18 @@ export function ThreadLiveWrapper({
     nextCursor: initialNextCursor,
     totalMessageCount,
   });
+  const {
+    liveMessages,
+    liveMessagesRef,
+    aiInlineStatus,
+    setAiPending,
+    setAiInlineStatus,
+    clearAiStatus,
+    markFailedIfPending,
+    streamParentRef,
+    isPollingStale,
+  } = sync;
+  const threadMessages = sync.threadMessages;
 
   // Stable — used by read-receipts hook
   const isAtBottom = useCallback(() => {
@@ -224,45 +225,12 @@ export function ThreadLiveWrapper({
     threadId,
     initialUnreadCount,
     initialFirstUnreadMessageId,
-    liveMessagesRef: threadMessages.liveMessagesRef,
+    liveMessagesRef,
     isAtBottom,
   });
 
-  // AI inline helpers
-  // Stable: used in polling + effects
-  const clearAiStatus = useCallback((messageId: string) => {
-    setAiInlineStatus((prev) => {
-      if (!(messageId in prev)) return prev;
-      const next = { ...prev };
-      delete next[messageId];
-      return next;
-    });
-    const timer = aiInlineTimerRef.current.get(messageId);
-    if (timer) {
-      clearTimeout(timer);
-      aiInlineTimerRef.current.delete(messageId);
-    }
-  }, []);
-
-  // Plain function: cheap, only used in handlers
-  function setAiPending(messageId: string) {
-    setAiInlineStatus((prev) => ({ ...prev, [messageId]: 'pending' }));
-    const existing = aiInlineTimerRef.current.get(messageId);
-    if (existing) clearTimeout(existing);
-    const timer = setTimeout(() => {
-      setAiInlineStatus((prev) => {
-        if (prev[messageId] !== 'pending') return prev;
-        return { ...prev, [messageId]: 'failed' };
-      });
-      aiInlineTimerRef.current.delete(messageId);
-    }, AI_PENDING_TIMEOUT_MS);
-    aiInlineTimerRef.current.set(messageId, timer);
-  }
-
-  const streamParentRef = useRef<string | null>(null);
-
   // Derived — cheap, no memo needed
-  const pinnedMessage = threadMessages.liveMessages.find((m) => m.isPinned) ?? null;
+  const pinnedMessage = liveMessages.find((m) => m.isPinned) ?? null;
 
   function hasAiMention(content: string) {
     return SAI_MENTION_RE.test(content);
@@ -316,7 +284,7 @@ export function ThreadLiveWrapper({
       .catch((error) => {
         console.error('[thread-live] AI-reply fallback enqueue failed:', error);
         if (parentId) {
-          setAiInlineStatus((prev) => (prev[parentId] === 'pending' ? { ...prev, [parentId]: 'failed' } : prev));
+          markFailedIfPending(parentId);
         }
       });
   }
@@ -346,7 +314,7 @@ export function ThreadLiveWrapper({
     } else if (aiInline === 'queued') {
       setAiPending(newMessage.id);
     } else if (aiInline === 'limited') {
-      setAiInlineStatus((prev) => ({ ...prev, [newMessage.id]: 'limited' }));
+      setAiInlineStatus(newMessage.id, 'limited');
     }
   }
 
@@ -376,25 +344,11 @@ export function ThreadLiveWrapper({
     return () => observer.disconnect();
   }, [threadMessages]);
 
-  // Polling — banner when stale (failureCount >= 3)
-  const isPollingStale = useThreadPolling({
-    threadId,
-    lastMessageTimestampRef: threadMessages.lastMessageTimestampRef,
-    aiInlineStatusRef,
-    liveMessagesRef: threadMessages.liveMessagesRef,
-    mapBackfillMessage: threadMessages.mapBackfillMessage,
-    mergeBackfill: threadMessages.mergeBackfill,
-    onAiStatusCleared: clearAiStatus,
-  });
-
-  // Cleanup
+  // Cleanup (AI timers are owned by useAiInlineStatus)
   useEffect(() => {
-    const timers = aiInlineTimerRef.current;
     return () => {
       if (readDebounceRef.current) clearTimeout(readDebounceRef.current);
       if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-      for (const timer of timers.values()) clearTimeout(timer);
-      timers.clear();
       stopStream();
     };
   }, [stopStream]);
@@ -404,7 +358,7 @@ export function ThreadLiveWrapper({
     for (const [pendingMsgId, status] of Object.entries(aiInlineStatus)) {
       if (status !== 'pending') continue;
       if (
-        threadMessages.liveMessages.some(
+        liveMessages.some(
           (m) => m.parentId === pendingMsgId && m.isAiResponse && m.content.trim().length > 0
         )
       ) {
@@ -412,43 +366,11 @@ export function ThreadLiveWrapper({
         setTimeout(() => clearAiStatus(pendingMsgId), 0);
       }
     }
-  }, [threadMessages.liveMessages, aiInlineStatus, clearAiStatus]);
-
-  // Poll refresh — skip when tab hidden
-  useEffect(() => {
-    if (!currentPoll) return;
-    let cancelled = false;
-    const interval = setInterval(async () => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      if (cancelled) return;
-      try {
-        const pollId = currentPoll.id;
-        const [freshPollResult, freshResultsResult] = await Promise.all([
-          getPollByThreadAction({ threadId }),
-          getPollResultsAction({ pollId }),
-        ]);
-        if (cancelled) return;
-        if (freshPollResult?.data) {
-          const freshPoll = freshPollResult.data;
-          setCurrentPoll((prev) => (prev ? { ...prev, isActive: freshPoll.isActive, expiresAt: freshPoll.expiresAt } : prev));
-        }
-        if (freshResultsResult?.data) {
-          setPollResults(freshResultsResult.data);
-          setPollRefreshKey((k) => k + 1);
-        }
-      } catch {
-        // best-effort
-      }
-    }, POLL_REFRESH_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [currentPoll, threadId]);
+  }, [liveMessages, aiInlineStatus, clearAiStatus]);
 
   // Derived flags — cheap, no memo
   const hasPinnedMessage = pinnedMessage !== null;
-  const isEmptyThread = threadMessages.liveMessages.length === 0;
+  const isEmptyThread = liveMessages.length === 0;
   const hasMoreToLoad = threadMessages.hasMoreMessages;
   const isLoadingMore = threadMessages.isLoadingMore;
   const remainingToLoad = threadMessages.totalMessageCount - threadMessages.displayedCount;
@@ -551,12 +473,13 @@ export function ThreadLiveWrapper({
                 </>
               )}
               <CommentTree
-                messages={threadMessages.liveMessages}
+                messages={liveMessages}
                 threadId={threadId}
                 currentUser={currentUser}
                 aiInlineStatus={aiInlineStatus}
                 onOptimisticMessage={handleOptimisticMessage}
                 onMessagePosted={handleMessagePosted}
+                onMessageUpdate={threadMessages.applyMessagePatch}
                 firstUnreadMessageId={readReceipts.firstUnreadMessageId}
                 scrollContainerRef={scrollContainerRef}
               />

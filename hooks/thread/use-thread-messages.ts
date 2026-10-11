@@ -17,7 +17,47 @@ function sortByCreatedAt(messages: Message[]): Message[] {
   );
 }
 
-function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[]; hasNew: boolean } {
+function deletedAtTime(value: Date | string | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+function buildMessagePatch(existing: Message, incoming: Message): Partial<Message> | null {
+  const patch: Partial<Message> = {};
+  let changed = false;
+  if (existing.content !== incoming.content) {
+    patch.content = incoming.content;
+    changed = true;
+  }
+  if (existing.isPinned !== incoming.isPinned) {
+    patch.isPinned = incoming.isPinned;
+    changed = true;
+  }
+  if (deletedAtTime(existing.deletedAt) !== deletedAtTime(incoming.deletedAt)) {
+    patch.deletedAt = incoming.deletedAt;
+    changed = true;
+  }
+  if (existing.likeCount !== incoming.likeCount) {
+    patch.likeCount = incoming.likeCount;
+    changed = true;
+  }
+  return changed ? patch : null;
+}
+
+export function applyMessagePatchToList(
+  prev: Message[],
+  messageId: string,
+  patch: Partial<Message>
+): Message[] {
+  const idx = prev.findIndex((m) => m.id === messageId);
+  if (idx === -1) return prev;
+  const next = [...prev];
+  next[idx] = { ...next[idx], ...patch } as Message;
+  return next;
+}
+
+export function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[]; hasNew: boolean } {
   const idToIndex = buildIdIndex(prev);
   let next = prev;
   let hasContentUpdate = false;
@@ -29,13 +69,13 @@ function mergeMessages(prev: Message[], incoming: Message[]): { merged: Message[
       continue;
     }
 
-    const hasContentChanged = next[existingIndex as number].content !== msg.content;
-    if (hasContentChanged) {
+    const patch = buildMessagePatch(next[existingIndex as number], msg);
+    if (patch) {
       const isFirstMutation = next === prev;
       if (isFirstMutation) {
         next = [...prev];
       }
-      next[existingIndex as number] = { ...next[existingIndex as number], content: msg.content };
+      next[existingIndex as number] = { ...next[existingIndex as number], ...patch };
       hasContentUpdate = true;
     }
   }
@@ -146,6 +186,10 @@ export function useThreadMessages({
     []
   );
 
+  const applyMessagePatch = useCallback((messageId: string, patch: Partial<Message>) => {
+    setLiveMessages((prev) => applyMessagePatchToList(prev, messageId, patch));
+  }, []);
+
   const addMessage = useCallback((msg: Message) => {
     setLiveMessages((prev) => {
       const cleaned = prev.filter(
@@ -153,9 +197,16 @@ export function useThreadMessages({
       );
       const idx = cleaned.findIndex((m) => m.id === msg.id);
       if (idx !== -1) {
-        const updated = [...cleaned];
-        updated[idx] = msg;
-        return updated;
+        // Route through the shared patch path so content/isPinned/deletedAt/likeCount
+        // stay consistent with backfill merges instead of diverging.
+        const existing = cleaned[idx] as Message;
+        const patch = buildMessagePatch(existing, msg);
+        if (patch) {
+          return applyMessagePatchToList(cleaned, msg.id, patch);
+        }
+        // No patch-field drift — still reconcile if any other field changed.
+        if (JSON.stringify(existing) === JSON.stringify(msg)) return cleaned;
+        return applyMessagePatchToList(cleaned, msg.id, { ...msg });
       }
       return [...cleaned, msg];
     });
@@ -199,5 +250,6 @@ export function useThreadMessages({
     addOptimistic,
     removeOptimistic,
     updateMessageContent,
+    applyMessagePatch,
   };
 }
