@@ -1,6 +1,10 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { getEnv } from '@/lib/config/env';
 import { wrapUserContent, DATA_ONLY_INSTRUCTION } from '@/lib/ai/prompt-boundary';
+import { cleanJsonText } from '@/lib/ai/helpers';
+import { isQuotaError } from '@/lib/utils/errors';
+import { getErrorStatus } from '@/lib/ai/text';
+import type { ConversationMessage, LlmAdapter } from './ports';
 import type {
   Source,
   ConflictInfo,
@@ -11,7 +15,6 @@ import type {
   Citation,
 } from './types';
 import { validateCitations } from './citations';
-import { generateText } from './llm';
 
 export class AISearchError extends Error {
   status: number;
@@ -22,34 +25,7 @@ export class AISearchError extends Error {
   }
 }
 
-// Shared fence-stripping for LLM JSON outputs. Models sometimes wrap JSON in ```json fences.
-const CODE_FENCE_RE = /```json\n?|```\n?/g;
-
-function stripFences(raw: string): string {
-  return raw.replace(CODE_FENCE_RE, '').trim();
-}
-
 const VALID_QUERY_TYPES = new Set<QueryType>(['factual', 'opinion', 'technical', 'comparison']);
-
-function isQuotaError(error: unknown, status: number): boolean {
-  if (status === 429) {
-    return true;
-  }
-  if (error instanceof Error && /quota|429|RESOURCE_EXHAUSTED/i.test(error.message)) {
-    return true;
-  }
-  return false;
-}
-
-function getErrorStatus(error: unknown, fallback = 502): number {
-  if (error instanceof Error && 'status' in error) {
-    const maybeStatus = (error as { status?: number }).status;
-    if (maybeStatus !== undefined && maybeStatus !== null) {
-      return maybeStatus;
-    }
-  }
-  return fallback;
-}
 
 function compareSourcesByTierAndConfidence(a: Source, b: Source): number {
   if (a.tier !== b.tier) return a.tier - b.tier;
@@ -85,8 +61,7 @@ function pickTopSources(ranked: Source[], limit = 8): Source[] {
 async function detectConflictFromSources(
   ranked: Source[],
   query: string,
-  geminiKey: string,
-  openaiKey?: string
+  llm: LlmAdapter
 ): Promise<ConflictInfo> {
   const emptyConflict: ConflictInfo = { detected: false, description: '', sideA: '', sideB: '' };
   if (ranked.length < 2) return emptyConflict;
@@ -103,13 +78,8 @@ Return JSON: { "detected": boolean, "description": string, "sideA": string, "sid
 Only flag real factual conflicts, not opinion differences.
 No markdown, valid JSON only.`;
   try {
-    const text = await generateText(conflictPrompt, {
-      geminiKey,
-      openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
-      model: getEnv().GEMINI_LITE_MODEL,
-    });
-    const cleaned = stripFences(text);
-    return JSON.parse(cleaned) as ConflictInfo;
+    const text = await llm.generateText(conflictPrompt, { model: getEnv().GEMINI_LITE_MODEL });
+    return JSON.parse(cleanJsonText(text)) as ConflictInfo;
   } catch (err) {
     logger.warn('[ai-search] Conflict detection failed, continuing without it', {
       error: err instanceof Error ? err.message : String(err),
@@ -121,14 +91,13 @@ No markdown, valid JSON only.`;
 export async function crossReference(
   rawResults: { exaSources: Source[]; tavilySources: Source[] },
   query: string,
-  geminiKey: string,
-  openaiKey?: string
+  llm: LlmAdapter
 ): Promise<CrossRefResult> {
   const allSources = mergeAllSources(rawResults);
   const deduped = dedupByUrl(allSources);
   deduped.sort(compareSourcesByTierAndConfidence);
   const ranked = deduped;
-  const conflictData = await detectConflictFromSources(ranked, query, geminiKey, openaiKey);
+  const conflictData = await detectConflictFromSources(ranked, query, llm);
   return { rankedSources: ranked, conflictData };
 }
 
@@ -140,7 +109,7 @@ interface StructuredSynthesis {
 }
 
 export function parseStructuredSynthesis(raw: string, sources: Source[]): StructuredSynthesis {
-  const cleaned = stripFences(raw);
+  const cleaned = cleanJsonText(raw);
 
   try {
     const parsed = JSON.parse(cleaned) as Partial<StructuredSynthesis>;
@@ -207,7 +176,7 @@ function formatSourceEntries(citableSources: Source[]): string {
   return sourceEntries.join('\n---\n');
 }
 
-function buildHistoryBlock(conversationHistory?: { role: string; content: string }[]): string {
+function buildHistoryBlock(conversationHistory?: ConversationMessage[]): string {
   if (!conversationHistory?.length) return '';
   const historyLines = conversationHistory.map((m) => `${m.role}: ${m.content.substring(0, 500)}`);
   return `\n\nConversation history (for context only — synthesize the NEW query using the sources below):\n${historyLines.join('\n')}\n`;
@@ -228,10 +197,9 @@ export async function synthesize(
   sources: Source[],
   classification: QueryClassification,
   conflictData: ConflictInfo,
-  geminiKey: string,
+  llm: LlmAdapter,
   tavilyAnswer?: string,
-  openaiKey?: string,
-  conversationHistory?: { role: string; content: string }[],
+  conversationHistory?: ConversationMessage[],
   expertiseLevel?: string
 ): Promise<SynthesisResult> {
   const model = getEnv().GEMINI_SEARCH_MODEL;
@@ -281,9 +249,7 @@ IMPORTANT:
 - If fewer than 2 quality sources are available, be transparent about this in your response. State what you found and note the limited source base. Do not fabricate additional sources or claims.`;
 
   try {
-    const content = await generateText(synthesisPrompt, {
-      geminiKey,
-      openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
+    const content = await llm.generateText(synthesisPrompt, {
       model,
       jsonMode: true,
     });
@@ -307,7 +273,7 @@ IMPORTANT:
     logger.error('Synthesis failed:', error);
 
     const status = getErrorStatus(error, 502);
-    const isQuota = isQuotaError(error, status);
+    const isQuota = status === 429 || isQuotaError(error);
 
     let message: string;
     let errorStatus: number;
@@ -326,8 +292,7 @@ IMPORTANT:
 export async function generateFollowUps(
   query: string,
   synthesisText: string,
-  geminiKey: string,
-  openaiKey?: string
+  llm: LlmAdapter
 ): Promise<string[]> {
   const answerPreview = synthesisText.substring(0, 1500);
 
@@ -340,14 +305,11 @@ Respond ONLY with valid JSON: { "followUps": string[] } (exactly 3 strings).
 No markdown, no code fences.`;
 
   try {
-    const text = await generateText(prompt, {
-      geminiKey,
-      openaiKey: openaiKey ?? getEnv().OPENAI_API_KEY,
+    const text = await llm.generateText(prompt, {
       model: getEnv().GEMINI_LITE_MODEL,
       jsonMode: true,
     });
-    const cleaned = stripFences(text);
-    const parsed = JSON.parse(cleaned) as { followUps?: unknown };
+    const parsed = JSON.parse(cleanJsonText(text)) as { followUps?: unknown };
     if (Array.isArray(parsed.followUps)) {
       const validItems: string[] = [];
       for (const f of parsed.followUps) {

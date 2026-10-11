@@ -16,7 +16,7 @@ import { dispatch } from '@/modules/notifications/dispatcher';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { z } from 'zod';
 import { AppError } from '@/lib/utils/errors';
-import { assertSpendCapAvailable, assertThreadJob, runAiGeneration } from './_shared';
+import { assertThreadJob, readAlreadyBilled, runGuardedWorker } from './_shared';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
 import type {
   ThreadSummaryJobData,
@@ -95,13 +95,12 @@ async function getForkedContext(threadId: string): Promise<JobMessageData[]> {
   }
 }
 
-async function generateThreadSummary(threadId: string, messages: JobMessageData[]) {
+async function generateThreadSummary(threadId: string, messages: JobMessageData[], alreadyBilled?: string) {
   logger.info(`Generating thread summary for thread: ${threadId}`);
-  await assertSpendCapAvailable(AiCallPath.THREAD_SUMMARY);
   const forkedExtra = await getForkedContext(threadId);
   const allMessages = [...forkedExtra, ...messages];
-  const result = await runAiGeneration('thread-summary', threadId, () =>
-    aiService.generateThreadSummary(allMessages)
+  const result = await runGuardedWorker('thread-summary', AiCallPath.THREAD_SUMMARY, threadId, () =>
+    aiService.generateThreadSummary(allMessages), { alreadyBilled }
   );
   if (!result.ok) return { summary: null, skipped: true };
   const { sanitized: summary } = sanitizeUserContent(result.value);
@@ -112,19 +111,18 @@ async function generateThreadSummary(threadId: string, messages: JobMessageData[
 export async function handleThreadSummaryJob(data: ThreadSummaryJobData) {
   logger.info('[worker:ai] thread-summary job');
   assertThreadJob(data);
-  return generateThreadSummary(data.threadId, data.messages);
+  return generateThreadSummary(data.threadId, data.messages, readAlreadyBilled(data));
 }
 
 // ------------------------------------------------------------------
 // thread-dna
 // ------------------------------------------------------------------
 
-async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
+async function generateThreadDNA(threadId: string, messages: JobMessageData[], alreadyBilled?: string) {
   logger.info(`Generating thread DNA for thread: ${threadId}`);
-  await assertSpendCapAvailable(AiCallPath.THREAD_DNA);
   const forkedExtra = await getForkedContext(threadId);
   const allMessages = [...forkedExtra, ...messages];
-  const result = await runAiGeneration('thread-dna', threadId, () => aiService.generateThreadDNA(allMessages));
+  const result = await runGuardedWorker('thread-dna', AiCallPath.THREAD_DNA, threadId, () => aiService.generateThreadDNA(allMessages), { alreadyBilled });
   if (!result.ok) return { threadDNA: null, skipped: true };
   await prisma.thread.update({ where: { id: threadId }, data: { threadDna: result.value } });
   return { threadDNA: result.value };
@@ -133,20 +131,19 @@ async function generateThreadDNA(threadId: string, messages: JobMessageData[]) {
 export async function handleThreadDnaJob(data: ThreadDnaJobData) {
   logger.info('[worker:ai] thread-dna job');
   assertThreadJob(data);
-  return generateThreadDNA(data.threadId, data.messages);
+  return generateThreadDNA(data.threadId, data.messages, readAlreadyBilled(data));
 }
 
 // ------------------------------------------------------------------
 // resolution-score
 // ------------------------------------------------------------------
 
-async function calculateResolutionScore(threadId: string, messages: JobMessageData[]) {
+async function calculateResolutionScore(threadId: string, messages: JobMessageData[], alreadyBilled?: string) {
   logger.info(`Calculating resolution score for thread: ${threadId}`);
-  await assertSpendCapAvailable(AiCallPath.RESOLUTION_SCORE);
   const forkedExtra = await getForkedContext(threadId);
   const allMessages = [...forkedExtra, ...messages];
-  const result = await runAiGeneration('resolution-score', threadId, () =>
-    aiService.calculateResolutionScore(allMessages)
+  const result = await runGuardedWorker('resolution-score', AiCallPath.RESOLUTION_SCORE, threadId, () =>
+    aiService.calculateResolutionScore(allMessages), { alreadyBilled }
   );
   if (!result.ok) return null;
   const score = result.value;
@@ -170,7 +167,7 @@ export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
     select: { resolutionScore: true },
   });
   const oldScore = currentThread?.resolutionScore ?? data.oldScore ?? null;
-  const resolutionScore = await calculateResolutionScore(threadId, messages);
+  const resolutionScore = await calculateResolutionScore(threadId, messages, readAlreadyBilled(data));
 
   if (
     resolutionScore !== null &&
@@ -198,13 +195,12 @@ export async function handleResolutionScoreJob(data: ResolutionScoreJobData) {
 // conflict-detection
 // ------------------------------------------------------------------
 
-async function detectConflicts(threadId: string, messages: JobMessageData[]) {
+async function detectConflicts(threadId: string, messages: JobMessageData[], alreadyBilled?: string) {
   logger.info(`Detecting conflicts for thread: ${threadId}`);
-  await assertSpendCapAvailable(AiCallPath.CONFLICT_DETECTION);
   const forkedExtra = await getForkedContext(threadId);
   const allMessages = [...forkedExtra, ...messages];
-  const result = await runAiGeneration('conflict-detection', threadId, () =>
-    aiService.detectConflicts(allMessages)
+  const result = await runGuardedWorker('conflict-detection', AiCallPath.CONFLICT_DETECTION, threadId, () =>
+    aiService.detectConflicts(allMessages), { alreadyBilled }
   );
   if (!result.ok) return { conflictResult: null, skipped: true };
   const conflictResult = result.value;
@@ -221,7 +217,7 @@ export async function handleConflictDetectionJob(data: ConflictDetectionJobData)
   logger.info('[worker:ai] conflict-detection job');
   assertThreadJob(data);
   const { threadId, messages, subscriberIds, threadName, oldScore, cronJob } = data;
-  const { conflictResult } = await detectConflicts(threadId, messages);
+  const { conflictResult } = await detectConflicts(threadId, messages, readAlreadyBilled(data));
   if (
     conflictResult?.hasConflict &&
     Array.isArray(subscriberIds) &&
@@ -245,10 +241,9 @@ export async function handleConflictDetectionJob(data: ConflictDetectionJobData)
 // daily-digest
 // ------------------------------------------------------------------
 
-async function generateDailyDigest(messages: JobMessageData[], subscriberIds: string[]) {
+async function generateDailyDigest(messages: JobMessageData[], subscriberIds: string[], alreadyBilled?: string) {
   logger.info(`Generating daily digest for ${subscriberIds.length} subscribers`);
-  await assertSpendCapAvailable(AiCallPath.DAILY_DIGEST);
-  const result = await runAiGeneration('daily-digest', 'global', () => aiService.generateDailyDigest(messages));
+  const result = await runGuardedWorker('daily-digest', AiCallPath.DAILY_DIGEST, 'global', () => aiService.generateDailyDigest(messages), { alreadyBilled });
   if (!result.ok) return { digestLength: 0, skipped: true };
   const digest = sanitizeHtmlContent(result.value);
   await dispatch({
@@ -267,7 +262,7 @@ export async function handleDailyDigestJob(data: DailyDigestJobData) {
   if (!messages || !subscriberIds) {
     throw new Error('Missing required fields: messages and subscriberIds');
   }
-  return generateDailyDigest(messages, subscriberIds);
+  return generateDailyDigest(messages, subscriberIds, readAlreadyBilled(data));
 }
 
 // ------------------------------------------------------------------
@@ -460,7 +455,6 @@ export async function handleDeepResearchJob(data: import('../types').DeepResearc
     }
   }
   logger.info('[worker:ai] deep-research job', { query: validated.query, userId: validated.userId });
-  await assertSpendCapAvailable(AiCallPath.FORUM_SEARCH_SYNTHESIZE);
   let expertiseLevel: string | undefined;
   try {
     const u = await prisma.user.findUnique({ where: { id: validated.userId }, select: { preferences: true } });
@@ -469,14 +463,32 @@ export async function handleDeepResearchJob(data: import('../types').DeepResearc
     logger.debug('[deep-research] failed to load expertiseLevel', { error: err });
   }
   const { executeAISearch } = await import('@/modules/ai-search/service');
-  const result = await runAiGeneration('deep-research', validated.query, () =>
+  const { createKeyedLlm } = await import('@/lib/ai/text');
+  const { searchWithExa, searchWithTavily } = await import('@/modules/ai-search/search-providers');
+  const { prismaSearchStore } = await import('@/modules/ai-search/cache');
+  const deepKeys = {
+    exa: process.env.SASTRAM_EXA_KEY ?? '',
+    tavily: process.env.SASTRAM_TAVILY_KEY ?? '',
+    gemini: process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '',
+  };
+  const result = await runGuardedWorker('deep-research', AiCallPath.FORUM_SEARCH_SYNTHESIZE, validated.query, () =>
     executeAISearch(
       validated.query,
       { exaMode: 'agentic', tavilyMode: 'research', sourceFilter: 'all', searchMode: 'advanced' },
-      { exa: process.env.SASTRAM_EXA_KEY ?? '', tavily: process.env.SASTRAM_TAVILY_KEY ?? '', gemini: process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '' },
-      undefined,
-      expertiseLevel
-    )
+      {
+        llm: createKeyedLlm({ gemini: deepKeys.gemini }),
+        search: {
+          exa: (query, classification, config) => searchWithExa(query, classification, deepKeys.exa, config),
+          tavily: async (query, classification, config) => {
+            const { sources, answer } = await searchWithTavily(query, classification, deepKeys.tavily, config);
+            return { sources, answer };
+          },
+        },
+        store: prismaSearchStore(),
+        expertise: expertiseLevel,
+      }
+    ),
+    { alreadyBilled: readAlreadyBilled(data) }
   );
   if (!result.ok) return { skipped: true };
 

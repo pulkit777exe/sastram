@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { Source } from '@/modules/ai-search/types';
+import type { Citation, Source } from '@/modules/ai-search/types';
 import { toasts } from '@/lib/utils/toast';
 import { Button } from '@/components/ui/button';
 
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 
 const WORD_MS = 30;
 
-type Token = { text: string; cite?: Source };
+export type Token = { text: string; cite?: Source };
 
 export type FeedbackType = 'up' | 'down';
 
@@ -22,6 +22,8 @@ export type RetryStyle = 'same' | 'professional' | 'general' | 'tactical';
 interface StreamingTextProps {
   text: string;
   sources?: Source[];
+  citations?: Citation[];
+  onCiteClick?: (sourceId: string) => void;
   onDone?: () => void;
   isStreaming: boolean;
   fromHistory?: boolean;
@@ -29,12 +31,13 @@ interface StreamingTextProps {
   onFeedback?: (type: FeedbackType, reason?: string) => void;
 }
 
-function SourceChip({ source }: { source: Source }) {
+function SourceChip({ source, onCiteClick }: { source: Source; onCiteClick?: (sourceId: string) => void }) {
   return (
     <a
       href={source.url}
       target="_blank"
       rel="noreferrer"
+      onClick={() => onCiteClick?.(source.id)}
       className="ml-0 mr-1 inline-flex h-4.5 translate-y-[-1px] items-center gap-1 rounded-control
         bg-inset pr-[3px] pl-[3px] align-middle font-mono text-[10.5px] text-ink-2 shadow-hairline
         transition-colors duration-150 hover:bg-hover hover:text-ink"
@@ -53,9 +56,39 @@ function SourceChip({ source }: { source: Source }) {
 // Matches citation markers like [1], [12] — named constant for readability
 const CITATION_RE = /\[(\d+)\]/g;
 
-/** Parse text with [n] markers into word tokens and citation tokens. */
-function buildTokens(text: string, sources: Source[]): Token[] {
+/**
+ * Parse text with [n] markers into word tokens and citation tokens.
+ * Markers resolve through the citations list (marker -> sourceId -> Source);
+ * markers with no matching citation are dropped (orphans stripped, no
+ * positional fallback).
+ */
+export function buildTokens(text: string, sources: Source[], citations: Citation[] = []): Token[] {
   const tokens: Token[] = [];
+
+  const sourceById = new Map<string, Source>();
+  for (const source of sources) {
+    if (!sourceById.has(source.id)) {
+      sourceById.set(source.id, source);
+    }
+  }
+
+  const sourceByMarker = new Map<number, Source>();
+  for (const citation of citations) {
+    if (typeof citation?.marker !== 'number') {
+      continue;
+    }
+    if (typeof citation?.sourceId !== 'string') {
+      continue;
+    }
+    if (sourceByMarker.has(citation.marker)) {
+      continue;
+    }
+    const source = sourceById.get(citation.sourceId);
+    if (source) {
+      sourceByMarker.set(citation.marker, source);
+    }
+  }
+
   let last = 0;
 
   for (const match of text.matchAll(CITATION_RE)) {
@@ -64,9 +97,9 @@ function buildTokens(text: string, sources: Source[]): Token[] {
     for (const word of before.split(' ').filter(Boolean)) {
       tokens.push({ text: word });
     }
-    // Citation chip — direct index lookup (KISS) instead of find with index math
+    // Citation chip — resolved via the citation map, orphans dropped
     const markerNum = Number(match[1]);
-    const source = sources[markerNum - 1];
+    const source = sourceByMarker.get(markerNum);
     if (source) {
       tokens.push({ text: '', cite: source });
     }
@@ -199,6 +232,8 @@ function CopyIcon({ isCopied }: { isCopied: boolean }) {
 export function StreamingText({
   text,
   sources = [],
+  citations = [],
+  onCiteClick,
   onDone,
   isStreaming,
   fromHistory = false,
@@ -206,7 +241,7 @@ export function StreamingText({
   onFeedback,
 }: StreamingTextProps) {
   const [count, setCount] = useState(fromHistory ? Infinity : 0);
-  const allTokens = buildTokens(text, sources);
+  const allTokens = buildTokens(text, sources, citations);
   const done = !isStreaming && count >= allTokens.length;
 
   // Feedback state
@@ -288,7 +323,7 @@ export function StreamingText({
       <p className="text-[13px] leading-relaxed text-ink">
         {allTokens.slice(0, count).map((token, i) =>
           token.cite ? (
-            <SourceChip key={i} source={token.cite} />
+            <SourceChip key={i} source={token.cite} onCiteClick={onCiteClick} />
           ) : (
             <span
               key={i}

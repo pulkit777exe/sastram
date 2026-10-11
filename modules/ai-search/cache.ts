@@ -2,6 +2,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import type { Prisma } from '@prisma/client';
 import { logger } from '@/lib/infrastructure/logger';
 import type { AISearchResponse } from './types';
+import type { SearchStore } from './ports';
 import type { AISearchPipelineResult } from './service';
 import { hashQuery } from './hash';
 
@@ -194,4 +195,13 @@ export async function cacheResult(
       error: err instanceof Error ? err.message : String(err),
     });
   }
+}
+
+/** Prisma-backed SearchStore for the pipeline compat path and query warming. */
+export function prismaSearchStore(): SearchStore {
+  return {
+    get: (query, expertiseLevel) => getCachedResult(query, expertiseLevel),
+    put: (query, result, queryType, expertiseLevel) =>
+      cacheResult(query, result, queryType, expertiseLevel),
+  };
 }

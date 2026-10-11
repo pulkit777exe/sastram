@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Sparkles, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { ConflictInfo, Citation, Source } from '@/modules/ai-search/types';
+import { orderSourcesByCitation } from '@/modules/ai-search/citations';
 import { StreamingText, type RetryStyle, type FeedbackType } from './StreamingText';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
@@ -30,12 +31,12 @@ const QUERY_TYPE_LABELS: Record<string, { label: string; variant: 'live' | 'warn
 
 export function SynthesisCard({
   text,
-  citations: _citations = [],
+  citations = [],
   sources = [],
   conflictData,
   sourceCount,
   queryType,
-  onCiteClick: _onCiteClick,
+  onCiteClick,
   isStreaming = false,
   fromHistory = false,
   onRetry,
@@ -43,9 +44,11 @@ export function SynthesisCard({
 }: SynthesisCardProps) {
   const typeConfig = QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
 
+  const orderedSources = useMemo(() => orderSourcesByCitation(sources, citations), [sources, citations]);
+
   const saveMetadata = useMemo(
-    () => ({ type: 'ai_synthesis', text, queryType, sourceCount, sources: sources.slice(0, 3) }),
-    [text, queryType, sourceCount, sources]
+    () => ({ type: 'ai_synthesis', text, queryType, sourceCount, sources: orderedSources.slice(0, 3) }),
+    [text, queryType, sourceCount, orderedSources]
   );
 
   if (!text) {
@@ -93,7 +96,9 @@ export function SynthesisCard({
       <div className="px-5 pb-5">
         <StreamingText
           text={text}
-          sources={sources}
+          sources={orderedSources}
+          citations={citations}
+          onCiteClick={onCiteClick}
           isStreaming={isStreaming}
           fromHistory={fromHistory}
           onDone={() => {}}

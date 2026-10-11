@@ -4,10 +4,16 @@ import type {
   SynthesisResult,
   AISearchResponse,
   PhaseTimings,
+  QueryClassification,
 } from './types';
 import { classifyQuery } from './llm';
-import { searchWithExa, searchSources } from './search-providers';
 import { crossReference, synthesize, generateFollowUps } from './synthesis';
+import { logger } from '@/lib/infrastructure/logger';
+import type {
+  SearchAdapter,
+  SearchCtx,
+  SearchStore,
+} from './ports';
 
 export type AISearchPipelineResult = AISearchResponse & { followUps: string[]; timings?: PhaseTimings };
 
@@ -22,18 +28,65 @@ function elapsedMs(start: number): number {
   return Date.now() - start;
 }
 
+/** Read-through cache: a store hit short-circuits the whole pipeline (zero LLM/search calls). */
+async function readThroughCache(
+  store: SearchStore,
+  query: string,
+  expertise?: string
+): Promise<AISearchPipelineResult | null> {
+  try {
+    const cached = await store.get(query, expertise);
+    if (!cached) return null;
+    const followUpsRaw = (cached as unknown as { followUps?: unknown }).followUps;
+    const followUps = Array.isArray(followUpsRaw)
+      ? followUpsRaw.filter((f): f is string => typeof f === 'string')
+      : [];
+    return {
+      synthesis: cached.synthesis,
+      sources: cached.sources,
+      phase: 'done',
+      followUps,
+    };
+  } catch (err) {
+    logger.debug('[ai-search] store read failed, proceeding without cache', { error: err });
+    return null;
+  }
+}
+
+/** Parallel fan-out mirroring searchSources semantics: one side may fail without killing the other. */
+async function runSearchFanout(
+  query: string,
+  classification: QueryClassification,
+  config: SearchConfig,
+  search: SearchAdapter
+): Promise<RawSearchResults> {
+  const [exaResult, tavilyResult] = await Promise.allSettled([
+    search.exa(query, classification, config),
+    search.tavily(query, classification, config),
+  ]);
+
+  return {
+    exaSources: exaResult.status === 'fulfilled' ? exaResult.value : [],
+    tavilySources: tavilyResult.status === 'fulfilled' ? tavilyResult.value.sources : [],
+    tavilyAnswer: tavilyResult.status === 'fulfilled' ? tavilyResult.value.answer : undefined,
+  };
+}
+
 export async function executeAISearch(
   query: string,
   config: SearchConfig,
-  keys: { exa: string; tavily: string; gemini: string; openai?: string },
-  conversationHistory?: { role: string; content: string }[],
-  expertiseLevel?: string
+  ctx: SearchCtx
 ): Promise<AISearchPipelineResult> {
   const startTime = Date.now();
 
+  if (ctx.store) {
+    const cached = await readThroughCache(ctx.store, query, ctx.expertise);
+    if (cached) return cached;
+  }
+
   // Phase 1: Classify
   const classifyStart = Date.now();
-  const classification = await classifyQuery(query, keys.gemini, keys.openai);
+  const classification = await classifyQuery(query, ctx.llm);
   const classifyMs = elapsedMs(classifyStart);
 
   // Phase 2: Search
@@ -41,20 +94,20 @@ export async function executeAISearch(
   let rawResults: RawSearchResults;
   const isInstantMode = config.searchMode === 'instant';
   if (isInstantMode) {
-    const exaSources = await searchWithExa(query, classification, keys.exa, config);
+    const exaSources = await ctx.search.exa(query, classification, config);
     rawResults = {
       exaSources,
       tavilySources: [],
       tavilyAnswer: undefined,
     };
   } else {
-    rawResults = await searchSources(query, classification, keys.exa, keys.tavily, config);
+    rawResults = await runSearchFanout(query, classification, config, ctx.search);
   }
   const searchMs = elapsedMs(searchStart);
 
   // Phase 3: Cross-reference
   const crossRefStart = Date.now();
-  const crossRefResult = await crossReference(rawResults, query, keys.gemini, keys.openai);
+  const crossRefResult = await crossReference(rawResults, query, ctx.llm);
   const crossrefMs = elapsedMs(crossRefStart);
 
   const rankedSources = crossRefResult.rankedSources;
@@ -76,11 +129,10 @@ export async function executeAISearch(
       rankedSources,
       classification,
       crossRefResult.conflictData,
-      keys.gemini,
+      ctx.llm,
       rawResults.tavilyAnswer,
-      keys.openai,
-      conversationHistory,
-      expertiseLevel
+      ctx.history,
+      ctx.expertise
     );
   }
   synthesis.processingTimeMs = elapsedMs(startTime);
@@ -91,7 +143,7 @@ export async function executeAISearch(
   const shouldGenerateFollowUps = !isInstantMode && Boolean(synthesis.text);
   if (shouldGenerateFollowUps) {
     const followUpText = synthesis.text as string;
-    followUps = await generateFollowUps(query, followUpText, keys.gemini, keys.openai);
+    followUps = await generateFollowUps(query, followUpText, ctx.llm);
   }
 
   return {

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { crossReference } from '@/modules/ai-search/synthesis';
+import { createKeyedLlm } from '@/lib/ai/text';
 import { logger } from '@/lib/infrastructure/logger';
 import { canAccessThread } from '@/lib/thread-access';
 import Link from 'next/link';
@@ -76,7 +77,7 @@ export default async function CanvasPage({
           provider: 'tavily' as const,
           contentFetched: true,
         };
-        const cross = await crossReference({ exaSources: [leftSrc], tavilySources: [rightSrc] }, `Compare "${left.name}" vs "${right.name}"`, geminiKey, openaiKey);
+        const cross = await crossReference({ exaSources: [leftSrc], tavilySources: [rightSrc] }, `Compare "${left.name}" vs "${right.name}"`, createKeyedLlm({ gemini: geminiKey, openai: openaiKey }));
         diff = {
           conflictDetected: cross.conflictData.detected,
           description: cross.conflictData.description,

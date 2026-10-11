@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { sanitizeSearchQuery, validateApiKeys } from '@/modules/ai-search/sanitize';
-import { withAiPreflight } from '@/lib/middleware/ai-preflight';
+import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch, type AISearchPipelineResult } from '@/modules/ai-search/service';
 import { AISearchError } from '@/modules/ai-search/synthesis';
-import { getCachedResult, cacheResult } from '@/modules/ai-search/cache';
+import { getCachedResult, cacheResult, prismaSearchStore } from '@/modules/ai-search/cache';
+import { searchWithExa, searchWithTavily } from '@/modules/ai-search/search-providers';
+import { createKeyedLlm } from '@/lib/ai/text';
 import { persistSearchSession } from '@/modules/ai-search/repository';
 import { consumeIdempotencyKey } from '@/lib/services/idempotency';
 import { env } from '@/lib/config/env';
@@ -289,18 +291,25 @@ function buildLiveStream(
           }
         }
 
-        const result = await executeAISearch(
-          params.effectiveQuery,
-          params.config,
-          {
-            exa: params.keys.exaKey,
-            tavily: params.keys.tavilyKey,
-            gemini: params.keys.geminiKey,
-            openai: params.keys.openaiKey,
+        const searchKeys = {
+          exa: params.keys.exaKey,
+          tavily: params.keys.tavilyKey,
+          gemini: params.keys.geminiKey,
+          openai: params.keys.openaiKey,
+        };
+        const result = await executeAISearch(params.effectiveQuery, params.config, {
+          llm: createKeyedLlm({ gemini: searchKeys.gemini, openai: searchKeys.openai }),
+          search: {
+            exa: (query, classification, config) => searchWithExa(query, classification, searchKeys.exa, config),
+            tavily: async (query, classification, config) => {
+              const { sources, answer } = await searchWithTavily(query, classification, searchKeys.tavily, config);
+              return { sources, answer };
+            },
           },
-          params.conversationHistory,
-          expertiseLevel
-        );
+          store: prismaSearchStore(),
+          history: params.conversationHistory,
+          expertise: expertiseLevel,
+        });
 
         sendEvent({ phase: 'reading', sources: result.sources });
         sendEvent({ phase: 'crossref' });
@@ -409,13 +418,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const preflight = await withAiPreflight(request, {
-      aiCallPath: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
-      quotaType: 'search',
-      sseMode: true,
+    const guard = await guardAiRoute(request, {
+      path: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
+      quota: { kind: 'search' },
+      rateLimitScope: 'ai-forum-search',
+      sse: true,
     });
-    if (preflight instanceof NextResponse) return preflight;
-    const session = preflight.session;
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const idempotencyError = await checkIdempotency(clientNonce, session.user.id);
     if (idempotencyError) return idempotencyError;

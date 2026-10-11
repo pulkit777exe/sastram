@@ -189,3 +189,29 @@ export function validateCitations(
 
   return { text: out, citations, overCitedSources };
 }
+
+/**
+ * Order sources for the drawer: cited sources first in first-cited order,
+ * uncited sources keep their relative order (stable). Pure render helper.
+ */
+export function orderSourcesByCitation(sources: Source[], citations: Citation[] = []): Source[] {
+  if (citations.length === 0) {
+    return [...sources];
+  }
+  const rankBySourceId = new Map<string, number>();
+  for (const citation of citations) {
+    if (typeof citation?.sourceId !== 'string') {
+      continue;
+    }
+    if (!rankBySourceId.has(citation.sourceId)) {
+      rankBySourceId.set(citation.sourceId, rankBySourceId.size);
+    }
+  }
+  const ranked = [...sources];
+  ranked.sort((a, b) => {
+    const rankA = rankBySourceId.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+    const rankB = rankBySourceId.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+    return rankA - rankB;
+  });
+  return ranked;
+}
