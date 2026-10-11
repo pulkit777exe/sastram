@@ -57,6 +57,10 @@ docs/*
 !docs/ARCHITECTURE-REVIEW.md
 !docs/VIEW-TRANSITIONS-SPEC.md
 !docs/PROMOTION_SYSTEM.md
+!docs/adr/
+!docs/adr/**
+!docs/plans/
+!docs/plans/**
 !UBIQUITOUS_LANGUAGE.md
 
 e2e/.env.e2e

@@ -23,7 +23,7 @@ A discussion platform with AI-powered search, threading, and moderation. Origina
 - **Auth**: Better Auth (email OTP)
 - **AI**: Google Gemini / OpenAI GPT
 - **Styling**: Tailwind CSS + shadcn/ui
-- **State**: Zustand, TanStack Query
+- **State**: TanStack Query + React hooks
 - **Infra**: Upstash Redis, QStash, Vercel Blob
 
 ## Features
@@ -70,28 +70,29 @@ NODE_ENV=production pnpm check:prod
 ## Testing
 
 ```bash
-pnpm test            # 298 passing (Mocha)
+pnpm test            # Mocha unit tests (61 files)
 pnpm test:e2e       # Playwright smoke tests
 ```
 
 ## Project Structure
 
 ```
-app/          — Next.js App Router pages & API routes
-modules/      — 25 domain modules (threads, messages, ai-search, moderation, etc.)
+app/          — Next.js App Router pages & API routes (50 endpoints)
+modules/      — 24 domain modules (threads, messages, ai-search, moderation, etc.)
 lib/          — Core services, infrastructure, utilities
   actions/    — Shared action result types
+  ai/         — Gemini/OpenAI providers, prompts, factory
   config/     — Environment schema, permissions, routes
-  infrastructure/ — Prisma, Redis, logger
-  middleware/ — Content moderation middleware
-  queue/      — QStash job types & workers
+  infrastructure/ — Prisma, Redis (Upstash REST), logger
+  middleware/ — Cron auth, moderation, AI preflight
+  queue/      — QStash job types & workers (9 job types)
   schemas/    — Shared Zod schemas
-  services/   — AI, auth, rate-limit, moderation, spend-cap, etc.
-  utils/      — Server actions, API helpers, validation
+  services/   — AI spend-cap, auth, rate-limit, quotas, email, etc.
+  utils/      — Server actions, API helpers, SSE, validation
 components/   — shadcn/ui primitives + feature components
-prisma/       — Database schema (30 models)
-test/         — Mocha unit tests (47 files)
-stores/       — Zustand state stores
+hooks/        — React hooks (chat, thread, AI streaming, preferences)
+prisma/       — Database schema (35 models)
+test/         — Mocha unit tests (61 files) + Playwright e2e
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for architecture details and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.

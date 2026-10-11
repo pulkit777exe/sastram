@@ -94,18 +94,18 @@ export const myAction = createServerAction(
 
 ### Background Jobs
 
-New job types: add types in `lib/queue/types.ts`, processor in `lib/queue/workers/`, register in `lib/queue/workers/index.ts`. Jobs retry 3x via QStash.
+New job types: add types in `lib/queue/types.ts`, processor in `lib/queue/workers/`, register in `lib/queue/workers/index.ts`. Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); non-retryable `AppError` returns 200 to prevent retry amplification.
 
 ## Project Structure
 
 ```
-app/          — Next.js App Router pages & API routes
-modules/      — 25 domain modules
+app/          — Next.js App Router pages & API routes (50 endpoints)
+modules/      — 24 domain modules
 lib/          — Core utilities, services, infrastructure
 components/   — UI components
-prisma/       — Database schema (30 models)
-test/         — Mocha unit tests (47 files, 298 passing)
-stores/       — Zustand state stores
+hooks/        — React hooks (chat, thread, AI streaming, preferences)
+prisma/       — Database schema (35 models)
+test/         — Mocha unit tests (61 files) + Playwright e2e
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for full architecture details.

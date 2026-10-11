@@ -1,6 +1,6 @@
 # View Transitions on Thread + SaiSearch — Spec
 
-Status: draft, awaiting go-ahead before implementation.
+Status: implemented (2026-10-11 re-audit). Shipped behind `NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED` (default on), SSR-safe + `prefers-reduced-motion` guard. Originally drafted pre-implementation; sections below marked where the final code diverged from the draft.
 
 Scope: thread page (`/dashboard/threads/[slug]`) and SaiSearch (`/dashboard/sai-search`).
 Source skills (summary-only, per your instruction):
@@ -30,8 +30,8 @@ Honesty note: I do not have the full text of these skills in front of me. The im
 - `search-provider.tsx`, `use-search-conversation.ts`, `use-search-stream.ts` — state lift; state-decoupled from UI per composition patterns.
 
 ### Stack
-- React `^19.2.8`, Next `^16.3.1`, `framer-motion ^12.43.0` already installed.
-- `react@canary` is NOT needed (React 19 stable ships `<ViewTransition>` natively).
+- React `^19.2.8` (stable — the canary detour was reverted), Next `^16.3.8`, `framer-motion ^12.43.0` installed.
+- `<ViewTransition>` ships via the `components/ui/view-transition.tsx` (`SaiViewTransition`) wrapper; no `react@canary` in `package.json`.
 - Zod-validated env in `lib/config/env.ts`; feature flags go through `serverEnvSchema` / `fullyClientSafeSchema` and use `NEXT_PUBLIC_` for client access.
 - `experimental.optimizePackageImports` in `next.config.ts` already excludes `framer-motion` tree-shake concerns.
 
@@ -67,7 +67,7 @@ SSR safety: gate all `<ViewTransition>` rendering on a `useEffect`-set `enabled`
 | Thread #5 optimistic → confirmed | Reconciliation is correct as-is; visual swap adds fragility for a benefit most users won't notice. |
 | SaiSearch #8 list reorder | Needs `useDeferredValue` rewriting of `messages` array; cost > benefit at current counts. |
 | SaiSearch #9 error/blocked | `appState === 'error'` should be instant. Animating errors is hostile. |
-| SaiSearch #10 route change | `next/view-transitions` not in Next 16.3.1 stable. Revisit later. |
+| SaiSearch #10 route change | `next/view-transitions` not in Next 16 stable. Revisit later. |
 | Thread #1 bubble-morph half | First message lives inside `CommentTree`; wrapping it adds gating logic for a benefit users feel as "instant" today. |
 | Thread #3 drawer morph | The browser's view-transition-name system needs a same-name source AND target. Trigger is 40×40 in the corner; dialog is 320px full-height. Geometry rules out a clean shared-element morph. `animate-in` was already doing the right thing. |
 
@@ -84,9 +84,9 @@ After the initial implementation, an architecture review found the shipped code 
 7. **Unused `useViewTransitionsEnabled` export and unused `startViewTransition` helper** — latent footguns, no current consumers. **Fixed by removing both.**
 8. **`::view-transition-old/new(ai-search-composer)` rule** pointed at a name that no longer exists after the rename. **Fixed by rewriting CSS to target `-idle` and `-active` separately with a shared `vt-morph` keyframe.**
 
-## Canary note
+## Canary note (historical — reverted)
 
-The original spec assumed React 19 stable ships `<ViewTransition>`. It does not — you need `react@canary`. After surfacing this and getting the call, we bumped to `react@19.3.0-canary-2dc7da79-20260828`. The canary types expose `React.ViewTransition` as an `ExoticComponent`. The `SaiViewTransition` wrapper gates the canary component on the flag + browser support via `useSyncExternalStore`, so the server render and first client render match (no hydration mismatch). Critical detail: `<ViewTransition>` only fires for async updates (startTransition, useDeferredValue, Actions, Suspense); all consumer state mutations must be wrapped in `startTransition` or the transition never triggers.
+The original spec assumed React 19 stable ships `<ViewTransition>`. It does not — you need `react@canary`. The canary bump (`react@19.3.0-canary-2dc7da79-20260828`) was reverted — `package.json` pins React `^19.2.8` stable. The canary types expose `React.ViewTransition` as an `ExoticComponent`. The `SaiViewTransition` wrapper gates the canary component on the flag + browser support via `useSyncExternalStore`, so the server render and first client render match (no hydration mismatch). Critical detail: `<ViewTransition>` only fires for async updates (startTransition, useDeferredValue, Actions, Suspense); all consumer state mutations must be wrapped in `startTransition` or the transition never triggers.
 
 ## Files changed (final)
 
@@ -103,7 +103,7 @@ mod  components/ai-search/use-search-conversation.ts  # startTransition wrapping
 mod  components/thread/thread-live-wrapper.tsx    # empty-state card wrapped at visible root
 mod  components/thread/thread-details-panel.tsx   # dropped dead view-transition-name + manual startViewTransition
 add  test/view-transition.test.tsx
-mod  package.json                       # react + react-dom → canary
+mod  package.json                       # react + react-dom pinned stable `^19.2.8` (canary reverted)
 ```
 
 ## Graceful degradation contract

@@ -42,6 +42,19 @@
 | **Moderation Rule** | A configurable regex pattern that filters prohibited content in *Messages* or *Thread* descriptions. | Filter, rule |
 | **Report** | A *User*'s flagging of a *Message* or *Thread* for moderator review. Has a category and status. | Flag, complaint |
 | **Appeal** | A *User*'s request to reverse a moderation action. Has a status (pending, approved, rejected). | Review request |
+| **Appeal Vote** | A jury vote on an *Appeal* — 3 random MODERATORs, 2/3 majority decides. Stored as `AppealVote`. | Jury vote |
+
+## Knowledge & engagement
+
+| Term | Definition | Aliases to avoid |
+| ---- | ---------- | ---------------- |
+| **Collection** | A workspace of saved threads + searches (`Collection` + `CollectionItem`), exportable as Markdown with `[n]` footnotes. | Workspace, folder |
+| **Knowledge Page** | An auto-promoted page for threads with `resolutionScore > 85` + `verifiedAt` (`KnowledgePage`). | Wiki, article |
+| **Bounty** | A reward attached to a *Thread* (`amount`, `isClaimed`). | Reward, prize |
+| **Save Payload** | The validated shape for adding an item to a *Collection* (`threadId`/`sessionId`/`messageId`/`metadata`, one Zod schema). | Add schema, save body |
+| **Metadata Kind** | The typed discriminant for collection item snapshots (`graph`/`canvas`/`summary`/`ai_synthesis`). | Metadata type |
+| **Fact-Check Status** | A per-*Message* badge (`UNCHECKED` / `VERIFIED` / `DISPUTED`). | Fact check |
+| **Poll Market** | A *Poll* with `isMarket` + `resolvedOptionIndex` — a resolvable prediction market. | Betting, market |
 
 ## Real-time & infrastructure
 

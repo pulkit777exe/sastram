@@ -19,7 +19,7 @@ Threads with `resolutionScore > 85` and `verifiedAt != null` are auto-promoted t
 ## Thresholds
 
 - `KNOWLEDGE_PROMOTION_THRESHOLD = 85` (`lib/services/knowledge-promotion.ts:12`)
-- `verifiedAt` required (OP/admin via `POST /api/threads/[threadId]/verify` or `modules/threads/actions:markThreadVerified`).
+- `verifiedAt` required (OP/admin via the `markThreadVerified` server action in `modules/threads/actions`).
 - `deletedAt: null` only.
 
 ## Manual
@@ -30,4 +30,4 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://sastram.wtfpulkit.dev/api/c
 
 ## Model
 
-`prisma/schema.prisma:245` `model KnowledgePage { id, threadId @unique, version, synthesizedContent, createdAt, updatedAt }` FK `threadId → Thread` `onDelete: Cascade`.
+`prisma/schema.prisma:819` `model KnowledgePage { id, threadId @unique, version, synthesizedContent, createdAt, updatedAt }` FK `threadId → Thread` `onDelete: Cascade`.

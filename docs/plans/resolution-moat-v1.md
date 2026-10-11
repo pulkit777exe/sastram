@@ -1,5 +1,7 @@
 # Sastram Resolution Moat — KISS Plan v1
 
+> **HISTORICAL (2026-09-06 plan, kept as-is below).** Many "Where We Are" gaps have since shipped: OP verify (`markThreadVerified` + `Thread.verifiedAt/By`), `/dashboard/graph` (ForceGraphCanvas), `Collection`/`CollectionItem` workspaces + Markdown export, `KnowledgePage` auto-promotion, `Bounty`, `AppealVote` jury, Deep Research, Canvas. See `shared/ARCHITECTURE.md` and `CHANGELOG.md` for current state.
+
 > **North star:** `shared/ARCHITECTURE.md:3` “questions get resolved, not just answered.”  
 > **Bet:** Make resolution **unforgeable** + knowledge **compounding** — the two hardest-to-copy moats. Forum features don’t differentiate.
 

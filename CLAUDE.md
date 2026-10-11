@@ -32,8 +32,8 @@ pnpm start           # Production server
 pnpm check:prod      # Production readiness checks
 
 # Testing & Linting
-pnpm test            # Mocha tests (54 files)
-pnpm test:e2e       # Playwright e2e tests
+pnpm test            # Mocha tests (61 files)
+pnpm test:e2e       # Playwright e2e tests (smoke + collections + thread-edit)
 pnpm typecheck      # TypeScript check
 pnpm lint          # ESLint
 pnpm lint:fix      # ESLint fix
@@ -51,13 +51,13 @@ pnpm db:studio   # Prisma studio
 
 ### Directory Structure
 
-- `app/` - Next.js App Router pages and API routes (46 endpoints)
+- `app/` - Next.js App Router pages and API routes (50 endpoints)
 - `lib/` - Core utilities, services, infrastructure
-- `modules/` - Domain modules (29 feature modules)
+- `modules/` - Domain modules (24 feature modules)
 - `components/` - UI components
 - `prisma/` - Database schema (35 models)
-- `test/` - Mocha unit tests (53 files, 385 passing)
-- `hooks/` - React hooks and state (replaces former `stores/` Zustand layer)
+- `test/` - Mocha unit tests (61 files) + Playwright e2e
+- `hooks/` - React hooks (chat, thread, AI streaming, preferences)
 
 ### Database Models
 
@@ -176,7 +176,7 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 ### Background Jobs
 
 - QStash webhook callback at `app/api/jobs/route.ts`
-- Job handlers in `lib/queue/workers/ai-jobs.ts` (coalesced), `ai-inline.worker.ts` and `email.worker.ts` (re-exported via `workers/index.ts`)
+- Job handlers in `lib/queue/workers/` — `ai-jobs.ts` (coalesced AI handlers) plus split workers (`thread-summary`, `thread-dna`, `resolution-score`, `conflict-detection`, `staleness-check`, `daily-digest`, `insight-notifications`, `ai-inline`, `email`), re-exported via `workers/index.ts`
 - Vercel Cron for scheduled tasks (update-threads, cleanup-blobs, daily-digest, promote-knowledge)
 - Jobs: thread summary, thread DNA, resolution score, conflict detection, daily digest, AI inline, email, staleness check, AI insight notifications, deep research (12-source, advanced)
 - Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); non-retryable `AppError` returns 200 to prevent retry amplification
@@ -184,7 +184,7 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 ### API Routes
 
 - `/api/auth/*` - Authentication endpoints
-- `/api/threads/*` - Thread operations (incl. `fork`, `challenge`, `verify`, `route-experts`)
+- `/api/threads/*` - Thread operations (incl. `fork`, `fork-external`, `similar`, `challenge`, `route-experts`, `ai-reply` + SSE stream)
 - `/api/messages/*` - Message operations
 - `/api/ai/*` - AI-powered features (forum-search SSE, thread-summary, thread-dna, resolution-score, search-history, spend, deep-research)
 - `/api/cron/*` - Scheduled jobs (cron auth via `CRON_SECRET` Bearer token) — `update-threads`, `daily-digest`, `cleanup-blobs`, `promote-knowledge`
@@ -192,7 +192,7 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 - `/api/v1/moderation/*` - Moderation tools (admin-only)
 - `/api/collections/*` - Workspace collections (CRUD + export with [n] footnotes)
 - `/api/bounties`, `/api/polls/[pollId]/resolve` - Bounties & prediction markets
-- `/api/bootstrap`, `/api/health`, `/api/search`, `/api/upload`, `/api/invitations/accept`, `/api/csp-report`, `/api/email-otp/*` etc. — see `shared/ARCHITECTURE.md` for full 46-route inventory
+- `/api/bootstrap`, `/api/health`, `/api/search`, `/api/upload`, `/api/invitations/accept`, `/api/csp-report`, `/api/email-otp/*` etc. — see `shared/ARCHITECTURE.md` for full 49-route inventory
 
 ## Authorization Patterns
 
@@ -208,8 +208,8 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
 ## Test Coverage
 
-- **Current**: 53 Mocha test files covering utilities, services, API routes, and some components (385 passing)
-- **E2E**: Playwright smoke tests in `test/e2e/`
+- **Current**: 54 Mocha test files covering utilities, services, API routes, and components (incl. `chat-message-list`, `thread-components`, `overflow-menu`, `view-transition`)
+- **E2E**: Playwright specs in `test/e2e/` (`smoke`, `collections`, `thread-edit` + `global-setup` fixtures)
 - **Missing**: integration tests with real DB, component storybook
 
 ## Architecture Notes
