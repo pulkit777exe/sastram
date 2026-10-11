@@ -22,29 +22,29 @@ For the verified system reference, see [shared/ARCHITECTURE.md](shared/ARCHITECT
 
 ```bash
 # Development
-pnpm dev              # Next.js + QStash dev server (concurrently)
-pnpm dev:next         # Next.js dev server only
-pnpm dev:qstash       # QStash dev server only
+bun dev              # Next.js + QStash dev server (concurrently)
+bun dev:next         # Next.js dev server only
+bun dev:qstash       # QStash dev server only
 
 # Build & Deploy
-pnpm build           # Prisma generate + Next build
-pnpm start           # Production server
-pnpm check:prod      # Production readiness checks
+bun build           # Prisma generate + Next build
+bun start           # Production server
+bun check:prod      # Production readiness checks
 
 # Testing & Linting
-pnpm test            # Mocha tests (61 files)
-pnpm test:e2e       # Playwright e2e tests (smoke + collections + thread-edit)
-pnpm typecheck      # TypeScript check
-pnpm lint          # ESLint
-pnpm lint:fix      # ESLint fix
-pnpm format        # Prettier (requires prettier in devDeps)
+bun test            # Mocha tests (61 files)
+bun test:e2e       # Playwright e2e tests (smoke + collections + thread-edit)
+bun typecheck      # TypeScript check
+bun lint          # ESLint
+bun lint:fix      # ESLint fix
+bun format        # Prettier (requires prettier in devDeps)
 
 # Database
-pnpm db:generate   # Prisma generate
-pnpm db:push      # Prisma db push
-pnpm db:migrate   # Prisma migrate dev
-pnpm db:deploy    # Prisma migrate deploy (prod)
-pnpm db:studio   # Prisma studio
+bun db:generate   # Prisma generate
+bun db:push      # Prisma db push
+bun db:migrate   # Prisma migrate dev
+bun db:deploy    # Prisma migrate deploy (prod)
+bun db:studio   # Prisma studio
 ```
 
 ## Architecture

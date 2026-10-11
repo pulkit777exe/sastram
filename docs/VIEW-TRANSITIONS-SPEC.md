@@ -142,10 +142,10 @@ Estimated diff: ~250 lines added, ~60 lines changed.
 
 ## Verification plan
 
-1. `pnpm typecheck` — must pass; we add a generic `SaiViewTransitionProps` so TS catches misuse.
-2. `pnpm lint` — must pass.
-3. `pnpm test` — mocha covers the three branches of the wrapper (flag on+supported, flag on+unsupported, flag off).
-4. `pnpm build` — must pass; flag is bundled into client env, no runtime branching surprise.
+1. `bun typecheck` — must pass; we add a generic `SaiViewTransitionProps` so TS catches misuse.
+2. `bun lint` — must pass.
+3. `bun test` — mocha covers the three branches of the wrapper (flag on+supported, flag on+unsupported, flag off).
+4. `bun build` — must pass; flag is bundled into client env, no runtime branching surprise.
 5. Manual smoke (not automatable in this session): empty thread → submit first message; open detail drawer; send message in SaiSearch idle → see composer morph into bubble.
 
 ## Out of scope (explicitly)

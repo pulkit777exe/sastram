@@ -697,7 +697,7 @@ One Redis client (Upstash REST over HTTP, serverless-safe):
 - `global-setup.ts` — Deterministic fixtures (pins `DATABASE_URL` to test DB, seeds fixture thread)
 
 ### CI (GitHub Actions)
-PostgreSQL 16 service container → `pnpm install` → `prisma migrate` → `tsc --noEmit` → `eslint` → `mocha tests`
+PostgreSQL 16 service container → `bun install` → `prisma migrate` → `tsc --noEmit` → `eslint` → `mocha tests`
 
 ---
 
@@ -712,19 +712,19 @@ PostgreSQL 16 service container → `pnpm install` → `prisma migrate` → `tsc
 ### Commands
 
 ```bash
-pnpm dev            # Next.js dev server
-pnpm build          # Prisma generate + Next build
-pnpm start          # Production server
-pnpm test           # Mocha unit tests (61 files)
-pnpm test:e2e       # Playwright e2e tests
-pnpm typecheck      # TypeScript check
-pnpm lint           # ESLint
-pnpm lint:fix       # ESLint fix
-pnpm format         # Prettier
-pnpm db:generate    # Prisma generate
-pnpm db:push        # Prisma db push
-pnpm db:migrate     # Prisma migrate dev
-pnpm db:studio      # Prisma studio
+bun dev            # Next.js dev server
+bun build          # Prisma generate + Next build
+bun start          # Production server
+bun test           # Mocha unit tests (61 files)
+bun test:e2e       # Playwright e2e tests
+bun typecheck      # TypeScript check
+bun lint           # ESLint
+bun lint:fix       # ESLint fix
+bun format         # Prettier
+bun db:generate    # Prisma generate
+bun db:push        # Prisma db push
+bun db:migrate     # Prisma migrate dev
+bun db:studio      # Prisma studio
 ```
 
 ---

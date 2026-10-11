@@ -17,9 +17,9 @@
 
 ## Checklist
 
-- [ ] `pnpm typecheck` passes
-- [ ] `pnpm lint` passes
-- [ ] `pnpm test` passes (298 tests)
+- [ ] `bun typecheck` passes
+- [ ] `bun lint` passes
+- [ ] `bun test` passes (61 files)
 - [ ] New tests added for the change
 - [ ] Environment variables documented in `.env.example` (if applicable)
 

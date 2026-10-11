@@ -19,11 +19,11 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  // Assumes `pnpm dev` is already running (or pass E2E_BASE to a live server).
+  // Assumes `bun run dev` is already running (or pass E2E_BASE to a live server).
   // To manage the server automatically, set E2E_MANAGE_SERVER=true.
   webServer: process.env.E2E_MANAGE_SERVER
     ? {
-        command: 'pnpm dev',
+        command: 'bun run dev',
         url: BASE_URL,
         reuseExistingServer: true,
         timeout: 120_000,

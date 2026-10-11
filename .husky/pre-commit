@@ -4,4 +4,4 @@ if command -v gitleaks >/dev/null 2>&1; then
 else
   echo "gitleaks not installed; skipping local secret scan (CI will still enforce it). Install: https://github.com/gitleaks/gitleaks"
 fi
-npx --no -- lint-staged
+bunx lint-staged

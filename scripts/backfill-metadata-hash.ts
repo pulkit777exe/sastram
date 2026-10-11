@@ -7,7 +7,7 @@
  * duplicate row is deleted (keep-oldest, matching the migration dedupe).
  *
  * Run (DB must be migrated first):
- *   pnpm tsx scripts/backfill-metadata-hash.ts
+ *   bun scripts/backfill-metadata-hash.ts
  */
 import { prisma } from '@/lib/infrastructure/prisma';
 import { metadataHash } from '@/modules/collections/metadata-hash';

@@ -11,12 +11,12 @@ Thanks for your interest in contributing to Sastram.
 ### Option B — Local without Docker
 
 1. Fork the repository
-2. Run `pnpm install`
+2. Run `bun install`
 3. Copy `.env.example` to `.env` and fill in the values
 4. Provide PostgreSQL (e.g. free-tier Neon: append `?pgbouncer=true` to `DATABASE_URL`) and optionally Redis (free-tier Upstash)
-5. Run `pnpm db:migrate`
-6. Run `pnpm dev` to start the development server
-7. Run `pnpm test` to verify everything works
+5. Run `bun db:migrate`
+6. Run `bun dev` to start the development server
+7. Run `bun test` to verify everything works
 
 ### Required Environment Variables
 
@@ -37,8 +37,8 @@ Thanks for your interest in contributing to Sastram.
 
 1. Create a branch from `main`: `git checkout -b feature/your-feature`
 2. Make your changes
-3. Run `pnpm typecheck` and `pnpm lint` — both must pass
-4. Add or update tests: `pnpm test`
+3. Run `bun typecheck` and `bun lint` — both must pass
+4. Add or update tests: `bun test`
 5. Commit with descriptive messages (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`)
 6. Push and open a PR
 

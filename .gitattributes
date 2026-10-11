@@ -2,7 +2,7 @@
 * text=auto eol=lf
 
 # Lockfile — use a custom merge driver so PR diffs are readable
-pnpm-lock.yaml -diff linguist-generated=true
+bun.lock -diff linguist-generated=true
 
 # Binary files
 *.png binary

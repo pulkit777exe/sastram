@@ -23,13 +23,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --audit-level=critical
+      - run: bun install --frozen-lockfile
+      - run: bun audit
 
   check:
     runs-on: ubuntu-latest
@@ -59,18 +60,19 @@ jobs:
           - 6379:6379
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm db:deploy
+      - run: bun install --frozen-lockfile
+      - run: bun run db:deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm build
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run build
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
           BETTER_AUTH_SECRET: ci_secret_that_is_long_enough_32chars
@@ -87,7 +89,7 @@ jobs:
           RESEND_TEMPLATE_THREAD_SUMMARY: ci_placeholder
           RESEND_TEMPLATE_PASSWORD_RESET: ci_placeholder
           RESEND_TEMPLATE_WELCOME: ci_placeholder
-      - run: pnpm test
+      - run: bun run test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
           BETTER_AUTH_SECRET: ci_secret_that_is_long_enough_32chars

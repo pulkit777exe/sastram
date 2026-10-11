@@ -14,7 +14,8 @@ const TEST_PASSWORD = 'TestPassword123!';
  *    specs run authenticated.
  */
 async function run(_config: FullConfig) {
-  // 1. Seed (best-effort; idempotent upsert). Uses tsx via the project script.
+  // 1. Seed (best-effort; idempotent upsert). Runs via bun (direct TS execution,
+  // tsconfig paths resolved natively).
   // DATABASE_URL is pinned explicitly: each shell invocation is fresh, so an
   // exported override would be lost and the seeds would hit the dev database
   // from .env instead (this exact mistake polluted Neon once — cleaned up).
@@ -25,7 +26,7 @@ async function run(_config: FullConfig) {
   };
   for (const script of ['scripts/seed-test-user.ts', 'scripts/seed-e2e-thread.ts']) {
     try {
-      execFileSync('pnpm', ['exec', 'tsx', script], {
+      execFileSync('bun', [script], {
         cwd: process.cwd(),
         stdio: 'inherit',
         env: seedEnv,

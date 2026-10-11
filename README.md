@@ -42,10 +42,10 @@ A discussion platform with AI-powered search, threading, and moderation. Origina
 ### Option A: Local setup
 
 ```bash
-pnpm install
+bun install
 cp .env.example .env      # fill in required values
-pnpm db:migrate
-pnpm dev
+bun db:migrate
+bun dev
 ```
 
 ### Option B: Docker
@@ -59,19 +59,19 @@ Starts PostgreSQL, Redis, and the Next.js app. See [CONTRIBUTING.md](./CONTRIBUT
 ## Production Checks
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm build
-NODE_ENV=production pnpm check:prod
+bun typecheck
+bun lint
+bun build
+NODE_ENV=production bun check:prod
 ```
 
-`pnpm check:prod` validates required production environment variables, URL shape, and infrastructure pairs.
+`bun check:prod` validates required production environment variables, URL shape, and infrastructure pairs.
 
 ## Testing
 
 ```bash
-pnpm test            # Mocha unit tests (61 files)
-pnpm test:e2e       # Playwright smoke tests
+bun test            # Mocha unit tests (61 files)
+bun test:e2e       # Playwright smoke tests
 ```
 
 ## Project Structure
