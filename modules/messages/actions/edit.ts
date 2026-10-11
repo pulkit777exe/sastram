@@ -5,10 +5,10 @@ import { requireSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { sanitizeContent } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
-import { getMemberRole } from '@/modules/members';
-import { logAction } from '@/modules/audit/repository';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { recordActivity } from '@/modules/activity/repository';
+import { requireManageOrThrow, requireReadOrThrow } from '@/lib/thread-access';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
+import { AppError } from '@/lib/utils/errors';
 import {
   editMessageSchema,
   pinMessageSchema,
@@ -34,7 +34,15 @@ export const editMessage = createServerAction(
         return actionFailure('FORBIDDEN', 'You can only edit your own messages');
       }
 
-      await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
+      try {
+        await requireReadOrThrow(message.threadId, session.user.id, session.user.role);
+      } catch (error) {
+        if (AppError.isAppError(error)) {
+          if (error.code === 'NOT_FOUND') return actionFailure('NOT_FOUND', 'Thread not found');
+          return actionFailure('FORBIDDEN', 'No access to this thread');
+        }
+        throw error;
+      }
 
       const safeContent = sanitizeContent(content);
       await prisma.$transaction([
@@ -57,6 +65,10 @@ export const editMessage = createServerAction(
       // via onMessageUpdate, and other viewers get fresh data on navigation.
       return actionSuccess(null);
     } catch (error) {
+      if (AppError.isAppError(error)) {
+        if (error.code === 'NOT_FOUND') return actionFailure('NOT_FOUND', 'Thread not found');
+        if (error.code === 'FORBIDDEN') return actionFailure('FORBIDDEN', error.message);
+      }
       logger.error('[editMessage]', error);
       return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }
@@ -81,10 +93,10 @@ export const pinMessage = createServerAction(
         return actionFailure('NOT_FOUND', 'Message not found');
       }
 
-      const memberRole = await getMemberRole(message.threadId, session.user.id);
-      if (!memberRole || !['OWNER', 'MODERATOR'].includes(memberRole.role)) {
-        return actionFailure('FORBIDDEN', 'Insufficient permissions. Only moderators and owners can pin messages.');
-      }
+      // Management gate resolves the thread ONCE (creator or global
+      // MODERATOR/ADMIN — the same set the old OWNER/MODERATOR role check
+      // admitted, since OWNER was the creator and MODERATOR was global).
+      await requireManageOrThrow(message.threadId, session.user.id, session.user.role);
 
       const shouldPin = !message.isPinned;
 
@@ -103,17 +115,22 @@ export const pinMessage = createServerAction(
         });
       });
 
-      await logAction({
-        action: 'MESSAGE_UPDATED',
+      await recordActivity({
+        userId: session.user.id,
+        type: 'MESSAGE_UPDATED',
         entityType: 'Message',
         entityId: messageId,
-        userId: session.user.id,
       });
 
       // No path revalidation: the pinning client updates the pinned state in
       // place optimistically (with rollback on failure).
       return actionSuccess(null);
     } catch (error) {
+      if (AppError.isAppError(error)) {
+        if (error.code === 'NOT_FOUND') return actionFailure('NOT_FOUND', 'Thread not found');
+        if (error.code === 'FORBIDDEN')
+          return actionFailure('FORBIDDEN', 'Insufficient permissions. Only moderators and owners can pin messages.');
+      }
       logger.error('[pinMessage]', error);
       return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }
@@ -135,7 +152,7 @@ export const getMessageEditHistory = createServerAction(
         return actionFailure('NOT_FOUND', 'Message not found');
       }
 
-      await requireThreadAccessOrThrow(message.threadId, session.user.id, session.user.role);
+      await requireReadOrThrow(message.threadId, session.user.id, session.user.role);
 
       const edits = await prisma.messageEdit.findMany({
         where: { messageId },
@@ -144,6 +161,10 @@ export const getMessageEditHistory = createServerAction(
 
       return actionSuccess(edits);
     } catch (error) {
+      if (AppError.isAppError(error)) {
+        if (error.code === 'NOT_FOUND') return actionFailure('NOT_FOUND', 'Thread not found');
+        if (error.code === 'FORBIDDEN') return actionFailure('FORBIDDEN', 'No access to this thread');
+      }
       logger.error('[getMessageEditHistory]', error);
       return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }

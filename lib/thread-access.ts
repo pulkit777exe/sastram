@@ -130,6 +130,12 @@ export function canManageThread(
   return canModerate(userRole) || thread.createdBy === userId;
 }
 
+// Canonical aliases going forward. `canAccessThread`/`canWriteToThread` remain
+// as the underlying implementations; new code should use `canReadThread`/
+// `canWriteThread`.
+export const canReadThread = canAccessThread;
+export const canWriteThread = canWriteToThread;
+
 const HTTP_NOT_FOUND = 404;
 
 async function loadThreadContext(threadId: string): Promise<ThreadAccessContext> {
@@ -147,38 +153,67 @@ async function loadThreadContext(threadId: string): Promise<ThreadAccessContext>
 
 const HTTP_FORBIDDEN = 403;
 
-export async function requireThreadAccessOrThrow(
+/**
+ * Canonical read gate — resolves the thread ONCE and returns its context so
+ * callers stop re-fetching (use `ctx.createdBy`/`ctx.visibility` directly).
+ * Missing thread → NOT_FOUND (404); no access → FORBIDDEN (403).
+ */
+export async function requireReadOrThrow(
   threadId: string,
   userId: string,
-  userRole: Role = Role.USER
-): Promise<void> {
+  role?: Role
+): Promise<ThreadAccessContext> {
   const threadContext = await loadThreadContext(threadId);
-  const hasAccess = await canAccessThread(threadContext, userId, userRole);
+  const hasAccess = await canAccessThread(threadContext, userId, role ?? Role.USER);
   if (!hasAccess) {
     throw new AppError('Forbidden: no access to this thread', 'FORBIDDEN', HTTP_FORBIDDEN);
   }
+  return threadContext;
 }
 
-export async function requireThreadWriteOrThrow(
+/**
+ * Canonical write gate — resolves the thread ONCE and returns its context.
+ * Missing thread → NOT_FOUND (404); no write access → FORBIDDEN (403).
+ */
+export async function requireWriteOrThrow(
   threadId: string,
   userId: string,
-  userRole: Role = Role.USER
-): Promise<void> {
+  role?: Role
+): Promise<ThreadAccessContext> {
   const threadContext = await loadThreadContext(threadId);
-  const canWrite = await canWriteToThread(threadContext, userId, userRole);
+  const canWrite = await canWriteToThread(threadContext, userId, role ?? Role.USER);
   if (!canWrite) {
     throw new AppError('Forbidden: cannot write to this thread', 'FORBIDDEN', HTTP_FORBIDDEN);
   }
+  return threadContext;
+}
+
+/**
+ * NEW: management gate (thread creator or global MODERATOR/ADMIN).
+ * Missing thread → NOT_FOUND (404); otherwise → FORBIDDEN (403).
+ * `canManageThread` stays sync (no DB) — this wrapper only adds the load.
+ */
+export async function requireManageOrThrow(
+  threadId: string,
+  userId: string,
+  role?: Role
+): Promise<ThreadAccessContext> {
+  const threadContext = await loadThreadContext(threadId);
+  const canManage = canManageThread(threadContext, userId, role ?? Role.USER);
+  if (!canManage) {
+    throw new AppError('Forbidden: cannot manage this thread', 'FORBIDDEN', HTTP_FORBIDDEN);
+  }
+  return threadContext;
 }
 
 /** Page/server-component variant — bounces to the dashboard instead of throwing. */
-export async function requireThreadAccess(
+export async function requireReadOrRedirect(
   threadId: string,
   userId: string,
-  userRole: Role = Role.USER
+  role?: Role
 ): Promise<void> {
   try {
-    await requireThreadAccessOrThrow(threadId, userId, userRole);
+    await requireReadOrThrow(threadId, userId, role);
   } catch (error) {
     // Access outcomes (no permission / no thread) bounce to the dashboard.
     // Infrastructure failures must still reach the error boundary instead of
@@ -189,3 +224,10 @@ export async function requireThreadAccess(
     throw error;
   }
 }
+
+/** @deprecated Use `requireReadOrThrow` (returns the thread context). */
+export const requireThreadAccessOrThrow = requireReadOrThrow;
+/** @deprecated Use `requireWriteOrThrow` (returns the thread context). */
+export const requireThreadWriteOrThrow = requireWriteOrThrow;
+/** @deprecated Use `requireReadOrRedirect`. */
+export const requireThreadAccess = requireReadOrRedirect;

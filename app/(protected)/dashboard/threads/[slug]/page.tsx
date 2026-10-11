@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 import { DetailCard } from '@/components/ui/detail-card';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
-import { canModerate } from '@/lib/config/permissions';
+import { canManageView } from '@/lib/thread-access/client';
 import { Loader2 } from 'lucide-react';
 
 const INITIAL_MESSAGE_LIMIT = 50;
@@ -56,16 +56,6 @@ function ThreadSidebarSkeleton() {
       <Skeleton className="h-24 w-full rounded-card" />
     </div>
   );
-}
-
-function canUserManagePoll(
-  thread: ThreadWithFullContext,
-  sessionUser: SessionUser
-): boolean {
-  if (thread.createdBy === sessionUser.id) return true;
-  if (sessionUser.role === 'MODERATOR') return true;
-  if (sessionUser.role === 'ADMIN') return true;
-  return false;
 }
 
 function buildPollViewModel(poll: ThreadWithFullContext['poll']) {
@@ -115,7 +105,11 @@ async function ThreadContent({
   }
 
   const pollViewModel = buildPollViewModel(thread.poll);
-  const canManagePoll = canUserManagePoll(thread, session.user);
+  const canManagePoll = canManageView({
+    createdBy: thread.createdBy,
+    userId: session.user.id,
+    userRole: session.user.role,
+  });
 
   let nextCursorValue: string | null = null;
   if (hasMoreMessages) {
@@ -144,7 +138,7 @@ async function ThreadContent({
         initialFrequency={(subscription?.frequency as 'DAILY' | 'WEEKLY' | 'NEVER') ?? null}
         threadDescription={thread.description}
         aiSummary={thread.aiSummary}
-        canEditThread={thread.createdBy === session.user.id || canModerate(session.user.role)}
+        canEditThread={canManagePoll}
         isBookmarked={thread.isBookmarked}
         tags={thread.tags}
       />

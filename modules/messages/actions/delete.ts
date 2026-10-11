@@ -5,8 +5,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireSession } from '@/modules/auth';
-import { getMemberRole } from '@/modules/members';
-import { logAction } from '@/modules/audit/repository';
+import { recordActivity } from '@/modules/activity/repository';
+import { requireManageOrThrow, requireReadOrThrow } from '@/lib/thread-access';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 import { AppError } from '@/lib/utils/errors';
@@ -32,10 +32,18 @@ export const deleteMessage = createServerAction(
       }
 
       const isAuthor = message.senderId === session.user.id;
-      const memberRole = isAuthor ? null : await getMemberRole(message.threadId, session.user.id);
-
-      if (!isAuthor && !['OWNER', 'MODERATOR'].includes(memberRole?.role ?? '')) {
-        return actionFailure('FORBIDDEN', 'Insufficient permissions to delete this message');
+      try {
+        if (isAuthor) {
+          await requireReadOrThrow(message.threadId, session.user.id, session.user.role);
+        } else {
+          await requireManageOrThrow(message.threadId, session.user.id, session.user.role);
+        }
+      } catch (error) {
+        if (AppError.isAppError(error)) {
+          if (error.code === 'NOT_FOUND') return actionFailure('NOT_FOUND', 'Thread not found');
+          return actionFailure('FORBIDDEN', 'Insufficient permissions to delete this message');
+        }
+        throw error;
       }
 
       await prisma.$transaction(async (tx) => {
@@ -60,11 +68,11 @@ export const deleteMessage = createServerAction(
         }
       });
 
-      await logAction({
-        action: 'MESSAGE_DELETED',
+      await recordActivity({
+        userId: session.user.id,
+        type: 'MESSAGE_DELETED',
         entityType: 'Message',
         entityId: messageId,
-        userId: session.user.id,
       });
 
       if (message.thread?.slug) {
