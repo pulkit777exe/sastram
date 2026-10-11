@@ -799,6 +799,7 @@ model CollectionItem {
   sessionId    String?
   messageId    String?
   metadata     Json? // for graphs (left/right threadIds + diff), summaries snapshot, etc.
+  metadataHash String? // sha256 over stable key-sorted metadata; per-collection dedupe key (dual-written on save, backfilled for old rows)
   createdAt    DateTime @default(now())
 
   collection Collection       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
@@ -809,6 +810,7 @@ model CollectionItem {
   @@unique([collectionId, threadId])
   @@unique([collectionId, sessionId])
   @@unique([collectionId, messageId])
+  @@unique([collectionId, metadataHash])
   @@index([collectionId])
   @@index([threadId])
   @@index([sessionId])

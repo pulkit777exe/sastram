@@ -8,6 +8,10 @@ import { useCollectionsDropdown } from './use-collections-dropdown';
 
 type BulkItem = { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown };
 
+// Server bulk cap (mirrors MAX_BULK_ITEMS in the bulk route). Larger lists are
+// sent as sequential single-fetch chunks so progress stays honest.
+const BULK_CHUNK_SIZE = 50;
+
 export const BulkSaveButton = memo(function BulkSaveButton({ items, label }: { items: BulkItem[]; label?: string }) {
   const { open, setOpen, collections, loading, newTitle, setNewTitle, containerRef, createCollectionFromInput } = useCollectionsDropdown();
   const [saving, setSaving] = useState(false);
@@ -18,40 +22,39 @@ export const BulkSaveButton = memo(function BulkSaveButton({ items, label }: { i
 
   async function bulkAddTo(collectionId: string) {
     if (count === 0) return;
+    const payloads = items.filter((p) => p.threadId || p.sessionId || p.messageId || p.metadata);
+    if (payloads.length === 0) {
+      toasts.error('Nothing to save');
+      return;
+    }
     setSaving(true);
-    setProgress({ done: 0, total: count });
+    setProgress({ done: 0, total: payloads.length });
     let saved = 0;
     let skipped = 0;
     let failed = 0;
-    const CONCURRENCY = 3;
-    for (let i = 0; i < items.length; i += CONCURRENCY) {
-      const batch = items.slice(i, i + CONCURRENCY);
-      const results = await Promise.all(
-        batch.map(async (payload) => {
-          if (!payload.threadId && !payload.sessionId && !payload.messageId && !payload.metadata) return 'skipped' as const;
-          try {
-            const res = await fetch(`/api/collections/${collectionId}/items`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            });
-            if (res.ok) return 'saved' as const;
-            if (res.status === 409) return 'skipped' as const;
-            return 'failed' as const;
-          } catch {
-            return 'failed' as const;
-          }
-        })
-      );
-      for (const r of results) {
-        if (r === 'saved') saved++;
-        else if (r === 'skipped') skipped++;
-        else failed++;
+    try {
+      for (let i = 0; i < payloads.length; i += BULK_CHUNK_SIZE) {
+        const chunk = payloads.slice(i, i + BULK_CHUNK_SIZE);
+        try {
+          const res = await fetch(`/api/collections/${collectionId}/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: chunk }),
+          });
+          const j = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(j?.error?.message || 'Bulk save failed');
+          saved += typeof j?.data?.saved === 'number' ? j.data.saved : 0;
+          skipped += Array.isArray(j?.data?.skipped) ? j.data.skipped.length : 0;
+          failed += Array.isArray(j?.data?.failed) ? j.data.failed.length : 0;
+        } catch {
+          failed += chunk.length;
+        }
+        setProgress({ done: Math.min(i + BULK_CHUNK_SIZE, payloads.length), total: payloads.length });
       }
-      setProgress({ done: Math.min(i + CONCURRENCY, count), total: count });
+    } finally {
+      setSaving(false);
+      setProgress(null);
     }
-    setSaving(false);
-    setProgress(null);
     if (saved > 0) toasts.success(`Saved ${saved} item${saved === 1 ? '' : 's'}${skipped ? `, ${skipped} already saved` : ''}${failed ? `, ${failed} failed` : ''}`);
     else if (skipped > 0 && failed === 0) toasts.error('All items already saved to this collection');
     else if (failed > 0) toasts.error(`Saved ${saved}, ${failed} failed`);

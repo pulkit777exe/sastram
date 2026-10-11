@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionOrThrow } from '@/modules/auth';
-import { fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
+import { fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { getCollection } from '@/modules/collections/repository';
-import { isCollectionsEnabled } from '@/modules/collections/enabled';
-import { rateLimit } from '@/lib/services/rate-limit';
+import { withCollectionsHandler } from '@/modules/collections/handler';
+import { collectionIdSchema } from '@/modules/collections/schemas';
+import { toMarkdown } from '@/modules/collections/metadata';
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-z0-9-_ ]/gi, '_').slice(0, 80) || 'collection';
@@ -13,15 +13,11 @@ function escapeMd(s: string): string {
   return s.replace(/\r\n/g, '\n').trim();
 }
 
-export const GET = withErrorHandling(async (_: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
-  const session = await requireSessionOrThrow();
-  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
-  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
-  if (!(await isCollectionsEnabled(session.user.id))) {
-    return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
-  }
+export const GET = withCollectionsHandler(async (_: NextRequest, session, context) => {
   const { id } = await context!.params;
-  const collection = await getCollection(id, session.user.id, { take: 100 });
+  const parsedId = collectionIdSchema.safeParse(id);
+  if (!parsedId.success) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid collection id'), { status: HTTP_STATUS.BAD_REQUEST });
+  const collection = await getCollection(parsedId.data, session.user.id, { take: 100 });
   if (!collection) return NextResponse.json(fail('NOT_FOUND', 'Collection not found'), { status: HTTP_STATUS.NOT_FOUND });
 
   let md = `# ${escapeMd(collection.title)}\n\n`;
@@ -56,19 +52,7 @@ export const GET = withErrorHandling(async (_: NextRequest, context?: { params: 
     if (msg) {
       md += `## ${msg.isAiResponse ? 'AI Response' : 'Message'} — ${msg.thread ? `[${escapeMd(msg.thread.name)}](/dashboard/threads/${msg.thread.slug})` : 'Thread'}\n\n${escapeMd(msg.content.slice(0, 2000))}\n\n`;
     }
-    const meta = (item as unknown as { metadata?: Record<string, unknown> | null }).metadata;
-    if (meta && typeof meta === 'object') {
-      const t = (meta as Record<string, unknown>).type as string | undefined;
-      if (t === 'graph') {
-        md += `## Graph Snapshot\n\nNodes: ${((meta as Record<string, unknown>).nodes as unknown[])?.length ?? 0}, Edges: ${((meta as Record<string, unknown>).links as unknown[])?.length ?? 0}\n\n`;
-      } else if (t === 'canvas') {
-        md += `## Canvas — ${escapeMd(String((meta as Record<string, unknown>).leftName ?? ''))} vs ${escapeMd(String((meta as Record<string, unknown>).rightName ?? ''))}\n\n${(meta as Record<string, unknown>).diff ? escapeMd(String((meta as Record<string, unknown>).diff)) : ''}\n\n`;
-      } else if (t === 'summary') {
-        md += `## Summary\n\n${escapeMd(String((meta as Record<string, unknown>).content ?? ''))}\n\n`;
-      } else if (t === 'ai_synthesis') {
-        md += `## AI Synthesis\n\n${escapeMd(String((meta as Record<string, unknown>).text ?? ''))}\n\n`;
-      }
-    }
+    md += toMarkdown(item.metadata);
   }
 
   return new NextResponse(md, {

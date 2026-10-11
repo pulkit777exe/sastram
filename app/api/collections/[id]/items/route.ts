@@ -1,57 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionOrThrow } from '@/modules/auth';
-import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
-import { removeFromCollectionOwned, MAX_COLLECTION_METADATA_BYTES } from '@/modules/collections/repository';
-import { isCollectionsEnabled } from '@/modules/collections/enabled';
-import { rateLimit } from '@/lib/services/rate-limit';
-import { z } from 'zod';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
+import { addToCollection, removeFromCollection } from '@/modules/collections/repository';
+import { prismaCollectionPolicy } from '@/modules/collections/policy';
+import { withCollectionsHandler } from '@/modules/collections/handler';
+import { savePayloadSchema, collectionIdSchema, itemIdSchema } from '@/modules/collections/schemas';
 
-const addSchema = z
-  .object({ threadId: z.string().cuid().optional(), sessionId: z.string().cuid().optional(), messageId: z.string().cuid().optional(), metadata: z.unknown().optional() })
-  .refine((d) => d.threadId || d.sessionId || d.messageId || d.metadata, 'threadId or sessionId or messageId or metadata required')
-  .refine((d) => {
-    if (d.metadata === undefined) return true;
-    try {
-      return JSON.stringify(d.metadata).length <= MAX_COLLECTION_METADATA_BYTES;
-    } catch {
-      return false;
-    }
-  }, 'Metadata too large');
-const itemIdSchema = z.string().cuid();
-
-export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
-  const session = await requireSessionOrThrow();
-  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
-  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
-  if (!(await isCollectionsEnabled(session.user.id))) {
-    return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
-  }
+export const POST = withCollectionsHandler(async (request: NextRequest, session, context) => {
   const { id } = await context!.params;
-  const parsedId = z.string().cuid().safeParse(id);
+  const parsedId = collectionIdSchema.safeParse(id);
   if (!parsedId.success) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid collection id'), { status: HTTP_STATUS.BAD_REQUEST });
-  const body = addSchema.parse(await request.json());
-  const item = await (await import('@/modules/collections/repository')).addToCollectionOwned(parsedId.data, session.user.id, session.user.role, body.threadId, body.sessionId, body.messageId, body.metadata);
+
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const parsed = savePayloadSchema.safeParse(raw);
+  if (!parsed.success) {
+    const msg = parsed.error.issues[0]?.message ?? 'Invalid input';
+    return NextResponse.json(fail('VALIDATION_ERROR', msg, parsed.error.issues), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+
+  await prismaCollectionPolicy.assertCollectionOwner(parsedId.data, session.user.id);
+  await prismaCollectionPolicy.assertCanAddRef(parsed.data, session.user.id, session.user.role);
+  const item = await addToCollection(parsedId.data, parsed.data.threadId, parsed.data.sessionId, parsed.data.messageId, parsed.data.metadata);
   return NextResponse.json(ok(item), { status: 201 });
 });
 
-export const DELETE = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
-  const session = await requireSessionOrThrow();
-  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
-  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
+// NOTE (behavior fix): this handler runs behind the default
+// `requireEnabled: true` gate. It previously skipped the collections-enabled
+// check entirely (live divergence) — saves to a disabled feature now 403
+// instead of succeeding.
+export const DELETE = withCollectionsHandler(async (request: NextRequest, session, context) => {
   const { id } = await context!.params;
-  const parsedColId = z.string().cuid().safeParse(id);
+  const parsedColId = collectionIdSchema.safeParse(id);
   if (!parsedColId.success) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid collection id'), { status: HTTP_STATUS.BAD_REQUEST });
   const { searchParams } = new URL(request.url);
   const itemId = searchParams.get('itemId');
   if (!itemId) return NextResponse.json(fail('BAD_REQUEST', 'itemId required'), { status: HTTP_STATUS.BAD_REQUEST });
   const parsedItemId = itemIdSchema.safeParse(itemId);
   if (!parsedItemId.success) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid itemId'), { status: HTTP_STATUS.BAD_REQUEST });
-  // Verify collection ownership and that item belongs to this collection (IDOR hardening)
-  const { prisma } = await import('@/lib/infrastructure/prisma');
-  const item = await prisma.collectionItem.findUnique({ where: { id: parsedItemId.data }, select: { collectionId: true, collection: { select: { userId: true } } } });
-  if (!item) return NextResponse.json(fail('NOT_FOUND', 'Item not found'), { status: HTTP_STATUS.NOT_FOUND });
-  if (item.collection.userId !== session.user.id) return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: HTTP_STATUS.FORBIDDEN });
-  if (item.collectionId !== parsedColId.data) return NextResponse.json(fail('VALIDATION_ERROR', 'Item does not belong to this collection'), { status: HTTP_STATUS.BAD_REQUEST });
-  await removeFromCollectionOwned(parsedItemId.data, session.user.id);
+  // Single policy read maps the IDOR cases: 404 missing / 403 other owner /
+  // 400 item lives in a different collection.
+  const owned = await prismaCollectionPolicy.assertItemInCollection(parsedItemId.data, parsedColId.data, session.user.id);
+  await removeFromCollection({ id: owned.id, collectionId: owned.collectionId });
   return NextResponse.json(ok({ ok: true }));
 });

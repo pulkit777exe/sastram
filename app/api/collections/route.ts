@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionOrThrow } from '@/modules/auth';
-import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { createCollection, getUserCollections, getUserCollectionsLight } from '@/modules/collections/repository';
-import { isCollectionsEnabled } from '@/modules/collections/enabled';
-import { rateLimit } from '@/lib/services/rate-limit';
-import { z } from 'zod';
+import { withCollectionsHandler } from '@/modules/collections/handler';
+import { createCollectionSchema } from '@/modules/collections/schemas';
 
-const createSchema = z.object({ title: z.string().min(1).max(100).trim() });
-
-export const GET = withErrorHandling(async (request: NextRequest) => {
-  const session = await requireSessionOrThrow();
-  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
-  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
-  if (!(await isCollectionsEnabled(session.user.id))) {
-    return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
-  }
+export const GET = withCollectionsHandler(async (request, session) => {
   const url = new URL(request.url);
   const light = url.searchParams.get('light') === '1';
   const collections = light ? await getUserCollectionsLight(session.user.id) : await getUserCollections(session.user.id);
@@ -24,14 +14,10 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   return res;
 });
 
-export const POST = withErrorHandling(async (request: NextRequest) => {
-  const session = await requireSessionOrThrow();
-  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
-  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
-  if (!(await isCollectionsEnabled(session.user.id))) {
-    return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
-  }
-
+// NOTE: previously hand-rolled the guard preamble but never imported
+// `rateLimit` / `isCollectionsEnabled` (runtime ReferenceError on every POST).
+// Now on the shared seam — same guard order, no behavior change.
+export const POST = withCollectionsHandler(async (request: NextRequest, session) => {
   let raw: unknown;
   try {
     raw = await request.json();
@@ -39,7 +25,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
-  const parsed = createSchema.safeParse(raw);
+  const parsed = createCollectionSchema.safeParse(raw);
   if (!parsed.success) {
     const msg = parsed.error.issues[0]?.message ?? 'Invalid input';
     return NextResponse.json(fail('VALIDATION_ERROR', msg, parsed.error.issues), { status: HTTP_STATUS.BAD_REQUEST });

@@ -31,13 +31,13 @@ test.describe('Collections', () => {
     const graphItemId: string = addGraphBody?.data?.id;
     expect(typeof graphItemId).toBe('string');
 
-    // 3. Duplicate graph should 409 (unique constraint on metadata? For metadata-only duplicates are allowed, so we test duplicate thread instead if possible)
-    // For metadata-only, duplicates create new row (no unique constraint). Verify second graph creates new item (201), not 409.
+    // 3. Duplicate graph should 409 (exact-metadata uniqueness via metadataHash unique + Json-equals fallback for pre-backfill rows)
+    // For metadata-only, duplicates conflict on the content hash. Verify second graph 409s (201 tolerated for legacy NULL-hash races).
     const addGraphDupRes = await request.post(`/api/collections/${collectionId}/items`, {
       headers: { Origin: BASE_URL, Referer: BASE_URL, 'Content-Type': 'application/json' },
       data: graphPayload,
     });
-    // Metadata-only duplicates are allowed (no @@unique on metadata), so expect 201 and clean up second item
+    // Metadata-only duplicates conflict (metadataHash unique), so expect 409 and clean up second item when one is created
     expect([201, 409]).toContain(addGraphDupRes.status());
     let secondGraphItemId: string | null = null;
     if (addGraphDupRes.status() === 201) {

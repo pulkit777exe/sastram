@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionOrThrow } from '@/modules/auth';
-import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
-import { isCollectionsEnabled } from '@/modules/collections/enabled';
-import { rateLimit } from '@/lib/services/rate-limit';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { MAX_COLLECTION_METADATA_BYTES } from '@/modules/collections/repository';
+import { withCollectionsHandler } from '@/modules/collections/handler';
+import { savePayloadSchema, type SavePayload } from '@/modules/collections/schemas';
+import { metadataHash } from '@/modules/collections/metadata-hash';
 import { Prisma } from '@prisma/client';
 
 function parsePayloadFromSearchParams(searchParams: URLSearchParams) {
@@ -24,18 +24,22 @@ function parsePayloadFromSearchParams(searchParams: URLSearchParams) {
   return { threadId, sessionId, messageId, metadata };
 }
 
-function isValidCuid(id: string | undefined): boolean {
-  return !id || /^c[a-z0-9]{24}$/.test(id);
+function invalidInput(message: string, details?: unknown) {
+  return NextResponse.json(fail('VALIDATION_ERROR', message, details), { status: HTTP_STATUS.BAD_REQUEST });
 }
 
-async function getSavedCollectionIds(payload: { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown }, userId: string): Promise<string[]> {
+async function getSavedCollectionIds(payload: SavePayload, userId: string): Promise<string[]> {
   const { threadId, sessionId, messageId, metadata } = payload;
   if (!threadId && !sessionId && !messageId && !metadata) return [];
   const or: Prisma.CollectionItemWhereInput[] = [];
   if (threadId) or.push({ threadId });
   if (sessionId) or.push({ sessionId });
   if (messageId) or.push({ messageId });
-  if (metadata !== undefined) or.push({ metadata: { equals: metadata as Prisma.InputJsonValue } });
+  if (metadata !== undefined) {
+    // Hash-first (indexed unique), Json-equals fallback for pre-backfill rows.
+    or.push({ metadataHash: metadataHash(metadata) });
+    or.push({ metadata: { equals: metadata as Prisma.InputJsonValue } });
+  }
   if (or.length === 0) return [];
   const items = await prisma.collectionItem.findMany({
     where: { collection: { userId }, OR: or },
@@ -44,57 +48,31 @@ async function getSavedCollectionIds(payload: { threadId?: string; sessionId?: s
   return [...new Set(items.map((i) => i.collectionId))];
 }
 
-export const GET = withErrorHandling(async (request: NextRequest) => {
-  const session = await requireSessionOrThrow();
-  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
-  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
-  if (!(await isCollectionsEnabled(session.user.id))) {
-    return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
+export const GET = withCollectionsHandler(async (request: NextRequest, session) => {
+  const parsed = savePayloadSchema.safeParse(parsePayloadFromSearchParams(new URL(request.url).searchParams));
+  if (!parsed.success) {
+    return invalidInput(parsed.error.issues[0]?.message ?? 'Invalid input', parsed.error.issues);
   }
-  const payload = parsePayloadFromSearchParams(new URL(request.url).searchParams);
-  if (payload.threadId && !isValidCuid(payload.threadId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
-  if (payload.sessionId && !isValidCuid(payload.sessionId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid sessionId'), { status: HTTP_STATUS.BAD_REQUEST });
-  if (payload.messageId && !isValidCuid(payload.messageId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid messageId'), { status: HTTP_STATUS.BAD_REQUEST });
-  if (!payload.threadId && !payload.sessionId && !payload.messageId && payload.metadata === undefined) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'threadId or sessionId or messageId or metadata required'), { status: HTTP_STATUS.BAD_REQUEST });
-  }
-  const ids = await getSavedCollectionIds(payload, session.user.id);
+  const ids = await getSavedCollectionIds(parsed.data, session.user.id);
   return NextResponse.json(ok(ids));
 });
 
-export const POST = withErrorHandling(async (request: NextRequest) => {
-  const session = await requireSessionOrThrow();
-  const rl = await rateLimit({ key: `collections:${session.user.id}`, type: 'api' });
-  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
-  if (!(await isCollectionsEnabled(session.user.id))) {
-    return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), { status: HTTP_STATUS.FORBIDDEN });
-  }
+export const POST = withCollectionsHandler(async (request: NextRequest, session) => {
   let body: Record<string, unknown> = {};
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
   }
-  const payload = {
+  const parsed = savePayloadSchema.safeParse({
     threadId: typeof body.threadId === 'string' ? body.threadId : undefined,
     sessionId: typeof body.sessionId === 'string' ? body.sessionId : undefined,
     messageId: typeof body.messageId === 'string' ? body.messageId : undefined,
     metadata: body.metadata,
-  };
-  if (payload.threadId && !isValidCuid(payload.threadId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
-  if (payload.sessionId && !isValidCuid(payload.sessionId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid sessionId'), { status: HTTP_STATUS.BAD_REQUEST });
-  if (payload.messageId && !isValidCuid(payload.messageId)) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid messageId'), { status: HTTP_STATUS.BAD_REQUEST });
-  if (payload.metadata !== undefined) {
-    try {
-      const s = JSON.stringify(payload.metadata);
-      if (s.length > MAX_COLLECTION_METADATA_BYTES) return NextResponse.json(fail('VALIDATION_ERROR', 'Metadata too large'), { status: HTTP_STATUS.BAD_REQUEST });
-    } catch {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid metadata'), { status: HTTP_STATUS.BAD_REQUEST });
-    }
+  });
+  if (!parsed.success) {
+    return invalidInput(parsed.error.issues[0]?.message ?? 'Invalid input', parsed.error.issues);
   }
-  if (!payload.threadId && !payload.sessionId && !payload.messageId && payload.metadata === undefined) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'threadId or sessionId or messageId or metadata required'), { status: HTTP_STATUS.BAD_REQUEST });
-  }
-  const ids = await getSavedCollectionIds(payload, session.user.id);
+  const ids = await getSavedCollectionIds(parsed.data, session.user.id);
   return NextResponse.json(ok(ids));
 });
