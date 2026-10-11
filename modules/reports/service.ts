@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Prisma } from '@prisma/client';
 import { dispatch } from '@/modules/notifications/dispatcher';
-import { executeAuditAndRevalidate } from '@/modules/audit';
+import { recordActivity } from '@/modules/activity/repository';
+import { revalidatePath } from 'next/cache';
+import { ROUTES } from '@/lib/config/routes';
 import { AppError } from '@/lib/utils/errors';
 
 const REPORT_FOR_RESOLUTION_INCLUDE = {
@@ -169,13 +171,15 @@ export async function resolveReport(params: {
 
   await dispatchResolutionNotifications(report, action, note, banExpiresAt, duration, notifyReporter);
 
-  await executeAuditAndRevalidate({
-    action: 'REPORT_RESOLVED',
+  await recordActivity({
+    userId: resolverId,
+    type: 'REPORT_RESOLVED',
     entityType: 'Report',
     entityId: reportId,
-    userId: resolverId,
-    details: { action, note, duration },
+    metadata: { action, note, duration },
   });
+  revalidatePath(ROUTES.ADMIN_MODERATION);
+  revalidatePath(ROUTES.ADMIN_REPORTS);
 
   return { message: getResultMessage(action) };
 }

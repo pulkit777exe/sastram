@@ -10,7 +10,8 @@ import {
   validateModerationTarget,
 } from './policy';
 import { requireModerationRole } from '@/modules/policy';
-import { executeAuditAndRevalidate } from '@/modules/audit';
+import { recordActivity } from '@/modules/activity/repository';
+import { revalidatePath } from 'next/cache';
 import {
   banUserSchema,
   deleteMessageSchema,
@@ -306,14 +307,15 @@ export const deleteMessageAction = createServerAction(
       });
     });
 
-    await executeAuditAndRevalidate({
-      action: 'MESSAGE_DELETED',
+    await recordActivity({
+      userId: session.user.id,
+      type: 'MESSAGE_DELETED',
       entityType: 'Message',
       entityId: messageId,
-      userId: session.user.id,
-      details: { reason, threadSlug, originalAuthor: message.senderId },
-      paths: [ROUTES.THREAD(threadSlug), ROUTES.ADMIN_MODERATION],
+      metadata: { reason, threadSlug, originalAuthor: message.senderId },
     });
+    revalidatePath(ROUTES.THREAD(threadSlug));
+    revalidatePath(ROUTES.ADMIN_MODERATION);
 
     return actionSuccess(null);
   }
@@ -325,14 +327,14 @@ export const bulkDeleteMessages = createServerAction(
     const session = await requireModerationWithRateLimit();
     const result = await executeBulkDeleteTransaction(messageIds, reason);
 
-    await executeAuditAndRevalidate({
-      action: 'MESSAGE_DELETED',
+    await recordActivity({
+      userId: session.user.id,
+      type: 'MESSAGE_DELETED',
       entityType: 'Message',
       entityId: 'bulk',
-      userId: session.user.id,
-      details: { messageIds, reason, count: result.deletedCount, bulk: true },
-      paths: [ROUTES.ADMIN_MODERATION],
+      metadata: { messageIds, reason, count: result.deletedCount, bulk: true },
     });
+    revalidatePath(ROUTES.ADMIN_MODERATION);
 
     return actionSuccess({ deletedCount: result.deletedCount });
   }
@@ -400,20 +402,21 @@ export const banUser = createServerAction(
       return newBan;
     });
 
-    await executeAuditAndRevalidate({
-      action: 'USER_BANNED',
+    await recordActivity({
+      userId: session.user.id,
+      type: 'USER_BANNED',
       entityType: 'User',
       entityId: userId,
-      userId: session.user.id,
-      details: {
+      metadata: {
         reason,
         threadId,
         expiresAt: expiresAt?.toISOString(),
         targetUserEmail: targetUser.email,
         targetUserName: targetUser.name,
       },
-      paths: [ROUTES.ADMIN_MODERATION, ROUTES.DASHBOARD],
     });
+    revalidatePath(ROUTES.ADMIN_MODERATION);
+    revalidatePath(ROUTES.DASHBOARD);
 
     return actionSuccess({ banId: ban.id, expiresAt: ban.expiresAt });
   }
@@ -449,19 +452,19 @@ export const unbanUser = createServerAction(
       return ban;
     });
 
-    await executeAuditAndRevalidate({
-      action: 'USER_UNBANNED',
+    await recordActivity({
+      userId: session.user.id,
+      type: 'USER_UNBANNED',
       entityType: 'User',
       entityId: result.userId!,
-      userId: session.user.id,
-      details: {
+      metadata: {
         banId,
         wasGlobalBan: !result.threadId,
         targetUserEmail: result.user?.email ?? 'unknown',
         targetUserName: result.user?.name ?? 'unknown',
       },
-      paths: [ROUTES.ADMIN_MODERATION],
     });
+    revalidatePath(ROUTES.ADMIN_MODERATION);
 
     return actionSuccess(null);
   }
@@ -512,20 +515,22 @@ export const deleteThread = createServerAction(
       data: { deletedAt: new Date() },
     });
 
-    await executeAuditAndRevalidate({
-      action: 'THREAD_DELETED',
+    await recordActivity({
+      userId: session.user.id,
+      type: 'THREAD_DELETED',
       entityType: 'Thread',
       entityId: threadId,
-      userId: session.user.id,
-      details: {
+      metadata: {
         reason,
         threadName: thread.name,
         threadSlug: thread.slug,
         messageCount: thread.messageCount,
         softDelete: true,
       },
-      paths: [ROUTES.DASHBOARD, ROUTES.DASHBOARD_THREADS, ROUTES.ADMIN_MODERATION],
     });
+    revalidatePath(ROUTES.DASHBOARD);
+    revalidatePath(ROUTES.DASHBOARD_THREADS);
+    revalidatePath(ROUTES.ADMIN_MODERATION);
 
     return actionSuccess(null);
   }

@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
-import { logAction } from '@/modules/audit';
+import { recordActivity } from '@/modules/activity/repository';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
@@ -194,12 +194,12 @@ async function createJuryForAppeal(appealId: string, appellantUserId: string | n
       message: 'You have been selected as a juror for a ban appeal. Please review and vote.',
       data: { appealId },
     });
-    await logAction({
-      action: 'APPEAL_JURY_ASSIGNED',
+    await recordActivity({
+      type: 'APPEAL_JURY_ASSIGNED',
       entityType: 'Appeal',
       entityId: appealId,
       userId: appellantUserId ?? 'system',
-      details: { jurorIds, jurySize: jurorIds.length } as unknown as import('@prisma/client').Prisma.InputJsonValue,
+      metadata: { jurorIds, jurySize: jurorIds.length } as unknown as import('@prisma/client').Prisma.InputJsonValue,
     });
     return jurorIds;
   } catch (error) {
@@ -328,12 +328,12 @@ export const submitAppeal = withValidation(
 
     const appeal = await createAppealRecord({ messageId, userId: session.user.id, reason });
 
-    await logAction({
-      action: 'APPEAL_SUBMITTED',
+    await recordActivity({
+      type: 'APPEAL_SUBMITTED',
       entityType: 'Appeal',
       entityId: appeal.id,
       userId: session.user.id,
-      details: { reason, banId: activeBan.id },
+      metadata: { reason, banId: activeBan.id },
     });
 
     // KISS jury: pick 3 random moderators and notify them
@@ -399,12 +399,12 @@ export const resolveAppeal = withValidation(
       await applyAppealResolution(appealId, appeal.userId, approved, response, session.user.id);
       await notifyAppealResult(appeal.userId, approved, response, appealId);
 
-      await logAction({
-        action: 'APPEAL_RESOLVED',
+      await recordActivity({
+        type: 'APPEAL_RESOLVED',
         entityType: 'Appeal',
         entityId: appealId,
         userId: session.user.id,
-        details: { approved, userId: appeal.userId, response, jury: false },
+        metadata: { approved, userId: appeal.userId, response, jury: false },
       });
 
       revalidateAppealPath(ROUTES.ADMIN_APPEALS);
@@ -427,12 +427,12 @@ export const resolveAppeal = withValidation(
       data: { vote: voteValue as unknown as never, reason: response ?? null },
     });
 
-    await logAction({
-      action: 'APPEAL_VOTE_CAST',
+    await recordActivity({
+      type: 'APPEAL_VOTE_CAST',
       entityType: 'Appeal',
       entityId: appealId,
       userId: session.user.id,
-      details: { vote: voteValue, response, jurorId: session.user.id },
+      metadata: { vote: voteValue, response, jurorId: session.user.id },
     });
 
     // Re-count votes after this vote
@@ -458,12 +458,12 @@ export const resolveAppeal = withValidation(
       await applyAppealResolution(appealId, appeal.userId, finalApproved, response, session.user.id);
       await notifyAppealResult(appeal.userId, finalApproved, response, appealId);
 
-      await logAction({
-        action: 'APPEAL_RESOLVED',
+      await recordActivity({
+        type: 'APPEAL_RESOLVED',
         entityType: 'Appeal',
         entityId: appealId,
         userId: session.user.id,
-        details: {
+        metadata: {
           approved: finalApproved,
           userId: appeal.userId,
           response,

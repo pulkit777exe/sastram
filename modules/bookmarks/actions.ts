@@ -28,26 +28,6 @@ async function assertThreadAccess(threadId: string, userId: string, role: Role) 
   await requireThreadAccessOrThrow(threadId, userId, role);
 }
 
-export const toggleBookmark = createServerAction(
-  { schema: threadIdSchema, actionName: 'toggleBookmark' },
-  async ({ threadId }) => {
-    const session = await requireSession();
-    await assertThreadAccess(threadId, session.user.id, session.user.role as Role);
-    const currentlyBookmarked = await isBookmarkedRepo(session.user.id, threadId);
-
-    if (currentlyBookmarked) {
-      await unbookmarkThreadRepo(session.user.id, threadId);
-    } else {
-      await bookmarkThreadRepo(session.user.id, threadId);
-    }
-
-    revalidateBookmarkPaths();
-
-    const newBookmarkedState = !currentlyBookmarked;
-    return actionSuccess({ isBookmarked: newBookmarkedState });
-  }
-);
-
 export const getBookmarkedThreads = createServerAction(
   { schema: paginationSchema, actionName: 'getBookmarkedThreads' },
   async ({ limit, offset }) => {

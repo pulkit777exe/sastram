@@ -1,6 +1,7 @@
 import type { Role } from '@prisma/client';
+import { cache } from 'react';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { canManageThread } from '@/lib/thread-access';
+import { canManageThread, canReadThread } from '@/lib/thread-access';
 
 export const INVITATION_TTL_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -88,3 +89,61 @@ export async function findInvitationById(invitationId: string) {
     select: { id: true, threadId: true },
   });
 }
+
+/**
+ * Idempotent invite core (folded from members/inviteMember): create the
+ * invitation, falling back to the existing row when one is already present.
+ * Action-level concerns (permission check, notification dispatch,
+ * revalidation) stay in the calling action.
+ */
+export async function inviteByEmail({
+  threadId,
+  email,
+  senderId,
+}: {
+  threadId: string;
+  email: string;
+  senderId: string;
+}) {
+  const created = await createInvitation({ threadId, email, senderId });
+  if (created) return created;
+
+  // Already invited — treat as success (idempotent) rather than CONFLICT
+  return prisma.threadInvitation.findUnique({
+    where: { threadId_email: { threadId, email } },
+    include: {
+      thread: { select: { slug: true, name: true } },
+      sender: { select: { name: true, email: true } },
+    },
+  });
+}
+
+// There is no membership table — "role" is derived from the ThreadAccessPolicy
+// (`canManageThread` for OWNER/MODERATOR, `canReadThread` for MEMBER), the
+// viewer's global role, thread authorship, and accepted invitations.
+export const getThreadRole = cache(async (threadId: string, userId: string) => {
+  const threadPromise = prisma.thread.findFirst({
+    where: { id: threadId, deletedAt: null },
+    select: { id: true, createdBy: true, visibility: true },
+  });
+  const userPromise = prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  const [thread, user] = await Promise.all([threadPromise, userPromise]);
+
+  if (!thread || !user) return null;
+
+  const context = { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility };
+
+  if (canManageThread(context, userId, user.role)) {
+    return {
+      role: thread.createdBy === userId ? 'OWNER' : 'MODERATOR',
+      status: 'ACTIVE',
+    } as const;
+  }
+
+  const allowed = await canReadThread(context, userId, user.role);
+
+  return allowed ? ({ role: 'MEMBER', status: 'ACTIVE' } as const) : null;
+});

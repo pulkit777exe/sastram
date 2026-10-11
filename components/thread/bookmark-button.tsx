@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Bookmark, BookmarkCheck, Loader2 } from 'lucide-react';
-import { toggleBookmark, checkBookmarkStatus } from '@/modules/bookmarks/actions';
+import { setBookmarkStatus, checkBookmarkStatus } from '@/modules/bookmarks/actions';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
@@ -51,9 +51,12 @@ export function BookmarkButton({ threadId, className, iconOnly = false, initialI
   }, [threadId, initialIsBookmarked]);
 
   const handleToggle = async () => {
+    // Client decides desired state; the server upserts/deletes idempotently
+    // (no read-then-write race with a second tab).
+    const desired = !isBookmarked;
     setIsLoading(true);
     try {
-      const result = await toggleBookmark({ threadId });
+      const result = await setBookmarkStatus({ threadId, bookmarked: desired });
       if (result?.error) {
         toasts.error(result.error);
       } else if (typeof result?.data?.isBookmarked === 'boolean') {

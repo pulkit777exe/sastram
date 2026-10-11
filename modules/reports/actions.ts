@@ -8,7 +8,9 @@ import { REPORT_STATUS, REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { createReportSchema, updateReportStatusSchema, resolveReportSchema } from './schemas';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { requireRole, requireModerationRole } from '@/modules/policy';
-import { executeAuditAndRevalidate } from '@/modules/audit';
+import { recordActivity } from '@/modules/activity/repository';
+import { revalidatePath } from 'next/cache';
+import { ROUTES } from '@/lib/config/routes';
 import type { ReportCategory, ReportStatus, Role } from '@prisma/client';
 import { requireThreadAccessOrThrow } from '@/lib/thread-access';
 import { actionSuccess } from '@/lib/actions/result';
@@ -216,13 +218,15 @@ export async function createReport(data: { messageId: string; category: string; 
       details,
     });
 
-    await executeAuditAndRevalidate({
-      action: 'REPORT_CREATED',
+    await recordActivity({
+      userId: session.user.id,
+      type: 'REPORT_CREATED',
       entityType: 'Report',
       entityId: report.id,
-      userId: session.user.id,
-      details: { messageId, category },
+      metadata: { messageId, category },
     });
+    revalidatePath(ROUTES.ADMIN_MODERATION);
+    revalidatePath(ROUTES.ADMIN_REPORTS);
 
     await notifyModerators({
       reportId: report.id,
@@ -484,13 +488,15 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
       },
     });
 
-    await executeAuditAndRevalidate({
-      action: 'REPORT_STATUS_UPDATED',
+    await recordActivity({
+      userId: session.user.id,
+      type: 'REPORT_STATUS_UPDATED',
       entityType: 'Report',
       entityId: validation.data.reportId,
-      userId: session.user.id,
-      details: { status: validation.data.status },
+      metadata: { status: validation.data.status },
     });
+    revalidatePath(ROUTES.ADMIN_MODERATION);
+    revalidatePath(ROUTES.ADMIN_REPORTS);
 
     return actionSuccess(null);
   } catch (error) {

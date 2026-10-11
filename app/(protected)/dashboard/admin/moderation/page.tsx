@@ -2,7 +2,7 @@ import { assertAdmin } from '@/modules/auth';
 import { getSession } from '@/modules/auth';
 import { getReports, getReportStats } from '@/modules/reports';
 import { getBannedUsers } from '@/modules/moderation';
-import { getUserActivities } from '@/modules/audit';
+import { queryActivities } from '@/modules/activity/repository';
 import { ModerationDashboard } from '@/components/admin/moderation-dashboard';
 import { BannedUsersList } from '@/components/admin/banned-users-list';
 
@@ -15,7 +15,7 @@ export default async function ModerationPage() {
     getReports({ status: 'PENDING', limit: 20 }),
     getReportStats(),
     getBannedUsers({ isActive: true, limit: 50 }),
-    getUserActivities({ limit: 10 }),
+    queryActivities({ limit: 10, includeUser: true }),
   ]);
 
   const reports = reportsResult.data ?? [];
