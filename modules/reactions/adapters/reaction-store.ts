@@ -36,7 +36,6 @@ export function createFakeReactionStore(seed: { messageThreads?: Record<string, 
 } {
   const threads = new Map(Object.entries(seed.messageThreads ?? {}));
   const reactions = [...(seed.reactions ?? [])];
-  const key = (r: { messageId: string; userId: string; emoji: string }) => `${r.messageId}:${r.userId}:${r.emoji}`;
   return {
     reactions,
     async resolveThreadId(messageId) {

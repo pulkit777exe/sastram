@@ -6,7 +6,6 @@ import {
   canReadThread,
   visibilityFilter,
   canWriteToThread,
-  canWriteThread,
   canManageThread,
   requireReadOrThrow,
   requireWriteOrThrow,

@@ -15,7 +15,6 @@ import { consumeIdempotencyKey } from '@/lib/services/idempotency';
 import { env } from '@/lib/config/env';
 import { sseChunk, blockedStream, sseHeaders } from '@/lib/utils/sse';
 import { getUserExpertiseLevel, refreshUserExpertise } from '@/lib/services/user-memory';
-import { prisma } from '@/lib/infrastructure/prisma';
 
 export const maxDuration = 30;
 

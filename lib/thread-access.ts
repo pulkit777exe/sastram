@@ -277,15 +277,6 @@ export const canReadThread = canAccessThread;
 export const canWriteThread = canWriteToThread;
 
 const HTTP_NOT_FOUND = 404;
-
-async function loadThreadContext(threadId: string): Promise<ThreadAccessContext> {
-  const ctx = await prismaThreadAccessStore.loadThread(threadId);
-  if (ctx === null || ctx === undefined) {
-    throw new AppError('Thread not found', 'NOT_FOUND', HTTP_NOT_FOUND);
-  }
-  return ctx;
-}
-
 const HTTP_FORBIDDEN = 403;
 
 /**

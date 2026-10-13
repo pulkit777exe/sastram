@@ -28,7 +28,9 @@ export function usePollRefresh({ threadId, initialPoll }: UsePollRefreshOptions)
   const [pollResults, setPollResults] = useState<PollResults | null>(null);
   const [pollRefreshKey, setPollRefreshKey] = useState(0);
   const pollRef = useRef(currentPoll);
-  pollRef.current = currentPoll;
+  useEffect(() => {
+    pollRef.current = currentPoll;
+  }, [currentPoll]);
   const cancelledRef = useRef(false);
   useEffect(() => () => { cancelledRef.current = true; }, []);
 

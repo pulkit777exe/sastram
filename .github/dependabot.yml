@@ -1,6 +1,9 @@
 version: 2
 updates:
-  - package-ecosystem: 'pnpm'
+  # Repo installs with Bun (bun.lock), which Dependabot does not support.
+  # The npm ecosystem still monitors version ranges in package.json; keep
+  # `bun audit` in CI as the lockfile-level monitor.
+  - package-ecosystem: 'npm'
     directory: '/'
     schedule:
       interval: weekly

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { Role, type Prisma, type ThreadVisibility } from '@prisma/client';
+import { type Prisma, type ThreadVisibility } from '@prisma/client';
 import { cache } from 'react';
 import { threadAccessPolicy } from '@/lib/thread-access';
 

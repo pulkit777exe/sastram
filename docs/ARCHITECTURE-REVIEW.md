@@ -213,3 +213,17 @@ If you want the architecture pass to land structural change: **C1** + **C2** + *
 | Warming personalization | ✅ Done | `fetchRecentSessionsForWarming` selects `userId`; `prewarmSingleSession` warms under owner expertise via `getUserExpertiseLevel` (shared with route); store get/put + ctx carry expertise; per-run memo (1 user read per user) |
 | Security pass | ✅ Checked | No `dangerouslySetInnerHTML`; no key logging; sessions persist no keys; forum-search guards (auth+quota+rate limit) before spend, zod+sanitize+history cap+content-type+user-namespaced idempotency; collections export auth-scoped + escaped; fork auth + sanitized |
 | Performance pass | ✅ Checked | Poll 2 timers→1; route expertise 2 reads→1; warming memo + early break on cap; full suite 478 passing / 12 pending / 0 failing in ~13s; `tsc --noEmit` clean |
+
+## 2026-10-13 problem-fix pass (lint, audit, readiness)
+
+| Problem | Disposition | Evidence |
+|---|---|---|
+| ESLint error: ref write during render (`use-poll-refresh.ts:31`) | ✅ Fixed | Ref synced in `useEffect`, not during render |
+| ESLint error: `{}` empty-object type (`activity/repository.ts:54`) | ✅ Fixed | `Record<string, never>`; `tsc` clean |
+| 5 lint warnings (dead `loadThreadContext`, unused `key` helper, unused `prisma`/`Role`/`canWriteThread` imports) | ✅ Fixed | `eslint .` zero problems |
+| `bun audit`: `braces@3.0.3` high (GHSA-vfj7-8cjw-p6xm) | ⚠️ Accepted dev-only risk | No published fix (`audit fix`: 0 of 1 fixable); reachable only via `eslint-config-next` at lint time — never bundled (server-only externals) and globs come from our config, not user input; monitored by `bun audit` in CI |
+| Dependabot `pnpm` ecosystem vs `bun.lock` | ✅ Fixed | Switched to `npm` ecosystem (monitors `package.json`; Dependabot has no Bun support); comment records `bun audit` as lockfile monitor |
+| `check:prod` FAIL `BETTER_AUTH_SECRET` in local shell | ✅ Not a repo bug | Script validates runtime env; passes fully with proper env (`Production readiness checks passed`) |
+| Prettier `--check` dirty in touched files | ⚠️ Pre-existing, left alone | All 9 files already dirty at HEAD; CI does not enforce `format:check`; whole-file rewrite would pollute diffs |
+| Secret hygiene | ✅ Checked | No `.env` tracked (only `.example`/`.test` placeholders); no `sk-live`/`AKIA`/Slack tokens in tracked files; Gitleaks enforces on push via CI |
+| Full suite after fixes | ✅ Green | 478 passing / 12 pending / 0 failing; `tsc` clean; `eslint` clean |

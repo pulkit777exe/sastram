@@ -51,7 +51,7 @@ export async function queryActivities(
 ): Promise<Array<Prisma.UserActivityGetPayload<{ include: typeof ACTIVITY_USER_SELECT }>>>;
 export async function queryActivities(
   filters?: ActivityQueryFilters
-): Promise<Array<Prisma.UserActivityGetPayload<{}>>>;
+): Promise<Array<Prisma.UserActivityGetPayload<Record<string, never>>>>;
 export async function queryActivities(filters?: ActivityQueryFilters & { includeUser?: boolean }) {
   try {
     const limit = filters?.limit ?? DEFAULT_QUERY_LIMIT;
