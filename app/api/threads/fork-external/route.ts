@@ -2,20 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
-import { prisma } from '@/lib/infrastructure/prisma';
-import { buildThreadSlug } from '@/modules/threads/slug';
-import { ensureUniqueSlug } from '@/modules/threads/threads-write/service';
+import { createExternalForkDomain, threadVisibilitySchema } from '@/modules/threads/threads-write/service';
 import { infraThreadSideEffects } from '@/modules/threads/adapters/infra-side-effects';
-import { createThread } from '@/modules/threads/threads-write/repository';
 import { sanitizeUserContent, isSafePublicUrl } from '@/lib/services/content-safety';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { revalidatePath } from 'next/cache';
-import { ROUTES } from '@/lib/config/routes';
 
 const bodySchema = z.object({
   url: z.string().url(),
   title: z.string().min(3).max(120).optional(),
-  visibility: z.enum(['PUBLIC', 'PRIVATE']).optional().default('PUBLIC'),
+  visibility: threadVisibilitySchema.optional().default('PUBLIC'),
 });
 
 export const POST = withErrorHandling(async (request: NextRequest) => {
@@ -42,25 +37,20 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     }
   }
   const safeTitle = sanitizeUserContent(title).sanitized.trim().slice(0, 120);
-  const slugBase = buildThreadSlug(safeTitle);
-  const slug = await ensureUniqueSlug(slugBase, infraThreadSideEffects);
 
   const description = `Forked from ${url}`;
   const initialMessage = `Forked from ${url}\n\n@sai summarize this thread and extract key points from the source.`;
 
-  const result = await createThread({
-    name: safeTitle,
+  // Single write: visibility (incl. RESTRICTED) is set inline at create time.
+  const result = await createExternalForkDomain({
+    title: safeTitle,
     description: sanitizeUserContent(description).sanitized,
-    slug,
-    createdBy: session.user.id,
     initialMessage: sanitizeUserContent(initialMessage).sanitized,
+    visibility: body.visibility,
+    userId: session.user.id,
+    sideEffects: infraThreadSideEffects,
   });
 
-  // Visibility is handled at thread level; if PRIVATE, update after create
-  if (body.visibility === 'PRIVATE' && result.thread.visibility !== 'PRIVATE') {
-    await prisma.thread.update({ where: { id: result.thread.id }, data: { visibility: 'PRIVATE' } });
-  }
-
-  revalidatePath(ROUTES.DASHBOARD);
-  return NextResponse.json(ok({ id: result.thread.id, slug: result.thread.slug, title: safeTitle }), { status: HTTP_STATUS.OK });
+  infraThreadSideEffects.revalidateDashboard();
+  return NextResponse.json(ok({ id: result.id, slug: result.slug, title: safeTitle }), { status: HTTP_STATUS.OK });
 });

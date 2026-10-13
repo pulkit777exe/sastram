@@ -1,15 +1,14 @@
 'use server';
 
 import { z } from 'zod';
-import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSessionOrThrow, assertAdminOrThrow } from '@/modules/auth';
 import { buildThreadSlug } from '@/modules/threads/slug';
 import { createThread, deleteThread, updateThreadVerified } from './threads-write/repository';
-import { forkThreadDomain } from './threads-write/service';
+import { forkThreadDomain, threadVisibilitySchema, updateThreadDomain } from './threads-write/service';
 import { validatePollExpiry } from '@/modules/polls/validate';
 import { infraThreadSideEffects } from './adapters/infra-side-effects';
 import { buildThreadDTO } from './service';
-import { getThreadMessagesPaginated, type ThreadMessage } from './threads-read/repository';
+import { getThreadMessagesPaginated } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
 import { createServerAction } from '@/lib/utils/server-action';
 import { actionSuccess } from '@/lib/actions/result';
@@ -138,24 +137,19 @@ export const updateThreadAction = createServerAction(
     if (!rl.success) throw new AppError('Too many edits, slow down', 'RATE_LIMITED', 429);
 
     const ctx = await requireManageOrThrow(threadId, session.user.id, session.user.role);
-    const thread = await prisma.thread.findUnique({
-      where: { id: threadId, deletedAt: null },
-      select: { slug: true },
-    });
-    if (!thread) throw new AppError('Thread not found', 'NOT_FOUND', 404);
     void ctx;
 
     const safeTitle = sanitizeUserContent(title).sanitized.trim().slice(0, 120);
     const safeDesc = description ? sanitizeUserContent(description).sanitized.trim().slice(0, 480) : null;
 
-    await prisma.thread.update({
-      where: { id: threadId },
-      data: { name: safeTitle, description: safeDesc },
+    const updated = await updateThreadDomain({
+      threadId,
+      name: safeTitle,
+      description: safeDesc,
+      sideEffects: infraThreadSideEffects,
     });
 
-    infraThreadSideEffects.revalidateThreadPage(thread.slug);
-    infraThreadSideEffects.revalidateDashboard();
-    return actionSuccess({ title: safeTitle, description: safeDesc });
+    return actionSuccess({ title: updated.title, description: updated.description });
   }
 );
 
@@ -189,7 +183,7 @@ export const forkThreadAction = createServerAction(
     schema: z.object({
       threadId: z.string().cuid(),
       title: z.string().min(3).max(120).optional(),
-      visibility: z.enum(['PUBLIC', 'PRIVATE']).optional(),
+      visibility: threadVisibilitySchema.optional(),
     }),
     actionName: 'forkThreadAction',
   },
@@ -207,7 +201,7 @@ export const forkThreadAction = createServerAction(
     const forked = await forkThreadDomain({
       sourceThreadId: threadId,
       title: newTitle,
-      visibility: visibility as 'PUBLIC' | 'PRIVATE' | undefined,
+      visibility,
       userId: session.user.id,
       sideEffects: infraThreadSideEffects,
     });
@@ -216,69 +210,6 @@ export const forkThreadAction = createServerAction(
     return actionSuccess({ slug: forked.slug, id: forked.id });
   }
 );
-
-const IS_NOT_DELETED_MESSAGE = { deletedAt: null } as const;
-
-function resolveBackfillAuthor(
-  sender: { id: string; name: string | null; image: string | null } | null
-): { id: string; name: string | null; image: string | null } {
-  if (sender) return sender;
-  return { id: '', name: null, image: null };
-}
-
-function mapBackfillAttachments(
-  attachments: Array<{ id: string; url: string; type: string; name: string | null; size: bigint | null }>
-): ThreadMessage['attachments'] {
-  return attachments.map((a) => ({
-    id: a.id,
-    url: a.url,
-    type: a.type,
-    name: a.name,
-    size: a.size !== null ? Number(a.size) : null,
-  }));
-}
-
-function mapBackfillMessage(
-  m: {
-    id: string;
-    content: string;
-    threadId: string;
-    senderId: string | null;
-    parentId: string | null;
-    depth: number;
-    createdAt: Date;
-    updatedAt: Date;
-    isEdited: boolean;
-    isPinned: boolean;
-    isAiResponse: boolean;
-    deletedAt: Date | null;
-    likeCount: number;
-    replyCount: number;
-    sender: { id: string; name: string | null; image: string | null } | null;
-    attachments: Array<{ id: string; url: string; type: string; name: string | null; size: bigint | null }>;
-  }
-): ThreadMessage {
-  return {
-    id: m.id,
-    content: m.content,
-    threadId: m.threadId,
-    senderId: m.senderId,
-    parentId: m.parentId,
-    depth: m.depth,
-    createdAt: m.createdAt,
-    updatedAt: m.updatedAt,
-    isEdited: m.isEdited,
-    isPinned: m.isPinned,
-    isAI: m.isAiResponse,
-    deletedAt: m.deletedAt,
-    likeCount: m.likeCount,
-    replyCount: m.replyCount,
-    author: resolveBackfillAuthor(m.sender),
-    reactions: [],
-    _count: { replies: m.replyCount },
-    attachments: mapBackfillAttachments(m.attachments),
-  };
-}
 
 // Used by the live wrapper to recover messages missed while the stream was down.
 export const backfillThreadMessages = createServerAction(
@@ -290,23 +221,15 @@ export const backfillThreadMessages = createServerAction(
     const session = await requireSessionOrThrow();
     await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
-    const where = {
-      threadId,
-      ...IS_NOT_DELETED_MESSAGE,
-      createdAt: { gte: new Date(since) },
-    };
-    const messages = await prisma.message.findMany({
-      where,
-      include: {
-        sender: { select: { id: true, name: true, image: true } },
-        attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
-      },
-      orderBy: { createdAt: 'asc' },
-      take: BACKFILL_LIMIT,
-    });
+    // Single canonical read path: threads-read owns the row→DTO mapping
+    // (reactions, polls, attachments included). Filter to the requested
+    // window and return oldest-first for gap-filling.
+    const sinceDate = new Date(since);
+    const page = await getThreadMessagesPaginated(threadId, undefined, BACKFILL_LIMIT, session.user.id);
+    const messages = page.messages
+      .filter((m) => m.createdAt >= sinceDate)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-    const normalised = messages.map(mapBackfillMessage);
-
-    return actionSuccess({ messages: normalised });
+    return actionSuccess({ messages });
   }
 );
