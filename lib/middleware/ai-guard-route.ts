@@ -87,19 +87,40 @@ function buildGuardError(
   return NextResponse.json(fail(code, message), { status });
 }
 
-async function checkThreadAccess(threadId: string, session: SessionPayload, sse: boolean): Promise<NextResponse | null> {
-  try {
+/**
+ * Injectable seam for the guard pipeline (T3). Route handlers use the real
+ * adapters; tests inject fakes via `setGuardDepsForTests` instead of
+ * whole-module `require.cache` replacement.
+ */
+export interface GuardDeps {
+  checkGuards: typeof checkAiGuards;
+  checkAccess: (threadId: string, session: SessionPayload) => Promise<void>;
+}
+
+const realGuardDeps: GuardDeps = {
+  checkGuards: (path, userId, options) => checkAiGuards(path, userId, options),
+  checkAccess: async (threadId, session) => {
     await requireReadOrThrow(threadId, session.user.id, session.user.role);
-    return null;
-  } catch {
-    if (sse) {
-      return sseError('Forbidden', HTTP_STATUS.FORBIDDEN);
-    }
-    return NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: HTTP_STATUS.FORBIDDEN });
-  }
+  },
+};
+
+let testGuardDeps: GuardDeps | null = null;
+
+/** Tests only — swapped back to real adapters via `setGuardDepsForTests(null)`. */
+export function setGuardDepsForTests(deps: GuardDeps | null): void {
+  testGuardDeps = deps;
+}
+
+/** Allow-all fake for tests that only assert downstream behavior. */
+export function allowAllGuardDeps(): GuardDeps {
+  return {
+    checkGuards: async () => ({ ok: true }),
+    checkAccess: async () => {},
+  };
 }
 
 export async function guardAiRoute(req: NextRequest, options: GuardAiRouteOptions): Promise<GuardAiRouteResult> {
+  const deps = testGuardDeps ?? realGuardDeps;
   const authResult = await checkAuth(options.sse);
   if (authResult instanceof NextResponse) {
     return { ok: false, response: authResult };
@@ -111,7 +132,7 @@ export async function guardAiRoute(req: NextRequest, options: GuardAiRouteOption
     return { ok: false, response: rateLimitError };
   }
 
-  const guards = await checkAiGuards(options.path, session.user.id, { quota: options.quota });
+  const guards = await deps.checkGuards(options.path, session.user.id, { quota: options.quota });
   if (!guards.ok) {
     return {
       ok: false,
@@ -121,9 +142,14 @@ export async function guardAiRoute(req: NextRequest, options: GuardAiRouteOption
 
   const targetThreadId = options.threadId;
   if (targetThreadId !== undefined && targetThreadId !== null && targetThreadId.length > 0) {
-    const accessError = await checkThreadAccess(targetThreadId, session, options.sse);
-    if (accessError !== null) {
-      return { ok: false, response: accessError };
+    try {
+      await deps.checkAccess(targetThreadId, session);
+    } catch (error) {
+      if (!AppError.isAppError(error)) throw error;
+      if (options.sse) {
+        return { ok: false, response: sseError('Forbidden', HTTP_STATUS.FORBIDDEN) };
+      }
+      return { ok: false, response: NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: HTTP_STATUS.FORBIDDEN }) };
     }
   }
 

@@ -1,7 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import { Role, ThreadVisibility } from '@prisma/client';
-import { prisma } from '@/lib/infrastructure/prisma';
 import {
   canAccessThread,
   canReadThread,
@@ -24,27 +23,26 @@ import {
 } from '../lib/thread-access/client';
 import { AppError } from '../lib/utils/errors';
 
-// Prisma proxy methods can't be safely stubbed with sinon — save originals.
-const origThreadInvitationFindFirst = (prisma.threadInvitation as unknown as Record<string, unknown>).findFirst as unknown;
-const origUserFindUnique = (prisma.user as unknown as Record<string, unknown>).findUnique as unknown;
-const origThreadFindUnique = (prisma.thread as unknown as Record<string, unknown>).findUnique as unknown;
+// Prisma proxy methods can't be safely stubbed with sinon — route all fakes
+// through the shared helper (save/assign/restore with interception).
+import { installFakePrisma } from '@/test/support/fake-prisma';
+
+const prismaRestores: (() => void)[] = [];
 
 function mockPrismaThreadInvitationFindFirst(result: unknown) {
-  (prisma.threadInvitation as unknown as Record<string, unknown>).findFirst = async () => result as unknown;
+  prismaRestores.push(installFakePrisma({ 'threadInvitation.findFirst': async () => result }));
 }
 
 function mockPrismaUserFindUnique(result: unknown) {
-  (prisma.user as unknown as Record<string, unknown>).findUnique = async () => result as unknown;
+  prismaRestores.push(installFakePrisma({ 'user.findUnique': async () => result }));
 }
 
 function mockPrismaThreadFindUnique(result: unknown) {
-  (prisma.thread as unknown as Record<string, unknown>).findUnique = async () => result as unknown;
+  prismaRestores.push(installFakePrisma({ 'thread.findUnique': async () => result }));
 }
 
 function restorePrismaMocks() {
-  (prisma.threadInvitation as unknown as Record<string, unknown>).findFirst = origThreadInvitationFindFirst as unknown;
-  (prisma.user as unknown as Record<string, unknown>).findUnique = origUserFindUnique as unknown;
-  (prisma.thread as unknown as Record<string, unknown>).findUnique = origThreadFindUnique as unknown;
+  while (prismaRestores.length) prismaRestores.pop()!();
 }
 
 describe('Thread Access', () => {
@@ -92,11 +90,15 @@ describe('Thread Access', () => {
 
     it('should return true if user has accepted invitation by email', async () => {
       let callCount = 0;
-      (prisma.threadInvitation as unknown as Record<string, unknown>).findFirst = async () => {
-        callCount++;
-        if (callCount === 1) return null; // senderId lookup
-        return { id: 'inv-2' }; // email lookup
-      };
+      prismaRestores.push(
+        installFakePrisma({
+          'threadInvitation.findFirst': async () => {
+            callCount++;
+            if (callCount === 1) return null; // senderId lookup
+            return { id: 'inv-2' }; // email lookup
+          },
+        })
+      );
       mockPrismaUserFindUnique({ email: 'user@example.com' });
 
       expect(await canAccessThread(baseThread, 'user-2', Role.USER)).to.be.true;

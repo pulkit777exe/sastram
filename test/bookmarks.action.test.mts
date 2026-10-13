@@ -2,7 +2,7 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { stubAuth } from '@/test/api/helpers';
-import { prisma } from '@/lib/infrastructure/prisma';
+import { installFakePrisma } from '@/test/support/fake-prisma';
 
 const nextHeaders = require('next/headers');
 const getBookmarkedThreads = () => require('@/modules/bookmarks/actions').getBookmarkedThreads;
@@ -10,25 +10,21 @@ const getBookmarkedThreads = () => require('@/modules/bookmarks/actions').getBoo
 describe('Bookmarks action: getBookmarkedThreads input contract', () => {
   let sessionStubs: sinon.SinonStub[];
   let headersStub: sinon.SinonStub;
-  // Same save/assign/restore rule as below: sinon.stub does not intercept
-  // Prisma 7 model delegates.
-  let origFindMany: typeof prisma.userBookmark.findMany;
-  let origCount: typeof prisma.userBookmark.count;
+  let restorePrisma: () => void;
 
   beforeEach(() => {
     sessionStubs = stubAuth();
     headersStub = sinon.stub(nextHeaders, 'headers').resolves(new Headers());
-    origFindMany = prisma.userBookmark.findMany;
-    (prisma.userBookmark as unknown as Record<string, unknown>).findMany = (async () => []) as typeof prisma.userBookmark.findMany;
-    origCount = prisma.userBookmark.count;
-    (prisma.userBookmark as unknown as Record<string, unknown>).count = (async () => 0) as typeof prisma.userBookmark.count;
+    restorePrisma = installFakePrisma({
+      'userBookmark.findMany': async () => [],
+      'userBookmark.count': async () => 0,
+    });
   });
 
   afterEach(() => {
     sessionStubs.forEach((s) => s.restore());
     headersStub.restore();
-    (prisma.userBookmark as unknown as Record<string, unknown>).findMany = origFindMany;
-    (prisma.userBookmark as unknown as Record<string, unknown>).count = origCount;
+    restorePrisma();
   });
 
   it('returns VALIDATION_ERROR when called with positional args (limit, offset)', async () => {
@@ -56,15 +52,8 @@ describe('Bookmarks action: setBookmarkStatus concurrency', () => {
   let revalidateStub: sinon.SinonStub;
   // In-memory stand-in for the user_bookmarks unique (userId, threadId) row.
   let store: Map<string, { userId: string; threadId: string }>;
-  // Prisma 7 model delegates do not honor sinon.stub (method dispatch
-  // bypasses stubbed own-props); direct assignment DOES intercept calls.
-  // So every prisma stub here uses save/assign/restore, never sinon.stub.
-  // See notifications-dispatcher.test.mts for the established pattern.
-  let origThreadFindUnique: typeof prisma.thread.findUnique;
-  let origUpsert: typeof prisma.userBookmark.upsert;
-  let origDelete: typeof prisma.userBookmark.delete;
-  let origFindUnique: typeof prisma.userBookmark.findUnique;
   let findUniqueCalls: number;
+  let restorePrisma: () => void;
 
   const getSetBookmarkStatus = () => require('@/modules/bookmarks/actions').setBookmarkStatus;
 
@@ -79,50 +68,42 @@ describe('Bookmarks action: setBookmarkStatus concurrency', () => {
 
     // Access check runs for real: a PUBLIC thread passes canAccessThread with
     // no further DB (see loadThreadContext/canAccessThread).
-    origThreadFindUnique = prisma.thread.findUnique;
-    (prisma.thread as unknown as Record<string, unknown>).findUnique = (async () => ({
-      id: THREAD_ID,
-      createdBy: USER_ID,
-      visibility: 'PUBLIC',
-    })) as unknown as typeof prisma.thread.findUnique;
-
-    origUpsert = prisma.userBookmark.upsert;
-    (prisma.userBookmark as unknown as Record<string, unknown>).upsert = (async (args: {
-      where: { userId_threadId: { userId: string; threadId: string } };
-      create: { userId: string; threadId: string };
-    }) => {
-      const key = `${args.where.userId_threadId.userId}:${args.where.userId_threadId.threadId}`;
-      if (!store.has(key)) {
-        store.set(key, { ...args.create });
-      }
-      return { id: 'bookmark-id', ...store.get(key)! };
-    }) as unknown as typeof prisma.userBookmark.upsert;
-
-    origDelete = prisma.userBookmark.delete;
-    (prisma.userBookmark as unknown as Record<string, unknown>).delete = (async (args: {
-      where: { userId_threadId: { userId: string; threadId: string } };
-    }) => {
-      const key = `${args.where.userId_threadId.userId}:${args.where.userId_threadId.threadId}`;
-      store.delete(key);
-      return { id: '' };
-    }) as unknown as typeof prisma.userBookmark.delete;
-
-    // setBookmarkStatus must never read before writing - fail loudly if it does.
-    origFindUnique = prisma.userBookmark.findUnique;
-    (prisma.userBookmark as unknown as Record<string, unknown>).findUnique = (async () => {
-      findUniqueCalls += 1;
-      throw new Error('read-then-write race');
-    }) as unknown as typeof prisma.userBookmark.findUnique;
+    restorePrisma = installFakePrisma({
+      'thread.findUnique': async () => ({
+        id: THREAD_ID,
+        createdBy: USER_ID,
+        visibility: 'PUBLIC',
+      }),
+      'userBookmark.upsert': async (args: {
+        where: { userId_threadId: { userId: string; threadId: string } };
+        create: { userId: string; threadId: string };
+      }) => {
+        const key = `${args.where.userId_threadId.userId}:${args.where.userId_threadId.threadId}`;
+        if (!store.has(key)) {
+          store.set(key, { ...args.create });
+        }
+        return { id: 'bookmark-id', ...store.get(key)! };
+      },
+      'userBookmark.delete': async (args: {
+        where: { userId_threadId: { userId: string; threadId: string } };
+      }) => {
+        const key = `${args.where.userId_threadId.userId}:${args.where.userId_threadId.threadId}`;
+        store.delete(key);
+        return { id: '' };
+      },
+      // setBookmarkStatus must never read before writing - fail loudly if it does.
+      'userBookmark.findUnique': async () => {
+        findUniqueCalls += 1;
+        throw new Error('read-then-write race');
+      },
+    });
   });
 
   afterEach(() => {
     sessionStubs.forEach((s) => s.restore());
     headersStub.restore();
     revalidateStub.restore();
-    (prisma.thread as unknown as Record<string, unknown>).findUnique = origThreadFindUnique;
-    (prisma.userBookmark as unknown as Record<string, unknown>).upsert = origUpsert;
-    (prisma.userBookmark as unknown as Record<string, unknown>).delete = origDelete;
-    (prisma.userBookmark as unknown as Record<string, unknown>).findUnique = origFindUnique;
+    restorePrisma();
   });
 
   it('parallel setBookmarkStatus(true)xN succeeds with exactly 1 row', async () => {
