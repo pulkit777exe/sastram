@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { Role, type Prisma, type ThreadVisibility } from '@prisma/client';
 import { cache } from 'react';
-import { canAccessThread } from '@/lib/thread-access';
+import { threadAccessPolicy } from '@/lib/thread-access';
 
 export type ThreadMessageReactionAggregate = {
   type: string;
@@ -437,13 +437,9 @@ async function fetchThreadRow(slug: string, uid: string): Promise<ThreadRow | nu
 }
 
 async function isPrivateThreadAccessible(row: ThreadRow, userId?: string): Promise<boolean> {
-  if (row.visibility === 'PUBLIC') return true;
-  if (!userId) return false;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-  return canAccessThread(
+  return threadAccessPolicy.canReadRow(
     { threadId: row.id, createdBy: row.createdBy, visibility: row.visibility as ThreadVisibility },
-    userId,
-    user?.role ?? Role.USER
+    userId
   );
 }
 

@@ -70,8 +70,8 @@ modules/<feature>/
 
 - Thread access is the primary authorization primitive — see `lib/thread-access.ts`
 - Visibility rule: creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN for private/restricted threads; public threads are readable by anyone
-- Use `requireThreadAccessOrThrow(threadId, userId, role)` for reads
-- Use `requireThreadWriteOrThrow(threadId, userId, role)` for writes
+- Use `requireReadOrThrow(threadId, userId, role)` for reads
+- Use `requireWriteOrThrow(threadId, userId, role)` for writes
 - Admin-only routes use `requireAdmin()` / `requireModerator()`
 
 ### Server Action Pattern
@@ -79,13 +79,13 @@ modules/<feature>/
 ```typescript
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireSession } from '@/lib/services/auth';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireWriteOrThrow } from '@/lib/thread-access';
 
 export const myAction = createServerAction(
   { schema: mySchema, actionName: 'myAction' },
   async (args) => {
     const session = await requireSession();
-    await requireThreadWriteOrThrow(args.threadId, session.user.id, session.user.role);
+    await requireWriteOrThrow(args.threadId, session.user.id, session.user.role);
     // ... business logic
     return { data: result, error: null, ok: true, errorCode: null };
   }

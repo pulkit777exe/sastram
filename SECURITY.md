@@ -34,7 +34,7 @@ Authorization is enforced via `lib/thread-access.ts`. Thread visibility follows 
 - **Public threads**: readable by anyone; writes require a session
 - **Private/Restricted threads**: creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN
 
-All API routes and server actions must call `requireThreadAccessOrThrow` (reads) or `requireThreadWriteOrThrow` (writes) before accessing thread data.
+All API routes and server actions must call `requireReadOrThrow` (reads) or `requireWriteOrThrow` (writes) before accessing thread data.
 
 ### AI Spend Cap
 

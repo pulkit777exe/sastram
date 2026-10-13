@@ -198,9 +198,9 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
 **All API routes and server actions must enforce thread access checks.**
 
-- **Thread access model** is the primary authorization primitive — see `lib/thread-access.ts` (`requireThreadAccessOrThrow`, `requireThreadWriteOrThrow`, `canAccessThread`, `canManageThread`). There is no membership table; access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows.
+- **Thread access model** is the primary authorization primitive — see `lib/thread-access.ts` (`requireReadOrThrow`, `requireWriteOrThrow`, `canAccessThread`, `canManageThread`). There is no membership table; access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows.
 - **Visibility rule (private/restricted threads):** creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN. Public threads are readable by anyone; writes still require a session.
-- Routes/actions that read/write thread data must call `requireThreadAccessOrThrow(threadId, userId, role)` / `requireThreadWriteOrThrow(...)`.
+- Routes/actions that read/write thread data must call `requireReadOrThrow(threadId, userId, role)` / `requireWriteOrThrow(...)`.
 - `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check access.
 - Admin-only: `assertAdmin(session.user)` in thread actions, `requireAdmin()` / `requireModerator()` for API routes.
 - Messages: posting and reading require thread access (`modules/messages/actions.ts`).

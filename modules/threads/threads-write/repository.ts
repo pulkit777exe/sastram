@@ -1,7 +1,10 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import type { ThreadRecord } from '@/modules/threads/types';
+import type { ThreadVisibility } from '@prisma/client';
 import { z } from 'zod';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
+
+export const THREAD_VISIBILITIES = ['PUBLIC', 'PRIVATE', 'RESTRICTED'] as const satisfies readonly ThreadVisibility[];
 
 export interface CreateThreadResult {
   thread: ThreadRecord;
@@ -15,6 +18,7 @@ export async function createThread(payload: {
   slug: string;
   createdBy: string;
   initialMessage?: string;
+  visibility?: ThreadVisibility;
 }): Promise<CreateThreadResult> {
   const hasInitialMessage = Boolean(payload.initialMessage);
   const thread = await prisma.thread.create({
@@ -23,6 +27,7 @@ export async function createThread(payload: {
       description: payload.description,
       slug: payload.slug,
       createdBy: payload.createdBy,
+      visibility: payload.visibility ?? 'PUBLIC',
       messageCount: hasInitialMessage ? 1 : 0,
       messages: hasInitialMessage
         ? { create: { content: payload.initialMessage!, senderId: payload.createdBy } }
@@ -91,7 +96,30 @@ export async function updateThreadVerified(threadId: string, userId: string): Pr
   });
 }
 
-export async function forkThread(payload: { name: string; description?: string | null; slug: string; createdBy: string; forkedFromId: string; visibility?: 'PUBLIC' | 'PRIVATE' | 'RESTRICTED' }) {
+/** Slug lookup for edit flows — keeps the slug stable so links keep working.
+ * @deprecated Update paths return the slug from the write itself; use that. */
+export async function getThreadSlugById(threadId: string): Promise<string | null> {
+  const thread = await prisma.thread.findUnique({
+    where: { id: threadId, deletedAt: null },
+    select: { slug: true },
+  });
+  return thread?.slug ?? null;
+}
+
+/** Rename a thread / edit its description. Slug is intentionally untouched. Returns the stable slug for revalidation. */
+export async function updateThreadDetails(
+  threadId: string,
+  data: { name: string; description: string | null }
+): Promise<{ slug: string }> {
+  const updated = await prisma.thread.update({
+    where: { id: threadId },
+    data: { name: data.name, description: data.description },
+    select: { slug: true },
+  });
+  return { slug: updated.slug };
+}
+
+export async function forkThread(payload: { name: string; description?: string | null; slug: string; createdBy: string; forkedFromId: string; visibility?: ThreadVisibility }) {
   const forked = await prisma.thread.create({
     data: {
       name: payload.name,

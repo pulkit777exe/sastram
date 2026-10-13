@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { canManageThread } from '@/lib/thread-access';
+import { requireManageOrThrow } from '@/lib/thread-access';
 import { resolveMarketPoll } from '@/modules/polls/repository';
 import { rateLimit } from '@/lib/services/rate-limit';
 
@@ -28,10 +28,7 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   const options = Array.isArray(poll.options) ? poll.options : [];
   if (resolvedOptionIndex >= options.length) return NextResponse.json(fail('BAD_REQUEST', 'Invalid option index'), { status: HTTP_STATUS.BAD_REQUEST });
 
-  const thread = await prisma.thread.findUnique({ where: { id: poll.threadId, deletedAt: null }, select: { id: true, createdBy: true, visibility: true } });
-  if (!thread) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
-  const canManage = await canManageThread({ threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility as never }, session.user.id, session.user.role as never);
-  if (!canManage) return NextResponse.json(fail('FORBIDDEN', 'Only OP or admin can resolve market'), { status: HTTP_STATUS.FORBIDDEN });
+  await requireManageOrThrow(poll.threadId, session.user.id, session.user.role as never);
 
   const updated = await resolveMarketPoll(pollId, resolvedOptionIndex);
   return NextResponse.json(ok(updated));

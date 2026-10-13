@@ -9,11 +9,11 @@ import {
   canWriteToThread,
   canWriteThread,
   canManageThread,
-  requireThreadAccessOrThrow,
-  requireThreadWriteOrThrow,
   requireReadOrThrow,
   requireWriteOrThrow,
   requireManageOrThrow,
+  createThreadAccessPolicy,
+  createFakeThreadAccessStore,
   type ThreadAccessContext,
 } from '../lib/thread-access';
 import {
@@ -221,7 +221,7 @@ describe('Thread Access', () => {
     });
   });
 
-  describe('requireThreadAccessOrThrow', () => {
+  describe('requireReadOrThrow', () => {
     const threadId = 'thread-1';
 
     beforeEach(() => {
@@ -233,7 +233,7 @@ describe('Thread Access', () => {
     });
 
     it('should not throw if user has access', async () => {
-      await requireThreadAccessOrThrow(threadId, 'user-1', Role.USER);
+      await requireReadOrThrow(threadId, 'user-1', Role.USER);
     });
 
     it('should throw AppError if user has no access', async () => {
@@ -241,7 +241,7 @@ describe('Thread Access', () => {
       mockPrismaUserFindUnique({ email: 'user@example.com' });
 
       try {
-        await requireThreadAccessOrThrow(threadId, 'user-2', Role.USER);
+        await requireReadOrThrow(threadId, 'user-2', Role.USER);
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(AppError);
@@ -254,7 +254,7 @@ describe('Thread Access', () => {
       mockPrismaThreadFindUnique(null);
 
       try {
-        await requireThreadAccessOrThrow('non-existent', 'user-1', Role.USER);
+        await requireReadOrThrow('non-existent', 'user-1', Role.USER);
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(AppError);
@@ -264,7 +264,7 @@ describe('Thread Access', () => {
     });
   });
 
-  describe('requireThreadWriteOrThrow', () => {
+  describe('requireWriteOrThrow', () => {
     const threadId = 'thread-1';
 
     beforeEach(() => {
@@ -276,7 +276,7 @@ describe('Thread Access', () => {
     });
 
     it('should not throw if user can write', async () => {
-      await requireThreadWriteOrThrow(threadId, 'user-1', Role.USER);
+      await requireWriteOrThrow(threadId, 'user-1', Role.USER);
     });
 
     it('should throw AppError if user cannot write', async () => {
@@ -284,7 +284,7 @@ describe('Thread Access', () => {
       mockPrismaUserFindUnique({ email: 'user@example.com' });
 
       try {
-        await requireThreadWriteOrThrow(threadId, 'user-2', Role.USER);
+        await requireWriteOrThrow(threadId, 'user-2', Role.USER);
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(AppError);
@@ -294,25 +294,56 @@ describe('Thread Access', () => {
     });
 
     it('should not throw for MODERATOR on any thread', async () => {
-      await requireThreadWriteOrThrow(threadId, 'mod-1', Role.MODERATOR);
+      await requireWriteOrThrow(threadId, 'mod-1', Role.MODERATOR);
     });
   });
 
-  describe('canonical aliases', () => {
-    it('canReadThread is canAccessThread', () => {
-      expect(canReadThread).to.equal(canAccessThread);
+  describe('fake store policy (no DB)', () => {
+    const policy = createThreadAccessPolicy(
+      createFakeThreadAccessStore({
+        threads: [
+          { threadId: 't-public', createdBy: 'user-1', visibility: 'PUBLIC' as ThreadVisibility },
+          { threadId: 't-private', createdBy: 'user-1', visibility: 'PRIVATE' as ThreadVisibility },
+        ],
+        invitations: [{ threadId: 't-private', userId: 'user-2' }],
+        users: [
+          { id: 'user-1', email: 'one@example.com', role: Role.USER },
+          { id: 'user-2', email: 'two@example.com', role: Role.USER },
+          { id: 'mod-1', email: 'mod@example.com', role: Role.MODERATOR },
+        ],
+      })
+    );
+
+    it('public readable, private restricted without invitation', async () => {
+      expect(await policy.canRead({ threadId: 't-public', createdBy: 'user-1', visibility: 'PUBLIC' as ThreadVisibility }, null)).to.equal(true);
+      expect(await policy.canRead({ threadId: 't-private', createdBy: 'user-1', visibility: 'PRIVATE' as ThreadVisibility }, 'stranger')).to.equal(false);
     });
 
-    it('canWriteThread is canWriteToThread', () => {
-      expect(canWriteThread).to.equal(canWriteToThread);
+    it('creator, invitee, and moderator pass; invitation by email works', async () => {
+      const priv = { threadId: 't-private', createdBy: 'user-1', visibility: 'PRIVATE' as ThreadVisibility };
+      expect(await policy.canRead(priv, 'user-1', Role.USER)).to.equal(true);
+      expect(await policy.canRead(priv, 'user-2', Role.USER)).to.equal(true);
+      expect(await policy.canRead(priv, 'mod-1', Role.MODERATOR)).to.equal(true);
     });
 
-    it('requireThreadAccessOrThrow is requireReadOrThrow', () => {
-      expect(requireThreadAccessOrThrow).to.equal(requireReadOrThrow);
+    it('requireRead resolves context; missing thread is NOT_FOUND', async () => {
+      const ctx = await policy.requireRead('t-private', 'user-2', Role.USER);
+      expect(ctx.threadId).to.equal('t-private');
+      try {
+        await policy.requireRead('missing', 'user-2', Role.USER);
+        expect.fail('should have thrown');
+      } catch (error) {
+        expect((error as { code?: string }).code).to.equal('NOT_FOUND');
+      }
     });
 
-    it('requireThreadWriteOrThrow is requireWriteOrThrow', () => {
-      expect(requireThreadWriteOrThrow).to.equal(requireWriteOrThrow);
+    it('visibilityFilter mirrors canRead over the fake store', async () => {
+      const filter = await policy.visibilityFilter('user-2', Role.USER);
+      const serialized = JSON.stringify(filter);
+      expect(serialized).to.contain('PUBLIC');
+      expect(serialized).to.contain('user-2');
+      const modFilter = await policy.visibilityFilter('mod-1', Role.MODERATOR);
+      expect(modFilter).to.deep.equal({});
     });
   });
 

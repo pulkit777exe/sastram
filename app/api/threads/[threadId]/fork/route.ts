@@ -19,11 +19,7 @@ export const GET = withErrorHandling(async (_request: NextRequest, context?: { p
   if (!threadId) return NextResponse.json(fail('BAD_REQUEST', 'threadId required'), { status: HTTP_STATUS.BAD_REQUEST });
   const zid = z.string().cuid().safeParse(threadId);
   if (!zid.success) return NextResponse.json(fail('BAD_REQUEST', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
-  const source = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { id: true, visibility: true, createdBy: true } });
-  if (!source) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
-  if (source.visibility !== 'PUBLIC') {
-    await requireReadOrThrow(source.id, session.user.id, session.user.role);
-  }
+  await requireReadOrThrow(threadId, session.user.id, session.user.role as never);
   const filter = await visibilityFilter(session.user.id, session.user.role as never);
   const forksWhere: import('@prisma/client').Prisma.ThreadWhereInput = {
     forkedFromId: threadId,
