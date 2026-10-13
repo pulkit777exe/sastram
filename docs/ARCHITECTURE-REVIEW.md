@@ -191,3 +191,16 @@ If you want the architecture pass to land structural change: **C1** + **C2** + *
 | D8 AI-search pipeline | ✅ Implemented | `ports.ts` ctx injection, `lib/ai/text.ts`, citation fix, warming cache |
 | D9 Shallow collapse | ✅ Implemented | `members/`→`invitations/`, `audit/`→`activity/`, `toggleBookmark` deleted |
 | C2/C4/C6 (old) | ✅ Closed by D4/D9 | Superseded, verified via grep (zero imports) |
+
+## 2026-10-13 v2 implementation log
+
+| Candidate | Status | Evidence |
+|---|---|---|
+| H1 Injectable Policy | ✅ Implemented | `ThreadAccessStore` + `createThreadAccessPolicy` + fake store; 4 gates migrated; aliases deleted (16 files); alias tests → fake-store tests |
+| H2 Thread-write consolidation | ✅ Implemented | `updateThreadDomain` (slug from write), backfill via `getThreadMessagesPaginated`, `createExternalForkDomain`, unified visibility enum |
+| H4 Reaction port + pin | ✅ Implemented | `ReactionStore` (prisma + fake); `toggleReactionCore(input, deps)`; `createdBy` threaded to views; creator delete parity; DB-free toggle tests |
+| T1 Fake-prisma seam | ✅ Implemented | `test/support/fake-prisma.ts`; 5 files migrated off bespoke save/restore |
+| T3 Guard seam | ✅ Implemented | `GuardDeps` + `setGuardDepsForTests`; infra failures rethrow (500, not 403); route tests off `require.cache` surgery |
+| A1 Cache ownership | ✅ Implemented | Expertise loads before cache read; route owns read+write on one key; service read-through for store callers |
+| A3 Citation seam | ✅ Implemented | `text`-only synthesis; `citation-sources.ts` shared by export + metadata; saved syntheses persist citations |
+| Appendix | ✅ Done | 7 worker shims deleted; polls validate shim deleted; visibility enum unified (poll-clock merge explicitly deferred) |

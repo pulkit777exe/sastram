@@ -70,7 +70,7 @@ NODE_ENV=production bun check:prod
 ## Testing
 
 ```bash
-bun test            # Mocha unit tests (61 files)
+bun test            # Mocha unit tests (63 files)
 bun test:e2e       # Playwright smoke tests
 ```
 
@@ -92,7 +92,7 @@ lib/          — Core services, infrastructure, utilities
 components/   — shadcn/ui primitives + feature components
 hooks/        — React hooks (chat, thread, AI streaming, preferences)
 prisma/       — Database schema (35 models)
-test/         — Mocha unit tests (61 files) + Playwright e2e
+test/         — Mocha unit tests (63 files) + Playwright e2e
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for architecture details and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.

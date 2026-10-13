@@ -4,7 +4,6 @@ import type { ThreadVisibility } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AppError } from '@/lib/utils/errors';
 import { buildThreadSlug } from '@/modules/threads/slug';
-import { validatePollExpiry as validatePollExpiryCanonical } from '@/modules/polls/validate';
 import { createThread, forkThread, updateThreadDetails } from './repository';
 import { infraThreadSideEffects } from '../adapters/infra-side-effects';
 import type { ThreadSideEffectsPort } from '../ports/side-effects';
@@ -35,16 +34,6 @@ export async function ensureUniqueSlug(
     if (!(await sideEffects.slugExists(candidate))) return candidate;
   }
   return `${baseSlug}-${randomUUID().slice(0, 8)}`;
-}
-
-/**
- * Shared poll-expiry guard — canonical implementation lives in
- * modules/polls/validate.ts. Re-exported here for backwards compatibility.
- *
- * Returns an error message when invalid, null when valid or empty.
- */
-export function validatePollExpiry(expiresAt: Date | string | null | undefined): string | null {
-  return validatePollExpiryCanonical(expiresAt);
 }
 
 export interface ForkThreadDomainArgs {
