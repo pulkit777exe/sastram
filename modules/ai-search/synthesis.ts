@@ -261,7 +261,6 @@ IMPORTANT:
     const parsed = parseStructuredSynthesis(content, sources);
 
     return {
-      content: parsed.text,
       text: parsed.text,
       citations: parsed.citations,
       queryType: parsed.queryType,

@@ -70,7 +70,7 @@ export async function persistSearchSession(
         data: {
           sessionId: s.id,
           queryHash,
-          synthesis: synthesis.text || synthesis.content,
+          synthesis: synthesis.text,
           citations: (synthesis.citations ?? []) as unknown as Prisma.InputJsonValue,
           followUps: (followUps ?? []) as unknown as Prisma.InputJsonValue,
           confidence: Math.round(synthesis.confidence ?? 0),

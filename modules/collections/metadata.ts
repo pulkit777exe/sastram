@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppError } from '@/lib/utils/errors';
+import { renderCitationSources, type CitableSource, type SourceCitation } from '@/modules/ai-search/citation-sources';
 
 /**
  * Strict collection-item metadata (ADR-0001: strict validation).
@@ -10,8 +11,9 @@ import { AppError } from '@/lib/utils/errors';
  * `addManyToCollection`). Metadata without a `type` field and non-object
  * metadata keep the historical passthrough behavior.
  *
- * Client-safe: imports zod only (no node builtins), so `use client`
- * components such as `CollectionItemsList` can import the view helpers.
+ * Client-safe: imports zod + AppError + the pure citation-sources helper
+ * (no node builtins), so `use client` components such as
+ * `CollectionItemsList` can import the view helpers.
  * The sha256 key (`metadataHash`) lives in `./metadata-hash`, which is
  * server-only because it uses `node:crypto`.
  */
@@ -51,6 +53,7 @@ const aiSynthesisMetadataSchema = z
     queryType: z.unknown().optional(),
     sourceCount: z.unknown().optional(),
     sources: z.unknown().optional(),
+    citations: z.unknown().optional(),
   })
   .catchall(z.unknown());
 
@@ -113,6 +116,23 @@ function asText(value: unknown): string | null {
 
 function asCount(value: unknown): number | null {
   return Array.isArray(value) ? value.length : null;
+}
+
+function asCitations(value: unknown): SourceCitation[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (c): c is SourceCitation =>
+      typeof c === 'object' && c !== null &&
+      typeof (c as Record<string, unknown>).marker === 'number' &&
+      typeof (c as Record<string, unknown>).sourceId === 'string'
+  );
+}
+
+function asSources(value: unknown): CitableSource[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (s): s is CitableSource => typeof s === 'object' && s !== null && typeof (s as Record<string, unknown>).id === 'string'
+  );
 }
 
 function canvasDiffDetail(diff: unknown): string | null {
@@ -216,7 +236,8 @@ export function toMarkdown(metadata: unknown): string {
     return `## Summary\n\n${mdText(meta.content)}\n\n`;
   }
   if (type === 'ai_synthesis') {
-    return `## AI Synthesis\n\n${mdText(meta.text)}\n\n`;
+    const lines = renderCitationSources(asCitations(meta.citations), asSources(meta.sources));
+    return `## AI Synthesis\n\n${mdText(meta.text)}\n\n${lines.length ? `**Sources**\n\n${lines.join('\n')}\n\n` : ''}`;
   }
   return '';
 }

@@ -54,15 +54,14 @@ export interface Citation {
 }
 
 export interface SynthesisResult {
-  content: string;
+  /** Citable prose with inline [n] markers. Single source of truth. */
+  text: string;
   confidence?: number;
   queryType: QueryType;
   sourceCount: number;
   conflictData: ConflictInfo;
   processingTimeMs: number;
   cachedAt?: string;
-  /** New citable synthesis shape. `text` carries inline [n] markers. */
-  text?: string;
   citations?: Citation[];
 }
 

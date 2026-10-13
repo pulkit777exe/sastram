@@ -4,6 +4,7 @@ import { getCollection } from '@/modules/collections/repository';
 import { withCollectionsHandler } from '@/modules/collections/handler';
 import { collectionIdSchema } from '@/modules/collections/schemas';
 import { toMarkdown } from '@/modules/collections/metadata';
+import { renderCitationSources } from '@/modules/ai-search/citations';
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-z0-9-_ ]/gi, '_').slice(0, 80) || 'collection';
@@ -29,20 +30,11 @@ export const GET = withCollectionsHandler(async (_: NextRequest, session, contex
       const result = (item.session as unknown as { results?: { synthesis: string; citations: { marker: number; sourceId: string }[]; sources: { id: string; title: string; url: string; domain: string; tier: number; confidence: number; provider: string; isOutdated?: boolean; contentFetched?: boolean }[] }[] }).results?.[0];
       if (result?.synthesis) {
         md += `${result.synthesis.trim()}\n`;
-        const citations = (result.citations as { marker: number; sourceId: string }[]) ?? [];
-        const sources = (result.sources as { id: string; title: string; url: string; domain: string; tier: number; confidence: number; provider: string; isOutdated?: boolean; contentFetched?: boolean }[]) ?? [];
-        if (citations.length && sources.length) {
-          const byId = new Map(sources.map((s) => [s.id, s]));
-          const sorted = [...citations].sort((a, b) => a.marker - b.marker);
-          const lines = sorted
-            .map((c) => {
-              const s = byId.get(c.sourceId);
-              if (!s) return null;
-              return `[${c.marker}] ${s.title || s.domain} — ${s.url} (${s.domain} · T${s.tier} · ${s.provider} · ${Math.round(s.confidence)}%${s.isOutdated ? ' · outdated' : ''}${s.contentFetched === false ? ' · snippet only' : ''})`;
-            })
-            .filter(Boolean) as string[];
-          if (lines.length) md += `\n**Sources**\n\n${lines.join('\n')}\n`;
-        }
+        const lines = renderCitationSources(
+          (result.citations as { marker: number; sourceId: string }[]) ?? [],
+          (result.sources as { id: string; title: string; url: string; domain: string; tier: number; confidence: number; provider: string; isOutdated?: boolean; contentFetched?: boolean }[]) ?? []
+        );
+        if (lines.length) md += `\n**Sources**\n\n${lines.join('\n')}\n`;
       } else {
         md += `_${escapeMd(item.session.query)}_\n`;
       }

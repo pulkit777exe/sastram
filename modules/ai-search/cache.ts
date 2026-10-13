@@ -92,7 +92,6 @@ export async function getCachedResult(query: string, expertiseLevel?: string): P
 
     const result = {
       synthesis: {
-        content: synthesisText,
         text: synthesisText,
         citations,
         confidence: (cached as unknown as { confidence: number }).confidence ?? 0,
@@ -179,7 +178,7 @@ export async function cacheResult(
       data: {
         sessionId: anonymousSession.id,
         queryHash: hash,
-        synthesis: result.synthesis.text || result.synthesis.content || JSON.stringify(result.synthesis),
+        synthesis: result.synthesis.text,
         citations: (result.synthesis.citations ?? []) as unknown as Prisma.InputJsonValue,
         followUps: (result.followUps ?? []) as unknown as Prisma.InputJsonValue,
         expiresAt,

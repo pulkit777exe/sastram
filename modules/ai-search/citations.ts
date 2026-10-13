@@ -215,3 +215,23 @@ export function orderSourcesByCitation(sources: Source[], citations: Citation[] 
   });
   return ranked;
 }
+
+export interface CitableSource {
+  id: string;
+  title?: string | null;
+  url?: string | null;
+  domain?: string | null;
+  tier?: number | null;
+  confidence?: number | null;
+  provider?: string | null;
+  isOutdated?: boolean;
+  contentFetched?: boolean;
+}
+
+/**
+ * Shared citation-source markdown lines (`[n] Title — url (...)`).
+ * Canonical implementation lives in `./citation-sources` (client-safe);
+ * re-exported here so existing importers keep working.
+ */
+export { renderCitationSources } from './citation-sources';
+export type { SourceCitation } from './citation-sources';

@@ -144,7 +144,6 @@ describe('executeAISearch with injected SearchCtx (D8)', () => {
   it('returns the cached result with zero llm/search executes on a store hit', async () => {
     const cached = {
       synthesis: {
-        content: 'Cached prose [1].',
         text: 'Cached prose [1].',
         citations: [{ marker: 1, sourceId: 'cached-1' }],
         queryType: 'factual',
@@ -166,7 +165,7 @@ describe('executeAISearch with injected SearchCtx (D8)', () => {
     expect(llmCalls.count).to.equal(0);
     expect(searchCalls.exa).to.equal(0);
     expect(searchCalls.tavily).to.equal(0);
-    expect(result.synthesis.content).to.equal('Cached prose [1].');
+    expect(result.synthesis.text).to.equal('Cached prose [1].');
     expect(result.followUps).to.deep.equal(['cached follow-up']);
     expect(result.phase).to.equal('done');
   });

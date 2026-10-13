@@ -175,7 +175,7 @@ export function buildFinalizedMessage(
 ): ChatMessage {
   return {
     ...base,
-    text: event.synthesis?.text || event.synthesis?.content || base.text,
+    text: event.synthesis?.text || base.text,
     sources: event.sources ?? base.sources,
     citations: event.synthesis?.citations,
     followUps: event.followUps,

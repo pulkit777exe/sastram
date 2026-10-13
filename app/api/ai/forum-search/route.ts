@@ -5,9 +5,9 @@ import { sanitizeSearchQuery, validateApiKeys } from '@/modules/ai-search/saniti
 import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
-import { executeAISearch, type AISearchPipelineResult } from '@/modules/ai-search/service';
+import { executeAISearch, readThroughCache, type AISearchPipelineResult } from '@/modules/ai-search/service';
 import { AISearchError } from '@/modules/ai-search/synthesis';
-import { getCachedResult, cacheResult, prismaSearchStore } from '@/modules/ai-search/cache';
+import { cacheResult, prismaSearchStore } from '@/modules/ai-search/cache';
 import { searchWithExa, searchWithTavily } from '@/modules/ai-search/search-providers';
 import { createKeyedLlm } from '@/lib/ai/text';
 import { persistSearchSession } from '@/modules/ai-search/repository';
@@ -160,13 +160,19 @@ async function checkIdempotency(clientNonce: string | undefined, userId?: string
 }
 
 async function tryGetCachedResult(query: string, expertiseLevel?: string): Promise<AISearchPipelineResult | null> {
+  // Single read path (shared with the pipeline): expertise-keyed, normalized.
+  return readThroughCache(prismaSearchStore(), query, expertiseLevel);
+}
+
+/** User research personalization for cache keys + synthesis prompts. Loaded once per request, before any cache read. */
+async function loadExpertiseLevel(userId: string): Promise<string | undefined> {
   try {
-    const cached = await getCachedResult(query, expertiseLevel);
-    if (cached) return cached as AISearchPipelineResult;
-    return null;
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } });
+    const prefs = u?.preferences as unknown as { expertiseLevel?: string } | null;
+    return prefs?.expertiseLevel;
   } catch (err) {
-    logger.debug('[forum-search] Cache read failed, proceeding without cache', { error: err });
-    return null;
+    logger.debug('[forum-search] failed to load expertiseLevel', { error: err });
+    return undefined;
   }
 }
 
@@ -279,17 +285,9 @@ function buildLiveStream(
       try {
         sendEvent({ phase: 'searching' });
 
-        // Use pre-loaded expertiseLevel when available (fix cache poisoning), otherwise fetch
-        let expertiseLevel = params.expertiseLevel;
-        if (expertiseLevel === undefined) {
-          try {
-            const u = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
-            const prefs = u?.preferences as unknown as { expertiseLevel?: string } | null;
-            if (prefs?.expertiseLevel) expertiseLevel = prefs.expertiseLevel;
-          } catch (err) {
-            logger.debug('[forum-search] failed to load expertiseLevel', { error: err });
-          }
-        }
+        // Expertise is pre-loaded by the caller when available; fall back
+        // to a load here so direct buildLiveStream callers keep working.
+        const expertiseLevel = params.expertiseLevel ?? (await loadExpertiseLevel(session.user.id));
 
         const searchKeys = {
           exa: params.keys.exaKey,
@@ -306,7 +304,11 @@ function buildLiveStream(
               return { sources, answer };
             },
           },
-          store: prismaSearchStore(),
+          // No store: this route owns its read (tryGetCachedResult, above)
+          // and write (explicit cacheResult, below) with the same
+          // expertise key. Service-level read-through stays for
+          // store-bearing callers (workers, warming).
+          store: undefined,
           history: params.conversationHistory,
           expertise: expertiseLevel,
         });
@@ -434,7 +436,8 @@ export async function POST(request: NextRequest) {
     const hasHistory = conversationHistory !== undefined && conversationHistory.length > 0;
 
     if (!hasHistory) {
-      const cached = await tryGetCachedResult(query);
+      const expertiseLevel = await loadExpertiseLevel(session.user.id);
+      const cached = await tryGetCachedResult(query, expertiseLevel);
       if (cached) {
         return buildCachedStream(cached);
       }
@@ -448,6 +451,7 @@ export async function POST(request: NextRequest) {
       query,
       sessionId,
       hasHistory,
+      expertiseLevel: await loadExpertiseLevel(session.user.id),
     });
   } catch (error) {
     return mapTopLevelError(error);

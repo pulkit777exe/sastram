@@ -47,8 +47,8 @@ export function SynthesisCard({
   const orderedSources = useMemo(() => orderSourcesByCitation(sources, citations), [sources, citations]);
 
   const saveMetadata = useMemo(
-    () => ({ type: 'ai_synthesis', text, queryType, sourceCount, sources: orderedSources.slice(0, 3) }),
-    [text, queryType, sourceCount, orderedSources]
+    () => ({ type: 'ai_synthesis', text, queryType, sourceCount, sources: orderedSources.slice(0, 3), citations }),
+    [text, queryType, sourceCount, orderedSources, citations]
   );
 
   if (!text) {

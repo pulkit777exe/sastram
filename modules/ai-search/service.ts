@@ -28,8 +28,8 @@ function elapsedMs(start: number): number {
   return Date.now() - start;
 }
 
-/** Read-through cache: a store hit short-circuits the whole pipeline (zero LLM/search calls). */
-async function readThroughCache(
+/** Read-through cache: a store hit short-circuits the whole pipeline (zero LLM/search calls). Exported so routes share the single read path. */
+export async function readThroughCache(
   store: SearchStore,
   query: string,
   expertise?: string
@@ -117,7 +117,7 @@ export async function executeAISearch(
   let synthesis: SynthesisResult;
   if (isInstantMode) {
     synthesis = {
-      content: rawResults.tavilyAnswer || 'Instant mode — showing raw results only.',
+      text: rawResults.tavilyAnswer || 'Instant mode — showing raw results only.',
       queryType: classification.type,
       sourceCount: rankedSources.length,
       conflictData: crossRefResult.conflictData,
