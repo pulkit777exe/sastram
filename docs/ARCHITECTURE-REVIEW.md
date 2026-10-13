@@ -204,3 +204,12 @@ If you want the architecture pass to land structural change: **C1** + **C2** + *
 | A1 Cache ownership | ✅ Implemented | Expertise loads before cache read; route owns read+write on one key; service read-through for store callers |
 | A3 Citation seam | ✅ Implemented | `text`-only synthesis; `citation-sources.ts` shared by export + metadata; saved syntheses persist citations |
 | Appendix | ✅ Done | 7 worker shims deleted; polls validate shim deleted; visibility enum unified (poll-clock merge explicitly deferred) |
+
+## 2026-10-13 follow-up: deferred items closed + hardening
+
+| Item | Status | Evidence |
+|---|---|---|
+| Poll-clock merge | ✅ Done | `usePollRefresh` owns state only; `use-thread-polling` accepts `onTickExtra` driven on the single visible tick; `use-thread-sync` threads `onPollTick`; wrapper passes `refreshPoll` — one timer, hidden-tab paused |
+| Warming personalization | ✅ Done | `fetchRecentSessionsForWarming` selects `userId`; `prewarmSingleSession` warms under owner expertise via `getUserExpertiseLevel` (shared with route); store get/put + ctx carry expertise; per-run memo (1 user read per user) |
+| Security pass | ✅ Checked | No `dangerouslySetInnerHTML`; no key logging; sessions persist no keys; forum-search guards (auth+quota+rate limit) before spend, zod+sanitize+history cap+content-type+user-namespaced idempotency; collections export auth-scoped + escaped; fork auth + sanitized |
+| Performance pass | ✅ Checked | Poll 2 timers→1; route expertise 2 reads→1; warming memo + early break on cap; full suite 478 passing / 12 pending / 0 failing in ~13s; `tsc --noEmit` clean |
