@@ -1,19 +1,14 @@
 'use server';
 
 import { z } from 'zod';
-import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
-import {
-  addReaction,
-  removeReaction,
-  getMessageReactions,
-  getUserReaction,
-} from '@/modules/reactions/repository';
+import { getMessageReactions } from '@/modules/reactions/repository';
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireReadOrThrow } from '@/lib/thread-access';
 import { infraReactionSideEffects } from '@/modules/reactions/adapters/infra-side-effects';
-import type { ReactionSideEffectsPort } from '@/modules/reactions/ports/side-effects';
+import { prismaReactionStore } from '@/modules/reactions/adapters/reaction-store';
+import type { ReactionDeps } from '@/modules/reactions/ports/side-effects';
 import { actionSuccess, actionFailure } from '@/lib/actions/result';
 
 const toggleReactionSchema = z.object({
@@ -30,47 +25,45 @@ type AuthorizedMessage = {
   threadId: string;
 };
 
-async function requireMessageAccess(messageId: string): Promise<AuthorizedMessage | null> {
+async function requireMessageAccess(
+  messageId: string,
+  store: NonNullable<ReactionDeps['store']> = prismaReactionStore
+): Promise<AuthorizedMessage | null> {
   const session = await requireSession();
 
-  const message = await prisma.message.findUnique({
-    where: { id: messageId },
-    select: { threadId: true },
-  });
-
-  if (message === null) {
+  const threadId = await store.resolveThreadId(messageId);
+  if (threadId === null) {
     return null;
   }
 
-  await requireReadOrThrow(message.threadId, session.user.id, session.user.role);
-  return { session, threadId: message.threadId };
+  await requireReadOrThrow(threadId, session.user.id, session.user.role);
+  return { session, threadId };
 }
 
 export async function toggleReactionCore(
   input: { messageId: string; emoji: string },
-  sideEffects: ReactionSideEffectsPort = infraReactionSideEffects
+  deps: ReactionDeps = {}
 ) {
-  const authorized = await requireMessageAccess(input.messageId);
+  const { sideEffects = infraReactionSideEffects, store = prismaReactionStore } = deps;
+  const authorized = await requireMessageAccess(input.messageId, store);
   if (authorized === null) {
     return actionFailure('NOT_FOUND', 'Message not found');
   }
 
   const { messageId, emoji } = input;
   const userId = authorized.session.user.id;
-  const existing = await getUserReaction(messageId, userId, emoji);
+  const existing = await store.getReaction(messageId, userId, emoji);
 
   if (existing) {
-    await removeReaction(messageId, userId, emoji);
+    await store.removeReaction(messageId, userId, emoji);
   } else {
-    await addReaction(messageId, userId, emoji);
+    await store.addReaction(messageId, userId, emoji);
   }
 
   // No revalidation: the client owns this state optimistically and we return
   // the authoritative post-toggle values so it can reconcile in place.
   const hasReacted = !existing;
-  const likeCount = await prisma.reaction.count({
-    where: { messageId, emoji },
-  });
+  const likeCount = await store.countByEmoji(messageId, emoji);
 
   try {
     await sideEffects.recordActivity({

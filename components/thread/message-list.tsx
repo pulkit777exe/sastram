@@ -169,6 +169,7 @@ const MessageRow = React.memo(function MessageRow({
 }) {
   const {
     threadId,
+    createdBy,
     currentUser,
     onReply,
     onCancelReply,
@@ -206,13 +207,14 @@ const MessageRow = React.memo(function MessageRow({
     deletedAt: message.deletedAt,
   });
   const canDelete = canDeleteMessageView({
+    createdBy: createdBy ?? null,
     senderId: message.senderId ?? '',
     userId: currentUser.id,
     userRole: currentUser.role ?? 'USER',
     deletedAt: message.deletedAt,
   });
   const canPin = canPinMessageView({
-    createdBy: null,
+    createdBy: createdBy ?? null,
     userId: currentUser.id,
     userRole: currentUser.role ?? 'USER',
     deletedAt: message.deletedAt,

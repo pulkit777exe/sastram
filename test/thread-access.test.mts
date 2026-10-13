@@ -545,13 +545,14 @@ describe('Thread Access', () => {
       expect(canEditMessageView({ senderId: 'u1', userId: 'u1', deletedAt: new Date() })).to.be.false;
     });
 
-    it('canDeleteMessageView: author or mod/admin while not deleted', () => {
-      expect(canDeleteMessageView({ senderId: 'u1', userId: 'u1', userRole: 'USER', deletedAt: null })).to.be.true;
-      expect(canDeleteMessageView({ senderId: 'u1', userId: 'u2', userRole: 'MODERATOR', deletedAt: null })).to.be.true;
-      expect(canDeleteMessageView({ senderId: 'u1', userId: 'u2', userRole: 'ADMIN', deletedAt: null })).to.be.true;
-      expect(canDeleteMessageView({ senderId: 'u1', userId: 'u2', userRole: 'USER', deletedAt: null })).to.be.false;
-      expect(canDeleteMessageView({ senderId: 'u1', userId: 'u1', userRole: 'USER', deletedAt: new Date() })).to.be.false;
-      expect(canDeleteMessageView({ senderId: 'u1', userId: 'u2', userRole: 'MODERATOR', deletedAt: new Date() })).to.be
+    it('canDeleteMessageView: author, creator, or mod/admin while not deleted', () => {
+      expect(canDeleteMessageView({ createdBy: null, senderId: 'u1', userId: 'u1', userRole: 'USER', deletedAt: null })).to.be.true;
+      expect(canDeleteMessageView({ createdBy: null, senderId: 'u1', userId: 'u2', userRole: 'MODERATOR', deletedAt: null })).to.be.true;
+      expect(canDeleteMessageView({ createdBy: null, senderId: 'u1', userId: 'u2', userRole: 'ADMIN', deletedAt: null })).to.be.true;
+      expect(canDeleteMessageView({ createdBy: 'u2', senderId: 'u1', userId: 'u2', userRole: 'USER', deletedAt: null })).to.be.true;
+      expect(canDeleteMessageView({ createdBy: null, senderId: 'u1', userId: 'u2', userRole: 'USER', deletedAt: null })).to.be.false;
+      expect(canDeleteMessageView({ createdBy: null, senderId: 'u1', userId: 'u1', userRole: 'USER', deletedAt: new Date() })).to.be.false;
+      expect(canDeleteMessageView({ createdBy: null, senderId: 'u1', userId: 'u2', userRole: 'MODERATOR', deletedAt: new Date() })).to.be
         .false;
     });
 

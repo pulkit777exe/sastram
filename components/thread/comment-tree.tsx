@@ -64,6 +64,8 @@ function collectAncestorIds(nodes: MessageNode[], targetId: string): string[] {
 interface CommentTreeProps {
   messages: Message[];
   threadId: string;
+  /** Thread creator id (null = unknown, view predicates fail closed). */
+  createdBy?: string | null;
   currentUser: {
     id: string;
     name: string | null;
@@ -87,6 +89,7 @@ interface CommentTreeProps {
 export function CommentTree({
   messages,
   threadId,
+  createdBy = null,
   currentUser,
   aiInlineStatus = {},
   onOptimisticMessage,
@@ -209,6 +212,7 @@ export function CommentTree({
   const dataContextValue = useMemo(
     () => ({
       threadId,
+      createdBy,
       currentUser,
       scrollContainerRef,
       onReply: handleReply,
@@ -220,7 +224,7 @@ export function CommentTree({
       onMessageUpdate: handleMessageUpdate,
     }),
     [
-      threadId, currentUser, scrollContainerRef,
+      threadId, createdBy, currentUser, scrollContainerRef,
       handleReply, handleCancelReply, toggleCollapse, handleMessagePosted,
       onOptimisticMessage, handleFocusBranch, handleMessageUpdate,
     ]

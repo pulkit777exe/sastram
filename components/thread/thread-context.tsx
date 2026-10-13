@@ -7,6 +7,8 @@ import type { AiInlineStatusMap } from '@/hooks/thread/ai-inline-status';
 // Stable context: rarely-changing thread data (threadId, currentUser, callbacks)
 interface ThreadDataContextValue {
   threadId: string;
+  /** Thread creator id — feeds pin/delete view predicates (null when unknown). */
+  createdBy: string | null;
   currentUser: {
     id: string;
     name: string | null;

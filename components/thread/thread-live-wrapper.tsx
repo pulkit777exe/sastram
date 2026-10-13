@@ -146,6 +146,8 @@ interface ThreadLiveWrapperProps {
   isBookmarked?: boolean;
   /** User tags for this thread (managed in place, no refresh). */
   tags?: ThreadTagItem[];
+  /** Thread creator id — feeds pin/delete view predicates (null = unknown, fail-closed). */
+  createdBy?: string | null;
 }
 
 export function ThreadLiveWrapper({
@@ -168,6 +170,7 @@ export function ThreadLiveWrapper({
   canEditThread = false,
   isBookmarked,
   tags = [],
+  createdBy,
 }: ThreadLiveWrapperProps) {
   // Editable thread metadata — EditThreadDialog updates these in place.
   const [title, setTitle] = useState(initialTitle);
@@ -475,6 +478,7 @@ export function ThreadLiveWrapper({
               <CommentTree
                 messages={liveMessages}
                 threadId={threadId}
+                createdBy={createdBy ?? null}
                 currentUser={currentUser}
                 aiInlineStatus={aiInlineStatus}
                 onOptimisticMessage={handleOptimisticMessage}

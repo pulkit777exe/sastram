@@ -141,6 +141,7 @@ async function ThreadContent({
         canEditThread={canManagePoll}
         isBookmarked={thread.isBookmarked}
         tags={thread.tags}
+        createdBy={thread.createdBy}
       />
   );
 }

@@ -38,12 +38,11 @@ export function canEditMessageView(input: {
 
 /**
  * Author or global MODERATOR/ADMIN, while not soft-deleted.
- * Fail-closed: the server additionally lets the thread creator delete any
- * message (`canManageThread`); this view predicate has no `createdBy` input
- * by contract, so creators who are neither author nor mod won't see the
- * button but the server still permits them.
+ * Thread creators manage all messages in their thread (mirrors server
+ * `canManageThread`), so `createdBy` is required — no fail-closed gap.
  */
 export function canDeleteMessageView(input: {
+  createdBy: string | null;
   senderId: string;
   userId: string;
   userRole: string;
@@ -51,6 +50,7 @@ export function canDeleteMessageView(input: {
 }): boolean {
   if (isDeleted(input.deletedAt)) return false;
   if (input.senderId === input.userId) return true;
+  if (input.createdBy !== null && input.createdBy === input.userId) return true;
   return isModeratorRole(input.userRole);
 }
 
