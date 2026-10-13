@@ -90,4 +90,4 @@ Use `actionSuccess(data)` and `actionFailure(errorCode, message)` from `lib/acti
 
 ## Testing Notes
 
-Unit tests use Mocha + Chai. Tests live in `test/` directory (64 files), including `test/bookmarks.action.test.mts` and API route tests.
+Unit tests use Mocha + Chai. Tests live in `test/` directory (65 files), including `test/bookmarks.action.test.mts` and API route tests.

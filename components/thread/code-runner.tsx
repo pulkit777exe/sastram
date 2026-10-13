@@ -4,6 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import { Play, Loader2, X } from 'lucide-react';
+import { buildSandboxPrelude, buildMainThreadPrelude } from '@/components/thread/sandbox-prelude';
 
 // Runnable language sets — KISS: JS-family is executable via new Function, Python is placeholder
 export const JS_LANGS = new Set([
@@ -54,6 +55,8 @@ function truncateOutput(text: string): string {
 /**
  * Execute JS code in a Worker sandbox to avoid blocking the main thread.
  * - No unsafe-eval on main thread; user code runs inside Worker via new Function.
+ * - Snippet scope is neutered (see sandbox-prelude): network, global
+ *   escape hatches, completion forgery, and nested constructors are undefined.
  * - Captures console output via postMessage.
  * - 3s timeout terminates Worker to prevent infinite loops.
  * - Falls back to main-thread execution if Worker unavailable.
@@ -73,7 +76,8 @@ export async function executeJs(code: string): Promise<{ output: string; error: 
       debug: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
     };
     try {
-      const fn = new Function('console', `"use strict";\n${code}`);
+      // Main-thread fallback shares the page DOM: neuter DOM/storage too.
+      const fn = new Function('console', `${buildMainThreadPrelude()}\n${code}`);
       const result = fn(mockConsole);
       if (result !== undefined) logs.push(stringifyValue(result));
       return { output: truncateOutput(logs.join('\n')), error: null };
@@ -90,6 +94,9 @@ export async function executeJs(code: string): Promise<{ output: string; error: 
   let url: string | null = null;
 
   try {
+    // Bake the neuter prelude into the worker source as a string literal —
+    // blob workers cannot import the module, so the policy travels inline.
+    const preludeLiteral = JSON.stringify(buildSandboxPrelude());
     const workerCode = `
 const logs=[];
 function stringifyValue(v){
@@ -109,7 +116,7 @@ const mockConsole={
 self.onmessage=async(e)=>{
   const code=e.data&&e.data.code||'';
   try{
-    const fn=new Function('console','"use strict";\\n'+code);
+    const fn=new Function('console',${preludeLiteral}+'\\n'+code);
     const result=fn(mockConsole);
     const awaited=result&&typeof result.then==='function'?await result:result;
     if(awaited!==undefined)logs.push(stringifyValue(awaited));
@@ -289,6 +296,14 @@ async function executePython(code: string): Promise<{ output: string; error: str
     }
     let result: unknown = null;
     try {
+      // Remove the Python→JS bridge: snippets are other users' code, and
+      // `import js` would expose fetch/DOM to them. Best-effort — older
+      // Pyodide builds without unregisterJsModule keep the click gate only.
+      try {
+        (py as { unregisterJsModule?: (name: string) => void }).unregisterJsModule?.('js');
+      } catch {
+        // bridge stays; snippet still needs an explicit Run click
+      }
       result = await withTimeout(py.runPythonAsync(code) as Promise<unknown>);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

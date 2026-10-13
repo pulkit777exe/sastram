@@ -134,4 +134,4 @@ The following files no longer exist (removed during refactor):
 
 ## Testing Notes
 
-Services have Mocha unit tests covering moderation, schemas, content safety, rate limiting, and AI quotas (64 files total in `test/`).
+Services have Mocha unit tests covering moderation, schemas, content safety, rate limiting, and AI quotas (65 files total in `test/`).

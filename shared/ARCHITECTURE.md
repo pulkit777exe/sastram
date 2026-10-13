@@ -37,7 +37,7 @@ The current moat features (all configurable from `Settings → Preferences`, all
 | Validation | Zod |
 | State Management | TanStack Query + hooks |
 | Monitoring | Sentry, Vercel Analytics |
-| Testing | Mocha + Chai + Sinon (64 files), Playwright (E2E) |
+| Testing | Mocha + Chai + Sinon (65 files), Playwright (E2E) |
 
 ---
 
@@ -674,7 +674,7 @@ One Redis client (Upstash REST over HTTP, serverless-safe):
 
 ## Testing
 
-### Unit Tests (64 files)
+### Unit Tests (65 files)
 
 | Area | Files |
 |------|-------|
@@ -715,7 +715,7 @@ PostgreSQL 16 service container → `bun install` → `prisma migrate` → `tsc 
 bun dev            # Next.js dev server
 bun build          # Prisma generate + Next build
 bun start          # Production server
-bun test           # Mocha unit tests (64 files)
+bun test           # Mocha unit tests (65 files)
 bun test:e2e       # Playwright e2e tests
 bun typecheck      # TypeScript check
 bun lint           # ESLint

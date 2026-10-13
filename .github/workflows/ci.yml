@@ -30,7 +30,10 @@ jobs:
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
-      - run: bun audit
+      # Enforcing gate (not bare `bun audit`, which exits 0/1 without policy):
+      # fails on new high/critical advisories; documented exceptions with
+      # review dates live in scripts/audit-gate.ts.
+      - run: bun run audit:gate
 
   check:
     runs-on: ubuntu-latest

@@ -245,3 +245,13 @@ If you want the architecture pass to land structural change: **C1** + **C2** + *
 | Accepted risks | Click-to-run snippets execute poster code after explicit Run click (Worker has no DOM; `fetch` same-origin possible post-click — self-XSS class, code visible before run); `braces` dev-only CVE (no fix published) |
 
 Verification: `tsc` clean, `eslint` clean, 482 passing / 12 pending / 0 failing (64 test files).
+
+## 2026-10-13 accepted-risk fixes (sandbox + audit gate)
+
+| Risk | Fix | Evidence |
+|---|---|---|
+| Click-to-run executes poster code with viewer session (`fetch` same-origin, `postMessage` forgery) | ✅ Neutered snippet scope | `components/thread/sandbox-prelude.ts`: `const`-shadow prelude undefines fetch/XHR/WebSocket/EventSource/WebTransport/BroadcastChannel/navigator/importScripts/self/globalThis/postMessage/onmessage/close/Function in worker runs, plus DOM/storage on the main-thread fallback; baked inline into the blob-worker source; 8 mechanism tests (`test/code-runner-sandbox.test.ts`) prove exfil/forgery/escape throw while benign code runs; Pyodide `js` bridge unregistered best-effort |
+| Residual: indirect `eval` in dev | ⚠️ Contained | Prod worker CSP has no `unsafe-eval` (blocked); dev keeps it for HMR (localhost-trusted). Direct `eval` stays in neutered scope regardless |
+| `braces` high CVE, no published fix | ✅ Enforced policy instead of acceptance | `scripts/audit-gate.ts` (`bun run audit:gate`, wired into CI replacing bare `bun audit`): fails on any non-allowlisted high/critical; `braces::GHSA-VFJ7-8CJW-P6XM` allowed only with dev-only justification + `reviewBy: 2027-04-13` expiry (verified: expired triage exits 1). Discovered bare `bun audit` exits non-zero on findings, so the old CI step was red-by-default with no policy — gate fixes that too |
+
+Verification: `tsc` clean, `eslint` clean, gate passes, 490 passing / 12 pending / 0 failing (65 test files).
