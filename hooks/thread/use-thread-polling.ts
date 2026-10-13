@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import { backfillThreadMessages } from '@/modules/threads/actions';
 import type { Message } from '@/lib/types/index';
+import type { AiInlineStatusMap } from './ai-inline-status';
 import { toasts } from '@/lib/utils/toast';
 
 interface UseThreadPollingOptions {
   threadId: string;
   lastMessageTimestampRef: React.MutableRefObject<string>;
-  aiInlineStatusRef: React.MutableRefObject<Record<string, 'pending' | 'failed' | 'limited'>>;
+  aiInlineStatusRef: React.MutableRefObject<AiInlineStatusMap>;
   liveMessagesRef: React.MutableRefObject<Message[]>;
   mapBackfillMessage: (m: import('@/modules/threads/service').ThreadMessage) => Message;
   mergeBackfill: (newMessages: Message[]) => boolean;

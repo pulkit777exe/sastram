@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
+import type { AiInlineStatusMap } from '@/hooks/thread/ai-inline-status';
 
 // Stable context: rarely-changing thread data (threadId, currentUser, callbacks)
 interface ThreadDataContextValue {
@@ -28,7 +29,7 @@ interface ThreadUIStateContextValue {
   collapsedIds: Set<string>;
   allMessages: Message[];
   animateMessageId: string | null;
-  aiInlineStatus: Record<string, 'pending' | 'failed' | 'limited'>;
+  aiInlineStatus: AiInlineStatusMap;
 }
 
 const ThreadDataContext = createContext<ThreadDataContextValue | null>(null);

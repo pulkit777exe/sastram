@@ -84,7 +84,7 @@ describe('Bookmarks action: setBookmarkStatus concurrency', () => {
       id: THREAD_ID,
       createdBy: USER_ID,
       visibility: 'PUBLIC',
-    })) as typeof prisma.thread.findUnique;
+    })) as unknown as typeof prisma.thread.findUnique;
 
     origUpsert = prisma.userBookmark.upsert;
     (prisma.userBookmark as unknown as Record<string, unknown>).upsert = (async (args: {
@@ -96,7 +96,7 @@ describe('Bookmarks action: setBookmarkStatus concurrency', () => {
         store.set(key, { ...args.create });
       }
       return { id: 'bookmark-id', ...store.get(key)! };
-    }) as typeof prisma.userBookmark.upsert;
+    }) as unknown as typeof prisma.userBookmark.upsert;
 
     origDelete = prisma.userBookmark.delete;
     (prisma.userBookmark as unknown as Record<string, unknown>).delete = (async (args: {
@@ -105,14 +105,14 @@ describe('Bookmarks action: setBookmarkStatus concurrency', () => {
       const key = `${args.where.userId_threadId.userId}:${args.where.userId_threadId.threadId}`;
       store.delete(key);
       return { id: '' };
-    }) as typeof prisma.userBookmark.delete;
+    }) as unknown as typeof prisma.userBookmark.delete;
 
     // setBookmarkStatus must never read before writing - fail loudly if it does.
     origFindUnique = prisma.userBookmark.findUnique;
     (prisma.userBookmark as unknown as Record<string, unknown>).findUnique = (async () => {
       findUniqueCalls += 1;
       throw new Error('read-then-write race');
-    }) as typeof prisma.userBookmark.findUnique;
+    }) as unknown as typeof prisma.userBookmark.findUnique;
   });
 
   afterEach(() => {

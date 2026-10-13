@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback, type RefObject } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
+import type { AiInlineStatusMap } from '@/hooks/thread/ai-inline-status';
 import type { MessageNode } from '@/modules/messages/types';
 import {
   buildMessageTree,
@@ -69,7 +70,7 @@ interface CommentTreeProps {
     image: string | null;
     role?: string;
   };
-  aiInlineStatus?: Record<string, 'pending' | 'failed' | 'limited'>;
+  aiInlineStatus?: AiInlineStatusMap;
   onOptimisticMessage?: (message: Message) => void;
   /**
    * Notified for messages posted from inline reply boxes, so the parent

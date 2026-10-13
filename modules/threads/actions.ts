@@ -70,8 +70,8 @@ export const createThreadAction = createServerAction(
     const safePollOpts = pollOptions ? pollOptions.map((o) => sanitizeUserContent(o).sanitized) : pollOptions;
 
     const expiryError =
-      pollExpiresAt && pollExpiresAt !== ''
-        ? validatePollExpiry(pollExpiresAt as Date)
+      pollExpiresAt instanceof Date
+        ? validatePollExpiry(pollExpiresAt)
         : null;
     if (expiryError) throw new AppError(expiryError, 'VALIDATION_ERROR', 400);
 
