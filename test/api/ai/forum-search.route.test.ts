@@ -32,9 +32,11 @@ describe('POST /api/ai/forum-search', () => {
         config: { exaMode: 'agentic', tavilyMode: 'search', sourceFilter: 'all', searchMode: 'standard' },
       },
     }));
-    const body = await res.json();
+    // Unauthenticated guard rejection on the SSE route is an `event: error`
+    // stream (real 401 status), not JSON — see lib/middleware/ai-guard-route.ts.
+    const text = await res.text();
     expect(res.status).to.equal(401);
-    expect(body.error?.code).to.equal('AUTH_REQUIRED');
+    expect(text).to.contain('event: error');
   });
 
   it('returns 415 when Content-Type is not application/json', async () => {

@@ -40,9 +40,8 @@ describe('buildTokens citation resolution (D8 render fix)', () => {
     const srcA = makeSource('src-a');
     const tokens = buildTokens('Claim [1] orphan [9].', [srcA], [{ marker: 1, sourceId: 'src-a' }]);
 
-    const chips = tokens.filter((t) => t.cite);
-    expect(chips).to.have.length(1);
-    expect(chips[0]?.id).to.equal('src-a');
+    const chips = tokens.filter((t) => t.cite).map((t) => t.cite?.id);
+    expect(chips).to.deep.equal(['src-a']);
     expect(tokens.every((t) => !t.text.includes('[9]'))).to.equal(true);
   });
 
