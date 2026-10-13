@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { requireSession } from '@/modules/auth';
 import { requireRole } from '@/modules/policy';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireWriteOrThrow } from '@/lib/thread-access';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
 import {
@@ -64,7 +64,7 @@ export const addTagToThreadAction = createServerAction(
   { schema: tagThreadSchema, actionName: 'addTagToThreadAction' },
   async ({ threadId, tagId }) => {
     const session = await requireSession();
-    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+    await requireWriteOrThrow(threadId, session.user.id, session.user.role);
     await addTagToThreadRepo(threadId, tagId);
     return actionSuccess(null);
   }
@@ -74,7 +74,7 @@ export const removeTagFromThreadAction = createServerAction(
   { schema: tagThreadSchema, actionName: 'removeTagFromThreadAction' },
   async ({ threadId, tagId }) => {
     const session = await requireSession();
-    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+    await requireWriteOrThrow(threadId, session.user.id, session.user.role);
     await removeTagFromThreadRepo(threadId, tagId);
     return actionSuccess(null);
   }
@@ -84,7 +84,7 @@ export const getThreadTagsAction = createServerAction(
   { schema: z.object({ threadId: z.string().cuid() }), actionName: 'getThreadTagsAction' },
   async ({ threadId }) => {
     const session = await requireSession();
-    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+    await requireWriteOrThrow(threadId, session.user.id, session.user.role);
     const tags = await getThreadTagsRepo(threadId);
     return actionSuccess(tags);
   }

@@ -3,7 +3,7 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { parseThreadDna } from '@/lib/schemas/thread-dna';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { logger } from '@/lib/infrastructure/logger';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ const paramsSchema = z.object({ threadId: z.string().cuid() });
 export const POST = withErrorHandling(async (_: Request, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
   const { threadId } = paramsSchema.parse(await context!.params);
-  await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
+  await requireReadOrThrow(threadId, session.user.id, session.user.role as never);
 
   const thread = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { threadDna: true, name: true } });
   if (!thread?.threadDna) return NextResponse.json(fail('NOT_FOUND', 'No DNA'), { status: HTTP_STATUS.NOT_FOUND });

@@ -6,8 +6,8 @@ export {
   isAdminUser,
   assertAdmin,
   assertAdminOrThrow,
-  requireThreadAccessOrThrow,
-  requireThreadWriteOrThrow,
+  requireReadOrThrow,
+  requireWriteOrThrow,
 } from './session';
 
 export type { SessionUser, SessionPayload } from './session';

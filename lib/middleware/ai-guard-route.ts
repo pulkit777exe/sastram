@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { requireSessionOrThrow, type SessionPayload } from '@/modules/auth';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { getRequestIp } from '@/lib/utils/request-ip';
 import { checkAiGuards } from '@/lib/ai/guard';
@@ -89,7 +89,7 @@ function buildGuardError(
 
 async function checkThreadAccess(threadId: string, session: SessionPayload, sse: boolean): Promise<NextResponse | null> {
   try {
-    await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
+    await requireReadOrThrow(threadId, session.user.id, session.user.role);
     return null;
   } catch {
     if (sse) {

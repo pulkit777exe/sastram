@@ -3,7 +3,7 @@ import { enqueueJob } from '@/lib/services/queue';
 import { AIJobType } from '@/lib/queue/config';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { parseUserPreferences } from '@/lib/schemas/user-preferences';
 import { isSafePublicUrl, sanitizeUserContent } from '@/lib/services/content-safety';
@@ -19,7 +19,7 @@ const bodySchema = z.object({
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
   const { threadId } = paramsSchema.parse(await context!.params);
-  await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role as never);
+  await requireReadOrThrow(threadId, session.user.id, session.user.role as never);
 
   try {
     const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });

@@ -6,7 +6,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import { z } from 'zod';
 
 const scoreRequestSchema = z.object({
@@ -108,7 +108,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   if (!parsed.success) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid threadId'), { status: HTTP_STATUS.BAD_REQUEST });
   }
-  await requireThreadAccessOrThrow(parsed.data.threadId, session.user.id, session.user.role as never);
+  await requireReadOrThrow(parsed.data.threadId, session.user.id, session.user.role as never);
 
   const thread = await prisma.thread.findUnique({
     where: { id: parsed.data.threadId, deletedAt: null },

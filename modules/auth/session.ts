@@ -8,7 +8,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { AppError } from '@/lib/utils/errors';
 import { isAdmin } from '@/lib/config/permissions';
-import { requireThreadAccessOrThrow, requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow, requireWriteOrThrow } from '@/lib/thread-access';
 
 export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status' | 'preferences'>;
 
@@ -131,7 +131,7 @@ export async function requireSessionOrThrow(checkBanStatus = true): Promise<Sess
   return session;
 }
 
-export { requireThreadAccessOrThrow, requireThreadWriteOrThrow, isAdmin };
+export { requireReadOrThrow, requireWriteOrThrow, isAdmin };
 
 export function isAdminUser(user: SessionUser | undefined | null): boolean {
   return isAdmin(user?.role);

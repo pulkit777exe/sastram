@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postMessage } from '@/modules/messages/actions';
 import { ok, fail, errorCodeToStatus, HTTP_STATUS } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { AppError } from '@/lib/utils/errors';
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     if (validated instanceof NextResponse) return validated;
     const { threadId, rawContent, files } = validated;
 
-    await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+    await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
     const postFormData = await buildPostFormData(formData, threadId, rawContent, files);
 

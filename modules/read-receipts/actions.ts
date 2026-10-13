@@ -6,7 +6,7 @@ import { upsertThreadReadReceipt } from '@/modules/read-receipts/repository';
 import { logger } from '@/lib/infrastructure/logger';
 import { withValidation } from '@/lib/utils/server-action';
 import { actionSuccess } from '@/lib/actions/result';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 
 export const markThreadReadAction = withValidation(
   markThreadReadSchema,
@@ -14,7 +14,7 @@ export const markThreadReadAction = withValidation(
   async ({ threadId, lastReadMessageId }) => {
     try {
       const session = await requireSession();
-      await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
+      await requireReadOrThrow(threadId, session.user.id, session.user.role);
       await upsertThreadReadReceipt({
         threadId,
         userId: session.user.id,

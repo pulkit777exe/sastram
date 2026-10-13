@@ -5,7 +5,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { searchMentionUsersSchema } from '@/modules/messages/schemas';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { ROUTES } from '@/lib/config/routes';
 import { actionSuccess } from '@/lib/actions/result';
@@ -118,7 +118,7 @@ export const searchMentionUsers = createServerAction(
     const session = await requireSession(false);
 
     try {
-      await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
+      await requireReadOrThrow(threadId, session.user.id, session.user.role);
 
       const users = await prisma.user.findMany({
         where: {

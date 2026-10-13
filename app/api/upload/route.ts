@@ -3,7 +3,7 @@ import { uploadResponseSchema } from '@/lib/schemas/api';
 import { logger } from '@/lib/infrastructure/logger';
 import { ok, fail, withErrorHandling, HTTP_STATUS} from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { requireThreadWriteOrThrow } from '@/lib/thread-access';
+import { requireWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { store } from '@/lib/attachments';
 
@@ -43,7 +43,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Upload too large'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
-  await requireThreadWriteOrThrow(threadId, session.user.id, session.user.role);
+  await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
   // Deep Module: single seam hides validate→sniff→ext→put→moderate→rollback.
   // Previously 60 lines duplicated in /api/messages; now one call, atomic batch.

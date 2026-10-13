@@ -12,7 +12,7 @@ import { recordActivity } from '@/modules/activity/repository';
 import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
 import type { ReportCategory, ReportStatus, Role } from '@prisma/client';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import { actionSuccess } from '@/lib/actions/result';
 import { AppError } from '@/lib/utils/errors';
 import type { ActionErrorCode } from '@/lib/actions/result';
@@ -191,7 +191,7 @@ async function validateAndFetchReportContext(messageId: string, reporterId: stri
   if (message === null) {
     return { error: { data: null, error: 'Message not found', ok: false, errorCode: 'NOT_FOUND' } as const };
   }
-  await requireThreadAccessOrThrow(message.threadId, reporterId, reporterRole as Role);
+  await requireReadOrThrow(message.threadId, reporterId, reporterRole as Role);
   if (isOwnMessage(message.senderId, reporterId)) {
     return { error: { data: null, error: 'You cannot report your own message', ok: false, errorCode: 'FORBIDDEN' } as const };
   }

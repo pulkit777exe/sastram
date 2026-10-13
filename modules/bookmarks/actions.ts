@@ -13,7 +13,7 @@ import {
 import { createServerAction } from '@/lib/utils/server-action';
 import { paginationSchema, threadIdSchema } from '@/lib/utils/validation-common';
 import { actionSuccess } from '@/lib/actions/result';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import type { Role } from '@prisma/client';
 
 function revalidateBookmarkPaths() {
@@ -25,7 +25,7 @@ function revalidateBookmarkPaths() {
 }
 
 async function assertThreadAccess(threadId: string, userId: string, role: Role) {
-  await requireThreadAccessOrThrow(threadId, userId, role);
+  await requireReadOrThrow(threadId, userId, role);
 }
 
 export const getBookmarkedThreads = createServerAction(

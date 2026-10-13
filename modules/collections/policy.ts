@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AppError } from '@/lib/utils/errors';
-import { requireThreadAccessOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import type { Role } from '@prisma/client';
 
 export interface AddRefs {
@@ -44,7 +44,7 @@ export const prismaCollectionPolicy: CollectionPolicy = {
     const { threadId, sessionId, messageId } = refs;
 
     if (threadId) {
-      await requireThreadAccessOrThrow(threadId, userId, userRole as Role);
+      await requireReadOrThrow(threadId, userId, userRole as Role);
     }
 
     if (sessionId) {
@@ -63,7 +63,7 @@ export const prismaCollectionPolicy: CollectionPolicy = {
         select: { id: true, threadId: true },
       });
       if (!msg) throw new AppError('Message not found', 'NOT_FOUND', 404);
-      await requireThreadAccessOrThrow(msg.threadId, userId, userRole as Role);
+      await requireReadOrThrow(msg.threadId, userId, userRole as Role);
     }
   },
 
