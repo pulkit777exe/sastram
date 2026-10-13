@@ -14,6 +14,8 @@ interface UseThreadSyncOptions {
   hasMoreMessages: boolean;
   nextCursor: string | null;
   totalMessageCount: number;
+  /** Extra work per visible poll tick (e.g. poll refresh) — one shared clock. */
+  onPollTick?: () => Promise<void>;
 }
 
 export function useThreadSync({
@@ -24,6 +26,7 @@ export function useThreadSync({
   hasMoreMessages,
   nextCursor,
   totalMessageCount,
+  onPollTick,
 }: UseThreadSyncOptions) {
   const threadMessages = useThreadMessages({
     initialMessages,
@@ -55,6 +58,7 @@ export function useThreadSync({
     mapBackfillMessage: threadMessages.mapBackfillMessage,
     mergeBackfill: threadMessages.mergeBackfill,
     onAiStatusCleared: clearAiStatus,
+    onTickExtra: onPollTick,
   });
 
   return {

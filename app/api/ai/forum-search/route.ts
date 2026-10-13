@@ -14,7 +14,7 @@ import { persistSearchSession } from '@/modules/ai-search/repository';
 import { consumeIdempotencyKey } from '@/lib/services/idempotency';
 import { env } from '@/lib/config/env';
 import { sseChunk, blockedStream, sseHeaders } from '@/lib/utils/sse';
-import { refreshUserExpertise } from '@/lib/services/user-memory';
+import { getUserExpertiseLevel, refreshUserExpertise } from '@/lib/services/user-memory';
 import { prisma } from '@/lib/infrastructure/prisma';
 
 export const maxDuration = 30;
@@ -164,18 +164,6 @@ async function tryGetCachedResult(query: string, expertiseLevel?: string): Promi
   return readThroughCache(prismaSearchStore(), query, expertiseLevel);
 }
 
-/** User research personalization for cache keys + synthesis prompts. Loaded once per request, before any cache read. */
-async function loadExpertiseLevel(userId: string): Promise<string | undefined> {
-  try {
-    const u = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } });
-    const prefs = u?.preferences as unknown as { expertiseLevel?: string } | null;
-    return prefs?.expertiseLevel;
-  } catch (err) {
-    logger.debug('[forum-search] failed to load expertiseLevel', { error: err });
-    return undefined;
-  }
-}
-
 function buildCachedStream(cached: AISearchPipelineResult): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -287,7 +275,7 @@ function buildLiveStream(
 
         // Expertise is pre-loaded by the caller when available; fall back
         // to a load here so direct buildLiveStream callers keep working.
-        const expertiseLevel = params.expertiseLevel ?? (await loadExpertiseLevel(session.user.id));
+        const expertiseLevel = params.expertiseLevel ?? (await getUserExpertiseLevel(session.user.id));
 
         const searchKeys = {
           exa: params.keys.exaKey,
@@ -434,9 +422,9 @@ export async function POST(request: NextRequest) {
 
     const effectiveQuery = query;
     const hasHistory = conversationHistory !== undefined && conversationHistory.length > 0;
+    const expertiseLevel = await getUserExpertiseLevel(session.user.id);
 
     if (!hasHistory) {
-      const expertiseLevel = await loadExpertiseLevel(session.user.id);
       const cached = await tryGetCachedResult(query, expertiseLevel);
       if (cached) {
         return buildCachedStream(cached);
@@ -451,7 +439,7 @@ export async function POST(request: NextRequest) {
       query,
       sessionId,
       hasHistory,
-      expertiseLevel: await loadExpertiseLevel(session.user.id),
+      expertiseLevel,
     });
   } catch (error) {
     return mapTopLevelError(error);

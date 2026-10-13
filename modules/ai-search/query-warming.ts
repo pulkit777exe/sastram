@@ -6,6 +6,7 @@ import { prismaSearchStore } from '@/modules/ai-search/cache';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
+import { getUserExpertiseLevel } from '@/lib/services/user-memory';
 import { getEnv } from '@/lib/config/env';
 import type { SearchConfig } from '@/modules/ai-search/types';
 import type { SearchCtx, SearchStore } from '@/modules/ai-search/ports';
@@ -80,14 +81,14 @@ async function fetchRecentSessionsForWarming() {
         { lastPrewarmedAt: { lt: new Date(Date.now() - PREWARM_CONFIG.cooldownPeriod) } },
       ],
     },
-    select: { id: true, query: true, queryType: true },
+    select: { id: true, userId: true, query: true, queryType: true },
     orderBy: { createdAt: 'desc' },
     take: 10,
   });
   return recentSearches.filter((s) => s.query.length >= PREWARM_CONFIG.minQueryLength);
 }
 
-function buildWarmingCtx(keys: { exa: string; tavily: string; gemini: string }): SearchCtx {
+function buildWarmingCtx(keys: { exa: string; tavily: string; gemini: string }, expertise?: string): SearchCtx {
   return {
     llm: createKeyedLlm({ gemini: keys.gemini }),
     search: {
@@ -97,6 +98,7 @@ function buildWarmingCtx(keys: { exa: string; tavily: string; gemini: string }):
         return { sources, answer };
       },
     },
+    expertise,
   };
 }
 
@@ -112,7 +114,7 @@ async function prewarmOneQuery(
   ctx: SearchCtx,
   store: SearchStore
 ): Promise<PrewarmOutcome> {
-  const cached = await store.get(query);
+  const cached = await store.get(query, ctx.expertise);
   if (cached) {
     return 'cached';
   }
@@ -124,13 +126,14 @@ async function prewarmOneQuery(
   }
 
   const result = await executeAISearch(query, config, ctx);
-  await store.put(query, result, result.synthesis.queryType);
+  await store.put(query, result, result.synthesis.queryType, ctx.expertise);
   return 'warmed';
 }
 
 async function prewarmSingleSession(
-  search: { id: string; query: string; queryType: string | null },
-  stats: { prewarmed: number }
+  search: { id: string; userId: string; query: string; queryType: string | null },
+  stats: { prewarmed: number },
+  expertiseCache: Map<string, string | undefined>
 ): Promise<boolean> {
   const followUpQueries = generateFollowUpQueries(search.query, search.queryType || 'technical');
   const envConfig = getEnv();
@@ -141,13 +144,23 @@ async function prewarmSingleSession(
   };
   if (!keys.exa || !keys.tavily || !keys.gemini) return false;
 
+  // Warm under the session owner's expertise so keys match live reads.
+  // Memoized per warming run: same user with N sessions costs 1 user read.
+  let expertise: string | undefined;
+  if (expertiseCache.has(search.userId)) {
+    expertise = expertiseCache.get(search.userId);
+  } else {
+    expertise = await getUserExpertiseLevel(search.userId);
+    expertiseCache.set(search.userId, expertise);
+  }
+  const ctx = buildWarmingCtx(keys, expertise);
+
   const config: SearchConfig = {
     searchMode: 'standard',
     exaMode: 'instant',
     tavilyMode: 'search',
     sourceFilter: 'all',
   };
-  const ctx = buildWarmingCtx(keys);
   const store = prismaSearchStore();
 
   let capped = false;
@@ -184,9 +197,10 @@ export async function prewarmFollowUpQueries(): Promise<{
   try {
     const filteredSearches = await fetchRecentSessionsForWarming();
     stats.processed = filteredSearches.length;
+    const expertiseCache = new Map<string, string | undefined>();
     for (const search of filteredSearches) {
       try {
-        const capped = await prewarmSingleSession(search, stats);
+        const capped = await prewarmSingleSession(search, stats, expertiseCache);
         if (capped) {
           logger.warn('[query-warming] stopping early: spend cap reached');
           break;

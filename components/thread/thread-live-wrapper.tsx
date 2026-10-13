@@ -180,9 +180,9 @@ export function ThreadLiveWrapper({
     setTitle(nextTitle);
     setDescription(nextDescription);
   }, []);
-  // Poll UI state
+  // Poll UI state (refresh rides the shared poll tick — no second clock)
   const [showPoll, setShowPoll] = useState(false);
-  const { currentPoll, setCurrentPoll, pollResults, pollRefreshKey } = usePollRefresh({
+  const { currentPoll, setCurrentPoll, pollResults, pollRefreshKey, refreshPoll } = usePollRefresh({
     threadId,
     initialPoll: poll,
   });
@@ -203,6 +203,7 @@ export function ThreadLiveWrapper({
     hasMoreMessages: initialHasMore,
     nextCursor: initialNextCursor,
     totalMessageCount,
+    onPollTick: refreshPoll,
   });
   const {
     liveMessages,

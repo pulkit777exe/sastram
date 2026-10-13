@@ -14,6 +14,8 @@ interface UseThreadPollingOptions {
   mapBackfillMessage: (m: import('@/modules/threads/service').ThreadMessage) => Message;
   mergeBackfill: (newMessages: Message[]) => boolean;
   onAiStatusCleared?: (parentId: string) => void;
+  /** Extra work per visible tick (e.g. poll refresh) — shares the one scheduler. */
+  onTickExtra?: () => Promise<void>;
 }
 
 interface InternalPollingOptions extends UseThreadPollingOptions {
@@ -36,6 +38,7 @@ function syncThreadPolling(options: InternalPollingOptions): () => void {
     mergeBackfill,
     onAiStatusCleared,
     onStaleChange,
+    onTickExtra,
   } = options;
 
   let currentInterval = BASE_INTERVAL_MS;
@@ -103,7 +106,11 @@ function syncThreadPolling(options: InternalPollingOptions): () => void {
     const isFastMode = Object.values(aiInlineStatusRef.current).includes('pending');
     const delay = isFastMode ? FAST_INTERVAL_MS : currentInterval;
     timeoutId = setTimeout(async () => {
-      if (document.visibilityState === 'visible') await pollOnce();
+      if (document.visibilityState === 'visible') {
+        await pollOnce();
+        // Shared clock: extras (poll refresh) ride the same visible tick.
+        await onTickExtra?.().catch(() => {});
+      }
       scheduleNext();
     }, delay);
   }
@@ -127,7 +134,7 @@ function syncThreadPolling(options: InternalPollingOptions): () => void {
 }
 
 export function useThreadPolling(options: UseThreadPollingOptions): boolean {
-  const { threadId, lastMessageTimestampRef, aiInlineStatusRef, liveMessagesRef, mapBackfillMessage, mergeBackfill, onAiStatusCleared } = options;
+  const { threadId, lastMessageTimestampRef, aiInlineStatusRef, liveMessagesRef, mapBackfillMessage, mergeBackfill, onAiStatusCleared, onTickExtra } = options;
   const [isStale, setIsStale] = useState(false);
 
   useEffect(
@@ -140,9 +147,10 @@ export function useThreadPolling(options: UseThreadPollingOptions): boolean {
         mapBackfillMessage,
         mergeBackfill,
         onAiStatusCleared,
+        onTickExtra,
         onStaleChange: setIsStale,
       }),
-    [threadId, liveMessagesRef, mapBackfillMessage, mergeBackfill, lastMessageTimestampRef, aiInlineStatusRef, onAiStatusCleared]
+    [threadId, liveMessagesRef, mapBackfillMessage, mergeBackfill, lastMessageTimestampRef, aiInlineStatusRef, onAiStatusCleared, onTickExtra]
   );
 
   return isStale;

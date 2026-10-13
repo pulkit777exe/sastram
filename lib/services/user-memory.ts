@@ -3,6 +3,18 @@ import { parseUserPreferences } from '@/lib/schemas/user-preferences';
 
 const LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'] as const;
 
+/** Single-read accessor for a user's research personalization level. Shared by the forum-search route and query warming so cache keys agree. */
+export async function getUserExpertiseLevel(userId: string): Promise<string | undefined> {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } });
+    const prefs = parseUserPreferences((user?.preferences as unknown) ?? {});
+    const level = (prefs as unknown as { expertiseLevel?: string }).expertiseLevel;
+    return typeof level === 'string' && level.length > 0 ? level : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function refreshUserExpertise(userId: string): Promise<void> {
   try {
     const [threads, sessions] = await Promise.all([
