@@ -32,7 +32,7 @@ bun start           # Production server
 bun check:prod      # Production readiness checks
 
 # Testing & Linting
-bun test            # Mocha tests (63 files)
+bun test            # Mocha tests (64 files)
 bun test:e2e       # Playwright e2e tests (smoke + collections + thread-edit)
 bun typecheck      # TypeScript check
 bun lint          # ESLint
@@ -56,7 +56,7 @@ bun db:studio   # Prisma studio
 - `modules/` - Domain modules (24 feature modules)
 - `components/` - UI components
 - `prisma/` - Database schema (35 models)
-- `test/` - Mocha unit tests (63 files) + Playwright e2e
+- `test/` - Mocha unit tests (64 files) + Playwright e2e
 - `hooks/` - React hooks (chat, thread, AI streaming, preferences)
 
 ### Database Models

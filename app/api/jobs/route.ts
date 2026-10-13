@@ -11,8 +11,9 @@ export const maxDuration = 60;
 async function handleJob(body: string, request: NextRequest) {
   const messageId = request.headers.get('upstash-message-id');
   if (messageId) {
-    const isDuplicate = await deduplicateJob(messageId);
-    if (!isDuplicate) {
+    // deduplicateJob returns true when the job should run (first delivery).
+    const shouldRun = await deduplicateJob(messageId);
+    if (!shouldRun) {
       logger.info(`[jobs] Duplicate job ${messageId}, skipping`);
       return NextResponse.json({ ok: true, duplicate: true });
     }

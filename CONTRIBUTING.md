@@ -105,7 +105,7 @@ lib/          — Core utilities, services, infrastructure
 components/   — UI components
 hooks/        — React hooks (chat, thread, AI streaming, preferences)
 prisma/       — Database schema (35 models)
-test/         — Mocha unit tests (63 files) + Playwright e2e
+test/         — Mocha unit tests (64 files) + Playwright e2e
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for full architecture details.

@@ -227,3 +227,21 @@ If you want the architecture pass to land structural change: **C1** + **C2** + *
 | Prettier `--check` dirty in touched files | ⚠️ Pre-existing, left alone | All 9 files already dirty at HEAD; CI does not enforce `format:check`; whole-file rewrite would pollute diffs |
 | Secret hygiene | ✅ Checked | No `.env` tracked (only `.example`/`.test` placeholders); no `sk-live`/`AKIA`/Slack tokens in tracked files; Gitleaks enforces on push via CI |
 | Full suite after fixes | ✅ Green | 478 passing / 12 pending / 0 failing; `tsc` clean; `eslint` clean |
+
+## 2026-10-13 security pass (50 routes + render + CSP)
+
+| Area | Result |
+|---|---|
+| Route auth coverage (50 files) | ✅ All state-changing routes require session/guard/handler; only OTP verify, health, csp-report are intentionally public, all IP-rate-limited |
+| IDOR (threads, polls, collections, AI summaries, search-history) | ✅ `requireRead/ManageOrThrow` or owner assertions on every object route; `guardAiRoute(threadId)` enforces read; `getSearchSession`/`softDeleteSearchSession` scoped by `session.user.id` |
+| SSRF (`link-preview`) | ✅ `isSafePublicUrl` per redirect hop, manual redirect handling (max 3), 5s timeouts, IP rate limit; private/decimal/hex/octal/metadata hosts blocked |
+| XSS (message render) | ✅ Custom React renderer (auto-escaped) + `isSafeUrl` scheme gate (`http/https/mailto`); server `sanitize-html` allowlist with `javascript:`/`data:` downgrade; no `dangerouslySetInnerHTML` |
+| Uploads | ✅ Magic-byte sniffing + declared-type match + MIME allowlist (no SVG) + size/count caps + thread-write check + AI image moderation |
+| SQL injection | ✅ Prisma parameterized queries only; `$queryRaw` uses template tags + `Prisma.join`, no string-built SQL |
+| Cron / jobs auth | ✅ `verifyCronAuth` timing-safe, fail-closed without secret in prod; QStash `Receiver.verify` fail-closed; job dedup via Redis `SET NX` (var renamed `isDuplicate` → `shouldRun`, logic unchanged) |
+| OTP abuse | ✅ IP-scoped `auth` rate-limit buckets on send + check; generic error messages (no account-oracle) |
+| Secrets | ✅ No `.env` tracked; `.example` blank; no hardcoded keys in tree; Gitleaks on push |
+| CSP (`proxy.ts`) | ✅ Fixed: added `worker-src 'self' blob:` (blob-Worker sandbox was dead in prod, silently falling back to main-thread eval), `object-src 'none'`; removed dev LAN IP; `buildCsp` exported with 4 locking tests (`test/proxy-csp.test.ts`) |
+| Accepted risks | Click-to-run snippets execute poster code after explicit Run click (Worker has no DOM; `fetch` same-origin possible post-click — self-XSS class, code visible before run); `braces` dev-only CVE (no fix published) |
+
+Verification: `tsc` clean, `eslint` clean, 482 passing / 12 pending / 0 failing (64 test files).
