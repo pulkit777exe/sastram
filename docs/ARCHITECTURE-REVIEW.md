@@ -246,6 +246,41 @@ If you want the architecture pass to land structural change: **C1** + **C2** + *
 
 Verification: `tsc` clean, `eslint` clean, 482 passing / 12 pending / 0 failing (64 test files).
 
+## 2026-10-14 implementation log (performance pass)
+
+| Area | Change | Evidence |
+|---|---|---|
+| Indexes (P5+P2) | Migration `20261014000000_perf_hot_path_indexes`: pg_trgm GIN on Thread(name, description, aiSummary), Message(content), User(name, bio) for ILIKE search; composites [deletedAt,visibility,updatedAt], [deletedAt,messageCount], Notification[userId,isRead,type], Report[status,category]+[status,updatedAt], Appeal[userId,status], UserBan[userId,isActive,threadId] (widens, covers new findActiveBan), ThreadInvitation[email], Poll[isMarket,threadId]; dropped 11 redundant leftmost-prefix singles. Authored offline — apply with `bun db:migrate`, verify with EXPLAIN. | prisma/schema.prisma + migration.sql (`prisma validate` clean) |
+| Message page (P3) | Dropped unbounded `poll.votes` include (no consumer reads message.poll.votes; tallies via getPollResults) + parallelized reactions/liked tail (was 1 serial RTT). | modules/threads/threads-read/repository.ts |
+| Search (P1) | Window `offset+limit+1` instead of `max(limit*5,200)` + dropped always-discarded parallel count in searchThreads/searchMessages/searchUsers (6 queries → 3 per unified search, ~10x fewer rows). | modules/search/repository.ts |
+| Post path (P4) | `createMentionsForMessage` accepts `mentionsValidated` (skips 3rd same-ids existence query); moderation parent/history/thread fetches parallelized (3 serial → 1 round trip). | modules/messages/actions/{mentions,post}.ts, moderation-hooks.ts |
+| Cron (P6) | Counter families run in parallel (5 sequential full-table passes → 1 wave); expertise refresh in allSettled chunks of 10 (50 serial cycles → 5 waves); report-context ban count skipped unless history capped at 5. | counter-reconciliation.ts, cron/update-threads/route.ts, reports/actions.ts |
+| Graph (C2) | maxSim precomputed per link-set (was O(N×L) filter/reduce per node per 60fps frame). | ForceGraphCanvas.tsx |
+| Polling (C4) | refreshPoll gates terminal polls (inactive/expired skip 2 actions/tick); summary + resolution intervals pause in background tabs without burning timeout budget. | use-poll-refresh.ts, thread-summary-card.tsx, ThreadResolutionCard.tsx |
+| Clock (C1) | Shared 30s `useNow` ticker (components/ui/use-now.ts): TimeAgo, both poll clocks, resolution card off per-instance intervals (50+ timers → 1). 4 new tests. | TimeAgo.tsx, poll-panel/display.tsx, ThreadResolutionCard.tsx, test/use-now.test.tsx |
+| Images (C6) | `sizes` on preview grid + banner; lazy on unoptimized scraper images. | ExternalLinkPreview.tsx, profile-header.tsx |
+
+Deferred (surveyed, not taken): trending-score SQL rewrite (interface change), SSE token throttle + wrapper memoization (needs UX verification), framer-motion removal from poll components (visual regression risk), sampled counter reconciliation (cadence semantics).
+
+Verification: `tsc` clean, `eslint` clean, 526 passing / 12 pending / 0 failing (was 522/12/0).
+
+## 2026-10-14 implementation log (improve-codebase-architecture: Security + API + Opensource)
+
+| Candidate | Status | Evidence |
+|---|---|---|
+| S1 AI-budget guard | ✅ Deepened (deletions) | Deleted dead `rateLimitFor` (lib/services/rate-limit.ts) + dead read-only `checkAiSpendCap` (lib/services/ai-spend-cap.ts); zero callers, zero tests; fixed stale `checkAiSpendCap` comment in ai-inline.ts. `lib/ai/guard.ts` confirmed as the canonical deep module (no new module needed). similar/route.ts GET hand-roll verified correct (pure read, no AI spend). |
+| S2 Thread access + Ban | ✅ Implemented | `ThreadAccessStore.findActiveBan` (thread-scoped OR site-wide, expiry-aware) + prisma/fake adapters; single `evaluateWrite` shared by `canWrite`/`requireWrite` (removed inline duplication); banned writers denied even as creator/on PUBLIC, reads unaffected, MODERATOR/ADMIN bypass. 8 new tests (test/thread-access.test.mts). |
+| S3 Exactly-once seam | ✅ Implemented | `claimOnce(key, scope, ttl?)` + `ttlForScope` in lib/services/idempotency.ts; job-dedup.ts is now a namespaced-key adapter over it (fail-open on Redis errors, was: threw → jobs 500). 6 new tests (test/exactly-once.test.mts). Exposed latent `.env`-over-`.env.test` merge via prisma.ts dotenv import (documented in test). |
+| A1 Collection handler | ✅ Implemented | handler.ts owns `parseWith`/`readJsonBody`/`parseJsonBody`/`parseRouteId`/`parseQueryParam` (throw VALIDATION_ERROR 400 via withErrorHandling); all 8 collections routes migrated off hand-rolled safeParse plumbing. 8 new tests (test/collections-handler.test.mts). |
+| A2 forum-search fat route | ✅ Implemented | 446 → 239 lines. Pure/protocol helpers extracted to modules/ai-search/route-helpers.ts (schema, key resolution w/ injectable fallbacks, pure message builders, cache/stream builders, error mappers; mapTopLevelError now passes AppError statuses through instead of flattening to 500). 12 new direct unit tests, zero require.cache mocks. |
+| A3 v1 moderation seam | ✅ Implemented | appeals/submit drops duplicate schema (min 1 vs action min 10) + FormData translation, calls `submitAppeal({reason, reportId})` directly; review route drops inline status map. Both use shared `errorCodeToStatus` (added CONFLICT → 409 to lib/utils/api-response.ts). Action validation failures now 400, never 500. |
+| A4 Poll resolve | ✅ Implemented | New `resolveMarketPollAction` owns the Poll Market invariant (existence/market/active/bounds/manage); route is transport-only (session/ratelimit/delegate). `getPollById` select gains `isMarket`. Client (poll-display) only checks res.ok + refetches — response-shape change safe. |
+| O1 Contributor entry | ✅ Implemented | docker-compose: removed dead REDIS_URL/REDIS_HOST/REDIS_PORT + redis from app deps (zero code readers; redis kept under `tools` profile for experimentation); README/CONTRIBUTING mention `bun db:seed`, drop drifting counts, document Upstash-or-in-memory truth. |
+| O2 Env collapse | ✅ Implemented | Schema gains DATABASE_URL_UNPOOLED/QSTASH_DEV/BLOB_URL/BETTER_AUTH_API_KEY; queue.ts, messages/schemas.ts, cron-auth.ts read via `env` (no raw reads); check-production-readiness.ts derives base verdict from `validateEnv()`, keeps deployment-only checks (CRON_SECRET required, prod-https, pairs, neon heuristics). New `resetEnvCache()` test seam; fixed `NODE_ENV = undefined` string-pollution in auth/cron tests; replaced env.ts require.cache eviction (module-instance fracture) with the reset seam. |
+| O3 Public seam + seed | ✅ Implemented | RESEND_FROM default + .env.example neutralized to example.com; seed uses domain `buildThreadSlug` (deleted cloned slugify) and drops dead `icon` keys (no such column). |
+
+Verification: `tsc` clean, `eslint` clean, 522 passing / 12 pending / 0 failing (was 490/12/0).
+
 ## 2026-10-13 accepted-risk fixes (sandbox + audit gate)
 
 | Risk | Fix | Evidence |
