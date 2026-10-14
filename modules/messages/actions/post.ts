@@ -164,6 +164,8 @@ async function finalizePostSuccess(args: {
     content: message.content,
     threadSlug: message.thread?.slug ?? null,
     sideEffects: infraMessageSideEffects,
+    // Validated above via filterValidMentionIds — same request, same ids.
+    mentionsValidated: true,
   });
 
   const aiResult = await queueAiInlineIfRequested({

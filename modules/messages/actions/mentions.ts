@@ -52,6 +52,7 @@ export async function createMentionsForMessage({
   content,
   threadSlug,
   sideEffects,
+  mentionsValidated,
 }: {
   messageId: string;
   threadId: string;
@@ -64,15 +65,26 @@ export async function createMentionsForMessage({
   content: string;
   threadSlug: string | null;
   sideEffects: MessageSideEffectsPort;
+  /**
+   * Set when the caller already validated these ids against live users
+   * (post.ts filterValidMentionIds). Skips the duplicate existence query;
+   * createMany skipDuplicates below stays as the race guard.
+   */
+  mentionsValidated?: boolean;
 }) {
   if (mentions.length === 0) return;
 
-  // Validate mentionIds exist and are not soft-deleted — prevents FK errors and mention injection
-  const existing = await prisma.user.findMany({
-    where: { id: { in: mentions }, deletedAt: null },
-    select: { id: true },
-  });
-  const validIds = existing.map((u) => u.id);
+  // Validate mentionIds exist and are not soft-deleted — prevents FK errors and mention injection.
+  // Skipped when the caller validated at the module seam (same request, same ids).
+  const validIds =
+    mentionsValidated === true
+      ? mentions
+      : (
+          await prisma.user.findMany({
+            where: { id: { in: mentions }, deletedAt: null },
+            select: { id: true },
+          })
+        ).map((u) => u.id);
   if (validIds.length === 0) return;
 
   const mentionerName = mentionedBy.name ?? mentionedBy.email;

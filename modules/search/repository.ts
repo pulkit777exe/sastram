@@ -116,28 +116,30 @@ export async function searchThreads(
     const tokens = tokenize(trimmed);
     const where = await buildThreadSearchWhere(trimmed, threadIds, viewerUserId, viewerRole);
 
-    const candidateLimit = Math.max(limit * 5, 200);
-    const [candidates, total] = await Promise.all([
-      prisma.thread.findMany({
-        where,
-        include: {
-          creator: { select: { id: true, name: true, image: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: candidateLimit,
-      }),
-      prisma.thread.count({ where }),
-    ]);
+    // Window, not pool: fetch only the page plus one probe row. The old
+    // max(limit*5, 200) pulled up to 200 full rows + a join to render 20,
+    // plus a parallel count that was discarded whenever any row scored > 0.
+    const window = offset + limit + 1;
+    const candidates = await prisma.thread.findMany({
+      where,
+      include: {
+        creator: { select: { id: true, name: true, image: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: window,
+    });
 
     const scored = candidates
       .map((t) => ({ thread: t, score: scoreThread(t, tokens.length ? tokens : [trimmed.toLowerCase()]) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    const sortedTotal = scored.length;
     const page = scored.slice(offset, offset + limit).map((x) => x.thread);
+    // Exact when the window wasn't exhausted; "maybe more" at the edge
+    // (previously exact via a second full-count scan on every request).
+    const hasMore = scored.length > offset + limit || candidates.length === window;
 
-    return { threads: page, total: sortedTotal || total, hasMore: offset + limit < (sortedTotal || total) };
+    return { threads: page, total: scored.length, hasMore };
   } catch (error) {
     logger.error('[searchThreads]', error);
     return { threads: [], total: 0, hasMore: false };
@@ -189,27 +191,26 @@ export async function searchMessages(
     if (trimmed.length < 2) return { messages: [], total: 0, hasMore: false };
     const tokens = tokenize(trimmed);
     const where = await buildMessageSearchWhere(trimmed, threadId, viewerUserId, viewerRole);
-    const candidateLimit = Math.max(limit * 5, 200);
-    const [candidates, total] = await Promise.all([
-      prisma.message.findMany({
-        where,
-        include: {
-          sender: { select: { id: true, name: true, image: true } },
-          thread: { select: { id: true, name: true, slug: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: candidateLimit,
-      }),
-      prisma.message.count({ where }),
-    ]);
+    // Window, not pool (see searchThreads): page + one probe row, no
+    // discarded parallel count.
+    const window = offset + limit + 1;
+    const candidates = await prisma.message.findMany({
+      where,
+      include: {
+        sender: { select: { id: true, name: true, image: true } },
+        thread: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: window,
+    });
     const effectiveTokens = tokens.length ? tokens : [trimmed.toLowerCase()];
     const scored = candidates
       .map((m) => ({ message: m, score: scoreMessage(m, effectiveTokens) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score);
-    const sortedTotal = scored.length;
     const page = scored.slice(offset, offset + limit).map((x) => x.message);
-    return { messages: page, total: sortedTotal || total, hasMore: offset + limit < (sortedTotal || total) };
+    const hasMore = scored.length > offset + limit || candidates.length === window;
+    return { messages: page, total: scored.length, hasMore };
   } catch (error) {
     logger.error('[searchMessages]', error);
     return { messages: [], total: 0, hasMore: false };
@@ -246,31 +247,30 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
       OR: or,
     };
 
-    const candidateLimit = Math.max(limit * 5, 200);
-    const [candidates, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          image: true,
-          bio: true,
-          followerCount: true,
-          followingCount: true,
-        },
-        orderBy: [{ followerCount: 'desc' }],
-        take: candidateLimit,
-      }),
-      prisma.user.count({ where }),
-    ]);
+    // Window, not pool (see searchThreads): page + one probe row, no
+    // discarded parallel count.
+    const window = offset + limit + 1;
+    const candidates = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        image: true,
+        bio: true,
+        followerCount: true,
+        followingCount: true,
+      },
+      orderBy: [{ followerCount: 'desc' }],
+      take: window,
+    });
     const effectiveTokens = tokens.length ? tokens : [trimmed.toLowerCase()];
     const scored = candidates
       .map((u) => ({ user: u, score: scoreUser(u, effectiveTokens) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score);
-    const sortedTotal = scored.length;
     const page = scored.slice(offset, offset + limit).map((x) => x.user);
-    return { users: page, total: sortedTotal || total, hasMore: offset + limit < (sortedTotal || total) };
+    const hasMore = scored.length > offset + limit || candidates.length === window;
+    return { users: page, total: scored.length, hasMore };
   } catch (error) {
     logger.error('[searchUsers]', error);
     return { users: [], total: 0, hasMore: false };

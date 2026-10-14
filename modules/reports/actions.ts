@@ -355,7 +355,7 @@ async function fetchReportWithRelations(reportId: string) {
 
 async function fetchReportContext(report: NonNullable<Awaited<ReturnType<typeof fetchReportWithRelations>>>, reportId: string) {
   const senderId = report.message.senderId!;
-  return Promise.all([
+  const [surroundingMessages, violationHistory, similarReports, userReportCount] = await Promise.all([
     prisma.message.findMany({
       where: {
         threadId: report.message.thread.id,
@@ -379,9 +379,15 @@ async function fetchReportContext(report: NonNullable<Awaited<ReturnType<typeof 
       where: { messageId: report.messageId, id: { not: reportId } },
       select: { id: true, category: true, status: true, createdAt: true },
     }),
-    prisma.userBan.count({ where: { userId: senderId } }),
     prisma.report.count({ where: { message: { senderId }, status: 'RESOLVED' } }),
   ]);
+  // Ban total without a second same-table query: the 5-row history is exact
+  // unless capped (5+ bans — only then pay for the count).
+  const userBanCount =
+    violationHistory.length < 5
+      ? violationHistory.length
+      : await prisma.userBan.count({ where: { userId: senderId } });
+  return [surroundingMessages, violationHistory, similarReports, userBanCount, userReportCount] as const;
 }
 
 function calculateTrustScore(accountAgeDays: number, banCount: number, reportCount: number): number {

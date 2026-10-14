@@ -37,6 +37,11 @@ export function usePollRefresh({ threadId, initialPoll }: UsePollRefreshOptions)
   const refreshPoll = useCallback(async () => {
     const poll = pollRef.current;
     if (!poll || cancelledRef.current) return;
+    // Terminal states never change on tick: closed/resolved polls and past
+    // expiry gate out (results for these load once via the display's mount
+    // fetch). Saves 2 server actions per tick per open thread.
+    if (!poll.isActive) return;
+    if (poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now()) return;
     try {
       const [freshPollResult, freshResultsResult] = await Promise.all([
         getPollByThreadAction({ threadId }),

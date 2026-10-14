@@ -17,26 +17,28 @@ export async function moderateIncomingMessage(args: {
   poll?: { question: string; options: string[]; expiresAt?: string | Date | null } | null;
   sideEffects?: MessageSideEffectsPort;
 }) {
-  if (args.parentId) {
-    const parent = await prisma.message.findUnique({
-      where: { id: args.parentId },
-      select: { threadId: true },
-    });
-    if (parent && parent.threadId !== args.threadId) {
-      throw new AppError('Parent message belongs to a different thread', 'VALIDATION_ERROR', 400);
-    }
+  // Independent reads — one round trip instead of three serial ones.
+  const [parent, recentHistory, thread] = await Promise.all([
+    args.parentId
+      ? prisma.message.findUnique({
+          where: { id: args.parentId },
+          select: { threadId: true },
+        })
+      : Promise.resolve(null),
+    prisma.message.findMany({
+      where: { threadId: args.threadId, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: RECENT_HISTORY_SIZE,
+      select: { id: true, content: true, senderId: true, createdAt: true },
+    }),
+    prisma.thread.findFirst({
+      where: { id: args.threadId, deletedAt: null },
+      select: { id: true, name: true, slug: true, visibility: true, createdBy: true },
+    }),
+  ]);
+  if (parent && parent.threadId !== args.threadId) {
+    throw new AppError('Parent message belongs to a different thread', 'VALIDATION_ERROR', 400);
   }
-  const recentHistory = await prisma.message.findMany({
-    where: { threadId: args.threadId, deletedAt: null },
-    orderBy: { createdAt: 'desc' },
-    take: RECENT_HISTORY_SIZE,
-    select: { id: true, content: true, senderId: true, createdAt: true },
-  });
-
-  const thread = await prisma.thread.findFirst({
-    where: { id: args.threadId, deletedAt: null },
-    select: { id: true, name: true, slug: true, visibility: true, createdBy: true },
-  });
 
   const messageLike = {
     id: '',

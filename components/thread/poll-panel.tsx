@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { useNow } from '@/components/ui/use-now';
 import { PollDisplay } from '@/components/thread/poll-display';
 import { createPollAction, closePollAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -44,11 +45,8 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
   const [expiresAt, setExpiresAt] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
+  // Shared 30s tab clock — was a per-instance interval.
+  const now = useNow();
 
   // Sync internal poll state when parent provides fresh data (from poll tick)
   useEffect(() => {

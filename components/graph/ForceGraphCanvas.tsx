@@ -33,6 +33,17 @@ export function ForceGraphCanvas({
     return m;
   }, [links]);
 
+  // Per-node max similarity, precomputed once per link-set. The painter runs
+  // ~60fps and used to filter all links per node per frame (O(N×L)/frame).
+  const maxSim = React.useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of links) {
+      if (l.similarity > (m.get(l.source) ?? 0)) m.set(l.source, l.similarity);
+      if (l.similarity > (m.get(l.target) ?? 0)) m.set(l.target, l.similarity);
+    }
+    return m;
+  }, [links]);
+
   const filteredIds = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return null;
@@ -43,11 +54,11 @@ export function ForceGraphCanvas({
   const degreeRef = React.useRef(degree);
   const filteredIdsRef = React.useRef(filteredIds);
   const hoverRef = React.useRef(hover);
-  const linksRef = React.useRef(links);
+  const maxSimRef = React.useRef(maxSim);
   React.useEffect(() => { degreeRef.current = degree; }, [degree]);
   React.useEffect(() => { filteredIdsRef.current = filteredIds; }, [filteredIds]);
   React.useEffect(() => { hoverRef.current = hover; }, [hover]);
-  React.useEffect(() => { linksRef.current = links; }, [links]);
+  React.useEffect(() => { maxSimRef.current = maxSim; }, [maxSim]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -105,8 +116,7 @@ export function ForceGraphCanvas({
           const curFiltered = filteredIdsRef.current;
           const isFiltered = curFiltered ? !curFiltered.has(n.id) : false;
           const isHover = hoverRef.current?.id === n.id;
-          const curLinks = linksRef.current;
-          const maxSim = curLinks.filter((l) => l.source === n.id || l.target === n.id).reduce((acc, cur) => Math.max(acc, cur.similarity), 0);
+          const maxSim = maxSimRef.current.get(n.id) ?? 0;
           const base = maxSim >= 0.85 ? '#10b981' : maxSim >= 0.7 ? '#f59e0b' : '#94a3b8';
           const fill = isFiltered ? '#cbd5e1' : base;
           ctx.globalAlpha = isFiltered ? 0.35 : 1;

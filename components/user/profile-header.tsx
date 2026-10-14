@@ -59,6 +59,7 @@ export function ProfileHeader({
             src={user.bannerUrl}
             alt={`${displayName}'s banner`}
             fill
+            sizes="100vw"
             className="object-cover"
             priority
           />

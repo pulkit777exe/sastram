@@ -319,13 +319,24 @@ export async function GET(req: NextRequest) {
         select: { id: true },
         take: 50,
       });
-      for (const u of activeUserIds) {
-        try {
-          await refreshUserExpertise(u.id);
-          expertiseRefreshed++;
-        } catch (err) {
-          logger.debug('[cron/update-threads] refreshUserExpertise failed', { userId: u.id, error: err });
-        }
+      // Chunked parallel refresh (10 at a time): 50 serial user-read+write
+      // cycles dominated cron wall-time. allSettled so one user's failure
+      // never aborts the rest.
+      const CHUNK = 10;
+      for (let i = 0; i < activeUserIds.length; i += CHUNK) {
+        const outcomes = await Promise.allSettled(
+          activeUserIds.slice(i, i + CHUNK).map((u) => refreshUserExpertise(u.id))
+        );
+        outcomes.forEach((outcome, j) => {
+          if (outcome.status === 'fulfilled') {
+            expertiseRefreshed++;
+          } else {
+            logger.debug('[cron/update-threads] refreshUserExpertise failed', {
+              userId: activeUserIds[i + j]?.id,
+              error: outcome.reason,
+            });
+          }
+        });
       }
       if (expertiseRefreshed > 0) {
         logger.info('[cron/update-threads] expertise refreshed', { expertiseRefreshed });

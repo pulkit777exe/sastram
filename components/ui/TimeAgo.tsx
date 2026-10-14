@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { useMemo } from 'react';
+import { formatDistance } from 'date-fns';
+import { useNow } from './use-now';
 
 interface TimeAgoProps {
   date: Date | string | number;
@@ -29,20 +30,14 @@ function parseTimestamp(value: Date | string | number): Date {
 }
 
 export function TimeAgo({ date, className }: TimeAgoProps) {
-  const [label, setLabel] = useState(() =>
-    formatDistanceToNow(parseTimestamp(date), { addSuffix: true })
-  );
-
-  useEffect(() => {
-    const update = () => setLabel(formatDistanceToNow(parseTimestamp(date), { addSuffix: true }));
-    update();
-    const id = setInterval(update, 60_000);
-    return () => clearInterval(id);
-  }, [date]);
+  // Re-renders on the shared 30s tab clock — no per-instance timer.
+  const now = useNow();
+  const parsed = useMemo(() => parseTimestamp(date), [date]);
+  const label = formatDistance(parsed, now, { addSuffix: true });
 
   return (
     <time
-      dateTime={parseTimestamp(date).toISOString()}
+      dateTime={parsed.toISOString()}
       className={className}
       suppressHydrationWarning
       title={label}

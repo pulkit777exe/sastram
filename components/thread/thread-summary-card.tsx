@@ -58,6 +58,10 @@ export function ThreadSummaryCard({ threadId, initialSummary, messageCount, clas
 
   // Lightweight poll: one small JSON column, not a full RSC page refresh.
   const pollOnce = useCallback(async function () {
+    // Background tabs keep the timeout but skip the fetch — the next visible
+    // tick retries. (The shared thread scheduler already pauses hidden; this
+    // independent card interval did not.)
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     try {
       const res = await fetch(`/api/ai/thread-summary?threadId=${encodeURIComponent(threadId)}`);
       if (!res.ok) return;

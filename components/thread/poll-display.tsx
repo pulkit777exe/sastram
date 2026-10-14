@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNow } from '@/components/ui/use-now';
 import { voteOnPollAction, getUserVoteAction, getPollResultsAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
 import { CheckCircle2, BarChart3 } from 'lucide-react';
@@ -10,8 +11,6 @@ import { TimeAgo } from '@/components/ui/TimeAgo';
 import { Button } from '@/components/ui/button';
 import type { PollResults } from '@/modules/polls/types';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
-
-const POLL_EXPIRY_TICK_MS = 30_000;
 
 interface PollDisplayProps {
   poll: {
@@ -133,11 +132,8 @@ export function PollDisplay({ poll, pollResults, refreshKey }: PollDisplayProps)
     }
   };
 
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), POLL_EXPIRY_TICK_MS);
-    return () => clearInterval(id);
-  }, []);
+  // Shared 30s tab clock — was a per-instance interval.
+  const now = useNow();
 
   function isPollExpired(expiresAt: Date | null, currentTime: number): boolean {
     if (!expiresAt) return false;

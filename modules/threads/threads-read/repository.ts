@@ -200,7 +200,6 @@ function mapPoll(
     isActive: boolean;
     expiresAt: Date | null;
     createdAt: Date;
-    votes: Array<{ id: string; pollId: string; userId: string; optionIndex: number; createdAt: Date }>;
   } | null
 ): ThreadMessage['poll'] {
   if (!poll) return null;
@@ -211,7 +210,6 @@ function mapPoll(
     isActive: poll.isActive,
     expiresAt: poll.expiresAt,
     createdAt: poll.createdAt,
-    votes: poll.votes,
   };
 }
 
@@ -341,7 +339,10 @@ export async function getThreadMessagesPaginated(
     include: {
       sender: { select: { id: true, name: true, image: true } },
       attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
-      poll: { include: { votes: true } },
+      // No votes: poll tallies come from the getPollResults groupBy seam.
+      // The unbounded include pulled every vote row for every poll on the
+      // page (50 msgs × N votes) while no consumer reads message.poll.votes.
+      poll: { select: { id: true, question: true, options: true, isActive: true, expiresAt: true, createdAt: true } },
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: effectiveLimit + 1,
@@ -356,8 +357,12 @@ export async function getThreadMessagesPaginated(
   const hasMore = messages.length > effectiveLimit;
   const page = hasMore ? messages.slice(0, effectiveLimit) : messages;
   const messageIds = page.map((m) => m.id);
-  const reactionsByMessage = await fetchReactionsByMessage(messageIds);
-  const likedByUser = userId ? await fetchLikedMessageIds(messageIds, userId) : undefined;
+  // Parallel tail: reactions aggregate and the viewer's liked set are
+  // independent (were sequential — one avoidable RTT per page).
+  const [reactionsByMessage, likedByUser] = await Promise.all([
+    fetchReactionsByMessage(messageIds),
+    userId ? fetchLikedMessageIds(messageIds, userId) : Promise.resolve(undefined),
+  ]);
 
   return {
     messages: page.map((m) => mapDbMessageToThreadMessage(m as never, reactionsByMessage, likedByUser)),

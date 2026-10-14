@@ -70,6 +70,8 @@ export function ExternalLinkPreview({ url, compact }: { url?: string | null; com
                 alt=""
                 fill
                 unoptimized
+                sizes="(max-width: 640px) 100vw, 33vw"
+                loading="lazy"
                 className="object-cover"
                 referrerPolicy="no-referrer"
                 onError={() => setImgErrors((prev) => ({ ...prev, [i]: true }))}

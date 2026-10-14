@@ -3,12 +3,13 @@
 // KISS: while the resolution score is pending, poll a lightweight GET
 // endpoint (one JSON row) instead of router.refresh() — the old approach
 // re-rendered the entire thread page every 4s just to catch one number.
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VerifyNowButton } from '@/components/thread/verify-now-button';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
 import { DetailCard } from '@/components/ui/detail-card';
+import { useNow } from '@/components/ui/use-now';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 interface ThreadResolutionCardProps {
@@ -17,20 +18,6 @@ interface ThreadResolutionCardProps {
   lastVerifiedAt: Date | string | null;
   verifiedAt?: Date | string | null;
   verifiedBy?: string | null;
-}
-
-let cachedSnapshot = Date.now();
-
-function subscribeToClock(cb: () => void) {
-  const id = setInterval(() => {
-    cachedSnapshot = Date.now();
-    cb();
-  }, 60_000);
-  return () => clearInterval(id);
-}
-
-function getClockSnapshot() {
-  return cachedSnapshot;
 }
 
 function getLabel(score: number): string {
@@ -85,7 +72,8 @@ export default function ThreadResolutionCard({
   verifiedAt,
   verifiedBy,
 }: ThreadResolutionCardProps) {
-  const now = useSyncExternalStore(subscribeToClock, getClockSnapshot, getClockSnapshot);
+  // Shared 30s tab clock (use-now) — was a per-card 60s interval.
+  const now = useNow();
   const { prefs } = useUserPreferences();
   const verifiedEnabled = (prefs as unknown as { verifiedResolutionEnabled?: boolean }).verifiedResolutionEnabled !== false;
   const decayEnabled = (prefs as unknown as { confidenceDecayEnabled?: boolean }).confidenceDecayEnabled !== false;
@@ -100,6 +88,8 @@ export default function ThreadResolutionCard({
     let cancelled = false;
     let elapsed = 0;
     const id = setInterval(async () => {
+      // Background tabs neither fetch nor burn the timeout budget.
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       elapsed += POLL_INTERVAL_MS;
       if (elapsed > POLL_TIMEOUT_MS) {
         clearInterval(id);

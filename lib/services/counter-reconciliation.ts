@@ -212,13 +212,20 @@ export async function reconcileCounters(): Promise<{
   scanned: number;
   drifts: CounterDrift[];
 }> {
+  // Families are independent table scans — run them together instead of
+  // five sequential full-table passes.
+  const familyResults = await Promise.all(
+    COUNTERS.map(async (family) => {
+      const [rows, actuals] = await Promise.all([family.load(), family.loadActuals()]);
+      return { family, rows, drifts: compareAll(family.table, family.counter, rows, actuals) };
+    })
+  );
+
   const drifts: CounterDrift[] = [];
   let scanned = 0;
-
-  for (const family of COUNTERS) {
-    const [rows, actuals] = await Promise.all([family.load(), family.loadActuals()]);
+  for (const { rows, drifts: familyDrifts } of familyResults) {
     scanned += rows.length;
-    drifts.push(...compareAll(family.table, family.counter, rows, actuals));
+    drifts.push(...familyDrifts);
   }
 
   if (drifts.length > 0) {
