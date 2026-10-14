@@ -1,13 +1,17 @@
-import { getUpstashRedis, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
+import { claimOnce, JOB_DEDUP_TTL_SECONDS } from '@/lib/services/idempotency';
 
-const DEFAULT_JOB_DEDUP_TTL_SECONDS = 3600; // 1 hour — covers QStash retry window
+/** Namespaced job key — keeps QStash dedup rows off the request-claim space. */
+export function jobDedupKey(jobId: string): string {
+  return `job:dedup:${jobId}`;
+}
 
-/** Returns true if the job should run, false if it's a duplicate delivery. */
-export async function deduplicateJob(jobId: string, ttlSeconds: number = DEFAULT_JOB_DEDUP_TTL_SECONDS): Promise<boolean> {
-  const redis = getUpstashRedis();
-  // No Redis means no dedup — better to risk a double-run than drop the job.
-  if (redis === null || redis === undefined) return true;
-
-  const setResult = await withRedisTimeout(redis.set(`job:dedup:${jobId}`, '1', { ex: ttlSeconds, nx: true }), 4000);
-  return setResult === 'OK';
+/**
+ * Adapter over the shared exactly-once seam (`claimOnce`): job scope with a
+ * namespaced key. Returns true if the job should run, false on redelivery.
+ *
+ * Fail-open like the rest of the seam (was: Redis errors threw and the jobs
+ * route 500'd, dropping redeliveries that QStash would otherwise retry).
+ */
+export async function deduplicateJob(jobId: string, ttlSeconds: number = JOB_DEDUP_TTL_SECONDS): Promise<boolean> {
+  return claimOnce(jobDedupKey(jobId), 'job', ttlSeconds);
 }

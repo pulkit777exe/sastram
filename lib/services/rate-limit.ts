@@ -3,7 +3,6 @@ import type { Redis } from '@upstash/redis';
 import { logger } from '@/lib/infrastructure/logger';
 import { env } from '@/lib/config/env';
 import { getUpstashRedis, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
-import { getRequestIp } from '@/lib/utils/request-ip';
 
 // duration is in seconds.
 export const rateLimitConfig = {
@@ -216,43 +215,6 @@ export async function rateLimit(
     const limiter = getOrCreateLimiter(type);
     return limiter.check(key);
   }
-}
-
-/**
- * Façade that centralizes key building behind the shared IP seam.
- * - `api` bucket uses IP
- * - `message` bucket uses `message:{userId}` (falls back to IP if no userId)
- * - ai-reply uses `ai-reply:{userId}:{ip}` (api bucket, userId + IP)
- *
- * Keeps the overloaded `rateLimit` for backward compat.
- */
-export async function rateLimitFor(
-  request: Request,
-  userId?: string,
-  bucket: RateLimitBucket = 'api'
-): Promise<RateLimitResult> {
-  const ip = getRequestIp(request as { headers: Headers });
-
-  // Handle message bucket separately — key is per-user if available.
-  if (bucket === 'message') {
-    let key: string;
-    if (userId) {
-      key = `message:${userId}`;
-    } else {
-      key = ip;
-    }
-    return rateLimit({ key, type: 'message' });
-  }
-
-  // For other buckets with a userId, use ai-reply style composite key.
-  if (userId) {
-    const key = `ai-reply:${userId}:${ip}`;
-    return rateLimit({ key, type: 'api' });
-  }
-
-  // No userId — fall back to IP with requested bucket.
-  const fallbackKey = ip;
-  return rateLimit({ key: fallbackKey, type: bucket });
 }
 
 /**

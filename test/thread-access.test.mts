@@ -36,6 +36,10 @@ function mockPrismaUserFindUnique(result: unknown) {
   prismaRestores.push(installFakePrisma({ 'user.findUnique': async () => result }));
 }
 
+function mockPrismaUserBanFindFirst(result: unknown) {
+  prismaRestores.push(installFakePrisma({ 'userBan.findFirst': async () => result }));
+}
+
 function mockPrismaThreadFindUnique(result: unknown) {
   prismaRestores.push(installFakePrisma({ 'thread.findUnique': async () => result }));
 }
@@ -173,6 +177,10 @@ describe('Thread Access', () => {
       visibility: 'PRIVATE' as ThreadVisibility,
     };
 
+    beforeEach(() => {
+      mockPrismaUserBanFindFirst(null);
+    });
+
     it('should return true for MODERATOR', async () => {
       expect(await canWriteToThread(baseThread, 'user-2', Role.MODERATOR)).to.be.true;
     });
@@ -192,9 +200,78 @@ describe('Thread Access', () => {
     });
 
     it('should return false if canAccessThread returns false', async () => {
+      mockPrismaUserBanFindFirst(null);
       mockPrismaThreadInvitationFindFirst(null);
       mockPrismaUserFindUnique({ email: 'user@example.com' });
       expect(await canWriteToThread(baseThread, 'user-2', Role.USER)).to.be.false;
+    });
+
+    it('should return false for a banned user even on PUBLIC threads', async () => {
+      mockPrismaUserBanFindFirst({ id: 'ban-1' });
+      const publicThread: ThreadAccessContext = { ...baseThread, visibility: 'PUBLIC' };
+      expect(await canWriteToThread(publicThread, 'user-2', Role.USER)).to.be.false;
+    });
+
+    it('should return false for a banned thread creator', async () => {
+      mockPrismaUserBanFindFirst({ id: 'ban-1' });
+      const publicThread: ThreadAccessContext = { ...baseThread, visibility: 'PUBLIC' };
+      expect(await canWriteToThread(publicThread, 'user-1', Role.USER)).to.be.false;
+    });
+
+    it('should return true for MODERATOR despite a ban row (global bypass)', async () => {
+      mockPrismaUserBanFindFirst({ id: 'ban-1' });
+      expect(await canWriteToThread(baseThread, 'mod-1', Role.MODERATOR)).to.be.true;
+    });
+  });
+
+  describe('write bans (UserBan blocks participation, not visibility)', () => {
+    const threadId = 'thread-1';
+
+    beforeEach(() => {
+      mockPrismaThreadFindUnique({
+        id: threadId,
+        createdBy: 'user-1',
+        visibility: 'PUBLIC',
+      });
+    });
+
+    it('requireWriteOrThrow throws FORBIDDEN for a banned writer', async () => {
+      mockPrismaUserBanFindFirst({ id: 'ban-1' });
+      try {
+        await requireWriteOrThrow(threadId, 'user-2', Role.USER);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).to.be.instanceOf(AppError);
+        expect((error as AppError).code).to.equal('FORBIDDEN');
+      }
+    });
+
+    it('requireReadOrThrow still allows a banned reader (reads unaffected)', async () => {
+      await requireReadOrThrow(threadId, 'user-2', Role.USER);
+    });
+
+    it('fake store: thread-scoped and site-wide bans deny writes', async () => {
+      const policy = createThreadAccessPolicy(
+        createFakeThreadAccessStore({
+          threads: [
+            { threadId: 't1', createdBy: 'user-1', visibility: 'PUBLIC' as ThreadVisibility },
+            { threadId: 't2', createdBy: 'user-1', visibility: 'PUBLIC' as ThreadVisibility },
+          ],
+          bans: [
+            { threadId: 't1', userId: 'user-2' },
+            { threadId: null, userId: 'user-3' },
+            { threadId: 't1', userId: 'user-4', expiresAt: new Date(Date.now() - 1000) },
+          ],
+        })
+      );
+      const t1 = { threadId: 't1', createdBy: 'user-1', visibility: 'PUBLIC' as ThreadVisibility };
+      const t2 = { threadId: 't2', createdBy: 'user-1', visibility: 'PUBLIC' as ThreadVisibility };
+      expect(await policy.canWrite(t1, 'user-2', Role.USER)).to.equal(false);
+      expect(await policy.canWrite(t2, 'user-2', Role.USER)).to.equal(true);
+      expect(await policy.canWrite(t1, 'user-3', Role.USER)).to.equal(false);
+      expect(await policy.canWrite(t2, 'user-3', Role.USER)).to.equal(false);
+      expect(await policy.canWrite(t1, 'user-4', Role.USER)).to.equal(true);
+      expect(await policy.canWrite(t1, 'user-9', Role.USER)).to.equal(true);
     });
   });
 
@@ -274,6 +351,7 @@ describe('Thread Access', () => {
         createdBy: 'user-1',
         visibility: 'PRIVATE',
       });
+      mockPrismaUserBanFindFirst(null);
     });
 
     it('should not throw if user can write', async () => {
@@ -357,6 +435,7 @@ describe('Thread Access', () => {
         createdBy: 'user-1',
         visibility: 'PRIVATE',
       });
+      mockPrismaUserBanFindFirst(null);
     });
 
     it('requireReadOrThrow resolves the thread ONCE and returns its context', async () => {

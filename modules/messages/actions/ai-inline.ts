@@ -70,9 +70,6 @@ export async function queueAiInlineIfRequested(args: {
     return { ...LIMITED };
   }
 
-  // @sai is an expensive synthesis, so pre-flight the global spend cap rather
-  // than discovering it at worker time. checkAiSpendCap fails OPEN when Redis
-  // is down — deliberate: availability beats a perfectly enforced budget.
   let spendCap: { allowed: boolean };
   if (args.spendCapCheck) {
     spendCap = await args.spendCapCheck();

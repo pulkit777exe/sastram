@@ -15,44 +15,6 @@ function todayKey(): string {
 }
 
 /**
- * Read-only cap check for pre-flight (API routes). Fails open everywhere —
- * losing Redis shouldn't take AI features down, and consumeSpendCap is the
- * authoritative gate anyway.
- */
-export async function checkAiSpendCap(): Promise<{ allowed: boolean; remaining: number; used: number }> {
-  const r = getUpstashRedis();
-  if (!r) {
-    logger.warn('[checkAiSpendCap] Redis unavailable, allowing request (fail-open for spend cap)');
-    return { allowed: true, remaining: -1, used: 0 };
-  }
-
-  const key = todayKey();
-
-  try {
-    const rawUsed = await withRedisTimeout(r.get<number>(key), 4000);
-    let used: number;
-    if (rawUsed !== null && rawUsed !== undefined) {
-      used = rawUsed;
-    } else {
-      used = 0;
-    }
-
-    let allowed: boolean;
-    if (used < DAILY_DOLLAR_LIMIT) {
-      allowed = true;
-    } else {
-      allowed = false;
-    }
-
-    const remaining = Math.max(0, DAILY_DOLLAR_LIMIT - used);
-    return { allowed, remaining, used };
-  } catch (error) {
-    logger.error('[checkAiSpendCap] Redis error', error);
-    return { allowed: true, remaining: -1, used: 0 };
-  }
-}
-
-/**
  * Check-and-increment in one Lua round trip, so concurrent callers can't both
  * squeeze past the limit. Call this before doing AI work, not after.
  */

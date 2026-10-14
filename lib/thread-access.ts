@@ -5,6 +5,11 @@
  *   creator OR accepted ThreadInvitation OR global MODERATOR/ADMIN
  * Public threads are readable by anyone; write still requires session.
  *
+ * Ban rule: an active, unexpired UserBan (thread-scoped OR site-wide
+ * `threadId: null`) blocks writes even when the visibility rule would allow
+ * them — including the thread creator. Only global MODERATOR/ADMIN bypass.
+ * Reads are unaffected: bans restrict participation, not visibility.
+ *
  * RLS note: row-level security is not enabled on Neon; access is enforced
  * at the application layer via canAccessThread/visibilityFilter. If RLS is
  * added, mirror this logic in a policy on threads + thread_invitations.
@@ -45,6 +50,8 @@ export interface ThreadAccessStore {
     threadId: string,
     match: Prisma.ThreadInvitationWhereInput[]
   ): Promise<{ id: string } | null>;
+  /** Active, unexpired thread-scoped or site-wide (`threadId: null`) ban. */
+  findActiveBan(threadId: string, userId: string): Promise<{ id: string } | null>;
   getUserEmail(userId: string): Promise<string | null>;
   getUserRole(userId: string): Promise<Role | null>;
 }
@@ -70,6 +77,18 @@ export const prismaThreadAccessStore: ThreadAccessStore = {
       select: { id: true },
     });
   },
+  async findActiveBan(threadId, userId) {
+    const now = new Date();
+    return prisma.userBan.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        OR: [{ threadId }, { threadId: null }],
+        AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }],
+      },
+      select: { id: true },
+    });
+  },
   async getUserEmail(userId) {
     const foundUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -92,16 +111,27 @@ export function createFakeThreadAccessStore(seed: {
   threads: ThreadAccessContext[];
   invitations?: { threadId: string; userId?: string; email?: string }[];
   users?: { id: string; email?: string | null; role?: Role }[];
+  bans?: { threadId: string | null; userId: string; expiresAt?: Date | null }[];
 } = { threads: [] }): ThreadAccessStore {
   const threads = new Map(seed.threads.map((t) => [t.threadId, t]));
   const invitations = seed.invitations ?? [];
   const users = new Map((seed.users ?? []).map((u) => [u.id, u]));
+  const bans = seed.bans ?? [];
   const accepted = (threadId: string, userId: string, email: string | null) =>
     invitations.some(
       (inv) =>
         inv.threadId === threadId &&
         (inv.userId === userId || (email !== null && inv.email === email))
     );
+  const banned = (threadId: string, userId: string) => {
+    const now = Date.now();
+    return bans.some(
+      (b) =>
+        b.userId === userId &&
+        (b.threadId === null || b.threadId === threadId) &&
+        (b.expiresAt === null || b.expiresAt === undefined || b.expiresAt.getTime() > now)
+    );
+  };
   return {
     async loadThread(threadId) {
       return threads.get(threadId) ?? null;
@@ -114,6 +144,9 @@ export function createFakeThreadAccessStore(seed: {
         .map((m) => (typeof m.email === 'string' ? m.email : null))
         .find((e): e is string => e !== null) ?? null;
       return accepted(threadId, '', email) ? { id: `${threadId}:${email}` } : null;
+    },
+    async findActiveBan(threadId, userId) {
+      return banned(threadId, userId) ? { id: `ban:${threadId}:${userId}` } : null;
     },
     async getUserEmail(userId) {
       return users.get(userId)?.email ?? null;
@@ -150,6 +183,19 @@ async function evaluateRead(
   return emailInvitation !== null;
 }
 
+/** Single write rule shared by `canWrite` and `requireWrite` (one locality). */
+async function evaluateWrite(
+  thread: ThreadAccessContext,
+  userId: string,
+  userRole: Role | null | undefined,
+  store: ThreadAccessStore
+): Promise<boolean> {
+  if (canModerate(userRole ?? Role.USER)) return true;
+  if ((await store.findActiveBan(thread.threadId, userId)) !== null) return false;
+  if (thread.visibility === 'PUBLIC') return true;
+  return evaluateRead(thread, userId, userRole, store);
+}
+
 /** Injectable access policy — the seam. Default singleton is Prisma-backed. */
 export interface ThreadAccessPolicy {
   canRead(thread: ThreadAccessContext, userId?: string | null, userRole?: Role | null): Promise<boolean>;
@@ -173,11 +219,7 @@ export function createThreadAccessPolicy(store: ThreadAccessStore): ThreadAccess
   }
   return {
     canRead: (thread, userId, userRole) => evaluateRead(thread, userId, userRole, store),
-    canWrite: async (thread, userId, userRole) => {
-      if (canModerate(userRole)) return true;
-      if (thread.visibility === 'PUBLIC') return true;
-      return evaluateRead(thread, userId, userRole, store);
-    },
+    canWrite: async (thread, userId, userRole) => evaluateWrite(thread, userId, userRole, store),
     canManage: (thread, userId, userRole) => canManageThread(thread, userId, userRole),
     canReadRow: async (row, userId) => {
       if (row.visibility === 'PUBLIC') return true;
@@ -194,11 +236,7 @@ export function createThreadAccessPolicy(store: ThreadAccessStore): ThreadAccess
     },
     requireWrite: async (threadId, userId, role) => {
       const ctx = await loadOrThrow(threadId);
-      const ok =
-        canModerate(role ?? Role.USER) ||
-        ctx.visibility === 'PUBLIC' ||
-        (await evaluateRead(ctx, userId, role ?? Role.USER, store));
-      if (!ok) {
+      if (!(await evaluateWrite(ctx, userId, role, store))) {
         throw new AppError('Forbidden: cannot write to this thread', 'FORBIDDEN', HTTP_FORBIDDEN);
       }
       return ctx;
