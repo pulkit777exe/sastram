@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
+import { ok } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { MAX_COLLECTION_METADATA_BYTES } from '@/modules/collections/repository';
-import { withCollectionsHandler } from '@/modules/collections/handler';
+import { withCollectionsHandler, parseWith, readJsonBody } from '@/modules/collections/handler';
 import { savePayloadSchema, type SavePayload } from '@/modules/collections/schemas';
 import { metadataHash } from '@/modules/collections/metadata-hash';
 import { Prisma } from '@prisma/client';
@@ -22,10 +22,6 @@ function parsePayloadFromSearchParams(searchParams: URLSearchParams) {
     }
   }
   return { threadId, sessionId, messageId, metadata };
-}
-
-function invalidInput(message: string, details?: unknown) {
-  return NextResponse.json(fail('VALIDATION_ERROR', message, details), { status: HTTP_STATUS.BAD_REQUEST });
 }
 
 async function getSavedCollectionIds(payload: SavePayload, userId: string): Promise<string[]> {
@@ -49,30 +45,19 @@ async function getSavedCollectionIds(payload: SavePayload, userId: string): Prom
 }
 
 export const GET = withCollectionsHandler(async (request: NextRequest, session) => {
-  const parsed = savePayloadSchema.safeParse(parsePayloadFromSearchParams(new URL(request.url).searchParams));
-  if (!parsed.success) {
-    return invalidInput(parsed.error.issues[0]?.message ?? 'Invalid input', parsed.error.issues);
-  }
-  const ids = await getSavedCollectionIds(parsed.data, session.user.id);
+  const payload = parseWith(savePayloadSchema, parsePayloadFromSearchParams(new URL(request.url).searchParams));
+  const ids = await getSavedCollectionIds(payload, session.user.id);
   return NextResponse.json(ok(ids));
 });
 
 export const POST = withCollectionsHandler(async (request: NextRequest, session) => {
-  let body: Record<string, unknown> = {};
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
-  }
-  const parsed = savePayloadSchema.safeParse({
+  const body = (await readJsonBody(request)) as Record<string, unknown>;
+  const payload = parseWith(savePayloadSchema, {
     threadId: typeof body.threadId === 'string' ? body.threadId : undefined,
     sessionId: typeof body.sessionId === 'string' ? body.sessionId : undefined,
     messageId: typeof body.messageId === 'string' ? body.messageId : undefined,
     metadata: body.metadata,
   });
-  if (!parsed.success) {
-    return invalidInput(parsed.error.issues[0]?.message ?? 'Invalid input', parsed.error.issues);
-  }
-  const ids = await getSavedCollectionIds(parsed.data, session.user.id);
+  const ids = await getSavedCollectionIds(payload, session.user.id);
   return NextResponse.json(ok(ids));
 });

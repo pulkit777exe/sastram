@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireModerator } from '@/lib/middleware/moderation';
-import {ok, fail, withErrorHandling, HTTP_STATUS} from '@/lib/utils/api-response';
+import { ok, fail, withErrorHandling, HTTP_STATUS, errorCodeToStatus } from '@/lib/utils/api-response';
 import { resolveAppeal } from '@/modules/appeals/actions';
 import { z } from 'zod';
 
@@ -29,13 +29,7 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
 
   if ('error' in result && result.error) {
     const code = (result as { errorCode?: string }).errorCode ?? 'INTERNAL_ERROR';
-    const status =
-      code === 'FORBIDDEN' ? HTTP_STATUS.FORBIDDEN :
-      code === 'NOT_FOUND' ? HTTP_STATUS.NOT_FOUND :
-      code === 'CONFLICT' ? 409 :
-      code === 'VALIDATION_ERROR' ? HTTP_STATUS.BAD_REQUEST :
-      HTTP_STATUS.INTERNAL;
-    return NextResponse.json(fail(code as never, result.error), { status });
+    return NextResponse.json(fail(code as never, result.error), { status: errorCodeToStatus(code) });
   }
 
   return NextResponse.json(ok({ appeal: { id, approved, result: (result as { data?: unknown }).data } }));

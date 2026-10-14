@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { getCollection } from '@/modules/collections/repository';
-import { withCollectionsHandler } from '@/modules/collections/handler';
+import { withCollectionsHandler, parseRouteId } from '@/modules/collections/handler';
 import { collectionIdSchema } from '@/modules/collections/schemas';
 import { toMarkdown } from '@/modules/collections/metadata';
 import { renderCitationSources } from '@/modules/ai-search/citations';
@@ -15,10 +15,8 @@ function escapeMd(s: string): string {
 }
 
 export const GET = withCollectionsHandler(async (_: NextRequest, session, context) => {
-  const { id } = await context!.params;
-  const parsedId = collectionIdSchema.safeParse(id);
-  if (!parsedId.success) return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid collection id'), { status: HTTP_STATUS.BAD_REQUEST });
-  const collection = await getCollection(parsedId.data, session.user.id, { take: 100 });
+  const id = await parseRouteId(context, collectionIdSchema);
+  const collection = await getCollection(id, session.user.id, { take: 100 });
   if (!collection) return NextResponse.json(fail('NOT_FOUND', 'Collection not found'), { status: HTTP_STATUS.NOT_FOUND });
 
   let md = `# ${escapeMd(collection.title)}\n\n`;

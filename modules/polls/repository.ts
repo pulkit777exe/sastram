@@ -83,6 +83,7 @@ export async function getPollById(pollId: string) {
       id: true,
       threadId: true,
       isActive: true,
+      isMarket: true,
       expiresAt: true,
       options: true,
       thread: { select: { id: true, slug: true, createdBy: true } },

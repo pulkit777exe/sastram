@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionOrThrow } from '@/modules/auth';
-import {ok, fail, HTTP_STATUS} from '@/lib/utils/api-response';
+import { ok, fail, HTTP_STATUS, errorCodeToStatus } from '@/lib/utils/api-response';
 import { submitAppeal } from '@/modules/appeals/actions';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { logger } from '@/lib/infrastructure/logger';
-import { z } from 'zod';
-
-const submitAppealSchema = z.object({
-  reason: z.string().min(1, 'reason is required').max(2000),
-  reportId: z.string().optional(),
-});
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,27 +19,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
     }
 
-    const body = await request.json();
-    const validation = submitAppealSchema.safeParse(body);
-    if (!validation.success) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues), { status: HTTP_STATUS.BAD_REQUEST });
+    let body: { reason?: unknown; reportId?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
     }
 
-    const { reason, reportId } = validation.data;
-
-    const formData = new FormData();
-    formData.append('reason', reason);
-    if (reportId) {
-      formData.append('reportId', reportId);
-    }
-
-    const result = await submitAppeal(formData);
+    // No route-level schema: the Appeal module owns the invariant
+    // (reason min 10, reportId cuid). Validation failures come back as
+    // VALIDATION_ERROR and map to 400 below — never 500.
+    const result = await submitAppeal({
+      reason: typeof body.reason === 'string' ? body.reason : '',
+      reportId: typeof body.reportId === 'string' ? body.reportId : undefined,
+    });
 
     if (result.error) {
-      return NextResponse.json(fail('INTERNAL_ERROR', result.error), { status: HTTP_STATUS.INTERNAL });
+      const code = result.errorCode ?? 'INTERNAL_ERROR';
+      return NextResponse.json(fail(code, result.error), { status: errorCodeToStatus(code) });
     }
 
-    return NextResponse.json(ok({ appeal: { reason, reportId } }));
+    return NextResponse.json(ok({ appeal: { reason: body.reason, reportId: body.reportId ?? null } }));
   } catch (error) {
     logger.error('[appeals/submit] POST failed', error);
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to submit appeal'), {

@@ -11,6 +11,7 @@ import {
   getUserVote as getUserVoteRepo,
   getPollById as getPollByIdRepo,
   getPollByThreadId as getPollByThreadIdRepo,
+  resolveMarketPoll as resolveMarketPollRepo,
 } from './repository';
 import { createPollSchema, voteOnPollSchema } from './schemas';
 import { z } from 'zod';
@@ -26,6 +27,11 @@ import { rateLimit } from '@/lib/services/rate-limit';
 import type { Role } from '@prisma/client';
 
 const pollIdSchema = z.object({ pollId: z.string().cuid() });
+
+const resolveMarketPollSchema = z.object({
+  pollId: z.string().cuid(),
+  resolvedOptionIndex: z.number().int().min(0),
+});
 
 function fail(error: string, errorCode: ActionErrorCode) {
   return actionFailure(errorCode, error);
@@ -228,6 +234,56 @@ export const closePollAction = createServerAction(
         if (error.code === 'FORBIDDEN') return fail('Insufficient permissions', 'FORBIDDEN');
       }
       logger.error('[closePoll]', error);
+      return internalError();
+    }
+  }
+);
+
+/**
+ * Single owner of the Poll Market resolve invariant: existence, market-ness,
+ * still-active, option bounds, then manage rights. The
+ * `/api/polls/[pollId]/resolve` route is a thin protocol adapter over this —
+ * it owns session/rate-limit/transport only.
+ */
+export const resolveMarketPollAction = createServerAction(
+  { schema: resolveMarketPollSchema, actionName: 'resolveMarketPoll' },
+  async ({ pollId, resolvedOptionIndex }) => {
+    try {
+      const session = await requireSession();
+
+      const poll = await getPollByIdRepo(pollId);
+      if (poll === null) {
+        return pollNotFound();
+      }
+      if (!poll.isMarket) {
+        return fail('Not a market poll', 'VALIDATION_ERROR');
+      }
+      if (!poll.isActive) {
+        return fail('Poll already resolved', 'CONFLICT');
+      }
+
+      const boundsError = validateOptionIndexBounds(poll, resolvedOptionIndex);
+      if (boundsError !== null) {
+        return boundsError;
+      }
+
+      try {
+        await requireManageOrThrow(poll.threadId, session.user.id, session.user.role);
+      } catch (error) {
+        const actionError = toActionError(error);
+        if (actionError !== null) return actionError;
+        return fail('Insufficient permissions', 'FORBIDDEN');
+      }
+
+      const updated = await resolveMarketPollRepo(pollId, resolvedOptionIndex);
+
+      if (poll.thread?.slug) {
+        revalidatePollThread(poll.thread.slug);
+      }
+
+      return actionSuccess({ pollId: updated.id, resolvedOptionIndex: updated.resolvedOptionIndex });
+    } catch (error) {
+      logger.error('[resolveMarketPoll]', error);
       return internalError();
     }
   }

@@ -1,35 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
-import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
-import { prisma } from '@/lib/infrastructure/prisma';
-import { requireManageOrThrow } from '@/lib/thread-access';
-import { resolveMarketPoll } from '@/modules/polls/repository';
+import { ok, fail, withErrorHandling, HTTP_STATUS, errorCodeToStatus } from '@/lib/utils/api-response';
+import { resolveMarketPollAction } from '@/modules/polls/actions';
 import { rateLimit } from '@/lib/services/rate-limit';
-
-const bodySchema = z.object({ resolvedOptionIndex: z.number().int().min(0) });
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
   const { success } = await rateLimit({ key: `poll-resolve:${session.user.id}`, type: 'api' });
   if (!success) return NextResponse.json(fail('RATE_LIMITED', 'Too many resolve attempts'), { status: HTTP_STATUS.RATE_LIMITED });
+
   const params = await context?.params;
   const pollId = params?.pollId;
   if (!pollId) return NextResponse.json(fail('BAD_REQUEST', 'pollId required'), { status: HTTP_STATUS.BAD_REQUEST });
-  const zId = z.string().cuid().safeParse(pollId);
-  if (!zId.success) return NextResponse.json(fail('BAD_REQUEST', 'Invalid pollId'), { status: HTTP_STATUS.BAD_REQUEST });
-  const { resolvedOptionIndex } = bodySchema.parse(await request.json());
 
-  const poll = await prisma.poll.findUnique({ where: { id: pollId }, select: { id: true, threadId: true, isMarket: true, isActive: true, options: true } });
-  if (!poll) return NextResponse.json(fail('NOT_FOUND', 'Poll not found'), { status: HTTP_STATUS.NOT_FOUND });
-  if (!poll.isMarket) return NextResponse.json(fail('BAD_REQUEST', 'Not a market poll'), { status: HTTP_STATUS.BAD_REQUEST });
-  if (!poll.isActive) return NextResponse.json(fail('BAD_REQUEST', 'Poll already resolved'), { status: HTTP_STATUS.BAD_REQUEST });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const resolvedOptionIndex = (body as { resolvedOptionIndex?: unknown }).resolvedOptionIndex;
 
-  const options = Array.isArray(poll.options) ? poll.options : [];
-  if (resolvedOptionIndex >= options.length) return NextResponse.json(fail('BAD_REQUEST', 'Invalid option index'), { status: HTTP_STATUS.BAD_REQUEST });
-
-  await requireManageOrThrow(poll.threadId, session.user.id, session.user.role as never);
-
-  const updated = await resolveMarketPoll(pollId, resolvedOptionIndex);
-  return NextResponse.json(ok(updated));
+  // The Poll Market resolve invariant (existence, market-ness, active,
+  // bounds, manage rights) lives in the action — this route owns transport
+  // only. Shape failures come back VALIDATION_ERROR (400), never 500.
+  const result = await resolveMarketPollAction({ pollId, resolvedOptionIndex: resolvedOptionIndex as number });
+  if (!result.ok) {
+    const code = result.errorCode ?? 'INTERNAL_ERROR';
+    return NextResponse.json(fail(code, result.error ?? 'Failed to resolve poll'), {
+      status: errorCodeToStatus(code),
+    });
+  }
+  return NextResponse.json(ok(result.data));
 });
