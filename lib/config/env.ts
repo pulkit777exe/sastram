@@ -7,10 +7,12 @@ function toBool(v: unknown): boolean {
 
 const serverEnvSchema = z.object({
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
+  DATABASE_URL_UNPOOLED: z.url('DATABASE_URL_UNPOOLED must be a valid URL').optional(),
   UPSTASH_REDIS_REST_URL: z.url('UPSTASH_REDIS_REST_URL must be a valid URL').optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
   BETTER_AUTH_URL: z.string().url('BETTER_AUTH_URL must be a valid URL'),
+  BETTER_AUTH_API_KEY: z.string().optional(),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -18,8 +20,9 @@ const serverEnvSchema = z.object({
   GOOGLE_ADMIN_ID: z.string().optional(),
   GOOGLE_ADMIN_SECRET: z.string().optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  BLOB_URL: z.string().url('BLOB_URL must be a valid URL').optional(),
   RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required'),
-  RESEND_FROM: z.string().default('Sastram <noreply@sastram.wtfpulkit.dev>'),
+  RESEND_FROM: z.string().default('Sastram <noreply@example.com>'),
   RESEND_TEMPLATE_OTP: z.string().min(1, 'RESEND_TEMPLATE_OTP is required'),
   RESEND_TEMPLATE_INVITATION: z.string().min(1, 'RESEND_TEMPLATE_INVITATION is required'),
   RESEND_TEMPLATE_THREAD_SUMMARY: z.string().min(1, 'RESEND_TEMPLATE_THREAD_SUMMARY is required'),
@@ -28,6 +31,7 @@ const serverEnvSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   AI_PROVIDER: z.enum(['gemini', 'openai']).default('gemini'),
   CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters').optional(),
+  QSTASH_DEV: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(toBool).default(false),
   QSTASH_URL: z.string().url('QSTASH_URL must be a valid URL').optional(),
   QSTASH_TOKEN: z.string().optional(),
   QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
@@ -84,8 +88,7 @@ export const clientEnv: FullyClientSafeEnv = (() => {
   return parseResult.data;
 })();
 
-let serverEnvCache: ServerEnv | null = null;
-export function getServerEnv(): ServerEnv {
+let serverEnvCache: ServerEnv | null = null;export function getServerEnv(): ServerEnv {
   if (serverEnvCache !== null) return serverEnvCache;
 
   const parseResult = serverEnvSchema.safeParse(process.env);
@@ -156,4 +159,15 @@ export function getEnv(): MergedEnv {
     NEXT_PUBLIC_APP_URL: clientParseResult.data.NEXT_PUBLIC_APP_URL,
   };
   return mergedEnvCache;
+}
+
+/**
+ * Test-only seam: drops the validated-env caches so tests that mutate
+ * `process.env` (credential rotation, cron-secret cases) see fresh values.
+ * Production code must never call this — config is intentionally
+ * read-once-per-process.
+ */
+export function resetEnvCache(): void {
+  serverEnvCache = null;
+  mergedEnvCache = null;
 }

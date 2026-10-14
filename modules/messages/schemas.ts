@@ -1,24 +1,18 @@
 import { z } from 'zod';
+import { env } from '@/lib/config/env';
 
 const MAX_CONTENT_LENGTH = 10000;
 
-// Only HTTPS URLs are considered safe — uploads are proxied through Vercel Blob
-// which is always TLS, and path traversal sequences would escape the bucket.
 const SAFE_URL_RE = /^https:\/\//;
 
 function isBlobDomainUrl(value: string): boolean {
-  // Hobby-safe: restrict attachments to Vercel Blob provenance.
-  // Accepts any *.public.blob.vercel-storage.com or vercel-blob host,
-  // plus optional BLOB_URL / BLOB_READ_WRITE_TOKEN prefix when configured.
-  if (typeof process !== 'undefined' && process.env.BLOB_URL) {
-    if (value.startsWith(process.env.BLOB_URL)) return true;
-  }
+  const blobUrl = env.BLOB_URL;
+  if (blobUrl && value.startsWith(blobUrl)) return true;
   // Vercel Blob URLs always contain blob.vercel-storage.com or vercel-blob
   return value.includes('blob.vercel-storage.com') || value.includes('vercel-blob');
 }
 
 function isSafeUrl(value: string): boolean {
-  // Reject path traversal attempts and require HTTPS.
   if (value.includes('..') || value.includes('\\')) return false;
   if (!SAFE_URL_RE.test(value)) return false;
   return isBlobDomainUrl(value);

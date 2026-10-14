@@ -1,6 +1,7 @@
 import { describe, it, afterEach } from 'mocha';
 import { expect } from 'chai';
 import { mockRequest } from '../helpers';
+import { resetEnvCache } from '@/lib/config/env';
 
 describe('CRON Auth Verification', () => {
   const originalEnv = process.env.CRON_SECRET;
@@ -11,10 +12,12 @@ describe('CRON Auth Verification', () => {
     } else {
       process.env.CRON_SECRET = originalEnv;
     }
+    resetEnvCache();
   });
 
   it('returns 401 when CRON_SECRET is set but no auth header', async () => {
     process.env.CRON_SECRET = 'test-secret-that-is-at-least-32-chars-long';
+    resetEnvCache();
 
     const { verifyCronAuth } = require('@/lib/middleware/cron-auth');
     const req = mockRequest('/api/cron/update-threads');
@@ -26,6 +29,7 @@ describe('CRON Auth Verification', () => {
 
   it('returns 401 when auth header has wrong secret', async () => {
     process.env.CRON_SECRET = 'test-secret-that-is-at-least-32-chars-long';
+    resetEnvCache();
 
     const { verifyCronAuth } = require('@/lib/middleware/cron-auth');
     const req = mockRequest('/api/cron/update-threads', {
@@ -39,6 +43,7 @@ describe('CRON Auth Verification', () => {
 
   it('returns null when auth header matches CRON_SECRET', async () => {
     process.env.CRON_SECRET = 'test-secret-that-is-at-least-32-chars-long';
+    resetEnvCache();
 
     const { verifyCronAuth } = require('@/lib/middleware/cron-auth');
     const req = mockRequest('/api/cron/update-threads', {
@@ -54,6 +59,7 @@ describe('CRON Auth Verification', () => {
 
     (process.env as unknown as Record<string, string | undefined>).NODE_ENV = 'development';
     delete process.env.CRON_SECRET;
+    resetEnvCache();
 
     try {
       const { verifyCronAuth } = require('@/lib/middleware/cron-auth') as { verifyCronAuth: (req: unknown) => { status: number } | null };
@@ -62,8 +68,12 @@ describe('CRON Auth Verification', () => {
 
       expect(result).to.be.null;
     } finally {
-
-      (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
+      if (originalEnv === undefined) {
+        delete (process.env as unknown as Record<string, string | undefined>).NODE_ENV;
+      } else {
+        (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
+      }
+      resetEnvCache();
     }
   });
 });

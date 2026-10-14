@@ -45,6 +45,7 @@ A discussion platform with AI-powered search, threading, and moderation. Origina
 bun install
 cp .env.example .env      # fill in required values
 bun db:migrate
+bun db:seed               # demo threads + admin/system users (optional)
 bun dev
 ```
 
@@ -54,7 +55,7 @@ bun dev
 docker compose up
 ```
 
-Starts PostgreSQL, Redis, and the Next.js app. See [CONTRIBUTING.md](./CONTRIBUTING.md) for full environment setup.
+Starts PostgreSQL and the Next.js app. See [CONTRIBUTING.md](./CONTRIBUTING.md) for full environment setup.
 
 ## Production Checks
 
@@ -70,7 +71,7 @@ NODE_ENV=production bun check:prod
 ## Testing
 
 ```bash
-bun test            # Mocha unit tests (65 files)
+bun test            # Mocha unit + route tests
 bun test:e2e       # Playwright smoke tests
 ```
 

@@ -18,9 +18,13 @@ services:
       retries: 5
 
   redis:
+    # Unused by the app (limits/quotas read UPSTASH_* only) — kept for
+    # contributors who want a local Redis for experimentation. The `app`
+    # service does not depend on it and no code connects to it.
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    profiles: ["tools"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -37,8 +41,6 @@ services:
       NODE_ENV: production
       PORT: "3000"
       DATABASE_URL: postgresql://sastram:sastram_dev@db:5432/sastram
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}
       BETTER_AUTH_URL: http://localhost:3001
       NEXT_PUBLIC_APP_URL: http://localhost:3001
@@ -50,11 +52,12 @@ services:
       RESEND_TEMPLATE_THREAD_SUMMARY: ${RESEND_TEMPLATE_THREAD_SUMMARY:-local_thread_summary}
       RESEND_TEMPLATE_PASSWORD_RESET: ${RESEND_TEMPLATE_PASSWORD_RESET:-local_password_reset}
       RESEND_TEMPLATE_WELCOME: ${RESEND_TEMPLATE_WELCOME:-local_welcome}
-      REDIS_URL: redis://redis:6379
+      # NOTE: no REDIS_URL/REDIS_HOST here on purpose — rate limits, quotas,
+      # and caches read UPSTASH_REDIS_REST_URL/TOKEN only (see
+      # lib/infrastructure/redis-upstash.ts) and degrade to in-memory without
+      # them. Set the UPSTASH pair in .env if you want shared limits locally.
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
 
 volumes:

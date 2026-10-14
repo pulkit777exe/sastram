@@ -2,6 +2,7 @@ import { describe, it, afterEach, beforeEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { logger } from '@/lib/infrastructure/logger';
+import { resetEnvCache } from '@/lib/config/env';
 
 describe('Auth Service', function () {
   describe('Configuration', function () {
@@ -59,10 +60,12 @@ describe('Auth Service', function () {
 
       process.env.GOOGLE_CLIENT_ID = 'test-only-id';
       delete process.env.GOOGLE_CLIENT_SECRET;
+      // Reset the validated-env caches (instead of evicting env.ts from
+      // require.cache, which forks a second module instance) so the
+      // re-required auth module below validates fresh values.
+      resetEnvCache();
 
-      const envPath = require.resolve('@/lib/config/env');
       const authPath = require.resolve('@/lib/services/auth');
-      delete require.cache[envPath];
       delete require.cache[authPath];
 
       try {
@@ -80,7 +83,7 @@ describe('Auth Service', function () {
         } else {
           delete process.env.GOOGLE_CLIENT_SECRET;
         }
-        delete require.cache[envPath];
+        resetEnvCache();
         delete require.cache[authPath];
       }
     });
@@ -91,10 +94,12 @@ describe('Auth Service', function () {
 
       process.env.GITHUB_CLIENT_ID = 'test-only-id';
       delete process.env.GITHUB_CLIENT_SECRET;
+      // Reset the validated-env caches (instead of evicting env.ts from
+      // require.cache, which forks a second module instance) so the
+      // re-required auth module below validates fresh values.
+      resetEnvCache();
 
-      const envPath = require.resolve('@/lib/config/env');
       const authPath = require.resolve('@/lib/services/auth');
-      delete require.cache[envPath];
       delete require.cache[authPath];
 
       try {
@@ -112,7 +117,7 @@ describe('Auth Service', function () {
         } else {
           delete process.env.GITHUB_CLIENT_SECRET;
         }
-        delete require.cache[envPath];
+        resetEnvCache();
         delete require.cache[authPath];
       }
     });
@@ -159,8 +164,12 @@ describe('Auth Service', function () {
           }
         }
       } finally {
-
-        (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
+        // Assigning undefined would store the string "undefined" — delete instead.
+        if (originalEnv === undefined) {
+          delete (process.env as unknown as Record<string, string | undefined>).NODE_ENV;
+        } else {
+          (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
+        }
       }
     });
 
@@ -189,8 +198,12 @@ describe('Auth Service', function () {
           }
         }
       } finally {
-
-        (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
+        // Assigning undefined would store the string "undefined" — delete instead.
+        if (originalEnv === undefined) {
+          delete (process.env as unknown as Record<string, string | undefined>).NODE_ENV;
+        } else {
+          (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
+        }
       }
     });
   });

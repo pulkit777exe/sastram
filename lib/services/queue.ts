@@ -1,4 +1,5 @@
 import { Client } from '@upstash/qstash';
+import { env } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
 import { AIJobType } from '@/lib/queue/config';
 import { getUpstashRedis, ATOMIC_INCR_EXPIRE_LUA, getSecondsUntilUtcMidnight, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
@@ -10,17 +11,12 @@ import type { AIInlineJobData } from '@/lib/queue/types';
 // and the client-side polling loops terminate.
 
 function isDevMode(): boolean {
-  // Explicit branch instead of inline comparison.
-  const raw = process.env.QSTASH_DEV;
-  if (raw === 'true') {
-    return true;
-  }
-  return false;
+  return env.QSTASH_DEV;
 }
 
 function hasQstashCredentials(): boolean {
-  const token = process.env.QSTASH_TOKEN;
-  const url = process.env.QSTASH_URL;
+  const token = env.QSTASH_TOKEN;
+  const url = env.QSTASH_URL;
   if (token && url) {
     return true;
   }
@@ -44,8 +40,8 @@ function getQstashClient(): Client | null {
   if (!isQstashConfigured()) return null;
   if (client) return client;
   try {
-    const token = process.env.QSTASH_TOKEN as string;
-    const baseUrl = process.env.QSTASH_URL as string;
+    const token = env.QSTASH_TOKEN as string;
+    const baseUrl = env.QSTASH_URL as string;
     client = new Client({ token, baseUrl });
   } catch (error) {
     logger.error(
@@ -135,7 +131,7 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T) 
   logger.info(`[queue] Enqueuing job: ${jobType} (daily count: ${count})`);
   try {
     const retries = getRetries(jobType);
-    const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/jobs`;
+    const url = `${env.NEXT_PUBLIC_APP_URL}/api/jobs`;
     const body = { jobType, payload };
     const qstashClient = getQstashClient();
     const publish = qstashClient!.publishJSON({

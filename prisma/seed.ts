@@ -1,32 +1,15 @@
 import { prisma } from '@/lib/infrastructure/prisma';
-import { randomUUID } from 'crypto';
+import { buildThreadSlug } from '@/modules/threads/slug';
 
-const NON_ALPHANUM = /[^a-z0-9]+/g;
-const TRIM_HYPHEN = /^-+|-+$/g;
-
-function slugify(title: string) {
-  let slug = title.toLowerCase();
-  slug = slug.trim();
-  slug = slug.replace(NON_ALPHANUM, '-');
-  slug = slug.replace(TRIM_HYPHEN, '');
-  return slug;
-}
-
-async function createThread({
-  name,
-  description,
-  userId,
-}: {
-  name: string;
-  description?: string;
-  icon?: string;
-  userId: string;
-}) {
+async function createThread({ name, description, userId }: { name: string; description?: string; userId: string }) {
   return prisma.thread.create({
     data: {
       name,
       description,
-      slug: `${slugify(name)}-${randomUUID()}`,
+      // Single slug seam (modules/threads/slug): previously a cloned slugify
+      // lived here and drifted. NOTE: Thread has no `icon` column — do not
+      // re-add per-thread icon data to the seed rows below.
+      slug: buildThreadSlug(name),
       createdBy: userId,
       messages: {
         create: [
@@ -56,27 +39,22 @@ async function main() {
     {
       name: 'Artificial Intelligence & Ethics',
       description: 'Discuss ethical implications of AGI and LLM deployments.',
-      icon: 'Brain',
     },
     {
       name: 'Sustainable Energy Solutions',
       description: 'Solar, wind, fusion, and breakthroughs in energy storage.',
-      icon: 'Zap',
     },
     {
       name: 'Space Exploration 2025',
       description: 'Artemis, Starship, and human-rated mission planning.',
-      icon: 'Rocket',
     },
     {
       name: 'Best Rust Web Frameworks?',
       description: 'Compare Actix, Axum, Rocket for production work.',
-      icon: 'Code',
     },
     {
       name: 'Indie Hacking Tips',
       description: 'Launch week retrospectives and weeklies.',
-      icon: 'Laptop',
     },
   ];
 

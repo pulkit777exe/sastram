@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { env } from '@/lib/config/env';
 
 const HTTP_UNAUTHORIZED = 401;
 const HTTP_SERVICE_UNAVAILABLE = 503;
 
 /** Returns an error response when the request should be rejected, else null. */
 export function verifyCronAuth(req: NextRequest): NextResponse | null {
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = env.CRON_SECRET;
   const authHeader = req.headers.get('authorization');
 
   if (cronSecret === undefined || cronSecret === null || cronSecret.length === 0) {

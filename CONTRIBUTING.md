@@ -6,17 +6,18 @@ Thanks for your interest in contributing to Sastram.
 
 ### Option A — Docker (recommended)
 
-`docker compose up` starts PostgreSQL, Redis, and the Next.js app in one command. Copy `.env.example` to `.env` first and fill in at least the required values.
+`docker compose up` starts PostgreSQL and the Next.js app in one command. Copy `.env.example` to `.env` first and fill in at least the required values. (A `redis` service exists under the `tools` profile for experimentation only — the app never connects to it; limits/quotas use Upstash or in-memory fallback.)
 
 ### Option B — Local without Docker
 
 1. Fork the repository
 2. Run `bun install`
 3. Copy `.env.example` to `.env` and fill in the values
-4. Provide PostgreSQL (e.g. free-tier Neon: append `?pgbouncer=true` to `DATABASE_URL`) and optionally Redis (free-tier Upstash)
+4. Provide PostgreSQL (e.g. free-tier Neon: append `?pgbouncer=true` to `DATABASE_URL`; set `DATABASE_URL_UNPOOLED` to the direct endpoint for migrations) and optionally Upstash Redis (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` — without them, rate limits and quotas degrade to per-instance in-memory)
 5. Run `bun db:migrate`
-6. Run `bun dev` to start the development server
-7. Run `bun test` to verify everything works
+6. Run `bun db:seed` for demo threads + admin/system users (optional)
+7. Run `bun dev` to start the development server
+8. Run `bun test` to verify everything works (uses `.env.test` — no external services needed)
 
 ### Required Environment Variables
 
@@ -28,7 +29,7 @@ Thanks for your interest in contributing to Sastram.
 
 ### Optional but Recommended
 
-- `REDIS_URL` / `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` — Rate limiting, quotas, caching
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` — Rate limiting, quotas, caching (omit for in-memory local fallback)
 - `QSTASH_TOKEN` + signing keys — Background jobs
 - `GEMINI_API_KEY` or `OPENAI_API_KEY` — AI features
 - `CRON_SECRET` — Scheduled jobs (min 32 chars)

@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { validateEnv } from '@/lib/config/env';
 
 type Check = {
   name: string;
@@ -24,25 +25,18 @@ function required(name: string, minLength = 1) {
   });
 }
 
-function validUrl(name: string, options?: { productionHttps?: boolean }) {
-  const value = env[name];
-  let ok = false;
-  let message = `${name} must be a valid URL`;
-
+function requireHttps(name: string) {
+  // Deployment check: schema owns URL validity; only the prod-https rule
+  // lives here since local dev is legitimately http.
+  let ok = true;
   try {
-    if (value) {
-      const url = new URL(value);
-      ok = Boolean(url.protocol && url.host);
-      if (options?.productionHttps && env.NODE_ENV === 'production' && url.protocol !== 'https:') {
-        ok = false;
-        message = `${name} must use https in production`;
-      }
+    if (env[name] && env.NODE_ENV === 'production') {
+      ok = new URL(env[name] as string).protocol === 'https:';
     }
   } catch {
     ok = false;
   }
-
-  checks.push({ name, ok, message, severity: 'error' });
+  checks.push({ name: `${name}-https`, ok, message: `${name} must use https in production`, severity: 'error' });
 }
 
 function pair(name: string, a: string, b: string) {
@@ -60,18 +54,29 @@ function warning(name: string, ok: boolean, message: string) {
   checks.push({ name, ok, message, severity: 'warning' });
 }
 
-required('DATABASE_URL');
-required('BETTER_AUTH_SECRET', 32);
-required('CRON_SECRET', 32);
-required('RESEND_API_KEY');
-required('RESEND_TEMPLATE_OTP');
-required('RESEND_TEMPLATE_INVITATION');
-required('RESEND_TEMPLATE_THREAD_SUMMARY');
-required('RESEND_TEMPLATE_PASSWORD_RESET');
-required('RESEND_TEMPLATE_WELCOME');
+// Base verdict comes from the single env seam (lib/config/env.ts) — the
+// schema owns required keys, URL shapes, and length minimums. What stays here
+// is deployment knowledge the schema deliberately does not own: prod-only
+// secrets, key pairs that must travel together, and hosting heuristics.
+const schemaResult = validateEnv();
+if (!schemaResult.success) {
+  for (const issue of schemaResult.error.issues) {
+    const path = issue.path.join('.');
+    checks.push({
+      name: path.length > 0 ? path : 'env',
+      ok: false,
+      message: issue.message,
+      severity: 'error',
+    });
+  }
+}
 
-validUrl('BETTER_AUTH_URL', { productionHttps: true });
-validUrl('NEXT_PUBLIC_APP_URL', { productionHttps: true });
+// Prod crons must be authenticated; local dev may omit CRON_SECRET entirely
+// (schema leaves it optional), so this stays a deployment check.
+required('CRON_SECRET', 32);
+
+requireHttps('BETTER_AUTH_URL');
+requireHttps('NEXT_PUBLIC_APP_URL');
 
 pair('upstash-rest', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN');
 pair('qstash-signing', 'QSTASH_CURRENT_SIGNING_KEY', 'QSTASH_NEXT_SIGNING_KEY');
