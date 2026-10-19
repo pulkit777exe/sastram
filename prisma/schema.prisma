@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -161,7 +160,7 @@ model User {
   collections      Collection[]
   bounties         Bounty[]
 
-  @@index([email])
+  // [email] single dropped 2026-10-19: leftmost prefix of the @unique above.
   @@index([status])
   @@index([lastSeenAt])
   @@index([deletedAt])
@@ -204,7 +203,7 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([token])
+  // [token] single dropped 2026-10-19: leftmost prefix of the @unique above.
   @@map("sessions")
 }
 
@@ -216,9 +215,9 @@ model Verification {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  // [identifier] single dropped 2026-10-19: leftmost prefix of the @@unique below.
   @@unique([identifier, value])
   @@map("verifications")
-  @@index([identifier])
 }
 
 model Thread {
@@ -261,12 +260,12 @@ model Thread {
   knowledgePage   KnowledgePage?
   bounties        Bounty[]
 
-  @@index([slug])
   @@index([visibility])
-  @@index([createdBy])
+  @@index([createdBy, createdAt])
   @@index([resolutionScore])
   @@index([visibility, updatedAt])
   @@index([deletedAt])
+  @@index([deletedAt, updatedAt])
   @@index([deletedAt, visibility, updatedAt])
   @@index([deletedAt, messageCount])
   @@index([verifiedAt])
@@ -291,29 +290,23 @@ model Message {
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime? // soft delete — keep for tree integrity
 
-  thread       Thread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender       User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
-  parent       Message?         @relation("MessageReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies      Message[]        @relation("MessageReplies")
-  attachments  Attachment[]
-  reactions    Reaction[]
-  reports      Report[]
-  editHistory  MessageEdit[]
-  mentions     MessageMention[]
+  thread          Thread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender          User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  parent          Message?         @relation("MessageReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies         Message[]        @relation("MessageReplies")
+  attachments     Attachment[]
+  reactions       Reaction[]
+  reports         Report[]
+  editHistory     MessageEdit[]
+  mentions        MessageMention[]
   readReceipts    ReadReceipt[]    @relation("ReadReceiptMessage")
   appeals         Appeal[]         @relation("MessageAppeal")
   poll            Poll?
   collectionItems CollectionItem[]
 
-  // 8 indexes. [threadId] single dropped 2026-10-14: leftmost-prefix
-  // redundant with [threadId,createdAt] (identical plans, one fewer index
-  // write on the hottest mutation). Composites cover single-column prefixes
-  // in Postgres; [parentId,threadId] retained for tree building.
-  // critical for tree building
-  // hot thread-feed path
   @@index([threadId, createdAt])
   @@index([threadId, senderId, createdAt])
-  @@index([senderId])
+  @@index([senderId, createdAt])
   @@index([parentId, threadId])
   @@index([depth])
   @@index([deletedAt])
@@ -372,7 +365,6 @@ model Reaction {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId, emoji])
-  // [messageId] single dropped 2026-10-14: leftmost prefix of the unique above.
   @@map("reactions")
 }
 
@@ -390,7 +382,6 @@ model ReadReceipt {
   lastReadMessage Message? @relation("ReadReceiptMessage", fields: [lastReadMessageId], references: [id], onDelete: SetNull)
 
   @@unique([threadId, userId])
-  // [threadId] single dropped 2026-10-14: leftmost prefix of the unique above.
   @@index([userId])
   @@index([readAt])
   @@map("read_receipts")
@@ -406,8 +397,8 @@ model UserFollow {
   following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
-  // [followerId] single dropped 2026-10-14: leftmost prefix of the unique above.
-  @@index([followingId])
+  @@index([followerId, createdAt])
+  @@index([followingId, createdAt])
   @@map("user_follows")
 }
 
@@ -421,7 +412,7 @@ model UserBookmark {
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@unique([userId, threadId])
-  // [userId] single dropped 2026-10-14: leftmost prefix of the unique above.
+  @@index([userId, createdAt])
   @@map("user_bookmarks")
 }
 
@@ -458,7 +449,6 @@ model ThreadSubscription {
 
   @@unique([threadId, userId])
   @@unique([threadId, email])
-  // [threadId] single dropped 2026-10-14: leftmost prefix of the uniques above.
   @@index([userId])
   @@map("thread_subscriptions")
 }
@@ -516,7 +506,6 @@ model AppealVote {
   moderator User   @relation("AppealVoter", fields: [moderatorId], references: [id], onDelete: Cascade)
 
   @@unique([appealId, moderatorId])
-  // [appealId] single dropped 2026-10-14: leftmost prefix of the unique above.
   @@index([moderatorId])
   @@index([appealId, vote])
   @@map("appeal_votes")
@@ -561,8 +550,6 @@ model UserBan {
   issuer User?   @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: SetNull)
   thread Thread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
-  // [userId, isActive] widened 2026-10-14 to cover the access gate's
-  // userId + isActive + threadId lookup (findActiveBan).
   @@index([userId, isActive, threadId])
   @@index([threadId])
   @@map("user_bans")
@@ -577,7 +564,6 @@ model ThreadTag {
 
   threads ThreadTagRelation[]
 
-  @@index([slug])
   @@map("thread_tags")
 }
 
@@ -611,7 +597,6 @@ model Poll {
   votes   PollVote[]
 
   @@index([threadId])
-  // [isMarket] single dropped 2026-10-14: leftmost prefix of [isMarket, threadId].
   @@index([isMarket, threadId])
   @@map("polls")
 }
@@ -627,7 +612,6 @@ model PollVote {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([pollId, userId])
-  // [pollId] single dropped 2026-10-14: leftmost prefix of the unique above.
   @@map("poll_votes")
 }
 
@@ -663,7 +647,6 @@ model ThreadInvitation {
   sender User   @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, email])
-  @@index([token])
   @@index([email])
   @@map("thread_invitations")
 }
@@ -695,7 +678,7 @@ model AiSearchSession {
   childSessions   AiSearchSession[] @relation("SessionThread")
   collectionItems CollectionItem[]
 
-  @@index([userId])
+  @@index([userId, createdAt])
   @@index([queryHash])
   @@index([parentSessionId])
   @@index([createdAt])
@@ -834,7 +817,6 @@ model KnowledgePage {
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
-  @@index([threadId])
   @@map("knowledge_pages")
 }
 
@@ -853,5 +835,3 @@ model Bounty {
   @@index([userId])
   @@map("bounties")
 }
-
-

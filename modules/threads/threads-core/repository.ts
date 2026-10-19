@@ -44,8 +44,10 @@ function getThreadOrderBy(sortBy: 'recent' | 'popular' | 'trending' | 'oldest'):
 }
 
 // "Active users" is distinct senders in the last week — not derivable from any
-// denormalized column, hence the raw aggregate.
-async function countActiveUsersByThread(threadIds: string[]): Promise<Map<string, number>> {
+// denormalized column, hence the raw aggregate. Exported so other thread
+// listings (e.g. getThreadsByTag) reuse the exact same 7-day window instead of
+// re-deriving it with an all-time groupBy.
+export async function countActiveUsersByThread(threadIds: string[]): Promise<Map<string, number>> {
   if (threadIds.length === 0) {
     return new Map();
   }
@@ -69,6 +71,25 @@ async function countActiveUsersByThread(threadIds: string[]): Promise<Map<string
 
 const IS_THREAD_NOT_DELETED: Prisma.ThreadWhereInput = { deletedAt: null };
 
+// listThreads renders ThreadSummary rows only (buildThreadDTO); selecting just
+// the fields the DTO reads keeps aiSummary (Text) and threadDna (JSON) off the
+// hot feed path (50 rows/page).
+const THREAD_SUMMARY_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  description: true,
+  visibility: true,
+  messageCount: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  verifiedAt: true,
+  resolutionScore: true,
+} as const satisfies Prisma.ThreadSelect;
+
+type ThreadSummaryRow = Prisma.ThreadGetPayload<{ select: typeof THREAD_SUMMARY_SELECT }>;
+
 async function buildThreadWhereClause(params: {
   memberUserId?: string;
   memberRole?: Role | null;
@@ -90,7 +111,7 @@ async function buildThreadWhereClause(params: {
 }
 
 function mapThreadsToSummaries(
-  threadRows: ThreadRecord[],
+  threadRows: ThreadSummaryRow[],
   activeUsers: Map<string, number>
 ): ThreadSummary[] {
   return threadRows.map((thread) => {
@@ -115,6 +136,7 @@ export const listThreads = cache(
       const totalItemsPromise = prisma.thread.count({ where });
       const threadRowsPromise = prisma.thread.findMany({
         where,
+        select: THREAD_SUMMARY_SELECT,
         orderBy,
         take: trendingTake + (clampedPage - 1) * clampedPageSize,
       });
@@ -141,6 +163,7 @@ export const listThreads = cache(
     const totalItemsPromise = prisma.thread.count({ where });
     const threadRowsPromise = prisma.thread.findMany({
       where,
+      select: THREAD_SUMMARY_SELECT,
       orderBy,
       skip: (clampedPage - 1) * clampedPageSize,
       take: clampedPageSize,

@@ -95,6 +95,31 @@ export async function persistSearchSession(
   }
 }
 
+const SESSION_CURSOR_SEPARATOR = '|';
+
+/**
+ * Cursor = `${createdAt.toISOString()}|${id}`. Rows can share a `createdAt`
+ * (millisecond precision), so ordering is `(createdAt desc, id desc)` and the
+ * predicate is the matching lexicographic continuation; a createdAt-only
+ * predicate could skip or duplicate tied rows. Callers treat it as opaque.
+ *
+ * Bare ISO timestamps (the pre-2026-10-19 cursor shape) are still accepted for
+ * in-flight clients and resume with a createdAt-only predicate.
+ */
+function parseSessionCursor(raw: string | null | undefined): { createdAt: Date; id: string | null } | null {
+  if (!raw) return null;
+  const separatorIndex = raw.lastIndexOf(SESSION_CURSOR_SEPARATOR);
+  const datePart = separatorIndex === -1 ? raw : raw.slice(0, separatorIndex);
+  const createdAt = new Date(datePart);
+  if (Number.isNaN(createdAt.getTime())) return null;
+  const id = separatorIndex === -1 ? null : raw.slice(separatorIndex + 1) || null;
+  return { createdAt, id };
+}
+
+function formatSessionCursor(session: { id: string; createdAt: Date }): string {
+  return `${session.createdAt.toISOString()}${SESSION_CURSOR_SEPARATOR}${session.id}`;
+}
+
 /** Cursor-paginated list; soft-deleted sessions excluded. */
 export async function listUserSearchSessions(
   userId: string,
@@ -103,17 +128,24 @@ export async function listUserSearchSessions(
   const limit = Math.min(opts.limit ?? 20, 50);
   const where = { userId, deletedAt: null } as const;
 
-  // Build where clause explicitly — avoid spread ternary for readability.
-  let whereClause: typeof where | (typeof where & { createdAt: { lt: Date } });
-  if (opts.cursor) {
-    whereClause = { ...where, createdAt: { lt: new Date(opts.cursor) } };
-  } else {
-    whereClause = where;
+  const cursor = parseSessionCursor(opts.cursor);
+  let whereClause: Prisma.AiSearchSessionWhereInput = where;
+  if (cursor) {
+    // Tie-break on id so equal timestamps can't skip/duplicate rows.
+    whereClause = {
+      ...where,
+      OR: cursor.id
+        ? [
+            { createdAt: { lt: cursor.createdAt } },
+            { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+          ]
+        : [{ createdAt: { lt: cursor.createdAt } }],
+    };
   }
 
   const sessions = await prisma.aiSearchSession.findMany({
     where: whereClause,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: limit + 1,
     include: {
       results: {
@@ -129,7 +161,7 @@ export async function listUserSearchSessions(
   // Explicit if/else instead of ternary with && for clarity.
   let nextCursor: string | null = null;
   if (hasMore && page.length > 0) {
-    nextCursor = page[page.length - 1].createdAt.toISOString();
+    nextCursor = formatSessionCursor(page[page.length - 1]);
   }
 
   return {

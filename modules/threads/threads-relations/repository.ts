@@ -202,6 +202,9 @@ export async function updateAllThreadRelations(): Promise<{
 
   try {
     // Only threads touched in the last 30 days — older ones aren't worth recomputing.
+    // Newest first + take 500: once candidates exceed the cap the batch is
+    // deterministic (the hottest threads get recomputed) instead of an
+    // arbitrary unordered subset.
     const threads = await prisma.thread.findMany({
       where: {
         threadDna: { not: Prisma.DbNull },
@@ -209,6 +212,7 @@ export async function updateAllThreadRelations(): Promise<{
         deletedAt: null,
       },
       select: { id: true, threadDna: true },
+      orderBy: { updatedAt: 'desc' },
       take: 500,
     });
 

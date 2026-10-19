@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { slugify } from '@/lib/utils/slug';
+import { countActiveUsersByThread } from '@/modules/threads/threads-core/repository';
 
 const withThreadCount = { _count: { select: { threads: true } } };
 
@@ -32,20 +33,6 @@ export async function removeTagFromThread(threadId: string, tagId: string) {
   } catch (err) {
     logger.error('[tags] removeTagFromThread failed', { threadId, tagId, error: err });
     return null;
-  }
-}
-
-export async function getThreadTags(threadId: string) {
-  try {
-    const relations = await prisma.threadTagRelation.findMany({
-      where: { threadId },
-      include: { tag: true },
-    });
-
-    return relations.map((relation) => relation.tag);
-  } catch (error) {
-    logger.error('[getThreadTags]', error);
-    return [];
   }
 }
 
@@ -134,19 +121,11 @@ export async function getThreadsByTag(tagId: string) {
       take: 50,
     });
 
-    // Count active (non-null) senders per thread without pulling every message row.
-    const senderPairs = await prisma.message.groupBy({
-      by: ['threadId', 'senderId'],
-      where: {
-        senderId: { not: null },
-        thread: { tags: { some: { tagId } }, deletedAt: null },
-      },
-    });
-    const activeUsersByThread = new Map<string, number>();
-    for (const row of senderPairs) {
-      if (!row.senderId) continue;
-      activeUsersByThread.set(row.threadId, (activeUsersByThread.get(row.threadId) ?? 0) + 1);
-    }
+    // Active users = distinct non-null senders in the last 7 days, matching
+    // the thread feed. Shared helper keeps one definition of the window; it
+    // also excludes soft-deleted messages (the old all-time groupBy counted
+    // every message of every thread carrying the tag).
+    const activeUsersByThread = await countActiveUsersByThread(threads.map((t) => t.id));
 
     return threads.map((t) => ({
       id: t.id,
