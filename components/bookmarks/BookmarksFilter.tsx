@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Bookmark, Search, X, MessageSquare, Users, Calendar } from 'lucide-react';
+import { Bookmark, Search, X, MessageSquare, Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import TimeAgo from '@/components/ui/TimeAgo';
 import { ROUTES } from '@/lib/config/routes';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
 
-type Thread = { id: string; slug: string; name: string; description: string | null; messageCount: number; memberCount: number; createdAt: Date | string };
+type Thread = { id: string; slug: string; name: string; description: string | null; messageCount: number; createdAt: Date | string };
 
 export function BookmarksFilter({ bookmarks }: { bookmarks: Thread[] }) {
   const [query, setQuery] = React.useState('');
@@ -63,7 +63,6 @@ export function BookmarksFilter({ bookmarks }: { bookmarks: Thread[] }) {
                 {thread.description && <p className="text-sm text-ink-3 mt-1 line-clamp-2">{thread.description}</p>}
                 <div className="flex items-center gap-4 text-xs text-ink-3 mt-2">
                   <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{thread.messageCount}</span>
-                  <span className="flex items-center gap-1"><Users className="h-3 w-3" />{thread.memberCount}</span>
                   <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /><TimeAgo date={thread.createdAt as unknown as Date} /></span>
                 </div>
               </Link>

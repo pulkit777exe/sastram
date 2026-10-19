@@ -114,7 +114,6 @@ export async function getThreadsByTag(tagId: string) {
         name: true,
         description: true,
         messageCount: true,
-        memberCount: true,
         tags: { select: { tag: { select: { name: true, slug: true, color: true } } } },
       },
       orderBy: { updatedAt: 'desc' },

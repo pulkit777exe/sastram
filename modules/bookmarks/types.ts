@@ -5,7 +5,6 @@ export interface BookmarkedThreadsResponse {
     slug: string;
     description: string | null;
     messageCount: number;
-    memberCount: number;
     createdAt: Date;
     updatedAt: Date;
     creator: {

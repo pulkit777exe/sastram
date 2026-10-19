@@ -64,7 +64,7 @@ bun db:studio   # Prisma studio
 
 35 models in `prisma/schema.prisma`:
 - User (deletedAt), Account, Session, Verification
-- Thread (deletedAt, visibility, memberCount, forkedFromId, verifiedAt/By)
+- Thread (deletedAt, visibility, forkedFromId, verifiedAt/By)
 - Message (deletedAt, nullable senderId, factCheckStatus enum), MessageEdit, MessageMention, Attachment
 - Reaction, ReadReceipt
 - UserFollow, UserBookmark

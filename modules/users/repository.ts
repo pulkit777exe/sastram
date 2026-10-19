@@ -32,7 +32,6 @@ const USER_THREAD_SELECT = {
   slug: true,
   description: true,
   messageCount: true,
-  memberCount: true,
   createdAt: true,
   updatedAt: true,
 } as const;

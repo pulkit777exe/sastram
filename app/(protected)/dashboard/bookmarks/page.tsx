@@ -47,7 +47,7 @@ export default async function BookmarksPage() {
       </div>
 
       <BookmarksFilter
-        bookmarks={bookmarks as unknown as { id: string; slug: string; name: string; description: string | null; messageCount: number; memberCount: number; createdAt: Date }[]}
+        bookmarks={bookmarks as unknown as { id: string; slug: string; name: string; description: string | null; messageCount: number; createdAt: Date }[]}
       />
       {hasMore && (
         <p className="text-xs text-ink-3 text-center">Pagination: showing {bookmarks.length} of {total} — use offset/limit to load more (hasMore=true)</p>

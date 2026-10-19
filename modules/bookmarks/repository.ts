@@ -9,7 +9,6 @@ const BOOKMARK_THREAD_SELECT = {
   slug: true,
   description: true,
   messageCount: true,
-  memberCount: true,
   createdAt: true,
   updatedAt: true,
   creator: { select: { id: true, name: true, email: true, image: true } },

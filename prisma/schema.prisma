@@ -227,7 +227,6 @@ model Thread {
   description  String?
   visibility   ThreadVisibility @default(PUBLIC)
   messageCount Int              @default(0)
-  memberCount  Int              @default(0)
   createdBy    String?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt

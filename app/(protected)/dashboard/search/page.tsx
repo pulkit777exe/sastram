@@ -295,7 +295,7 @@ export default function SearchPage() {
                           {thread.description && (
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{highlight(thread.description, query)}</p>
                           )}
-                          <p className="text-xs text-ink-3 mt-2">{thread.messageCount} msgs · {thread.memberCount ?? 0} members</p>
+                          <p className="text-xs text-ink-3 mt-2">{thread.messageCount} msgs</p>
                         </Link>
                         <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                           <CollectionSaveButton threadId={thread.id} />

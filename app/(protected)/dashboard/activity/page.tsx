@@ -3,7 +3,7 @@ import { getSession } from '@/modules/auth';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Activity, MessageSquare, FileText, Users, Calendar, Reply } from 'lucide-react';
+import { Activity, MessageSquare, FileText, Calendar, Reply } from 'lucide-react';
 import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ROUTES } from '@/lib/config/routes';
@@ -76,10 +76,6 @@ export default async function ActivityPage() {
                       <span className="flex items-center gap-1.5">
                         <MessageSquare className="h-3.5 w-3.5" />
                         {thread.messageCount}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5" />
-                        {thread.memberCount}
                       </span>
                       <span className="flex items-center gap-1.5 ml-auto">
                         <Calendar className="h-3.5 w-3.5" />

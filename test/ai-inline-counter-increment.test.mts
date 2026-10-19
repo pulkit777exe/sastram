@@ -38,7 +38,6 @@ describe('AI inline reply — counter increments', function () {
         description: 'Thread for testing AI counter increments',
         createdBy: testUserId,
         messageCount: 0,
-        memberCount: 1,
       },
     });
     testThreadId = thread.id;

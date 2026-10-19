@@ -4,7 +4,6 @@ export type SearchThreadResult = {
   slug: string;
   description: string | null;
   messageCount: number;
-  memberCount: number;
   creator: {
     id: string;
     name: string | null;

@@ -114,3 +114,11 @@ DROP INDEX IF EXISTS "threads_createdBy_idx";
 DROP INDEX IF EXISTS "messages_senderId_idx";
 DROP INDEX IF EXISTS "user_follows_followingId_idx";
 DROP INDEX IF EXISTS "ai_search_sessions_userId_idx";
+
+-- ---- Drop dead Thread."memberCount" (2026-10-19, second migration) ----
+--
+-- Mirror of prisma/migrations/20261019131000_drop_thread_member_count: the
+-- column was written once at creation (always 0) and never maintained — no
+-- membership table exists; UI readers were display-only.
+
+ALTER TABLE "threads" DROP COLUMN IF EXISTS "memberCount";
