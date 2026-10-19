@@ -168,7 +168,7 @@ async function ThreadSidebar({
       <ThreadResolutionCard
         threadId={thread.id}
         score={thread.resolutionScore}
-        lastVerifiedAt={thread.lastVerifiedAt ?? thread.updatedAt}
+        lastVerifiedAt={thread.lastVerifiedAt}
         verifiedAt={(thread as unknown as { verifiedAt?: Date | null }).verifiedAt ?? null}
         verifiedBy={(thread as unknown as { verifiedBy?: string | null }).verifiedBy ?? null}
       />

@@ -14,7 +14,7 @@ import { reconcileCounters } from '@/lib/services/counter-reconciliation';
 import { promoteThreadsToKnowledgePages } from '@/lib/services/knowledge-promotion';
 import { checkCronSpendCaps } from '@/lib/ai/guard';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
-import { computeConfidence } from '@/modules/threads/confidence-decay';
+import { hasTrustedProvenance } from '@/modules/threads/confidence-decay';
 import { refreshUserExpertise } from '@/lib/services/user-memory';
 
 const BATCH_SIZE = 25;
@@ -155,14 +155,14 @@ export async function GET(req: NextRequest) {
             continue;
           }
 
-          // KISS: skip human-verified threads while confidence is still high (mirrors ai-jobs isStale <0.5)
-          const provenanceAt =
-            (thread as unknown as { verifiedAt?: Date | null; lastVerifiedAt?: Date | null }).verifiedAt ??
-            (thread as unknown as { verifiedAt?: Date | null; lastVerifiedAt?: Date | null }).lastVerifiedAt ??
-            null;
-          if (provenanceAt) {
-            const { confidence } = computeConfidence(new Date(provenanceAt));
-            if (confidence >= 0.5) continue;
+          // Skip threads whose resolution provenance is still trusted —
+          // human verification (verifiedAt) or the last AI score
+          // (lastVerifiedAt) inside the decay window (~120 days). Staleness
+          // marking no longer refreshes either timestamp, so threads it
+          // marked are re-enriched on the next run instead of being silenced
+          // for another full window.
+          if (hasTrustedProvenance(thread.verifiedAt, thread.lastVerifiedAt)) {
+            continue;
           }
 
           const messages = [...thread.messages].reverse();

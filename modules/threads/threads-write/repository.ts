@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import type { ThreadRecord } from '@/modules/threads/types';
 import type { ThreadVisibility } from '@prisma/client';
-import { z } from 'zod';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
 
 export interface CreateThreadResult {
@@ -73,24 +72,13 @@ export async function updateThreadDNA(
   });
 }
 
-export async function updateResolutionScore(threadId: string, score: number): Promise<void> {
-  await prisma.thread.update({
-    where: { id: threadId },
-    data: { resolutionScore: z.number().int().min(0).max(100).parse(score) },
-  });
-}
-
-export async function updateThreadStaleness(threadId: string, isOutdated: boolean): Promise<void> {
-  await prisma.thread.update({
-    where: { id: threadId },
-    data: { isOutdated, lastVerifiedAt: new Date() },
-  });
-}
-
+// Human verification clears staleness and stamps verifiedAt/verifiedBy.
+// lastVerifiedAt is deliberately NOT touched: it is reserved for AI score
+// computations, and the trust gate prefers verifiedAt when both exist.
 export async function updateThreadVerified(threadId: string, userId: string): Promise<void> {
   await prisma.thread.update({
     where: { id: threadId },
-    data: { verifiedAt: new Date(), verifiedBy: userId, isOutdated: false, lastVerifiedAt: new Date() },
+    data: { verifiedAt: new Date(), verifiedBy: userId, isOutdated: false },
   });
 }
 

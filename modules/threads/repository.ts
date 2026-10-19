@@ -15,8 +15,6 @@ export {
   createThread,
   deleteThread,
   updateThreadDNA,
-  updateResolutionScore,
-  updateThreadStaleness,
 } from './threads-write/repository';
 
 export {

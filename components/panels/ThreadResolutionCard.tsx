@@ -224,7 +224,7 @@ export default function ThreadResolutionCard({
       )}
       {verifiedEnabled && !isVerified && provenanceDays !== null && (
         <p className="text-xs text-ink-3">
-          Last activity {provenanceDays}d ago · not yet verified
+          Last scored {provenanceDays}d ago · not yet verified
         </p>
       )}
 
@@ -239,7 +239,7 @@ export default function ThreadResolutionCard({
           <div className="min-w-0">
             <p className="text-xs font-semibold text-sai-orange">Confidence aged</p>
             <p className="text-xs text-ink-2">
-              Last verified {provenanceDays !== null && provenanceDays > 90 ? `${Math.floor(provenanceDays / 30)} months` : `${provenanceDays} days`} ago
+              {isVerified ? 'Last verified' : 'Last scored'} {provenanceDays !== null && provenanceDays > 90 ? `${Math.floor(provenanceDays / 30)} months` : `${provenanceDays} days`} ago
             </p>
           </div>
           <VerifyNowButton threadId={threadId} />

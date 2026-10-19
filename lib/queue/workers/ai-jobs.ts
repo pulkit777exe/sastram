@@ -17,7 +17,7 @@ import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { z } from 'zod';
 import { AppError } from '@/lib/utils/errors';
 import { assertThreadJob, readAlreadyBilled, runGuardedWorker } from './_shared';
-import { computeConfidence } from '@/modules/threads/confidence-decay';
+import { hasTrustedProvenance } from '@/modules/threads/confidence-decay';
 import type {
   ThreadSummaryJobData,
   ThreadDnaJobData,
@@ -205,9 +205,11 @@ async function detectConflicts(threadId: string, messages: JobMessageData[], alr
   if (!result.ok) return { conflictResult: null, skipped: true };
   const conflictResult = result.value;
   if (conflictResult.hasConflict) {
+    // Marking a conflict must not fake score provenance: lastVerifiedAt is
+    // written only when the resolution score is actually (re)computed.
     await prisma.thread.update({
       where: { id: threadId },
-      data: { isOutdated: true, lastVerifiedAt: new Date() },
+      data: { isOutdated: true },
     });
   }
   return { conflictResult };
@@ -274,12 +276,6 @@ const STALE_BATCH_SIZE = 100;
 // the next scheduled run continues from a fresh scan.
 const STALE_MAX_BATCHES = 50;
 
-function isStale(lastVerifiedAt: Date | null, verifiedAt: Date | null): boolean {
-  const provenanceAt = verifiedAt ?? lastVerifiedAt;
-  if (!provenanceAt) return true;
-  return computeConfidence(provenanceAt).confidence < 0.5;
-}
-
 async function handleStalenessBatchCheck() {
   let checked = 0;
   let updated = 0;
@@ -304,12 +300,15 @@ async function handleStalenessBatchCheck() {
 
     if (batch.length === 0) break;
 
-    const staleIds = batch.filter((t) => isStale(t.lastVerifiedAt, t.verifiedAt as Date | null)).map((t) => t.id);
+    const staleIds = batch.filter((t) => !hasTrustedProvenance(t.verifiedAt, t.lastVerifiedAt)).map((t) => t.id);
 
     if (staleIds.length > 0) {
+      // Only the staleness flag moves — lastVerifiedAt keeps meaning "last AI
+      // score", so the cron trust gate re-enriches marked threads instead of
+      // resetting their ~120-day window.
       await prisma.thread.updateMany({
         where: { id: { in: staleIds } },
-        data: { isOutdated: true, lastVerifiedAt: new Date() },
+        data: { isOutdated: true },
       });
       updated += staleIds.length;
     }
@@ -359,10 +358,10 @@ export async function handleStalenessCheckJob(data: StalenessCheckJobData) {
     return { handled: true, checked: 1, updated: 0 };
   }
 
-  if (isStale(thread.lastVerifiedAt, thread.verifiedAt)) {
+  if (!hasTrustedProvenance(thread.verifiedAt, thread.lastVerifiedAt)) {
     await prisma.thread.update({
       where: { id: threadId! },
-      data: { isOutdated: true, lastVerifiedAt: new Date() },
+      data: { isOutdated: true },
     });
     logger.info(`[worker:ai] Thread ${threadId} marked as outdated`);
     return { handled: true, checked: 1, updated: 1 };

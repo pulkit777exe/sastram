@@ -232,8 +232,8 @@ model Thread {
   updatedAt    DateTime         @updatedAt
 
   resolutionScore Int?
-  lastVerifiedAt  DateTime?
-  verifiedAt      DateTime?
+  lastVerifiedAt  DateTime? // when the AI last computed resolutionScore (trust-decay basis)
+  verifiedAt      DateTime? // when a human (OP/moderator) last verified the resolution
   verifiedBy      String?
   isOutdated      Boolean   @default(false)
   aiSummary       String?   @db.Text
