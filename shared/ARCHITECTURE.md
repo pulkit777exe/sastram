@@ -720,6 +720,7 @@ bun db:generate    # Prisma generate
 bun db:push        # Prisma db push
 bun db:migrate     # Prisma migrate dev
 bun run db:extensions   # trgm search indexes (idempotent, outside migrations)
+bun db:deploy:data-api  # migrate deploy via Neon's HTTPS Data API (5432-blocked networks)
 bun db:studio      # Prisma studio
 ```
 

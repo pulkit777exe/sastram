@@ -22,6 +22,8 @@ Thanks for your interest in contributing to Sastram.
 
 > `bun test` invokes Bun's built-in runner, not the Mocha suite — always use `bun run test`.
 
+> Port 5432 blocked by the network (TLS payloads dropped)? Replace steps 5–6 with `bun run db:deploy:data-api --extensions`: it replays pending migrations (and the trgm SQL) over Neon's HTTPS Data API and writes Prisma-identical history rows.
+
 ### Required Environment Variables
 
 - `DATABASE_URL` — PostgreSQL connection string

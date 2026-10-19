@@ -50,6 +50,8 @@ bun db:seed               # demo threads + admin/system users (optional)
 bun dev
 ```
 
+> Network blocks PostgreSQL's port 5432 (TCP connects, TLS payloads get dropped)? `bun run db:deploy:data-api --extensions` applies migrations and the trgm indexes through Neon's HTTPS Data API instead, with identical `_prisma_migrations` bookkeeping.
+
 ### Option B: Docker
 
 ```bash

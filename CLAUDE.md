@@ -44,6 +44,7 @@ bun db:generate   # Prisma generate
 bun db:push      # Prisma db push
 bun db:migrate   # Prisma migrate dev
 bun db:deploy    # Prisma migrate deploy (prod)
+bun db:deploy:data-api  # migrate deploy over Neon's HTTPS Data API (5432-blocked networks)
 bun db:studio   # Prisma studio
 ```
 

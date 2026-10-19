@@ -12,7 +12,9 @@
  *
  * `apply-via-sql-editor.sql` is deliberately NOT auto-applied: it is a
  * hand-maintained payload for the Neon SQL Editor (HTTPS-only environments)
- * and duplicates migration DDL, not extension DDL.
+ * and duplicates migration DDL, not extension DDL. On networks that drop TLS
+ * on port 5432, `scripts/apply-via-data-api.ts --extensions-only` runs the
+ * same files over Neon's HTTPS Data API.
  *
  * Connection: DATABASE_URL_UNPOOLED first (direct endpoint — pooled
  * connections cannot run DDL reliably on Neon), falling back to
@@ -26,23 +28,9 @@ import 'dotenv/config';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Client } from 'pg';
+import { splitStatements } from '@/lib/utils/sql-statements';
 
 const EXTENSIONS_DIR = join(process.cwd(), 'prisma', 'extensions');
-
-/**
- * Strip `--` line comments, then split on `;`. Extension files are plain DDL
- * (no semicolons inside string literals or function bodies), so this is a
- * correct reader for them.
- */
-function splitStatements(sql: string): string[] {
-  return sql
-    .split('\n')
-    .map((line) => line.replace(/--.*$/, ''))
-    .join('\n')
-    .split(';')
-    .map((statement) => statement.trim())
-    .filter((statement) => statement.length > 0);
-}
 
 /** One-line preview so the log says exactly what ran. */
 function statementLabel(statement: string): string {
