@@ -57,7 +57,30 @@ async function run(_config: FullConfig) {
   await import('node:fs').then((fs) => fs.mkdirSync(authDir, { recursive: true }));
   await context.storageState({ path: `${authDir}/user.json` });
 
+  // 3. Warm the routes the specs visit first. Turbopack compiles lazily, and a
+  // cold compile can stall the dev server past getSession's 3s timeout, which
+  // surfaces an error boundary on the first visit. The dev server is already
+  // up at this point, so one request per route removes that race. Statuses
+  // are irrelevant (a warm-up may 404/redirect) — only the compile matters.
+  // Must run before browser.close(): `context.request` lives on this context.
+  const warmupRoutes = [
+    '/dashboard/sai-search',
+    '/dashboard/threads',
+    '/dashboard/collections',
+    '/dashboard',
+    '/thread/new-thread-9849b823-5fe6-4f1a-88e0-78178fd06a1d',
+  ];
+  for (const route of warmupRoutes) {
+    try {
+      const res = await context.request.get(`${BASE_URL}${route}`);
+      console.log(`[global-setup] warm ${route} → ${res.status()}`);
+    } catch (err) {
+      console.warn(`[global-setup] warm ${route} failed (continuing):`, (err as Error).message);
+    }
+  }
+
   await browser.close();
+
   console.log('[global-setup] Authenticated storage state written.');
 }
 

@@ -21,9 +21,12 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // Assumes `bun run dev` is already running (or pass E2E_BASE to a live server).
   // To manage the server automatically, set E2E_MANAGE_SERVER=true.
+  // CI overrides the command with E2E_SERVER_COMMAND=bun run dev:next — the
+  // plain `dev` script also boots the local QStash emulator, which CI does
+  // not need (no QStash credentials → jobs run inline anyway).
   webServer: process.env.E2E_MANAGE_SERVER
     ? {
-        command: 'bun run dev',
+        command: process.env.E2E_SERVER_COMMAND ?? 'bun run dev',
         url: BASE_URL,
         reuseExistingServer: true,
         timeout: 120_000,
