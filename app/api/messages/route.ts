@@ -8,6 +8,7 @@ import { trackNeonRequest } from '@/lib/services/usage-check';
 import { AppError } from '@/lib/utils/errors';
 import { logger } from '@/lib/infrastructure/logger';
 import { sanitize, store } from '@/lib/attachments';
+import { FILE_LIMITS } from '@/lib/config/constants';
 
 async function authenticateRequest() {
   return requireSessionOrThrow();
@@ -40,6 +41,10 @@ function validateFormInputs(formData: FormData): { threadId: string; rawContent:
   const files = formData.getAll('files') as File[];
   if (files.length > 10) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Maximum 10 files allowed'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const totalSize = files.reduce((sum, file) => sum + (file instanceof File ? file.size : 0), 0);
+  if (totalSize > FILE_LIMITS.MAX_TOTAL_UPLOAD_BYTES) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Upload too large'), { status: HTTP_STATUS.BAD_REQUEST });
   }
   if (!rawContent?.trim() && files.length === 0) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Missing content or files'), { status: HTTP_STATUS.BAD_REQUEST });
@@ -92,6 +97,13 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkRateLimitOrThrow(session);
     if (rateLimitResponse) return rateLimitResponse;
+
+    // Reject oversized multipart bodies before formData() buffers them — the
+    // parsed file list is re-checked below, this only bounds memory usage.
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && Number(contentLength) > FILE_LIMITS.MAX_TOTAL_UPLOAD_BYTES) {
+      return NextResponse.json(fail('PAYLOAD_TOO_LARGE', 'Upload too large'), { status: HTTP_STATUS.PAYLOAD_TOO_LARGE });
+    }
 
     const formData = await request.formData();
     const validated = validateFormInputs(formData);

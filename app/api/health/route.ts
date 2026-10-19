@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/config/env";
 import { logger } from "@/lib/infrastructure/logger";
 import { prisma } from "@/lib/infrastructure/prisma";
 import { Redis } from "@upstash/redis";
-import { HTTP_STATUS } from "@/lib/utils/api-response";
+import { fail, HTTP_STATUS } from "@/lib/utils/api-response";
+import { rateLimit } from "@/lib/services/rate-limit";
+import { getRequestIp } from "@/lib/utils/request-ip";
 
 type ServiceStatus = "ok" | "not_configured" | "error";
 
 const HEALTH_CHECK_TIMEOUT_MS = 750;
+const HEALTHY_CACHE_CONTROL = "public, max-age=10, stale-while-revalidate=30";
+const UNHEALTHY_CACHE_CONTROL = "no-store, max-age=0";
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -67,7 +71,15 @@ function checkAi(): ServiceStatus {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Public path (proxy skips it), so the edge limiter never runs — bound the
+  // DB/Redis probes here instead.
+  const ip = getRequestIp(request);
+  const rateLimitResult = await rateLimit({ key: `health:${ip}`, type: "api" });
+  if (!rateLimitResult.success) {
+    return NextResponse.json(fail("RATE_LIMITED", "Too many requests"), { status: HTTP_STATUS.RATE_LIMITED });
+  }
+
   const checks = {
     status: "ok",
     timestamp: new Date().toISOString(),
@@ -97,7 +109,9 @@ export async function GET() {
   return NextResponse.json(checks, {
     status: allHealthy ? HTTP_STATUS.OK : HTTP_STATUS.SERVICE_UNAVAILABLE,
     headers: {
-      "Cache-Control": "no-store, max-age=0",
+      // Healthy probes are cacheable so CDN hits don't re-probe DB/Redis;
+      // degraded responses must never be cached.
+      "Cache-Control": allHealthy ? HEALTHY_CACHE_CONTROL : UNHEALTHY_CACHE_CONTROL,
     },
   });
 }

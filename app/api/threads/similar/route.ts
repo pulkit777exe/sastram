@@ -51,13 +51,9 @@ export const GET = withErrorHandling(async (_req: NextRequest) => {
   const rl = await rateLimit({ key: `similar:${session.user.id}`, type: 'api' });
   if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
   const filter = await visibilityFilter(session.user.id, session.user.role as never);
-  const isModeratorFilterEmpty = Object.keys(filter).length === 0;
-  const baseSourceFilter: Prisma.ThreadWhereInput = isModeratorFilterEmpty ? { deletedAt: null } : { ...filter, deletedAt: null };
-  const baseTargetFilter: Prisma.ThreadWhereInput = isModeratorFilterEmpty ? { deletedAt: null } : { ...filter, deletedAt: null };
+  const baseFilter: Prisma.ThreadWhereInput = Object.keys(filter).length === 0 ? { deletedAt: null } : { ...filter, deletedAt: null };
   const relations = await prisma.threadRelation.findMany({
-    where: isModeratorFilterEmpty
-      ? { source: baseSourceFilter, target: baseTargetFilter }
-      : { source: baseSourceFilter, target: baseTargetFilter },
+    where: { source: baseFilter, target: baseFilter },
     take: 200,
     orderBy: { similarity: 'desc' },
     include: {

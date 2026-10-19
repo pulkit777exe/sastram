@@ -68,21 +68,32 @@ describe('Error Handling', () => {
       const err = { code: 'P2002', meta: { modelName: 'User' } };
       const result = handleError(err);
       expect(result.message).to.equal('This record already exists');
+      expect(result.code).to.equal('CONFLICT');
       expect(result.statusCode).to.equal(409);
     });
 
-    it('should translate Prisma record not found error', () => {
+    it('should translate Prisma record not found error to 404', () => {
       const err = { code: 'P2025', meta: { modelName: 'Message' } };
       const result = handleError(err);
       expect(result.message).to.equal('Record not found');
-      expect(result.statusCode).to.equal(409);
+      expect(result.code).to.equal('NOT_FOUND');
+      expect(result.statusCode).to.equal(404);
     });
 
-    it('should translate Prisma foreign key error', () => {
+    it('should translate Prisma foreign key error to 404', () => {
       const err = { code: 'P2003', meta: { modelName: 'Message' } };
       const result = handleError(err);
       expect(result.message).to.equal('Related record not found');
-      expect(result.statusCode).to.equal(409);
+      expect(result.code).to.equal('NOT_FOUND');
+      expect(result.statusCode).to.equal(404);
+    });
+
+    it('should never leak the raw Prisma code to clients', () => {
+      for (const code of ['P2002', 'P2025', 'P2003']) {
+        const result = handleError({ code });
+        expect(result.code).to.not.equal(code);
+        expect(result.code).to.not.match(/^P\d{4}$/);
+      }
     });
   });
 

@@ -1,4 +1,4 @@
-import { betterAuth } from 'better-auth';
+import { betterAuth, APIError } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins';
 import { oAuthProxy } from 'better-auth/plugins';
@@ -8,6 +8,15 @@ import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
 
 const env = getEnv();
+
+/**
+ * better-auth throws `APIError` for expected rejections (invalid OTP, bad
+ * email, too many attempts). Anything else — DB outage, provider failure — is
+ * unexpected and must surface as a 500, not a client error.
+ */
+export function isAuthApiError(error: unknown): error is APIError {
+  return error instanceof APIError;
+}
 
 function buildSocialProviders() {
   const socialProvidersMap: Record<string, { clientId: string; clientSecret: string }> = {};

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { del } from '@vercel/blob';
 import { verifyCronAuth } from '@/lib/middleware/cron-auth';
-import { ok, fail } from '@/lib/utils/api-response';
+import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 
 const BATCH_SIZE = 50;
 
@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   try {
     let totalDeleted = 0;
     let totalBlobsRemoved = 0;
+    let totalBlobFailures = 0;
     let batchCount = 0;
     const MAX_BATCHES = 20; // safety cap: 20*50=1000 per cron invocation
 
@@ -31,19 +32,53 @@ export async function GET(req: NextRequest) {
 
       if (orphanedAttachments.length === 0) break;
 
-      // Delete blobs (best-effort)
+      // Delete blobs first. Only rows whose blob is actually gone are removed —
+      // deleting a row after a failed del() would orphan the blob forever.
       const blobResults = await Promise.allSettled(orphanedAttachments.map((att) => del(att.url)));
-      totalBlobsRemoved += blobResults.filter((r) => r.status === 'fulfilled').length;
-
-      // Delete orphaned attachment records
-      const ids = orphanedAttachments.map((a) => a.id);
-      const deleteResult = await prisma.attachment.deleteMany({
-        where: { id: { in: ids } },
+      const removedIds: string[] = [];
+      let failedBlobs = 0;
+      blobResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          removedIds.push(orphanedAttachments[index].id);
+        } else {
+          failedBlobs += 1;
+        }
       });
-      totalDeleted += deleteResult.count;
+      totalBlobsRemoved += removedIds.length;
+      totalBlobFailures += failedBlobs;
       batchCount += 1;
 
+      if (removedIds.length > 0) {
+        const deleteResult = await prisma.attachment.deleteMany({
+          where: { id: { in: removedIds } },
+        });
+        totalDeleted += deleteResult.count;
+      }
+
+      if (failedBlobs > 0) {
+        logger.warn('[cleanup-blobs] blob deletion failed; keeping records for the next run', {
+          batch: batchCount,
+          failed: failedBlobs,
+        });
+        // Stop paginating: the failed rows are re-selected first, so retrying
+        // them within this invocation only burns time — the next run retries.
+        break;
+      }
+
       if (orphanedAttachments.length < BATCH_SIZE) break;
+    }
+
+    if (totalBlobFailures > 0) {
+      logger.error('[cleanup-blobs] blob removals failed; attachment records kept for retry', {
+        batches: batchCount,
+        blobsRemoved: totalBlobsRemoved,
+        recordsDeleted: totalDeleted,
+        blobsFailed: totalBlobFailures,
+      });
+      return NextResponse.json(
+        fail('INTERNAL_ERROR', 'Failed to remove one or more orphaned blobs; records kept for retry'),
+        { status: HTTP_STATUS.INTERNAL }
+      );
     }
 
     if (totalDeleted === 0) {
@@ -59,6 +94,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(ok({ deleted: totalDeleted, blobsRemoved: totalBlobsRemoved }));
   } catch (error) {
     logger.error('[cleanup-blobs]', error);
-    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to cleanup blobs'));
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to cleanup blobs'), { status: HTTP_STATUS.INTERNAL });
   }
 }

@@ -36,12 +36,16 @@ export const BAN_REASONS = {
 export type BanReason = (typeof BAN_REASONS)[keyof typeof BAN_REASONS];
 
 const MAX_FILE_SIZE_BYTES = 4.5 * 1024 * 1024; // single source of truth — Vercel Blob free limit
+// Total multipart payload cap shared by /api/upload and /api/messages so a
+// single request can never buffer more than one small batch of attachments.
+const MAX_TOTAL_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 export const FILE_LIMITS = {
   MAX_SIZE_BYTES: MAX_FILE_SIZE_BYTES,
   MAX_IMAGE_SIZE: MAX_FILE_SIZE_BYTES,
   MAX_VIDEO_SIZE: MAX_FILE_SIZE_BYTES,
   MAX_PDF_SIZE: MAX_FILE_SIZE_BYTES,
+  MAX_TOTAL_UPLOAD_BYTES,
 } as const;
 
 export const DEFAULT_PAGE_SIZE = 50;

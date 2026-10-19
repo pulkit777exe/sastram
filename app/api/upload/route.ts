@@ -6,6 +6,7 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { requireWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { store } from '@/lib/attachments';
+import { FILE_LIMITS } from '@/lib/config/constants';
 
 const handler = withErrorHandling(async (req: NextRequest) => {
   const session = await requireSessionOrThrow();
@@ -16,8 +17,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   }
 
   const contentLength = req.headers.get('content-length');
-  const maxBytes = 5 * 1024 * 1024;
-  if (contentLength && Number(contentLength) > maxBytes) {
+  if (contentLength && Number(contentLength) > FILE_LIMITS.MAX_TOTAL_UPLOAD_BYTES) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Upload too large'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
@@ -39,7 +39,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Maximum 10 files allowed'), { status: HTTP_STATUS.BAD_REQUEST });
   }
   const totalSize = files.reduce((a, f) => a + (f instanceof File ? f.size : 0), 0);
-  if (totalSize > maxBytes) {
+  if (totalSize > FILE_LIMITS.MAX_TOTAL_UPLOAD_BYTES) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'Upload too large'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 

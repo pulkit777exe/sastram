@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/infrastructure/logger';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { getRequestIp } from '@/lib/utils/request-ip';
 
 // CSP report collector for Content-Security-Policy-Report-Only. Logs violations
 // so the policy can be tightened before flipping to enforcing mode. Returns 204
 // (browsers expect an empty 200/204 for report-uri).
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'anon';
+    const ip = getRequestIp(req);
     const rl = await rateLimit({ key: `csp-report:${ip}`, type: 'api' });
     if (!rl.success) return new NextResponse(null, { status: 204 });
     const len = req.headers.get('content-length');

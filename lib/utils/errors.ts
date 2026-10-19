@@ -23,6 +23,12 @@ interface PrismaError {
   meta?: Record<string, unknown>;
 }
 
+interface PrismaErrorResponse {
+  message: string;
+  code: string;
+  statusCode: number;
+}
+
 function isPrismaError(unknownError: unknown): unknownError is PrismaError {
   if (typeof unknownError !== 'object') return false;
   if (unknownError === null) return false;
@@ -32,19 +38,19 @@ function isPrismaError(unknownError: unknown): unknownError is PrismaError {
   return true;
 }
 
+// P2002 is a client-visible conflict; P2025/P2003 mean the addressed record
+// (or its relation) is missing — 404, not 409, and never the raw Prisma code.
+const PRISMA_ERROR_RESPONSES: Record<string, PrismaErrorResponse> = {
+  [PRISMA_UNIQUE_CONSTRAINT]: { message: 'This record already exists', code: 'CONFLICT', statusCode: 409 },
+  [PRISMA_RECORD_NOT_FOUND]: { message: 'Record not found', code: 'NOT_FOUND', statusCode: 404 },
+  [PRISMA_FOREIGN_KEY]: { message: 'Related record not found', code: 'NOT_FOUND', statusCode: 404 },
+};
+
 export function prismaErrorMessage(unknownError: unknown): string | null {
   if (!isPrismaError(unknownError)) return null;
 
-  switch (unknownError.code) {
-    case PRISMA_UNIQUE_CONSTRAINT:
-      return 'This record already exists';
-    case PRISMA_RECORD_NOT_FOUND:
-      return 'Record not found';
-    case PRISMA_FOREIGN_KEY:
-      return 'Related record not found';
-    default:
-      return null;
-  }
+  const response = PRISMA_ERROR_RESPONSES[unknownError.code ?? ''];
+  return response ? response.message : null;
 }
 
 export function isPrismaUniqueConstraintError(unknownError: unknown): boolean {
@@ -84,7 +90,6 @@ export function isQuotaError(unknownError: unknown): boolean {
 // so those messages stay server-side and clients get this instead.
 const INTERNAL_ERROR_MESSAGE = 'An internal error occurred';
 
-const HTTP_CONFLICT = 409;
 const HTTP_INTERNAL_ERROR = 500;
 
 export function handleError(rawError: unknown): {
@@ -101,9 +106,9 @@ export function handleError(rawError: unknown): {
   }
 
   if (isPrismaError(rawError)) {
-    const prismaMessage = prismaErrorMessage(rawError);
-    if (prismaMessage !== null) {
-      return { message: prismaMessage, code: rawError.code, statusCode: HTTP_CONFLICT };
+    const prismaResponse = PRISMA_ERROR_RESPONSES[rawError.code ?? ''];
+    if (prismaResponse !== undefined) {
+      return { ...prismaResponse };
     }
   }
 
