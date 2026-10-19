@@ -44,7 +44,8 @@ export async function queueAiInlineIfRequested(args: {
   messageId: string;
   sideEffects: MessageSideEffectsPort;
   // The browser opens the SSE stream itself, so skip the background job to
-  // avoid generating the reply twice. Quota/cost gates still apply here.
+  // avoid generating the reply twice. This path still consumes quota (spam
+  // gate); spend is charged once by the stream route.
   clientStreams?: boolean;
   quotaCheck?: AiInlineQuota;
   spendCapCheck?: AiSpendCapCheck;
@@ -70,6 +71,14 @@ export async function queueAiInlineIfRequested(args: {
     return { ...LIMITED };
   }
 
+  // Client-streamed replies charge spend exactly once, on the stream route
+  // (AI_REPLY_STREAM) that does the actual LLM work. This post path only
+  // consumes quota to gate spam, so a streaming @sai reply is never billed
+  // twice (post AI_INLINE_REPLY + stream AI_REPLY_STREAM).
+  if (args.clientStreams) {
+    return { aiInlineQueued: false, aiInlineLimited: false, aiInlineStreaming: true };
+  }
+
   let spendCap: { allowed: boolean };
   if (args.spendCapCheck) {
     spendCap = await args.spendCapCheck();
@@ -82,10 +91,6 @@ export async function queueAiInlineIfRequested(args: {
   });
   if (!gate.allowed) {
     return { ...LIMITED };
-  }
-
-  if (args.clientStreams) {
-    return { aiInlineQueued: false, aiInlineLimited: false, aiInlineStreaming: true };
   }
 
   await args.sideEffects.enqueueAiInline({

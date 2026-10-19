@@ -47,6 +47,15 @@ describe('AI cost classification', () => {
     });
   });
 
+  describe('deep research classification', () => {
+    it('is EXPENSIVE with a conservative multi-provider estimate (>= $0.05)', () => {
+      const result = classifyAiCallCost(AiCallPath.DEEP_RESEARCH);
+      expect(result.tier).to.equal(AiCostTier.EXPENSIVE);
+      expect(result.cacheable).to.equal(false);
+      expect(result.estimatedCostUsd).to.be.greaterThanOrEqual(0.05);
+    });
+  });
+
   describe('hard-gate decision', () => {
     it('requires a hard pre-flight spend-cap gate for expensive paths', () => {
       // The gate decision is derivable from the tier: expensive => hard gate.

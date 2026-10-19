@@ -40,20 +40,26 @@ async function callGeminiText(
   const ai = new GoogleGenAI({ apiKey: geminiKey });
   const start = Date.now();
 
-  const result = await withRetry((signal) => {
-    const generationConfig: Record<string, unknown> = {
-      abortSignal: signal ?? opts.signal,
-    };
-    if (opts.jsonMode) {
-      generationConfig.responseMimeType = 'application/json';
-    }
+  const result = await withRetry(
+    (signal) => {
+      const generationConfig: Record<string, unknown> = {
+        abortSignal: signal,
+      };
+      if (opts.jsonMode) {
+        generationConfig.responseMimeType = 'application/json';
+      }
 
-    return ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: generationConfig as never,
-    });
-  });
+      return ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: generationConfig as never,
+      });
+    },
+    3,
+    300,
+    15_000,
+    opts.signal
+  );
 
   logAiUsage({
     operation: 'ai-search:generate-text',
@@ -80,21 +86,27 @@ async function callOpenAIText(
 ): Promise<string> {
   const start = Date.now();
 
-  const response = (await withRetry(async (signal) => {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify(buildOpenAiBody(model, prompt, opts.jsonMode)),
-      signal: signal ?? opts.signal,
-    });
-    if (!res.ok) {
-      throw new Error(`OpenAI ${res.status}: ${res.statusText}`);
-    }
-    return res.json() as Promise<OpenAiChatResponse>;
-  })) as OpenAiChatResponse;
+  const response = (await withRetry(
+    async (signal) => {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${openaiKey}`,
+        },
+        body: JSON.stringify(buildOpenAiBody(model, prompt, opts.jsonMode)),
+        signal,
+      });
+      if (!res.ok) {
+        throw new Error(`OpenAI ${res.status}: ${res.statusText}`);
+      }
+      return res.json() as Promise<OpenAiChatResponse>;
+    },
+    3,
+    300,
+    15_000,
+    opts.signal
+  )) as OpenAiChatResponse;
 
   logAiUsage({
     operation: 'ai-search:generate-text',

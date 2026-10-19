@@ -167,23 +167,32 @@ export async function searchWithExa(
   query: string,
   classification: QueryClassification,
   exaKey: string,
-  config: SearchConfig
+  config: SearchConfig,
+  signal?: AbortSignal
 ): Promise<Source[]> {
   try {
     const body = buildExaBody(query, classification, config);
-    const data = await withRetry(async (signal) => {
-      const response = await fetch('https://api.exa.ai/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
-        body: JSON.stringify(body),
-        signal,
-      });
-      if (!response.ok) throw new Error(`Exa API error: ${response.status}`);
-      return response.json();
-    });
+    const data = await withRetry(
+      async (retrySignal) => {
+        const response = await fetch('https://api.exa.ai/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
+          body: JSON.stringify(body),
+          signal: retrySignal,
+        });
+        if (!response.ok) throw new Error(`Exa API error: ${response.status}`);
+        return response.json();
+      },
+      3,
+      300,
+      15_000,
+      signal
+    );
     const results = data.results || [];
     return results.map(mapExaResult);
   } catch (error) {
+    // Caller deadline — not a provider failure; stop quietly.
+    if (signal?.aborted) return [];
     logger.error('Exa search failed:', error);
     return [];
   }
@@ -232,24 +241,33 @@ export async function searchWithTavily(
   query: string,
   classification: QueryClassification,
   tavilyKey: string,
-  config: SearchConfig
+  config: SearchConfig,
+  signal?: AbortSignal
 ): Promise<{ sources: Source[]; answer?: string }> {
   try {
     const body = buildTavilyBody(query, classification, config);
-    const data = await withRetry(async (signal) => {
-      const response = await fetch('https://api.tavily.com/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tavilyKey}` },
-        body: JSON.stringify(body),
-        signal,
-      });
-      if (!response.ok) throw new Error(`Tavily API error: ${response.status}`);
-      return response.json();
-    });
+    const data = await withRetry(
+      async (retrySignal) => {
+        const response = await fetch('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tavilyKey}` },
+          body: JSON.stringify(body),
+          signal: retrySignal,
+        });
+        if (!response.ok) throw new Error(`Tavily API error: ${response.status}`);
+        return response.json();
+      },
+      3,
+      300,
+      15_000,
+      signal
+    );
     const results = data.results || [];
     const sources: Source[] = results.map(mapTavilyResult);
     return { sources, answer: data.answer };
   } catch (error) {
+    // Caller deadline — not a provider failure; stop quietly.
+    if (signal?.aborted) return { sources: [] };
     logger.error('Tavily search failed:', error);
     return { sources: [] };
   }

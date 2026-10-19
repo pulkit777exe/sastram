@@ -8,6 +8,7 @@ import { getEnv } from '@/lib/config/env';
 import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireReadOrThrow } from '@/lib/thread-access';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 const summaryRequestSchema = z.object({
@@ -45,17 +46,13 @@ async function validateThreadEligibility(threadId: string): Promise<NextResponse
   return null;
 }
 
-async function fetchThreadForSummary(threadId: string) {
-  return prisma.thread.findFirst({
-    where: { id: threadId, deletedAt: null },
-    include: {
-      messages: {
-        where: { deletedAt: null },
-        take: getEnv().AI_ANALYSIS_MESSAGE_LIMIT,
-        orderBy: { createdAt: 'asc' },
-        include: { sender: true },
-      },
-    },
+/** The guard already resolved the thread — only its messages are needed here. */
+async function fetchSummaryMessages(threadId: string) {
+  return prisma.message.findMany({
+    where: { threadId, deletedAt: null },
+    take: getEnv().AI_ANALYSIS_MESSAGE_LIMIT,
+    orderBy: { createdAt: 'asc' },
+    include: { sender: true },
   });
 }
 
@@ -70,18 +67,21 @@ const handler = withErrorHandling(async (req: NextRequest) => {
     threadId,
     rateLimitScope: 'ai-thread-summary',
     sse: false,
+    // Eligibility is cheap: reject "<20 messages" before quota/spend is consumed.
+    precheck: () => validateThreadEligibility(threadId),
   });
   if (!guard.ok) return guard.response;
 
-  const eligibilityError = await validateThreadEligibility(threadId);
-  if (eligibilityError) return eligibilityError;
+  const messages = await fetchSummaryMessages(threadId);
 
-  const thread = await fetchThreadForSummary(threadId);
-  if (!thread) {
-    return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
-  }
-
-  await enqueueJob(AIJobType.GENERATE_THREAD_SUMMARY, { threadId, messages: thread.messages, userId: guard.session.user.id });
+  await enqueueJob(AIJobType.GENERATE_THREAD_SUMMARY, {
+    threadId,
+    messages,
+    userId: guard.session.user.id,
+    // The guard above consumed the THREAD_SUMMARY estimate — stamp the
+    // request-scoped key so the worker skips re-consumption (ADR-0001).
+    alreadyBilled: randomUUID(),
+  });
 
   return NextResponse.json(ok({ status: 'pending', message: 'Summary generation started' }));
 });

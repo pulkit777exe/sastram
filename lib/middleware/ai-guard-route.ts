@@ -1,6 +1,6 @@
 /**
- * Route-level AI guard (D7) — owns session → rate limit → guards →
- * thread-access for AI routes. SSE-aware: JSON errors for REST routes,
+ * Route-level AI guard (D7) — owns session → rate limit → thread-access →
+ * precheck → guards for AI routes. SSE-aware: JSON errors for REST routes,
  * `event: error` SSE responses (mirroring ai-reply/stream's shape) for
  * streaming routes.
  */
@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { requireSessionOrThrow, type SessionPayload } from '@/modules/auth';
-import { requireReadOrThrow } from '@/lib/thread-access';
+import { requireReadOrThrow, type ThreadAccessContext } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { getRequestIp } from '@/lib/utils/request-ip';
 import { checkAiGuards } from '@/lib/ai/guard';
@@ -16,6 +16,8 @@ import type { GuardQuota } from '@/lib/ai/guard';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { sseEvent, sseHeaders } from '@/lib/utils/sse';
 import { AppError } from '@/lib/utils/errors';
+import { logger } from '@/lib/infrastructure/logger';
+import { ThreadVisibility } from '@prisma/client';
 
 export interface GuardAiRouteOptions {
   path: AiCallPath;
@@ -26,10 +28,16 @@ export interface GuardAiRouteOptions {
   rateLimitScope: string;
   /** When true, errors are `event: error` SSE responses instead of JSON. */
   sse: boolean;
+  /**
+   * Cheap eligibility/validation check run AFTER session + rate limit + thread
+   * access but BEFORE quota/spend. Return a Response/AppError to reject without
+   * consuming quota or spend; return null to continue.
+   */
+  precheck?: () => Promise<Response | AppError | null>;
 }
 
 export type GuardAiRouteResult =
-  | { ok: true; session: SessionPayload }
+  | { ok: true; session: SessionPayload; context: ThreadAccessContext | null }
   | { ok: false; response: NextResponse };
 
 function sseError(message: string, status: number): NextResponse {
@@ -37,6 +45,31 @@ function sseError(message: string, status: number): NextResponse {
     status,
     headers: sseHeaders(),
   });
+}
+
+/**
+ * Preserves the AppError status/code (404 stays 404, 400 stays 400, 403 stays
+ * 403) in both JSON and SSE variants; anything unexpected fails closed as 500
+ * rather than leaking through as an access denial or unhandled route error.
+ */
+function guardFailureResponse(error: unknown, sse: boolean): NextResponse {
+  if (AppError.isAppError(error)) {
+    const code = error.code !== undefined && error.code.length > 0 ? error.code : 'INTERNAL_ERROR';
+    if (sse) {
+      return sseError(error.message, error.statusCode);
+    }
+    return NextResponse.json(fail(code, error.message), { status: error.statusCode });
+  }
+  logger.error('[ai-guard-route] guard phase failed', error);
+  if (sse) {
+    return sseError('Internal server error', HTTP_STATUS.INTERNAL);
+  }
+  return NextResponse.json(fail('INTERNAL_ERROR', 'Internal server error'), { status: HTTP_STATUS.INTERNAL });
+}
+
+function toNextResponse(response: Response): NextResponse {
+  if (response instanceof NextResponse) return response;
+  return new NextResponse(response.body, { status: response.status, headers: response.headers });
 }
 
 async function checkAuth(sse: boolean): Promise<SessionPayload | NextResponse> {
@@ -94,14 +127,12 @@ function buildGuardError(
  */
 export interface GuardDeps {
   checkGuards: typeof checkAiGuards;
-  checkAccess: (threadId: string, session: SessionPayload) => Promise<void>;
+  checkAccess: (threadId: string, session: SessionPayload) => Promise<ThreadAccessContext>;
 }
 
 const realGuardDeps: GuardDeps = {
   checkGuards: (path, userId, options) => checkAiGuards(path, userId, options),
-  checkAccess: async (threadId, session) => {
-    await requireReadOrThrow(threadId, session.user.id, session.user.role);
-  },
+  checkAccess: (threadId, session) => requireReadOrThrow(threadId, session.user.id, session.user.role),
 };
 
 let testGuardDeps: GuardDeps | null = null;
@@ -115,7 +146,7 @@ export function setGuardDepsForTests(deps: GuardDeps | null): void {
 export function allowAllGuardDeps(): GuardDeps {
   return {
     checkGuards: async () => ({ ok: true }),
-    checkAccess: async () => {},
+    checkAccess: async (threadId) => ({ threadId, createdBy: null, visibility: ThreadVisibility.PUBLIC }),
   };
 }
 
@@ -132,6 +163,33 @@ export async function guardAiRoute(req: NextRequest, options: GuardAiRouteOption
     return { ok: false, response: rateLimitError };
   }
 
+  // Access runs before quota/spend: a missing/forbidden thread must not cost
+  // the caller quota, and its 404/403 status must survive the guard.
+  let context: ThreadAccessContext | null = null;
+  const targetThreadId = options.threadId;
+  if (targetThreadId !== undefined && targetThreadId !== null && targetThreadId.length > 0) {
+    try {
+      context = await deps.checkAccess(targetThreadId, session);
+    } catch (accessError) {
+      return { ok: false, response: guardFailureResponse(accessError, options.sse) };
+    }
+  }
+
+  const precheck = options.precheck;
+  if (precheck !== undefined) {
+    try {
+      const precheckResult = await precheck();
+      if (AppError.isAppError(precheckResult)) {
+        return { ok: false, response: guardFailureResponse(precheckResult, options.sse) };
+      }
+      if (precheckResult !== null) {
+        return { ok: false, response: toNextResponse(precheckResult) };
+      }
+    } catch (precheckError) {
+      return { ok: false, response: guardFailureResponse(precheckError, options.sse) };
+    }
+  }
+
   const guards = await deps.checkGuards(options.path, session.user.id, { quota: options.quota });
   if (!guards.ok) {
     return {
@@ -140,18 +198,5 @@ export async function guardAiRoute(req: NextRequest, options: GuardAiRouteOption
     };
   }
 
-  const targetThreadId = options.threadId;
-  if (targetThreadId !== undefined && targetThreadId !== null && targetThreadId.length > 0) {
-    try {
-      await deps.checkAccess(targetThreadId, session);
-    } catch (error) {
-      if (!AppError.isAppError(error)) throw error;
-      if (options.sse) {
-        return { ok: false, response: sseError('Forbidden', HTTP_STATUS.FORBIDDEN) };
-      }
-      return { ok: false, response: NextResponse.json(fail('FORBIDDEN', 'Forbidden'), { status: HTTP_STATUS.FORBIDDEN }) };
-    }
-  }
-
-  return { ok: true, session };
+  return { ok: true, session, context };
 }

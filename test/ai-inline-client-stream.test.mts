@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import { randomUUID } from 'node:crypto';
 import {
   extractAiInlineQuery,
@@ -86,6 +87,49 @@ describe('@sai inline reply — client-streaming delivery', () => {
       // Never enqueue a background job when the client streams — that would
       // double-generate the reply.
       expect(calls.enqueueAiInline).to.have.length(0);
+    });
+
+    it('skips spend-cap consumption when the client streams (stream route bills once)', async () => {
+      const { stub } = makeSideEffectsStub();
+      const quotaCheck = sinon.stub().resolves({ allowed: true, used: 1 });
+      const spendCapCheck = sinon.stub().resolves({ allowed: false, remaining: 0, used: 5 });
+
+      const result = await queueAiInlineIfRequested({
+        content: '@sai what changed?',
+        userId: randomUUID(),
+        threadId: randomUUID(),
+        messageId: randomUUID(),
+        sideEffects: stub,
+        clientStreams: true,
+        quotaCheck,
+        spendCapCheck,
+      });
+
+      // Quota still gates spam; spend is the stream route's job, so an
+      // exhausted cap must not block the client from opening the stream.
+      expect(result).to.deep.equal({ aiInlineQueued: false, aiInlineLimited: false, aiInlineStreaming: true });
+      sinon.assert.calledOnce(quotaCheck);
+      sinon.assert.notCalled(spendCapCheck);
+    });
+
+    it('still denies the enqueue when the spend cap is exhausted (worker path)', async () => {
+      const { stub } = makeSideEffectsStub();
+      const quotaCheck = sinon.stub().resolves({ allowed: true, used: 1 });
+      const spendCapCheck = sinon.stub().resolves({ allowed: false, remaining: 0, used: 5 });
+
+      const result = await queueAiInlineIfRequested({
+        content: '@sai what changed?',
+        userId: randomUUID(),
+        threadId: randomUUID(),
+        messageId: randomUUID(),
+        sideEffects: stub,
+        quotaCheck,
+        spendCapCheck,
+      });
+
+      expect(result).to.deep.equal({ aiInlineQueued: false, aiInlineLimited: true, aiInlineStreaming: false });
+      sinon.assert.calledOnce(quotaCheck);
+      sinon.assert.calledOnce(spendCapCheck);
     });
 
     it('enqueues the background job when clientStreams is not set', async () => {

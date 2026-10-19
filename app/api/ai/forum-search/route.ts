@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
+import { requireSessionOrThrow, type SessionPayload } from '@/modules/auth';
+import { AppError } from '@/lib/utils/errors';
+import { isAbortError } from '@/lib/utils/retry';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch } from '@/modules/ai-search/service';
@@ -8,7 +11,7 @@ import { cacheResult } from '@/modules/ai-search/cache';
 import { searchWithExa, searchWithTavily } from '@/modules/ai-search/search-providers';
 import { createKeyedLlm } from '@/lib/ai/text';
 import { persistSearchSession } from '@/modules/ai-search/repository';
-import { sseChunk, sseHeaders } from '@/lib/utils/sse';
+import { sseChunk, sseEvent, sseHeaders } from '@/lib/utils/sse';
 import { getUserExpertiseLevel, refreshUserExpertise } from '@/lib/services/user-memory';
 import {
   QUERY_MIN,
@@ -32,6 +35,53 @@ import {
 
 export const maxDuration = 30;
 
+/** ~25s budget, below maxDuration (30s) so the stream can emit an error and close. */
+const AI_SEARCH_DEADLINE_MS = 25_000;
+
+/**
+ * Route-level deadline: aborts on the caller's signal (SSE client close) or
+ * after AI_SEARCH_DEADLINE_MS, whichever comes first. The signal stops the
+ * remaining paid phases and in-flight provider fetches.
+ */
+function createDeadline(request: NextRequest): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_SEARCH_DEADLINE_MS);
+  const onRequestAbort = () => controller.abort();
+  if (request.signal.aborted) {
+    controller.abort();
+  } else {
+    request.signal.addEventListener('abort', onRequestAbort, { once: true });
+  }
+  return {
+    signal: controller.signal,
+    clear: () => {
+      clearTimeout(timer);
+      request.signal.removeEventListener('abort', onRequestAbort);
+    },
+  };
+}
+
+/** Session gate for the pre-guard preflight (cache/idempotency) paths. */
+async function requireSessionForPreflight(): Promise<
+  { ok: true; session: SessionPayload } | { ok: false; response: NextResponse }
+> {
+  try {
+    return { ok: true, session: await requireSessionOrThrow() };
+  } catch (error) {
+    if (AppError.isAppError(error) && error.code === 'AUTH_REQUIRED') {
+      // Mirror ai-guard-route's SSE unauthorized shape.
+      return {
+        ok: false,
+        response: new NextResponse(sseEvent('error', { error: 'Unauthorized' }), {
+          status: HTTP_STATUS.UNAUTHORIZED,
+          headers: sseHeaders(),
+        }),
+      };
+    }
+    throw error;
+  }
+}
+
 function buildLiveStream(
   request: NextRequest,
   session: { user: { id: string } },
@@ -44,6 +94,8 @@ function buildLiveStream(
     sessionId: string | undefined;
     hasHistory: boolean;
     expertiseLevel?: string;
+    signal: AbortSignal;
+    clearDeadline: () => void;
   }
 ): Response {
   const encoder = new TextEncoder();
@@ -80,9 +132,16 @@ function buildLiveStream(
         const result = await executeAISearch(params.effectiveQuery, params.config, {
           llm: createKeyedLlm({ gemini: searchKeys.gemini, openai: searchKeys.openai }),
           search: {
-            exa: (query, classification, config) => searchWithExa(query, classification, searchKeys.exa, config),
+            exa: (query, classification, config) =>
+              searchWithExa(query, classification, searchKeys.exa, config, params.signal),
             tavily: async (query, classification, config) => {
-              const { sources, answer } = await searchWithTavily(query, classification, searchKeys.tavily, config);
+              const { sources, answer } = await searchWithTavily(
+                query,
+                classification,
+                searchKeys.tavily,
+                config,
+                params.signal
+              );
               return { sources, answer };
             },
           },
@@ -93,6 +152,7 @@ function buildLiveStream(
           store: undefined,
           history: params.conversationHistory,
           expertise: expertiseLevel,
+          signal: params.signal,
         });
 
         sendEvent({ phase: 'reading', sources: result.sources });
@@ -148,9 +208,13 @@ function buildLiveStream(
         safeClose();
       } catch (error) {
         logger.error('AI Search streaming error:', error instanceof Error ? error.message : 'Unknown error');
-        const { message, errorCode } = mapStreamError(error);
-        sendEvent({ phase: 'error', message, errorCode });
+        const mapped = isAbortError(error)
+          ? { message: 'The search timed out. Please try again with a simpler query.', errorCode: 'SYNTHESIS_FAILED' }
+          : mapStreamError(error);
+        sendEvent({ phase: 'error', message: mapped.message, errorCode: mapped.errorCode });
         safeClose();
+      } finally {
+        params.clearDeadline();
       }
     },
   });
@@ -200,14 +264,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const guard = await guardAiRoute(request, {
-      path: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
-      quota: { kind: 'search' },
-      rateLimitScope: 'ai-forum-search',
-      sse: true,
-    });
-    if (!guard.ok) return guard.response;
-    const session = guard.session;
+    // Replay/cache preflight BEFORE the guard: a replayed nonce or a synthesis
+    // cache hit must not consume quota/spend. A session is still required;
+    // rate limiting is intentionally skipped for cache hits (a cheap DB read).
+    const preflight = await requireSessionForPreflight();
+    if (!preflight.ok) return preflight.response;
+    const session = preflight.session;
 
     const idempotencyError = await checkSearchIdempotency(clientNonce, session.user.id);
     if (idempotencyError) return idempotencyError;
@@ -223,6 +285,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const guard = await guardAiRoute(request, {
+      path: AiCallPath.FORUM_SEARCH_SYNTHESIZE,
+      quota: { kind: 'search' },
+      rateLimitScope: 'ai-forum-search',
+      sse: true,
+    });
+    if (!guard.ok) return guard.response;
+
+    const deadline = createDeadline(request);
+
     return buildLiveStream(request, session, {
       effectiveQuery,
       config,
@@ -232,6 +304,8 @@ export async function POST(request: NextRequest) {
       sessionId,
       hasHistory,
       expertiseLevel,
+      signal: deadline.signal,
+      clearDeadline: deadline.clear,
     });
   } catch (error) {
     return mapTopLevelError(error);

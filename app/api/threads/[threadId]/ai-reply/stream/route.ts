@@ -6,7 +6,7 @@ import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
 import { z } from 'zod';
-import { sseEvent, sseHeaders } from '@/lib/utils/sse';
+import { createSSEStream, createSseSender, sseEvent, sseHeaders } from '@/lib/utils/sse';
 import { HTTP_STATUS } from '@/lib/utils/api-response';
 import {
   fetchThreadContext,
@@ -21,26 +21,20 @@ const paramsSchema = z.object({
   threadId: z.string().cuid(),
 });
 
+type ExistingAiReply = {
+  id: string;
+  content: string;
+  depth: number;
+  createdAt: Date;
+  senderId: string | null;
+  sender: { name: string | null; image: string | null } | null;
+};
+
 function errorSseResponse(message: string, status: number): Response {
   return new Response(sseEvent('error', { error: message }), {
     status,
     headers: sseHeaders(),
   });
-}
-
-function createSseSender(
-  controller: ReadableStreamDefaultController<Uint8Array>,
-  encoder: TextEncoder,
-  closedRef: { closed: boolean }
-) {
-  return function sendEvent(event: string, data: unknown) {
-    if (closedRef.closed) return;
-    try {
-      controller.enqueue(encoder.encode(sseEvent(event, data)));
-    } catch {
-      closedRef.closed = true;
-    }
-  };
 }
 
 function validateThreadParams(threadId: string): Response | null {
@@ -51,11 +45,13 @@ function validateThreadParams(threadId: string): Response | null {
   return null;
 }
 
+/** Depth is selected here so the stream path does not need a third round-trip. */
 async function resolveParentMessage(threadId: string, requestedMessageIdRaw: string | null) {
   const requestedMessageId = requestedMessageIdRaw;
   if (requestedMessageId !== null && requestedMessageId !== '') {
     return prisma.message.findFirst({
       where: { id: requestedMessageId, threadId, deletedAt: null },
+      select: { id: true, content: true, depth: true },
     });
   }
   return prisma.message.findFirst({
@@ -68,6 +64,53 @@ async function resolveParentMessage(threadId: string, requestedMessageIdRaw: str
     },
     orderBy: { createdAt: 'desc' },
     take: 1,
+    select: { id: true, content: true, depth: true },
+  });
+}
+
+async function findExistingAiReply(threadId: string, parentId: string): Promise<ExistingAiReply | null> {
+  return prisma.message.findFirst({
+    where: { threadId, parentId, isAiResponse: true },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      content: true,
+      depth: true,
+      createdAt: true,
+      senderId: true,
+      sender: { select: { name: true, image: true } },
+    },
+  });
+}
+
+/**
+ * Idempotent replay: a non-empty row is treated as a completed reply (the
+ * final sanitized write always lands last — see streamAiReplyToMessage — so
+ * the only detectable incomplete state is empty content from a crash before
+ * the first throttled flush).
+ */
+function buildReplayResponse(
+  request: NextRequest,
+  threadId: string,
+  parentId: string,
+  existingReply: ExistingAiReply
+): Response {
+  const startPayload = {
+    messageId: existingReply.id,
+    parentId,
+    threadId,
+    depth: existingReply.depth,
+    createdAt: existingReply.createdAt.toISOString(),
+    senderId: existingReply.senderId,
+    senderName: existingReply.sender?.name ?? 'Sastram AI',
+    senderImage: existingReply.sender?.image ?? null,
+  };
+
+  return createSSEStream(request, async (controller, send) => {
+    send({ event: 'start', data: JSON.stringify(startPayload) });
+    send({ event: 'token', data: JSON.stringify({ content: existingReply.content }) });
+    send({ event: 'done', data: JSON.stringify({ messageId: existingReply.id, truncated: false }) });
+    controller.close();
   });
 }
 
@@ -130,19 +173,25 @@ export async function GET(
   if (queryResult.error) return queryResult.error;
   const query = queryResult.query as string;
 
-  const threadContext = await fetchThreadContext(threadId);
-  const aiUser = await getOrCreateAiUser();
-  const parentMsg = await prisma.message.findUnique({
-    where: { id: parentMessage.id },
-    select: { depth: true },
-  });
+  // Find-or-reuse (mirrors the ai-inline worker): a retry or double-open must
+  // not create a duplicate AI message or run a second paid LLM stream.
+  const existingReply = await findExistingAiReply(threadId, parentMessage.id);
+  if (existingReply && existingReply.content.trim().length > 0) {
+    void trackNeonRequest();
+    return buildReplayResponse(request, threadId, parentMessage.id, existingReply);
+  }
 
-  const aiMessage = await createAiReplyMessageTx({
+  const [threadContext, aiUser] = await Promise.all([
+    fetchThreadContext(threadId),
+    getOrCreateAiUser(),
+  ]);
+
+  const aiMessage = existingReply ?? (await createAiReplyMessageTx({
     threadId,
     parentId: parentMessage.id,
-    parentDepth: parentMsg?.depth,
+    parentDepth: parentMessage.depth,
     aiUserId: aiUser.id,
-  });
+  }));
   void trackNeonRequest();
 
   const stream = new ReadableStream({
@@ -175,7 +224,7 @@ export async function GET(
         messageId: aiMessage.id,
         parentId: parentMessage.id,
         threadId,
-        depth: Math.min((parentMsg?.depth ?? 0) + 1, 4),
+        depth: aiMessage.depth,
         createdAt: new Date().toISOString(),
         senderId: aiUser.id,
         senderName: aiUser.name ?? 'Sastram AI',

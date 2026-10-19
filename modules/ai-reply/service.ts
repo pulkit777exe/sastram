@@ -35,19 +35,42 @@ export async function fetchThreadContext(threadId: string): Promise<string> {
   return lines.join('\n');
 }
 
+const AI_USER_EMAIL = 'ai@sastram.system';
+const AI_USER_NAME = 'Sastram AI';
+const AI_USER_SELECT = { id: true, name: true, image: true };
+
+/**
+ * Read-first so the hot reply path does not write on every call. Creation is
+ * still race-safe: the email unique constraint makes concurrent creates one
+ * winner + P2002 losers, and the losers re-read the winner.
+ */
 export async function getOrCreateAiUser() {
-  return prisma.user.upsert({
-    where: { email: 'ai@sastram.system' },
-    update: { name: 'Sastram AI', emailVerified: true },
-    create: {
-      email: 'ai@sastram.system',
-      name: 'Sastram AI',
-      emailVerified: true,
-      role: 'USER',
-      status: 'ACTIVE',
-    },
-    select: { id: true, name: true, image: true },
+  const existingAiUser = await prisma.user.findUnique({
+    where: { email: AI_USER_EMAIL },
+    select: AI_USER_SELECT,
   });
+  if (existingAiUser) return existingAiUser;
+
+  try {
+    return await prisma.user.create({
+      data: {
+        email: AI_USER_EMAIL,
+        name: AI_USER_NAME,
+        emailVerified: true,
+        role: 'USER',
+        status: 'ACTIVE',
+      },
+      select: AI_USER_SELECT,
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code !== 'P2002') throw error;
+    const racedAiUser = await prisma.user.findUnique({
+      where: { email: AI_USER_EMAIL },
+      select: AI_USER_SELECT,
+    });
+    if (!racedAiUser) throw error;
+    return racedAiUser;
+  }
 }
 
 /**
@@ -73,7 +96,7 @@ export async function createAiReplyMessageTx(params: {
   parentId: string;
   parentDepth: number | null | undefined;
   aiUserId: string;
-}): Promise<{ id: string }> {
+}): Promise<{ id: string; depth: number }> {
   const { threadId, parentId, parentDepth, aiUserId } = params;
   return prisma.$transaction(async (tx) => {
     const msg = await tx.message.create({
@@ -89,7 +112,7 @@ export async function createAiReplyMessageTx(params: {
         likeCount: 0,
         replyCount: 0,
       },
-      select: { id: true },
+      select: { id: true, depth: true },
     });
 
     if (parentId) {
@@ -133,6 +156,7 @@ export async function streamAiReplyToMessage(params: {
   let fullContent = '';
   let lastDbUpdateTime = Date.now();
   let closed = false;
+  let pendingFlush: Promise<unknown> | null = null;
 
   signal?.addEventListener('abort', () => {
     closed = true;
@@ -140,21 +164,31 @@ export async function streamAiReplyToMessage(params: {
 
   const prompt = buildPrompt(query, context);
 
-  await aiService.generateStreamingResponse(prompt, async (chunk) => {
-    if (closed) return;
-    fullContent += chunk;
-    if (onToken) onToken(chunk);
+  try {
+    await aiService.generateStreamingResponse(
+      prompt,
+      async (chunk) => {
+        if (closed) return;
+        fullContent += chunk;
+        if (onToken) onToken(chunk);
 
-    const now = Date.now();
-    if (now - lastDbUpdateTime >= DB_THROTTLE_MS && !isAiNotConfigured(fullContent)) {
-      lastDbUpdateTime = now;
-      const sliced = fullContent.slice(0, MAX_AI_REPLY_CHARS);
-      // Fire-and-forget throttled write — don't block token stream
-      prisma.message
-        .update({ where: { id: aiMessageId }, data: { content: sliced } })
-        .catch((err) => logger.error('[ai-reply] throttled DB write failed', { error: err }));
-    }
-  });
+        const now = Date.now();
+        if (now - lastDbUpdateTime >= DB_THROTTLE_MS && !isAiNotConfigured(fullContent)) {
+          lastDbUpdateTime = now;
+          const sliced = fullContent.slice(0, MAX_AI_REPLY_CHARS);
+          // Fire-and-forget throttled write — don't block token stream
+          pendingFlush = prisma.message
+            .update({ where: { id: aiMessageId }, data: { content: sliced } })
+            .catch((err) => logger.error('[ai-reply] throttled DB write failed', { error: err }));
+        }
+      },
+      signal
+    );
+  } finally {
+    // Drain the last throttled write before any final write so a late flush
+    // can never land after (and revert) the sanitized content.
+    if (pendingFlush) await pendingFlush;
+  }
 
   if (isAiNotConfigured(fullContent)) {
     const fallbackContent = 'AI features are not configured. Please set an API key to enable AI responses.';

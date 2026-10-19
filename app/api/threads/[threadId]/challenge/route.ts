@@ -2,12 +2,12 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { enqueueJob } from '@/lib/services/queue';
 import { AIJobType } from '@/lib/queue/config';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionOrThrow } from '@/modules/auth';
-import { requireReadOrThrow } from '@/lib/thread-access';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { parseUserPreferences } from '@/lib/schemas/user-preferences';
 import { isSafePublicUrl, sanitizeUserContent } from '@/lib/services/content-safety';
-import { rateLimit } from '@/lib/services/rate-limit';
+import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 const paramsSchema = z.object({ threadId: z.string().cuid() });
@@ -17,9 +17,34 @@ const bodySchema = z.object({
 });
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
-  const session = await requireSessionOrThrow();
-  const { threadId } = paramsSchema.parse(await context!.params);
-  await requireReadOrThrow(threadId, session.user.id, session.user.role as never);
+  const parsedParams = paramsSchema.safeParse(await context!.params);
+  if (!parsedParams.success) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid thread ID'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const { threadId } = parsedParams.data;
+
+  const parsedBody = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsedBody.success) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid request body'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const body = parsedBody.data;
+
+  if (!isSafePublicUrl(body.counterSourceUrl)) {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'counterSourceUrl must be a public http/https URL'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const safeNote = body.note ? sanitizeUserContent(body.note).sanitized.slice(0, 500) : '';
+
+  // Access + quota + rate limit in one seam; the guard bills the conflict
+  // detection path, which is this route's primary enqueued job.
+  const guard = await guardAiRoute(request, {
+    path: AiCallPath.CONFLICT_DETECTION,
+    quota: { kind: 'analysis' },
+    threadId,
+    rateLimitScope: 'challenge',
+    sse: false,
+  });
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
 
   try {
     const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { preferences: true } });
@@ -30,14 +55,6 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
   } catch {
     // best-effort: if prefs read fails, allow challenge
   }
-
-  const body = bodySchema.parse(await request.json());
-  const rl = await rateLimit({ key: `challenge:${session.user.id}`, type: 'api' });
-  if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many challenges, slow down'), { status: HTTP_STATUS.RATE_LIMITED });
-  if (!isSafePublicUrl(body.counterSourceUrl)) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'counterSourceUrl must be a public http/https URL'), { status: HTTP_STATUS.BAD_REQUEST });
-  }
-  const safeNote = body.note ? sanitizeUserContent(body.note).sanitized.slice(0, 500) : '';
 
   const thread = await prisma.thread.findUnique({ where: { id: threadId, deletedAt: null }, select: { name: true, resolutionScore: true, isOutdated: true } });
   if (!thread) return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
@@ -66,8 +83,12 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
     subscriberIds: subscribers.map((s: { userId: string | null }) => s.userId!),
     threadName: thread.name,
     cronJob: false,
+    // The guard above consumed the CONFLICT_DETECTION estimate — stamp the
+    // request-scoped key so the worker skips re-consumption (ADR-0001).
+    alreadyBilled: randomUUID(),
   });
 
+  // Resolution score has its own path; its worker bills itself unchanged.
   await enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, {
     threadId,
     messages: challengeMessages as never,

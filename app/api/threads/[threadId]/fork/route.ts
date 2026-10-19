@@ -8,7 +8,6 @@ import { forkThreadDomain, threadVisibilitySchema } from '@/modules/threads/thre
 import { infraThreadSideEffects } from '@/modules/threads/adapters/infra-side-effects';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { AppError } from '@/lib/utils/errors';
 
 const bodySchema = z.object({ title: z.string().min(3).max(120).optional(), visibility: threadVisibilitySchema.optional() });
 
@@ -62,23 +61,16 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
     // no body is fine
   }
 
-  try {
-    await requireReadOrThrow(threadId, session.user.id, session.user.role);
-  } catch (error) {
-    if (AppError.isAppError(error)) {
-      const status = error.statusCode === 404 ? HTTP_STATUS.NOT_FOUND : HTTP_STATUS.FORBIDDEN;
-      const code = error.statusCode === 404 ? 'NOT_FOUND' : 'FORBIDDEN';
-      return NextResponse.json(fail(code, error.message), { status });
-    }
-    throw error;
-  }
+  // Access resolution returns the thread context; AppError status/code (404 /
+  // 403) propagates unchanged through withErrorHandling.
+  const sourceCtx = await requireReadOrThrow(threadId, session.user.id, session.user.role);
 
   const safeTitle = title?.trim()
     ? sanitizeUserContent(title.trim()).sanitized.trim().slice(0, 120) || title.trim().slice(0, 120)
     : undefined;
 
   const forked = await forkThreadDomain({
-    sourceThreadId: threadId,
+    sourceThreadId: sourceCtx.threadId,
     title: safeTitle,
     visibility,
     userId: session.user.id,

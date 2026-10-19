@@ -20,15 +20,15 @@ export interface ConflictResult {
 }
 
 export interface AIService {
-  generateSummary(content: string): Promise<string>;
-  generateThreadSummary(messages: MessageInput[]): Promise<string>;
-  generateDailyDigest(messages: MessageInput[]): Promise<string>;
-  generateThreadDNA(messages: MessageInput[]): Promise<ThreadDNA>;
-  calculateResolutionScore(messages: MessageInput[]): Promise<number | null>;
-  detectConflicts(messages: MessageInput[]): Promise<ConflictResult>;
-  generateStreamingResponse(content: string, onChunk: (chunk: string) => void): Promise<void>;
-  classifyToxicity(content: string): Promise<number>;
-  moderateImageContent(imageUrl: string): Promise<ImageModerationResult>;
+  generateSummary(content: string, signal?: AbortSignal): Promise<string>;
+  generateThreadSummary(messages: MessageInput[], signal?: AbortSignal): Promise<string>;
+  generateDailyDigest(messages: MessageInput[], signal?: AbortSignal): Promise<string>;
+  generateThreadDNA(messages: MessageInput[], signal?: AbortSignal): Promise<ThreadDNA>;
+  calculateResolutionScore(messages: MessageInput[], signal?: AbortSignal): Promise<number | null>;
+  detectConflicts(messages: MessageInput[], signal?: AbortSignal): Promise<ConflictResult>;
+  generateStreamingResponse(content: string, onChunk: (chunk: string) => void, signal?: AbortSignal): Promise<void>;
+  classifyToxicity(content: string, signal?: AbortSignal): Promise<number>;
+  moderateImageContent(imageUrl: string, signal?: AbortSignal): Promise<ImageModerationResult>;
 }
 
 export const DEFAULT_THREAD_DNA: ThreadDNA = {

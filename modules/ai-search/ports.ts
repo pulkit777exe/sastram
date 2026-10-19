@@ -56,4 +56,6 @@ export interface SearchCtx {
   store?: SearchStore;
   history?: ConversationMessage[];
   expertise?: string;
+  /** Caller deadline/abort signal — checked between phases, forwarded to every LLM call. */
+  signal?: AbortSignal;
 }

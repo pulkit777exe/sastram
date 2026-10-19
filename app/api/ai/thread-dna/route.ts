@@ -31,17 +31,13 @@ async function parseAndValidateBody(req: NextRequest): Promise<{ threadId: strin
   return { threadId: parsed.data.threadId };
 }
 
-async function fetchThreadForDna(threadId: string) {
-  return prisma.thread.findFirst({
-    where: { id: threadId, deletedAt: null },
-    include: {
-      messages: {
-        where: { deletedAt: null },
-        take: Math.min(parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10) || 50, 100),
-        orderBy: { createdAt: 'desc' },
-        include: { sender: true },
-      },
-    },
+/** The guard already resolved the thread — only its messages are needed here. */
+async function fetchDnaMessages(threadId: string) {
+  return prisma.message.findMany({
+    where: { threadId, deletedAt: null },
+    take: Math.min(parseInt(process.env.AI_ANALYSIS_MESSAGE_LIMIT || '50', 10) || 50, 100),
+    orderBy: { createdAt: 'desc' },
+    include: { sender: true },
   });
 }
 
@@ -59,12 +55,9 @@ const handler = withErrorHandling(async (req: NextRequest) => {
   });
   if (!guard.ok) return guard.response;
 
-  const thread = await fetchThreadForDna(threadId);
-  if (!thread) {
-    return NextResponse.json(fail('NOT_FOUND', 'Thread not found'), { status: HTTP_STATUS.NOT_FOUND });
-  }
+  const messages = await fetchDnaMessages(threadId);
 
-  const messages = thread.messages.reverse();
+  messages.reverse();
 
   if (messages.length === 0) {
     return NextResponse.json(ok({

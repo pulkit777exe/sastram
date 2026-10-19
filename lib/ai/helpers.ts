@@ -8,6 +8,30 @@ export const AI_TIMEOUT_MS = 15_000; // per-request abort — matches withRetry 
 const STREAM_STALL_MS = 30_000; // gap with no chunk means provider stalled
 const STREAM_TOTAL_MS = 90_000; // hard cap for entire streaming response
 
+/**
+ * Keep the most recent formatted lines within MAX_CONTENT_CHARS — same budget
+ * as the old head-truncation, but drops the OLDEST messages instead of the
+ * newest. Drops whole messages to preserve formatting; if the newest message
+ * alone exceeds the budget, keeps its head (single-message best effort).
+ */
+function keepMostRecentWithinBudget(formattedMessages: string[]): string {
+  let startIndex = formattedMessages.length;
+  let usedChars = 0;
+  for (let i = formattedMessages.length - 1; i >= 0; i -= 1) {
+    const line = formattedMessages[i] ?? '';
+    const separatorChars = startIndex === formattedMessages.length ? 0 : 1;
+    const nextUsed = usedChars + line.length + separatorChars;
+    if (nextUsed > MAX_CONTENT_CHARS) break;
+    usedChars = nextUsed;
+    startIndex = i;
+  }
+  if (startIndex === formattedMessages.length) {
+    const newestMessage = formattedMessages[formattedMessages.length - 1] ?? '';
+    return newestMessage.substring(0, MAX_CONTENT_CHARS);
+  }
+  return formattedMessages.slice(startIndex).join('\n');
+}
+
 export function buildMessageContent(messages: MessageInput[]): string {
   const formattedMessages = messages.map((message) => {
     let timestampPrefix = '';
@@ -21,7 +45,7 @@ export function buildMessageContent(messages: MessageInput[]): string {
     const senderName = message.sender?.name ?? 'Unknown';
     return `${timestampPrefix}${replyIndent}${senderName}: ${message.content}`;
   });
-  return formattedMessages.join('\n').substring(0, MAX_CONTENT_CHARS);
+  return keepMostRecentWithinBudget(formattedMessages);
 }
 
 export function buildIndexedContent(messages: MessageInput[]): string {
@@ -30,7 +54,9 @@ export function buildIndexedContent(messages: MessageInput[]): string {
     const messageNumber = index + 1;
     return `${messageNumber}. ${senderName}: ${message.content}`;
   });
-  return indexedMessages.join('\n').substring(0, MAX_CONTENT_CHARS);
+  // Numbers stay tied to original positions so conflict indices remain valid
+  // even when the oldest lines are dropped.
+  return keepMostRecentWithinBudget(indexedMessages);
 }
 
 const JSON_FENCE = '```json';

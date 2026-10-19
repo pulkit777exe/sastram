@@ -10,7 +10,6 @@ import {
   buildMessageContent,
   buildIndexedContent,
   stripHtmlFences,
-  makeAbortController,
   makeStreamAbortController,
   parseThreadDNA,
   parseConflict,
@@ -37,62 +36,62 @@ export class OpenAIService implements AIService {
     systemPrompt: string,
     userContent: string,
     maxTokens: number,
-    operation: string = 'openai-call'
+    operation: string = 'openai-call',
+    signal?: AbortSignal
   ): Promise<string> {
-    const { signal, clear } = makeAbortController();
     const start = Date.now();
-    try {
-      const data = await withRetry(
-        async (retrySignal) => {
-          const response = await fetch(this.baseUrl, {
-            method: 'POST',
-            headers: this.headers,
-            body: JSON.stringify({
-              model: this.model,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userContent },
-              ],
-              max_tokens: maxTokens,
-              temperature: 0.4,
-            }),
-            signal: retrySignal,
-          });
+    // No external timer here: withRetry owns the per-attempt timeout. The
+    // caller's signal aborts immediately instead of nullifying retries.
+    const data = await withRetry(
+      async (retrySignal) => {
+        const response = await fetch(this.baseUrl, {
+          method: 'POST',
+          headers: this.headers,
+          body: JSON.stringify({
+            model: this.model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userContent },
+            ],
+            max_tokens: maxTokens,
+            temperature: 0.4,
+          }),
+          signal: retrySignal,
+        });
 
-          if (!response.ok) {
-            const errorText = await response.text().catch(() => response.statusText);
-            throw new Error(`OpenAI ${response.status}: ${errorText}`);
-          }
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => response.statusText);
+          throw new Error(`OpenAI ${response.status}: ${errorText}`);
+        }
 
-          return response.json();
-        },
-        3,
-        300,
-        15_000,
-        signal
-      );
+        return response.json();
+      },
+      3,
+      300,
+      15_000,
+      signal
+    );
 
-      const latencyMs = Date.now() - start;
-      logAiUsage({
-        operation,
-        provider: 'openai',
-        model: this.model,
-        inputTokens: data.usage?.prompt_tokens ?? 0,
-        outputTokens: data.usage?.completion_tokens ?? 0,
-        latencyMs,
-      }).catch((e) => logger.warn('[OpenAIService] usage log failed', { error: e }));
+    const latencyMs = Date.now() - start;
+    logAiUsage({
+      operation,
+      provider: 'openai',
+      model: this.model,
+      inputTokens: data.usage?.prompt_tokens ?? 0,
+      outputTokens: data.usage?.completion_tokens ?? 0,
+      latencyMs,
+    }).catch((e) => logger.warn('[OpenAIService] usage log failed', { error: e }));
 
-      return data.choices[0]?.message?.content ?? '';
-    } finally {
-      clear();
-    }
+    return data.choices[0]?.message?.content ?? '';
   }
 
   async generateStreamingResponse(
     promptContent: string,
-    onChunk: (chunk: string) => void
+    onChunk: (chunk: string) => void,
+    externalSignal?: AbortSignal
   ): Promise<void> {
-    const { signal, resetStall, clear } = makeStreamAbortController();
+    const { signal: stallSignal, resetStall, clear } = makeStreamAbortController();
+    const signal = externalSignal ? AbortSignal.any([stallSignal, externalSignal]) : stallSignal;
 
     try {
       const streamingResponse = await fetch(this.baseUrl, {
@@ -174,14 +173,15 @@ export class OpenAIService implements AIService {
     }
   }
 
-  async generateSummary(discussionContent: string): Promise<string> {
+  async generateSummary(discussionContent: string, signal?: AbortSignal): Promise<string> {
     try {
       const truncatedContent = discussionContent.substring(0, MAX_CONTENT_CHARS);
       return await this.callOpenAI(
         'Summarize discussion threads. Focus on key points and decisions (200-300 words).',
         `Summarize:\n\n${truncatedContent}`,
         500,
-        'generate-summary'
+        'generate-summary',
+        signal
       );
     } catch (summaryError) {
       logger.warn('[OpenAIService.generateSummary] AI failed, returning fallback', { error: summaryError });
@@ -189,7 +189,7 @@ export class OpenAIService implements AIService {
     }
   }
 
-  async generateThreadSummary(messages: MessageInput[]): Promise<string> {
+  async generateThreadSummary(messages: MessageInput[], signal?: AbortSignal): Promise<string> {
     try {
       const langchainService = getLangChainService();
       return await langchainService.generateThreadSummary(messages);
@@ -197,17 +197,18 @@ export class OpenAIService implements AIService {
       logger.warn('[OpenAIService.generateThreadSummary] LangChain failed, falling back to basic', {
         error,
       });
-      return this.generateSummary(buildMessageContent(messages));
+      return this.generateSummary(buildMessageContent(messages), signal);
     }
   }
 
-  async generateThreadDNA(messages: MessageInput[]): Promise<ThreadDNA> {
+  async generateThreadDNA(messages: MessageInput[], signal?: AbortSignal): Promise<ThreadDNA> {
     try {
       const text = await this.callOpenAI(
         THREAD_DNA_SYSTEM_PROMPT,
         `Messages:\n${buildMessageContent(messages)}`,
         200,
-        'thread-dna'
+        'thread-dna',
+        signal
       );
       return parseThreadDNA(text);
     } catch (error) {
@@ -216,7 +217,7 @@ export class OpenAIService implements AIService {
     }
   }
 
-  async calculateResolutionScore(messages: MessageInput[]): Promise<number | null> {
+  async calculateResolutionScore(messages: MessageInput[], signal?: AbortSignal): Promise<number | null> {
     try {
       const text = await this.callOpenAI(
         'Calculate a resolution score 0-100 for a discussion thread. ' +
@@ -224,7 +225,8 @@ export class OpenAIService implements AIService {
           'Return ONLY a single integer.',
         `Messages:\n${buildMessageContent(messages)}`,
         10,
-        'resolution-score'
+        'resolution-score',
+        signal
       );
       return parseResolutionScore(text);
     } catch (error) {
@@ -233,13 +235,14 @@ export class OpenAIService implements AIService {
     }
   }
 
-  async detectConflicts(messages: MessageInput[]) {
+  async detectConflicts(messages: MessageInput[], signal?: AbortSignal) {
     try {
       const text = await this.callOpenAI(
         CONFLICT_SYSTEM_PROMPT,
         `Messages:\n${buildIndexedContent(messages)}`,
         200,
-        'detect-conflicts'
+        'detect-conflicts',
+        signal
       );
       return parseConflict(text);
     } catch (error) {
@@ -248,7 +251,7 @@ export class OpenAIService implements AIService {
     }
   }
 
-  async generateDailyDigest(messages: MessageInput[]): Promise<string> {
+  async generateDailyDigest(messages: MessageInput[], signal?: AbortSignal): Promise<string> {
     try {
       const text = await this.callOpenAI(
         'Generate a daily digest as clean HTML (no html/body tags). ' +
@@ -256,7 +259,8 @@ export class OpenAIService implements AIService {
           'Use <h3> and <p>/<ul>. Professional and concise.',
         `Messages:\n${buildMessageContent(messages)}`,
         800,
-        'daily-digest'
+        'daily-digest',
+        signal
       );
       return stripHtmlFences(text);
     } catch (error) {
@@ -265,7 +269,7 @@ export class OpenAIService implements AIService {
     }
   }
 
-  async classifyToxicity(content: string): Promise<number> {
+  async classifyToxicity(content: string, signal?: AbortSignal): Promise<number> {
     try {
       const text = await this.callOpenAI(
         'You are a content moderation classifier. Analyze the following text for toxicity. ' +
@@ -276,7 +280,8 @@ export class OpenAIService implements AIService {
           'where 0 means completely safe and 1 means extremely toxic.',
         `Text to analyze:\n${wrapUserContent(content.substring(0, MAX_CONTENT_CHARS))}`,
         50,
-        'classify-toxicity'
+        'classify-toxicity',
+        signal
       );
       return parseToxicity(text);
     } catch (error) {

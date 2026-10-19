@@ -26,6 +26,7 @@ export enum AiCallPath {
   THREAD_SUMMARY = 'thread_summary',
   DAILY_DIGEST = 'daily_digest',
   QUERY_WARMING = 'query_warming',
+  DEEP_RESEARCH = 'deep_research',
 }
 
 export interface AiCostClassification {
@@ -51,6 +52,7 @@ export const EXPENSIVE_PATHS: readonly AiCallPath[] = [
   AiCallPath.THREAD_SUMMARY,
   AiCallPath.DAILY_DIGEST,
   AiCallPath.QUERY_WARMING,
+  AiCallPath.DEEP_RESEARCH,
 ];
 
 // Pre-flight guesses only — ai-spend-cap.ts holds the authoritative token count.
@@ -68,6 +70,10 @@ const ESTIMATED_COST_USD: Record<AiCallPath, number> = {
   [AiCallPath.THREAD_SUMMARY]: 0.012,
   [AiCallPath.DAILY_DIGEST]: 0.015,
   [AiCallPath.QUERY_WARMING]: 0.01,
+  // Deep research runs 4 LLM calls plus Exa agentic (12 results × 12k chars)
+  // and Tavily advanced retrieval, so it is deliberately estimated above the
+  // $0.05 synth-only floor: ~$0.08/run keeps the $5 cap honest after ~60 runs.
+  [AiCallPath.DEEP_RESEARCH]: 0.08,
 };
 
 const DEFAULT_ESTIMATED_COST_USD = 0.01;
