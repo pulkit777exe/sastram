@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -73,6 +73,16 @@ function buildRepliesMap(messages: Message[]): Map<string, Message[]> {
 export function MessageList({ messages, firstUnreadMessageId }: MessageListProps) {
   const { scrollContainerRef } = useThreadDataContext();
 
+  // React attaches an ancestor's host ref after child layout effects have run,
+  // so a virtualizer that reads `scrollContainerRef.current` on mount sees
+  // null and — absent a re-render — never observes the element (the list then
+  // renders zero rows). A passive effect runs after refs are attached; moving
+  // the element into state re-renders once so the virtualizer can attach.
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    setScrollElement(scrollContainerRef.current);
+  }, [scrollContainerRef]);
+
   const topLevelMessages = useMemo(
     () => messages.filter((m) => !m.parentId),
     [messages]
@@ -89,7 +99,7 @@ export function MessageList({ messages, firstUnreadMessageId }: MessageListProps
   // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer is a third-party hook (TanStack Virtual) that returns a ref the linter can't introspect. Verified safe with React 19.
   const virtualizer = useVirtualizer({
     count: topLevelMessages.length,
-    getScrollElement: () => scrollContainerRef.current,
+    getScrollElement: () => scrollElement,
     estimateSize: () => 100,
     measureElement: (element) => element?.getBoundingClientRect().height ?? 100,
     overscan: 5,
