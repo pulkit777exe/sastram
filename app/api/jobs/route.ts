@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { HTTP_STATUS } from '@/lib/utils/api-response';
 import { Receiver } from '@upstash/qstash';
 import { logger } from '@/lib/infrastructure/logger';
-import { deduplicateJob } from '@/lib/services/job-dedup';
+import { deduplicateJob, releaseJobDedup } from '@/lib/services/job-dedup';
 import { jobHandlers, type JobHandlerMap } from '@/lib/queue/registry';
 import { AppError } from '@/lib/utils/errors';
 
@@ -40,8 +40,14 @@ async function handleJob(body: string, request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (AppError.isAppError(error)) {
+      // Terminal — keep the dedup claim so a redelivery is not re-run.
       logger.warn(`[jobs] Job ${jobType} failed (non-retryable): ${error.message}`);
       return NextResponse.json({ ok: true, error: error.message });
+    }
+    // Retryable — release the claim before the 500 so QStash's retry
+    // re-executes instead of being absorbed as a duplicate delivery.
+    if (messageId) {
+      await releaseJobDedup(messageId);
     }
     logger.error(`[jobs] Job ${jobType} failed:`, error);
     return NextResponse.json({ error: 'Job failed' }, { status: HTTP_STATUS.INTERNAL });

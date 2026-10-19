@@ -1,4 +1,5 @@
 import { getUpstashRedis, getSecondsUntilUtcMidnight, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
+import { logger } from '@/lib/infrastructure/logger';
 
 const MIN_IDEMPOTENCY_TTL_SECONDS = 60; // safety floor — at least 1 minute
 
@@ -43,4 +44,23 @@ export async function claimOnce(
 /** Request-scoped exactly-once (AI Pipeline idempotency keys). */
 export async function consumeIdempotencyKey(idempotencyKey: string): Promise<boolean> {
   return claimOnce(idempotencyKey, 'request');
+}
+
+/**
+ * Release a previously claimed key so a later delivery can re-claim it. Used
+ * by the jobs route when a handler fails retryably: the claim exists to stop
+ * *concurrent* duplicate delivery, not to swallow QStash retries. Returns true
+ * when the key existed and was deleted; fail-safe false on Redis errors.
+ */
+export async function releaseOnce(key: string, scope: ClaimScope = 'request'): Promise<boolean> {
+  const redis = getUpstashRedis();
+  if (redis === null || redis === undefined) return false;
+
+  try {
+    const deleted = await withRedisTimeout(redis.del(key), 4000);
+    return deleted > 0;
+  } catch (error) {
+    logger.warn(`[idempotency] failed to release ${scope} claim ${key}`, error);
+    return false;
+  }
 }

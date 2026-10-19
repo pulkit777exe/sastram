@@ -270,6 +270,9 @@ export async function handleDailyDigestJob(data: DailyDigestJobData) {
 // ------------------------------------------------------------------
 
 const STALE_BATCH_SIZE = 100;
+// Bound the sweep so one job can't walk the whole (unbounded) thread table;
+// the next scheduled run continues from a fresh scan.
+const STALE_MAX_BATCHES = 50;
 
 function isStale(lastVerifiedAt: Date | null, verifiedAt: Date | null): boolean {
   const provenanceAt = verifiedAt ?? lastVerifiedAt;
@@ -281,6 +284,7 @@ async function handleStalenessBatchCheck() {
   let checked = 0;
   let updated = 0;
   let cursor: string | undefined;
+  let batches = 0;
 
   while (true) {
     const whereClause: Record<string, unknown> = {
@@ -311,8 +315,16 @@ async function handleStalenessBatchCheck() {
     }
     checked += batch.length;
     cursor = batch[batch.length - 1].id;
+    batches++;
 
     if (batch.length < STALE_BATCH_SIZE) break;
+
+    if (batches >= STALE_MAX_BATCHES) {
+      logger.warn(
+        `[worker:ai] staleness batch check hit its ${STALE_MAX_BATCHES}-batch bound — remaining threads left for the next run`
+      );
+      break;
+    }
   }
 
   logger.info(`[worker:ai] staleness batch check complete — ${checked} checked, ${updated} updated`);

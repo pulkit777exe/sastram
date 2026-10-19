@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { env } from '@/lib/config/env';
 import { AIJobType } from '@/lib/queue/config';
-import { enqueueJob, getDailyQstashCount } from '@/lib/services/queue';
+import { enqueueJob, getDailyQstashCount, type EnqueueJobResult } from '@/lib/services/queue';
 import { checkAndLogUsage } from '@/lib/services/usage-check';
 import { updateAllThreadRelations } from '@/modules/threads';
 import { prewarmFollowUpQueries } from '@/modules/ai-search';
@@ -21,6 +21,8 @@ const BATCH_SIZE = 25;
 const QSTASH_GUARD_THRESHOLD = 400;
 const SCORE_FRESHNESS_HOURS = 24;
 const HIGH_SCORE_THRESHOLD = 70;
+// Bound fan-out per run so one cron tick cannot blow the QStash daily budget.
+const MAX_ENQUEUES_PER_RUN = 150;
 
 export async function GET(req: NextRequest) {
   // Cron auth — best-effort with logging (KISS)
@@ -52,8 +54,10 @@ export async function GET(req: NextRequest) {
     dailyCount = 0;
   }
 
-  // Spend cap pre-flight — one fail-open check per path. The cron consumes
-  // spend once here; enqueued workers skip via the alreadyBilled key below.
+  // Spend cap pre-flight — read-only, one check per path (consumes nothing).
+  // Each enqueued worker consumes its own per-path estimate via
+  // runGuardedWorker (ADR-0001: routes consume, workers skip only when the
+  // route that ran the work synchronously already billed it).
   const spendCaps = await checkCronSpendCaps([
     AiCallPath.THREAD_DNA,
     AiCallPath.RESOLUTION_SCORE,
@@ -65,13 +69,24 @@ export async function GET(req: NextRequest) {
   const conflictAllowed = spendCaps[AiCallPath.CONFLICT_DETECTION] ?? { allowed: true, remaining: -1 };
   const digestAllowed = spendCaps[AiCallPath.DAILY_DIGEST] ?? { allowed: true, remaining: -1 };
 
-  // Request-scoped idempotency key: marks enqueued AI jobs as already billed.
-  const alreadyBilled = `cron:update-threads:${Date.now()}`;
-
   try {
     let totalProcessed = 0;
     let totalJobsAdded = 0;
+    let totalJobsDropped = 0;
+    let enqueuesThisRun = 0;
+    let enqueuesSkippedByCap = 0;
     let cursor: string | undefined;
+
+    // Bound fan-out: once the per-run budget is spent, further jobs are
+    // counted as skipped instead of enqueued (logged once at the end).
+    const pushBoundedJob = (jobs: Array<Promise<EnqueueJobResult>>, jobType: string, payload: object) => {
+      if (enqueuesThisRun >= MAX_ENQUEUES_PER_RUN) {
+        enqueuesSkippedByCap++;
+        return;
+      }
+      enqueuesThisRun++;
+      jobs.push(enqueueJob(jobType, payload));
+    };
 
     // Process threads in batches to avoid loading all into memory (KISS: per-batch try/catch)
     while (true) {
@@ -159,99 +174,74 @@ export async function GET(req: NextRequest) {
           // instead of computing it at enqueue time, which would be stale by execution.
           const { isOutdated } = thread;
 
-          const jobs: Promise<void>[] = [];
+          const jobs: Array<Promise<EnqueueJobResult>> = [];
 
-          // Each enqueue isolated — sync throw is caught per item (KISS)
-          try {
-            if (dnaAllowed.allowed) {
-              jobs.push(
-                enqueueJob(AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages, cronJob: true, alreadyBilled })
-              );
-            }
-          } catch (error) {
-            logger.warn('[cron/update-threads] failed to enqueue DNA job', error, { threadId: thread.id });
+          // No billing token: each worker consumes its own per-path estimate.
+          if (dnaAllowed.allowed) {
+            pushBoundedJob(jobs, AIJobType.GENERATE_THREAD_DNA, { threadId: thread.id, messages, cronJob: true });
           }
 
-          try {
-            if (scoreAllowed.allowed) {
-              jobs.push(
-                enqueueJob(AIJobType.CALCULATE_RESOLUTION_SCORE, {
-                  threadId: thread.id,
-                  messages,
-                  subscriberIds,
-                  threadName: thread.name,
-                  oldScore,
-                  isOutdated,
-                  cronJob: true,
-                  alreadyBilled,
-                })
-              );
-            }
-          } catch (error) {
-            logger.warn('[cron/update-threads] failed to enqueue score job', error, { threadId: thread.id });
-          }
-
-          try {
-            if (conflictAllowed.allowed) {
-              jobs.push(
-                enqueueJob(AIJobType.DETECT_CONFLICTS, {
-                  threadId: thread.id,
-                  messages,
-                  subscriberIds,
-                  threadName: thread.name,
-                  oldScore,
-                  cronJob: true,
-                  alreadyBilled,
-                })
-              );
-            }
-          } catch (error) {
-            logger.warn('[cron/update-threads] failed to enqueue conflict job', error, {
+          if (scoreAllowed.allowed) {
+            pushBoundedJob(jobs, AIJobType.CALCULATE_RESOLUTION_SCORE, {
               threadId: thread.id,
+              messages,
+              subscriberIds,
+              threadName: thread.name,
+              oldScore,
+              isOutdated,
+              cronJob: true,
             });
           }
 
-          try {
-            if (subscriberIds.length > 0 && digestAllowed.allowed) {
-              jobs.push(
-                enqueueJob(AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true, alreadyBilled })
-              );
-            }
-          } catch (error) {
-            logger.warn('[cron/update-threads] failed to enqueue digest job', error, {
+          if (conflictAllowed.allowed) {
+            pushBoundedJob(jobs, AIJobType.DETECT_CONFLICTS, {
               threadId: thread.id,
+              messages,
+              subscriberIds,
+              threadName: thread.name,
+              oldScore,
+              cronJob: true,
             });
           }
 
-          try {
-            if (subscriberIds.length > 0 && isOutdated) {
-              jobs.push(
-                enqueueJob(AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS, {
-                  subscriberIds,
-                  threadId: thread.id,
-                  threadName: thread.name,
-                  oldScore: oldScore ?? undefined,
-                  isOutdated,
-                  cronJob: true,
-                })
-              );
-            }
-          } catch (error) {
-            logger.warn('[cron/update-threads] failed to enqueue insight job', error, {
+          if (subscriberIds.length > 0 && digestAllowed.allowed) {
+            pushBoundedJob(jobs, AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true });
+          }
+
+          if (subscriberIds.length > 0 && isOutdated) {
+            pushBoundedJob(jobs, AIJobType.SEND_AI_INSIGHT_NOTIFICATIONS, {
+              subscriberIds,
               threadId: thread.id,
+              threadName: thread.name,
+              oldScore: oldScore ?? undefined,
+              isOutdated,
+              cronJob: true,
             });
           }
 
-          const results = await Promise.allSettled(jobs);
-          const fulfilled = results.filter((r) => r.status === 'fulfilled').length;
-          const failed = results.filter((r) => r.status === 'rejected');
-          if (failed.length > 0) {
-            logger.warn('[cron/update-threads] some jobs failed to enqueue', {
+          const settled = await Promise.allSettled(jobs);
+          let published = 0;
+          let dropped = 0;
+          let failed = 0;
+          for (const outcome of settled) {
+            if (outcome.status === 'fulfilled' && outcome.value.ok) {
+              published++;
+            } else if (outcome.status === 'fulfilled') {
+              dropped++;
+            } else {
+              failed++;
+            }
+          }
+          if (dropped > 0 || failed > 0) {
+            logger.warn('[cron/update-threads] enqueue outcomes', {
               threadId: thread.id,
-              failedCount: failed.length,
+              published,
+              dropped,
+              failed,
             });
           }
-          totalJobsAdded += fulfilled;
+          totalJobsAdded += published;
+          totalJobsDropped += dropped;
           totalProcessed++;
         } catch (error) {
           // Per-thread catch so one failed thread never blocks others (KISS)
@@ -267,6 +257,26 @@ export async function GET(req: NextRequest) {
 
       // If we got fewer than BATCH_SIZE, we've processed all threads
       if (threads.length < BATCH_SIZE) break;
+    }
+
+    // Thread-staleness sweep — batch job, no AI calls, so it carries no
+    // billing token (nothing for a worker to consume).
+    const stalenessJobs: Array<Promise<EnqueueJobResult>> = [];
+    pushBoundedJob(stalenessJobs, AIJobType.STALENESS_CHECK, { cronJob: true });
+    const stalenessOutcomes = await Promise.allSettled(stalenessJobs);
+    for (const outcome of stalenessOutcomes) {
+      if (outcome.status === 'fulfilled' && outcome.value.ok) {
+        totalJobsAdded++;
+      } else {
+        totalJobsDropped++;
+        logger.warn('[cron/update-threads] staleness batch check was not enqueued');
+      }
+    }
+
+    if (enqueuesSkippedByCap > 0) {
+      logger.warn(
+        `[cron/update-threads] fan-out capped at ${MAX_ENQUEUES_PER_RUN} enqueues this run — ${enqueuesSkippedByCap} skipped`
+      );
     }
 
     // Each auxiliary task is best-effort — individual try/catch so partial failures are graceful (KISS)
@@ -349,6 +359,7 @@ export async function GET(req: NextRequest) {
       ok({
         processed: totalProcessed,
         jobsAdded: totalJobsAdded,
+        jobsDropped: totalJobsDropped,
         relationsUpdated: relationsResult.updated,
         prewarmedQueries: prewarmResult.prewarmed,
         purgedThreads: purgeResult.threads,

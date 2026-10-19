@@ -64,6 +64,44 @@ export async function enforceAiSpendCap(path: AiCallPath): Promise<{ allowed: bo
   return consumeSpendCap(estimatedCost);
 }
 
+/**
+ * Read-only counterpart to `enforceAiSpendCap`: reports whether the day's
+ * spend has already reached the cap without consuming any of it. Crons use
+ * this for fan-out pre-flight; the consuming call happens once per unit of
+ * work in the enqueued worker (ADR-0001: workers consume, fan-out only reads).
+ * Fail-open on Redis errors, like every other spend gate.
+ */
+export async function checkAiSpendCap(path: AiCallPath): Promise<{ allowed: boolean; remaining: number }> {
+  const classification = classifyAiCallCost(path);
+  if (classification.tier === AiCostTier.CHEAP) {
+    return { allowed: true, remaining: -1 };
+  }
+
+  const r = getUpstashRedis();
+  if (!r) {
+    logger.warn('[checkAiSpendCap] Redis unavailable, allowing request (fail-open for spend cap)');
+    return { allowed: true, remaining: -1 };
+  }
+
+  try {
+    const rawUsed = (await withRedisTimeout(r.get(todayKey()) as Promise<number | null>, 4000)) as number | null;
+    let used: number;
+    if (rawUsed !== null && rawUsed !== undefined) {
+      used = rawUsed;
+    } else {
+      used = 0;
+    }
+    // Fail-closed verdict for "over cap": used >= limit is definitively denied.
+    return {
+      allowed: used < DAILY_DOLLAR_LIMIT,
+      remaining: Math.max(0, DAILY_DOLLAR_LIMIT - used),
+    };
+  } catch (error) {
+    logger.error('[checkAiSpendCap] Redis error', error);
+    return { allowed: true, remaining: -1 };
+  }
+}
+
 export async function getAiSpendUsage(): Promise<{ used: number; limit: number; date: string }> {
   const r = getUpstashRedis();
   const date = new Date().toISOString().slice(0, 10);

@@ -67,6 +67,20 @@ function shouldRunInline(): boolean {
 const DAILY_CAP = 450;
 const CRITICAL_JOBS = new Set<string>(['email']);
 
+/**
+ * How an enqueue attempt was handled:
+ * - `inline`    — ran immediately (QStash not configured — degraded mode).
+ * - `published` — handed to QStash.
+ * - `dropped`   — never ran: daily cap reached (non-critical only) or no inline handler.
+ */
+export type EnqueueJobStatus = 'inline' | 'published' | 'dropped';
+
+export interface EnqueueJobResult {
+  status: EnqueueJobStatus;
+  /** True when the job ran inline or was published; false when it was dropped. */
+  ok: boolean;
+}
+
 function getRetries(jobType: string): number {
   if (CRITICAL_JOBS.has(jobType)) return 3;
   return 1;
@@ -112,20 +126,25 @@ export async function incrementDailyQstashCount(): Promise<number> {
   }
 }
 
-export async function enqueueJob<T extends object>(jobType: string, payload: T) {
+export async function enqueueJob<T extends object>(jobType: string, payload: T): Promise<EnqueueJobResult> {
   // Early return: run inline when QStash isn't configured.
   if (shouldRunInline()) {
     logger.info(`[queue] QStash not configured, running job inline: ${jobType}`);
-    await runJobInline(jobType, payload);
-    return;
+    const ran = await runJobInline(jobType, payload);
+    return { status: ran ? 'inline' : 'dropped', ok: ran };
   }
 
   const count = await incrementDailyQstashCount();
 
-  // Early return: daily cap reached — skip enqueue.
-  if (count > DAILY_CAP) {
-    logger.warn(`[queue] Daily QStash cap (${DAILY_CAP}) reached, skipping job: ${jobType} (count=${count})`);
-    return;
+  // CRITICAL_JOBS (email — carries OTP sign-in codes) are never dropped by the
+  // daily cap: failing to deliver a sign-in code is a user-facing outage, while
+  // the cap only protects QStash's free allowance. They are still counted above
+  // so the daily guard threshold sees them.
+  if (count > DAILY_CAP && !CRITICAL_JOBS.has(jobType)) {
+    logger.error(
+      `[queue] DROPPED job — daily QStash cap (${DAILY_CAP}) reached, skipping: ${jobType} (count=${count})`
+    );
+    return { status: 'dropped', ok: false };
   }
 
   logger.info(`[queue] Enqueuing job: ${jobType} (daily count: ${count})`);
@@ -144,13 +163,14 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T) 
       publish,
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QStash publish timeout')), 10000)),
     ]);
+    return { status: 'published', ok: true };
   } catch (error) {
     logger.error(`[queue] QStash publish failed for ${jobType}`, error);
     throw error;
   }
 }
 
-async function runJobInline<T extends object>(jobType: string, payload: T) {
+async function runJobInline<T extends object>(jobType: string, payload: T): Promise<boolean> {
   try {
     // Deferred import to break circular: registry -> workers -> enqueueJob -> registry
     const { jobHandlers } = await import('@/lib/queue/registry');
@@ -160,15 +180,17 @@ async function runJobInline<T extends object>(jobType: string, payload: T) {
       const payloadWithId = payload as { id?: unknown };
       const loggedId = String(payloadWithId?.id ?? 'unknown');
       logger.error(`[queue] DROPPED job — no inline handler for job type: ${jobType}, payload id: ${loggedId}`);
-      return;
+      return false;
     }
 
     await handler(payload as never);
+    return true;
   } catch (error) {
     logger.error(`[queue] Inline job execution failed: ${jobType}`, error);
+    return false;
   }
 }
 
-export async function enqueueInlineJob(data: AIInlineJobData) {
-  await enqueueJob(AIJobType.GENERATE_AI_INLINE, data);
+export async function enqueueInlineJob(data: AIInlineJobData): Promise<EnqueueJobResult> {
+  return enqueueJob(AIJobType.GENERATE_AI_INLINE, data);
 }

@@ -7,7 +7,7 @@
 
 import { logger } from '@/lib/infrastructure/logger';
 import { consumeQuota, type QuotaKind } from '@/lib/services/daily-quota';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
+import { enforceAiSpendCap, checkAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { evaluateAiCostGate, type AiCallPath } from '@/lib/services/ai-cost-classification';
 import { isQuotaError } from '@/lib/utils/errors';
 
@@ -125,18 +125,28 @@ export async function runGuardedAi<T>(
 }
 
 /**
- * One fail-open spend check per path for crons. Each path is isolated so one
- * Redis failure never blocks the others; failures allow (fail-open).
+ * One fail-open, read-only spend check per path for crons, run concurrently
+ * (one Redis RTT for the whole fan-out). Consumes nothing — enqueued workers
+ * consume their own per-execution estimate via `runGuardedWorker` (ADR-0001
+ * stayed: routes that run work synchronously still pass `alreadyBilled`). Each
+ * path is isolated so one Redis failure never blocks the others; failures
+ * allow (fail-open).
  */
 export async function checkCronSpendCaps(paths: AiCallPath[]): Promise<Record<string, CronSpendCap>> {
+  const entries = await Promise.all(
+    paths.map(async (path): Promise<[string, CronSpendCap]> => {
+      try {
+        return [path, await checkAiSpendCap(path)];
+      } catch (error) {
+        logger.warn(`[cron] spend cap check failed for ${path}, allowing (fail-open)`, error);
+        return [path, { allowed: true, remaining: -1 }];
+      }
+    })
+  );
+
   const caps: Record<string, CronSpendCap> = {};
-  for (const path of paths) {
-    try {
-      caps[path] = await enforceAiSpendCap(path);
-    } catch (error) {
-      logger.warn(`[cron] spend cap check failed for ${path}, allowing (fail-open)`, error);
-      caps[path] = { allowed: true, remaining: -1 };
-    }
+  for (const [path, cap] of entries) {
+    caps[path] = cap;
   }
   return caps;
 }

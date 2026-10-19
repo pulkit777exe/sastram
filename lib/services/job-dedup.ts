@@ -1,4 +1,4 @@
-import { claimOnce, JOB_DEDUP_TTL_SECONDS } from '@/lib/services/idempotency';
+import { claimOnce, releaseOnce, JOB_DEDUP_TTL_SECONDS } from '@/lib/services/idempotency';
 
 /** Namespaced job key — keeps QStash dedup rows off the request-claim space. */
 export function jobDedupKey(jobId: string): string {
@@ -14,4 +14,13 @@ export function jobDedupKey(jobId: string): string {
  */
 export async function deduplicateJob(jobId: string, ttlSeconds: number = JOB_DEDUP_TTL_SECONDS): Promise<boolean> {
   return claimOnce(jobDedupKey(jobId), 'job', ttlSeconds);
+}
+
+/**
+ * Release the dedup claim after a retryable handler failure so QStash's retry
+ * executes instead of being swallowed as `{duplicate: true}`. Terminal
+ * (AppError) failures keep the claim — they must not be retried.
+ */
+export async function releaseJobDedup(jobId: string): Promise<boolean> {
+  return releaseOnce(jobDedupKey(jobId), 'job');
 }
