@@ -25,11 +25,12 @@ interface ThreadDataContextValue {
   onMessageUpdate: (messageId: string, updates: Partial<Message>) => void;
 }
 
-// UI state context: frequently-changing data (messages, reply state, animations)
+// UI state context: interaction state (reply state, animations, AI status).
+// The message list itself is passed as a prop so SSE token updates do not
+// fan out through context to every MessageRow.
 interface ThreadUIStateContextValue {
   activeReplyId: string | null;
   collapsedIds: Set<string>;
-  allMessages: Message[];
   animateMessageId: string | null;
   aiInlineStatus: AiInlineStatusMap;
 }

@@ -246,6 +246,63 @@ describe('CommentTree', () => {
   });
 });
 
+describe('MessageRow memo comparator (SSE re-render guard)', () => {
+  async function loadComparator() {
+    const { areMessageRowPropsEqual } = await import('@/components/thread/message-list');
+    return areMessageRowPropsEqual;
+  }
+
+  it('keeps a row memoized when its message and replies are identity-stable', async () => {
+    const areMessageRowPropsEqual = await loadComparator();
+    const message = makeMsg({ id: 'm1' }) as Message;
+    const reply = makeMsg({ id: 'r1', parentId: 'm1' }) as Message;
+
+    const equal = areMessageRowPropsEqual(
+      { message, isCompact: false, isFirstUnread: false, replies: [reply] },
+      // Fresh replies array, same message objects — what every SSE token does.
+      { message, isCompact: false, isFirstUnread: false, replies: [reply] }
+    );
+
+    expect(equal).to.be.true;
+  });
+
+  it('re-renders the row whose own message object changed (streamed token)', async () => {
+    const areMessageRowPropsEqual = await loadComparator();
+    const message = makeMsg({ id: 'm1' }) as Message;
+    const streamed = { ...message, content: 'partial token' } as Message;
+
+    const equal = areMessageRowPropsEqual(
+      { message, isCompact: false, isFirstUnread: false, replies: [] },
+      { message: streamed, isCompact: false, isFirstUnread: false, replies: [] }
+    );
+
+    expect(equal).to.be.false;
+  });
+
+  it('re-renders a parent row when one of its replies changed', async () => {
+    const areMessageRowPropsEqual = await loadComparator();
+    const message = makeMsg({ id: 'm1' }) as Message;
+    const reply = makeMsg({ id: 'r1', parentId: 'm1' }) as Message;
+    const patchedReply = { ...reply, content: 'edited' } as Message;
+
+    const equal = areMessageRowPropsEqual(
+      { message, isCompact: false, isFirstUnread: false, replies: [reply] },
+      { message, isCompact: false, isFirstUnread: false, replies: [patchedReply] }
+    );
+
+    expect(equal).to.be.false;
+  });
+
+  it('re-renders when row flags change', async () => {
+    const areMessageRowPropsEqual = await loadComparator();
+    const message = makeMsg({ id: 'm1' }) as Message;
+    const base = { message, isCompact: false, isFirstUnread: false, replies: [] };
+
+    expect(areMessageRowPropsEqual(base, { ...base, isCompact: true })).to.be.false;
+    expect(areMessageRowPropsEqual(base, { ...base, isFirstUnread: true })).to.be.false;
+  });
+});
+
 describe('ThreadLiveWrapper', () => {
   beforeEach(() => {
     cleanup();

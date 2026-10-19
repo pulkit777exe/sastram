@@ -3,6 +3,7 @@
 import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Menu } from 'lucide-react';
 import { Sidebar } from '@/components/dashboard/sidebar';
+import { attachApiInterceptor } from '@/lib/utils/api-interceptor';
 import {
   Sheet,
   SheetContent,
@@ -41,6 +42,11 @@ export function DashboardShell({
   // Close mobile nav on mount (one-shot)
   useEffect(() => {
     setSheetOpen(false);
+  }, []);
+
+  // Client 401 latch: toast + redirect once per session (idempotent).
+  useEffect(() => {
+    attachApiInterceptor();
   }, []);
 
   if (isMobile) {

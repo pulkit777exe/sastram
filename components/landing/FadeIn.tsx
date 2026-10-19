@@ -1,8 +1,13 @@
 'use client';
 
-import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
 
+/**
+ * Reveal-on-scroll wrapper driven by IntersectionObserver + the existing
+ * `fade-up` keyframe (globals.css) instead of framer-motion. Same cadence and
+ * delay semantics as the previous motion.div; reduced-motion handling comes
+ * from the global `animation-duration: 0.01ms !important` base rule.
+ */
 export function FadeIn({
   children,
   className = '',
@@ -15,17 +20,41 @@ export function FadeIn({
   y?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      // Matches the previous framer-motion useInView margin: '-60px'.
+      { rootMargin: '-60px' }
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, y }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y }}
-      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
       className={className}
+      style={
+        {
+          '--fade-up-y': `${y}px`,
+          opacity: visible ? undefined : 0,
+          animation: visible
+            ? `fade-up 500ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}s both`
+            : undefined,
+        } as React.CSSProperties
+      }
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

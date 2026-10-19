@@ -1,6 +1,10 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { buildTokens } from '@/components/ai-search/StreamingText';
+import {
+  buildTokens,
+  computeRevealDelay,
+  appendRevealDelays,
+} from '@/components/ai-search/StreamingText';
 import { orderSourcesByCitation } from '@/modules/ai-search/citations';
 import type { Citation, Source } from '@/modules/ai-search/types';
 
@@ -52,6 +56,42 @@ describe('buildTokens citation resolution (D8 render fix)', () => {
     const tokens = buildTokens('Claim [1].', [srcB], [{ marker: 1, sourceId: 'src-a' }]);
 
     expect(tokens.filter((t) => t.cite)).to.have.length(0);
+  });
+});
+
+describe('computeRevealDelay', () => {
+  it('cascades words that first appear in the current batch at 30ms/word', () => {
+    expect(computeRevealDelay(5, 5)).to.equal(0);
+    expect(computeRevealDelay(6, 5)).to.equal(30);
+    expect(computeRevealDelay(9, 5)).to.equal(120);
+  });
+
+  it('never re-animates words revealed in an earlier batch', () => {
+    expect(computeRevealDelay(0, 5)).to.equal(0);
+    expect(computeRevealDelay(4, 5)).to.equal(0);
+  });
+});
+
+describe('appendRevealDelays (StreamingText reveal bookkeeping)', () => {
+  it('keeps already-assigned delays and appends the new tail relative to it', () => {
+    const prev = [0, 30, 60];
+    const next = appendRevealDelays(prev, 6);
+    expect(next.slice(0, prev.length)).to.deep.equal(prev);
+    expect(next).to.deep.equal([0, 30, 60, 0, 30, 60]);
+  });
+
+  it('only assigns delays for tokens that were not rendered before', () => {
+    // Two words rendered, four more arrive: each new word cascades on its own
+    // batch clock, and the earlier words' delays are untouched.
+    const next = appendRevealDelays([0, 30], 4);
+    expect(next).to.deep.equal([0, 30, 0, 30]);
+  });
+
+  it('returns an equal-length copy when there is nothing new', () => {
+    const prev = [0, 30];
+    const next = appendRevealDelays(prev, 2);
+    expect(next).to.deep.equal(prev);
+    expect(next).to.not.equal(prev);
   });
 });
 

@@ -108,15 +108,13 @@ export function SaiSearchLayout({
     }
   }, []);
 
+  // History is only needed once the drawer is opened — skip the mount fetch.
+  const historyRequestedRef = useRef(false);
   useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) loadHistory(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [loadHistory]);
+    if (!historyOpen || historyRequestedRef.current) return;
+    historyRequestedRef.current = true;
+    void loadHistory(true);
+  }, [historyOpen, loadHistory]);
 
   useEffect(() => {
     return () => {

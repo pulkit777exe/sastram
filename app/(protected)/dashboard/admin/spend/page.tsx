@@ -79,11 +79,27 @@ export default function SpendPage() {
     }
   }, []);
 
-  // Initial fetch on mount + 60s refresh.
+  // Initial fetch on mount + 60s refresh, paused while the tab is hidden
+  // (same visibility-pause pattern as admin/health).
   useEffect(() => {
     fetchSpend();
-    const interval = setInterval(fetchSpend, 60000);
-    return () => clearInterval(interval);
+
+    let intervalId = setInterval(fetchSpend, 60000);
+
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        clearInterval(intervalId);
+      } else {
+        fetchSpend();
+        intervalId = setInterval(fetchSpend, 60000);
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [fetchSpend]);
 
   return (

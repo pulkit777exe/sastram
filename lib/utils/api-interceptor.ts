@@ -1,6 +1,5 @@
 'use client';
 
-import type { QueryClient } from '@tanstack/react-query';
 import { toasts } from '@/lib/utils/toast';
 
 let interceptorAttached = false;
@@ -10,7 +9,7 @@ let sessionExpiryHandled = false;
 const HTTP_UNAUTHORIZED = 401;
 const SESSION_REDIRECT_DELAY_MS = 1500;
 
-export function attachApiInterceptor(queryClient: QueryClient) {
+export function attachApiInterceptor() {
   if (typeof window === 'undefined') return;
   if (interceptorAttached) return;
 
@@ -24,7 +23,6 @@ export function attachApiInterceptor(queryClient: QueryClient) {
     if (shouldHandleExpiry) {
       sessionExpiryHandled = true;
 
-      queryClient.clear();
       toasts.sessionExpired();
 
       window.setTimeout(() => {

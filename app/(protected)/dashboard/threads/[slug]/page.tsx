@@ -76,20 +76,23 @@ async function ThreadContent({
   thread: ThreadWithFullContext;
   session: { user: SessionUser };
 }) {
-  const subscription = await prisma.threadSubscription.findUnique({
-    where: {
-      threadId_userId: {
-        threadId: thread.id,
-        userId: session.user.id,
+  const [subscription, messagePageResult] = await Promise.all([
+    prisma.threadSubscription.findUnique({
+      where: {
+        threadId_userId: {
+          threadId: thread.id,
+          userId: session.user.id,
+        },
       },
-    },
-    select: { frequency: true },
-  });
+      select: { frequency: true },
+    }),
+    getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT, session.user.id),
+  ]);
 
   const threadRef = { id: thread.id, name: thread.name, slug: thread.slug };
 
   const { messages: messagePage, hasMore: hasMoreMessages, nextCursor: oldestCursor } =
-    await getThreadMessagesPaginated(thread.id, null, INITIAL_MESSAGE_LIMIT, session.user.id);
+    messagePageResult;
   const reversedMessages = [...messagePage].reverse();
   const visibleMessages = reversedMessages;
 

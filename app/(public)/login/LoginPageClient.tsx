@@ -1,8 +1,15 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { LoginForm } from '@/components/auth';
-import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
+
+// 510-LOC Radix Dialog — keep it out of the /login initial chunk. The import
+// only fires once the user asks for password recovery.
+const ForgotPasswordModal = dynamic(
+  () => import('@/components/auth/ForgotPasswordModal').then((mod) => mod.ForgotPasswordModal),
+  { ssr: false }
+);
 
 export default function LoginPageClient() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -14,11 +21,13 @@ export default function LoginPageClient() {
         onForgotPassword={() => setShowForgotPassword(true)}
         onEmailChange={setEmail}
       />
-      <ForgotPasswordModal
-        open={showForgotPassword}
-        onOpenChange={setShowForgotPassword}
-        initialEmail={email}
-      />
+      {showForgotPassword && (
+        <ForgotPasswordModal
+          open
+          onOpenChange={setShowForgotPassword}
+          initialEmail={email}
+        />
+      )}
     </>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Citation, Source } from '@/modules/ai-search/types';
 import { toasts } from '@/lib/utils/toast';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,11 @@ import { Button } from '@/components/ui/button';
  * context, then actions and follow-up prompts become usable.
  * ───────────────────────────────────────────────────────── */
 
+// Word entrance cadence + length of the stream-in animation (must match the
+// duration applied below so reveal-settled timing stays accurate).
 const WORD_MS = 30;
+const WORD_ANIM_MS = 420;
+const WORD_ANIM_EASING = 'cubic-bezier(0.22,0.61,0.25,1)';
 
 export type Token = { text: string; cite?: Source };
 
@@ -173,22 +177,27 @@ function getDislikeOptionClass(isSelected: boolean): string {
   return 'text-ink-2 hover:bg-hover hover:text-ink';
 }
 
-function syncWordAnimation(params: {
-  fromHistory: boolean;
-  count: number;
-  total: number;
-  isStreaming: boolean;
-  onDone?: () => void;
-  setCount: React.Dispatch<React.SetStateAction<number>>;
-}): (() => void) | void {
-  const { fromHistory, count, total, isStreaming, onDone, setCount } = params;
-  if (fromHistory) return;
-  if (count >= total) {
-    if (!isStreaming) onDone?.();
-    return;
+/**
+ * Pure: entrance delay (ms) for the word at `index` once `prevCount` words were
+ * already revealed in an earlier render. New words cascade at WORD_MS/word;
+ * words that were already on screen return 0 so they never re-animate.
+ */
+export function computeRevealDelay(index: number, prevCount: number): number {
+  if (index < prevCount) return 0;
+  return (index - prevCount) * WORD_MS;
+}
+
+/**
+ * Pure: extend the per-index delay list with reveals for tokens `[prev, total)`.
+ * Delays are assigned once and never change, so already-revealed words keep
+ * their completed animation style instead of being re-diffed on every token.
+ */
+export function appendRevealDelays(delays: number[], total: number): number[] {
+  const next = delays.slice();
+  for (let i = delays.length; i < total; i++) {
+    next.push(computeRevealDelay(i, delays.length));
   }
-  const t = setTimeout(() => setCount((c) => c + 1), WORD_MS);
-  return () => clearTimeout(t);
+  return next;
 }
 
 function syncOutsideClick(params: {
@@ -240,9 +249,34 @@ export function StreamingText({
   onRetry,
   onFeedback,
 }: StreamingTextProps) {
-  const [count, setCount] = useState(fromHistory ? Infinity : 0);
   const allTokens = buildTokens(text, sources, citations);
-  const done = !isStreaming && count >= allTokens.length;
+
+  // Entrance delays are assigned once per word, in arrival batches, and kept in
+  // state: the animation style must stay identical after it is applied (a ref
+  // would be read during render, which react-hooks/refs forbids).
+  const [delays, setDelays] = useState<number[]>([]);
+  // performance.now() timestamp when the newest word's entrance settles.
+  const [revealEndsAt, setRevealEndsAt] = useState(0);
+  const [revealed, setRevealed] = useState(fromHistory);
+  const done = fromHistory || revealed;
+
+  // Assign delays synchronously before paint so newly arrived words never flash
+  // un-animated. Only the new tail of the token list is touched — everything
+  // already rendered keeps its completed animation style.
+  useLayoutEffect(() => {
+    if (fromHistory) return;
+    const total = allTokens.length;
+    if (total < delays.length) {
+      setDelays(delays.slice(0, total));
+      return;
+    }
+    if (total === delays.length) return;
+    const next = appendRevealDelays(delays, total);
+    setDelays(next);
+    setRevealed(false);
+    const lastDelay = next[next.length - 1] ?? 0;
+    setRevealEndsAt(performance.now() + lastDelay + WORD_ANIM_MS);
+  }, [fromHistory, allTokens.length, delays]);
 
   // Feedback state
   const [copied, setCopied] = useState(false);
@@ -253,24 +287,39 @@ export function StreamingText({
   const retryRef = useRef<HTMLDivElement>(null);
   const dislikeRef = useRef<HTMLDivElement>(null);
 
-  // Animate words in (skip animation when loaded from history)
-  useEffect(
-    () => syncWordAnimation({ fromHistory, count, total: allTokens.length, isStreaming, onDone, setCount }),
-    [count, allTokens.length, isStreaming, onDone, fromHistory]
-  );
+  // Callback kept in a ref so parent re-renders don't reset the settle timer.
+  const onDoneRef = useRef(onDone);
 
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+
+  // Reset reveal state when a fresh stream starts on a reused instance.
   const isStreamingRef = useRef(isStreaming);
 
   useEffect(() => {
     isStreamingRef.current = isStreaming;
   }, [isStreaming]);
 
-  // Reset count when streaming starts: only when isStreaming changes from false to true
   useEffect(() => {
     if (!fromHistory && !isStreamingRef.current && isStreaming) {
-      setCount(0);
+      setDelays([]);
+      setRevealEndsAt(0);
+      setRevealed(false);
     }
   }, [isStreaming, fromHistory]);
+
+  // Reveal settles once the newest word's entrance animation completes (skip
+  // when loaded from history — there is nothing to reveal).
+  useEffect(() => {
+    if (fromHistory || isStreaming || revealed) return;
+    const remainingMs = Math.max(0, revealEndsAt - performance.now());
+    const timer = setTimeout(() => {
+      setRevealed(true);
+      onDoneRef.current?.();
+    }, remainingMs);
+    return () => clearTimeout(timer);
+  }, [fromHistory, isStreaming, revealed, revealEndsAt]);
 
   // Close popovers on outside click — extracted to named sync helper
   useEffect(() => {
@@ -321,19 +370,27 @@ export function StreamingText({
     <div className="w-full">
       {/* Streaming content */}
       <p className="text-[13px] leading-relaxed text-ink">
-        {allTokens.slice(0, count).map((token, i) =>
-          token.cite ? (
-            <SourceChip key={i} source={token.cite} onCiteClick={onCiteClick} />
-          ) : (
+        {allTokens.map((token, i) => {
+          if (token.cite) {
+            return <SourceChip key={i} source={token.cite} onCiteClick={onCiteClick} />;
+          }
+          const delayMs = fromHistory ? undefined : delays[i];
+          return (
             <span
               key={i}
-              className="inline [will-change:filter,opacity]"
-              style={fromHistory ? undefined : { animation: 'stream-in 420ms cubic-bezier(0.22,0.61,0.25,1) both' }}
+              style={
+                delayMs === undefined
+                  ? undefined
+                  : {
+                      animation: `stream-in ${WORD_ANIM_MS}ms ${WORD_ANIM_EASING} both`,
+                      animationDelay: `${delayMs}ms`,
+                    }
+              }
             >
               {token.text}{' '}
             </span>
-          ),
-        )}
+          );
+        })}
         {!done && !fromHistory && (
           <span
             className="ml-0.5 inline-block h-3 w-0.5 translate-y-0.5 rounded-full bg-ink"

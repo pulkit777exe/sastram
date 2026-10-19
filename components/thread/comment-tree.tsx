@@ -234,11 +234,10 @@ export function CommentTree({
     () => ({
       activeReplyId,
       collapsedIds,
-      allMessages: messages,
       animateMessageId,
       aiInlineStatus,
     }),
-    [activeReplyId, collapsedIds, messages, animateMessageId, aiInlineStatus]
+    [activeReplyId, collapsedIds, animateMessageId, aiInlineStatus]
   );
 
   if (messages.length === 0) return null;
@@ -246,7 +245,7 @@ export function CommentTree({
   return (
     <ThreadDataProvider value={dataContextValue}>
       <ThreadUIStateProvider value={uiStateContextValue}>
-        <MessageList firstUnreadMessageId={firstUnreadMessageId} />
+        <MessageList messages={messages} firstUnreadMessageId={firstUnreadMessageId} />
       </ThreadUIStateProvider>
     </ThreadDataProvider>
   );

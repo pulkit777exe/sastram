@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { Analytics } from '@vercel/analytics/next';
-import { FeedbackWidget } from '@/components/feedback/feedback-widget';
+import { LazyFeedbackWidget } from '@/components/feedback/lazy-feedback-widget';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -114,7 +114,7 @@ export default function RootLayout({
         </a>
         <Analytics />
         <Providers>{children}</Providers>
-        <FeedbackWidget />
+        <LazyFeedbackWidget />
       </body>
     </html>
   );

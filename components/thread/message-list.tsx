@@ -29,6 +29,7 @@ import {
 } from '@/lib/thread-access/client';
 
 interface MessageListProps {
+  messages: Message[];
   firstUnreadMessageId: string | null;
 }
 
@@ -69,16 +70,15 @@ function buildRepliesMap(messages: Message[]): Map<string, Message[]> {
   return map;
 }
 
-export function MessageList({ firstUnreadMessageId }: MessageListProps) {
+export function MessageList({ messages, firstUnreadMessageId }: MessageListProps) {
   const { scrollContainerRef } = useThreadDataContext();
-  const { allMessages } = useThreadUIStateContext();
 
   const topLevelMessages = useMemo(
-    () => allMessages.filter((m) => !m.parentId),
-    [allMessages]
+    () => messages.filter((m) => !m.parentId),
+    [messages]
   );
 
-  const repliesMap = useMemo(() => buildRepliesMap(allMessages), [allMessages]);
+  const repliesMap = useMemo(() => buildRepliesMap(messages), [messages]);
 
   const compactFlags = useMemo(
     () => computeCompactFlags(topLevelMessages),
@@ -156,17 +156,36 @@ function CompactTimestamp({ time }: { time: Date | string }) {
   );
 }
 
+interface MessageRowProps {
+  message: Message;
+  isCompact: boolean;
+  isFirstUnread: boolean;
+  replies: Message[];
+}
+
+// getRepliesForParent returns a fresh sorted array each render, so the default
+// shallow compare would defeat memo on every SSE token. Replies only matter
+// here for identity-stable message objects — compare element-wise instead.
+// Exported for the SSE re-render guard test (rows must only re-render when
+// their own message/replies change, or via the UI-state context).
+export function areMessageRowPropsEqual(prev: MessageRowProps, next: MessageRowProps): boolean {
+  if (prev.message !== next.message) return false;
+  if (prev.isCompact !== next.isCompact) return false;
+  if (prev.isFirstUnread !== next.isFirstUnread) return false;
+  if (prev.replies === next.replies) return true;
+  if (prev.replies.length !== next.replies.length) return false;
+  for (let i = 0; i < prev.replies.length; i++) {
+    if (prev.replies[i] !== next.replies[i]) return false;
+  }
+  return true;
+}
+
 const MessageRow = React.memo(function MessageRow({
   message,
   isCompact,
   isFirstUnread,
   replies,
-}: {
-  message: Message;
-  isCompact: boolean;
-  isFirstUnread: boolean;
-  replies: Message[];
-}) {
+}: MessageRowProps) {
   const {
     threadId,
     createdBy,
@@ -563,4 +582,4 @@ const MessageRow = React.memo(function MessageRow({
       )}
     </>
   );
-});
+}, areMessageRowPropsEqual);

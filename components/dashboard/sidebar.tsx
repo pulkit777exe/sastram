@@ -425,18 +425,6 @@ function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, on
       />
       {!collapsed && <span className="text-sm font-medium">{label}</span>}
 
-      {badge != null && badge > 0 && (
-        <Badge
-            variant="destructive-subtle"
-            className={cn(
-              'ml-auto h-5 min-w-5 px-1 text-xs font-bold',
-              collapsed && 'absolute -top-1 -right-1 h-4 min-w-4 text-xs'
-            )}
-          >
-          {badge > 99 ? '99+' : badge}
-        </Badge>
-      )}
-
       {badge != null && badge > 0 && !collapsed && (
         <Badge variant="destructive-subtle" className="ml-auto h-5 min-w-5 px-1 text-xs font-bold">
           {badge > 99 ? '99+' : badge}
