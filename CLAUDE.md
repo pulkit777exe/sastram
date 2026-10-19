@@ -33,7 +33,7 @@ bun check:prod      # Production readiness checks
 
 # Testing & Linting
 bun run test       # Mocha suite
-bun test:e2e       # Playwright e2e tests (smoke + collections + thread-edit; not run in CI)
+bun test:e2e       # Playwright e2e tests (smoke + collections + thread-edit; run in CI's e2e job)
 bun typecheck      # TypeScript check
 bun lint          # ESLint
 bun lint:fix      # ESLint fix
@@ -210,7 +210,7 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 ## Test Coverage
 
 - **Current**: Mocha test suite (see `shared/ARCHITECTURE.md` for the file inventory) covering utilities, services, API routes (incl. AI guard, search deadline, idempotency, collections), and components (incl. `chat-message-list`, `thread-components`, `overflow-menu`, `view-transition`)
-- **E2E**: Playwright specs in `test/e2e/` (`smoke`, `collections`, `thread-edit` + `global-setup` fixtures) — not run in CI
+- **E2E**: Playwright specs in `test/e2e/` (`smoke`, `collections`, `thread-edit` + `global-setup` fixtures) — run in CI's `e2e` job (PostgreSQL 16 service, Playwright-managed `bun run dev:next`; `global-setup` seeds the user + fixture thread and warms the first routes)
 - **Missing**: integration tests with real DB, component storybook
 
 ## Architecture Notes
@@ -249,7 +249,7 @@ Optional/feature flags:
 
 ## CI
 
-GitHub Actions workflow in `.github/workflows/ci.yml` — three jobs: gitleaks secret scanning, `bun run audit:gate`, and a check job on a PostgreSQL 16 service (`bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test`). Playwright e2e and `format:check` are not run in CI.
+GitHub Actions workflow in `.github/workflows/ci.yml` — four jobs: gitleaks secret scanning, `bun run audit:gate`, a check job on a PostgreSQL 16 service (`bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test`), and an `e2e` job on the same PostgreSQL 16 service (`db:deploy` → `db:extensions` → Chromium → `bun run test:e2e` against a Playwright-managed `bun run dev:next`). `format:check` is not run in CI.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -35,7 +35,7 @@ The current moat features (all configurable from `Settings → Preferences`, all
 | Validation | Zod |
 | State Management | React hooks + `@tanstack/react-virtual` for long lists (no global store) |
 | Monitoring | Sentry, Vercel Analytics |
-| Testing | Mocha + Chai + Sinon (86 files), Playwright (E2E, local-only — not run in CI) |
+| Testing | Mocha + Chai + Sinon (90 files), Playwright (E2E, run in CI's e2e job) |
 
 ---
 
@@ -269,7 +269,7 @@ sastram/
 │   ├── schema.prisma                     # 35 models (FactCheckStatus enum, Bounty, forkedFromId, isMarket)
 │   └── seed.ts                           # Database seed script
 │
-├── test/                                 # 86 Mocha test files + Playwright e2e (e2e not in CI)
+├── test/                                 # 90 Mocha test files + Playwright e2e (e2e in CI)
 │   └── e2e/                              # Playwright end-to-end tests
 │
 ├── components/                           # React components
@@ -685,14 +685,14 @@ One Redis client (Upstash REST over HTTP, serverless-safe):
 
 **Patterns:** Sinon stubs for Prisma/Redis/AI, injected fakes (`test/support/fake-prisma.ts`, `createFakeThreadAccessStore`, `setGuardDepsForTests`), `resetRateLimiters()` for isolation.
 
-### E2E Tests (Playwright, `test/e2e/`) — not run in CI
+### E2E Tests (Playwright, `test/e2e/`) — run in CI
 - `smoke.spec.ts` — Auth + thread creation + reply + AI search smoke
 - `collections.spec.ts` — Workspace collections flow
 - `thread-edit.spec.ts` — Thread/message edit, tags, reactions, AI status polling
-- `global-setup.ts` — Deterministic fixtures (pins `DATABASE_URL` to test DB, seeds fixture thread)
+- `global-setup.ts` — Deterministic fixtures (pins `DATABASE_URL` to test DB, seeds the fixture thread + test user, signs in, warms the first routes)
 
 ### CI (GitHub Actions)
-Three jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), and `check` (PostgreSQL 16 service): `bun install` → `bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test` (Mocha). Playwright e2e and `format:check` are not run in CI.
+Four jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), `check` (PostgreSQL 16 service): `bun install` → `bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test` (Mocha), and `e2e` (PostgreSQL 16 service): `db:deploy` → `db:extensions` → Chromium → `bun run test:e2e` against a Playwright-managed `bun run dev:next` (`E2E_MANAGE_SERVER`, `E2E_SERVER_COMMAND`). `format:check` is not run in CI.
 
 ---
 
@@ -711,7 +711,7 @@ bun dev            # Next.js dev server
 bun build          # Prisma generate + Next build
 bun start          # Production server
 bun run test       # Mocha suite
-bun test:e2e       # Playwright e2e (local only — not run in CI)
+bun test:e2e       # Playwright e2e (runs in CI's e2e job)
 bun typecheck      # TypeScript check
 bun lint           # ESLint
 bun lint:fix       # ESLint fix

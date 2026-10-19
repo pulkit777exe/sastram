@@ -75,7 +75,7 @@ NODE_ENV=production bun check:prod
 
 ```bash
 bun run test          # Mocha unit + route tests
-bun test:e2e          # Playwright e2e (smoke + collections + thread-edit; local only — not run in CI)
+bun test:e2e          # Playwright e2e (smoke + collections + thread-edit; runs in CI's e2e job)
 ```
 
 ## Project Structure
@@ -95,7 +95,7 @@ lib/          — Core services, infrastructure, utilities
 components/   — shadcn/ui primitives + feature components
 hooks/        — React hooks (chat, thread, AI streaming, preferences)
 prisma/       — Database schema (35 models)
-test/         — Mocha suite + Playwright e2e (e2e is not run in CI)
+test/         — Mocha suite + Playwright e2e (e2e runs in CI's e2e job)
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for architecture details and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.

@@ -44,7 +44,7 @@ Thanks for your interest in contributing to Sastram.
 1. Create a branch from `main`: `git checkout -b feature/your-feature`
 2. Make your changes
 3. Run `bun typecheck` and `bun lint` — both must pass
-4. Add or update tests: `bun run test` (Playwright e2e via `bun run test:e2e` is local-only — it is not run in CI)
+4. Add or update tests: `bun run test` (Playwright e2e via `bun run test:e2e` runs in CI's `e2e` job — it seeds a test user and manages its own dev server)
 5. Commit with descriptive messages (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`)
 6. Push and open a PR
 
@@ -111,7 +111,7 @@ lib/          — Core utilities, services, infrastructure
 components/   — UI components
 hooks/        — React hooks (chat, thread, AI streaming, preferences)
 prisma/       — Database schema (35 models)
-test/         — Mocha suite + Playwright e2e (e2e is not run in CI)
+test/         — Mocha suite + Playwright e2e (e2e runs in CI's e2e job)
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for full architecture details.

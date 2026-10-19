@@ -84,7 +84,7 @@
 > **Domain expert:** "The `UserBan` record blocks their write operations. Thread access checks in `lib/thread-access.ts` verify bans before allowing posts."
 
 > **Dev:** "What triggers **Confidence Decay** on a **Resolution Score**?"
-> **Domain expert:** "When a new **Message** is posted, the `lastVerifiedAt` field is checked. If older than the threshold, the score decays proportionally until recalculated by the **AI Pipeline**."
+> **Domain expert:** "Confidence ages from the resolution's provenance — `verifiedAt` when a human verified it, otherwise `lastVerifiedAt` when the **AI Pipeline** last scored it. The stored score itself never decays; the daily cron and the staleness sweep use the decayed confidence to decide when a thread needs re-scoring."
 
 ## Flagged ambiguities
 

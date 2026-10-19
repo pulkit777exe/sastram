@@ -60,7 +60,7 @@
 
 ### 1.3 Challenge Mode (interactive conflict) [P1]
 **Problem:** `detect-conflicts` is passive (`ai-jobs.ts:130`).
-**KISS slice:** `POST /api/threads/[id]/challenge {counterSourceUrl, note}` → enqueues existing `DETECT_CONFLICTS` job with `challengeSource`, re-scores, `dispatch` `AI_INSIGHT` to subscribers (`modules/notifications/dispatcher.ts:26`). No new job type, reuse `updateThreadStaleness` path.
+**KISS slice:** `POST /api/threads/[id]/challenge {counterSourceUrl, note}` → enqueues existing `DETECT_CONFLICTS` job with `challengeSource`, re-scores, `dispatch` `AI_INSIGHT` to subscribers (`modules/notifications/dispatcher.ts:26`). No new job type, reuse the existing staleness-marking path (the AI worker writes `isOutdated`).
 **Files:** `app/api/threads/[threadId]/challenge/route.ts` (new 40 lines), `ai-jobs.ts:130`, `notifications/dispatcher.ts`.
 **Test:** Challenge with contradictory Exa URL → `isOutdated=true` + notification.
 
