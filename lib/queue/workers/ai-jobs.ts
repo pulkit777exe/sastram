@@ -14,6 +14,7 @@ import { sanitizeHtmlContent, isSafePublicUrl } from '@/lib/services/content-saf
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { generateDigestSummary } from '@/lib/services/digest';
 import { z } from 'zod';
 import { AppError } from '@/lib/utils/errors';
 import { assertThreadJob, readAlreadyBilled, runGuardedWorker } from './_shared';
@@ -245,8 +246,9 @@ export async function handleConflictDetectionJob(data: ConflictDetectionJobData)
 
 async function generateDailyDigest(messages: JobMessageData[], subscriberIds: string[], alreadyBilled?: string) {
   logger.info(`Generating daily digest for ${subscriberIds.length} subscribers`);
-  const result = await runGuardedWorker('daily-digest', AiCallPath.DAILY_DIGEST, 'global', () => aiService.generateDailyDigest(messages), { alreadyBilled });
-  if (!result.ok) return { digestLength: 0, skipped: true };
+  const result = await runGuardedWorker('daily-digest', AiCallPath.DAILY_DIGEST, 'global', () => generateDigestSummary(messages), { alreadyBilled });
+  // No provider configured (or malformed result) — nothing worth notifying about.
+  if (!result.ok || !result.value) return { digestLength: 0, skipped: true };
   const digest = sanitizeHtmlContent(result.value);
   await dispatch({
     recipients: { userIds: subscriberIds },
