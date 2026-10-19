@@ -7,7 +7,7 @@ Date: 2026-08-31 · Scope: full codebase · Approach: `improve-codebase-architec
 >
 > **Update 2026-09-08 (historical):** Re-audited. `C1` dispatcher now exists (`modules/notifications/dispatcher.ts` via `lib/queue/workers/ai-jobs: dispatch`), `C7` `createTopic` now delegates to `threads-write/createThread` (not duplicate `prisma.create`), `C3` no `newsletter/service.ts` file on disk (already removed), `C2` still split (invitations + members), `C4-C6,C8` still open. Counts drift fixed: 29 modules / 35 models / 46 routes / 53 tests (was 24/30/35/46). New moat: `Bounty`, `Poll.isMarket`/`resolvedOptionIndex`/`marketResolvedAt` markets, `Collection`+`CollectionItem` + `KnowledgePage` (resolutionScore>85+verifiedAt), `Thread.forkedFromId` + fork APIs (`/api/threads/[threadId]/fork`, `/api/threads/fork-external`), `Message.factCheckStatus` (`UNCHECKED`/`VERIFIED`/`DISPUTED`), `AppealVote` jury (3 random `MODERATOR`, 2/3 majority), Worker sandbox `code-runner`, `force-graph` canvas (`components/graph/ForceGraphCanvas.tsx` dynamic `import('force-graph')`, 360–560px, drag/zoom, `ThreadRelation` similarity ≥0.7), Deep Research advanced 12-source (`GENERATE_DEEP_RESEARCH`, `exaMode: agentic` + `tavilyMode: research`, Exa `numResults: 12`/`maxCharacters: 12000`, Tavily `max_results: 12`/`search_depth: advanced`), Canvas `crossReference` tier sort + conflict detection (`/dashboard/canvas?left=&right=`), verified resolution decay (`Thread.verifiedAt/By` + `lastVerifiedAt`, `modules/threads/confidence-decay.ts` 90d half-life, `computeConfidence` <0.5 → `isOutdated`), weekly `refreshUserExpertise` reuse in `update-threads` cron (`lib/services/user-memory.ts`, 50 active users, `threadDna.expertiseLevel` + `AiSearchSession.queryType` → `preferences.expertiseLevel` injected in `synthesis`).
 
-> Domain vocabulary: see `UBIQUITOUS_LANGUAGE.md`. No `docs/adr/` directory yet.
+> Domain vocabulary: see `UBIQUITOUS_LANGUAGE.md`. ADR-0001 exists at `docs/adr/0001-grilling-decisions.md` (2026-10-11).
 > Architecture vocabulary: module, interface, implementation, depth, seam, adapter, leverage, locality (per the `codebase-design` skill).
 > Past deepening: `refactor(search)`, `refactor(ai)`, `refactor(queue)`, `refactor: ports/adapters` — the team has been working through this for the last several commits. The candidates below are areas the recent refactor wave has not touched.
 
@@ -21,13 +21,13 @@ This is a survey pass, not a commitment. Pick one, grill it, deepen it.
 
 ---
 
-## C1 · Deepen the Notifications dispatcher
+## C1 · Deepen the Notifications dispatcher — RESOLVED 2026-10-11 (`dispatch()` in `modules/notifications/dispatcher.ts` is the single port; the description below records the pre-resolution state)
 
 **Domain**: `modules/notifications/`
-**Files**: `modules/notifications/repository.ts`, `modules/notifications/actions.ts`, plus 8 callers (`modules/appeals/actions.ts`, `modules/follows/actions.ts`, `modules/members/actions.ts`, `modules/messages/adapters/infra-side-effects.ts`, `modules/messages/moderation-processor.ts`, `modules/reports/actions.ts`, `modules/reports/service.ts`, `lib/queue/workers/ai-jobs.ts`, `lib/services/moderation-sla.ts`)
+**Files**: `modules/notifications/dispatcher.ts`, `modules/notifications/repository.ts`, `modules/notifications/actions.ts`, plus callers (`modules/appeals/actions.ts`, `modules/follows/actions.ts`, `modules/messages/adapters/infra-side-effects.ts`, `modules/reports/actions.ts`, `modules/reports/service.ts`, `lib/queue/workers/ai-jobs.ts`)
 **Strength**: Strong
 
-**Problem.** The interface is wider than the implementation. `repository.ts` exposes five primitives (`createNotification`, `createBulkNotifications`, `notifyUsersByRole`, `notifyMultipleUsers`, plus read filters), and every caller wires its own argument shape — the literal `{ userId, type: 'SYSTEM', title, message, data }` shows up in eight places. The implementation is small (Prisma writes plus a best-effort wrapper) but the surface is large: callers have to know which primitive to call for "notify a role" vs "notify these specific users" vs "notify a single user," and each one has its own argument shape.
+**Problem (pre-resolution).** The interface was wider than the implementation. `repository.ts` exposed five primitives (`createNotification`, `createBulkNotifications`, `notifyUsersByRole`, `notifyMultipleUsers`, plus read filters), and every caller wired its own argument shape — the literal `{ userId, type: 'SYSTEM', title, message, data }` showed up in eight places. The implementation is small (Prisma writes plus a best-effort wrapper) but the surface is large: callers have to know which primitive to call for "notify a role" vs "notify these specific users" vs "notify a single user," and each one has its own argument shape.
 
 **Deletion test.** Delete `modules/notifications/`. Have every caller write `prisma.notification.create` directly. Most callers wouldn't grow; a few would lose the "best-effort, never throws" wrapper. Pass-through with a real adapter hidden inside.
 
@@ -37,19 +37,19 @@ This is a survey pass, not a commitment. Pick one, grill it, deepen it.
 dispatch({ recipients: { userIds? | roles? | emails? }, category, title, message, data })
 ```
 
-Recipients is a tagged union: pick one of three addressing modes. The fan-out (single user, multiple users, role lookup) hides in the implementation. Each caller writes one line. Tests cross the same seam — the dispatch shape — not five different function signatures. The current `notifyUsersByRole` becomes `dispatch({ recipients: { roles }, ... })`.
+Recipients is a tagged union: pick one of three addressing modes. The fan-out (single user, multiple users, role lookup) hides in the implementation. Each caller writes one line. Tests cross the same seam — the dispatch shape — not five different function signatures. `notifyUsersByRole` became `dispatch({ recipients: { roles }, ... })` (shipped).
 
 **Wins**: every caller gets simpler; the best-effort wrapper lives in one place; the read path is a separate concern; tests no longer have to mock 5 functions to test one notification.
 
 ---
 
-## C2 · Merge Invitations and Members into one module
+## C2 · Merge Invitations and Members into one module — RESOLVED 2026-10-11 (`modules/members/` deleted; folded into `invitations/`)
 
 **Domain**: `modules/invitations/` + `modules/members/`
 **Files**: `modules/invitations/actions.ts`, `modules/members/actions.ts` (no `members/repository.ts` — direct prisma)
 **Strength**: Strong
 
-**Problem.** Two adapters for the same domain concept. `inviteFriendToThread` (invitations) and `inviteMember` (members) both write to `ThreadInvitation` with overlapping rules — manageable-thread check, 7-day TTL, email-keyed dedup. Two adapters means a real seam exists, but it's in the wrong place: there is no `invitations/repository.ts`, so the seam is "the prisma table itself" and each adapter re-implements the deduplication transaction. `inviteMember` doesn't even send email; `inviteFriendToThread` does.
+**Problem (pre-resolution).** Two adapters for the same domain concept. `inviteFriendToThread` (invitations) and `inviteMember` (members) both write to `ThreadInvitation` with overlapping rules — manageable-thread check, 7-day TTL, email-keyed dedup. Two adapters means a real seam exists, but it's in the wrong place: there is no `invitations/repository.ts`, so the seam is "the prisma table itself" and each adapter re-implements the deduplication transaction. `inviteMember` doesn't even send email; `inviteFriendToThread` does.
 
 **Deletion test.** Delete `modules/members/inviteMember` and route its single caller (`access-management-modal.tsx`) through `inviteFriendToThread`. Complexity concentrates (one path) instead of vanishing — the *wrong* direction for a deletion-test pass; this is a real deep module, just split badly. Two-adapter test passes: there really are two things varying here (one with email, one without), and they share too much code.
 
@@ -59,13 +59,13 @@ Recipients is a tagged union: pick one of three addressing modes. The fan-out (s
 
 ---
 
-## C3 · Delete `modules/newsletter/service.ts` (or extract the digest scheduler)
+## C3 · Delete `modules/newsletter/service.ts` (or extract the digest scheduler) — RESOLVED (`service.ts` is no longer on disk; the cron route owns the digest logic)
 
 **Domain**: `modules/newsletter/`
 **Files**: `modules/newsletter/actions.ts`, `modules/newsletter/service.ts`, `modules/newsletter/repository.ts`, `app/api/cron/daily-digest/route.ts`
 **Strength**: Strong
 
-**Problem.** The interface is wider than it needs to be, and one half is fake. `service.ts:processPendingDigests` calls `getDueDigests()`/`markDigestProcessing()`/`completeDigest()` — all stubs in `repository.ts` returning empty arrays. Meanwhile the real digest logic lives in `app/api/cron/daily-digest/route.ts`, a 187-line route handler that does the same work end-to-end. `subscribeToThread` is duplicated in `service.ts:21` and `actions.ts:104` with the same body, and `scheduleThreadDigest` is a no-op stub on both call paths.
+**Problem (pre-resolution).** The interface is wider than it needs to be, and one half is fake. `service.ts:processPendingDigests` calls `getDueDigests()`/`markDigestProcessing()`/`completeDigest()` — all stubs in `repository.ts` returning empty arrays. Meanwhile the real digest logic lives in `app/api/cron/daily-digest/route.ts`, a 187-line route handler that does the same work end-to-end. `subscribeToThread` is duplicated in `service.ts:21` and `actions.ts:104` with the same body, and `scheduleThreadDigest` is a no-op stub on both call paths.
 
 **Deletion test.** Delete `service.ts`. The cron route keeps working unchanged (it's standalone), and `subscribeToThreadAction` continues to work from `actions.ts`. Complexity concentrates in the right place. **This is a pass-through** — `service.ts` exists because someone planned a `DigestJob` model that was never built.
 
@@ -75,13 +75,13 @@ Recipients is a tagged union: pick one of three addressing modes. The fan-out (s
 
 ---
 
-## C4 · Fold `modules/audit/` into `modules/activity/`
+## C4 · Fold `modules/audit/` into `modules/activity/` — RESOLVED 2026-10-11 (`modules/audit/` deleted; `activity/` is the sole `UserActivity` writer)
 
 **Domain**: `modules/audit/` + `modules/activity/`
 **Files**: `modules/audit/repository.ts`, `modules/audit/index.ts`, `modules/activity/repository.ts`, `modules/activity/actions.ts`, `components/bootstrap-provider.tsx`, `app/(protected)/dashboard/admin/moderation/page.tsx`
 **Strength**: Worth exploring
 
-**Problem.** Two modules share a single table (`UserActivity`). `audit/repository.ts:logAction` writes `{ type: action, entityType, entityId, userId, metadata }`; `activity/repository.ts:recordActivity` writes the same row with `{ type, entityType, entityId, userId, metadata }`. `audit:getUserActivities` and `activity:getUserActivity` are the same query with different filter shapes. No test surface on either side; the only thing keeping them apart is vocabulary.
+**Problem (pre-resolution).** Two modules share a single table (`UserActivity`). `audit/repository.ts:logAction` writes `{ type: action, entityType, entityId, userId, metadata }`; `activity/repository.ts:recordActivity` writes the same row with `{ type, entityType, entityId, userId, metadata }`. `audit:getUserActivities` and `activity:getUserActivity` are the same query with different filter shapes. No test surface on either side; the only thing keeping them apart is vocabulary.
 
 **Deletion test.** Delete `audit/`, route `logAction`/`getUserActivities` callers through `recordActivity`/`getUserActivity` with renamed args. The vocabulary "audit log" stays at the call site as a comment, not a module boundary. **This passes the deletion test** — pass-through.
 
@@ -97,7 +97,7 @@ Recipients is a tagged union: pick one of three addressing modes. The fan-out (s
 **Files**: `modules/follows/actions.ts`, `modules/follows/repository.ts`
 **Strength**: Worth exploring
 
-**Problem.** The interface is wider than the implementation. `followUser` in `actions.ts` reaches across three modules in sequence: `repository.followUser` (transaction with counter increment), then `createNotification` (notifications module), then path revalidation. The repository hides a transaction. The action wires the side effect. If a future caller wants "follow without notification" or "follow + email digest signup," it duplicates the wiring. Messages already solved this with `MessageSideEffectsPort` (`modules/messages/ports/side-effects.ts`); follows has no equivalent seam.
+**Problem.** The interface is wider than the implementation. `followUser` in `actions.ts` reaches across three modules in sequence: `repository.followUser` (transaction with counter increment), then `dispatch()` (notifications dispatcher), then path revalidation. The repository hides a transaction. The action wires the side effect. If a future caller wants "follow without notification" or "follow + email digest signup," it duplicates the wiring. Messages already solved this with `MessageSideEffectsPort` (`modules/messages/ports/side-effects.ts`); follows has no equivalent seam.
 
 **Deletion test.** Delete the notifications call inside `followUser` and verify the follow still works. The seam between "I am now following you" (follow) and "you should know I am following you" (notification) is implicit, on the wrong side of the seam.
 
@@ -107,13 +107,13 @@ Recipients is a tagged union: pick one of three addressing modes. The fan-out (s
 
 ---
 
-## C6 · Reclaim the Bookmarks surface (the test is reaching past the seam)
+## C6 · Reclaim the Bookmarks surface (the test is reaching past the seam) — RESOLVED 2026-10-11 (`setBookmarkStatus` shipped; `toggleBookmark` deleted)
 
 **Domain**: `modules/bookmarks/`
 **Files**: `modules/bookmarks/actions.ts`, `modules/bookmarks/repository.ts`, `test/bookmarks.action.test.mts`
 **Strength**: Worth exploring
 
-**Problem.** The interface is wider than it needs to be. Three actions expose three shapes (`toggleBookmark`, `getBookmarkedThreads`, `checkBookmarkStatus`) for one piece of domain logic ("a user has a set of bookmarked threads"). `toggleBookmark` is also read-then-write — a race with two tabs both checking and both inserting creates a double-row. The test (`test/bookmarks.action.test.mts`) reveals the smell: it reaches *past* the action into prisma to assert on positional vs object arg shape — a regression test for the action signature, not for the seam. **The interface is the test surface, and the surface is wrong.**
+**Problem (pre-resolution).** The interface is wider than it needs to be. Three actions expose three shapes (`toggleBookmark`, `getBookmarkedThreads`, `checkBookmarkStatus`) for one piece of domain logic ("a user has a set of bookmarked threads"). `toggleBookmark` is also read-then-write — a race with two tabs both checking and both inserting creates a double-row. The test (`test/bookmarks.action.test.mts`) reveals the smell: it reaches *past* the action into prisma to assert on positional vs object arg shape — a regression test for the action signature, not for the seam. **The interface is the test surface, and the surface is wrong.**
 
 **Deletion test.** Delete `checkBookmarkStatus` (it's `toggleBookmark` minus the write). The remaining `toggleBookmark` still has the race. Deletion reduces surface but doesn't deepen — wrong module for a delete-only refactor.
 
@@ -139,13 +139,13 @@ Recipients is a tagged union: pick one of three addressing modes. The fan-out (s
 
 ---
 
-## C8 · Add a Reaction side-effect port (skip unless a third caller appears)
+## C8 · Add a Reaction side-effect port (skip unless a third caller appears) — RESOLVED 2026-10-13 (`ReactionDeps` port + `ReactionStore` shipped; `requireMessageAccess` replaced `authorizeMessage`)
 
 **Domain**: `modules/reactions/`
 **Files**: `modules/reactions/actions.ts`, `modules/reactions/repository.ts`
 **Strength**: Speculative
 
-**Problem.** `actions.ts:authorizeMessage` is a hand-rolled "fetch message → resolve thread → enforce thread access" helper used by both `toggleReaction` and `getReactionSummary`. The same logic exists implicitly in messages actions but isn't named. Two adapters in shape, but only one consumer right now: reactions.
+**Problem (pre-resolution).** `actions.ts:authorizeMessage` is a hand-rolled "fetch message → resolve thread → enforce thread access" helper used by both `toggleReaction` and `getReactionSummary`. The same logic exists implicitly in messages actions but isn't named. Two adapters in shape, but only one consumer right now: reactions.
 
 **Deletion test.** Delete `authorizeMessage` and inline the four lines into both call sites. No loss. **The seam is hypothetical** — single consumer means it's premature.
 
@@ -175,7 +175,7 @@ If you want the architecture pass to land structural change: **C1** + **C2** + *
 
 1. **The "ports and adapters" wave landed well in `messages/`, `search/`, and `ai/` but stopped at the module boundary.** Most `modules/<x>/` directories still use direct prisma writes inside actions. The notifications/follows/bookmarks areas are where the next port-adapter pass lives.
 2. **The team's recent `refactor:` commits show a clear pattern: collapse shallow wrappers, find a single deep module behind them, delete the rest.** C1-C3 fit that exact pattern.
-3. **No ADR directory yet.** Two of these candidates (C1, C2) involve decisions about vocabulary — "dispatch" vs "send" vs "notify", "invite" vs "add member". Worth capturing as ADRs before the deepening lands so a future reviewer doesn't re-litigate.
+3. **ADR directory now exists** — `docs/adr/0001-grilling-decisions.md` (2026-10-11). Two of these candidates (C1, C2) involve decisions about vocabulary — "dispatch" vs "send" vs "notify", "invite" vs "add member". Worth capturing as ADRs before the deepening lands so a future reviewer doesn't re-litigate.
 4. **`modules/reports/` shows up twice in the surface (C1) but wasn't a candidate on its own.** It's deep already; it just uses the shallow notifications surface. Fixing C1 makes the reports module strictly better.
 ## 2026-10-11 implementation log
 
@@ -290,3 +290,21 @@ Verification: `tsc` clean, `eslint` clean, 522 passing / 12 pending / 0 failing 
 | `braces` high CVE, no published fix | ✅ Enforced policy instead of acceptance | `scripts/audit-gate.ts` (`bun run audit:gate`, wired into CI replacing bare `bun audit`): fails on any non-allowlisted high/critical; `braces::GHSA-VFJ7-8CJW-P6XM` allowed only with dev-only justification + `reviewBy: 2027-04-13` expiry (verified: expired triage exits 1). Discovered bare `bun audit` exits non-zero on findings, so the old CI step was red-by-default with no policy — gate fixes that too |
 
 Verification: `tsc` clean, `eslint` clean, gate passes, 490 passing / 12 pending / 0 failing (65 test files).
+
+## 2026-10-19 implementation log (architecture + performance quality pass)
+
+| Area | Change (committed) | Evidence |
+|---|---|---|
+| Queue reliability | `enqueueJob` reports `{status, ok}` so callers can tell inline/published/dropped apart; email is exempt from the per-run cap (it was silently dropping OTP/verification mail); retryable failures release their claim + dedup key so QStash retries are not deduped away; cron fan-out capped at `MAX_ENQUEUES_PER_RUN=150`; staleness checks enqueued and bounded to `STALE_MAX_BATCHES=50` | `lib/services/queue.ts`, `app/api/jobs/route.ts`, `app/api/cron/update-threads/route.ts`, `lib/queue/workers/ai-jobs.ts` (+ `queue-enqueue`, `jobs-route-retry` tests) |
+| Billing correctness | Cron enqueues no longer pre-charge AI spend; `checkCronSpendCaps` reads without consuming (parallel); the daily digest filters recipients before rendering, memoizes per `thread:window`, bounds message fetches and evicts rejected generations | `lib/ai/guard.ts`, `app/api/cron/daily-digest/route.ts` (+ `cron-spend-caps` test) |
+| AI guard + stream | Guard preserves `AppError` status (missing thread → 404, not 403), orders session → thread access → precheck → rate/quota/spend and returns a `ThreadAccessContext`; deep-research cost-classified at $0.08; `/@sai` stream replays an existing reply with no LLM call, reuses empty rows, folds depth into the parent select and loads context + AI user in parallel; `AbortError` is first-class with signal threading; forum-search caches before the guard and enforces a 25 s deadline | `lib/middleware/ai-guard-route.ts`, `app/api/threads/[threadId]/ai-reply/stream/route.ts`, `lib/utils/retry.ts`, `modules/ai-reply/service.ts` (+ 10 new test files) |
+| Frontend perf | Thread context no longer carries the message array; rows compare element-wise so a streaming token re-renders only its row; `StreamingText` became a CSS animation-delay cascade; `FadeIn` drops framer-motion; FeedbackWidget/ForgotPasswordModal/Sentry replay lazy-loaded; React Query + cmdk removed with 9 dead components; thread page fetches in parallel; admin spend polling pauses on hidden tabs | `components/thread/*`, `components/ai-search/StreamingText.tsx`, `app/(protected)/dashboard/threads/[slug]/page.tsx` (+ streaming/component tests) |
+| DB indexes | Migration `20261019000000_perf_owner_indexes`: 7 owner/feed composites added, 11 redundant singles dropped (rationale in the migration); `THREAD_SUMMARY_SELECT` narrowed; tag page shares the 7-day active-user window; relations refresh ordered by `updatedAt`; collections API window clamped (default 50, max 100); ai-search cursor `(createdAt, id)`; `scripts/apply-extensions.ts` replays pg_trgm SQL and is wired as `db:extensions` in package.json + CI | `prisma/schema.prisma` + migration, `scripts/apply-extensions.ts`, `app/api/collections/[id]/route.ts` |
+| Dead code | ~1.5k lines removed: moderation dead vertical, `lib/services/reputation.ts`, `lib/ai/factory.ts`, route-experts API, activity/bounties actions, notification write shims, per-module unused symbols; `lib/actions/result.ts` shim deleted after migrating its last callers; unused `escalateStaleReports` removed | 44 files, +27/−1524 |
+| Appeals seam | Pure `jury.ts` (tally/pick) + `repository.ts` extracted from `actions.ts`; 27 jury tests including exhaustive tally equivalence, 8 repository tests | `modules/appeals/{jury,repository}.ts` |
+| API hardening | SSRF: bracketed IPv6 hosts are parsed so loopback/ULA/link-local/multicast/IPv4-mapped literals are actually blocked (the old patterns could never match `URL.hostname`), plus CGNAT and `0.0.0.0/8`; Prisma P2025→404, P2002→409, P2003→404 via one shared table with no raw codes; cleanup-blobs deletes only confirmed blob deletions and 500s on failure; health rate-limited with a 10 s public cache; messages/upload share `MAX_TOTAL_UPLOAD_BYTES` with a content-length 413 pre-check; OTP/auth routes log unexpected failures and return 500; `getRequestIp` everywhere | `lib/services/content-safety.ts`, `lib/utils/errors.ts`, `app/api/{health,messages,upload,cron/cleanup-blobs}/route.ts` (+ ssrf/errors/route tests) |
+| Deps/CI | `@tanstack/react-query` + `cmdk` dropped; `bun run db:extensions` wired into CI after `db:deploy`; unused Redis service removed from CI; stale QStash `QSTASH_DEV` and worker-count comments corrected | `package.json`, `.github/workflows/ci.yml`, `.env.example`, `lib/queue/workers/index.ts` |
+
+Deferred / accepted: `lastVerifiedAt` enrichment overload (~120-day cadence); duplicate digest producers (cron route + worker); Playwright e2e remains local-only; `prisma/extensions/apply-via-sql-editor.sql` stays a hand-maintained Neon payload (explicitly excluded from `db:extensions`); `MemberCount` dead column. The new index migration has not been applied to any database from this workspace (generated offline with `migrate diff`); CI replays all migrations plus `db:extensions` from zero.
+
+Verification: `tsc` clean, `eslint` clean, 693 passing / 12 pending / 0 failing (86 test files; was 526 passing at the previous log).

@@ -60,7 +60,7 @@
 
 | Term | Definition | Aliases to avoid |
 | ---- | ---------- | ---------------- |
-| **AI Pipeline** | Background job queues (QStash) that process *Thread DNA*, *Resolution Score*, *Thread Summary*, conflict detection, daily digest, and AI inline suggestions. Jobs retry up to 3 times. | Job queue, worker |
+| **AI Pipeline** | Background job queues (QStash) that process *Thread DNA*, *Resolution Score*, *Thread Summary*, conflict detection, daily digest, and AI inline suggestions. Jobs retry 1x by default (3x for `email`); a daily QStash publish cap (450) drops non-critical jobs past the limit, never `email`. | Job queue, worker |
 | **Dashboard** | The user's personal landing page showing their *Threads*, recent activity, and relevant tags. | Home, feed |
 | **Spend Cap** | Dollar-based daily limit ($5.00) for AI usage, enforced via Redis INCRBYFLOAT. | AI budget |
 | **Daily Quota** | Per-user/day Redis quotas for AI inline, AI analysis, AI search, and image moderation. | Rate limit |

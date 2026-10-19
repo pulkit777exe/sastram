@@ -23,7 +23,7 @@ A discussion platform with AI-powered search, threading, and moderation. Origina
 - **Auth**: Better Auth (email OTP)
 - **AI**: Google Gemini / OpenAI GPT
 - **Styling**: Tailwind CSS + shadcn/ui
-- **State**: TanStack Query + React hooks
+- **State**: React hooks + `@tanstack/react-virtual` for long lists (no global store)
 - **Infra**: Upstash Redis, QStash, Vercel Blob
 
 ## Features
@@ -31,7 +31,7 @@ A discussion platform with AI-powered search, threading, and moderation. Origina
 - **Threaded discussions** — public, restricted, and private threads with visibility-based access control
 - **AI-powered search** — semantic forum search with citations (Exa/Tavily + Gemini fallback)
 - **AI thread analysis** — summaries, thread DNA, resolution scores, conflict detection
-- **Moderation** — regex-based content filtering, AI inline moderation, moderator notifications, SLA-based escalation
+- **Moderation** — regex-based content filtering, AI inline moderation, moderator notifications, SLA metrics (pending 24h/72h buckets + average first-response time)
 - **Background jobs** — QStash-powered workers for summaries, digests, email, and AI insights
 - **Spend caps & quotas** — dollar-based daily AI spend limits and per-user daily quotas via Redis
 - **Reactions, polls, bookmarks, follows** — full engagement toolkit
@@ -45,6 +45,7 @@ A discussion platform with AI-powered search, threading, and moderation. Origina
 bun install
 cp .env.example .env      # fill in required values
 bun db:migrate
+bun run db:extensions   # one-time: pg_trgm ILIKE-search GIN indexes (idempotent, outside migration history)
 bun db:seed               # demo threads + admin/system users (optional)
 bun dev
 ```
@@ -71,29 +72,28 @@ NODE_ENV=production bun check:prod
 ## Testing
 
 ```bash
-bun test            # Mocha unit + route tests
-bun test:e2e       # Playwright smoke tests
+bun run test          # Mocha unit + route tests
+bun test:e2e          # Playwright e2e (smoke + collections + thread-edit; local only — not run in CI)
 ```
 
 ## Project Structure
 
 ```
-app/          — Next.js App Router pages & API routes (50 endpoints)
-modules/      — 24 domain modules (threads, messages, ai-search, moderation, etc.)
+app/          — Next.js App Router pages & API routes
+modules/      — Domain modules (threads, messages, ai-search, moderation, etc.)
 lib/          — Core services, infrastructure, utilities
-  actions/    — Shared action result types
-  ai/         — Gemini/OpenAI providers, prompts, factory
+  ai/         — Gemini/OpenAI/NoOp providers, prompts, guard
   config/     — Environment schema, permissions, routes
   infrastructure/ — Prisma, Redis (Upstash REST), logger
   middleware/ — Cron auth, moderation, AI preflight
-  queue/      — QStash job types & workers (9 job types)
+  queue/      — QStash job types & registry
   schemas/    — Shared Zod schemas
   services/   — AI spend-cap, auth, rate-limit, quotas, email, etc.
   utils/      — Server actions, API helpers, SSE, validation
 components/   — shadcn/ui primitives + feature components
 hooks/        — React hooks (chat, thread, AI streaming, preferences)
 prisma/       — Database schema (35 models)
-test/         — Mocha unit tests (65 files) + Playwright e2e
+test/         — Mocha suite + Playwright e2e (e2e is not run in CI)
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for architecture details and [docs/CANONICAL-REFERENCE.md](./docs/CANONICAL-REFERENCE.md) for the verified system reference.

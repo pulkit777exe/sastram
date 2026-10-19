@@ -6,7 +6,7 @@ Core utilities, services, and infrastructure code. The backbone of the applicati
 
 ## Top-level Files
 
-- `thread-access.ts` - Thread authorization primitive (`requireThreadAccessOrThrow`, `requireThreadWriteOrThrow`, `canAccessThread`, `canManageThread`, `visibilityFilter`)
+- `thread-access.ts` - Thread authorization primitive (`requireReadOrThrow`, `requireWriteOrThrow`, `requireManageOrThrow`, `requireReadOrRedirect`, `ThreadAccessPolicy`; boolean views `canAccessThread`/`canManageThread`, `visibilityFilter`)
 
 ## Subdirectories
 
@@ -31,7 +31,7 @@ Business logic services.
 - `email.ts` - Resend email sending
 - `moderation.ts` - Content moderation pipeline (RateLimitFilter, RegexFilter, MLClassifier, ContextualAnalyzer, MessageModerationPipeline)
 - `image-moderation.ts` - Shared image NSFW moderation for upload routes (quota + spend cap + AI check)
-- `moderation-sla.ts` - Stale report escalation (>24h/72h)
+- `moderation-sla.ts` - SLA metrics only — pending report counts (24h/72h buckets) + average first-response time (`getSlaMetrics`)
 - `content-safety.ts` - HTML sanitization, file validation, SSRF `isSafePublicUrl`
 - `rate-limit.ts` - Redis rate limiting with in-memory fallback (buckets: auth, api, upload, message)
 - `queue.ts` - QStash job enqueueing (`CRITICAL_JOBS = email` → 3 retries, default 1)
@@ -42,7 +42,6 @@ Business logic services.
 - `usage-check.ts` - Usage limit checks
 - `user-memory.ts` - Weekly expertiseLevel inference (50 active users, `threadDna` + `AiSearchSession.queryType`)
 - `knowledge-promotion.ts` - Auto-promotes verified high-score threads (`resolutionScore > 85` + `verifiedAt` → `KnowledgePage`)
-- `reputation.ts` - Verified-thread reputation scoring (`verifiedThreadCount * 10`)
 
 ### `lib/infrastructure/`
 Database, cache, logging.
@@ -52,7 +51,7 @@ Database, cache, logging.
 
 ### `lib/ai/`
 Provider-agnostic AI layer (there is no `lib/services/ai.ts`).
-- `factory.ts` - AI provider factory (Gemini / OpenAI / NoOp)
+- `index.ts` - `createAiService()` provider selection (Gemini / OpenAI / NoOp) + barrel exports
 - `gemini.ts` / `openai.ts` / `noop.ts` - Providers (summaries, DNA, resolution scores, conflicts, streaming, image NSFW)
 - `prompts.ts` - Prompt templates
 - `prompt-boundary.ts` - LLM prompt injection defense delimiters
@@ -81,7 +80,7 @@ Genuinely shared utility functions.
 - `view-transitions.ts` - `isViewTransitionsEnabled()` + `supportsViewTransitions()`
 
 ### `lib/actions/`
-- `result.ts` - `ActionEnvelope` (`{ ok, data, error, errorCode }`), `ActionErrorCode`, `actionSuccess`, `actionFailure`
+- `result.ts` - Removed — the deprecated re-export shim was deleted; `ActionEnvelope`, `ActionErrorCode`, `actionSuccess`, `actionFailure` live in `lib/utils/server-action.ts`
 
 ### `lib/schemas/`
 Zod validation schemas.
@@ -90,15 +89,16 @@ Zod validation schemas.
 - `user-preferences.ts` - User preference schema (expertiseLevel + moat toggles)
 
 ### `lib/queue/`
-Background job definitions and handlers (9 job types in `config.ts`: `AIJobType`).
-- `config.ts` - Job configuration (9 types)
-- `types.ts` - Job data interfaces (discriminated union)
-- `workers/ai-jobs.ts` - Coalesced AI job handlers
-- `workers/thread-summary.worker.ts`, `thread-dna.worker.ts`, `resolution-score.worker.ts`, `conflict-detection.worker.ts`, `staleness-check.worker.ts`, `daily-digest.worker.ts`, `insight-notifications.worker.ts` - Split domain workers
+Background job definitions and handlers (9 AI job types in `config.ts` + the `email` job = 10 handlers in the registry).
+- `config.ts` - `AIJobType` enum (9 AI job types)
+- `types.ts` - Job data interfaces (discriminated union, incl. `EmailJobData`)
+- `registry.ts` - `jobHandlers` map — the single registration seam
+- `workers/ai-jobs.ts` - Coalesced AI job handlers (summary, DNA, score, conflicts, digest, staleness, insight notifications, deep research)
 - `workers/ai-inline.worker.ts` - Streaming @sai handler
 - `workers/email.worker.ts` - Email job handler
 - `workers/_shared.ts` - `runGuardedWorker` + `readAlreadyBilled` (spend+gate skip, warn-log)
-- `workers/index.ts` - Registry / re-exports (`runJobInline` handles all 9)
+- `workers/index.ts` - Handler re-exports
+- Inline execution: `runJobInline` in `lib/services/queue.ts` (no QStash config, or `QSTASH_DEV=true`)
 
 ### `lib/middleware/`
 - `moderation.ts` - `requireModerator()`, `requireAdmin()`
@@ -134,4 +134,4 @@ The following files no longer exist (removed during refactor):
 
 ## Testing Notes
 
-Services have Mocha unit tests covering moderation, schemas, content safety, rate limiting, and AI quotas (65 files total in `test/`).
+Services have Mocha unit tests covering moderation, schemas, content safety, rate limiting, and AI quotas (run with `bun run test`).

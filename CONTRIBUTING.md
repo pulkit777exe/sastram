@@ -15,9 +15,12 @@ Thanks for your interest in contributing to Sastram.
 3. Copy `.env.example` to `.env` and fill in the values
 4. Provide PostgreSQL (e.g. free-tier Neon: append `?pgbouncer=true` to `DATABASE_URL`; set `DATABASE_URL_UNPOOLED` to the direct endpoint for migrations) and optionally Upstash Redis (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` — without them, rate limits and quotas degrade to per-instance in-memory)
 5. Run `bun db:migrate`
-6. Run `bun db:seed` for demo threads + admin/system users (optional)
-7. Run `bun dev` to start the development server
-8. Run `bun test` to verify everything works (uses `.env.test` — no external services needed)
+6. Apply the trigram search indexes once: `bun run db:extensions` (idempotent; Prisma cannot express GIN opclasses, so they live outside migration history and `prisma migrate deploy` never applies them)
+7. Run `bun db:seed` for demo threads + admin/system users (optional)
+8. Run `bun dev` to start the development server
+9. Run `bun run test` to verify everything works (uses `.env.test` — no external services needed)
+
+> `bun test` invokes Bun's built-in runner, not the Mocha suite — always use `bun run test`.
 
 ### Required Environment Variables
 
@@ -25,7 +28,7 @@ Thanks for your interest in contributing to Sastram.
 - `BETTER_AUTH_SECRET` — Auth signing secret (min 32 chars)
 - `BETTER_AUTH_URL` — Auth base URL
 - `NEXT_PUBLIC_APP_URL` — Public app URL
-- `RESEND_API_KEY` + `RESEND_FROM` — Email delivery
+- `RESEND_API_KEY` + `RESEND_FROM` + template IDs (`RESEND_TEMPLATE_OTP`, `RESEND_TEMPLATE_INVITATION`, `RESEND_TEMPLATE_THREAD_SUMMARY`, `RESEND_TEMPLATE_PASSWORD_RESET`, `RESEND_TEMPLATE_WELCOME`) — Email delivery
 
 ### Optional but Recommended
 
@@ -39,7 +42,7 @@ Thanks for your interest in contributing to Sastram.
 1. Create a branch from `main`: `git checkout -b feature/your-feature`
 2. Make your changes
 3. Run `bun typecheck` and `bun lint` — both must pass
-4. Add or update tests: `bun test`
+4. Add or update tests: `bun run test` (Playwright e2e via `bun run test:e2e` is local-only — it is not run in CI)
 5. Commit with descriptive messages (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`)
 6. Push and open a PR
 
@@ -79,7 +82,7 @@ modules/<feature>/
 
 ```typescript
 import { createServerAction } from '@/lib/utils/server-action';
-import { requireSession } from '@/lib/services/auth';
+import { requireSession } from '@/modules/auth/session';
 import { requireWriteOrThrow } from '@/lib/thread-access';
 
 export const myAction = createServerAction(
@@ -95,18 +98,18 @@ export const myAction = createServerAction(
 
 ### Background Jobs
 
-New job types: add types in `lib/queue/types.ts`, processor in `lib/queue/workers/`, register in `lib/queue/workers/index.ts`. Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); non-retryable `AppError` returns 200 to prevent retry amplification.
+New job types: add types in `lib/queue/types.ts`, implement the handler under `lib/queue/workers/` (`ai-jobs.ts` for AI jobs, `ai-inline.worker.ts`, `email.worker.ts`; shared helpers in `_shared.ts`), then register it in the `jobHandlers` map in `lib/queue/registry.ts` (`runJobInline` in `lib/services/queue.ts` executes handlers inline when QStash is unconfigured or `QSTASH_DEV=true`). Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); the free-tier daily publish cap (450) drops non-critical jobs but never `email`; non-retryable `AppError` returns 200 to prevent retry amplification.
 
 ## Project Structure
 
 ```
-app/          — Next.js App Router pages & API routes (50 endpoints)
-modules/      — 24 domain modules
+app/          — Next.js App Router pages & API routes
+modules/      — Domain modules
 lib/          — Core utilities, services, infrastructure
 components/   — UI components
 hooks/        — React hooks (chat, thread, AI streaming, preferences)
 prisma/       — Database schema (35 models)
-test/         — Mocha unit tests (65 files) + Playwright e2e
+test/         — Mocha suite + Playwright e2e (e2e is not run in CI)
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for full architecture details.

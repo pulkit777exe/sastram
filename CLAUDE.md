@@ -32,8 +32,8 @@ bun start           # Production server
 bun check:prod      # Production readiness checks
 
 # Testing & Linting
-bun test            # Mocha tests (65 files)
-bun test:e2e       # Playwright e2e tests (smoke + collections + thread-edit)
+bun run test       # Mocha suite
+bun test:e2e       # Playwright e2e tests (smoke + collections + thread-edit; not run in CI)
 bun typecheck      # TypeScript check
 bun lint          # ESLint
 bun lint:fix      # ESLint fix
@@ -51,12 +51,12 @@ bun db:studio   # Prisma studio
 
 ### Directory Structure
 
-- `app/` - Next.js App Router pages and API routes (50 endpoints)
+- `app/` - Next.js App Router pages and API routes
 - `lib/` - Core utilities, services, infrastructure
-- `modules/` - Domain modules (24 feature modules)
+- `modules/` - Domain modules
 - `components/` - UI components
 - `prisma/` - Database schema (35 models)
-- `test/` - Mocha unit tests (65 files) + Playwright e2e
+- `test/` - Mocha unit tests + Playwright e2e
 - `hooks/` - React hooks (chat, thread, AI streaming, preferences)
 
 ### Database Models
@@ -82,14 +82,14 @@ bun db:studio   # Prisma studio
 
 ### Key Services
 
-- **AI** (`lib/ai/gemini.ts`, `lib/ai/openai.ts`, `lib/ai/factory.ts`): GeminiService, OpenAIService with summaries, thread DNA, resolution scores, image NSFW moderation
+- **AI** (`lib/ai/gemini.ts`, `lib/ai/openai.ts`, `lib/ai/noop.ts`; provider selection via `createAiService()` in `lib/ai/index.ts`): summaries, thread DNA, resolution scores, image NSFW moderation (Gemini; OpenAI reports `UNKNOWN`)
 - **Auth** (`lib/services/auth.ts`): Better Auth with email OTP
 - **Rate Limit** (`lib/services/rate-limit.ts`): Upstash Redis-based rate limiting with in-memory fallback
 - **Moderation** (`lib/services/moderation.ts`): Regex-based content filtering + AI inline + moderator notifications
 - **AI Spend Cap** (`lib/services/ai-spend-cap.ts`): Dollar-based daily limit ($5.00) via Redis INCRBYFLOAT
 - **AI Usage Logger** (`lib/services/ai-usage-logger.ts`): Per-request token counts and cost estimates
 - **Daily Quota** (`lib/services/daily-quota.ts`): Per-user/day Redis quotas for AI inline, AI analysis, AI search, image moderation
-- **Moderation SLA** (`lib/services/moderation-sla.ts`): Stale report escalation (>24h/72h)
+- **Moderation SLA** (`lib/services/moderation-sla.ts`): SLA metrics — pending report counts (24h/72h buckets) + average first-response time
 - **Soft-Delete Purge** (`lib/services/soft-delete-purge.ts`): Purges soft-deleted users after 30 days
 
 ### Design System
@@ -176,15 +176,15 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 ### Background Jobs
 
 - QStash webhook callback at `app/api/jobs/route.ts`
-- Job handlers in `lib/queue/workers/` — `ai-jobs.ts` (coalesced AI handlers) plus split workers (`thread-summary`, `thread-dna`, `resolution-score`, `conflict-detection`, `staleness-check`, `daily-digest`, `insight-notifications`, `ai-inline`, `email`), re-exported via `workers/index.ts`
+- Handlers live in `lib/queue/workers/` — `ai-jobs.ts` (coalesced: summary, DNA, resolution score, conflict detection, daily digest, staleness check, insight notifications, deep research), `ai-inline.worker.ts`, `email.worker.ts`, helpers in `_shared.ts` — and are registered in the `jobHandlers` map in `lib/queue/registry.ts`. `runJobInline` (`lib/services/queue.ts`) executes handlers inline when QStash is unconfigured or `QSTASH_DEV=true`
 - Vercel Cron for scheduled tasks (update-threads, cleanup-blobs, daily-digest, promote-knowledge)
 - Jobs: thread summary, thread DNA, resolution score, conflict detection, daily digest, AI inline, email, staleness check, AI insight notifications, deep research (12-source, advanced)
-- Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); non-retryable `AppError` returns 200 to prevent retry amplification
+- Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); the free-tier daily publish cap (450) drops non-critical jobs but never `email`; non-retryable `AppError` returns 200 to prevent retry amplification
 
 ### API Routes
 
 - `/api/auth/*` - Authentication endpoints
-- `/api/threads/*` - Thread operations (incl. `fork`, `fork-external`, `similar`, `challenge`, `route-experts`, `ai-reply` + SSE stream)
+- `/api/threads/*` - Thread operations (incl. `fork`, `fork-external`, `similar`, `challenge`, `ai-reply` + SSE stream)
 - `/api/messages/*` - Message operations
 - `/api/ai/*` - AI-powered features (forum-search SSE, thread-summary, thread-dna, resolution-score, search-history, spend, deep-research)
 - `/api/cron/*` - Scheduled jobs (cron auth via `CRON_SECRET` Bearer token) — `update-threads`, `daily-digest`, `cleanup-blobs`, `promote-knowledge`
@@ -192,13 +192,13 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 - `/api/v1/moderation/*` - Moderation tools (admin-only)
 - `/api/collections/*` - Workspace collections (CRUD + export with [n] footnotes)
 - `/api/bounties`, `/api/polls/[pollId]/resolve` - Bounties & prediction markets
-- `/api/bootstrap`, `/api/health`, `/api/search`, `/api/upload`, `/api/invitations/accept`, `/api/csp-report`, `/api/email-otp/*` etc. — see `shared/ARCHITECTURE.md` for full 49-route inventory
+- `/api/bootstrap`, `/api/health`, `/api/search`, `/api/upload`, `/api/invitations/accept`, `/api/csp-report`, `/api/email-otp/*` etc. — see `shared/ARCHITECTURE.md` for the full route inventory
 
 ## Authorization Patterns
 
 **All API routes and server actions must enforce thread access checks.**
 
-- **Thread access model** is the primary authorization primitive — see `lib/thread-access.ts` (`requireReadOrThrow`, `requireWriteOrThrow`, `canAccessThread`, `canManageThread`). There is no membership table; access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows.
+- **Thread access model** is the primary authorization primitive — see `lib/thread-access.ts` (`requireReadOrThrow`, `requireWriteOrThrow`, `requireManageOrThrow`, `requireReadOrRedirect`, `ThreadAccessPolicy`, plus boolean `canAccessThread`/`canManageThread` views). There is no membership table; access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows.
 - **Visibility rule (private/restricted threads):** creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN. Public threads are readable by anyone; writes still require a session.
 - Routes/actions that read/write thread data must call `requireReadOrThrow(threadId, userId, role)` / `requireWriteOrThrow(...)`.
 - `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check access.
@@ -208,8 +208,8 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
 ## Test Coverage
 
-- **Current**: 54 Mocha test files covering utilities, services, API routes, and components (incl. `chat-message-list`, `thread-components`, `overflow-menu`, `view-transition`)
-- **E2E**: Playwright specs in `test/e2e/` (`smoke`, `collections`, `thread-edit` + `global-setup` fixtures)
+- **Current**: Mocha test suite (see `shared/ARCHITECTURE.md` for the file inventory) covering utilities, services, API routes (incl. AI guard, search deadline, idempotency, collections), and components (incl. `chat-message-list`, `thread-components`, `overflow-menu`, `view-transition`)
+- **E2E**: Playwright specs in `test/e2e/` (`smoke`, `collections`, `thread-edit` + `global-setup` fixtures) — not run in CI
 - **Missing**: integration tests with real DB, component storybook
 
 ## Architecture Notes
@@ -220,29 +220,35 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 
 ## Environment Variables
 
+Validated by `lib/config/env.ts` (single seam) except `CSP_REPORT_ONLY`, which is read directly in `proxy.ts`; `.env.example` is the annotated list.
+
 Required in `.env`:
 - `DATABASE_URL` - PostgreSQL connection (Neon; keep the pooled `-pooler`/`pgbouncer=true` endpoint for app traffic)
-- `DATABASE_URL_UNPOOLED` - Neon **direct** endpoint (no `-pooler`, no `pgbouncer=true`). Used by Prisma CLI for schema migrations — NEVER run `prisma migrate`/`db push` over the pooled URL (fails with "prepared statement s0 already exists", non-persistent `SET search_path`, or SQLSTATE 25006). If unset, `prisma.config.ts` derives the direct URL by stripping `-pooler`/`pgbouncer=true` from `DATABASE_URL`.
+- `DATABASE_URL_UNPOOLED` - Neon **direct** endpoint (no `-pooler`, no `pgbouncer=true`). Used by Prisma CLI for schema migrations — NEVER run `prisma migrate`/`db push` over the pooled URL (fails with "prepared statement s0 already exists", non-persistent `SET search_path`, or SQLSTATE 25006). Optional in the schema: if unset, `prisma.config.ts` derives the direct URL by stripping `-pooler`/`pgbouncer=true` from `DATABASE_URL`.
 - `BETTER_AUTH_SECRET` - Auth secret (32+ chars)
 - `BETTER_AUTH_URL` - Auth base URL
 - `NEXT_PUBLIC_APP_URL` - Public URL
-- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - Redis for caching/queues (degrades gracefully without it; `REDIS_URL` TCP is legacy)
+- `RESEND_API_KEY` + `RESEND_FROM` (defaults to `Sastram <noreply@example.com>`) + template IDs (`RESEND_TEMPLATE_OTP`, `RESEND_TEMPLATE_INVITATION`, `RESEND_TEMPLATE_THREAD_SUMMARY`, `RESEND_TEMPLATE_PASSWORD_RESET`, `RESEND_TEMPLATE_WELCOME`) - Email
 - `CRON_SECRET` - Bearer token for cron endpoints (32+ chars, required in production)
-- `QSTASH_TOKEN` + `QSTASH_URL` + `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` - Upstash QStash
-- `RESEND_API_KEY` + `RESEND_FROM_EMAIL` + templates (`RESEND_*_TEMPLATE_ID`) - Email
-- `GEMINI_API_KEY` or `OPENAI_API_KEY` - AI provider
-- `BLOB_READ_WRITE_TOKEN` - Vercel Blob
 
 Optional/feature flags:
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - Redis for caching/queues (degrades gracefully to in-memory; no TCP `REDIS_URL` client exists)
+- `QSTASH_URL` / `QSTASH_TOKEN` / `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` - Upstash QStash; without them jobs run inline
+- `QSTASH_DEV` - `true` runs jobs inline locally (set by `bun dev`)
+- `GEMINI_API_KEY` or `OPENAI_API_KEY` - AI provider (AI features are disabled without one)
+- `BETTER_AUTH_API_KEY` - `@better-auth/infra` dashboard plugin key
+- `BLOB_READ_WRITE_TOKEN` + `BLOB_URL` - Vercel Blob (uploads + image-validation origin)
 - `RATE_LIMIT_ENABLED` - Set to `false` to disable rate limiting
-- `GITHUB_CLIENT_ID/SECRET` - GitHub OAuth
-- `GOOGLE_CLIENT_ID/SECRET` - Google OAuth
-- `SASTRAM_EXA_KEY` / `SASTRAM_TAVILY_KEY` - AI search providers
+- `CONTENT_MODERATION_ENABLED` - Enable AI image/content moderation
+- `CSP_REPORT_ONLY` - `true` sends the CSP as Report-Only in production (dev is report-only unless set to `false`)
 - `NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED` - View transitions (default true)
+- `GITHUB_CLIENT_ID/SECRET`, `GOOGLE_CLIENT_ID/SECRET` - GitHub/Google OAuth
+- `SASTRAM_EXA_KEY` / `SASTRAM_TAVILY_KEY` / `SASTRAM_GEMINI_KEY` - AI search providers
+- `SENTRY_DSN` - Error tracking
 
 ## CI
 
-GitHub Actions workflow in `.github/workflows/ci.yml` — runs typecheck, lint, build, and tests with PostgreSQL + Redis service containers, gitleaks and audit checks.
+GitHub Actions workflow in `.github/workflows/ci.yml` — three jobs: gitleaks secret scanning, `bun run audit:gate`, and a check job on a PostgreSQL 16 service (`bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test`). Playwright e2e and `format:check` are not run in CI.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

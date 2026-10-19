@@ -23,26 +23,24 @@ Domain modules implementing business logic, organized by feature. 24 modules. Ea
 - `modules/bookmarks/` - Saved threads
 - `modules/notifications/` - In-app notifications (`repository` + `dispatcher` single-port dispatch)
 - `modules/read-receipts/` - Per-user thread read state
-- `modules/invitations/` - Thread invitations
+- `modules/invitations/` - Thread invitations (sole owner; `members/` folded in, `getThreadRole` lives here)
 
 ### Engagement
 - `modules/polls/` - Embedded polls (incl. prediction markets `isMarket`)
 - `modules/tags/` - Thread tags
-- `modules/activity/` - Activity tracking
+- `modules/activity/` - Activity tracking (sole `UserActivity` writer; `audit/` folded in)
 - `modules/feedback/` - User feedback submissions
 - `modules/collections/` - Workspace collections (+ `enabled.ts` feature gate)
 - `modules/bounties/` - Thread bounties
 
 ### Communication
 - `modules/newsletter/` - Email digests
-- `modules/invitations/` - Thread invitations (sole owner; `members/` folded in, `getThreadRole` lives here)
 
 ### Moderation
 - `modules/moderation/` - Moderation rules, policy, executors, dashboard
 - `modules/appeals/` - Moderation appeals (3-jury votes)
 - `modules/reports/` - Report management (actions + service for transactional logic)
 - `modules/policy/` - Policy lookups
-- `modules/activity/` - Activity tracking (sole `UserActivity` writer; `audit/` folded in)
 
 ## Removed Modules
 The following modules no longer exist (removed during refactor):
@@ -51,7 +49,7 @@ The following modules no longer exist (removed during refactor):
 - `modules/topics/` - Duplicate thread-creation path (removed; canonical flow is `CreateThreadDialog` → `createThreadAction`)
 - `modules/members/` - Folded into `invitations/` (D9)
 - `modules/audit/` - Folded into `activity/` (D9)
-- `modules/reputation/` - Reputation system as a module (removed; logic lives in `lib/services/reputation.ts`)
+- `modules/reputation/` - Reputation system as a module (removed; the former `lib/services/reputation.ts` service was deleted as well — no reputation scoring remains)
 - `modules/badges/` - Badge system (removed)
 
 Note: there is no `modules/admin/` — admin UI lives in `components/admin/` + `app/(protected)/dashboard/admin/` backed by existing domain modules.
@@ -86,8 +84,8 @@ All server actions return a standardized envelope:
 { ok: boolean, data?: T, error?: string, errorCode?: ActionErrorCode }
 ```
 
-Use `actionSuccess(data)` and `actionFailure(errorCode, message)` from `lib/actions/result.ts`.
+Use `actionSuccess(data)` and `actionFailure(errorCode, message)` from `lib/utils/server-action.ts` (the `lib/actions/result.ts` shim was removed).
 
 ## Testing Notes
 
-Unit tests use Mocha + Chai. Tests live in `test/` directory (65 files), including `test/bookmarks.action.test.mts` and API route tests.
+Unit tests use Mocha + Chai and run with `bun run test`. Tests live in `test/`, including `test/bookmarks.action.test.mts` and API route tests.

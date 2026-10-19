@@ -13,10 +13,10 @@ Reusable shadcn/ui components:
 - Avatar, Badge, Card
 - Switch, Checkbox, Label
 - Tooltip, ScrollArea, Separator
-- Table, Loading video
+- Table, Skeleton
 - Theme toggle, Sonner toasts
 - Animated icons
-- `detail-card.tsx` (`<DetailCard>` standard card wrapper), `overflow-menu.tsx` (kebab menu), `view-transition.tsx` (`<SaiViewTransition>` SSR-safe wrapper)
+- `detail-card.tsx` (`<DetailCard>` standard card wrapper), `overflow-menu.tsx` (kebab menu), `view-transition.tsx` (`<SaiViewTransition>` SSR-safe wrapper), `TimeAgo.tsx` (`use-now.ts` shared 30s ticker)
 
 ### `components/auth/`
 Authentication components:
@@ -25,9 +25,8 @@ Authentication components:
 
 ### `components/dashboard/`
 Dashboard-specific components:
-- Sidebar, DashboardShell, DashboardProviders
+- Sidebar, DashboardShell
 - StatsCard, TopicCard, TopicGrid
-- MessageGrid
 - SettingsForm, SettingsTabs, PreferencesForm
 - NewsletterManagement
 - Account settings, AccountDangerZone
@@ -37,15 +36,14 @@ Note: `CreateTopicButton` was deleted — thread creation is `create-thread-dial
 ### `components/thread/`
 Thread-specific components:
 - CommentTree, MessageList
-- ThreadLiveWrapper (+ `use-thread-sync.ts`, `thread-context.tsx`), ThreadDetailsPanel, ThreadPageHeader
+- ThreadLiveWrapper (+ `thread-context.tsx`; sync hook is `hooks/thread/use-thread-sync.ts`), ThreadDetailsPanel, ThreadPageHeader
 - ThreadSummaryCard, ThreadTagsManager, TagChip
 - InlinePoll, InlinePollButton, InlineReplyBox, InlineReplyThread
 - PollDisplay, PollPanel (incl. market resolve)
-- BookmarkButton, SubscribeButton, InviteFriendButton, BountyButton, ForkButton (+ `ForkBanner`, `ForkRelationCard`)
+- BookmarkButton, SubscribeButton, InviteFriendButton, BountyButton, ForkButton (+ `ForkRelationCard`)
 - AttachmentItem, MessageActions, EditHistory (`edit-history.tsx`), EditThreadDialog
 - AccessManagementModal, AppealMessageModal
 - VerifyNowButton
-- TimeAgo
 - CodeRunner (Worker-sandboxed JS + Pyodide WASM Python)
 - RenderContent, ExternalLinkPreview, ThreadListFilter
 
@@ -56,8 +54,8 @@ Message composition components:
 
 ### `components/panels/`
 Thread info panel components:
-- ThreadResolutionCard (verified+decay+effectiveScore, pref-gated), ThreadSummaryCard, RelatedThreadsCard, ParticipantsCard
-- ThreadInfoCard, ThreadDnaCard
+- ThreadResolutionCard (verified+decay+effectiveScore, pref-gated), RelatedThreadsCard, ParticipantsCard
+- (ThreadSummaryCard lives in `components/thread/`)
 
 ### `components/admin/`
 Admin dashboard components
@@ -83,7 +81,7 @@ Feedback widget components
 ### `components/user/`
 User profile components:
 - ProfileHeader, ProfileTabs
-- UserStats, UserThreadsList
+- UserStats
 - FollowButton
 
 ### `components/landing/`
@@ -94,9 +92,10 @@ Layout components
 
 ### `components/ai-search/`
 AI search interface:
-- SearchBox, Sidebar, PhaseTracker, SearchInputBar, SearchComposer
-- SynthesisCard, SourceCard, TableView, StreamingText
-- ApiKeysModal, `SearchPage.tsx` + `search-provider.tsx` + `use-search-conversation.ts` / `use-search-stream.ts`
+- `SearchPage.tsx`, `sai-search-layout.tsx`, `SearchBox`, `SearchInputBar`, `search-composer`
+- `ChatMessageList`, `SynthesisCard`, `StreamingText`, `PhaseTracker`, `TaskSteps`, `LoadingState`
+- `ModeDropdown`, `RecommendationCard`, `ApiKeysModal`
+- `search-provider.tsx` + `use-search-conversation.ts` / `use-search-stream.ts`
 
 ### Top-level
 - `providers.tsx` - Client providers
@@ -106,8 +105,8 @@ AI search interface:
 
 ## Pattern
 
-Components use client-side rendering where needed. TanStack Query + `hooks/` (no Zustand store — `stores/` does not exist). Poll lightweight GET endpoints for AI cards — never `router.refresh()` for summary/resolution polling.
+Components use client-side rendering where needed. React hooks + `hooks/` (long lists virtualized with `@tanstack/react-virtual`; no Zustand store — `stores/` does not exist). Poll lightweight GET endpoints for AI cards — never `router.refresh()` for summary/resolution polling.
 
 ## Testing Notes
 
-Component coverage exists in `test/` (Mocha + Testing Library): `components`, `thread-components`, `thread-details-panel`, `chat-message-list`, `overflow-menu`, `search-input-bar`, `view-transition`. E2E coverage in `test/e2e/` (Playwright: `smoke`, `collections`, `thread-edit`).
+Component coverage exists in `test/` (Mocha + Testing Library): `components`, `thread-components`, `thread-details-panel`, `chat-message-list`, `overflow-menu`, `search-input-bar`, `thread-sync`, `use-now`, `view-transition`. E2E coverage in `test/e2e/` (Playwright: `smoke`, `collections`, `thread-edit`) — not run in CI.

@@ -4,7 +4,7 @@ Threads with `resolutionScore > 85` and `verifiedAt != null` are auto-promoted t
 
 ## Flow
 
-1. `lib/services/knowledge-promotion.ts:21` `promoteThreadsToKnowledgePages()` queries `prisma.thread.findMany` with cursor batch `100` where `resolutionScore > 85 && verifiedAt not null && deletedAt null`.
+1. `lib/services/knowledge-promotion.ts` `promoteThreadsToKnowledgePages()` queries `prisma.thread.findMany` with cursor batch `100` where `resolutionScore > 85 && verifiedAt not null && deletedAt null`.
 2. For each candidate, `synthesizedContent = aiSummary.trim() || description.trim() || name.trim()` — skips if empty.
 3. Checks existing `knowledgePage` via `findUnique` (idempotent) then `upsert` with `version:1`.
 4. Per-thread `try/catch` ensures one failure never blocks others; outer `try/catch` never throws (cron best-effort).
@@ -30,4 +30,4 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://sastram.wtfpulkit.dev/api/c
 
 ## Model
 
-`prisma/schema.prisma:819` `model KnowledgePage { id, threadId @unique, version, synthesizedContent, createdAt, updatedAt }` FK `threadId → Thread` `onDelete: Cascade`.
+`prisma/schema.prisma` `model KnowledgePage { id, threadId @unique, version, synthesizedContent, createdAt, updatedAt }` FK `threadId → Thread` `onDelete: Cascade`.

@@ -8,13 +8,11 @@ The current moat features (all configurable from `Settings → Preferences`, all
 - **Collections** (`Collection` + `CollectionItem`) — save threads + searches to workspaces, export as Markdown with `[n]` footnotes
 - **Graph Explorer** (`/dashboard/graph`) — `ThreadRelation` similarity ≥ 0.7 visualized via `force-graph` canvas (dynamic import, 360–560px, drag/zoom)
 - **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection
-- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async 12-source advanced research (taily `research` + Exa 12, Hobby 12 cap; QStash inline dev, async prod)
+- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async 12-source advanced research (Tavily `research` + Exa 12, Hobby 12 cap; QStash inline dev, async prod)
 - **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt
 - **KnowledgePage** — threads `resolutionScore > 85` + `verifiedAt` auto-promoted
-- **Reputation** (`lib/services/reputation.ts`) — `verifiedThreadCount * 10` nightly leaderboard
 - **Community Jury** (`AppealVote` + 3 random `MODERATOR` 2/3 majority) — replaces single-admin appeal
-- **Code Runner** (`code-runner.tsx`) — fenced code blocks run client-side (JS via `new Function`, Python placeholder)
-- **Expert Routing** (`route-experts` route) — top 3 by `UserActivity` `MESSAGE_CREATED` invited when thread created
+- **Code Runner** (`code-runner.tsx`) — fenced code blocks run client-side (JS in a Worker sandbox, 3s timeout; Python via Pyodide WASM)
 - **Fact-Check Badge** (`Message.factCheckStatus`) — visible on every message
 
 ---
@@ -35,9 +33,9 @@ The current moat features (all configurable from `Settings → Preferences`, all
 | File Storage | Vercel Blob |
 | Email | Resend |
 | Validation | Zod |
-| State Management | TanStack Query + hooks |
+| State Management | React hooks + `@tanstack/react-virtual` for long lists (no global store) |
 | Monitoring | Sentry, Vercel Analytics |
-| Testing | Mocha + Chai + Sinon (65 files), Playwright (E2E) |
+| Testing | Mocha + Chai + Sinon (86 files), Playwright (E2E, local-only — not run in CI) |
 
 ---
 
@@ -50,12 +48,12 @@ Browser Client
 │   ├── modules/ (24 domain modules)
 │   │   ├── Prisma → PostgreSQL (Neon, 35 models)
 │   │   ├── Upstash Redis (quotas, rate limits, spend cap, idempotency)
-│   │   ├── QStash → background jobs (/api/jobs webhook, 9 job types)
+│   │   ├── QStash → background jobs (/api/jobs webhook, 10 job types)
 │   │   ├── Vercel Cron → scheduled tasks (/api/cron/*, 4 crons)
 │   │   ├── Vercel Blob (file storage)
 │   │   ├── Gemini / Exa / Tavily (AI, 12-source deep research)
 │   │   └── Resend (email)
-│   └── API Routes (50 REST endpoints)
+│   └── API Routes (49 REST endpoints)
 │
 └── SSE → AI reply streaming (/api/threads/[threadId]/ai-reply/stream)
 ```
@@ -118,7 +116,6 @@ sastram/
 │       │   ├── route.ts                  # Thread CRUD
 │       │   ├── similar/                  # Similar thread lookup
 │       │   ├── fork-external/            # External URL fork (SSRF-safe)
-│       │   ├── route-experts/            # Auto-invite top 3 experts (UserActivity MESSAGE_CREATED)
 │       │   └── [threadId]/
 │       │       ├── ai-reply/
 │       │       │   ├── route.ts          # AI reply trigger
@@ -192,7 +189,7 @@ sastram/
 │   │   ├── logger.ts                     # Structured logging with scrub()
 │   │   └── redis-upstash.ts              # Upstash REST Redis (quotas, rate limits, spend cap)
 │   ├── ai/
-│   │   ├── factory.ts                    # AI provider factory
+│   │   ├── index.ts                      # createAiService() provider selection + barrel exports
 │   │   ├── gemini.ts                     # Gemini provider
 │   │   ├── openai.ts                     # OpenAI provider
 │   │   ├── noop.ts                       # NoOp provider (no API key)
@@ -200,24 +197,17 @@ sastram/
 │   │   ├── prompts.ts                    # Prompt templates
 │   │   ├── prompt-boundary.ts            # Prompt injection defense delimiters
 │   │   ├── helpers.ts                    # AI helpers
-│   │   ├── text.ts                       # Raw-text seam (Gemini→OpenAI failover)
-│   │   └── index.ts                      # Barrel exports
+│   │   └── text.ts                       # Raw-text seam (Gemini→OpenAI failover)
 │   ├── queue/
-│   │   ├── config.ts                     # AIJobType enum (9 job types)
-│   │   ├── types.ts                      # Job data interfaces
+│   │   ├── config.ts                     # AIJobType enum (9 AI job types)
+│   │   ├── types.ts                      # Job data interfaces (incl. EmailJobData)
+│   │   ├── registry.ts                   # jobHandlers map (10 handlers: 9 AI + email)
 │   │   └── workers/
-│   │       ├── ai-jobs.ts                # Coalesced AI job handlers
-│   │       ├── thread-summary.worker.ts  # Summary handler
-│   │       ├── thread-dna.worker.ts      # DNA handler
-│   │       ├── resolution-score.worker.ts # Score handler
-│   │       ├── conflict-detection.worker.ts # Conflict handler
-│   │       ├── staleness-check.worker.ts # Staleness handler
-│   │       ├── daily-digest.worker.ts    # Digest handler
-│   │       ├── insight-notifications.worker.ts # Insight handler
+│   │       ├── ai-jobs.ts                # Coalesced AI job handlers (8)
 │   │       ├── ai-inline.worker.ts       # Streaming @sai handler
 │   │       ├── email.worker.ts           # Email job handler
 │   │       ├── _shared.ts                # Spend-cap + validation helpers
-│   │       └── index.ts                  # Registry (`runJobInline` covers all 9)
+│   │       └── index.ts                  # Handler re-exports
 │   ├── schemas/
 │   │   ├── api.ts                        # API request/response schemas
 │   │   ├── thread-dna.ts                 # ThreadDNA Zod schema
@@ -234,24 +224,23 @@ sastram/
 │   │   ├── email.ts                      # Resend email sending
 │   │   ├── moderation.ts                 # Content moderation pipeline
 │   │   ├── image-moderation.ts           # Shared image NSFW moderation
-│   │   ├── moderation-sla.ts             # Stale report escalation
+│   │   ├── moderation-sla.ts             # SLA metrics (pending 24h/72h, avg first response)
 │   │   ├── content-safety.ts             # HTML sanitization, file validation
 │   │   ├── rate-limit.ts                 # Redis rate limiting + in-memory fallback
-│   │   ├── queue.ts                      # QStash enqueueing (1 retry; 3 for email)
+│   │   ├── queue.ts                      # QStash enqueueing + runJobInline (1 retry; 3 for email)
 │   │   ├── job-dedup.ts                  # Job deduplication
 │   │   ├── idempotency.ts                # Idempotency keys
 │   │   ├── counter-reconciliation.ts     # Denormalized counter repair
 │   │   ├── soft-delete-purge.ts          # Purges soft-deleted users after 30 days
 │   │   ├── usage-check.ts                # Usage limit checks
 │   │   ├── user-memory.ts                 # Weekly expertiseLevel inference from threadDna + AiSearchSession.queryType
-│   │   ├── knowledge-promotion.ts         # Auto-promotes score>85+verified threads to KnowledgePage
-│   │   └── reputation.ts                  # Computed reputation score (verifiedThreadCount * 10) + leaderboard
+│   │   └── knowledge-promotion.ts         # Auto-promotes score>85+verified threads to KnowledgePage
 │   ├── middleware/
 │   │   ├── moderation.ts                 # requireModerator(), requireAdmin()
 │   │   ├── cron-auth.ts                  # Cron Bearer token verification
 │   │   └── ai-guard-route.ts            # guardAiRoute (session→rate→guards→thread)
 │   ├── actions/
-│   │   └── result.ts                     # ActionEnvelope, ActionErrorCode
+│   │   └── result.ts                     # Removed — deprecated shim deleted; canonical: lib/utils/server-action.ts
 │   ├── types/
 │   │   └── index.ts                      # Shared client-side types
 │   ├── utils/
@@ -280,7 +269,7 @@ sastram/
 │   ├── schema.prisma                     # 35 models (FactCheckStatus enum, Bounty, forkedFromId, isMarket)
 │   └── seed.ts                           # Database seed script
 │
-├── test/                                 # 54 Mocha test files + Playwright e2e
+├── test/                                 # 86 Mocha test files + Playwright e2e (e2e not in CI)
 │   └── e2e/                              # Playwright end-to-end tests
 │
 ├── components/                           # React components
@@ -289,7 +278,7 @@ sastram/
 │   │   └── code-runner.tsx               # Worker-sandboxed JS runner (3s timeout) + Pyodide WASM Python
 │   ├── chat/                             # post-message-form, mention-suggest
 │   ├── dashboard/                        # sidebar, settings-form, stats-card, etc.
-│   ├── panels/                           # ThreadResolutionCard (verified+decay+effectiveScore), ThreadSummaryCard, RelatedThreadsCard, ParticipantsCard
+│   ├── panels/                           # ThreadResolutionCard (verified+decay+effectiveScore), RelatedThreadsCard, ParticipantsCard
 │   ├── notifications/                    # notification-list (icon+description+CTA empty state)
 │   ├── landing/                          # LandingPage
 │   ├── layout/                           # Layout components
@@ -408,11 +397,13 @@ modules/{feature}/
 | Guard | Purpose |
 |-------|---------|
 | `requireSession()` / `auth.api.getSession()` | Authentication only (does NOT check access) |
-| `requireThreadAccessOrThrow(threadId, userId, role)` | Thread read access |
-| `requireThreadWriteOrThrow(threadId, userId, role)` | Thread write access |
-| `canAccessThread(thread, userId, role)` | Boolean check (no throw) |
-| `canManageThread(thread, userId, role)` | Boolean check (creator/admin) |
-| `visibilityFilter(userId, role)` | Prisma where clause for visible threads |
+| `requireReadOrThrow(threadId, userId, role?)` | Thread read access; resolves the thread once and returns `ThreadAccessContext` (404 missing / 403 denied) |
+| `requireWriteOrThrow(threadId, userId, role?)` | Thread write access; an active ban blocks writes even for the creator (MODERATOR/ADMIN bypass) |
+| `requireManageOrThrow(threadId, userId, role?)` | Creator or MODERATOR/ADMIN |
+| `requireReadOrRedirect(threadId, userId, role?)` | Page/server-component variant — redirects to `/dashboard` on access failure |
+| `ThreadAccessPolicy` / `createThreadAccessPolicy(store)` | Injectable policy seam (`canRead`/`canWrite`/`canManage` + `require*` gates); Prisma store by default, fake store in tests |
+| `canAccessThread` / `canWriteToThread` (`canReadThread` / `canWriteThread` aliases) | Boolean checks (no throw) |
+| `canManageThread(thread, userId, role)`, `visibilityFilter(userId, role)` | Creator/admin check; Prisma where clause for visible threads |
 | `assertAdmin(user)` / `requireAdmin()` / `requireModerator()` | Role-based guards |
 
 **Visibility rule (private/restricted threads):** creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN. Public threads are readable by anyone; writes still require a session.
@@ -420,12 +411,12 @@ modules/{feature}/
 ```typescript
 // Correct pattern (every action/route):
 const session = await requireSession();
-await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
+await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 ```
 
 ---
 
-## API Routes (50 endpoints)
+## API Routes (49 endpoints)
 
 ### Authentication (6)
 - `/api/auth/[...all]` — Better Auth catch-all
@@ -444,7 +435,7 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 - `/api/ai/spend` — Get AI spend usage (admin)
 - `/api/ai/deep-research` — Async 12-source research (QStash)
 
-### Core Resources (13)
+### Core Resources (12)
 - `/api/threads` — Thread CRUD
 - `/api/threads/similar` — Similar thread lookup
 - `/api/threads/fork-external` — External URL fork (isSafePublicUrl + sanitized title)
@@ -452,7 +443,6 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 - `/api/threads/[threadId]/ai-reply/stream` — SSE streaming endpoint
 - `/api/threads/[threadId]/challenge` — Counter-source challenge
 - `/api/threads/[threadId]/fork` — Thread fork
-- `/api/threads/[threadId]/route-experts` — Expert routing
 - `/api/messages` — Message CRUD
 - `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked)
 - `/api/bounties` — Bounty CRUD
@@ -463,7 +453,7 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 - `/api/upload` — File upload (Vercel Blob, MIME sniff + moderation)
 - `/api/invitations/accept` — Accept thread invitation
 
-### Collections (5)
+### Collections (6)
 - `/api/collections` — List/create (FEATURE_DISABLED if collectionsEnabled=false, `?light=1` for dropdown, `private max-age 10`)
 - `/api/collections/[id]` — Get/delete (ownership, `rateLimit:api`)
 - `/api/collections/[id]/items` — Add/remove items (policy + cuid, `rateLimit:api`)
@@ -501,7 +491,7 @@ await requireThreadAccessOrThrow(threadId, session.user.id, session.user.role);
 
 ### AI Service (`lib/ai/`)
 
-Provider-agnostic factory pattern with Gemini, OpenAI, and NoOp providers:
+`createAiService()` in `lib/ai/index.ts` selects Gemini, OpenAI, or NoOp from `AI_PROVIDER` + the matching key:
 
 | Method | Purpose | Provider |
 |--------|---------|----------|
@@ -527,7 +517,9 @@ Single guarded-execution seam for all AI routes, workers, and crons — fixed or
 2. Per-user daily quota (`consumeQuota(kind)`)
 3. Global spend cap (`enforceAiSpendCap`, routes consume; workers skip via `alreadyBilled`)
 4. Cost gate (`evaluateAiCostGate`)
-5. Thread access (optional, via `requireThreadAccessOrThrow`)
+5. Thread access (optional, via `requireReadOrThrow`)
+
+Guard failures preserve `AppError` statuses (404 stays 404, 403 stays 403, 400 stays 400) in both JSON and SSE variants; unexpected errors fail closed as 500. The forum-search SSE route adds its own ~25s deadline (`AI_SEARCH_DEADLINE_MS`) below the route's 30s `maxDuration`, aborting remaining paid phases on client disconnect too.
 
 ### AI Search Pipeline (`modules/ai-search/service.ts`)
 
@@ -567,7 +559,7 @@ User posts "@sai How do I fix X?"
 ├─ QStash job enqueued (generate-ai-inline)
 │
 ├─ Worker picks up job:
-│  1. Find or reuse existing AI message for parent (retry safety)
+│  1. Find or reuse existing AI message for parent — idempotent per parent message (a retry replays instead of duplicating or re-billing)
 │  2. Create empty placeholder message in DB
 │  3. Stream AI response, flushing to DB every 500ms
 │  4. On failure: write placeholder error message, return 200 (no QStash retry)
@@ -579,7 +571,9 @@ User posts "@sai How do I fix X?"
 
 ## Background Jobs
 
-### QStash Jobs (via `lib/queue/config.ts`)
+### QStash Jobs (`lib/queue/config.ts` + `lib/queue/registry.ts`)
+
+Handlers are registered in the `jobHandlers` map (`lib/queue/registry.ts`); `runJobInline` (`lib/services/queue.ts`) executes them inline when QStash is unconfigured or `QSTASH_DEV=true`. Jobs retry 1x (3x for `email`); the free-tier daily publish cap (450) drops non-critical jobs but never `email`.
 
 | Job Type | Trigger | Handler | Stores Result In |
 |----------|---------|---------|-----------------|
@@ -592,6 +586,7 @@ User posts "@sai How do I fix X?"
 | `send-ai-insight-notifications` | Score change / conflict | `handleAIInsightNotificationsJob` | Notification table |
 | `generate-ai-inline` | @sai mention (fallback path) | `handleAIInlineJob` | Message (streamed via SSE) |
 | `staleness-check` | Daily cron | `handleStalenessCheckJob` | `Thread.isOutdated` flag |
+| `email` | OTP / invitation / digest sends | `handleEmailJob` | Resend |
 
 **Common patterns in workers:**
 - `runGuardedWorker()` pre-checks spend+gate and returns `{ ok: false, skipped: true }` instead of throwing (prevents QStash retry amplification)
@@ -601,10 +596,10 @@ User posts "@sai How do I fix X?"
 
 | Endpoint | Schedule | Purpose |
 |----------|----------|---------|
-| `/api/cron/update-threads` | Daily | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters, auto-promote verified KnowledgePages |
-| `/api/cron/daily-digest` | Daily | Process subscriptions by frequency, generate AI summaries, send via Resend |
-| `/api/cron/cleanup-blobs` | Daily | Find attachments from soft-deleted messages, delete Vercel Blob, delete DB records |
-| `/api/cron/promote-knowledge` | Daily | Auto-promote `Thread.resolutionScore > 85 && verifiedAt != null` into `KnowledgePage` (best-effort, never throws) |
+| `/api/cron/update-threads` | Daily 03:00 UTC | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters, auto-promote verified KnowledgePages |
+| `/api/cron/daily-digest` | Daily 09:00 UTC | Process subscriptions by frequency, generate AI summaries, send via Resend |
+| `/api/cron/cleanup-blobs` | Daily 04:00 UTC | Find attachments from soft-deleted messages, delete Vercel Blob, delete DB records |
+| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Auto-promote `Thread.resolutionScore > 85 && verifiedAt != null` into `KnowledgePage` (best-effort, never throws) |
 
 **Security:** All cron endpoints use `verifyCronAuth()` with timing-safe Bearer token comparison (`crypto.timingSafeEqual`).
 
@@ -639,7 +634,7 @@ This is a serverless, forum-style platform. There are no persistent WebSocket co
 - Buckets: auth(5/15min), api(100/min), upload(10/hr), message(20/min)
 
 ### Security Headers (`proxy.ts`)
-- `Content-Security-Policy` — per-request nonce-based (Report-Only by default)
+- `Content-Security-Policy` — per-request nonce-based; Report-Only in dev, **enforced in production** unless `CSP_REPORT_ONLY=true` (`proxy.ts`)
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `Referrer-Policy: strict-origin-when-cross-origin`
@@ -674,30 +669,30 @@ One Redis client (Upstash REST over HTTP, serverless-safe):
 
 ## Testing
 
-### Unit Tests (65 files)
+### Unit Tests (86 files)
 
 | Area | Files |
 |------|-------|
-| AI | `ai-cost-classification`, `ai-inline-client-stream`, `ai-inline-counter-increment`, `ai-not-configured`, `ai-search-quota`, `ai-toxicity-classification`, `ai-search/*` (citations, failover, synthesize) |
-| API routes | `api/ai/*`, `api/cron/*`, `api/health`, `api/messages`, `api/search`, `api/threads`, `api/upload`, `api/v1/moderation/*`, `api/admin/health` |
-| Moderation | `moderation-regex`, `content-safety` |
-| Rate limiting | `rate-limit`, `redis-upstash` |
-| Actions | `actions`, `bookmarks.action` |
-| Search | `search-fts`, `similarity-check-quota` |
-| Components | `components`, `thread-components`, `thread-details-panel`, `chat-message-list`, `overflow-menu`, `search-input-bar`, `view-transition` |
-| Utilities | `utils`, `errors`, `slug`, `logger`, `api-response`, `api-routes` |
-| Other | `draft-autosave`, `email-template`, `pagination-integration`, `thread-access`, `collections-cache`, `notifications-dispatcher`, `use-search-stream` |
+| AI | `ai-cost-classification`, `ai-inline-client-stream`, `ai-inline-counter-increment`, `ai-not-configured`, `ai-search-quota`, `ai-search-route-helpers`, `ai-toxicity-classification`, `ai-truncation`, `ai-search/*` (abort, citation-sources, citations, failover, pipeline-ctx, streaming-tokens, synthesize) |
+| API routes | `api/ai/*` (deep-research, forum-search + cache-preflight + deadline + sse, guard-route, resolution-score, search-history, thread-dna, thread-summary), `api/cron/*`, `api/threads*` (routes, ai-reply-stream, challenge, fork), `api/admin/health`, `api/auth`, `api/health`, `api/messages`, `api/search`, `api/upload`, `api/v1/moderation/rules`, `api-routes` |
+| Moderation / security | `moderation-regex`, `content-safety`, `ssrf`, `code-runner-sandbox` |
+| Rate limiting / queue | `rate-limit`, `redis-upstash`, `queue-enqueue`, `jobs-route-retry`, `cron-spend-caps` |
+| Actions / search | `actions`, `bookmarks.action`, `search-fts`, `similarity-check-quota` |
+| Guards / seams | `guard`, `exactly-once`, `thread-access`, `collections-handler`, `collections-cache`, `collections-metadata`, `notifications-dispatcher`, `pagination-integration` |
+| Components / hooks | `components`, `thread-components`, `thread-details-panel`, `chat-message-list`, `overflow-menu`, `search-input-bar`, `thread-sync`, `use-now`, `view-transition`, `use-search-stream` |
+| Utilities | `utils`, `errors`, `retry`, `slug`, `logger`, `api-response`, `proxy-csp` |
+| Other | `draft-autosave`, `email-template`, `appeals-jury`, `appeals-repository`, `reactions-toggle`, `thread-ai-inline-status`, `thread-merge-messages`, `thread-routes` |
 
-**Patterns:** Sinon stubs for Prisma/Redis/AI, `resetRateLimiters()` for isolation, `sinon.stub(process, 'env')` for env mocking.
+**Patterns:** Sinon stubs for Prisma/Redis/AI, injected fakes (`test/support/fake-prisma.ts`, `createFakeThreadAccessStore`, `setGuardDepsForTests`), `resetRateLimiters()` for isolation.
 
-### E2E Tests (Playwright, `test/e2e/`)
+### E2E Tests (Playwright, `test/e2e/`) — not run in CI
 - `smoke.spec.ts` — Auth + thread creation + reply + AI search smoke
 - `collections.spec.ts` — Workspace collections flow
 - `thread-edit.spec.ts` — Thread/message edit, tags, reactions, AI status polling
 - `global-setup.ts` — Deterministic fixtures (pins `DATABASE_URL` to test DB, seeds fixture thread)
 
 ### CI (GitHub Actions)
-PostgreSQL 16 service container → `bun install` → `prisma migrate` → `tsc --noEmit` → `eslint` → `mocha tests`
+Three jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), and `check` (PostgreSQL 16 service): `bun install` → `bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test` (Mocha). Playwright e2e and `format:check` are not run in CI.
 
 ---
 
@@ -707,7 +702,7 @@ PostgreSQL 16 service container → `bun install` → `prisma migrate` → `tsc 
 - **Database:** Neon PostgreSQL (serverless, connection pooling via `pgbouncer=true`)
 - **Redis:** Upstash (serverless)
 - **Storage:** Vercel Blob
-- **CI/CD:** GitHub Actions → auto-deploy on main
+- **CI/CD:** Vercel Git integration (auto-deploy on main); GitHub Actions runs CI checks only
 
 ### Commands
 
@@ -715,8 +710,8 @@ PostgreSQL 16 service container → `bun install` → `prisma migrate` → `tsc 
 bun dev            # Next.js dev server
 bun build          # Prisma generate + Next build
 bun start          # Production server
-bun test           # Mocha unit tests (65 files)
-bun test:e2e       # Playwright e2e tests
+bun run test       # Mocha suite
+bun test:e2e       # Playwright e2e (local only — not run in CI)
 bun typecheck      # TypeScript check
 bun lint           # ESLint
 bun lint:fix       # ESLint fix
@@ -724,6 +719,7 @@ bun format         # Prettier
 bun db:generate    # Prisma generate
 bun db:push        # Prisma db push
 bun db:migrate     # Prisma migrate dev
+bun run db:extensions   # trgm search indexes (idempotent, outside migrations)
 bun db:studio      # Prisma studio
 ```
 
@@ -731,30 +727,38 @@ bun db:studio      # Prisma studio
 
 ## Environment Variables
 
-### Required
+Validated by `lib/config/env.ts` (single seam) except `CSP_REPORT_ONLY`, which is read directly in `proxy.ts`; `.env.example` is the annotated list.
+
+### Required (setup)
 
 | Variable | Purpose |
 |----------|---------|
-| `DATABASE_URL` | PostgreSQL connection (Neon) |
+| `DATABASE_URL` | PostgreSQL connection (Neon; keep the pooled `-pooler`/`pgbouncer=true` endpoint for app traffic) |
+| `DATABASE_URL_UNPOOLED` | Neon **direct** endpoint for Prisma CLI migrations. Optional in the schema — derived from `DATABASE_URL` by stripping `-pooler`/`pgbouncer=true` when unset |
 | `BETTER_AUTH_SECRET` | Auth secret (32+ chars) |
 | `BETTER_AUTH_URL` | Auth base URL |
 | `NEXT_PUBLIC_APP_URL` | Public URL |
-| `CRON_SECRET` | Bearer token for cron endpoints |
-| `QSTASH_TOKEN` | Upstash QStash token |
-| `QSTASH_CURRENT_SIGNING_KEY` | QStash signing key |
-| `QSTASH_NEXT_SIGNING_KEY` | QStash next signing key |
-| `GEMINI_API_KEY` or `OPENAI_API_KEY` | AI provider |
+| `RESEND_API_KEY` | Resend API key |
+| `RESEND_FROM` | From address (defaults to `Sastram <noreply@example.com>`) |
+| `RESEND_TEMPLATE_OTP` / `RESEND_TEMPLATE_INVITATION` / `RESEND_TEMPLATE_THREAD_SUMMARY` / `RESEND_TEMPLATE_PASSWORD_RESET` / `RESEND_TEMPLATE_WELCOME` | Resend template IDs (all required) |
+| `CRON_SECRET` | Bearer token for cron endpoints (32+ chars; required in production, optional locally) |
 
 ### Optional
 
 | Variable | Purpose |
 |----------|---------|
-| `REDIS_URL` | Redis for caching/queues |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upstash REST Redis |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upstash REST Redis (rate limits, quotas, spend cap, idempotency; in-memory fallback without it). No TCP client — `REDIS_URL` has zero code readers |
+| `QSTASH_URL` / `QSTASH_TOKEN` / `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` | Upstash QStash; without them jobs run inline |
+| `QSTASH_DEV` | `true` runs jobs inline locally (set by `bun dev`) |
 | `AI_PROVIDER` | "gemini" (default) or "openai" |
+| `GEMINI_API_KEY` / `OPENAI_API_KEY` | Provider key — AI features are disabled without one |
+| `BETTER_AUTH_API_KEY` | `@better-auth/infra` dashboard plugin key |
+| `BLOB_READ_WRITE_TOKEN` / `BLOB_URL` | Vercel Blob uploads + image-validation origin |
 | `RATE_LIMIT_ENABLED` | Set to "false" to disable |
 | `CONTENT_MODERATION_ENABLED` | Enable AI moderation |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
+| `CSP_REPORT_ONLY` | `true` sends the CSP as Report-Only in production (dev is report-only unless set to "false") |
+| `NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED` | View transitions (default true) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GitHub/Google OAuth |
 | `SENTRY_DSN` | Sentry error tracking |
-| `SASTRAM_EXA_KEY` / `SASTRAM_TAVILY_KEY` / `SASTRAM_GEMINI_KEY` | AI search keys (client-side) |
+| `SASTRAM_EXA_KEY` / `SASTRAM_TAVILY_KEY` / `SASTRAM_GEMINI_KEY` | AI search fallback keys, read server-side (per-user keys win) |
+| `LOG_LEVEL`, `MAX_FILE_UPLOAD_MB`, `MAX_MESSAGES_PER_MINUTE/HOUR`, `AI_ANALYSIS_MESSAGE_LIMIT`, `MODERATION_CONFIDENCE_THRESHOLD`, `HOSTNAME`, `PORT` | Limits, logging, server tuning |
