@@ -29,7 +29,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      # `postinstall` runs `prisma generate`, and prisma.config.ts resolves a
+      # datasource URL from the environment; generate never connects, so the
+      # CI database URL is enough here (no service in this job).
       - run: bun install --frozen-lockfile
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
       # Enforcing gate (not bare `bun audit`, which exits 0/1 without policy):
       # fails on new high/critical advisories; documented exceptions with
       # review dates live in scripts/audit-gate.ts.
@@ -60,7 +65,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      # `postinstall` runs `prisma generate`, which loads prisma.config.ts and
+      # resolves the datasource URL; provide it before the service is used.
       - run: bun install --frozen-lockfile
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
       - run: bun run db:deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test

@@ -15,7 +15,7 @@ const origPrismaResultFindFirst = (prisma.aiSearchResult as unknown as Record<st
 const VALID_KEYS = {
   exa: '11111111-1111-1111-1111-111111111111',
   tavily: 'tvly-valid-key-for-test',
-  gemini: 'AIza-valid-test-key-at-least-20chars',
+  gemini: 'AIza-test-key-not-real',
 };
 
 /** Minimal fake Gemini model that returns canned text based on the prompt. */

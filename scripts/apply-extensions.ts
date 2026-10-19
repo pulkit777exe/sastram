@@ -49,13 +49,37 @@ function statementLabel(statement: string): string {
   return statement.replace(/\s+/g, ' ').slice(0, 100);
 }
 
+/**
+ * Neon exposes a pooled endpoint for app traffic and a direct one for DDL.
+ * DDL over the pooled URL fails in ways that never name pooling, so mirror
+ * prisma.config.ts: prefer DATABASE_URL_UNPOOLED, otherwise derive the direct
+ * URL by stripping `-pooler`/`pgbouncer=true` from DATABASE_URL.
+ */
+function stripPooling(url: string): string {
+  let result = url.replace(/[?&]pgbouncer=true/g, '');
+  result = result.replace(/([?&])[?&]+/g, '$1').replace(/[?&]$/, '');
+  return result.replace('-pooler', '');
+}
+
+function resolveDirectUrl(): { url: string; target: string } | null {
+  const unpooled = process.env.DATABASE_URL_UNPOOLED?.trim();
+  if (unpooled) {
+    return { url: unpooled, target: 'DATABASE_URL_UNPOOLED' };
+  }
+  const pooled = process.env.DATABASE_URL?.trim();
+  if (!pooled) {
+    return null;
+  }
+  return { url: stripPooling(pooled), target: 'DATABASE_URL (direct derived)' };
+}
+
 async function main(): Promise<void> {
-  const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
-  if (!url) {
+  const resolved = resolveDirectUrl();
+  if (!resolved) {
     console.error('[extensions] DATABASE_URL_UNPOOLED / DATABASE_URL is not set');
     process.exit(1);
   }
-  const target = process.env.DATABASE_URL_UNPOOLED ? 'DATABASE_URL_UNPOOLED' : 'DATABASE_URL';
+  const { url, target } = resolved;
 
   const MANUAL_ONLY_FILES = new Set(['apply-via-sql-editor.sql']);
   const files = readdirSync(EXTENSIONS_DIR)

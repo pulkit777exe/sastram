@@ -34,32 +34,35 @@
 --   user_follows_followingId_idx  → user_follows_followingId_createdAt_idx
 --   ai_search_sessions_userId_idx → ai_search_sessions_userId_createdAt_idx
 --
--- Convention: plain DROP INDEX (not CONCURRENTLY — Prisma runs migrations in
--- a transaction). Each dropped index is immediately covered by an existing
--- unique or a composite created below.
+-- Convention: DROP INDEX IF EXISTS / CREATE INDEX IF NOT EXISTS (not
+-- CONCURRENTLY — Prisma runs migrations in a transaction). Idempotent form so
+-- a database that already applied the same DDL through
+-- prisma/extensions/apply-via-sql-editor.sql replays this file as no-ops
+-- while recording history. Each dropped index is immediately covered by an
+-- existing unique or a composite created below.
 
 -- Redundant singles duplicating a unique/leftmost-unique column.
-DROP INDEX "users_email_idx";
-DROP INDEX "sessions_token_idx";
-DROP INDEX "verifications_identifier_idx";
-DROP INDEX "threads_slug_idx";
-DROP INDEX "thread_tags_slug_idx";
-DROP INDEX "thread_invitations_token_idx";
-DROP INDEX "knowledge_pages_threadId_idx";
+DROP INDEX IF EXISTS "users_email_idx";
+DROP INDEX IF EXISTS "sessions_token_idx";
+DROP INDEX IF EXISTS "verifications_identifier_idx";
+DROP INDEX IF EXISTS "threads_slug_idx";
+DROP INDEX IF EXISTS "thread_tags_slug_idx";
+DROP INDEX IF EXISTS "thread_invitations_token_idx";
+DROP INDEX IF EXISTS "knowledge_pages_threadId_idx";
 
 -- Singles replaced by (owner, createdAt) composites below.
-DROP INDEX "threads_createdBy_idx";
-DROP INDEX "messages_senderId_idx";
-DROP INDEX "user_follows_followingId_idx";
-DROP INDEX "ai_search_sessions_userId_idx";
+DROP INDEX IF EXISTS "threads_createdBy_idx";
+DROP INDEX IF EXISTS "messages_senderId_idx";
+DROP INDEX IF EXISTS "user_follows_followingId_idx";
+DROP INDEX IF EXISTS "ai_search_sessions_userId_idx";
 
 -- Feed: ordered scan for the OR visibility/creator/invited filter.
-CREATE INDEX "threads_deletedAt_updatedAt_idx" ON "threads"("deletedAt", "updatedAt");
+CREATE INDEX IF NOT EXISTS "threads_deletedAt_updatedAt_idx" ON "threads"("deletedAt", "updatedAt");
 
 -- Owner-scoped paginated lists: WHERE owner = $1 ORDER BY createdAt DESC.
-CREATE INDEX "threads_createdBy_createdAt_idx" ON "threads"("createdBy", "createdAt");
-CREATE INDEX "messages_senderId_createdAt_idx" ON "messages"("senderId", "createdAt");
-CREATE INDEX "user_follows_followerId_createdAt_idx" ON "user_follows"("followerId", "createdAt");
-CREATE INDEX "user_follows_followingId_createdAt_idx" ON "user_follows"("followingId", "createdAt");
-CREATE INDEX "user_bookmarks_userId_createdAt_idx" ON "user_bookmarks"("userId", "createdAt");
-CREATE INDEX "ai_search_sessions_userId_createdAt_idx" ON "ai_search_sessions"("userId", "createdAt");
+CREATE INDEX IF NOT EXISTS "threads_createdBy_createdAt_idx" ON "threads"("createdBy", "createdAt");
+CREATE INDEX IF NOT EXISTS "messages_senderId_createdAt_idx" ON "messages"("senderId", "createdAt");
+CREATE INDEX IF NOT EXISTS "user_follows_followerId_createdAt_idx" ON "user_follows"("followerId", "createdAt");
+CREATE INDEX IF NOT EXISTS "user_follows_followingId_createdAt_idx" ON "user_follows"("followingId", "createdAt");
+CREATE INDEX IF NOT EXISTS "user_bookmarks_userId_createdAt_idx" ON "user_bookmarks"("userId", "createdAt");
+CREATE INDEX IF NOT EXISTS "ai_search_sessions_userId_createdAt_idx" ON "ai_search_sessions"("userId", "createdAt");

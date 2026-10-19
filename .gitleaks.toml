@@ -1,6 +1,9 @@
 [allowlist]
   description = "Allowlisted files: templates and test fixtures only, never a real .env"
   paths = ['''\.env\.sample$''', '''\.env\.test$''']
+  # Obviously-fake Gemini fixtures can exceed the rule's length threshold
+  # (real keys are random); allowlist the fixture fragments, not the pattern.
+  regexes = ['''(?i)AIza(?:Sy)?[-_]?(?:valid|test|dummy)''']
 
 [[rules]]
   id = "neon-database-url"

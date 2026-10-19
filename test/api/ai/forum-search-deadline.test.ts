@@ -11,7 +11,7 @@ const GUARD_PATH = require.resolve('@/lib/middleware/ai-guard-route');
 const VALID_KEYS = {
   exa: '11111111-1111-1111-1111-111111111111',
   tavily: 'tvly-valid-key-for-test',
-  gemini: 'AIza-valid-test-key-at-least-20chars',
+  gemini: 'AIza-test-key-not-real',
 };
 
 const SEARCH_BODY = {

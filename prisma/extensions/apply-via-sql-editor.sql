@@ -2,7 +2,8 @@
 -- Paste this entire file and run. Fully idempotent: safe to re-run,
 -- and a later 'prisma migrate deploy' from a connected machine will
 -- replay the same statements as no-ops while recording history.
--- Order matters: btree migration first, trgm second (as below).
+-- Order matters: 2026-10-14 btree migration first, pg_trgm second, then the
+-- 2026-10-19 owner-scoped indexes (as below).
 
 -- Perf hot-path indexes (2026-10-14).
 --
@@ -86,3 +87,30 @@ CREATE INDEX IF NOT EXISTS "threads_aiSummary_trgm_idx" ON "threads" USING gin (
 CREATE INDEX IF NOT EXISTS "messages_content_trgm_idx" ON "messages" USING gin ("content" "gin_trgm_ops");
 CREATE INDEX IF NOT EXISTS "users_name_trgm_idx" ON "users" USING gin ("name" "gin_trgm_ops");
 CREATE INDEX IF NOT EXISTS "users_bio_trgm_idx" ON "users" USING gin ("bio" "gin_trgm_ops");
+
+-- ---- Perf owner-scoped indexes + redundant-single cleanup (2026-10-19) ----
+--
+-- Mirror of prisma/migrations/20261019000000_perf_owner_indexes: 7 composites
+-- for owner-scoped ORDER BY createdAt lists + the global feed; 11 redundant
+-- singles dropped (each covered by a unique or a new composite). Creates run
+-- before drops so no lookup loses its index mid-apply.
+
+CREATE INDEX IF NOT EXISTS "threads_deletedAt_updatedAt_idx" ON "threads"("deletedAt", "updatedAt");
+CREATE INDEX IF NOT EXISTS "threads_createdBy_createdAt_idx" ON "threads"("createdBy", "createdAt");
+CREATE INDEX IF NOT EXISTS "messages_senderId_createdAt_idx" ON "messages"("senderId", "createdAt");
+CREATE INDEX IF NOT EXISTS "user_follows_followerId_createdAt_idx" ON "user_follows"("followerId", "createdAt");
+CREATE INDEX IF NOT EXISTS "user_follows_followingId_createdAt_idx" ON "user_follows"("followingId", "createdAt");
+CREATE INDEX IF NOT EXISTS "user_bookmarks_userId_createdAt_idx" ON "user_bookmarks"("userId", "createdAt");
+CREATE INDEX IF NOT EXISTS "ai_search_sessions_userId_createdAt_idx" ON "ai_search_sessions"("userId", "createdAt");
+
+DROP INDEX IF EXISTS "users_email_idx";
+DROP INDEX IF EXISTS "sessions_token_idx";
+DROP INDEX IF EXISTS "verifications_identifier_idx";
+DROP INDEX IF EXISTS "threads_slug_idx";
+DROP INDEX IF EXISTS "thread_tags_slug_idx";
+DROP INDEX IF EXISTS "thread_invitations_token_idx";
+DROP INDEX IF EXISTS "knowledge_pages_threadId_idx";
+DROP INDEX IF EXISTS "threads_createdBy_idx";
+DROP INDEX IF EXISTS "messages_senderId_idx";
+DROP INDEX IF EXISTS "user_follows_followingId_idx";
+DROP INDEX IF EXISTS "ai_search_sessions_userId_idx";
