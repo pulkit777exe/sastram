@@ -52,15 +52,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -73,6 +64,11 @@ jobs:
       - run: bun run db:deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sastram_test
+      # pg_trgm GIN indexes are plain SQL outside migration history; replaying
+      # them here keeps CI's schema in parity with the documented deploy flow.
+      - run: bun run db:extensions
+        env:
+          DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@localhost:5432/sastram_test
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run build
@@ -84,7 +80,6 @@ jobs:
           CRON_SECRET: ci_cron_secret_long_enough_32chars
           GEMINI_API_KEY: skip
           OPENAI_API_KEY: skip
-          REDIS_URL: redis://localhost:6379
           RESEND_API_KEY: re_ci_placeholder_key
           RESEND_FROM: "CI <ci@test.local>"
           RESEND_TEMPLATE_OTP: ci_placeholder
@@ -101,7 +96,6 @@ jobs:
           CRON_SECRET: ci_cron_secret_long_enough_32chars
           GEMINI_API_KEY: skip
           OPENAI_API_KEY: skip
-          REDIS_URL: redis://localhost:6379
           RESEND_API_KEY: re_ci_placeholder_key
           RESEND_FROM: "CI <ci@test.local>"
           RESEND_TEMPLATE_OTP: ci_placeholder
