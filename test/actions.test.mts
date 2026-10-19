@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { z } from 'zod';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 
 describe('Server Action Framework (real implementation)', () => {
   describe('createServerAction', () => {

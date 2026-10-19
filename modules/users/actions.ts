@@ -12,7 +12,7 @@ import { getPublicProfile, getUserThreads, updateProfilePrivacy } from './reposi
 import { ProfilePrivacy, type Role } from '@prisma/client';
 import { parseUserPreferences, type UserPreferences, userPreferencesSchema } from '@/lib/schemas/user-preferences';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
-import { actionFailure, actionSuccess, type ActionErrorCode } from '@/lib/actions/result';
+import { actionFailure, actionSuccess, type ActionErrorCode } from '@/lib/utils/server-action';
 import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 import { verifyPassword } from 'better-auth/crypto';
 import { sanitizeUserContent, isSafePublicUrl } from '@/lib/services/content-safety';
@@ -242,7 +242,6 @@ export const updateUserPreferencesAction = withValidation(
       data: { preferences: newPrefs },
     });
 
-    // Invalidate collections gate cache if that toggle changed (Hobby: 60s otherwise)
     if ('collectionsEnabled' in incomingPrefs) {
       try {
         const { invalidateCollectionsEnabledCache } = await import('@/modules/collections/enabled');
@@ -325,7 +324,6 @@ export const requestAccountDeletion = withValidation(
   }
 );
 
-// ── Export helpers ─────────────────────────────────────────────────────────
 async function fetchUserExportData(userId: string, email: string | null) {
   return Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: USER_EXPORT_SELECT }),

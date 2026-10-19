@@ -44,10 +44,6 @@ export async function trackNeonRequest(): Promise<void> {
   return track('neon');
 }
 
-export async function trackUpstashCommand(): Promise<void> {
-  return track('upstash');
-}
-
 /** Null when Redis is unavailable. */
 export async function getDailyUsage(): Promise<{
   neonRequests: number;

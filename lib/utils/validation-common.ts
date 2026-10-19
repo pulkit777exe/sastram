@@ -18,9 +18,3 @@ export const paginationSchema = z.object({
   limit: z.number().int().positive().max(MAX_PAGINATION_LIMIT).optional(),
   offset: z.number().int().nonnegative().optional(),
 });
-
-export const activityQuerySchema = z.object({
-  userId: z.string().cuid().optional(),
-  limit: z.number().int().positive().max(MAX_PAGINATION_LIMIT).optional(),
-  offset: z.number().int().nonnegative().optional(),
-});

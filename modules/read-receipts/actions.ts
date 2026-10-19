@@ -5,7 +5,7 @@ import { markThreadReadSchema } from '@/modules/read-receipts/schemas';
 import { upsertThreadReadReceipt } from '@/modules/read-receipts/repository';
 import { logger } from '@/lib/infrastructure/logger';
 import { withValidation } from '@/lib/utils/server-action';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 import { requireReadOrThrow } from '@/lib/thread-access';
 
 export const markThreadReadAction = withValidation(

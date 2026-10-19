@@ -4,8 +4,8 @@ import { logger } from '@/lib/infrastructure/logger';
 import { requireSession } from '@/modules/auth';
 import { revalidatePath } from 'next/cache';
 import { inviteFriendSchema } from './schemas';
-import { actionSuccess, actionFailure } from '@/lib/actions/result';
-import type { ActionEnvelope, ActionErrorCode } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
+import type { ActionEnvelope, ActionErrorCode } from '@/lib/utils/server-action';
 import { AppError, isPrismaUniqueConstraintError } from '@/lib/utils/errors';
 import {
   createInvitation,

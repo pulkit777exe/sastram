@@ -13,9 +13,9 @@ import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
 import type { ReportCategory, ReportStatus, Role } from '@prisma/client';
 import { requireReadOrThrow } from '@/lib/thread-access';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 import { AppError } from '@/lib/utils/errors';
-import type { ActionErrorCode } from '@/lib/actions/result';
+import type { ActionErrorCode } from '@/lib/utils/server-action';
 import { resolveReport as resolveReportService } from './service';
 
 const INTERNAL_ERROR = {

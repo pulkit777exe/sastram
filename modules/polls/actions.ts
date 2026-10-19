@@ -20,7 +20,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
 import { AppError, isPrismaUniqueConstraintError } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
-import { actionFailure, actionSuccess, type ActionErrorCode } from '@/lib/actions/result';
+import { actionFailure, actionSuccess, type ActionErrorCode } from '@/lib/utils/server-action';
 import { requireManageOrThrow, requireReadOrThrow } from '@/lib/thread-access';
 import { validatePollExpiry } from './validate';
 import { rateLimit } from '@/lib/services/rate-limit';
@@ -322,28 +322,6 @@ export const getUserVoteAction = createServerAction(
       return actionSuccess(vote);
     } catch (error) {
       logger.error('[getUserVote]', error);
-      return internalError();
-    }
-  }
-);
-
-export const getPollByIdAction = createServerAction(
-  { schema: pollIdSchema, actionName: 'getPollById' },
-  async ({ pollId }) => {
-    try {
-      const session = await requireSession();
-      const poll = await getPollByIdRepo(pollId);
-      if (poll === null) {
-        return pollNotFound();
-      }
-      await requireReadOrThrow(poll.threadId, session.user.id, session.user.role as Role);
-      return actionSuccess(poll);
-    } catch (error) {
-      const mapped = toActionError(error);
-      if (mapped !== null) {
-        return mapped;
-      }
-      logger.error('[getPollById]', error);
       return internalError();
     }
   }

@@ -276,38 +276,3 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     return { users: [], total: 0, hasMore: false };
   }
 }
-
-export function highlightMatches(text: string | null | undefined, query: string | null | undefined): string {
-  if (!text || !query) return (text as string) ?? '';
-  const tokens = tokenize(query);
-  if (tokens.length === 0) return text as string;
-  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  let highlighted = esc(text as string);
-  for (const tok of tokens) {
-    const re = new RegExp(`(${tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    highlighted = highlighted.replace(re, '<mark>$1</mark>');
-  }
-  return highlighted;
-}
-
-export function buildDidYouMean(query: string, candidates: string[]): string | null {
-  const tokens = tokenize(query);
-  if (tokens.length === 0 || candidates.length === 0) return null;
-  for (const tok of tokens) {
-    let best: string | null = null;
-    let bestDist = 3;
-    for (const cand of candidates) {
-      const words = cand.toLowerCase().split(/\W+/);
-      for (const w of words) {
-        if (w.length < 4) continue;
-        const d = levenshtein(tok, w);
-        if (d < bestDist && d <= 2) {
-          bestDist = d;
-          best = w;
-        }
-      }
-    }
-    if (best && best !== tok) return query.replace(new RegExp(tok, 'i'), best);
-  }
-  return null;
-}

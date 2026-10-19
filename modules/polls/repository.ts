@@ -53,14 +53,6 @@ export async function resolveMarketPoll(pollId: string, resolvedOptionIndex: num
   });
 }
 
-export async function getMarketPolls(threadId?: string) {
-  return prisma.poll.findMany({
-    where: { isMarket: true, ...(threadId ? { threadId } : {}) },
-    orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { votes: true } } },
-  });
-}
-
 // The unique constraint on [pollId, userId] is the one-vote-per-user check —
 // a pre-read would just add a round trip. The action handles the conflict.
 export async function voteOnPoll(pollId: string, userId: string, optionIndex: number) {

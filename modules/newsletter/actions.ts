@@ -11,7 +11,7 @@ import { withValidation } from '@/lib/utils/server-action';
 import { ROUTES } from '@/lib/config/routes';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 
 function handleNewsletterError(error: unknown) {
   const prismaMsg = prismaErrorMessage(error);

@@ -12,7 +12,7 @@ import {
 } from './repository';
 import { createServerAction } from '@/lib/utils/server-action';
 import { paginationSchema, threadIdSchema } from '@/lib/utils/validation-common';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 import { requireReadOrThrow } from '@/lib/thread-access';
 import type { Role } from '@prisma/client';
 

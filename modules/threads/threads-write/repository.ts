@@ -4,8 +4,6 @@ import type { ThreadVisibility } from '@prisma/client';
 import { z } from 'zod';
 import { threadDnaSchema } from '@/lib/schemas/thread-dna';
 
-export const THREAD_VISIBILITIES = ['PUBLIC', 'PRIVATE', 'RESTRICTED'] as const satisfies readonly ThreadVisibility[];
-
 export interface CreateThreadResult {
   thread: ThreadRecord;
   messageCount: number;
@@ -94,16 +92,6 @@ export async function updateThreadVerified(threadId: string, userId: string): Pr
     where: { id: threadId },
     data: { verifiedAt: new Date(), verifiedBy: userId, isOutdated: false, lastVerifiedAt: new Date() },
   });
-}
-
-/** Slug lookup for edit flows — keeps the slug stable so links keep working.
- * @deprecated Update paths return the slug from the write itself; use that. */
-export async function getThreadSlugById(threadId: string): Promise<string | null> {
-  const thread = await prisma.thread.findUnique({
-    where: { id: threadId, deletedAt: null },
-    select: { slug: true },
-  });
-  return thread?.slug ?? null;
 }
 
 /** Rename a thread / edit its description. Slug is intentionally untouched. Returns the stable slug for revalidation. */

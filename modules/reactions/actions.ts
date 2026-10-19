@@ -3,21 +3,16 @@
 import { z } from 'zod';
 import { requireSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
-import { getMessageReactions } from '@/modules/reactions/repository';
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireReadOrThrow } from '@/lib/thread-access';
 import { infraReactionSideEffects } from '@/modules/reactions/adapters/infra-side-effects';
 import { prismaReactionStore } from '@/modules/reactions/adapters/reaction-store';
 import type { ReactionDeps } from '@/modules/reactions/ports/side-effects';
-import { actionSuccess, actionFailure } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 
 const toggleReactionSchema = z.object({
   messageId: z.string().cuid(),
   emoji: z.string().min(1),
-});
-
-const getReactionSummarySchema = z.object({
-  messageId: z.string().cuid(),
 });
 
 type AuthorizedMessage = {
@@ -81,22 +76,7 @@ export async function toggleReactionCore(
   return actionSuccess({ hasReacted, likeCount });
 }
 
-export async function getReactionSummaryCore(input: { messageId: string }) {
-  const authorized = await requireMessageAccess(input.messageId);
-  if (authorized === null) {
-    return actionFailure('NOT_FOUND', 'Message not found');
-  }
-
-  const reactions = await getMessageReactions(input.messageId, authorized.session.user.id);
-  return actionSuccess(reactions);
-}
-
 export const toggleReaction = createServerAction(
   { schema: toggleReactionSchema, actionName: 'toggleReaction' },
   async ({ messageId, emoji }) => toggleReactionCore({ messageId, emoji })
-);
-
-export const getReactionSummary = createServerAction(
-  { schema: getReactionSummarySchema, actionName: 'getReactionSummary' },
-  async ({ messageId }) => getReactionSummaryCore({ messageId })
 );

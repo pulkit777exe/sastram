@@ -8,11 +8,10 @@ import {
   unfollowUser as unfollowUserRepo,
   getFollowers as getFollowersRepo,
   getFollowing as getFollowingRepo,
-  isFollowing as isFollowingRepo,
 } from './repository';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { createServerAction } from '@/lib/utils/server-action';
-import { actionFailure, actionSuccess } from '@/lib/actions/result';
+import { actionFailure, actionSuccess } from '@/lib/utils/server-action';
 import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 
 const followListSchema = userIdSchema.merge(paginationSchema);
@@ -91,13 +90,5 @@ export const getFollowing = createServerAction(
   { schema: followListSchema, actionName: 'getFollowing' },
   async ({ userId, limit, offset }) => {
     return actionSuccess(await getFollowingRepo(userId, limit, offset));
-  }
-);
-
-export const checkFollowingStatus = createServerAction(
-  { schema: userIdSchema, actionName: 'checkFollowingStatus' },
-  async ({ userId }) => {
-    const session = await requireSession();
-    return actionSuccess({ isFollowing: await isFollowingRepo(session.user.id, userId) });
   }
 );

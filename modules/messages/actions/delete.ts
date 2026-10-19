@@ -8,7 +8,7 @@ import { requireSession } from '@/modules/auth';
 import { recordActivity } from '@/modules/activity/repository';
 import { requireManageOrThrow, requireReadOrThrow } from '@/lib/thread-access';
 import { deleteMessageSchema } from '@/modules/messages/schemas';
-import { actionSuccess, actionFailure } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 import { AppError } from '@/lib/utils/errors';
 
 export const deleteMessage = createServerAction(

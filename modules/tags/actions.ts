@@ -10,15 +10,13 @@ import {
   createTag as createTagRepo,
   addTagToThread as addTagToThreadRepo,
   removeTagFromThread as removeTagFromThreadRepo,
-  getThreadTags as getThreadTagsRepo,
   getPopularTags as getPopularTagsRepo,
-  listAllTags as listAllTagsRepo,
   updateTag as updateTagRepo,
   deleteTag as deleteTagRepo,
   mergeTags as mergeTagsRepo,
 } from './repository';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 
 const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 
@@ -43,12 +41,6 @@ const updateTagSchema = z.object({
 const mergeTagsSchema = z.object({
   sourceId: z.string(),
   targetId: z.string(),
-});
-
-const listTagsSchema = z.object({
-  page: z.number().int().positive().optional(),
-  pageSize: z.number().int().positive().max(100).optional(),
-  search: z.string().optional(),
 });
 
 export const createTagAction = createServerAction(
@@ -80,16 +72,6 @@ export const removeTagFromThreadAction = createServerAction(
   }
 );
 
-export const getThreadTagsAction = createServerAction(
-  { schema: z.object({ threadId: z.string().cuid() }), actionName: 'getThreadTagsAction' },
-  async ({ threadId }) => {
-    const session = await requireSession();
-    await requireWriteOrThrow(threadId, session.user.id, session.user.role);
-    const tags = await getThreadTagsRepo(threadId);
-    return actionSuccess(tags);
-  }
-);
-
 export const getPopularTagsAction = withValidation(
   z.object({ limit: z.number().int().positive().max(100).optional() }),
   'getPopularTagsAction',
@@ -97,15 +79,6 @@ export const getPopularTagsAction = withValidation(
     const effectiveLimit = limit ?? DEFAULT_POPULAR_TAGS_LIMIT;
     const tags = await getPopularTagsRepo(effectiveLimit);
     return actionSuccess(tags);
-  }
-);
-
-export const listAllTagsAction = createServerAction(
-  { schema: listTagsSchema, actionName: 'listAllTagsAction' },
-  async (params) => {
-    await requireRole(['ADMIN']);
-    const result = await listAllTagsRepo(params);
-    return actionSuccess(result);
   }
 );
 

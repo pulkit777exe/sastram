@@ -12,7 +12,3 @@ export async function totalBounty(threadId: string) {
   const agg = await prisma.bounty.aggregate({ where: { threadId, isClaimed: false }, _sum: { amount: true } });
   return agg._sum.amount ?? 0;
 }
-
-export async function claimBounty(bountyId: string) {
-  return prisma.bounty.update({ where: { id: bountyId }, data: { isClaimed: true } });
-}

@@ -79,42 +79,10 @@ export async function revokeInvitation(invitationId: string) {
   return prisma.threadInvitation.delete({ where: { id: invitationId } });
 }
 
-export async function removeMemberInvitations(threadId: string, email: string) {
-  return prisma.threadInvitation.deleteMany({ where: { threadId, email } });
-}
-
 export async function findInvitationById(invitationId: string) {
   return prisma.threadInvitation.findUnique({
     where: { id: invitationId },
     select: { id: true, threadId: true },
-  });
-}
-
-/**
- * Idempotent invite core (folded from members/inviteMember): create the
- * invitation, falling back to the existing row when one is already present.
- * Action-level concerns (permission check, notification dispatch,
- * revalidation) stay in the calling action.
- */
-export async function inviteByEmail({
-  threadId,
-  email,
-  senderId,
-}: {
-  threadId: string;
-  email: string;
-  senderId: string;
-}) {
-  const created = await createInvitation({ threadId, email, senderId });
-  if (created) return created;
-
-  // Already invited — treat as success (idempotent) rather than CONFLICT
-  return prisma.threadInvitation.findUnique({
-    where: { threadId_email: { threadId, email } },
-    include: {
-      thread: { select: { slug: true, name: true } },
-      sender: { select: { name: true, email: true } },
-    },
   });
 }
 

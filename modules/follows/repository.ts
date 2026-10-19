@@ -120,12 +120,3 @@ export async function getFollowing(userId: string, limit: number = DEFAULT_FOLLO
     return { following: [], total: 0, hasMore: false };
   }
 }
-
-export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
-  const follow = await prisma.userFollow.findUnique({
-    where: { followerId_followingId: { followerId, followingId } },
-    select: { id: true },
-  });
-
-  return follow !== null;
-}

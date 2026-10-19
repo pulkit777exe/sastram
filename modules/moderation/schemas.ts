@@ -38,13 +38,3 @@ export const getBannedUsersSchema = z.object({
   limit: z.number().int().positive().max(100).optional(),
   offset: z.number().int().nonnegative().optional(),
 });
-
-export const getMessageDetailsSchema = z.object({
-  messageId: z.string().cuid('Invalid message ID'),
-});
-
-export const getModerationQueueSchema = z.object({
-  status: z.enum(['PENDING']).optional(),
-  limit: z.number().int().positive().max(100).optional(),
-  offset: z.number().int().nonnegative().optional(),
-});

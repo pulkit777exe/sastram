@@ -7,7 +7,7 @@ import {
 } from './repository';
 import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 import { requireSession } from '@/modules/auth';
 
 const searchSchema = z.object({

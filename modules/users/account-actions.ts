@@ -7,7 +7,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { getSession } from '@/modules/auth';
 import { createServerAction } from '@/lib/utils/server-action';
 import { logger } from '@/lib/infrastructure/logger';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 
 const NOT_AUTHENTICATED = {
   data: null,

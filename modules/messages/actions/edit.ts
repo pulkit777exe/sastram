@@ -7,7 +7,7 @@ import { sanitizeContent } from '@/lib/services/content-safety';
 import { createServerAction } from '@/lib/utils/server-action';
 import { recordActivity } from '@/modules/activity/repository';
 import { requireManageOrThrow, requireReadOrThrow } from '@/lib/thread-access';
-import { actionSuccess, actionFailure } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 import { AppError } from '@/lib/utils/errors';
 import {
   editMessageSchema,

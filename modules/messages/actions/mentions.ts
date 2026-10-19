@@ -8,7 +8,7 @@ import { searchMentionUsersSchema } from '@/modules/messages/schemas';
 import { requireReadOrThrow } from '@/lib/thread-access';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { ROUTES } from '@/lib/config/routes';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 
 const EMAIL_PREVIEW_LENGTH = 200;
 

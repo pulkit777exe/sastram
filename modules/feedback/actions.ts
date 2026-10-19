@@ -5,7 +5,7 @@ import { requireSession } from '@/modules/auth';
 import { createServerAction } from '@/lib/utils/server-action';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { submitFeedbackSchema } from '@/modules/feedback/schemas';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 
 export const submitFeedback = createServerAction(
   { schema: submitFeedbackSchema, actionName: 'submitFeedback' },

@@ -16,7 +16,7 @@ import { queueAiInlineIfRequested } from './ai-inline';
 import { requireWriteOrThrow } from '@/lib/thread-access';
 import { validatePollExpiry } from '@/modules/polls/validate';
 import { createServerAction, type ActionResult } from '@/lib/utils/server-action';
-import { actionSuccess, actionFailure } from '@/lib/actions/result';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 import { AppError } from '@/lib/utils/errors';
 
 const MAX_MENTIONS = 10;

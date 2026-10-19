@@ -11,7 +11,7 @@ import { buildThreadDTO } from './service';
 import { getThreadMessagesPaginated } from './threads-read/repository';
 import { createPoll } from '@/modules/polls';
 import { createServerAction } from '@/lib/utils/server-action';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 import { threadIdSchema } from '@/lib/utils/validation-common';
 import { AppError } from '@/lib/utils/errors';
 import {

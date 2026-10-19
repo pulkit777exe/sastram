@@ -7,11 +7,10 @@ import {
   getUserNotifications,
   markAsRead,
   markAllAsRead,
-  getUnreadCount,
 } from '@/modules/notifications/repository';
 import { ROUTES } from '@/lib/config/routes';
 import { createServerAction, withValidation } from '@/lib/utils/server-action';
-import { actionSuccess } from '@/lib/actions/result';
+import { actionSuccess } from '@/lib/utils/server-action';
 
 const getNotificationsSchema = z.object({
   unreadOnly: z.boolean().optional().default(false),
@@ -60,14 +59,5 @@ export const markAllNotificationsRead = createServerAction(
     await markAllAsRead(session.user.id);
     revalidateDashboard();
     return actionSuccess(null);
-  }
-);
-
-export const getUnreadNotificationCount = createServerAction(
-  { schema: z.object({}), actionName: 'getUnreadNotificationCount' },
-  async () => {
-    const session = await requireSession();
-    const count = await getUnreadCount(session.user.id);
-    return actionSuccess({ count });
   }
 );
