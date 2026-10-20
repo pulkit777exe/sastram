@@ -13,6 +13,9 @@ const serverEnvSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
   BETTER_AUTH_URL: z.string().url('BETTER_AUTH_URL must be a valid URL'),
   BETTER_AUTH_API_KEY: z.string().optional(),
+  BETTER_AUTH_API_URL: z.string().url('BETTER_AUTH_API_URL must be a valid URL').optional(),
+  BETTER_AUTH_KV_URL: z.string().url('BETTER_AUTH_KV_URL must be a valid URL').optional(),
+  BETTER_AUTH_IDENTIFY_URL: z.string().url('BETTER_AUTH_IDENTIFY_URL must be a valid URL').optional(),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -64,6 +67,10 @@ const serverEnvSchema = z.object({
 const fullyClientSafeSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL').optional().default('http://localhost:3000'),
+  NEXT_PUBLIC_BETTER_AUTH_IDENTIFY_URL: z
+    .string()
+    .url('NEXT_PUBLIC_BETTER_AUTH_IDENTIFY_URL must be a valid URL')
+    .optional(),
   NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED: z
     .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
     .transform(toBool)

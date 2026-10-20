@@ -2,12 +2,20 @@ import { betterAuth, APIError } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins';
 import { oAuthProxy } from 'better-auth/plugins';
-import { dash } from '@better-auth/infra';
+import { dash, sentinel } from '@better-auth/infra';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { getEnv } from '@/lib/config/env';
 import { logger } from '@/lib/infrastructure/logger';
 
 const env = getEnv();
+
+/**
+ * Better Auth Infra is opt-in: without an API key the plugins only log a
+ * warning, so Sentinel is installed only when the key is present. This keeps
+ * CI and fresh clones from waiting on hosted identify/security calls.
+ */
+const infraApiKey = env.BETTER_AUTH_API_KEY?.trim() ?? '';
+const infraKvUrl = env.BETTER_AUTH_KV_URL ?? env.BETTER_AUTH_IDENTIFY_URL;
 
 /**
  * better-auth throws `APIError` for expected rejections (invalid OTP, bad
@@ -105,7 +113,20 @@ export const auth = betterAuth({
   },
   socialProviders: buildSocialProviders(),
   plugins: [
-    dash(),
+    dash({
+      apiUrl: env.BETTER_AUTH_API_URL,
+      kvUrl: infraKvUrl,
+      apiKey: infraApiKey,
+    }),
+    ...(infraApiKey
+      ? [
+          sentinel({
+            apiUrl: env.BETTER_AUTH_API_URL,
+            kvUrl: infraKvUrl,
+            apiKey: infraApiKey,
+          }),
+        ]
+      : []),
     oAuthProxy({
       currentURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     }),

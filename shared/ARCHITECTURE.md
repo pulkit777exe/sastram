@@ -753,7 +753,9 @@ Validated by `lib/config/env.ts` (single seam) except `CSP_REPORT_ONLY`, which i
 | `QSTASH_DEV` | `true` runs jobs inline locally (set by `bun dev`) |
 | `AI_PROVIDER` | "gemini" (default) or "openai" |
 | `GEMINI_API_KEY` / `OPENAI_API_KEY` | Provider key — AI features are disabled without one |
-| `BETTER_AUTH_API_KEY` | `@better-auth/infra` dashboard plugin key |
+| `BETTER_AUTH_API_KEY` | Enables the `@better-auth/infra` `dash()` + `sentinel()` server plugins |
+| `BETTER_AUTH_API_URL` / `BETTER_AUTH_KV_URL` / `BETTER_AUTH_IDENTIFY_URL` | Override Better Auth Infra API and identify/ingestion bases (identify is the project-scoped URL; hosted defaults when unset) |
+| `NEXT_PUBLIC_BETTER_AUTH_IDENTIFY_URL` | Browser copy of the project identify URL; Sentinel fingerprinting is disabled when unset |
 | `BLOB_READ_WRITE_TOKEN` / `BLOB_URL` | Vercel Blob uploads + image-validation origin |
 | `RATE_LIMIT_ENABLED` | Set to "false" to disable |
 | `CONTENT_MODERATION_ENABLED` | Enable AI moderation |

@@ -11,7 +11,19 @@ const getBaseURL = () => {
 
 export const authClient = createAuthClient({
   baseURL: getBaseURL(),
-  plugins: [emailOTPClient(), sentinelClient()],
+  plugins: [
+    emailOTPClient(),
+    // Sentinel fingerprinting is opt-in. The default identify host is not in
+    // our CSP and the global ingestion endpoint is explicitly discouraged by
+    // Better Auth, so only enable it when a project-scoped URL is configured.
+    ...(process.env.NEXT_PUBLIC_BETTER_AUTH_IDENTIFY_URL
+      ? [
+          sentinelClient({
+            identifyUrl: process.env.NEXT_PUBLIC_BETTER_AUTH_IDENTIFY_URL,
+          }),
+        ]
+      : []),
+  ],
 });
 
 export const { signIn, signOut, signUp, useSession } = authClient;

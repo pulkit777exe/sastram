@@ -237,7 +237,9 @@ Optional/feature flags:
 - `QSTASH_URL` / `QSTASH_TOKEN` / `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` - Upstash QStash; without them jobs run inline
 - `QSTASH_DEV` - `true` runs jobs inline locally (set by `bun dev`)
 - `GEMINI_API_KEY` or `OPENAI_API_KEY` - AI provider (AI features are disabled without one)
-- `BETTER_AUTH_API_KEY` - `@better-auth/infra` dashboard plugin key
+- `BETTER_AUTH_API_KEY` - enables the `@better-auth/infra` `dash()` + `sentinel()` server plugins
+- `BETTER_AUTH_API_URL` / `BETTER_AUTH_KV_URL` / `BETTER_AUTH_IDENTIFY_URL` - override Better Auth Infra API and identify bases
+- `NEXT_PUBLIC_BETTER_AUTH_IDENTIFY_URL` - browser copy of the project identify URL for Sentinel fingerprinting
 - `BLOB_READ_WRITE_TOKEN` + `BLOB_URL` - Vercel Blob (uploads + image-validation origin)
 - `RATE_LIMIT_ENABLED` - Set to `false` to disable rate limiting
 - `CONTENT_MODERATION_ENABLED` - Enable AI image/content moderation
