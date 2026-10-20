@@ -3,7 +3,14 @@
   paths = ['''\.env\.sample$''', '''\.env\.test$''']
   # Obviously-fake Gemini fixtures can exceed the rule's length threshold
   # (real keys are random); allowlist the fixture fragments, not the pattern.
-  regexes = ['''(?i)AIza(?:Sy)?[-_]?(?:valid|test|dummy)''']
+  # `.env.example` documents variables with inline `#` comments; the default
+  # generic-api-key rule can read a comment after an AUTH_* placeholder as the
+  # value, so ignore any finding whose value is a comment. Comments are never
+  # secrets.
+  regexes = [
+    '''^#[^\n]*''',
+    '''(?i)AIza(?:Sy)?[-_]?(?:valid|test|dummy)''',
+  ]
 
 [[rules]]
   id = "neon-database-url"
