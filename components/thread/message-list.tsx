@@ -538,9 +538,9 @@ const MessageRow = React.memo(function MessageRow({
         </div>
 
         {!isEditing && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-100 scale-95 group-hover:scale-100">
+          <div className="pointer-events-none absolute right-3 top-0 z-20 flex scale-95 items-center gap-0.5 rounded-card border border-line/80 bg-surface p-0.5 opacity-0 shadow-linear-lg transition-all duration-100 group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100 focus-within:pointer-events-auto focus-within:scale-100 focus-within:opacity-100">
             <div className="scale-90">
-              <CollectionSaveButton messageId={message.id} label="Save" />
+              <CollectionSaveButton messageId={message.id} iconOnly />
             </div>
             <MessageActions
               onReply={() => onReply(message.id)}
@@ -567,7 +567,7 @@ const MessageRow = React.memo(function MessageRow({
         )}
 
         {showDeleteConfirm && (
-          <div className="absolute right-4 top-2 bg-surface border border-line shadow-linear-lg rounded-control p-2 flex items-center gap-2 text-xs z-30">
+          <div className="absolute right-4 top-10 z-30 flex items-center gap-2 rounded-control border border-line bg-surface p-2 text-xs shadow-linear-lg">
             <span className="font-medium text-destructive">Delete message?</span>
             <Button
               size="sm"

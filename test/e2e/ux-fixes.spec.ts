@@ -111,6 +111,16 @@ test.describe('Search and thread UX', () => {
     const picker = page.locator('[data-emoji-picker]');
     const search = picker.getByPlaceholder('Search emoji');
     await expect(search).toBeVisible({ timeout: 15000 });
+    // The bundled Twemoji font is what makes emoji visible on systems with no
+    // native color-emoji font (e.g. minimal Linux/CI images).
+    expect(await page.evaluate(() => document.fonts.check('16px Twemoji'))).toBe(true);
+    const emojiFont = await picker
+      .getByRole('gridcell')
+      .first()
+      .locator('span')
+      .first()
+      .evaluate((el) => getComputedStyle(el).fontFamily);
+    expect(emojiFont).toContain('Twemoji');
     await search.fill('thumbs up');
     await picker.getByRole('gridcell', { name: 'thumbs up' }).click();
 
@@ -118,6 +128,31 @@ test.describe('Search and thread UX', () => {
     await expect(composer).toHaveValue('hello 👍');
     // Picking an emoji inserts it into the draft; it must not submit the form.
     expect(await page.locator('[id^="message-"]').count()).toBe(messagesBefore);
+  });
+
+  test('message save and reaction actions share one non-overlapping toolbar', async ({ page }) => {
+    await page.goto(THREAD);
+    await page.waitForLoadState('networkidle');
+    const row = page.locator('[id^="message-"]').filter({ hasText: 'Seed message for smoke tests' }).first();
+    await row.hover();
+
+    const save = row.getByRole('button', { name: 'Save to collection' });
+    const react = row.getByRole('button', { name: 'Add reaction' });
+    await expect(save).toBeVisible();
+    await expect(react).toBeVisible();
+
+    const saveBox = await save.boundingBox();
+    const reactBox = await react.boundingBox();
+    expect(saveBox).not.toBeNull();
+    expect(reactBox).not.toBeNull();
+    const overlaps =
+      !!saveBox &&
+      !!reactBox &&
+      saveBox.x < reactBox.x + reactBox.width &&
+      saveBox.x + saveBox.width > reactBox.x &&
+      saveBox.y < reactBox.y + reactBox.height &&
+      saveBox.y + saveBox.height > reactBox.y;
+    expect(overlaps).toBe(false);
   });
 
   test('bounty action uses a dialog instead of window.prompt', async ({ page }) => {

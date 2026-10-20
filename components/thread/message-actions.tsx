@@ -34,12 +34,7 @@ export function MessageActions({
   const hasAdminActions = (canPin && onPin) || (canDelete && onDelete);
 
   return (
-    <div
-      className={cn(
-        "absolute right-3 -top-4 flex items-center gap-0 bg-surface border border-line/80 shadow-linear-lg rounded-card p-0.5 transition-all duration-100 z-20",
-        className
-      )}
-    >
+    <div className={cn("flex items-center gap-0", className)}>
       {/* Reply */}
       <ActionBtn title="Reply" onClick={onReply}>
         <CornerUpLeft size={12} />
