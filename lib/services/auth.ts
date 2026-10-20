@@ -71,6 +71,7 @@ export const auth = betterAuth({
     provider: 'postgresql',
   }),
   advanced: {
+    useSecureCookies: process.env.NODE_ENV === 'production',
     ipAddress: {
       ipv6Subnet: 128,
     },
@@ -107,9 +108,6 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-  },
-  advancedCookies: {
-    useSecureCookies: process.env.NODE_ENV === 'production',
   },
   socialProviders: buildSocialProviders(),
   plugins: [
