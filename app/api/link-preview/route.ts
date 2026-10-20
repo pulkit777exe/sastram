@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { isSafePublicUrl } from '@/lib/services/content-safety';
+import { fetchPublicUrl, UnsafeUrlError } from '@/lib/services/safe-fetch';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { getRequestIp } from '@/lib/utils/request-ip';
 
@@ -108,44 +109,25 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   }
 
   try {
-    // Manual redirect loop — validate every hop before fetching, never use redirect:follow
-    let currentUrl = url;
-    let res: Response | null = null;
-    for (let hop = 0; hop < 3; hop++) {
-      if (!isSafePublicUrl(currentUrl)) {
-        return NextResponse.json(fail('VALIDATION_ERROR', 'Redirect to private URL blocked'), { status: HTTP_STATUS.BAD_REQUEST });
-      }
-      res = await fetch(currentUrl, {
-        headers: { 'User-Agent': 'SastramBot/1.0 (+https://sastram.wtfpulkit.dev)', Accept: 'text/html,application/xhtml+xml' },
-        signal: AbortSignal.timeout(5000),
-        redirect: 'manual',
-      });
-      if (res.status < 300 || res.status >= 400) break;
-      const location = res.headers.get('location');
-      if (!location) break;
-      try {
-        currentUrl = new URL(location, currentUrl).toString();
-      } catch {
-        return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid redirect URL'), { status: HTTP_STATUS.BAD_REQUEST });
-      }
-      if (hop === 2) {
-        return NextResponse.json(fail('VALIDATION_ERROR', 'Too many redirects'), { status: HTTP_STATUS.BAD_REQUEST });
-      }
-    }
-    if (!res) throw new Error('No response');
+    const res = await fetchPublicUrl(url, {
+      timeoutMs: 5000,
+      maxRedirects: 3,
+      maxBytes: 512 * 1024,
+    });
     if (!res.ok) throw new Error(`fetch ${res.status}`);
-    if (res.url && res.url !== currentUrl && !isSafePublicUrl(res.url)) {
-      return NextResponse.json(fail('VALIDATION_ERROR', 'Redirect to private URL blocked'), { status: HTTP_STATUS.BAD_REQUEST });
-    }
-    const html = await res.text();
-    const og = parseOg(html.slice(0, 25000), res.url || currentUrl);
+    const og = parseOg(res.text.slice(0, 25000), res.url);
     // Merge Exa data (better text) with OG images
     if (exaTitle) og.title = exaTitle;
     if (exaDescription) og.description = exaDescription;
     if (exaImage && !og.images.includes(exaImage)) og.images.unshift(exaImage);
     if (exaImage && !og.image) og.image = exaImage;
     return NextResponse.json(ok(og));
-  } catch {
+  } catch (error) {
+    if (error instanceof UnsafeUrlError) {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'URL must resolve to a public host'), {
+        status: HTTP_STATUS.BAD_REQUEST,
+      });
+    }
     let domain = '';
     try { domain = new URL(url).hostname.replace(/^www\./, ''); } catch {}
     if (exaTitle || exaDescription) {
