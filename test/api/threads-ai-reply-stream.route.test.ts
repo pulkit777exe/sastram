@@ -67,12 +67,25 @@ describe('GET /api/threads/[threadId]/ai-reply/stream (idempotency)', () => {
     delete require.cache[GUARD_PATH];
   });
 
-  function installFakes(parent: unknown, existing: unknown | null): RouteFakes {
-    const stream = sinon.stub().callsFake(async (args: StreamArgs) => {
-      args.onToken?.('hello ');
-      args.onToken?.('world');
-      return { content: 'hello world', truncated: false, isFallback: false };
-    });
+  function installFakes(
+    parent: unknown,
+    existing: unknown | null,
+    options: {
+      streamError?: Error;
+      aiContent?: string | null;
+      onUpdate?: (args: unknown) => void;
+    } = {}
+  ): RouteFakes {
+    const stream = sinon.stub();
+    if (options.streamError) {
+      stream.rejects(options.streamError);
+    } else {
+      stream.callsFake(async (args: StreamArgs) => {
+        args.onToken?.('hello ');
+        args.onToken?.('world');
+        return { content: 'hello world', truncated: false, isFallback: false };
+      });
+    }
     const create = sinon.stub().callsFake(async (args: CreateArgs) => ({
       id: 'new-ai-msg',
       depth: Math.min((args.parentDepth ?? 0) + 1, 4),
@@ -91,6 +104,11 @@ describe('GET /api/threads/[threadId]/ai-reply/stream (idempotency)', () => {
     restorePrisma = installFakePrisma({
       'message.findFirst': async (args: { where?: { parentId?: string } }) =>
         args?.where?.parentId !== undefined ? existing : parent,
+      'message.findUnique': async () => ({ content: options.aiContent ?? '' }),
+      'message.update': async (args: unknown) => {
+        options.onUpdate?.(args);
+        return { id: 'new-ai-msg' };
+      },
     });
 
     const guardModule = require(GUARD_PATH) as {
@@ -186,5 +204,32 @@ describe('GET /api/threads/[threadId]/ai-reply/stream (idempotency)', () => {
       aiUserId: 'ai-user',
     });
     sinon.assert.calledOnce(fakes.stream);
+  });
+
+  it('sends terminal error content and persists it when generation fails', async () => {
+    let persisted: unknown;
+    installFakes(
+      { id: PARENT_ID, content: '@sai why?', depth: 0 },
+      null,
+      {
+        streamError: new Error('API key not valid. Please pass a valid API key. (UNAUTHENTICATED)'),
+        onUpdate: (args) => {
+          persisted = args;
+        },
+      }
+    );
+
+    const response = await callRoute();
+    const { events } = parseSSE(await response.text());
+
+    expect(events.map((event) => event.event)).to.deep.equal(['start', 'error']);
+    const errorPayload = JSON.parse(events[1].data);
+    expect(errorPayload.messageId).to.equal('new-ai-msg');
+    expect(errorPayload.error).to.equal('Generation failed');
+    expect(errorPayload.content).to.contain('API key');
+    expect(persisted).to.deep.equal({
+      where: { id: 'new-ai-msg' },
+      data: { content: errorPayload.content },
+    });
   });
 });

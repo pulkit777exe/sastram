@@ -14,6 +14,7 @@ import {
   createAiReplyMessageTx,
   streamAiReplyToMessage,
 } from '@/modules/ai-reply/service';
+import { buildAiReplyFailureContent } from '@/modules/ai-reply/failure';
 
 const TIMEOUT_MS = 50_000;
 
@@ -198,26 +199,26 @@ export async function GET(
     async start(controller) {
       const closedRef = { closed: false };
       const sendEvent = createSseSender(controller, encoder, closedRef);
+      const generationAbort = new AbortController();
+      let timedOut = false;
 
-      request.signal.addEventListener('abort', () => {
+      const onRequestAbort = () => {
         closedRef.closed = true;
+        generationAbort.abort();
         try {
           controller.close();
         } catch {
           /* already closed */
         }
-      });
+      };
+      request.signal.addEventListener('abort', onRequestAbort, { once: true });
 
+      // Abort the provider call too: closing only the SSE leaves the model
+      // generating (and billing) after the user has stopped waiting.
       const timeout = setTimeout(() => {
-        if (!closedRef.closed) {
-          sendEvent('error', { error: 'Generation timed out' });
-          closedRef.closed = true;
-          try {
-            controller.close();
-          } catch {
-            /* already closed */
-          }
-        }
+        if (closedRef.closed) return;
+        timedOut = true;
+        generationAbort.abort();
       }, TIMEOUT_MS);
 
       sendEvent('start', {
@@ -237,10 +238,8 @@ export async function GET(
           context: threadContext,
           aiMessageId: aiMessage.id,
           onToken: (chunk) => sendEvent('token', { content: chunk }),
-          signal: request.signal,
+          signal: AbortSignal.any([request.signal, generationAbort.signal]),
         });
-
-        clearTimeout(timeout);
 
         if (result.isFallback) {
           sendEvent('done', { messageId: aiMessage.id, truncated: false });
@@ -249,22 +248,44 @@ export async function GET(
 
         sendEvent('done', { messageId: aiMessage.id, truncated: result.truncated });
       } catch (error) {
-        clearTimeout(timeout);
-        logger.error('[ai-reply-stream] Generation error', { error });
+        // The client went away — don't persist a failure for a reply nobody
+        // is waiting on. Timeouts keep the stream open, so they fall through.
+        if (closedRef.closed) return;
 
-        const fallback = await prisma.message.findUnique({
-          where: { id: aiMessage.id },
-          select: { content: true },
-        });
-        if (!fallback?.content) {
-          await prisma.message.update({
+        logger.error('[ai-reply-stream] Generation error', { error, timedOut });
+
+        const failureContent = buildAiReplyFailureContent(error, timedOut);
+        let finalContent = failureContent;
+        try {
+          const current = await prisma.message.findUnique({
             where: { id: aiMessage.id },
-            data: { content: "Sorry, I couldn't generate a response right now. Please try again later." },
+            select: { content: true },
+          });
+          if (current?.content && current.content.trim().length > 0) {
+            // Keep a partial answer rather than replacing it with an apology.
+            finalContent = current.content;
+          } else {
+            await prisma.message.update({
+              where: { id: aiMessage.id },
+              data: { content: failureContent },
+            });
+          }
+        } catch (persistError) {
+          logger.error('[ai-reply-stream] Failed to persist generation failure', {
+            error: persistError,
           });
         }
 
-        sendEvent('error', { error: 'Generation failed', messageId: aiMessage.id });
+        // The client uses `content` to replace its empty streaming placeholder
+        // immediately; backfill also picks it up from `updatedAt`.
+        sendEvent('error', {
+          error: timedOut ? 'Generation timed out' : 'Generation failed',
+          messageId: aiMessage.id,
+          content: finalContent,
+        });
       } finally {
+        clearTimeout(timeout);
+        request.signal.removeEventListener('abort', onRequestAbort);
         if (!closedRef.closed) {
           closedRef.closed = true;
           try {
