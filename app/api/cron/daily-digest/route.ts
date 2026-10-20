@@ -13,6 +13,7 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { env } from '@/lib/config/env';
+import { filterReadableUserIds, type ThreadAccessContext } from '@/lib/thread-access';
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
@@ -40,6 +41,8 @@ export async function GET(req: NextRequest) {
               id: true,
               name: true,
               slug: true,
+              createdBy: true,
+              visibility: true,
             },
           },
         },
@@ -61,6 +64,33 @@ export async function GET(req: NextRequest) {
       skipped: 0,
       errors: 0,
     };
+
+    // A subscription is a hint, not proof of access: invitations can be
+    // revoked and a public thread can become private after someone subscribes.
+    // Resolve each thread's current readers once, before fetching messages.
+    const threadContexts = new Map<string, ThreadAccessContext>();
+    const subscribersByThread = new Map<string, string[]>();
+    for (const sub of allSubscriptions) {
+      threadContexts.set(sub.thread.id, {
+        threadId: sub.thread.id,
+        createdBy: sub.thread.createdBy,
+        visibility: sub.thread.visibility,
+      });
+      if (!sub.userId) continue;
+      const subscriberIds = subscribersByThread.get(sub.threadId) ?? [];
+      subscriberIds.push(sub.userId);
+      subscribersByThread.set(sub.threadId, subscriberIds);
+    }
+
+    const readableByThread = new Map<string, Set<string>>();
+    await Promise.all(
+      [...subscribersByThread.entries()].map(async ([threadId, subscriberIds]) => {
+        const context = threadContexts.get(threadId);
+        if (!context) return;
+        const readable = await filterReadableUserIds(context, subscriberIds);
+        readableByThread.set(threadId, new Set(readable));
+      })
+    );
 
     // Bound each digest to a bounded message window (same knob as the other
     // AI analysis paths) and memoize per (threadId, window) so N subscribers
@@ -95,6 +125,14 @@ export async function GET(req: NextRequest) {
       // Check if this frequency should be processed today
       const window = getDigestWindow(sub.frequency, today);
       if (!window || !window.process) {
+        results.skipped++;
+        continue;
+      }
+
+      const canDeliver = sub.userId
+        ? readableByThread.get(sub.threadId)?.has(sub.userId) === true
+        : sub.thread.visibility === 'PUBLIC';
+      if (!canDeliver) {
         results.skipped++;
         continue;
       }

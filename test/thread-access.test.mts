@@ -10,6 +10,7 @@ import {
   requireReadOrThrow,
   requireWriteOrThrow,
   requireManageOrThrow,
+  filterReadableUserIds,
   createThreadAccessPolicy,
   createFakeThreadAccessStore,
   type ThreadAccessContext,
@@ -119,6 +120,90 @@ describe('Thread Access', () => {
       mockPrismaUserFindUnique(null);
 
       expect(await canAccessThread(baseThread, 'user-2', Role.USER)).to.be.false;
+    });
+  });
+
+  describe('filterReadableUserIds', () => {
+    const publicThread: ThreadAccessContext = {
+      threadId: 'thread-1',
+      createdBy: 'user-1',
+      visibility: 'PUBLIC' as ThreadVisibility,
+    };
+    const privateThread: ThreadAccessContext = {
+      ...publicThread,
+      visibility: 'PRIVATE' as ThreadVisibility,
+    };
+
+    it('returns every subscriber for a public thread without querying access tables', async () => {
+      prismaRestores.push(
+        installFakePrisma({
+          'user.findMany': async () => {
+            throw new Error('public threads must not query users');
+          },
+          'threadInvitation.findMany': async () => {
+            throw new Error('public threads must not query invitations');
+          },
+        })
+      );
+
+      expect(await filterReadableUserIds(publicThread, ['u1', 'u2'])).to.deep.equal(['u1', 'u2']);
+    });
+
+    it('keeps only creators, moderators, and accepted invitees', async () => {
+      const users = [
+        { id: 'creator', email: 'creator@example.com', role: Role.USER },
+        { id: 'moderator', email: 'mod@example.com', role: Role.MODERATOR },
+        { id: 'sender', email: 'sender@example.com', role: Role.USER },
+        { id: 'email-invitee', email: 'invitee@example.com', role: Role.USER },
+        { id: 'sender-no-email', email: null, role: Role.USER },
+        { id: 'stranger', email: 'stranger@example.com', role: Role.USER },
+      ];
+      prismaRestores.push(
+        installFakePrisma({
+          'user.findMany': async () => users,
+          'threadInvitation.findMany': async () => [
+            { senderId: 'sender', email: 'sender@example.com' },
+            { senderId: 'someone-else', email: 'invitee@example.com' },
+            { senderId: 'sender-no-email', email: null },
+          ],
+        })
+      );
+
+      const allowed = await filterReadableUserIds(
+        { ...privateThread, createdBy: 'creator' },
+        users.map((user) => user.id)
+      );
+
+      expect(allowed).to.have.members([
+        'creator',
+        'moderator',
+        'sender',
+        'email-invitee',
+        'sender-no-email',
+      ]);
+      expect(allowed).to.not.include('stranger');
+    });
+
+    it('deduplicates requested ids and drops users that no longer exist', async () => {
+      prismaRestores.push(
+        installFakePrisma({
+          'user.findMany': async () => [
+            { id: 'creator', email: 'creator@example.com', role: Role.USER },
+          ],
+          'threadInvitation.findMany': async () => [],
+        })
+      );
+
+      const allowed = await filterReadableUserIds(
+        { ...privateThread, createdBy: 'creator' },
+        ['creator', 'creator', 'deleted-user']
+      );
+
+      expect(allowed).to.deep.equal(['creator']);
+    });
+
+    it('returns an empty set for a private thread with no subscribers', async () => {
+      expect(await filterReadableUserIds(privateThread, [])).to.deep.equal([]);
     });
   });
 

@@ -59,7 +59,8 @@ export interface ConflictDetectionJobData {
 export interface DailyDigestJobData {
   messages: JobMessageData[];
   subscriberIds: string[];
-  threadId?: string;
+  /** Required so delivery can re-check access instead of trusting subscribers. */
+  threadId: string;
   userId?: string;
   cronJob?: boolean;
 }

@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { AppError } from '@/lib/utils/errors';
 import { assertThreadJob, readAlreadyBilled, runGuardedWorker } from './_shared';
 import { hasTrustedProvenance } from '@/modules/threads/confidence-decay';
+import { filterReadableUserIds } from '@/lib/thread-access';
 import type {
   ThreadSummaryJobData,
   ThreadDnaJobData,
@@ -244,14 +245,35 @@ export async function handleConflictDetectionJob(data: ConflictDetectionJobData)
 // daily-digest
 // ------------------------------------------------------------------
 
-async function generateDailyDigest(messages: JobMessageData[], subscriberIds: string[], alreadyBilled?: string) {
-  logger.info(`Generating daily digest for ${subscriberIds.length} subscribers`);
+async function filterThreadSubscribers(threadId: string, subscriberIds: string[]): Promise<string[]> {
+  const thread = await prisma.thread.findUnique({
+    where: { id: threadId, deletedAt: null },
+    select: { id: true, createdBy: true, visibility: true },
+  });
+  if (!thread) return [];
+  return filterReadableUserIds(
+    { threadId: thread.id, createdBy: thread.createdBy, visibility: thread.visibility },
+    subscriberIds
+  );
+}
+
+async function generateDailyDigest(
+  messages: JobMessageData[],
+  subscriberIds: string[],
+  threadId: string,
+  alreadyBilled?: string
+) {
+  // Resolve recipients before spending AI budget or dispatching content.
+  const recipients = await filterThreadSubscribers(threadId, subscriberIds);
+  logger.info(`Generating daily digest for ${recipients.length} subscribers`);
+  if (recipients.length === 0) return { digestLength: 0, skipped: true };
+
   const result = await runGuardedWorker('daily-digest', AiCallPath.DAILY_DIGEST, 'global', () => generateDigestSummary(messages), { alreadyBilled });
   // No provider configured (or malformed result) — nothing worth notifying about.
   if (!result.ok || !result.value) return { digestLength: 0, skipped: true };
   const digest = sanitizeHtmlContent(result.value);
   await dispatch({
-    recipients: { userIds: subscriberIds },
+    recipients: { userIds: recipients },
     category: 'AI_INSIGHT',
     title: 'Daily Digest',
     message: digest,
@@ -262,11 +284,11 @@ async function generateDailyDigest(messages: JobMessageData[], subscriberIds: st
 
 export async function handleDailyDigestJob(data: DailyDigestJobData) {
   logger.info('[worker:ai] daily-digest job');
-  const { messages, subscriberIds } = data;
-  if (!messages || !subscriberIds) {
-    throw new Error('Missing required fields: messages and subscriberIds');
+  const { messages, subscriberIds, threadId } = data;
+  if (!messages || !subscriberIds || !threadId) {
+    throw new Error('Missing required fields: messages, subscriberIds, and threadId');
   }
-  return generateDailyDigest(messages, subscriberIds, readAlreadyBilled(data));
+  return generateDailyDigest(messages, subscriberIds, threadId, readAlreadyBilled(data));
 }
 
 // ------------------------------------------------------------------
@@ -387,6 +409,9 @@ async function sendAIInsightNotifications(
 ) {
   logger.info(`Sending AI insight notifications for thread: ${threadId}`);
 
+  const recipients = await filterThreadSubscribers(threadId, subscriberIds);
+  if (recipients.length === 0) return { notificationsSent: 0, skipped: true };
+
   const notifications: Array<{ title: string; message: string; data: Record<string, unknown> }> = [];
 
   if (oldScore != null && newScore != null && Math.abs(newScore - oldScore) >= 20) {
@@ -420,7 +445,7 @@ async function sendAIInsightNotifications(
 
   for (const { title, message, data } of notifications) {
     await dispatch({
-      recipients: { userIds: subscriberIds },
+      recipients: { userIds: recipients },
       category: 'AI_INSIGHT',
       title,
       message,

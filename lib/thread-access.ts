@@ -300,6 +300,63 @@ export async function canWriteToThread(
   return threadAccessPolicy.canWrite(thread, userId, userRole);
 }
 
+/**
+ * Bulk read check for fan-out paths (digests, notifications). Subscriptions
+ * are not proof of access: invitations can be revoked and a thread can become
+ * private after someone subscribes. Resolve the thread's access set once with
+ * a constant number of queries instead of trusting stored subscriber lists.
+ */
+export async function filterReadableUserIds(
+  thread: ThreadAccessContext,
+  userIds: string[]
+): Promise<string[]> {
+  if (thread.visibility === 'PUBLIC') return userIds;
+
+  const uniqueIds = [...new Set(userIds)];
+  if (uniqueIds.length === 0) return [];
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: uniqueIds } },
+    select: { id: true, email: true, role: true },
+  });
+  if (users.length === 0) return [];
+
+  const allowed = new Set<string>();
+  const emails: string[] = [];
+  for (const user of users) {
+    if (canModerate(user.role) || thread.createdBy === user.id) {
+      allowed.add(user.id);
+      continue;
+    }
+    if (user.email) emails.push(user.email);
+  }
+
+  const invitations = await prisma.threadInvitation.findMany({
+    where: {
+      threadId: thread.threadId,
+      status: 'ACCEPTED',
+      OR: [
+        { senderId: { in: users.map((user) => user.id) } },
+        ...(emails.length > 0 ? [{ email: { in: emails } }] : []),
+      ],
+    },
+    select: { senderId: true, email: true },
+  });
+
+  if (invitations.length > 0) {
+    const invitedSenders = new Set(invitations.map((invitation) => invitation.senderId));
+    const invitedEmails = new Set(invitations.map((invitation) => invitation.email));
+    for (const user of users) {
+      if (allowed.has(user.id)) continue;
+      if (invitedSenders.has(user.id) || (user.email !== null && invitedEmails.has(user.email))) {
+        allowed.add(user.id);
+      }
+    }
+  }
+
+  return uniqueIds.filter((id) => allowed.has(id));
+}
+
 export function canManageThread(
   thread: ThreadAccessContext,
   userId: string,

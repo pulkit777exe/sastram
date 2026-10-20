@@ -205,7 +205,12 @@ export async function GET(req: NextRequest) {
           }
 
           if (subscriberIds.length > 0 && digestAllowed.allowed) {
-            pushBoundedJob(jobs, AIJobType.GENERATE_DAILY_DIGEST, { messages, subscriberIds, cronJob: true });
+            pushBoundedJob(jobs, AIJobType.GENERATE_DAILY_DIGEST, {
+              messages,
+              subscriberIds,
+              threadId: thread.id,
+              cronJob: true,
+            });
           }
 
           if (subscriberIds.length > 0 && isOutdated) {
