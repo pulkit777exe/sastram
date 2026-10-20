@@ -9,7 +9,6 @@ import { visibilityFilter } from '@/lib/thread-access';
 const USER_PUBLIC_SELECT = {
   id: true,
   name: true,
-  email: true,
   bio: true,
   location: true,
   website: true,
@@ -38,6 +37,90 @@ const USER_THREAD_SELECT = {
 
 const USER_BOOTSTRAP_SELECT = { id: true, name: true, image: true, role: true } as const;
 
+const PROFILE_HEADER_SELECT = {
+  id: true,
+  name: true,
+  bio: true,
+  location: true,
+  website: true,
+  twitter: true,
+  github: true,
+  image: true,
+  bannerUrl: true,
+  followerCount: true,
+  followingCount: true,
+  createdAt: true,
+  profilePrivacy: true,
+} as const;
+
+type ProfileHeaderRow = Prisma.UserGetPayload<{ select: typeof PROFILE_HEADER_SELECT }>;
+export type ProfileHeaderData = Omit<ProfileHeaderRow, 'profilePrivacy'>;
+
+function canViewFullProfile(
+  privacy: ProfilePrivacy,
+  isOwnProfile: boolean,
+  isFollowing: boolean
+): boolean {
+  if (isOwnProfile) return true;
+  if (privacy === ProfilePrivacy.PUBLIC) return true;
+  return privacy === ProfilePrivacy.FOLLOWERS_ONLY && isFollowing;
+}
+
+/**
+ * Single read for the profile page: returns header data plus the viewer's
+ * relationship to it. Private profiles keep name/avatar but never receive bio,
+ * links, stats, or any account fields.
+ */
+export const getProfileForViewer = cache(async (userId: string, viewerId: string) => {
+  const row = await prisma.user.findUnique({
+    where: { id: userId, deletedAt: null },
+    select: PROFILE_HEADER_SELECT,
+  });
+
+  if (!row) return null;
+
+  const isOwnProfile = userId === viewerId;
+  const isFollowing =
+    !isOwnProfile &&
+    (await prisma.userFollow.findUnique({
+      where: { followerId_followingId: { followerId: viewerId, followingId: userId } },
+      select: { id: true },
+    })) !== null;
+  const canViewFull = canViewFullProfile(row.profilePrivacy, isOwnProfile, isFollowing);
+
+  // Build the payload field-by-field. Spreading the Prisma row would silently
+  // forward any future column added to PROFILE_HEADER_SELECT to the client.
+  const publicFields: ProfileHeaderData = {
+    id: row.id,
+    name: row.name,
+    bio: row.bio,
+    location: row.location,
+    website: row.website,
+    twitter: row.twitter,
+    github: row.github,
+    image: row.image,
+    bannerUrl: row.bannerUrl,
+    followerCount: row.followerCount,
+    followingCount: row.followingCount,
+    createdAt: row.createdAt,
+  };
+  const profile: ProfileHeaderData = canViewFull
+    ? publicFields
+    : {
+        ...publicFields,
+        bio: null,
+        location: null,
+        website: null,
+        twitter: null,
+        github: null,
+        bannerUrl: null,
+        followerCount: 0,
+        followingCount: 0,
+      };
+
+  return { profile, isOwnProfile, isFollowing, canViewFull };
+});
+
 export const getPublicProfile = cache(async (userId: string, viewerId?: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId, deletedAt: null },
@@ -59,8 +142,7 @@ export const getPublicProfile = cache(async (userId: string, viewerId?: string) 
     if (!isFollowing) return null;
   }
 
-  // Email is only ever exposed to the profile owner
-  return { ...user, email: undefined };
+  return user;
 });
 
 export const getUserBootstrapProfile = cache(async (userId: string) => {

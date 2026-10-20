@@ -10,7 +10,6 @@ interface ProfileHeaderProps {
   user: {
     id: string;
     name: string | null;
-    email: string;
     bio: string | null;
     location: string | null;
     website: string | null;
@@ -34,9 +33,9 @@ function getInitials(name: string): string {
   return joined.toUpperCase().slice(0, 2);
 }
 
-function getDisplayName(name: string | null, email: string): string {
-  if (name) return name;
-  return email.split('@')[0];
+function getDisplayName(name: string | null): string {
+  const trimmed = name?.trim();
+  return trimmed ? trimmed : 'User';
 }
 
 export function ProfileHeader({
@@ -46,7 +45,7 @@ export function ProfileHeader({
   limitedView = false,
 }: ProfileHeaderProps) {
   const [followerCount, setFollowerCount] = useState(user.followerCount);
-  const displayName = getDisplayName(user.name, user.email);
+  const displayName = getDisplayName(user.name);
   const avatarUrl = user.image;
   const initials = getInitials(displayName);
 
