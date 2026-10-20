@@ -1,6 +1,6 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { isQuotaError } from '@/lib/utils/errors';
+import { buildAiReplyFailureContent } from '@/modules/ai-reply/failure';
 import { runGuardedWorker, readAlreadyBilled } from './_shared';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import {
@@ -59,19 +59,7 @@ async function generateAIInlineResponse(
   } catch (error) {
     logger.error('[worker:ai] AI inline generation failed:', error);
 
-    const isQuota = isQuotaError(error);
-    let isSpendCap = false;
-    if (error instanceof Error) {
-      isSpendCap = error.message.toLowerCase().includes('spend cap');
-    }
-    const isCapOrQuota = isQuota || isSpendCap;
-
-    let failureMessage: string;
-    if (isCapOrQuota) {
-      failureMessage = "I'm temporarily over my AI quota, so I couldn't reply just now. Please try again later.";
-    } else {
-      failureMessage = "Sorry, I couldn't generate a response right now. Please try again later.";
-    }
+    const failureMessage = buildAiReplyFailureContent(error);
 
     if (aiMessage) {
       await prisma.message.update({
