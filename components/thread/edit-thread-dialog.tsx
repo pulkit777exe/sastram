@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toasts } from '@/lib/utils/toast';
 import { updateThreadAction } from '@/modules/threads/actions';
 
@@ -57,16 +58,23 @@ export function EditThreadDialog({ threadId, initialTitle, initialDescription, o
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0 text-ink-3 hover:text-ink"
-          aria-label="Edit thread"
-        >
-          <Pencil size={13} />
-        </Button>
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0 text-ink-3 hover:text-ink hover:bg-hover"
+              aria-label="Edit thread"
+            >
+              <Pencil size={14} />
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          Edit title and description
+        </TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-md rounded-card">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Pencil size={16} /> Edit thread</DialogTitle>

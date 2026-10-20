@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserPlus, Mail } from 'lucide-react';
 import { inviteFriendToThread } from '@/modules/invitations/actions';
 import { toasts } from '@/lib/utils/toast';
@@ -107,17 +108,24 @@ export function InviteFriendButton({ threadId, threadName, iconOnly = false }: I
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size={iconOnly ? 'icon' : 'default'}
-          className={iconOnly ? '!h-8 !w-8 !p-0 !rounded-control !border-0 !bg-transparent !ring-0 !ring-offset-0 !shadow-none text-ink-3 hover:text-ink hover:bg-hover transition-colors' : undefined}
-          aria-label="Invite friend"
-        >
-          <UserPlus className="w-4 h-4" />
-          {!iconOnly && <span className="ml-2">Invite Friend</span>}
-        </Button>
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size={iconOnly ? 'icon' : 'default'}
+              className={iconOnly ? 'size-8 shrink-0 p-0 text-ink-3 hover:text-ink hover:bg-hover' : undefined}
+              aria-label="Invite a friend to this thread"
+            >
+              <UserPlus className="w-4 h-4" />
+              {!iconOnly && <span className="ml-2">Invite Friend</span>}
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          Invite a friend to this thread
+        </TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Invite a Friend</DialogTitle>

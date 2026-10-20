@@ -29,10 +29,9 @@ export type ThreadMessage = {
     image: string | null;
   };
   reactions: ThreadMessageReactionAggregate[];
-  /**
-   * Whether the requesting user liked this message (👍 — the only emoji the
-   * UI toggles). Set when the query runs with a user id; absent otherwise.
-   */
+  /** Emojis this viewer has reacted with. Present only for signed-in reads. */
+  reactedEmojis?: string[];
+  /** Whether the requesting user reacted with 👍. */
   likedByUser?: boolean;
   _count: {
     replies: number;
@@ -242,8 +241,9 @@ function mapDbMessageToThreadMessage(
     } | null;
   },
   reactionsByMessage: Map<string, ThreadMessageReactionAggregate[]>,
-  likedByUser?: Set<string>
+  userReactionsByMessage?: Map<string, Set<string>>
 ): ThreadMessage {
+  const reactedEmojis = userReactionsByMessage?.get(m.id);
   return {
     id: m.id,
     content: m.content,
@@ -261,7 +261,8 @@ function mapDbMessageToThreadMessage(
     replyCount: m.replyCount,
     author: resolveAuthor(m.sender, m.senderId),
     reactions: reactionsByMessage.get(m.id) ?? [],
-    likedByUser: likedByUser?.has(m.id) ?? false,
+    reactedEmojis: reactedEmojis ? [...reactedEmojis] : [],
+    likedByUser: reactedEmojis?.has('👍') ?? false,
     _count: { replies: m.replyCount },
     attachments: m.attachments.map((a) => ({
       id: a.id,
@@ -314,15 +315,24 @@ async function fetchReactionsByMessage(
   return byMessage;
 }
 
-// Single query for the requesting user's 👍 reactions on this page — seeds
-// the clients' liked state so it survives reloads.
-async function fetchLikedMessageIds(messageIds: string[], userId: string): Promise<Set<string>> {
-  if (messageIds.length === 0) return new Set();
+// Single query for every emoji the viewer used on this page — seeds the
+// reaction chips so their highlighted state survives reloads.
+async function fetchUserReactionsByMessage(
+  messageIds: string[],
+  userId: string
+): Promise<Map<string, Set<string>>> {
+  const byMessage = new Map<string, Set<string>>();
+  if (messageIds.length === 0) return byMessage;
   const rows = await prisma.reaction.findMany({
-    where: { messageId: { in: messageIds }, userId, emoji: '👍' },
-    select: { messageId: true },
+    where: { messageId: { in: messageIds }, userId },
+    select: { messageId: true, emoji: true },
   });
-  return new Set(rows.map((r) => r.messageId));
+  for (const row of rows) {
+    const emojis = byMessage.get(row.messageId) ?? new Set<string>();
+    emojis.add(row.emoji);
+    byMessage.set(row.messageId, emojis);
+  }
+  return byMessage;
 }
 
 export async function getThreadMessagesPaginated(
@@ -357,15 +367,14 @@ export async function getThreadMessagesPaginated(
   const hasMore = messages.length > effectiveLimit;
   const page = hasMore ? messages.slice(0, effectiveLimit) : messages;
   const messageIds = page.map((m) => m.id);
-  // Parallel tail: reactions aggregate and the viewer's liked set are
-  // independent (were sequential — one avoidable RTT per page).
-  const [reactionsByMessage, likedByUser] = await Promise.all([
+  // Parallel tail: aggregate and viewer-specific reactions are independent.
+  const [reactionsByMessage, userReactionsByMessage] = await Promise.all([
     fetchReactionsByMessage(messageIds),
-    userId ? fetchLikedMessageIds(messageIds, userId) : Promise.resolve(undefined),
+    userId ? fetchUserReactionsByMessage(messageIds, userId) : Promise.resolve(undefined),
   ]);
 
   return {
-    messages: page.map((m) => mapDbMessageToThreadMessage(m as never, reactionsByMessage, likedByUser)),
+    messages: page.map((m) => mapDbMessageToThreadMessage(m as never, reactionsByMessage, userReactionsByMessage)),
     hasMore,
     nextCursor: hasMore && page.length > 0 ? page[page.length - 1].id : null,
     totalCount,

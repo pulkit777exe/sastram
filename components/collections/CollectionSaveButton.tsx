@@ -3,11 +3,26 @@
 import { memo, useEffect, useState } from 'react';
 import { Bookmark, Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { useCollectionsDropdown } from './use-collections-dropdown';
 
-export const CollectionSaveButton = memo(function CollectionSaveButton({ threadId, sessionId, messageId, metadata, label = 'Save' }: { threadId?: string; sessionId?: string; messageId?: string; metadata?: unknown; label?: string }) {
+export const CollectionSaveButton = memo(function CollectionSaveButton({
+  threadId,
+  sessionId,
+  messageId,
+  metadata,
+  label = 'Save',
+  iconOnly = false,
+}: {
+  threadId?: string;
+  sessionId?: string;
+  messageId?: string;
+  metadata?: unknown;
+  label?: string;
+  iconOnly?: boolean;
+}) {
   const { open, setOpen, collections, loading, newTitle, setNewTitle, containerRef, createCollectionFromInput } = useCollectionsDropdown();
   const [saving, setSaving] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -88,9 +103,29 @@ export const CollectionSaveButton = memo(function CollectionSaveButton({ threadI
 
   return (
     <div className="relative" ref={containerRef}>
-      <Button variant="outline" size="sm" className="h-7 gap-1.5 rounded-full border-line bg-surface hover:bg-hover" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="dialog">
-        <Bookmark size={12} /> {label}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={iconOnly ? 'ghost' : 'outline'}
+            size={iconOnly ? 'icon' : 'sm'}
+            className={
+              iconOnly
+                ? 'size-8 shrink-0 p-0 text-ink-3 hover:text-ink hover:bg-hover'
+                : 'h-7 gap-1.5 rounded-full border-line bg-surface hover:bg-hover'
+            }
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Save to collection"
+            aria-expanded={open}
+            aria-haspopup="menu"
+          >
+            <Bookmark size={iconOnly ? 15 : 12} />
+            {!iconOnly && label}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          Save to collection
+        </TooltipContent>
+      </Tooltip>
       {open && (
         <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-card border border-line bg-surface p-2 shadow-overlay">
           <p className="px-2 pb-2 text-xs font-medium text-ink">Save to collection</p>

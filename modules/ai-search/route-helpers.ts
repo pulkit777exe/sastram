@@ -22,12 +22,14 @@ export const searchRequestSchema = z.object({
     .transform(sanitizeSearchQuery),
   keys: z
     .object({
-      exa: z.string().min(1),
-      tavily: z.string().min(1),
-      gemini: z.string().min(1),
+      exa: z.string().min(1).optional(),
+      tavily: z.string().min(1).optional(),
+      gemini: z.string().min(1).optional(),
       openai: z.string().min(1).optional(),
     })
-    .strict(),
+    .strict()
+    .optional()
+    .default({}),
   config: z.object({
     exaMode: z.enum(['agentic', 'instant', 'websets']),
     tavilyMode: z.enum(['search', 'extract', 'crawl', 'research']),
@@ -62,13 +64,6 @@ export function deriveTitle(query: string): string {
   const words = query.replace(/\s+/g, ' ').trim().split(' ').slice(0, 6);
   const t = words.join(' ');
   return t.length > 60 ? `${t.substring(0, 57)}…` : t;
-}
-
-function noStore400(code: string, message: string): NextResponse {
-  return NextResponse.json(fail(code, message), {
-    status: HTTP_STATUS.BAD_REQUEST,
-    headers: { 'Cache-Control': 'no-store' },
-  });
 }
 
 export function validateContentType(request: { headers: { get(name: string): string | null } }): NextResponse | null {
@@ -130,33 +125,70 @@ export function resolveApiKeys(keys: SearchRequest['keys'], fallbacks: KeyFallba
 
 export type ResolvedKeys = ReturnType<typeof resolveApiKeys>;
 
+export interface MissingApiKey {
+  provider: 'exa' | 'tavily' | 'gemini';
+  label: string;
+  envVar: string;
+}
+
+export function missingApiKeys(keys: ResolvedKeys): MissingApiKey[] {
+  const missing: MissingApiKey[] = [];
+  if (!keys.exaKey) missing.push({ provider: 'exa', label: 'Exa', envVar: 'SASTRAM_EXA_KEY' });
+  if (!keys.tavilyKey) missing.push({ provider: 'tavily', label: 'Tavily', envVar: 'SASTRAM_TAVILY_KEY' });
+  if (!keys.geminiKey) missing.push({ provider: 'gemini', label: 'Gemini', envVar: 'SASTRAM_GEMINI_KEY' });
+  return missing;
+}
+
 /** Null when all present, else the exact 400 message the route used to inline. */
 export function missingKeysMessage(keys: ResolvedKeys): string | null {
-  const missing: string[] = [];
-  if (!keys.exaKey) missing.push('Exa');
-  if (!keys.tavilyKey) missing.push('Tavily');
-  if (!keys.geminiKey) missing.push('Gemini');
+  const missing = missingApiKeys(keys);
   if (missing.length === 0) return null;
-  return `Missing API key${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}. Configure in API Keys settings.`;
+  return `Missing API key${missing.length > 1 ? 's' : ''}: ${missing.map((key) => key.label).join(', ')}. Configure in API Keys settings.`;
+}
+
+/**
+ * Structured 400 so the client can open the key dialog, keep the user's query,
+ * and retry automatically once the missing keys are supplied.
+ */
+export function missingKeysResponse(keys: ResolvedKeys): NextResponse | null {
+  const missingKeys = missingApiKeys(keys);
+  const message = missingKeysMessage(keys);
+  if (missingKeys.length === 0 || !message) return null;
+  return NextResponse.json(fail('MISSING_API_KEYS', message, { missingKeys }), {
+    status: HTTP_STATUS.BAD_REQUEST,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
 
 /** Null when formats pass, else the exact 400 message the route used to inline. */
-export function invalidKeysMessage(keys: ResolvedKeys): string | null {
+export function invalidApiKeys(keys: ResolvedKeys): Array<{ provider: 'exa' | 'tavily' | 'gemini'; label: string }> {
   const keyValidation = validateApiKeys({
     exa: keys.exaKey,
     tavily: keys.tavilyKey,
     gemini: keys.geminiKey,
   });
-  if (keyValidation.allValid) return null;
-  const invalid: string[] = [];
-  if (!keyValidation.exaValid) invalid.push('Exa');
-  if (!keyValidation.tavilyValid) invalid.push('Tavily');
-  if (!keyValidation.geminiValid) invalid.push('Gemini');
-  return `Invalid API key format for: ${invalid.join(', ')}. Please check your keys.`;
+  const invalid: Array<{ provider: 'exa' | 'tavily' | 'gemini'; label: string }> = [];
+  if (!keyValidation.exaValid) invalid.push({ provider: 'exa', label: 'Exa' });
+  if (!keyValidation.tavilyValid) invalid.push({ provider: 'tavily', label: 'Tavily' });
+  if (!keyValidation.geminiValid) invalid.push({ provider: 'gemini', label: 'Gemini' });
+  return invalid;
 }
 
-export function keyErrorResponse(message: string): NextResponse {
-  return noStore400('VALIDATION_ERROR', message);
+export function invalidKeysMessage(keys: ResolvedKeys): string | null {
+  const invalid = invalidApiKeys(keys);
+  if (invalid.length === 0) return null;
+  return `Invalid API key format for: ${invalid.map((key) => key.label).join(', ')}. Please check your keys.`;
+}
+
+/** Structured 400 that opens the key dialog and retries the pending query. */
+export function invalidKeysResponse(keys: ResolvedKeys): NextResponse | null {
+  const invalidKeys = invalidApiKeys(keys);
+  const message = invalidKeysMessage(keys);
+  if (invalidKeys.length === 0 || !message) return null;
+  return NextResponse.json(fail('INVALID_API_KEYS', message, { invalidKeys }), {
+    status: HTTP_STATUS.BAD_REQUEST,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
 
 export async function checkSearchIdempotency(

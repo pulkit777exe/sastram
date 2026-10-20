@@ -57,6 +57,9 @@ export function SearchInputBar({
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         toasts.error(j?.error?.message || 'Deep research failed');
+      } else {
+        onQueryChange('');
+        toasts.success('Deep research queued');
       }
     } catch {
       toasts.error('Deep research failed, please try again');
@@ -74,6 +77,7 @@ export function SearchInputBar({
       }
       if (deep) handleDeep();
       else onSubmit();
+      textareaRef.current?.focus();
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
@@ -88,6 +92,7 @@ export function SearchInputBar({
     }
     if (deep) handleDeep();
     else onSubmit();
+    textareaRef.current?.focus();
   }
 
   function handleDisabledClick(e: React.MouseEvent) {
@@ -98,7 +103,7 @@ export function SearchInputBar({
   }
 
   return (
-    <div className="sticky bottom-0 z-10 bg-surface border-t border-line px-4 md:px-6 py-3">
+    <div className="shrink-0 bg-surface border-t border-line px-4 md:px-6 py-3">
       <div className="max-w-3xl mx-auto">
         {/* pill — Deep toggle respects settings */}
         <div className="flex items-center gap-1.5 bg-canvas border border-line-strong rounded-full shadow-sm px-2 py-2 focus-within:border-sai-accent/30 focus-within:ring-2 focus-within:ring-sai-accent/10 focus-within:shadow-md transition-all">

@@ -41,7 +41,7 @@ export interface Message {
     slug: string;
   };
   attachments: Attachment[];
-  reactions?: Reaction[];
+  reactions?: MessageReaction[];
   readReceipts?: ReadReceipt[];
   replies?: Message[];
   poll?: Poll | null;
@@ -72,6 +72,13 @@ export interface Reaction {
   messageId: string;
   userId: string;
   createdAt: Date;
+}
+
+/** Aggregated reactions for one emoji on a message, as rendered by the UI. */
+export interface MessageReaction {
+  emoji: string;
+  count: number;
+  hasReacted: boolean;
 }
 
 export interface ReadReceipt {

@@ -6,7 +6,6 @@ import { SearchInputBar } from './SearchInputBar';
 import { ChatMessageList } from './ChatMessageList';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_CONFIG } from './use-search-conversation';
-import { useRef, useEffect } from 'react';
 import type { SearchConfig } from '@/modules/ai-search/types';
 import type { RetryStyle, FeedbackType } from './StreamingText';
 import { SaiViewTransition } from '@/components/ui/view-transition';
@@ -72,7 +71,7 @@ function SearchField({ initialQuery }: { initialQuery: string }) {
   );
 }
 
-function InputBar({ onNewSearchInitial }: { onNewSearchInitial: string }) {
+function InputBar() {
   const {
     state: { query, isStreaming, isChatActive, lastConfig },
     actions: { setQuery, run, newSearch },
@@ -87,7 +86,7 @@ function InputBar({ onNewSearchInitial }: { onNewSearchInitial: string }) {
         }}
         isStreaming={isStreaming}
         isChatActive={isChatActive}
-        onNewSearch={() => newSearch(onNewSearchInitial)}
+        onNewSearch={() => newSearch('')}
       />
     </SaiViewTransition>
   );
@@ -95,33 +94,28 @@ function InputBar({ onNewSearchInitial }: { onNewSearchInitial: string }) {
 
 function MessageList() {
   const {
-    state: { messages, streamingMessage, appState, currentStep, taskFailed, slowHint, errorMessage, isOffline },
+    state: { messages, streamingMessage, appState, currentStep, taskFailed, slowHint, errorMessage, isOffline, lastConfig },
     actions: { run, newSearch, abort },
   } = useSearch();
-  const {
-    state: { query, lastConfig },
-  } = useSearch();
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingMessage]);
+  // Submitted queries live in messages; the composer draft lives in `query`.
+  // Reading the last user message keeps retry logic from owning a second copy.
+  const lastUserQuery = [...messages].reverse().find((message) => message.role === 'user')?.query ?? '';
 
   function handleFollowUp(followUp: string) {
     run(followUp, lastConfig);
   }
   function handleRetry(style: RetryStyle) {
-    if (!query) return;
-    const styled = style === 'same' ? query : `${query} (Please provide a ${style} response)`;
+    if (!lastUserQuery) return;
+    const styled = style === 'same' ? lastUserQuery : `${lastUserQuery} (Please provide a ${style} response)`;
     run(styled, lastConfig);
   }
   function handleRetryLast() {
-    if (!query) return;
-    run(query, lastConfig);
+    if (!lastUserQuery) return;
+    run(lastUserQuery, lastConfig);
   }
   function handleFeedback(_type: FeedbackType, _reason?: string) {}
 
-  // Use derived isChatActive from context — not raw prop
   return (
     <ChatMessageList
       messages={messages}
@@ -135,10 +129,9 @@ function MessageList() {
       onFollowUp={handleFollowUp}
       onRetry={handleRetry}
       onFeedback={handleFeedback}
-      onNewSearch={() => newSearch(query)}
+      onNewSearch={() => newSearch('')}
       onRetryLast={handleRetryLast}
       onAbort={abort}
-      messagesEndRef={messagesEndRef}
     />
   );
 }
@@ -146,21 +139,23 @@ function MessageList() {
 // Explicit variants — patterns-explicit-variants (no boolean modes)
 function IdleVariant({ initialQuery }: { initialQuery: string }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 py-10">
-      <div className="flex flex-col items-center">
-        <IdleHeader />
-        <SearchField initialQuery={initialQuery} />
-        <Suggestions />
+    <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6">
+      <div className="min-h-full flex flex-col items-center justify-center py-10">
+        <div className="flex flex-col items-center">
+          <IdleHeader />
+          <SearchField initialQuery={initialQuery} />
+          <Suggestions />
+        </div>
       </div>
     </div>
   );
 }
 
-function ActiveVariant({ onNewSearchInitial }: { onNewSearchInitial: string }) {
+function ActiveVariant() {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <MessageList />
-      <InputBar onNewSearchInitial={onNewSearchInitial} />
+      <InputBar />
     </div>
   );
 }

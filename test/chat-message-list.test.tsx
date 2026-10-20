@@ -46,7 +46,6 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof ChatMessage
     onRetry: () => {},
     onFeedback: () => {},
     onNewSearch: () => {},
-    messagesEndRef: { current: null },
     ...overrides,
   };
 }
@@ -217,13 +216,5 @@ describe('ChatMessageList', () => {
     );
     expect(screen.queryByText('Q1')).to.be.null;
     expect(screen.getByText('Q2')).to.exist;
-  });
-
-  it('should have end ref div', () => {
-    const ref = { current: null };
-    render(
-      <ChatMessageList {...defaultProps({ messagesEndRef: ref })} />
-    );
-    expect(ref.current).to.not.be.null;
   });
 });

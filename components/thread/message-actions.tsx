@@ -1,16 +1,18 @@
+'use client';
+
 import React from 'react';
-import { CornerUpLeft, Smile, Pin, Trash2, Edit2 } from 'lucide-react';
+import { CornerUpLeft, SmilePlus, Pin, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EmojiPickerPopover } from '@/components/ui/emoji-picker-popover';
 import { cn } from '@/lib/utils/cn';
 
 interface MessageActionsProps {
   onReply: () => void;
   onPin?: () => void;
-  onReact?: () => void;
+  onReact?: (emoji: string) => void;
   onDelete?: () => void;
   onEdit?: () => void;
   isPinned?: boolean;
-  isLiked?: boolean;
   canPin?: boolean;
   canDelete?: boolean;
   canEdit?: boolean;
@@ -24,7 +26,6 @@ export function MessageActions({
   onDelete,
   onEdit,
   isPinned = false,
-  isLiked = false,
   canPin = false,
   canDelete = false,
   canEdit = false,
@@ -44,15 +45,23 @@ export function MessageActions({
         <CornerUpLeft size={12} />
       </ActionBtn>
 
-      {/* React */}
+      {/* Add reaction — Discord-style picker with search + categories */}
       {onReact && (
-        <ActionBtn
-          title="Like"
-          onClick={onReact}
-          className={isLiked ? 'text-chart-4 hover:text-chart-4' : undefined}
-        >
-          <Smile size={12} className={isLiked ? 'fill-current' : undefined} />
-        </ActionBtn>
+        <EmojiPickerPopover
+          align="end"
+          side="bottom"
+          onSelect={onReact}
+          trigger={
+            <button
+              type="button"
+              title="Add reaction"
+              aria-label="Add reaction"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <SmilePlus size={12} />
+            </button>
+          }
+        />
       )}
 
       {/* Edit (own messages only) */}

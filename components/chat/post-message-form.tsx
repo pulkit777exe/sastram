@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { EmojiPickerPopover } from '@/components/ui/emoji-picker-popover';
 import {
   Paperclip,
   SmilePlus,
@@ -17,15 +18,6 @@ import { useMessageComposer } from '@/hooks/chat/use-message-composer';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { MentionSuggest } from '@/components/chat/mention-suggest';
 import { cn } from '@/lib/utils/cn';
-
-const COMMON_EMOJIS = [
-  '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
-  '😉', '😊', '😋', '😎', '😍', '🥰', '😘', '😗',
-  '👍', '👎', '👊', '✊', '🤝', '🙏', '💪', '🔥',
-  '❤️', '💔', '💯', '✨', '⭐', '🌟', '💡', '🎉',
-  '🎈', '🎁', '📌', '📍', '💬', '🗨️', '👀', '🙌',
-  '🤔', '😤', '😢', '😭', '😱', '🤯', '🥳', '🤩',
-];
 
 interface PostMessageFormProps {
   threadId: string;
@@ -67,7 +59,6 @@ export function PostMessageForm({
   const [showPollLocal, setShowPollLocal] = useState(false);
   const _showPoll = showPollProp ?? showPollLocal;
   const setShowPoll = onTogglePoll ?? setShowPollLocal;
-  const [emojiOpen, setEmojiOpen] = useState(false);
   const [formatOpen, setFormatOpen] = useState(false);
 
   const {
@@ -108,8 +99,6 @@ export function PostMessageForm({
   });
 
   const formRef = useRef<HTMLFormElement>(null);
-  const emojiButtonRef = useRef<HTMLDivElement>(null);
-  const emojiPanelRef = useRef<HTMLDivElement>(null);
   const formatButtonRef = useRef<HTMLDivElement>(null);
   const formatPanelRef = useRef<HTMLDivElement>(null);
 
@@ -125,14 +114,6 @@ export function PostMessageForm({
       closeMentions();
 
       if (
-        emojiOpen &&
-        !emojiButtonRef.current?.contains(target) &&
-        !emojiPanelRef.current?.contains(target)
-      ) {
-        setEmojiOpen(false);
-      }
-
-      if (
         formatOpen &&
         !formatButtonRef.current?.contains(target) &&
         !formatPanelRef.current?.contains(target)
@@ -145,15 +126,7 @@ export function PostMessageForm({
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
-  }, [closeMentions, emojiOpen, formatOpen, mentionListRef, textareaRef]);
-
-  const handleEmojiSelectAndClose = useCallback(
-    (emoji: string) => {
-      handleEmojiSelect(emoji);
-      setEmojiOpen(false);
-    },
-    [handleEmojiSelect]
-  );
+  }, [closeMentions, formatOpen, mentionListRef, textareaRef]);
 
   function getPlaceholder(): string {
     const isReply = replyTo !== null && replyTo !== undefined;
@@ -244,29 +217,21 @@ export function PostMessageForm({
             </Button>
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
 
-            <div className="relative">
-              <div ref={emojiButtonRef}>
-                <Button variant="ghost" size="icon" onClick={() => setEmojiOpen((p) => !p)}>
+            <EmojiPickerPopover
+              side="top"
+              align="start"
+              onSelect={handleEmojiSelect}
+              trigger={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Add emoji"
+                >
                   <SmilePlus className="h-4 w-4" />
                 </Button>
-              </div>
-              {emojiOpen && (
-                <div ref={emojiPanelRef} className="absolute bottom-10 left-0 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-line bg-surface p-2.5 shadow-overlay">
-                  <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
-                    {COMMON_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        className="hover:bg-muted rounded p-1.5 text-lg leading-none transition-colors text-center"
-                        onClick={() => handleEmojiSelectAndClose(emoji)}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+              }
+            />
 
             <Button variant="ghost" size="icon" onClick={handleAtSai}>
               <AtSign className="h-4 w-4" />

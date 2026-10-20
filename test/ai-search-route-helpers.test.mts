@@ -3,9 +3,11 @@ import { expect } from 'chai';
 import {
   deriveTitle,
   invalidKeysMessage,
+  invalidKeysResponse,
   mapStreamError,
   mapTopLevelError,
   missingKeysMessage,
+  missingKeysResponse,
   resolveApiKeys,
   validateSearchBody,
   type ResolvedKeys,
@@ -37,6 +39,17 @@ describe('ai-search route helpers', () => {
   describe('validateSearchBody', () => {
     it('accepts a valid request', () => {
       expect(validateSearchBody(structuredClone(baseBody)).query).to.be.a('string');
+    });
+
+    it('accepts an empty keys object so server env keys can be used', () => {
+      const parsed = validateSearchBody({ ...structuredClone(baseBody), keys: {} });
+      expect(parsed.keys).to.deep.equal({});
+    });
+
+    it('accepts an omitted keys object', () => {
+      const body = structuredClone(baseBody) as Record<string, unknown>;
+      delete body.keys;
+      expect(validateSearchBody(body).keys).to.deep.equal({});
     });
 
     it('short query throws VALIDATION_ERROR 400, not 500', () => {
@@ -72,6 +85,27 @@ describe('ai-search route helpers', () => {
     it('flags bad formats', () => {
       // 'e' is not a uuid → Exa invalid.
       expect(invalidKeysMessage(fullKeys)).to.contain('Exa');
+    });
+
+    it('returns structured missing-key details for the key dialog', async () => {
+      const response = missingKeysResponse({ ...fullKeys, tavilyKey: '' });
+      expect(response).to.not.be.null;
+      expect(response?.status).to.equal(400);
+      const body = await response?.json();
+      expect(body.error.code).to.equal('MISSING_API_KEYS');
+      expect(body.error.details.missingKeys).to.deep.include({
+        provider: 'tavily',
+        label: 'Tavily',
+        envVar: 'SASTRAM_TAVILY_KEY',
+      });
+    });
+
+    it('returns structured invalid-key details', async () => {
+      const response = invalidKeysResponse(fullKeys);
+      expect(response?.status).to.equal(400);
+      const body = await response?.json();
+      expect(body.error.code).to.equal('INVALID_API_KEYS');
+      expect(body.error.details.invalidKeys[0].provider).to.equal('exa');
     });
   });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, BellOff, BellRing } from 'lucide-react';
 import {
   subscribeToThreadAction,
   unsubscribeFromThread,
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type SubscriptionFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'NEVER' | null;
 
@@ -44,11 +45,6 @@ function frequencyToValue(frequency: SubscriptionFrequency): string {
 function valueToFrequency(value: string): SubscriptionFrequency {
   if (value === NULL_SENTINEL) return null;
   return value as SubscriptionFrequency;
-}
-
-function getPreviewLabel(frequency: SubscriptionFrequency): string {
-  if (frequency === null) return 'N';
-  return frequency.charAt(0);
 }
 
 export function ThreadSubscribeButton({
@@ -109,20 +105,33 @@ export function ThreadSubscribeButton({
   };
 
   if (iconOnly) {
-    const previewLabel = getPreviewLabel(frequency);
+    const tooltipLabel =
+      frequency === null
+        ? 'Subscribe to thread'
+        : frequency === 'NEVER'
+          ? 'Notifications off — change subscription'
+          : `Subscribed ${frequency.toLowerCase()} — change subscription`;
+    const SubscriptionIcon = frequency === null ? Bell : frequency === 'NEVER' ? BellOff : BellRing;
 
     return (
       <Select
         value={frequencyToValue(frequency)}
         onValueChange={(v) => void setSubscription(valueToFrequency(v))}
-        disabled={isSaving}
       >
-        <SelectTrigger className="!h-8 !w-auto !px-2 !py-0 !rounded-control !border-0 !bg-transparent !ring-0 !ring-offset-0 flex items-center gap-1.5 !shadow-none text-ink-3 hover:text-ink hover:bg-hover transition-colors [&>svg]:hidden">
-          <Bell className="h-4 w-4" />
-          {frequency !== null && (
-            <span className="text-[10px] font-semibold leading-none">{previewLabel}</span>
-          )}
-        </SelectTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SelectTrigger
+              aria-label={tooltipLabel}
+              aria-busy={isSaving}
+              className={`!h-8 !w-8 !p-0 !rounded-control !border-0 !bg-transparent !ring-0 !ring-offset-0 flex items-center justify-center !shadow-none hover:bg-hover transition-colors [&>span]:hidden ${frequency === null ? 'text-ink-3 hover:text-ink' : 'text-sai-accent'}`}
+            >
+              <SubscriptionIcon className="h-4 w-4" />
+            </SelectTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={6}>
+            {tooltipLabel}
+          </TooltipContent>
+        </Tooltip>
         <SelectContent>
           {OPTIONS.map((option) => (
             <SelectItem key={option.label} value={frequencyToValue(option.value)}>

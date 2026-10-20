@@ -4,6 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toasts } from '@/lib/utils/toast';
 import { GitFork, Loader2, ExternalLink, Link2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -66,7 +67,15 @@ function useForkSubmit(endpoint: string) {
 }
 
 /** Fork an existing thread — shows the fork count in the trigger. */
-export function ForkButton({ threadId, threadName }: { threadId: string; threadName: string }) {
+export function ForkButton({
+  threadId,
+  threadName,
+  iconOnly = false,
+}: {
+  threadId: string;
+  threadName: string;
+  iconOnly?: boolean;
+}) {
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState(`${threadName} (fork)`);
   const [visibility, setVisibility] = React.useState<Visibility>('PUBLIC');
@@ -117,12 +126,28 @@ export function ForkButton({ threadId, threadName }: { threadId: string; threadN
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1.5" aria-label="Fork thread">
-          <GitFork size={12} />
-          Fork{count != null && count > 0 ? ` ${count}` : ''}
-        </Button>
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size={iconOnly ? 'icon' : 'sm'}
+              className={
+                iconOnly
+                  ? 'size-8 shrink-0 p-0 text-ink-3 hover:text-ink hover:bg-hover'
+                  : 'h-7 px-2 text-xs gap-1.5'
+              }
+              aria-label="Fork thread"
+            >
+              <GitFork size={iconOnly ? 15 : 12} />
+              {!iconOnly && <span>Fork{count != null && count > 0 ? ` ${count}` : ''}</span>}
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          {count != null && count > 0 ? `Fork thread · ${count} forks` : 'Fork thread'}
+        </TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-md rounded-card">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><GitFork size={16}/> Fork thread</DialogTitle>

@@ -7,6 +7,7 @@ import { toasts } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils/cn';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface BookmarkButtonProps {
   threadId: string;
@@ -51,6 +52,7 @@ export function BookmarkButton({ threadId, className, iconOnly = false, initialI
   }, [threadId, initialIsBookmarked]);
 
   const handleToggle = async () => {
+    if (isLoading) return;
     // Client decides desired state; the server upserts/deletes idempotently
     // (no read-then-write race with a second tab).
     const desired = !isBookmarked;
@@ -72,27 +74,41 @@ export function BookmarkButton({ threadId, className, iconOnly = false, initialI
     }
   };
 
-  const label = isBookmarked ? 'Bookmarked' : 'Bookmark';
+  const label = isBookmarked ? 'Remove bookmark' : 'Bookmark thread';
   const Icon = isBookmarked ? BookmarkCheck : Bookmark;
 
   return (
-    <div className="hover:scale-105 active:scale-95 transition-transform duration-100">
-      <Button
-        variant="outline"
-        onClick={handleToggle}
-        disabled={isLoading}
-        aria-label={label}
-        className={cn(iconOnly ? 'h-7 w-7 p-0 gap-0' : 'gap-2', className)}
-      >
-        {isLoading ? (
-          <Loader2 size={14} className="animate-spin" />
-        ) : (
-          <>
-            <AnimatedIcon icon={Icon} className={cn('h-4 w-4', isBookmarked && 'fill-current')} animateOnHover />
-            {!iconOnly && <span className="hidden sm:inline">{label}</span>}
-          </>
-        )}
-      </Button>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={iconOnly ? 'ghost' : 'outline'}
+          onClick={handleToggle}
+          aria-label={label}
+          aria-busy={isLoading}
+          className={cn(
+            iconOnly
+              ? 'size-8 shrink-0 p-0 text-ink-3 hover:text-ink hover:bg-hover'
+              : 'gap-2',
+            className
+          )}
+        >
+          {isLoading ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <>
+              <AnimatedIcon
+                icon={Icon}
+                className={cn(iconOnly ? 'h-4 w-4' : 'h-4 w-4', isBookmarked && 'fill-current')}
+                animateOnHover
+              />
+              {!iconOnly && <span className="hidden sm:inline">{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>}
+            </>
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={6}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }

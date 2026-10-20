@@ -1,23 +1,18 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ApiKeysModal, hasAllApiKeys } from '@/components/ai-search/ApiKeysModal';
+import {
+  ApiKeysModal,
+  hasAllApiKeys,
+  isValidApiKey,
+  type ApiKeyIssueDetails,
+} from '@/components/ai-search/ApiKeysModal';
 import { SaiSearchLayout } from '@/components/ai-search/sai-search-layout';
 import { SearchProvider, useSearch } from '@/components/ai-search/search-provider';
 import { SearchComposer } from '@/components/ai-search/search-composer';
 
-const apiKeysListeners = new Set<() => void>();
-function subscribeToApiKeys(cb: () => void) {
-  apiKeysListeners.add(cb);
-  return () => apiKeysListeners.delete(cb);
-}
-function getHasApiKeys() {
-  return hasAllApiKeys();
-}
-function notifyApiKeysChanged(_hasAll?: boolean) {
-  apiKeysListeners.forEach((fn) => fn());
-}
+type KeyDialogState = ApiKeyIssueDetails;
 
 interface SearchPageProps {
   user?: { name?: string | null; email?: string | null; image?: string | null } | null;
@@ -29,36 +24,58 @@ function SearchPageInner({ initialQuery }: { initialQuery: string }) {
     state: { appState, isChatActive, currentSessionId },
     actions: { selectSession, newSearch },
   } = useSearch();
-  const [showApiKeys, setShowApiKeys] = useState(false);
-  const hasKeys = useSyncExternalStore(subscribeToApiKeys, getHasApiKeys, () => false);
+  const [keyDialog, setKeyDialog] = useState<KeyDialogState | null>(null);
+  const [hasKeys, setHasKeys] = useState(false);
 
   useEffect(() => {
-    const handler = () => setShowApiKeys(true);
+    setHasKeys(hasAllApiKeys());
+    const handler = (event: Event) => {
+      setKeyDialog((event as CustomEvent<KeyDialogState>).detail ?? {});
+    };
     window.addEventListener('sastram:open-api-keys', handler);
     return () => window.removeEventListener('sastram:open-api-keys', handler);
   }, []);
 
+  function handleKeysChange(keys: Record<string, string>) {
+    const allPresent = ['exa', 'tavily', 'gemini'].every((provider) => Boolean(keys[provider]?.trim()));
+    setHasKeys(allPresent);
+
+    // A key error opened this dialog: resume the pending query as soon as the
+    // providers that were missing/invalid now have values. Server env keys can
+    // cover the rest, so we don't require all three browser keys here.
+    if (!keyDialog?.message) return;
+    const required = [...(keyDialog.missingKeys ?? []), ...(keyDialog.invalidKeys ?? [])];
+    const ready = required.length > 0
+      ? required.every((key) => isValidApiKey(key.provider, keys[key.provider] ?? ''))
+      : allPresent;
+    if (!ready) return;
+
+    setKeyDialog(null);
+    window.dispatchEvent(new Event('sastram:api-keys-saved'));
+  }
+
   // Explicit variants — patterns-explicit-variants (no isChatActive prop to Composer)
   const content = !isChatActive && appState === 'idle'
     ? <SearchComposer.IdleVariant initialQuery={initialQuery} />
-    : <SearchComposer.ActiveVariant onNewSearchInitial={initialQuery} />;
+    : <SearchComposer.ActiveVariant />;
 
   return (
     <SaiSearchLayout
       onSelectSession={selectSession}
-      onNewSearch={() => newSearch(initialQuery)}
+      onNewSearch={() => newSearch('')}
       currentSessionId={currentSessionId}
       hasApiKeys={hasKeys}
-      onOpenApiKeys={() => setShowApiKeys(true)}
+      onOpenApiKeys={() => setKeyDialog({})}
     >
       <SearchComposer.Frame>
         {content}
       </SearchComposer.Frame>
 
       <ApiKeysModal
-        isOpen={showApiKeys}
-        onClose={() => setShowApiKeys(false)}
-        onKeysChange={notifyApiKeysChanged}
+        isOpen={keyDialog !== null}
+        onClose={() => setKeyDialog(null)}
+        onKeysChange={handleKeysChange}
+        issue={keyDialog}
       />
     </SaiSearchLayout>
   );

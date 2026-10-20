@@ -60,11 +60,11 @@ export function ThreadPageHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
-        <CollectionSaveButton threadId={threadId} />
+      <div className="flex items-center gap-0.5">
+        <CollectionSaveButton threadId={threadId} iconOnly />
         <BookmarkButton threadId={threadId} iconOnly initialIsBookmarked={isBookmarked} />
-        <BountyButton threadId={threadId} />
-        <ForkButton threadId={threadId} threadName={title} />
+        <BountyButton threadId={threadId} iconOnly />
+        <ForkButton threadId={threadId} threadName={title} iconOnly />
         <ThreadSubscribeButton
           threadId={threadId}
           slug={slug}

@@ -122,6 +122,34 @@ export function isOutdated(publishedDate?: string): boolean {
   return new Date(publishedDate) < twoYearsAgo;
 }
 
+/** Default freshness window for searches that don't ask for a specific period. */
+const RECENCY_WINDOW_DAYS = 365;
+
+const HISTORICAL_TERMS =
+  /\b(history|historical|classic|legacy|origin|origins|founded|invented|when was|before|after|until|decade|century|old|older)\b/i;
+
+function referencedYears(query: string): number[] {
+  return [...query.matchAll(/\b(1[89]\d{2}|20\d{2})s?\b/g)].map((match) => Number(match[1]));
+}
+
+/**
+ * Recency is the default for Sai search. Skip the date filter only when the
+ * query clearly asks about a specific older period, so "history of React" or
+ * "best laptops 2021" still reach those sources.
+ */
+export function shouldApplyRecencyFilter(query: string, now: Date = new Date()): boolean {
+  if (HISTORICAL_TERMS.test(query)) return false;
+  const currentYear = now.getFullYear();
+  if (referencedYears(query).some((year) => year < currentYear)) return false;
+  // "past 5 years" / "previous decade" are explicit scopes; leave them alone.
+  if (/\b(?:past|last|previous|next)\s+\d+\s+(?:years?|decades?)\b/i.test(query)) return false;
+  return true;
+}
+
+export function recencyCutoffIso(now: Date = new Date()): string {
+  return new Date(now.getTime() - RECENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
 function getConfidenceForTier(tier: 1 | 2 | 3 | 4): number {
   if (tier === 1) return 90;
   if (tier === 2) return 75;
@@ -141,6 +169,7 @@ function buildExaBody(query: string, classification: QueryClassification, config
   };
   const includeDomains = getIncludeDomains(config.sourceFilter);
   if (includeDomains) body.includeDomains = includeDomains;
+  if (shouldApplyRecencyFilter(query)) body.startPublishedDate = recencyCutoffIso();
   return body;
 }
 
@@ -163,6 +192,29 @@ function mapExaResult(r: { id?: string; title?: string; url?: string; text?: str
   };
 }
 
+async function requestExa(
+  body: Record<string, unknown>,
+  exaKey: string,
+  signal?: AbortSignal
+): Promise<{ results?: Array<{ id?: string; title?: string; url?: string; text?: string; publishedDate?: string }> }> {
+  return withRetry(
+    async (retrySignal) => {
+      const response = await fetch('https://api.exa.ai/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
+        body: JSON.stringify(body),
+        signal: retrySignal,
+      });
+      if (!response.ok) throw new Error(`Exa API error: ${response.status}`);
+      return response.json();
+    },
+    3,
+    300,
+    15_000,
+    signal
+  );
+}
+
 export async function searchWithExa(
   query: string,
   classification: QueryClassification,
@@ -172,22 +224,13 @@ export async function searchWithExa(
 ): Promise<Source[]> {
   try {
     const body = buildExaBody(query, classification, config);
-    const data = await withRetry(
-      async (retrySignal) => {
-        const response = await fetch('https://api.exa.ai/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
-          body: JSON.stringify(body),
-          signal: retrySignal,
-        });
-        if (!response.ok) throw new Error(`Exa API error: ${response.status}`);
-        return response.json();
-      },
-      3,
-      300,
-      15_000,
-      signal
-    );
+    let data = await requestExa(body, exaKey, signal);
+    // A freshness filter must never turn a good query into zero results.
+    if (body.startPublishedDate && (data.results?.length ?? 0) === 0) {
+      const relaxedBody = { ...body };
+      delete relaxedBody.startPublishedDate;
+      data = await requestExa(relaxedBody, exaKey, signal);
+    }
     const results = data.results || [];
     return results.map(mapExaResult);
   } catch (error) {
@@ -209,6 +252,7 @@ function buildTavilyBody(query: string, classification: QueryClassification, con
   };
   const includeDomains = getIncludeDomains(config.sourceFilter);
   if (includeDomains) body.include_domains = includeDomains;
+  if (shouldApplyRecencyFilter(query)) body.time_range = 'year';
   return body;
 }
 
@@ -237,6 +281,32 @@ function mapTavilyResult(r: {
   };
 }
 
+async function requestTavily(
+  body: Record<string, unknown>,
+  tavilyKey: string,
+  signal?: AbortSignal
+): Promise<{
+  results?: Array<{ title?: string; url?: string; content?: string; published_date?: string; score?: number }>;
+  answer?: string;
+}> {
+  return withRetry(
+    async (retrySignal) => {
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tavilyKey}` },
+        body: JSON.stringify(body),
+        signal: retrySignal,
+      });
+      if (!response.ok) throw new Error(`Tavily API error: ${response.status}`);
+      return response.json();
+    },
+    3,
+    300,
+    15_000,
+    signal
+  );
+}
+
 export async function searchWithTavily(
   query: string,
   classification: QueryClassification,
@@ -246,22 +316,12 @@ export async function searchWithTavily(
 ): Promise<{ sources: Source[]; answer?: string }> {
   try {
     const body = buildTavilyBody(query, classification, config);
-    const data = await withRetry(
-      async (retrySignal) => {
-        const response = await fetch('https://api.tavily.com/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tavilyKey}` },
-          body: JSON.stringify(body),
-          signal: retrySignal,
-        });
-        if (!response.ok) throw new Error(`Tavily API error: ${response.status}`);
-        return response.json();
-      },
-      3,
-      300,
-      15_000,
-      signal
-    );
+    let data = await requestTavily(body, tavilyKey, signal);
+    if (body.time_range && (data.results?.length ?? 0) === 0) {
+      const relaxedBody = { ...body };
+      delete relaxedBody.time_range;
+      data = await requestTavily(relaxedBody, tavilyKey, signal);
+    }
     const results = data.results || [];
     const sources: Source[] = results.map(mapTavilyResult);
     return { sources, answer: data.answer };

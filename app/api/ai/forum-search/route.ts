@@ -18,11 +18,10 @@ import {
   buildCachedStream,
   checkSearchIdempotency,
   deriveTitle,
-  invalidKeysMessage,
-  keyErrorResponse,
+  invalidKeysResponse,
   mapStreamError,
   mapTopLevelError,
-  missingKeysMessage,
+  missingKeysResponse,
   parseSearchJsonBody,
   resolveApiKeys,
   tryGetCachedResult,
@@ -238,11 +237,11 @@ export async function POST(request: NextRequest) {
     const data = validateSearchBody(await parseSearchJsonBody(request));
 
     const keys = resolveApiKeys(data.keys);
-    const missingMessage = missingKeysMessage(keys);
-    if (missingMessage) return keyErrorResponse(missingMessage);
+    const missingResponse = missingKeysResponse(keys);
+    if (missingResponse) return missingResponse;
 
-    const invalidMessage = invalidKeysMessage(keys);
-    if (invalidMessage) return keyErrorResponse(invalidMessage);
+    const invalidResponse = invalidKeysResponse(keys);
+    if (invalidResponse) return invalidResponse;
 
     const { query, config, sessionId, clientNonce, conversationHistory } = data;
 

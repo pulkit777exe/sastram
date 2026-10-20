@@ -1,6 +1,7 @@
 'use client';
 
-import { Clock, AlertCircle, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Clock, AlertCircle, X, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SynthesisCard } from '@/components/ai-search/SynthesisCard';
 import { TaskSteps } from '@/components/ai-search/TaskSteps';
@@ -11,6 +12,7 @@ import type { Citation } from '@/modules/ai-search/types';
 import { SaiViewTransition } from '@/components/ui/view-transition';
 
 const FIRST_SYNTHESIS_VT_NAME = 'ai-search-first-synthesis';
+const SCROLL_PIN_THRESHOLD_PX = 96;
 
 function ChatMessageBubble({
   message,
@@ -88,7 +90,6 @@ interface ChatMessageListProps {
   onNewSearch: () => void;
   onRetryLast?: () => void;
   onAbort?: () => void;
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function ChatMessageList({
@@ -106,11 +107,64 @@ export function ChatMessageList({
   onNewSearch,
   onRetryLast,
   onAbort,
-  messagesEndRef,
 }: ChatMessageListProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
+  const previousMessageCountRef = useRef(messages.length);
+  const previousStreamingIdRef = useRef<string | null>(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+
+  useEffect(() => {
+    const grew = messages.length > previousMessageCountRef.current;
+    previousMessageCountRef.current = messages.length;
+    const streamStarted = streamingMessage !== null && streamingMessage.id !== previousStreamingIdRef.current;
+    previousStreamingIdRef.current = streamingMessage?.id ?? null;
+
+    if (grew || streamStarted) {
+      shouldAutoScrollRef.current = true;
+      setShowJumpToLatest(false);
+    }
+    if (!shouldAutoScrollRef.current) return;
+
+    const el = scrollRef.current;
+    if (!el) return;
+    const top = el.scrollHeight;
+    // Guard for jsdom/browsers without smooth scrolling support.
+    if (typeof el.scrollTo === 'function') {
+      el.scrollTo({ top, behavior: appState === 'loading' ? 'auto' : 'smooth' });
+    } else {
+      el.scrollTop = top;
+    }
+  }, [messages, streamingMessage, appState]);
+
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_PIN_THRESHOLD_PX;
+    shouldAutoScrollRef.current = atBottom;
+    setShowJumpToLatest(!atBottom && (messages.length > 0 || streamingMessage !== null));
+  }
+
+  function jumpToLatest() {
+    shouldAutoScrollRef.current = true;
+    setShowJumpToLatest(false);
+    const el = scrollRef.current;
+    if (!el) return;
+    if (typeof el.scrollTo === 'function') {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="relative flex-1 min-h-0">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="h-full flex-1 overflow-y-auto overscroll-contain px-4 md:px-6 py-6"
+      >
+        <div className="max-w-3xl mx-auto space-y-6">
         {messages.map((msg) => (
           <ChatMessageBubble
             key={msg.id}
@@ -225,9 +279,23 @@ export function ChatMessageList({
             </div>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
+        </div>
       </div>
+
+      {showJumpToLatest && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={jumpToLatest}
+            className="pointer-events-auto h-8 gap-1.5 rounded-full bg-surface/95 px-3 text-xs shadow-overlay backdrop-blur"
+          >
+            <ArrowDown size={13} />
+            Latest
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

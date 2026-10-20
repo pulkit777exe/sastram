@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { toasts } from '@/lib/utils/toast';
 import type { SSEPhase } from '@/components/ai-search/PhaseTracker';
 import type { HistoryItem } from '@/components/ai-search/sai-search-layout';
-import { getStoredApiKeys } from '@/components/ai-search/ApiKeysModal';
+import { getStoredApiKeys, type ApiKeyIssue } from '@/components/ai-search/ApiKeysModal';
 import { parseSSE } from '@/lib/utils/sse';
 import type { SearchConfig, Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
 
@@ -95,16 +95,10 @@ export function validateQuery(q: string): string | null {
   return trimmed;
 }
 
-export function getApiKeysOrNotify(): { exa: string; tavily: string; gemini: string } | null {
-  const keys = getStoredApiKeys();
-  if (!keys.exa || !keys.tavily || !keys.gemini) {
-    toasts.error('Please configure your API keys first', 'Click the API Keys button to get started.');
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('sastram:open-api-keys'));
-    }
-    return null;
-  }
-  return keys as { exa: string; tavily: string; gemini: string };
+interface PendingSearch {
+  query: string;
+  config: SearchConfig;
+  sessionId?: string;
 }
 
 // ViewTransition in React 19 only animates async state changes.
@@ -143,7 +137,7 @@ export function parseSSELine(data: string): {
 export function buildRequestBody(
   query: string,
   config: SearchConfig,
-  keys: { exa: string; tavily: string; gemini: string },
+  keys: Partial<{ exa: string; tavily: string; gemini: string }>,
   conversationHistory: { role: string; content: string }[],
   sessionId?: string
 ): Record<string, unknown> {
@@ -252,6 +246,7 @@ export function useSearchConversation(initialQuery: string = '') {
   const phaseTimerRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const sessionIdRef = useRef<string | undefined>(undefined);
   const streamingDataRef = useRef<ChatMessage | null>(null);
+  const pendingSearchRef = useRef<PendingSearch | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   useEffect(() => {
     messagesRef.current = messages;
@@ -261,10 +256,12 @@ export function useSearchConversation(initialQuery: string = '') {
     async (q: string, config: SearchConfig, overrideSessionId?: string) => {
       const trimmed = validateQuery(q);
       if (!trimmed) return;
-      const keys = getApiKeysOrNotify();
-      if (!keys) return;
+      const keys = getStoredApiKeys();
+      pendingSearchRef.current = null;
 
-      setQuery(trimmed);
+      // The composer is a one-shot launcher: once a query is sent, the next
+      // thing the user sees is an empty input ready for a follow-up.
+      setQuery('');
       setLastConfig(config);
       setErrorMessage('');
 
@@ -325,12 +322,45 @@ export function useSearchConversation(initialQuery: string = '') {
         if (statusHandled) return;
 
         if (!response.ok || !response.body) {
-          const data = await response.json().catch(() => ({}));
+          const data = (await response.json().catch(() => ({}))) as {
+            error?: {
+              code?: string;
+              message?: string;
+              details?: { missingKeys?: ApiKeyIssue[]; invalidKeys?: ApiKeyIssue[] };
+            };
+          };
+          const apiError = data.error;
+
+          if (apiError?.code === 'MISSING_API_KEYS' || apiError?.code === 'INVALID_API_KEYS') {
+            // Keep the query pending, roll the optimistic bubbles back, and
+            // let the key dialog retry once the user supplies valid keys.
+            pendingSearchRef.current = { query: trimmed, config, sessionId: effectiveSessionId };
+            setMessages((prev) => prev.filter((message) => message.id !== userMsg.id));
+            streamingDataRef.current = null;
+            setStreamingMessage(null);
+            setIsStreaming(false);
+            setCurrentStep(0);
+            setSlowHint(false);
+            setAppState('idle');
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('sastram:open-api-keys', {
+                  detail: {
+                    code: apiError.code,
+                    message: apiError.message ?? 'Add your API keys to continue.',
+                    missingKeys: apiError.details?.missingKeys ?? [],
+                    invalidKeys: apiError.details?.invalidKeys ?? [],
+                  },
+                })
+              );
+            }
+            return;
+          }
+
           const msg =
-            (data?.error && typeof data.error === 'object' && data.error.message) ||
-            (typeof data?.error === 'string' ? data.error : null) ||
+            (typeof apiError?.message === 'string' ? apiError.message : null) ||
             `Search failed (${response.status}). Please try again.`;
-          setErrorMessage(typeof msg === 'string' ? msg : 'Search failed. Please try again.');
+          setErrorMessage(msg);
           setAppState('error');
           streamingDataRef.current = null;
           setStreamingMessage(null);
@@ -371,6 +401,25 @@ export function useSearchConversation(initialQuery: string = '') {
     []
   );
 
+  const runRef = useRef(run);
+  useEffect(() => {
+    runRef.current = run;
+  }, [run]);
+
+  // The key dialog dispatches this after all three keys are present. Replaying
+  // the pending query here is what makes "type → add keys → search continues"
+  // work without asking the user to retype anything.
+  useEffect(() => {
+    const resumePendingSearch = () => {
+      const pending = pendingSearchRef.current;
+      if (!pending) return;
+      pendingSearchRef.current = null;
+      void runRef.current(pending.query, pending.config, pending.sessionId);
+    };
+    window.addEventListener('sastram:api-keys-saved', resumePendingSearch);
+    return () => window.removeEventListener('sastram:api-keys-saved', resumePendingSearch);
+  }, []);
+
   const newSearch = useCallback(
     (initial: string) => {
       abortRef.current?.abort();
@@ -388,6 +437,7 @@ export function useSearchConversation(initialQuery: string = '') {
       setMessages(() => []);
       streamingDataRef.current = null;
       setStreamingMessage(null);
+      pendingSearchRef.current = null;
     },
     []
   );
@@ -431,7 +481,8 @@ export function useSearchConversation(initialQuery: string = '') {
         timestamp: new Date(item.createdAt).getTime(),
       };
       setMessages(() => [userMsg, assistantMsg]);
-      setQuery(item.query);
+      setQuery('');
+      pendingSearchRef.current = null;
     },
     []
   );

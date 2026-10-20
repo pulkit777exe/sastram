@@ -1,15 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, EyeOff, Check, X, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, Check, X, KeyRound, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
+export interface ApiKeyIssue {
+  provider: string;
+  label: string;
+  envVar?: string;
+}
+
+export interface ApiKeyIssueDetails {
+  message?: string;
+  missingKeys?: ApiKeyIssue[];
+  invalidKeys?: ApiKeyIssue[];
+}
+
 interface ApiKeysModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onKeysChange: (hasAll: boolean) => void;
+  onKeysChange: (keys: Record<string, string>) => void;
+  issue?: ApiKeyIssueDetails | null;
 }
 
 // UUID v4 pattern: 8-4-4-4-12 hex chars
@@ -56,7 +69,12 @@ const KEY_CONFIGS = [
   },
 ];
 
-export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProps) {
+export function isValidApiKey(provider: string, value: string): boolean {
+  const config = KEY_CONFIGS.find((entry) => entry.id === provider);
+  return config ? config.validate(value.trim()) : false;
+}
+
+export function ApiKeysModal({ isOpen, onClose, onKeysChange, issue }: ApiKeysModalProps) {
   const [keys, setKeys] = useState<Record<string, string>>(() => {
     if (typeof window === 'undefined') return {};
     const loaded: Record<string, string> = {};
@@ -82,9 +100,9 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
       }
     }
 
-    // Notify parent
-    const allPresent = KEY_CONFIGS.every((c) => updated[c.id] && updated[c.id].length > 0);
-    onKeysChange(allPresent);
+    // Notify parent with the current key values so it can resume a pending
+    // search as soon as the specific missing providers are filled in.
+    onKeysChange(updated);
   };
 
   const clearKey = (id: string) => {
@@ -103,21 +121,45 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
 
         <div className="px-6 py-3 bg-hover/30 rounded-control mx-6">
           <p className="text-xs text-ink-2 leading-relaxed">
-            Your API keys are stored <strong>only in your browser</strong> and never sent to our
-            servers for storage. They are passed securely via request headers for each search.
+            Your API keys are stored <strong>only in your browser</strong> and never stored on our
+            servers. They are sent with each search request so the search can run.
           </p>
         </div>
+
+        {issue?.message && (
+          <div
+            role="alert"
+            className="mx-6 mt-3 flex gap-2 rounded-control border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200"
+          >
+            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium">{issue.message}</p>
+              {issue.missingKeys && issue.missingKeys.length > 0 && (
+                <p>
+                  Server environment: {issue.missingKeys.map((key) => key.envVar).filter(Boolean).join(', ')}.
+                  Enter the keys below to continue your search immediately.
+                </p>
+              )}
+              {issue.invalidKeys && issue.invalidKeys.length > 0 && (
+                <p>Check the highlighted key{issue.invalidKeys.length > 1 ? 's' : ''} below.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="px-6 py-4 space-y-4">
           {KEY_CONFIGS.map((config) => {
             const value = keys[config.id] || '';
             const isValid = value ? config.validate(value) : false;
             const show = showKeys[config.id] || false;
+            const isInvalid = issue?.invalidKeys?.some((key) => key.provider === config.id) ?? false;
 
             return (
               <div key={config.id}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-ink">{config.label}</label>
+                  <label htmlFor={`api-key-${config.id}`} className="text-xs font-medium text-ink">
+                    {config.label}
+                  </label>
                   {value && (
                     <span className="flex items-center gap-1 text-xs">
                       {isValid ? (
@@ -134,11 +176,13 @@ export function ApiKeysModal({ isOpen, onClose, onKeysChange }: ApiKeysModalProp
                 </div>
                 <div className="relative">
                   <Input
+                    id={`api-key-${config.id}`}
                     type={show ? 'text' : 'password'}
                     value={value}
                     onChange={(e) => handleKeyChange(config.id, e.target.value.trim())}
                     placeholder={config.placeholder}
-                    className="text-xs font-mono pr-16"
+                    aria-invalid={isInvalid || undefined}
+                    className={`text-xs font-mono pr-16${isInvalid ? ' border-sai-red/60 focus-visible:ring-sai-red/20' : ''}`}
                   />
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                     <Button type="button"

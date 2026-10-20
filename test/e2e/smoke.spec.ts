@@ -31,11 +31,10 @@ test.describe('Authenticated smoke', () => {
     expect(errors, errors.join('\n')).toHaveLength(0);
   });
 
-  test('forum-search surfaces a real error (not a silent fake success)', async ({
-    request,
-  }) => {
-    // When the AI provider is unavailable, the API must NOT return 200 with a
-    // fake synthesis; it must return a proper error status.
+  test('forum-search never returns a silent fake success', async ({ request }) => {
+    // The route streams SSE on success, and may instead fail with a structured
+    // error (missing keys, rate limit, provider outage). What it must never do
+    // is return 200 with an empty/fabricated synthesis.
     const res = await request.post('/api/ai/forum-search', {
       headers: {
         Origin: BASE_URL,
@@ -49,12 +48,35 @@ test.describe('Authenticated smoke', () => {
     });
 
     if (res.status() === 200) {
-      const body = await res.json();
-      // If it succeeded, the synthesis must be real (non-empty content).
-      expect(body?.data?.synthesis?.content?.trim().length ?? 0).toBeGreaterThan(0);
+      const contentType = res.headers()['content-type'] ?? '';
+      if (contentType.includes('text/event-stream')) {
+        const text = await res.text();
+        const events = text
+          .split('\n')
+          .filter((line) => line.startsWith('data: '))
+          .map((line) => JSON.parse(line.slice(6)) as {
+            phase?: string;
+            message?: string;
+            synthesis?: { text?: string };
+          });
+        expect(events.length, 'stream should contain at least one event').toBeGreaterThan(0);
+
+        const done = events.find((event) => event.phase === 'done');
+        const failure = events.find((event) => event.phase === 'error' || event.phase === 'blocked');
+        if (done) {
+          expect(done.synthesis?.text?.trim().length ?? 0).toBeGreaterThan(0);
+        } else {
+          expect(failure, 'stream must finish with done or a real error').toBeDefined();
+          expect(typeof failure?.message).toBe('string');
+          expect(failure?.message?.trim().length ?? 0).toBeGreaterThan(0);
+        }
+      } else {
+        const body = await res.json();
+        // Cached/non-streaming success must carry real synthesis text.
+        expect(body?.data?.synthesis?.content?.trim().length ?? 0).toBeGreaterThan(0);
+      }
     } else {
-      // Otherwise it must be a clear error status with a string message.
-      // 400 covers the explicit missing-keys path (no provider configured).
+      // 400 covers the explicit missing/invalid-keys path.
       expect([400, 429, 503, 500]).toContain(res.status());
       const body = await res.json().catch(() => ({}));
       expect(typeof body?.error?.message).toBe('string');

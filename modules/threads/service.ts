@@ -65,6 +65,11 @@ export function toClientMessage(
     sender,
     thread,
     attachments,
+    reactions: (message.reactions ?? []).map((reaction) => ({
+      emoji: reaction.type,
+      count: reaction._count,
+      hasReacted: message.reactedEmojis?.includes(reaction.type) ?? false,
+    })),
   };
 }
 

@@ -2,15 +2,16 @@ import React, { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffe
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp, Pin, Loader2 } from 'lucide-react';
+import { Pin, Loader2 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
 import { toggleReaction } from '@/modules/reactions/actions';
 import { toasts } from '@/lib/utils/toast';
-import type { Message } from '@/lib/types/index';
+import type { Message, MessageReaction } from '@/lib/types/index';
 import { useThreadDataContext, useThreadUIStateContext } from './thread-context';
 import { InlineReplyThread } from './inline-reply-thread';
 import { MessageActions } from './message-actions';
+import { MessageReactions } from './message-reactions';
 import { InlineReplyBox } from './inline-reply-box';
 import { Badge } from '@/components/ui/badge';
 import { AttachmentItem } from './attachment-item';
@@ -212,9 +213,8 @@ const MessageRow = React.memo(function MessageRow({
   const [editContent, setEditContent] = useState(message.content);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   
-  const [isLiked, setIsLiked] = useState(message.isLiked ?? false);
-  const [likeCount, setLikeCount] = useState(message.likeCount ?? 0);
-  const [isLiking, setIsLiking] = useState(false);
+  const [reactions, setReactions] = useState<MessageReaction[]>(message.reactions ?? []);
+  const [isReacting, setIsReacting] = useState(false);
 
   const [_isPinning, setIsPinning] = useState(false);
   
@@ -265,6 +265,50 @@ const MessageRow = React.memo(function MessageRow({
     toasts.serverError();
     setIsSavingEdit(false);
   }, [editContent, message.id, message.content, onMessageUpdate]);
+
+  const handleToggleReaction = useCallback(
+    async (emoji: string) => {
+      if (isReacting) return;
+      setIsReacting(true);
+      const previous = reactions;
+      const existing = reactions.find((reaction) => reaction.emoji === emoji);
+      const hasReacted = !(existing?.hasReacted ?? false);
+      const nextCount = Math.max(0, (existing?.count ?? 0) + (hasReacted ? 1 : -1));
+
+      // Optimistic chip update — Discord-fast, reconciled with the server below.
+      setReactions((current) => {
+        const next = current.map((reaction) =>
+          reaction.emoji === emoji ? { ...reaction, count: nextCount, hasReacted } : reaction
+        );
+        if (!existing) next.push({ emoji, count: nextCount, hasReacted });
+        return next.filter((reaction) => reaction.count > 0);
+      });
+
+      try {
+        const result = await toggleReaction({ messageId: message.id, emoji });
+        const data = result?.data;
+        if (result?.error) {
+          setReactions(previous);
+          toasts.error('Failed to update reaction');
+        } else if (data) {
+          setReactions((current) => {
+            const next = current.map((reaction) =>
+              reaction.emoji === emoji
+                ? { ...reaction, count: data.likeCount, hasReacted: data.hasReacted }
+                : reaction
+            );
+            return next.filter((reaction) => reaction.count > 0);
+          });
+        }
+      } catch {
+        setReactions(previous);
+        toasts.error('Failed to update reaction');
+      } finally {
+        setIsReacting(false);
+      }
+    },
+    [isReacting, message.id, reactions]
+  );
 
   if (isDeleted) {
     return (
@@ -471,12 +515,7 @@ const MessageRow = React.memo(function MessageRow({
             </div>
           )}
 
-          {likeCount > 0 && (
-            <div className="flex items-center gap-1 mt-1 bg-chart-4/5 hover:bg-chart-4/10 border border-chart-4/10 w-fit rounded-full px-2 py-0.5 text-xs text-chart-4 font-medium select-none">
-              <ThumbsUp size={10} className="fill-current" />
-              <span>{likeCount}</span>
-            </div>
-          )}
+          <MessageReactions reactions={reactions} onToggle={handleToggleReaction} isPending={isReacting} />
 
           {replies.length > 0 && (
             <InlineReplyThread
@@ -505,26 +544,8 @@ const MessageRow = React.memo(function MessageRow({
             </div>
             <MessageActions
               onReply={() => onReply(message.id)}
-              isLiked={isLiked}
               onEdit={canEdit ? () => setIsEditing(true) : undefined}
-              onReact={async () => {
-                if (isLiking) return;
-                setIsLiking(true);
-                const wasLiked = isLiked;
-                setIsLiked(!wasLiked);
-                setLikeCount((prev) => (wasLiked ? Math.max(0, prev - 1) : prev + 1));
-                const result = await toggleReaction({ messageId: message.id, emoji: '👍' });
-                if (result?.error) {
-                  setIsLiked(wasLiked);
-                  setLikeCount((prev) => (wasLiked ? prev + 1 : Math.max(0, prev - 1)));
-                  toasts.error('Failed to update reaction');
-                } else if (result?.data) {
-                  // Reconcile optimistic state with the authoritative counts.
-                  setIsLiked(result.data.hasReacted);
-                  setLikeCount(result.data.likeCount);
-                }
-                setIsLiking(false);
-              }}
+              onReact={handleToggleReaction}
               onPin={canPin ? async () => {
                 setIsPinning(true);
                 const wasPinned = message.isPinned;
