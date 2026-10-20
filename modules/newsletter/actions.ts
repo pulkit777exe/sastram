@@ -4,6 +4,7 @@ import { logger } from '@/lib/infrastructure/logger';
 
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
+import { requireReadOrThrow } from '@/lib/thread-access';
 import { revalidatePath } from 'next/cache';
 import { subscribeToThreadNewsletter } from './repository';
 import { z } from 'zod';
@@ -113,14 +114,17 @@ export const subscribeToThreadAction = withValidation(
   subscribeSchema,
   'subscribeToThread',
   async ({ threadId, slug }) => {
-    try {
-      const session = await requireSession(false);
+    const session = await requireSession(false);
+    // Digests include thread content, so subscribing is a read operation.
+    // Without this gate anyone who knows a private thread's CUID can receive
+    // its messages and AI summary by email.
+    await requireReadOrThrow(threadId, session.user.id, session.user.role);
 
-      const email = session.user.email;
+    try {
       await subscribeToThreadNewsletter({
         threadId,
         userId: session.user.id,
-        email,
+        email: session.user.email,
         frequency: 'DAILY',
       });
 
