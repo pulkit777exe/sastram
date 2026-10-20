@@ -16,6 +16,7 @@ import { signIn, signUp, authClient } from '@/lib/services/auth-client';
 import { GithubIcon } from '@/public/icons/github';
 import { ChromeIcon } from '@/public/icons/google';
 import { toasts } from '@/lib/utils/toast';
+import { safeRedirectPath } from '@/lib/utils/safe-redirect';
 import { SerifHeading } from '@/components/layout/serif-heading';
 
 type AuthMode = 'signin' | 'signup' | 'email-otp' | 'otp-verify';
@@ -32,16 +33,18 @@ const inputStyles =
 const labelStyles = 'text-muted-foreground text-sm font-medium';
 
 function getRedirectTarget(searchParams: URLSearchParams): string {
-  const candidate = searchParams.get('redirect');
-  if (candidate && candidate.startsWith('/')) {
-    return candidate;
-  }
+  const fromQuery = safeRedirectPath(searchParams.get('redirect'), '');
+  if (fromQuery) return fromQuery;
 
   if (typeof window !== 'undefined' && document.referrer) {
     try {
       const referrerUrl = new URL(document.referrer);
-      if (referrerUrl.pathname.startsWith('/') && referrerUrl.pathname !== '/login') {
-        return referrerUrl.pathname + (referrerUrl.search || '');
+      const fromReferrer = safeRedirectPath(
+        `${referrerUrl.pathname}${referrerUrl.search}`,
+        ''
+      );
+      if (fromReferrer && fromReferrer !== '/login') {
+        return fromReferrer;
       }
     } catch {
       // Invalid referrer URL — fall through to default
