@@ -28,7 +28,6 @@ const NAV_LINKS = [
   { href: '/#features', label: 'Features' },
   { href: '/#how-it-works', label: 'How it works' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/api-docs', label: 'API' },
 ];
 
 export function PublicNavbar({ user = null }: PublicNavbarProps) {

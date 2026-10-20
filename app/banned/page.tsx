@@ -76,7 +76,16 @@ export default async function BannedPage() {
           )}
 
           <div className="text-xs text-muted-foreground pt-4 border-t border-line">
-            If you believe this is a technical error, contact support@sastram.com
+            If you believe this is a technical error, open an issue in the{' '}
+            <a
+              href="https://github.com/pulkit777exe/sastram/issues"
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand hover:underline"
+            >
+              Sastram repository
+            </a>
+            .
           </div>
         </div>
       </div>

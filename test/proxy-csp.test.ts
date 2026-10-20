@@ -23,4 +23,8 @@ describe('proxy CSP', () => {
   it('carries the request nonce in script-src', () => {
     expect(buildCsp('abc123')).to.contain("'nonce-abc123'");
   });
+
+  it('allows Better Auth Infra identify/API hosts', () => {
+    expect(buildCsp('abc123')).to.contain('https://*.better-auth.com');
+  });
 });

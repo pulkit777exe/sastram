@@ -7,7 +7,7 @@ import {
   Shield,
   ArrowRight,
   ChevronRight,
-  Zap,
+  Check,
   Lock,
   UserCheck,
 } from 'lucide-react';
@@ -29,59 +29,60 @@ interface LandingPageProps {
 }
 
 const capabilities = [
-  'Real-time threads',
+  'Threaded discussions',
   'Sai @-mentions',
-  'Forum search',
+  'AI search',
   'Moderation',
   'Polls & votes',
   'Daily digests',
-  'Reputation',
-  'WebSockets',
+  'Bookmarks & follows',
 ];
 
 const featureRows = [
   {
-    title: 'Every reply streams live, instantly',
+    title: 'Conversations that stay organized',
     description:
-      'WebSocket-powered threads with reactions, edits, and mentions that appear without a refresh. No polling, no stale state.',
+      'Public, restricted, and private threads with nested replies, reactions, edits, and @mentions. Follow the threads you care about and pick up where you left off.',
     link: '#features',
-    tag: 'Real-time',
+    tag: 'Discussions',
     visual: 'threads' as const,
     quote: {
-      source: 'Built-in',
-      text: 'Messages, reactions, and read receipts sync across every connected client in milliseconds.',
+      source: 'Thread controls',
+      text: 'Visibility, per-thread bans, tags, bookmarks, and invitations keep each discussion focused.',
     },
   },
   {
     title: 'Type @sai, get answers in-thread',
     description:
-      'Mention @sai in any discussion and receive a streaming response posted directly into the conversation. No tab switching.',
+      'Mention @sai in any discussion and watch a cited, streaming response land directly in the conversation. No tab switching.',
     link: '#features',
     tag: 'Sai-native',
     visual: 'ai' as const,
     quote: {
       source: 'Gemini & OpenAI',
-      text: 'Thread summaries, DNA analysis, resolution scores, and inline replies — all powered by your choice of model.',
+      text: 'Thread summaries, thread DNA, resolution scores, and inline replies — powered by the model you configure.',
     },
   },
   {
-    title: 'Search, summarize, and moderate in one platform',
+    title: 'Search that reads the whole conversation',
     description:
-      'Sai forum search synthesizes results across threads. Background jobs generate summaries and digests while moderation runs automatically.',
+      'Sai search synthesizes results across threads and messages with citations. Background jobs generate summaries, digests, and freshness checks without blocking readers.',
     link: '#features',
-    tag: 'Intelligence',
+    tag: 'Research',
     visual: 'search' as const,
     quote: {
       source: 'Background jobs',
-      text: 'QStash handles thread summaries, conflict detection, and daily digests serverlessly without blocking your users.',
+      text: 'QStash handles thread summaries, digest emails, and stale-thread checks with AI spend caps in place.',
     },
   },
 ];
 
-const metrics = [
-  { label: 'Real-time delivery', sastram: 98, others: 42 },
-  { label: 'AI integration depth', sastram: 95, others: 35 },
-  { label: 'Moderation coverage', sastram: 90, others: 50 },
+const platformDetails = [
+  'Nested replies, reactions, edits, and read receipts',
+  'Polls, bookmarks, follows, and thread subscriptions',
+  'AI search with citations and inline @sai replies',
+  'Email invitations, digests, and password reset flows',
+  'Open source under the MIT License',
 ];
 
 const securityFeatures = [
@@ -92,33 +93,32 @@ const securityFeatures = [
   },
   {
     icon: Lock,
-    title: 'Membership-scoped access',
-    description: 'Every route enforces SectionMember checks. Communities are private by default.',
+    title: 'Visibility-scoped access',
+    description: 'Public, restricted, and private threads, with per-thread bans and moderator controls.',
   },
   {
     icon: UserCheck,
     title: 'Better Auth',
-    description: 'Email OTP, OAuth, and session management with industry-standard security practices.',
+    description: 'Email OTP, OAuth, and session management with rate limits on sensitive routes.',
   },
 ];
 
 const useCases = [
   {
     type: 'quote' as const,
-    source: 'Research teams',
-    quote:
-      'Organize long-form discussions with thread DNA, resolution scores, and Sai summaries that capture what was actually decided.',
-    author: 'Thread intelligence',
+    source: 'Use case · Research teams',
+    quote: 'Turn a long thread into a durable answer.',
+    author: 'Thread DNA, resolution scores, and summaries capture what was decided — not just who replied last.',
   },
   {
     type: 'stat' as const,
-    label: '50+ feature modules',
-    sublabel: 'Communities, polls, badges, bookmarks, and more',
+    label: 'MIT licensed',
+    sublabel: 'Open source. Self-host it or run it on Vercel.',
   },
   {
     type: 'image' as const,
-    title: 'Powering the next generation of community discussions',
-    subtitle: 'Open source · Self-hostable',
+    title: 'Built for teams that think in threads',
+    subtitle: 'Open source · MIT licensed',
   },
 ];
 
@@ -137,7 +137,7 @@ function MosaicTile({ className }: { className?: string }) {
 function DashboardPreview() {
   const threads = [
     { name: 'Optimizing RAG pipelines', replies: 24, tag: 'AI', active: true },
-    { name: 'WebSocket scaling strategies', replies: 18, tag: 'Infra' },
+    { name: 'Scaling a research workflow', replies: 18, tag: 'Infra' },
     { name: 'Thread resolution scoring', replies: 31, tag: 'Product' },
     { name: 'Community moderation patterns', replies: 12, tag: 'Mod' },
   ];
@@ -160,7 +160,7 @@ function DashboardPreview() {
       <div className="flex min-h-70">
         <div className="w-44 border-r border-line bg-muted/50 p-3 hidden sm:block">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Communities
+            Topics
           </p>
           {['Engineering', 'Research', 'General'].map((c, i) => (
             <div
@@ -175,8 +175,8 @@ function DashboardPreview() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-foreground">Recent threads</p>
             <span className="text-xs text-emerald-600 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Active
             </span>
           </div>
           <div className="space-y-1.5">
@@ -220,7 +220,7 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
         </div>
         <div className="relative bg-background/90 backdrop-blur rounded-card border border-white/60 p-4 shadow-linear-lg">
           <div className="space-y-2">
-            {['How do we handle concurrent edits?', 'WebSocket reconnect logic?'].map((msg, i) => (
+            {['How do we handle concurrent edits?', 'How should we source citations?'].map((msg, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <div className="w-6 h-6 rounded-full bg-brand/20 flex-none" />
                 <div className="bg-muted rounded-control px-3 py-2 text-xs text-foreground/80 flex-1">
@@ -272,9 +272,9 @@ function FeatureVisual({ type }: { type: 'threads' | 'ai' | 'search' }) {
           <span className="text-muted-foreground">,</span>
           {'\n'}
           {'  '}
-          <span className="text-emerald-400">&quot;model&quot;</span>
+          <span className="text-amber-300">&quot;provider&quot;</span>
           <span className="text-muted-foreground">: </span>
-          <span className="text-amber-300">&quot;gemini-2.0&quot;</span>
+          <span className="text-amber-300">&quot;gemini&quot;</span>
           {'\n'}
           <span className="text-muted-foreground">{'}'}</span>
         </pre>
@@ -314,9 +314,9 @@ export function LandingPage({ user }: LandingPageProps) {
       {/* Announcement banner */}
       <div className="bg-brand/8 border-b border-brand/15 text-center py-2 px-4">
         <p className="text-xs text-muted-foreground">
-          Open source discussion platform with Sai built into every thread.{' '}
+          Open source discussion and research platform. MIT licensed.{' '}
           <Link href="#features" className="text-brand font-medium hover:underline">
-            Explore features →
+            See what&apos;s included →
           </Link>
         </p>
       </div>
@@ -334,13 +334,13 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <FadeIn>
               <h1 className="text-4xl md:text-[3.5rem] leading-[1.08] tracking-tight text-foreground mb-5">
-                <SerifHeading>Discussions, built for the Sai era</SerifHeading>
+                <SerifHeading>Think in threads. Resolve with AI.</SerifHeading>
               </h1>
             </FadeIn>
             <FadeIn delay={0.08}>
               <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
-                The discussion platform where real-time threads, Sai synthesis, and smart moderation
-                work together — not bolted on.
+                Structured discussions, cited AI search, and moderation that keeps conversations
+                useful — all in one place.
               </p>
             </FadeIn>
             <FadeIn delay={0.16}>
@@ -380,7 +380,7 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-5xl mx-auto">
             <FadeIn className="mb-20 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
-                <SerifHeading>Designed to make your community smarter</SerifHeading>
+                <SerifHeading>Designed to make discussions useful</SerifHeading>
               </h2>
             </FadeIn>
 
@@ -426,13 +426,13 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="bg-secondary text-secondary-foreground px-8 md:px-14 py-16 flex flex-col justify-center">
             <FadeIn>
               <h2 className="text-3xl md:text-4xl tracking-tight mb-8 leading-tight">
-                <SerifHeading>Highest quality discussions at every scale</SerifHeading>
+                <SerifHeading>Everything a serious discussion needs</SerifHeading>
               </h2>
               <div className="space-y-5">
                 {[
-                  { icon: Zap, label: 'Latency', desc: 'WebSocket delivery, not polling' },
-                  { icon: Sparkles, label: 'Intelligence', desc: 'Sai woven into threads, not added on' },
-                  { icon: Shield, label: 'Safety', desc: 'Moderation and membership by default' },
+                  { icon: MessageSquare, label: 'Structured threads', desc: 'Public, restricted, and private, with per-thread bans' },
+                  { icon: Sparkles, label: 'AI with guardrails', desc: 'Daily spend caps and per-user quotas' },
+                  { icon: Shield, label: 'Moderation built in', desc: 'Rules, reports, appeals, and ban management' },
                 ].map(({ icon: Icon, label, desc }) => (
                   <div key={label} className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-control bg-primary/10 flex items-center justify-center flex-none">
@@ -450,37 +450,18 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="bg-background px-8 md:px-14 py-16 flex flex-col justify-center border-t md:border-t-0 md:border-l border-line">
             <FadeIn>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-8">
-                Platform comparison
+                Platform
               </p>
-              <div className="space-y-7">
-                {metrics.map((m) => (
-                  <div key={m.label}>
-                    <p className="text-sm font-medium text-foreground/80 mb-2">{m.label}</p>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground w-20">Sastram</span>
-                        <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
-                          <div
-                            className="h-full bg-brand rounded transition-all duration-700"
-                            style={{ width: `${m.sastram}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-mono text-brand w-8">{m.sastram}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground w-20">Typical</span>
-                        <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
-                          <div
-                            className="h-full bg-muted-foreground/30 rounded"
-                            style={{ width: `${m.others}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-mono text-muted-foreground w-8">{m.others}</span>
-                      </div>
-                    </div>
-                  </div>
+              <ul className="space-y-4">
+                {platformDetails.map((detail) => (
+                  <li key={detail} className="flex items-start gap-3 text-sm text-foreground">
+                    <span className="mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full bg-brand/10 text-brand">
+                      <Check size={13} />
+                    </span>
+                    <span>{detail}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </FadeIn>
           </div>
         </section>
@@ -501,10 +482,10 @@ export function LandingPage({ user }: LandingPageProps) {
                       {useCases[0].source}
                     </p>
                     <p className="text-xl md:text-2xl text-foreground leading-relaxed">
-                      <SerifHeading>&ldquo;{useCases[0].quote}&rdquo;</SerifHeading>
+                      <SerifHeading>{useCases[0].quote}</SerifHeading>
                     </p>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-6">— {useCases[0].author}</p>
+                  <p className="text-sm text-muted-foreground mt-6">{useCases[0].author}</p>
                 </div>
               </FadeIn>
               <FadeIn delay={0.08}>
@@ -532,22 +513,22 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-4xl mx-auto">
             <FadeIn className="mb-14 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
-                <SerifHeading>Three steps to a Sai-powered community</SerifHeading>
+                <SerifHeading>From question to resolution in three steps</SerifHeading>
               </h2>
             </FadeIn>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
                   step: '01',
-                  icon: Users,
-                  title: 'Create a community',
-                  desc: 'Organize threads by topic with sections, tags, and invites.',
+                  icon: MessageSquare,
+                  title: 'Open a thread',
+                  desc: 'Choose visibility, add tags, and frame the question.',
                 },
                 {
                   step: '02',
-                  icon: MessageSquare,
-                  title: 'Start discussing',
-                  desc: 'Real-time threads with nested replies, polls, and @mentions.',
+                  icon: Users,
+                  title: 'Discuss together',
+                  desc: 'Nested replies, reactions, polls, mentions, and subscriptions.',
                 },
                 {
                   step: '03',
@@ -581,7 +562,7 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-5xl mx-auto">
             <FadeIn className="mb-14 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight">
-                <SerifHeading>Enterprise-grade security and controls</SerifHeading>
+                <SerifHeading>Security and controls</SerifHeading>
               </h2>
             </FadeIn>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -604,11 +585,10 @@ export function LandingPage({ user }: LandingPageProps) {
         <section className="py-28 px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
-              <SerifHeading>Discussions built for your community</SerifHeading>
+              <SerifHeading>Discussions that end with an answer</SerifHeading>
             </h2>
             <p className="text-base text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
-              Real-time threads, Sai synthesis, and smart moderation — free to start, no credit card
-              required.
+              Structured threads, cited AI search, and moderation — open source and free to use.
             </p>
             <Link
               href="/login"

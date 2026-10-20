@@ -27,9 +27,14 @@ export function PublicFooter() {
           <div>
             <p className="font-semibold mb-3 text-white/90">Platform</p>
             <div className="space-y-2 text-white/60">
-              <Link href="/api-docs" className="block hover:text-white transition-colors">
-                API docs
-              </Link>
+              <a
+                href="https://github.com/pulkit777exe/sastram"
+                target="_blank"
+                rel="noreferrer"
+                className="block hover:text-white transition-colors"
+              >
+                Source code
+              </a>
               <Link href="/login" className="block hover:text-white transition-colors">
                 Sign in
               </Link>
@@ -38,6 +43,9 @@ export function PublicFooter() {
           <div>
             <p className="font-semibold mb-3 text-white/90">Legal</p>
             <div className="space-y-2 text-white/60">
+              <Link href="/privacy" className="block hover:text-white transition-colors">
+                Privacy
+              </Link>
               <Link href="/terms" className="block hover:text-white transition-colors">
                 Terms
               </Link>

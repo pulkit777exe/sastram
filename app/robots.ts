@@ -15,7 +15,6 @@ export default function robots(): MetadataRoute.Robots {
           '/banned',
           '/api/',
           '/invitations/',
-          '/api-docs',
         ],
       },
     ],
