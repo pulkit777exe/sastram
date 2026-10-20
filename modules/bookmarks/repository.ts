@@ -11,7 +11,7 @@ const BOOKMARK_THREAD_SELECT = {
   messageCount: true,
   createdAt: true,
   updatedAt: true,
-  creator: { select: { id: true, name: true, email: true, image: true } },
+  creator: { select: { id: true, name: true, image: true } },
 } as const;
 
 export async function bookmarkThread(userId: string, threadId: string) {

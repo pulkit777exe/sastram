@@ -12,15 +12,8 @@ import { actionSuccess } from '@/lib/utils/server-action';
 
 const EMAIL_PREVIEW_LENGTH = 200;
 
-function resolveHandleBase(user: { name: string | null; email: string }): string {
-  if (user.name) return user.name;
-  return user.email.split('@')[0] ?? '';
-}
-
-function buildHandle(user: { name: string | null; email: string }): string {
-  const base = resolveHandleBase(user);
-  if (!base) return 'user';
-  const cleaned = base.toLowerCase().replace(/[^a-z0-9.-]/g, '');
+function buildHandle(name: string): string {
+  const cleaned = name.toLowerCase().replace(/[^a-z0-9.-]/g, '');
   return cleaned || 'user';
 }
 
@@ -60,7 +53,6 @@ export async function createMentionsForMessage({
   mentionedBy: {
     id: string;
     name: string | null;
-    email: string;
   };
   content: string;
   threadSlug: string | null;
@@ -87,7 +79,7 @@ export async function createMentionsForMessage({
         ).map((u) => u.id);
   if (validIds.length === 0) return;
 
-  const mentionerName = mentionedBy.name ?? mentionedBy.email;
+  const mentionerName = mentionedBy.name?.trim() || 'A user';
   const mentionRows = buildMentionRows(messageId, validIds);
   await prisma.messageMention.createMany({ data: mentionRows, skipDuplicates: true });
 
@@ -135,6 +127,7 @@ export const searchMentionUsers = createServerAction(
       const users = await prisma.user.findMany({
         where: {
           deletedAt: null,
+          name: { not: null },
           id: { not: session.user.id },
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
@@ -144,20 +137,21 @@ export const searchMentionUsers = createServerAction(
         select: {
           id: true,
           name: true,
-          email: true,
           image: true,
         },
         orderBy: { followerCount: 'desc' },
         take: 5,
       });
 
-      const mapped = users.map((user) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        image: user.image,
-        handle: buildHandle(user),
-      }));
+      const mapped = users.flatMap((user) => {
+        if (!user.name) return [];
+        return [{
+          id: user.id,
+          name: user.name,
+          image: user.image,
+          handle: buildHandle(user.name),
+        }];
+      });
 
       return actionSuccess(mapped);
     } catch (error) {

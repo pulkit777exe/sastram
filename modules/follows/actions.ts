@@ -23,8 +23,9 @@ function revalidateFollowPaths(userId: string) {
   revalidatePath(`/user/${userId}`);
 }
 
-function getFollowerDisplayName(user: { name: string | null; email: string }): string {
-  return user.name ?? user.email;
+function getFollowerDisplayName(user: { name: string | null }): string {
+  const trimmed = user.name?.trim();
+  return trimmed ? trimmed : 'A user';
 }
 
 async function assertFollowTargetExists(userId: string) {
@@ -82,6 +83,7 @@ export const unfollowUser = createServerAction(
 export const getFollowers = createServerAction(
   { schema: followListSchema, actionName: 'getFollowers' },
   async ({ userId, limit, offset }) => {
+    await requireSession();
     return actionSuccess(await getFollowersRepo(userId, limit, offset));
   }
 );
@@ -89,6 +91,7 @@ export const getFollowers = createServerAction(
 export const getFollowing = createServerAction(
   { schema: followListSchema, actionName: 'getFollowing' },
   async ({ userId, limit, offset }) => {
+    await requireSession();
     return actionSuccess(await getFollowingRepo(userId, limit, offset));
   }
 );

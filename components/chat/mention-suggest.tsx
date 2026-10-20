@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils/cn';
 export interface MentionCandidate {
   id: string;
   name: string | null;
-  email: string;
   image: string | null;
   handle: string;
 }
@@ -59,7 +58,7 @@ export function MentionSuggest({
             </Avatar>
             <div className="flex flex-col min-w-0">
               <span className="font-semibold truncate">
-                {candidate.name || candidate.email}
+                {candidate.name || candidate.handle}
               </span>
               <span className="text-xs text-muted-foreground truncate">
                 @{candidate.handle}

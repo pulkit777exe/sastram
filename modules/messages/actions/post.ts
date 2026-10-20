@@ -160,7 +160,7 @@ async function finalizePostSuccess(args: {
     messageId: message.id,
     threadId: args.threadId,
     mentions: args.mentions,
-    mentionedBy: { id: args.session.user.id, name: args.session.user.name, email: args.session.user.email },
+    mentionedBy: { id: args.session.user.id, name: args.session.user.name },
     content: message.content,
     threadSlug: message.thread?.slug ?? null,
     sideEffects: infraMessageSideEffects,

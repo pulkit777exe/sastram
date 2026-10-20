@@ -5,7 +5,6 @@ import { computeHasMore } from '@/lib/db/pagination';
 const FOLLOW_USER_SELECT = {
   id: true,
   name: true,
-  email: true,
   image: true,
   bio: true,
   followerCount: true,
