@@ -8,6 +8,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { AppError } from '@/lib/utils/errors';
 import { isAdmin } from '@/lib/config/permissions';
+import { safeRedirectPath } from '@/lib/utils/safe-redirect';
 import { requireReadOrThrow, requireWriteOrThrow } from '@/lib/thread-access';
 
 export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status' | 'preferences'>;
@@ -105,10 +106,8 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
   const session = await getSession();
   if (!session) {
     const h = await headers();
-    const host = h.get('x-forwarded-host') || h.get('host') || '';
-    const proto = h.get('x-forwarded-proto') || 'https';
-    const url = host ? `${proto}://${host}${h.get('x-invoke-path') || '/'}` : '/';
-    redirect(`/login?reason=session_expired&redirect=${encodeURIComponent(url)}`);
+    const requestedPath = safeRedirectPath(h.get('x-invoke-path'), '/dashboard');
+    redirect(`/login?reason=session_expired&redirect=${encodeURIComponent(requestedPath)}`);
   }
 
   if (checkBanStatus && session.user.status === 'BANNED') {
