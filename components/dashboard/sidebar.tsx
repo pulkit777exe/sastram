@@ -36,6 +36,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { useNotification } from '@/components/bootstrap-provider';
 import { signOut } from '@/lib/services/auth-client';
+import { ReferFriendDialog } from '@/components/dashboard/refer-friend-dialog';
 
 export function Sidebar({
   name,
@@ -98,6 +99,7 @@ export function Sidebar({
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [profileMenuClosing, setProfileMenuClosing] = useState(false);
+  const [showReferDialog, setShowReferDialog] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const closeMs = 150;
 
@@ -221,16 +223,14 @@ export function Sidebar({
               <Input
                 type="text"
                 placeholder="Search with Sai..."
+                aria-label="Search with Sai"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-field border-line rounded-control py-1.5 pl-9 pr-12 text-xs h-auto"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                 <kbd className="text-xs bg-background px-1 rounded border border-line text-ink-3">
-                  ⌘
-                </kbd>
-                <kbd className="text-xs bg-background px-1 rounded border border-line text-ink-3">
-                  F
+                  ↵
                 </kbd>
               </div>
             </form>
@@ -257,7 +257,7 @@ export function Sidebar({
               <p className="text-xs font-bold text-ink-3 uppercase">Other</p>
             </div>
 
-            <NavItem icon={UserPlus} label="Refer a Friend" href="#" collapsed={false} onNavigate={onNavigate}></NavItem>
+            <NavItem icon={UserPlus} label="Invite a friend" href="#" collapsed={false} onClick={() => setShowReferDialog(true)} />
           </nav>
 
           <div className="mx-3 mb-3 p-3 rounded-card border border-line bg-canvas">
@@ -365,6 +365,8 @@ export function Sidebar({
           </div>
         )}
       </div>
+
+      <ReferFriendDialog open={showReferDialog} onOpenChange={setShowReferDialog} />
     </aside>
   );
 }
@@ -377,9 +379,33 @@ interface NavItemProps {
   collapsed: boolean;
   badge?: number;
   onNavigate?: () => void;
+  onClick?: () => void;
 }
 
-function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, onNavigate }: NavItemProps) {
+function NavItem({ icon: Icon, label, href, active = false, collapsed, badge, onNavigate, onClick }: NavItemProps) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          'group flex items-center gap-3 px-3 py-2 rounded-control cursor-pointer transition-all duration-200',
+          'text-ink-3 hover:text-ink hover:bg-hover',
+          collapsed && 'justify-center'
+        )}
+        title={collapsed ? label : undefined}
+      >
+        <AnimatedIcon
+          icon={Icon}
+          size={18}
+          className="text-ink-3 group-hover:text-ink transition-colors shrink-0"
+          animateOnHover
+        />
+        {!collapsed && <span className="text-sm font-medium">{label}</span>}
+      </button>
+    );
+  }
+
   if (href === '#') {
     return (
       <div

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ModerationQueue } from './moderation-queue';
 import { ReportReviewPanel } from './report-review-panel';
+import { ReportActionDialog, type ReportAction } from './report-action-dialog';
 import { AuditLogTable } from './audit-log-table';
 import { getReportWithContext } from '@/modules/reports/actions';
 import type {
@@ -44,6 +45,7 @@ export function ModerationDashboard({
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<ReportWithContext | null>(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [pendingAction, setPendingAction] = useState<ReportAction | null>(null);
 
   const queueItems: ReportQueueItem[] = initialReports.map((r) => ({
     id: r.id,
@@ -81,19 +83,17 @@ export function ModerationDashboard({
     setIsLoadingReport(false);
   }, []);
 
-  const handleAction = useCallback(
-    async (action: string) => {
-      if (!selectedReportId) return;
-
-      toasts.info(`Action "${action}" selected. Confirmation modal coming soon.`);
-    },
-    [selectedReportId]
-  );
+  const handleAction = useCallback((action: ReportAction) => {
+    if (!selectedReportId) return;
+    setPendingAction(action);
+  }, [selectedReportId]);
 
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (!selectedReport) return;
+      // The action dialog owns the keyboard while it is open.
+      if (pendingAction !== null) return;
 
       const target = e.target as HTMLElement;
       if (
@@ -106,7 +106,7 @@ export function ModerationDashboard({
       }
 
       const key = e.key;
-      const actions: Record<string, string> = {
+      const actions: Record<string, ReportAction> = {
         '1': 'DISMISS',
         '2': 'REMOVE_MESSAGE',
         '3': 'WARN_USER',
@@ -122,7 +122,7 @@ export function ModerationDashboard({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedReport, handleAction]);
+  }, [selectedReport, handleAction, pendingAction]);
 
   return (
     <div className="space-y-6">
@@ -183,6 +183,22 @@ export function ModerationDashboard({
         <h2 className="text-lg font-semibold text-foreground mb-4">Recent Audit Log</h2>
         <AuditLogTable entries={auditLog} />
       </section>
+
+      {selectedReportId && (
+        <ReportActionDialog
+          reportId={selectedReportId}
+          action={pendingAction}
+          open={pendingAction !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingAction(null);
+          }}
+          onResolved={() => {
+            setPendingAction(null);
+            setSelectedReportId(null);
+            setSelectedReport(null);
+          }}
+        />
+      )}
     </div>
   );
 }

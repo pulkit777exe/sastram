@@ -20,11 +20,12 @@ import {
 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { cn } from '@/lib/utils/cn';
+import type { ReportAction } from './report-action-dialog';
 import type { ReportWithContext } from '@/modules/reports/types';
 
 interface ReportReviewPanelProps {
   report: ReportWithContext;
-  onAction: (action: string, data?: Record<string, unknown>) => void;
+  onAction: (action: ReportAction) => void;
   isLoading?: boolean;
 }
 
@@ -69,7 +70,7 @@ const actionButtons = [
     variant: 'destructive' as const,
     description: 'Ban user permanently',
   },
-];
+] satisfies Array<{ key: ReportAction; label: string; shortcut: string; icon: typeof CheckCircle; variant: 'outline' | 'destructive'; description: string }>;
 
 function getToxicityColor(score: number): string {
   if (score > 0.8) return 'bg-red-500/20 text-red-400';

@@ -56,7 +56,7 @@ function InvitationAcceptPageInner() {
       const hasSession = sessionData && sessionData.session;
 
       if (!hasSession) {
-        const currentUrl = `/invitations/accept?invite=${inviteId}`;
+        const currentUrl = `/invitations/accept?id=${inviteId}`;
         router.push(`/login?redirect=${encodeURIComponent(currentUrl)}`);
         return;
       }

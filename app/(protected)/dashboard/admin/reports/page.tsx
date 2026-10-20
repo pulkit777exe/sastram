@@ -8,6 +8,7 @@ import Link from 'next/link';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { ReportActions } from '@/components/admin/report-actions';
 import { Report } from '@/modules/reports';
+import { REPORT_CATEGORY_LABELS } from '@/lib/config/constants';
 import { cn } from '@/lib/utils/cn';
 
 export default async function ReportsPage() {
@@ -133,7 +134,14 @@ function ReportCard({ report }: { report: Report }) {
                 <TimeAgo date={report.createdAt} />
               </span>
             </div>
-            <p className="text-sm text-ink/80 mb-4">{report.status}</p>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <Badge variant="outline" className="border-line">
+                {REPORT_CATEGORY_LABELS[report.category] ?? report.category}
+              </Badge>
+              {report.details && (
+                <p className="text-sm text-ink/80">{report.details}</p>
+              )}
+            </div>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-ink-3">Reported by:</span>
@@ -161,7 +169,7 @@ function ReportCard({ report }: { report: Report }) {
           <p className="text-sm text-ink">{report.message.content}</p>
         </div>
 
-        {report.status === 'PENDING' && <ReportActions reportId={report.id} currentStatus={report.status} />}
+        {report.status === 'PENDING' && <ReportActions reportId={report.id} />}
 
         {report.resolvedBy && (
           <div className="mt-4 pt-4 border-t border-line">
