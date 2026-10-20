@@ -4,10 +4,11 @@
   # Obviously-fake Gemini fixtures can exceed the rule's length threshold
   # (real keys are random); allowlist the fixture fragments, not the pattern.
   # `.env.example` documents variables with inline `#` comments; the default
-  # generic-api-key rule can read a comment after an AUTH_* placeholder as the
-  # value, so ignore any finding whose value is a comment. Comments are never
-  # secrets.
+  # generic-api-key rule can flag long BETTER_AUTH_* variable names themselves.
+  # Allowlist those placeholder names and any comment-only value. Neither is a
+  # secret.
   regexes = [
+    '''(?i)^(?:NEXT_PUBLIC_)?BETTER_AUTH_[A-Z_]+$''',
     '''^#[^\n]*''',
     '''(?i)AIza(?:Sy)?[-_]?(?:valid|test|dummy)''',
   ]
