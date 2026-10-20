@@ -48,19 +48,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('EXPIRED', 'This invitation has expired'), { status: 410 });
     }
 
+    // Do not reveal the invited address (or the invitation status) to anyone
+    // else holding a forwarded link.
+    if (invitation.email.toLowerCase() !== session.user.email.toLowerCase()) {
+      return NextResponse.json(
+        fail('EMAIL_MISMATCH', 'This invitation was issued to a different email address'),
+        { status: HTTP_STATUS.FORBIDDEN }
+      );
+    }
+
     if (invitation.status === 'ACCEPTED') {
       return NextResponse.json(ok({ threadSlug: invitation.thread.slug, alreadyAccepted: true }));
     }
 
     if (invitation.status === 'DECLINED' || invitation.status === 'EXPIRED') {
       return NextResponse.json(fail(invitation.status, `This invitation has been ${invitation.status.toLowerCase()}`), { status: 410 });
-    }
-
-    if (invitation.email.toLowerCase() !== session.user.email.toLowerCase()) {
-      return NextResponse.json(
-        fail('EMAIL_MISMATCH', `This invitation was sent to ${invitation.email}, but you are signed in as ${session.user.email}`),
-        { status: HTTP_STATUS.FORBIDDEN }
-      );
     }
 
     await prisma.$transaction(async (tx) => {
