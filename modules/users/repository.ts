@@ -19,10 +19,7 @@ const USER_PUBLIC_SELECT = {
   profilePrivacy: true,
   followerCount: true,
   followingCount: true,
-  role: true,
-  status: true,
   createdAt: true,
-  lastSeenAt: true,
 } as const;
 
 const USER_THREAD_SELECT = {
