@@ -19,6 +19,8 @@ import { useThreadReadReceipts } from '@/hooks/thread/use-thread-read-receipts';
 import { usePollRefresh } from '@/hooks/thread/use-poll-refresh';
 
 const SAI_MENTION_RE = /\B@sai\b/i;
+const AI_REPLY_FALLBACK_CONTENT =
+  "Sorry, I couldn't generate a response right now. Please try again later.";
 
 // Magic numbers with intent
 const SCROLL_BOTTOM_THRESHOLD_PX = 80;
@@ -212,7 +214,6 @@ export function ThreadLiveWrapper({
     setAiPending,
     setAiInlineStatus,
     clearAiStatus,
-    markFailedIfPending,
     streamParentRef,
     isPollingStale,
   } = sync;
@@ -278,19 +279,21 @@ export function ThreadLiveWrapper({
     if (parentId) clearAiStatus(parentId);
   }
 
-  function handleStreamError(_err: AIStreamError) {
+  function handleStreamError(err: AIStreamError) {
     const parentId = streamParentRef.current;
     streamParentRef.current = null;
-    fetch(`/api/threads/${threadId}/ai-reply`, { method: 'POST' })
-      .then((res) => {
-        if (!res.ok) throw new Error('fallback enqueue failed');
-      })
-      .catch((error) => {
-        console.error('[thread-live] AI-reply fallback enqueue failed:', error);
-        if (parentId) {
-          markFailedIfPending(parentId);
-        }
-      });
+
+    // The server may have persisted a failure copy (or a partial reply). Paint
+    // it now instead of leaving the empty placeholder spinning until refresh.
+    if (err.messageId) {
+      threadMessages.updateMessageContent(
+        err.messageId,
+        err.content ?? AI_REPLY_FALLBACK_CONTENT
+      );
+    }
+    if (parentId) {
+      setAiInlineStatus(parentId, 'failed');
+    }
   }
 
   const { startStream, stopStream } = useAIReplyStream({

@@ -222,12 +222,13 @@ export const backfillThreadMessages = createServerAction(
     await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
     // Single canonical read path: threads-read owns the row→DTO mapping
-    // (reactions, polls, attachments included). Filter to the requested
-    // window and return oldest-first for gap-filling.
+    // (reactions, polls, attachments included). Filter by updatedAt, not just
+    // createdAt: streamed AI placeholders are updated in place when generation
+    // finishes or fails, and a createdAt-only window never sees that content.
     const sinceDate = new Date(since);
     const page = await getThreadMessagesPaginated(threadId, undefined, BACKFILL_LIMIT, session.user.id);
     const messages = page.messages
-      .filter((m) => m.createdAt >= sinceDate)
+      .filter((m) => m.updatedAt >= sinceDate)
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
     return actionSuccess({ messages });

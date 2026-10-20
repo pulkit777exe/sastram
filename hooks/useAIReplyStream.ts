@@ -15,6 +15,8 @@ export interface AIStreamDone {
 export interface AIStreamError {
   error: string;
   messageId?: string;
+  /** Final content persisted by the server (failure copy or partial reply). */
+  content?: string;
 }
 
 export interface AIStreamStart {
@@ -89,6 +91,7 @@ export function useAIReplyStream({
         let buffer = '';
         let messageId: string | undefined;
         let accumulated = '';
+        let settled = false;
 
         try {
           while (true) {
@@ -120,13 +123,28 @@ export function useAIReplyStream({
                   }
                   break;
                 case 'done':
+                  settled = true;
                   onDone?.({ messageId: data.messageId, truncated: data.truncated });
                   return;
                 case 'error':
-                  onError?.({ error: data.error, messageId: data.messageId });
+                  settled = true;
+                  onError?.({
+                    error: data.error,
+                    messageId: data.messageId,
+                    content: data.content,
+                  });
                   return;
               }
             }
+          }
+
+          // A proxy/network close without a terminal event must not leave the
+          // UI spinning forever. Surface it through the same error path.
+          if (!settled) {
+            onError?.({
+              error: 'Stream ended before completion',
+              messageId,
+            });
           }
         } finally {
           reader.releaseLock();
