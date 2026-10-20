@@ -74,6 +74,9 @@ test.describe('Search and thread UX', () => {
 
   test('thread header actions are icon-only and show hover tooltips', async ({ page }) => {
     await page.goto(THREAD);
+    // Header controls are server-rendered; wait for client hydration so the
+    // first hover actually reaches Radix's tooltip listeners.
+    await page.waitForLoadState('networkidle');
     await expect(page.getByText('new thread').first()).toBeVisible();
     const header = page.locator('header').first();
 
@@ -98,6 +101,7 @@ test.describe('Search and thread UX', () => {
 
   test('composer emoji picker searches the full collection without submitting', async ({ page }) => {
     await page.goto(THREAD);
+    await page.waitForLoadState('networkidle');
     await expect(page.getByText('Seed message for smoke tests')).toBeVisible();
     const messagesBefore = await page.locator('[id^="message-"]').count();
     const composer = page.getByPlaceholder(/ask a question|mention @sai/i).first();
@@ -124,6 +128,7 @@ test.describe('Search and thread UX', () => {
     });
 
     await page.goto(THREAD);
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /^Add bounty/ }).first().click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Add bounty' })).toBeVisible();
