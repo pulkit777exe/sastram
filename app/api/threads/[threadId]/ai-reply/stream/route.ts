@@ -248,10 +248,6 @@ export async function GET(
 
         sendEvent('done', { messageId: aiMessage.id, truncated: result.truncated });
       } catch (error) {
-        // The client went away — don't persist a failure for a reply nobody
-        // is waiting on. Timeouts keep the stream open, so they fall through.
-        if (closedRef.closed) return;
-
         logger.error('[ai-reply-stream] Generation error', { error, timedOut });
 
         const failureContent = buildAiReplyFailureContent(error, timedOut);
@@ -276,13 +272,17 @@ export async function GET(
           });
         }
 
-        // The client uses `content` to replace its empty streaming placeholder
-        // immediately; backfill also picks it up from `updatedAt`.
-        sendEvent('error', {
-          error: timedOut ? 'Generation timed out' : 'Generation failed',
-          messageId: aiMessage.id,
-          content: finalContent,
-        });
+        // Persist even when the client aborted mid-stream: otherwise the empty
+        // AI row reloads as an eternal "Generating…" placeholder.
+        if (!closedRef.closed) {
+          // The client uses `content` to replace its empty streaming placeholder
+          // immediately; backfill also picks it up from `updatedAt`.
+          sendEvent('error', {
+            error: timedOut ? 'Generation timed out' : 'Generation failed',
+            messageId: aiMessage.id,
+            content: finalContent,
+          });
+        }
       } finally {
         clearTimeout(timeout);
         request.signal.removeEventListener('abort', onRequestAbort);
